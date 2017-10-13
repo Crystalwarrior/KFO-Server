@@ -544,7 +544,7 @@ def ooc_cmd_unmod(client, arg):
 
 
 def ooc_cmd_lock(client, arg):
-    if not client.area.locking_allowed:
+    if not client.area.locking_allowed and not client.is_mod:
         client.send_host_message('Area locking is disabled in this area')
         return
     if client.area.is_locked:
@@ -555,7 +555,6 @@ def ooc_cmd_lock(client, arg):
         for i in client.area.clients:
             client.area.invite_list[i.ipid] = None
         return
-
 
 def ooc_cmd_unlock(client, arg):
     if not client.area.is_locked:
