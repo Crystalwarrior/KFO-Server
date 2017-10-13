@@ -86,7 +86,10 @@ Requires Python 3.6+ and PyYAML.
     - Makes you a CM of this area.
 * **loginrp** "Password"
     - Makes you a GM.
-    - GMs can bypass locks and see all areas even in RP mode.
+    - GMs can: 
+      - Bypass Locks.
+      - See all areas even in RP mode.
+      - Edit the invite list.
 ### CM Commands
 * **invite** "ID"
     - Adds target in invite list of your area.
