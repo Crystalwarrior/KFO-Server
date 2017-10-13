@@ -351,7 +351,9 @@ class AOProtocol(asyncio.Protocol):
             if pos not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
         msg = text[:256]
-        if self.client.disemvowel:
+        if self.client.gimp: #If you're gimped, gimp message.
+            msg = self.client.gimp_message(msg)
+        if self.client.disemvowel: #If you're disemvoweled, replace string.
             msg = self.client.disemvowel_message(msg)
         self.client.pos = pos
         if evidence:

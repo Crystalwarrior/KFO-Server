@@ -151,6 +151,7 @@ def ooc_cmd_rollp(client, arg):
     logger.log_server(
         '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), hashlib.sha1((str(roll) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, val[0]))
 
+
 def ooc_cmd_currentmusic(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
@@ -556,6 +557,7 @@ def ooc_cmd_lock(client, arg):
             client.area.invite_list[i.ipid] = None
         return
 
+
 def ooc_cmd_unlock(client, arg):
     if not client.area.is_locked:
         raise ClientError('Area already is open.')
@@ -654,6 +656,42 @@ def ooc_cmd_undisemvowel(client, arg):
             logger.log_server('Undisemvowelling {}.'.format(c.get_ip()), client)
             c.disemvowel = False
         client.send_host_message('Undisemvowelled {} existing client(s).'.format(len(targets)))
+    else:
+        client.send_host_message('No targets found.')
+
+
+def ooc_cmd_gimp(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    elif len(arg) == 0:
+        raise ArgumentError('You must specify a target.')
+    try:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    except:
+        raise ArgumentError('You must specify a target. Use /gimp <id>.')
+    if targets:
+        for c in targets:
+            logger.log_server('Gimping {}.'.format(c.get_ip(), client))
+            c.gimp = True
+        client.send_host_message('Gimped {} targets.'.format(len(targets)))
+    else:
+        client.send_host_message('No targets found.')
+
+
+def ooc_cmd_ungimp(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    elif len(arg) == 0:
+        raise ArgumentError('You must specify a target.')
+    try:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    except:
+        raise ArgumentError('You must specify a target. Use /gimp <id>.')
+    if targets:
+        for c in targets:
+            logger.log_server('Ungimping {}.'.format(c.get_ip(), client))
+            c.gimp = False
+        client.send_host_message('Ungimped {} targets.'.format(len(targets)))
     else:
         client.send_host_message('No targets found.')
 
