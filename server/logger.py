@@ -44,6 +44,14 @@ def setup_logger(debug):
     server_handler.setFormatter(srv_formatter)
     server_log.addHandler(server_handler)
 
+#    rp_log = logging.getLogger('rp')
+#    rp_log.setLevel(logging.INFO)
+
+#    rp_handler = logging.FileHandler('logs/rp.log', encoding='utf-8')
+#    rp_handler.setLevel(logging.INFO)
+#    rp_handler.setFormatter(rp_formatter)
+#    rp_log.addHandler(rp_handler)
+
 
 def log_debug(msg, client=None):
     msg = parse_client_info(client) + msg
@@ -53,6 +61,11 @@ def log_debug(msg, client=None):
 def log_server(msg, client=None):
     msg = parse_client_info(client) + msg
     logging.getLogger('server').info(msg)
+
+
+#def log_rp(msg, client=None):
+#   msg = parse_client_info(client) + msg
+#    logging.getLogger('rp').info(msg)
 
 
 def parse_client_info(client):

@@ -5,6 +5,7 @@ local: false
 
 guardpass: guard
 modpass: mod
+gmpass: gm
 
 motd: Welcome to my server!
 help_msg: TODO
@@ -22,6 +23,9 @@ masterserver_description: This is my flashy new server
 
 timeout: 250
 debug: false
+
+rp_mode_enabled: false
+announce_areas: true
 
 music_change_floodguard:
   times_per_interval: 3

@@ -22,7 +22,7 @@ from enum import Enum
 from server.constants import TargetType
 
 import time
-
+import re
 
 
 class ClientManager:
@@ -38,6 +38,7 @@ class ClientManager:
             self.name = ''
             self.fake_name = ''
             self.is_mod = False
+            self.is_gm = False
             self.is_dj = True
             self.pos = ''
             self.is_cm = False
@@ -125,8 +126,6 @@ class ClientManager:
             self.mus_counter = (self.mus_counter + 1) % times_per_interval
             self.mus_change_time[self.mus_counter] = time.time()
             return 0
-                
-                
 
         def reload_character(self):
             try:
@@ -137,7 +136,7 @@ class ClientManager:
         def change_area(self, area):
             if self.area == area:
                 raise ClientError('You are already in this area.')
-            if area.is_locked and not self.is_mod and not self.ipid in self.area.invite_list:
+            if area.is_locked and not self.is_mod and not self.is_gm and not self.ipid in self.area.invite_list:
                 self.send_host_message("That area is locked!")
                 return
             old_area = self.area
@@ -158,6 +157,9 @@ class ClientManager:
             logger.log_server(
                 '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
                                                                    self.area.name, self.area.id), self)
+            #logger.log_rp(
+            #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
+            #                                                       self.area.name, self.area.id), self)
             self.send_command('HP', 1, self.area.hp_def)
             self.send_command('HP', 2, self.area.hp_pro)
             self.send_command('BN', self.area.background)
@@ -173,6 +175,14 @@ class ClientManager:
                         owner = 'MASTER: {}'.format(client.get_char_name())
                         break
                 msg += '\r\nArea {}: {} (users: {}) [{}][{}]{}'.format(i, area.name, len(area.clients), area.status, owner, lock[area.is_locked])
+                if self.area == area:
+                    msg += ' [*]'
+            self.send_host_message(msg)
+
+        def send_limited_area_list(self):
+            msg = '=== Areas ==='
+            for i, area in enumerate(self.server.area_manager.areas):
+                msg += '\r\nArea {}: {}'.format(i, area.name)
                 if self.area == area:
                     msg += ' [*]'
             self.send_host_message(msg)
@@ -231,7 +241,7 @@ class ClientManager:
                  if len(self.server.area_manager.areas[i].clients) > 0:
                     info += '\r\n{}'.format(self.get_area_ip(i))
             self.send_host_message(info)
-			
+
         def send_done(self):
             avail_char_ids = set(range(len(self.server.char_list))) - set([x.char_id for x in self.area.clients])
             char_list = [-1] * len(self.server.char_list)
@@ -258,11 +268,18 @@ class ClientManager:
             else:
                 raise ClientError('Invalid password.')
 
+        def auth_gm(self, password):
+            if self.is_gm:
+                raise ClientError('Already logged in.')
+            if password == self.server.config['gmpass']:
+                self.is_gm = True
+                self.in_rp = False
+            else:
+                raise ClientError('Invalid password.')
+
         def get_ip(self):
             return self.ipid
 
-
-		
         def get_char_name(self):
             if self.char_id == -1:
                 return 'CHAR_SELECT'
@@ -300,11 +317,10 @@ class ClientManager:
         self.cur_id[cur_id] = True
         return c
 
-            
     def remove_client(self, client):
         self.cur_id[client.id] = False
         self.clients.remove(client)
-		
+
     def get_targets(self, client, key, value, local = False):
         #possible keys: ip, OOC, id, cname, ipid, hdid
         areas = None
@@ -334,8 +350,7 @@ class ClientManager:
                     if client.ipid == value:
                         targets.append(client)
         return targets
-            
-        
+
     def get_muted_clients(self):
         clients = []
         for client in self.clients:

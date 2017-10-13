@@ -278,7 +278,11 @@ class AOProtocol(asyncio.Protocol):
         """
 
         self.client.send_done()
-        self.client.send_area_list()
+        if self.server.config['announce_areas']:
+            if self.server.config['rp_mode_enabled']:
+                self.client.send_limited_area_list()
+            else:
+                self.client.send_area_list()
         self.client.send_motd()
 
     def net_cmd_cc(self, args):
@@ -327,7 +331,7 @@ class AOProtocol(asyncio.Protocol):
         if button not in (0, 1, 2, 3, 4):
             return
         if evidence < 0:
-        	return
+            return
         if ding not in (0, 1):
             return
         if color not in (0, 1, 2, 3, 4, 5, 6):
@@ -359,8 +363,8 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
 
-        if (self.client.area.is_recording):
-        	self.client.area.recorded_messages.append(args)
+        if self.client.area.is_recording:
+            self.client.area.recorded_messages.append(args)
 
     def net_cmd_ct(self, args):
         """ OOC Message
@@ -485,7 +489,7 @@ class AOProtocol(asyncio.Protocol):
         """
         if len(args) < 3:
             return
-        #evi = Evidence(args[0], args[1], args[2], self.client.pos)
+#        evi = Evidence(args[0], args[1], args[2], self.client.pos)
         self.client.area.evi_list.add_evidence(self.client, args[0], args[1], args[2], 'all')
         self.client.area.broadcast_evidence_list()
     
@@ -513,7 +517,6 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.area.evi_list.edit_evidence(self.client, self.client.evi_list[int(args[0])], evi)
         self.client.area.broadcast_evidence_list()
-
 
     def net_cmd_zz(self, _):
         """ Sent on mod call.

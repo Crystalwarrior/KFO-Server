@@ -74,7 +74,6 @@ class AreaManager:
         def unlock(self):
             self.is_locked = False
             self.invite_list = {}
-            self.send_host_message('This area is open now.')
         
         def is_char_available(self, char_id):
             return char_id not in [x.char_id for x in self.clients]
@@ -113,7 +112,6 @@ class AreaManager:
             if length > 0:
                 self.music_looper = asyncio.get_event_loop().call_later(length,
                                                                         lambda: self.play_music(name, -1, length))
-
 
         def can_send_message(self):
             return (time.time() * 1000.0 - self.next_message_time) > 0
@@ -164,7 +162,6 @@ class AreaManager:
             """
             for client in self.clients:
                 client.send_command('LE', *self.get_evidence_list(client))
-    
 
     def __init__(self, server):
         self.server = server
