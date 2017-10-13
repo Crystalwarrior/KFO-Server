@@ -89,7 +89,7 @@ Requires Python 3.6+ and PyYAML.
     - GMs can: 
       - Bypass Locks.
       - See all areas even in RP mode.
-      - Edit the invite list.
+      - Use CM commands.
 ### CM Commands
 * **invite** "ID"
     - Adds target in invite list of your area.
