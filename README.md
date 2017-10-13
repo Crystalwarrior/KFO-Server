@@ -78,13 +78,16 @@ Requires Python 3.6+ and PyYAML.
     - Displays the current music
 * **evi_swap** <id1> <id2>
     - Swaps <id1> and <id2> evidence.
+* **lock**
+    - Locks your area.
+* **unlock**
+    - Unlocks your area.
 * **cm**
     - Makes you a CM of this area.
+* **loginrp** "Password"
+    - Makes you a GM.
+    - GMs can bypass locks and see all areas even in RP mode.
 ### CM Commands
-* **area_lock**
-    - Locks your area.
-* **area_unlock**
-    - Unlocks your area.
 * **invite** "ID"
     - Adds target in invite list of your area.
 * **area_kick** "ID"
