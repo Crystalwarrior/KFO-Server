@@ -51,4 +51,4 @@ class BanManager:
         self.write_banlist()
 
     def is_banned(self, ipid):
-        return (ipid in self.bans)
+        return ipid in self.bans

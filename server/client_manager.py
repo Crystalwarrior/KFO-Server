@@ -87,7 +87,7 @@ class ClientManager:
             if not name_ws or name_ws.isdigit():
                 return False
             for client in self.server.client_manager.clients:
-                print(client.name == name)
+                #print(client.name == name)
                 if client.name == name:
                     return False
             return True
@@ -137,7 +137,7 @@ class ClientManager:
 
         def change_area(self, area):
             if self.area == area:
-                raise ClientError('You are already in this area.')
+                raise ClientError('User is already in target area.')
             if area.is_locked and not self.is_mod and not self.is_gm and not self.ipid in self.area.invite_list:
                 self.send_host_message("That area is locked!")
                 return
@@ -176,7 +176,7 @@ class ClientManager:
                     for client in [x for x in area.clients if x.is_cm]:
                         owner = 'MASTER: {}'.format(client.get_char_name())
                         break
-                msg += '\r\nArea {}: {} (users: {}) [{}][{}]{}'.format(i, area.name, len(area.clients), area.status, owner, lock[area.is_locked])
+                msg += '\r\nArea {}: {} (users: {}) {}'.format(i, area.name, len(area.clients), lock[area.is_locked])
                 if self.area == area:
                     msg += ' [*]'
             self.send_host_message(msg)
@@ -298,10 +298,12 @@ class ClientManager:
         def can_call_mod(self):
             return (time.time() * 1000.0 - self.mod_call_time) > 0
 
+        # noinspection PyMethodMayBeStatic
         def disemvowel_message(self, message):
             message = re.sub("[aeiou]", "", message, flags=re.IGNORECASE)
             return re.sub(r"\s+", " ", message)
 
+        # noinspection PyMethodMayBeStatic
         def gimp_message(self, message):
             message = ['ERP IS BAN',
                        'I\'m fucking gimped because I\'m both autistic and a retard!',

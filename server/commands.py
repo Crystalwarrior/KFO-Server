@@ -82,7 +82,6 @@ def ooc_cmd_evidence_mod(client, arg):
         return
     else:
         raise ArgumentError('Wrong Argument. Use /evidence_mod <MOD>. Possible values: FFA, CM, Mods, HiddenCM')
-        return
 
 
 def ooc_cmd_allow_iniswap(client, arg):
@@ -221,7 +220,7 @@ def ooc_cmd_ban(client, arg):
         client.server.ban_manager.add_ban(ipid)
     except ServerError:
         raise
-    if ipid != None:
+    if ipid is not None:
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, ipid, False)
         if targets:
             for c in targets:
@@ -529,7 +528,7 @@ def ooc_cmd_evi_swap(client, arg):
 def ooc_cmd_cm(client, arg):
     if 'CM' not in client.area.evidence_mod:
         raise ClientError('You can\'t become a CM in this area.')
-    if client.area.owned == False:
+    if not client.area.owned:
         client.area.owned = True
         client.is_cm = True
         if client.area.evidence_mod == 'HiddenCM':
@@ -539,6 +538,8 @@ def ooc_cmd_cm(client, arg):
 
 def ooc_cmd_unmod(client, arg):
     client.is_mod = False
+    if client.server.rp_mode:
+        client.in_rp = True
     if client.area.evidence_mod == 'HiddenCM':
         client.area.broadcast_evidence_list()
     client.send_host_message('You are no longer a mod.')
@@ -568,12 +569,12 @@ def ooc_cmd_unlock(client, arg):
 
 
 def ooc_cmd_invite(client, arg):
-    if not arg:
-        raise ClientError('You must specify a target. Use /invite <id>')
+    if not client.is_cm and not client.is_gm and not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
     if not client.area.is_locked:
         raise ClientError('Area isn\'t locked.')
-    if not client.is_cm or not client.is_gm:
-        raise ClientError('Only CM/GM can invite to this area')
+    if not arg:
+        raise ClientError('You must specify a target. Use /invite <id>')
     try:
         client.area.invite_list[client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid] = None
         client.send_host_message('{} is invited to your area.'.format(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].get_char_name()))
@@ -582,22 +583,39 @@ def ooc_cmd_invite(client, arg):
 
 
 def ooc_cmd_area_kick(client, arg):
-    if not client.area.is_locked:
+    if not client.is_cm and not client.is_gm and not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if not client.area.is_locked and not client.is_gm and not client.is_mod:
         raise ClientError('Area isn\'t locked.')
-    if not client.is_cm or not client.is_gm:
-        raise ClientError('Only CM/GM can kick from this area')
     if not arg:
         raise ClientError('You must specify a target. Use /invite <id>')
-    try:
-        c = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, c.ipid, True)
-        for client in targets:
-            client.change_area(0)
-        invite_list.pop(c.ipid)
-    except:
-        raise ClientError('You must specify a target. Use /area_kick <id>')
+    arg = arg.split(' ')
+    targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg[0]), False)
+    if targets:
+        try:
+            for c in targets:
+                if len(arg) == 1:
+                    area = client.server.area_manager.get_area_by_id(int(0))
+                    output = 0
+                else:
+                    try:
+                        area = client.server.area_manager.get_area_by_id(int(arg[1]))
+                        output = arg[1]
+                    except AreaError:
+                        raise
+                client.send_host_message("Attempting to kick {} to area {}.".format(c.get_char_name(), output))
+                c.change_area(area)
+                c.send_host_message("You were kicked from the area to area {}.".format(output))
+                if client.area.is_locked:
+                    client.area.invite_list.pop(c.ipid)
+        except AreaError:
+            raise
+        except ClientError:
+            raise
+    else:
+        client.send_host_message("No targets found.")
 
-    
+
 def ooc_cmd_ooc_mute(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
