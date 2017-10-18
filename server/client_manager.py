@@ -138,9 +138,10 @@ class ClientManager:
         def change_area(self, area):
             if self.area == area:
                 raise ClientError('User is already in target area.')
-            if area.is_locked and not self.is_mod and not self.is_gm and not self.ipid in self.area.invite_list:
-                self.send_host_message("That area is locked!")
-                return
+            if area.is_locked or area.is_modlocked and not self.is_mod and not self.is_gm and not self.ipid in self.area.invite_list:
+                raise ClientError('That area is locked!')
+            if area.is_modlocked and not self.is_mod and not self.ipid in self.area.invite_list:
+                raise ClientError('That area is locked!')
             old_area = self.area
             if not area.is_char_available(self.char_id):
                 try:

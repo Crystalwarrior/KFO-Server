@@ -59,6 +59,7 @@ class AreaManager:
             """
             
             self.is_locked = False
+            self.is_modlocked = False
 
         def new_client(self, client):
             self.clients.add(client)
@@ -75,6 +76,10 @@ class AreaManager:
         
         def unlock(self):
             self.is_locked = False
+            self.invite_list = {}
+
+        def modunlock(self):
+            self.is_modlocked = False
             self.invite_list = {}
         
         def is_char_available(self, char_id):

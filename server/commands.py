@@ -559,9 +559,32 @@ def ooc_cmd_lock(client, arg):
         return
 
 
+def ooc_cmd_modlock(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if client.area.is_modlocked:
+        raise ClientError('Area is already mod-locked.')
+    else:
+        client.area.is_modlocked = True
+        client.area.send_host_message('Area locked.')
+        for i in client.area.clients:
+            client.area.invite_list[i.ipid] = None
+        return
+
+
+def ooc_cmd_modunlock(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if not client.area.is_modlocked:
+        raise ClientError('Area is already open.')
+    else:
+        client.area.modunlock()
+        client.send_host_message('Area is now unlocked.')
+
+
 def ooc_cmd_unlock(client, arg):
     if not client.area.is_locked:
-        raise ClientError('Area already is open.')
+        raise ClientError('Area is already open.')
 #    if not client.is_cm or client.is_gm or client.is_mod:
 #        raise ClientError('Only GM, CM, or Mod can unlock area.')
     client.area.unlock()
@@ -606,7 +629,7 @@ def ooc_cmd_area_kick(client, arg):
                 client.send_host_message("Attempting to kick {} to area {}.".format(c.get_char_name(), output))
                 c.change_area(area)
                 c.send_host_message("You were kicked from the area to area {}.".format(output))
-                if client.area.is_locked:
+                if client.area.is_locked or client.area.is_modlocked:
                     client.area.invite_list.pop(c.ipid)
         except AreaError:
             raise
