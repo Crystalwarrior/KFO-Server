@@ -86,10 +86,10 @@ class ClientManager:
             name_ws = name.replace(' ', '')
             if not name_ws or name_ws.isdigit():
                 return False
-            for client in self.server.client_manager.clients:
+            #for client in self.server.client_manager.clients:
                 #print(client.name == name)
-                if client.name == name:
-                    return False
+                #if client.name == name:
+                    #return False
             return True
             
         def disconnect(self):

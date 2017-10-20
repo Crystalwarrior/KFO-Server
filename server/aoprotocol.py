@@ -385,6 +385,7 @@ class AOProtocol(asyncio.Protocol):
                 self.client.fake_name = args[0]
             else:
                 self.client.fake_name = args[0]
+                self.client.name = ''
         if self.client.name == '':
             self.client.send_host_message('You must insert a name with at least one letter')
             return

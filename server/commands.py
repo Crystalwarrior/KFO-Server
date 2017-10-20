@@ -51,7 +51,7 @@ def ooc_cmd_bg(client, arg):
     logger.log_server('[{}][{}]Changed background to {}'.format(client.area.id, client.get_char_name(), arg), client)
 
 
-def ooc_cmd_bglock(client,arg):
+def ooc_cmd_bglock(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
