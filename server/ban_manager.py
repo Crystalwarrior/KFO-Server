@@ -22,9 +22,10 @@ from server.exceptions import ServerError
 
 
 class BanManager:
-    def __init__(self):
+    def __init__(self, server):
         self.bans = []
         self.load_banlist()
+        self.server = server
 
     def load_banlist(self):
         try:
@@ -40,13 +41,13 @@ class BanManager:
     def add_ban(self, ip):
         try:
             ipaddress.ip_address(ip)
-            ip1 = self.server.get_ipid(ip)
+            ip = self.server.get_ipid(ip)
         except ValueError:
-            ip1 = ip
+            ip = ip
         except:
             raise
         if ip not in self.bans:
-            self.bans.append(ip1)
+            self.bans.append(ip)
         else:
             raise ServerError('User is already banned.')
         self.write_banlist()

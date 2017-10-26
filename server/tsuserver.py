@@ -37,7 +37,7 @@ class TsuServer3:
         self.load_iniswaps()
         self.client_manager = ClientManager(self)
         self.area_manager = AreaManager(self)
-        self.ban_manager = BanManager()
+        self.ban_manager = BanManager(self)
         self.software = 'tsuserver3'
         self.version = 'tsuserver3dev'
         self.release = 3
@@ -157,7 +157,7 @@ class TsuServer3:
             self.ipid_list[ip] = len(self.ipid_list)
             self.dump_ipids()
         return self.ipid_list[ip]
-         
+
     def load_backgrounds(self):
         with open('config/backgrounds.yaml', 'r', encoding = 'utf-8') as bgs:
             self.backgrounds = yaml.load(bgs)
