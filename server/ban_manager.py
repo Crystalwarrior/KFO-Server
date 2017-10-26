@@ -54,6 +54,14 @@ class BanManager:
         self.write_banlist()
 
     def remove_ban(self, ip):
+        try:
+            try:
+                int(ip)
+            except ValueError:
+                ipaddress.ip_address(ip)
+                ip = self.server.get_ipid(ip)
+        except ValueError:
+            raise ServerError('Argument must be an IP address or 10-digit number.')
         if ip in self.bans:
             self.bans.remove(ip)
         else:

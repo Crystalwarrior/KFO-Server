@@ -684,7 +684,7 @@ def ooc_cmd_disemvowel(client, arg):
     elif len(arg) == 0:
         raise ArgumentError('You must specify a target.')
     try:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
     except:
         raise ArgumentError('You must specify a target. Use /disemvowel <id>.')
     if targets:
@@ -720,7 +720,7 @@ def ooc_cmd_gimp(client, arg):
     elif len(arg) == 0:
         raise ArgumentError('You must specify a target.')
     try:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
     except:
         raise ArgumentError('You must specify a target. Use /gimp <id>.')
     if targets:
