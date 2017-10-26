@@ -278,13 +278,13 @@ class ClientManager:
             if password == self.server.config['gmpass']:
                 self.is_gm = True
                 self.in_rp = False
-            elif password == self.server.config['gmpass1'] and ((datetime.datetime.today().weekday() == 0) or (datetime.datetime.today().weekday() == 2)):
+            elif password == self.server.config['gmpass1'] and ((datetime.datetime.today().weekday() == 0 and datetime.datetime.now().hour > 16) or (datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour < 16) or (datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour > 16) or (datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour < 16)):
                 self.is_gm = True
                 self.in_rp = False
-            elif password == self.server.config['gmpass2'] and ((datetime.datetime.today().weekday() == 1) or (datetime.datetime.today().weekday() == 3)):
+            elif password == self.server.config['gmpass2'] and ((datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour > 16) or (datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour > 16) or (datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour < 16) or (datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour < 16)):
                 self.is_gm = True
                 self.in_rp = False
-            elif password == self.server.config['gmpass3'] and ((datetime.datetime.today().weekday() == 4) or (datetime.datetime.today().weekday() == 5)):
+            elif password == self.server.config['gmpass3'] and ((datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour > 16) or (datetime.datetime.today().weekday() == 5) or (datetime.datetime.today().weekday() == 6 and datetime.datetime.now().hour < 16)):
                 self.is_gm = True
                 self.in_rp = False
             else:
