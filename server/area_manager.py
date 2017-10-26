@@ -140,6 +140,10 @@ class AreaManager:
             self.background = bg
             self.send_command('BN', self.background)
 
+        def change_background_mod(self, bg):
+            self.background = bg
+            self.send_command('BN', self.background)
+
         def change_status(self, value):
             allowed_values = ('idle', 'building-open', 'building-full', 'casing-open', 'casing-full', 'recess')
             if value.lower() not in allowed_values:
