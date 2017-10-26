@@ -46,9 +46,7 @@ class BanManager:
                 ipaddress.ip_address(ip)
                 ip = self.server.get_ipid(ip)
         except ValueError:
-            ip = int(ip)
-        except:
-            raise
+            raise ServerError('Argument must be an IP address or 10-digit number.')
         if ip not in self.bans:
             self.bans.append(ip)
         else:

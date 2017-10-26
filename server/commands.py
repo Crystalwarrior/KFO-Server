@@ -220,6 +220,8 @@ def ooc_cmd_ban(client, arg):
         raise ClientError('You must be authorized to do that.')
     try:
         ipid = int(arg.strip())
+        if len(str(ipid)) != 10:
+            raise ClientError('Argument must be an IP address or 10-digit number.')
         integer = True
     except ValueError:
         ipid = arg.strip()
