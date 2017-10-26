@@ -40,10 +40,13 @@ class BanManager:
 
     def add_ban(self, ip):
         try:
-            ipaddress.ip_address(ip)
-            ip = self.server.get_ipid(ip)
+            try:
+                int(ip)
+            except ValueError:
+                ipaddress.ip_address(ip)
+                ip = self.server.get_ipid(ip)
         except ValueError:
-            ip = ip
+            ip = int(ip)
         except:
             raise
         if ip not in self.bans:

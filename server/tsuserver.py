@@ -19,6 +19,7 @@ import asyncio
 
 import yaml
 import json
+import random
 
 from server import logger
 from server.aoprotocol import AOProtocol
@@ -154,7 +155,11 @@ class TsuServer3:
          
     def get_ipid(self, ip):
         if not (ip in self.ipid_list):
-            self.ipid_list[ip] = len(self.ipid_list)
+            while True:
+                ipid = random.randint(0,10**10-1)
+                if ipid not in self.ipid_list:
+                    break
+            self.ipid_list[ip] = ipid
             self.dump_ipids()
         return self.ipid_list[ip]
 
