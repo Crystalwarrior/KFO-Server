@@ -21,6 +21,7 @@ from server.exceptions import ClientError, AreaError
 from enum import Enum
 from server.constants import TargetType
 
+import datetime
 import time
 import re
 import random
@@ -274,7 +275,7 @@ class ClientManager:
         def auth_gm(self, password):
             if self.is_gm:
                 raise ClientError('Already logged in.')
-            if password == self.server.config['gmpass']:
+            if (password == self.server.config['gmpass'] and (datetime.datetime.today().weekday() == 0 or datetime.datetime.today().weekday() == 2)) or (password == self.server.config['gmpass2'] and ((datetime.datetime.today().weekday() == 1) or (datetime.datetime.today().weekday() == 3))) or (password == self.server.config['gmpass3'] and ((datetime.datetime.today().weekday() == 4) or (datetime.datetime.today().weekday() == 5))):
                 self.is_gm = True
                 self.in_rp = False
             else:
