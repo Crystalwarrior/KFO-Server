@@ -275,7 +275,7 @@ class ClientManager:
         def auth_gm(self, password):
             if self.is_gm:
                 raise ClientError('Already logged in.')
-            if (password == self.server.config['gmpass'] and (datetime.datetime.today().weekday() == 0 or datetime.datetime.today().weekday() == 2)) or (password == self.server.config['gmpass2'] and ((datetime.datetime.today().weekday() == 1) or (datetime.datetime.today().weekday() == 3))) or (password == self.server.config['gmpass3'] and ((datetime.datetime.today().weekday() == 4) or (datetime.datetime.today().weekday() == 5))):
+            if (password == self.server.config['gmpass1'] and (datetime.datetime.today().weekday() == 0 or datetime.datetime.today().weekday() == 2)) or (password == self.server.config['gmpass2'] and ((datetime.datetime.today().weekday() == 1) or (datetime.datetime.today().weekday() == 3))) or (password == self.server.config['gmpass3'] and ((datetime.datetime.today().weekday() == 4) or (datetime.datetime.today().weekday() == 5))) or password == self.server.config['gmpass']:
                 self.is_gm = True
                 self.in_rp = False
             else:

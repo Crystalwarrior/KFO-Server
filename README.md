@@ -89,8 +89,8 @@ Requires Python 3.6+ and PyYAML.
     - GMs can: 
       - Bypass Locks.
       - See all areas even in RP mode.
-      - Use CM commands.
-### CM Commands
+      - Use GM commands.
+### GM Commands
 * **invite** "ID"
     - Adds target in invite list of your area.
 * **area_kick** "ID"
@@ -111,8 +111,8 @@ Requires Python 3.6+ and PyYAML.
     - Kicks a player back to the character select screen. If no ID was entered then target yourself.
 * **kick** "IPID" 
     - Kicks the targets with this IPID.
-* **ban** "IPID" 
-    - Bans the IPID (hdid is linked to ipid so all bans happens in a same time).
+* **ban** "IPID"/"IP" 
+    - Bans the IPID/IP (hdid is linked to ipid so all bans happens in a same time).
 * **unban** "IPID" 
     - Unbans the specified IPID .
 * **mute** "Target" 

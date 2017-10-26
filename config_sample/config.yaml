@@ -6,6 +6,9 @@ local: false
 guardpass: guard
 modpass: mod
 gmpass: gm
+gmpass1: gm1
+gmpass2: gm2
+gmpass3: gm3
 
 motd: Welcome to my server!
 help_msg: TODO
