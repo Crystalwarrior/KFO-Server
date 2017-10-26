@@ -576,7 +576,7 @@ def ooc_cmd_cleargm(client, arg):
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
         raise ClientError('This command does not take arguments.')
-    for i, area in enumerate(self.server.area_manager.areas):
+    for i, area in enumerate(client.server.area_manager.areas):
         for client in [x for x in area.clients if x.is_gm]:
             client.is_gm = False
     client.send_host_message('All GMs logged out.')
