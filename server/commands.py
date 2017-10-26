@@ -854,7 +854,7 @@ def ooc_cmd_rpmode(p_client, arg):
     if not p_client.server.config['rp_mode_enabled']:
         p_client.send_host_message("RP mode is disabled in this server!")
         return
-    if not p_client.is_mod:
+    if not p_client.is_mod and not p_client.is_gm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         raise ArgumentError('You must specify either on or off')
