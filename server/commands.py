@@ -579,6 +579,8 @@ def ooc_cmd_cleargm(client, arg):
     for i, area in enumerate(client.server.area_manager.areas):
         for c in [x for x in area.clients if x.is_gm]:
             c.is_gm = False
+            if client.server.rp_mode:
+                c.in_rp = True
             c.send_host_message('You are no longer a GM.')
     client.send_host_message('All GMs logged out.')
 
