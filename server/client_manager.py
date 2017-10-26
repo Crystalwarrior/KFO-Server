@@ -139,7 +139,7 @@ class ClientManager:
         def change_area(self, area):
             if self.area == area:
                 raise ClientError('User is already in target area.')
-            if area.is_locked or area.is_modlocked and not self.is_mod and not self.is_gm and not self.ipid in self.area.invite_list:
+            if area.is_locked or area.is_gmlocked or area.is_modlocked and not self.is_mod and not self.is_gm and not self.ipid in self.area.invite_list:
                 raise ClientError('That area is locked!')
             if area.is_modlocked and not self.is_mod and not self.ipid in self.area.invite_list:
                 raise ClientError('That area is locked!')
@@ -278,13 +278,13 @@ class ClientManager:
             if password == self.server.config['gmpass']:
                 self.is_gm = True
                 self.in_rp = False
-            elif password == self.server.config['gmpass1'] and ((datetime.datetime.today().weekday() == 0 and datetime.datetime.now().hour > 16) or (datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour < 16) or (datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour > 16) or (datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour < 16)):
+            elif password == self.server.config['gmpass1'] and ((datetime.datetime.today().weekday() == 0 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour < 15) or (datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour < 15)):
                 self.is_gm = True
                 self.in_rp = False
-            elif password == self.server.config['gmpass2'] and ((datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour > 16) or (datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour > 16) or (datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour < 16) or (datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour < 16)):
+            elif password == self.server.config['gmpass2'] and ((datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour < 15) or (datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour < 15)):
                 self.is_gm = True
                 self.in_rp = False
-            elif password == self.server.config['gmpass3'] and ((datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour > 16) or (datetime.datetime.today().weekday() == 5) or (datetime.datetime.today().weekday() == 6 and datetime.datetime.now().hour < 16)):
+            elif password == self.server.config['gmpass3'] and ((datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 5) or (datetime.datetime.today().weekday() == 6 and datetime.datetime.now().hour < 15)):
                 self.is_gm = True
                 self.in_rp = False
             else:
