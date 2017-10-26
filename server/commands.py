@@ -563,7 +563,7 @@ def ooc_cmd_cm(client, arg):
 
 def ooc_cmd_logout(client, arg):
     client.is_mod = False
-    client.is_gm = True
+    client.is_gm = False
     if client.server.rp_mode:
         client.in_rp = True
     if client.area.evidence_mod == 'HiddenCM':
