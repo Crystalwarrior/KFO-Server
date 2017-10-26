@@ -805,3 +805,16 @@ def ooc_cmd_rpmode(p_client, arg):
             i_client.in_rp = False
     else:
         p_client.send_host_message('Invalid argument! Valid arguments: on, off. Your argument: ' + arg)
+
+
+def ooc_cmd_refresh(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len (arg) > 0:
+        raise ClientError('This command does not take in any arguments!')
+    else:
+        try:
+            client.server.reload()
+            client.send_host_message('You have reloaded the server.')
+        except ServerError:
+            raise

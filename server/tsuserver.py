@@ -95,6 +95,16 @@ class TsuServer3:
     def get_version_string(self):
         return str(self.release) + '.' + str(self.major_version) + '.' + str(self.minor_version)
 
+    def reload(self):
+        with open('config/characters.yaml', 'r') as chars:
+            self.char_list = yaml.load(chars)
+        with open('config/music.yaml', 'r') as music:
+            self.music_list = yaml.load(music)
+        self.build_music_pages_ao1()
+        self.build_music_list_ao2()
+        with open('config/backgrounds.yaml', 'r') as bgs:
+            self.backgrounds = yaml.load(bgs)
+
     def new_client(self, transport):
         c = self.client_manager.new_client(transport)
         if self.rp_mode:
