@@ -213,19 +213,27 @@ def ooc_cmd_kick(client, arg):
 
 
 def ooc_cmd_ban(client, arg):
-    ipid = int(arg.strip())
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
+    try:
+        ipid = int(arg.strip())
+        integer = True
+    except ValueError:
+        ipid = arg.strip()
+        integer = False
     try:
         client.server.ban_manager.add_ban(ipid)
     except ServerError:
         raise
     if ipid is not None:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, ipid, False)
+        if integer:
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, ipid, False)
+        else:
+            targets = client.server.client_manager.get_targets(client, TargetType.IP, ipid, False)
         if targets:
             for c in targets:
                 c.disconnect()
-            client.send_host_message('{} clients was kicked.'.format(len(targets)))
+            client.send_host_message('{} clients were kicked.'.format(len(targets)))
         client.send_host_message('{} was banned.'.format(ipid))
         logger.log_server('Banned {}.'.format(ipid), client)
 

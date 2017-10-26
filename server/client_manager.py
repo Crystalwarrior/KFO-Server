@@ -283,6 +283,9 @@ class ClientManager:
         def get_ip(self):
             return self.ipid
 
+        def get_ipreal(self):
+            return self.transport.get_extra_info('peername')[0]
+
         def get_char_name(self):
             if self.char_id == -1:
                 return 'CHAR_SELECT'
@@ -382,7 +385,7 @@ class ClientManager:
         for area in areas:
             for client in area.clients:
                 if key == TargetType.IP:
-                    if value.lower().startswith(client.get_ip().lower()):
+                    if value.lower().startswith(client.get_ipreal().lower()):
                         targets.append(client)
                 elif key == TargetType.OOC_NAME:
                     if value.lower().startswith(client.name.lower()) and client.name:

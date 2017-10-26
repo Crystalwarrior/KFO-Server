@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import json
+import ipaddress
 
 from server.exceptions import ServerError
 
@@ -37,10 +38,17 @@ class BanManager:
             json.dump(self.bans, banlist_file)
 
     def add_ban(self, ip):
+        try:
+            ipaddress.ip_address(ip)
+            ip1 = self.server.get_ipid(ip)
+        except ValueError:
+            ip1 = ip
+        except:
+            raise
         if ip not in self.bans:
-            self.bans.append(ip)
+            self.bans.append(ip1)
         else:
-            raise ServerError('This IPID is already banned.')
+            raise ServerError('User is already banned.')
         self.write_banlist()
 
     def remove_ban(self, ip):
