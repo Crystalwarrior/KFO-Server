@@ -680,7 +680,7 @@ def ooc_cmd_uninvite(client, arg):
             except KeyError:
                 raise ClientError('User is not on invite list.')
         else:
-            client.area.invite_list.pop(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid] = None)
+            client.area.invite_list.pop(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid)
 
 def ooc_cmd_area_kick(client, arg):
     if not client.is_cm and not client.is_gm and not client.is_mod:
