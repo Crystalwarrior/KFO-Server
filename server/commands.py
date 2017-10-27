@@ -205,9 +205,9 @@ def ooc_cmd_kick(client, arg):
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0 or len(arg) > 10:
         raise ArgumentError('You must specify a target. Use /kick <ipid>.')
-    if len(arg) == 10:
+    if len(arg) == 10 and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-    elif len(arg) < 10:
+    elif len(arg) < 10 and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
     if targets:
         for c in targets:
@@ -273,9 +273,9 @@ def ooc_cmd_mute(client, arg):
     if len(arg) == 0 or len(arg) > 10:
         raise ArgumentError('You must specify a target.')
     try:
-        if len(arg) == 10:
+        if len(arg) == 10 and arg.isdigit():
             c = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10:
+        elif len(arg) < 10 and arg.isdigit():
             c = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
         c.is_muted = True
         client.send_host_message('{} existing client(s).'.format(c.get_char_name()))
@@ -289,9 +289,9 @@ def ooc_cmd_unmute(client, arg):
     if len(arg) == 0 or len(arg) > 10:
         raise ArgumentError('You must specify a target.')
     try:
-        if len(arg) == 10:
+        if len(arg) == 10 and arg.isdigit():
             c = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10:
+        elif len(arg) < 10 and arg.isdigit():
             c = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
         c.is_muted = False
         client.send_host_message('{} existing client(s).'.format(c.get_char_name()))
@@ -493,9 +493,9 @@ def ooc_cmd_charselect(client, arg):
     else:
         if client.is_mod:
             try:
-                if len(arg) < 10:
+                if len(arg) < 10 and arg.isdigit():
                     client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].char_select()
-                elif len(arg) == 10:
+                elif len(arg) == 10 and arg.isdigit():
                     client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False).char_select()
             except:
                 raise ArgumentError('Wrong arguments. Use /charselect <target\'s id>')
@@ -657,17 +657,18 @@ def ooc_cmd_unlock(client, arg):
 def ooc_cmd_invite(client, arg):
     if not client.is_cm and not client.is_gm and not client.is_mod:
         raise ClientError('You must be authorized to do that.')
-    if not client.area.is_locked:
+    if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
         raise ClientError('Area isn\'t locked.')
     if not arg:
         raise ClientError('You must specify a target. Use /invite <id>')
     try:
-        if len(arg) == 10:
-            invite_list.append(client.server.client_manager.get_targets(client,TargetType.IPID, int(arg), False))
+        if len(arg) == 10 and arg.isdigit():
+            client.area.invite_list[arg] = None
             client.send_host_message('{} is invited to your area.'.format(arg))
-        elif len(arg) < 10:
-            invite_list.append(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid)
+        elif len(arg) < 10 and arg.isdigit():
+            client.area.invite_list[client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid] = None
             client.send_host_message('{} is invited to your area.'.format(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].get_char_name()))
+            print(client.area.invite_list)
     except:
         raise ClientError('You must specify a target. Use /invite <id>')
 
@@ -741,9 +742,9 @@ def ooc_cmd_disemvowel(client, arg):
     elif len(arg) == 0:
         raise ArgumentError('You must specify a target.')
     try:
-        if len(arg) == 10:
+        if len(arg) == 10 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10:
+        elif len(arg) < 10 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
     except:
         raise ArgumentError('You must specify a target. Use /disemvowel <id>.')
@@ -762,9 +763,9 @@ def ooc_cmd_undisemvowel(client, arg):
     elif len(arg) == 0:
         raise ArgumentError('You must specify a target.')
     try:
-        if len(arg) == 10:
+        if len(arg) == 10 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10:
+        elif len(arg) < 10 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except:
         raise ArgumentError('You must specify a target. Use /disemvowel <id>.')
@@ -783,9 +784,9 @@ def ooc_cmd_gimp(client, arg):
     elif len(arg) == 0:
         raise ArgumentError('You must specify a target.')
     try:
-        if len(arg) == 10:
+        if len(arg) == 10 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10:
+        elif len(arg) < 10 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except:
         raise ArgumentError('You must specify a target. Use /gimp <id>.')
@@ -839,9 +840,9 @@ def ooc_cmd_unblockdj(client, arg):
     if len(arg) == 0 and len(arg) < 10:
         raise ArgumentError('You must specify a target. Use /unblockdj <id>.')
     try:
-        if len(arg) == 10:
+        if len(arg) == 10 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10:
+        elif len(arg) < 10 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except:
         raise ArgumentError('You must enter a number. Use /unblockdj <id>.')

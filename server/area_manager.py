@@ -77,14 +77,19 @@ class AreaManager:
         
         def unlock(self):
             self.is_locked = False
-            self.invite_list = {}
+            if not self.is_gmlocked and not self.is_modlocked:
+                self.invite_list = {}
 
-        def unlock(self):
+        def gmunlock(self):
             self.is_gmlocked = False
-            self.invite_list = {}
+            self.is_locked = False
+            if not self.is_modlocked:
+                self.invite_list = {}
 
         def modunlock(self):
             self.is_modlocked = False
+            self.is_gmlocked = False
+            self.is_locked = False
             self.invite_list = {}
         
         def is_char_available(self, char_id):
