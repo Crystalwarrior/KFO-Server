@@ -600,7 +600,7 @@ def ooc_cmd_lock(client, arg):
 
 
 def ooc_cmd_gmlock(client, arg):
-    if not client.is_gm and not client.is_mod:
+    if not client.area.locking_allowed and not client.is_gm and not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if client.area.is_gmlocked:
         raise ClientError('Area is already gm-locked.')
@@ -623,16 +623,13 @@ def ooc_cmd_gmunlock(client, arg):
 
 
 def ooc_cmd_modlock(client, arg):
-    if not client.is_mod:
+    if not client.area.locking_allowed and not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if client.area.is_modlocked:
         raise ClientError('Area is already mod-locked.')
     else:
         client.area.is_modlocked = True
         client.area.send_host_message('Area locked.')
-        for i in client.area.clients:
-            client.area.invite_list[i.ipid] = None
-        return
 
 
 def ooc_cmd_modunlock(client, arg):
@@ -672,6 +669,18 @@ def ooc_cmd_invite(client, arg):
     except:
         raise ClientError('You must specify a target. Use /invite <id>')
 
+
+def ooc_cmd_uninvite(client, arg):
+    if len(arg) == 0:
+        raise ClientError('You must specify a user to uninvite.')
+    else:
+        if len(arg) == 10 and arg.isdigit():
+            try:
+                client.area.invite_list.pop(arg)
+            except KeyError:
+                raise ClientError('User is not on ')
+        else:
+            client.area.invite_list.pop(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid] = None)
 
 def ooc_cmd_area_kick(client, arg):
     if not client.is_cm and not client.is_gm and not client.is_mod:
