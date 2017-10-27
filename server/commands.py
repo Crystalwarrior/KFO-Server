@@ -665,7 +665,8 @@ def ooc_cmd_invite(client, arg):
         elif len(arg) < 10 and arg.isdigit():
             client.area.invite_list[client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid] = None
             client.send_host_message('{} is invited to your area.'.format(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].get_char_name()))
-            print(client.area.invite_list)
+        else:
+            raise ClientError('You must specify a valid target. Use /invite <id>')
     except:
         raise ClientError('You must specify a target. Use /invite <id>')
 
@@ -677,10 +678,17 @@ def ooc_cmd_uninvite(client, arg):
         if len(arg) == 10 and arg.isdigit():
             try:
                 client.area.invite_list.pop(arg)
+                client.send_host_message('{} was removed from the invite list.'.format(arg))
             except KeyError:
                 raise ClientError('User is not on invite list.')
         elif len(arg) < 10 and arg.isdigit():
-            client.area.invite_list.pop(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid)
+            try:
+                client.area.invite_list.pop(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid)
+                client.send_host_message('{} was removed from the invite list.'.format(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].get_char_name()))
+            except KeyError:
+                raise ClientError('User is not on invite list.')
+            except IndexError:
+                raise ClientError('User is not on invite list.')
         else:
             raise ClientError('You must specify an ID or IPID.')
 
