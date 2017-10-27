@@ -679,7 +679,7 @@ def ooc_cmd_uninvite(client, arg):
                 client.area.invite_list.pop(arg)
             except KeyError:
                 raise ClientError('User is not on invite list.')
-        elif arg.isdigit():
+        elif len(arg) > 10 and arg.isdigit():
             client.area.invite_list.pop(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid)
         else:
             raise ClientError('You must specify an ID or IPID.')
