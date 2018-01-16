@@ -275,6 +275,7 @@ class ClientManager:
                 raise ClientError('Already logged in.')
             if password == self.server.config['modpass']:
                 self.is_mod = True
+                self.in_rp = False
             else:
                 raise ClientError('Invalid password.')
 
