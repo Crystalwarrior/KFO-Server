@@ -336,8 +336,6 @@ class AOProtocol(asyncio.Protocol):
             return
         if color not in (0, 1, 2, 3, 4, 5, 6):
             return
-        #if color == 2 and not self.client.is_mod:
-        #    color = 0
         if color == 6:
             text = re.sub(r'[^\x00-\x7F]+',' ', text) #remove all unicode to prevent redtext abuse
             if len(text.strip( ' ' )) == 1:

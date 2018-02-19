@@ -203,12 +203,12 @@ def ooc_cmd_help(client, arg):
 def ooc_cmd_kick(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10:
-        raise ArgumentError('You must specify a target. Use /kick <ipid>.')
+    if len(arg) == 0:
+        raise ArgumentError('You must specify a target. Use /kick <ipid>, <id>.')
     if len(arg) == 10 and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
     elif len(arg) < 10 and arg.isdigit():
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     if targets:
         for c in targets:
             logger.log_server('Kicked {}.'.format(c.ipid), client)
@@ -217,6 +217,14 @@ def ooc_cmd_kick(client, arg):
     else:
         client.send_host_message("No targets found.")
 
+		
+def ooc_cmd_kms(client, arg):
+    targets = client.server.client_manager.get_targets(client, TargetType.IPID, client.ipid, False)
+    for target in targets:
+        if target != client:
+            target.disconnect()
+    client.send_host_message('Kicked other instances of client.')
+	
 
 def ooc_cmd_ban(client, arg):
     if not client.is_mod:
@@ -606,7 +614,7 @@ def ooc_cmd_gmlock(client, arg):
         raise ClientError('Area is already gm-locked.')
     else:
         client.area.is_gmlocked = True
-        client.area.send_host_message('Area locked.')
+        client.area.send_host_message('Area gm-locked.')
         for i in client.area.clients:
             client.area.invite_list[i.ipid] = None
         return
@@ -629,7 +637,7 @@ def ooc_cmd_modlock(client, arg):
         raise ClientError('Area is already mod-locked.')
     else:
         client.area.is_modlocked = True
-        client.area.send_host_message('Area locked.')
+        client.area.send_host_message('Area mod-locked.')
 
 
 def ooc_cmd_modunlock(client, arg):
@@ -765,7 +773,7 @@ def ooc_cmd_disemvowel(client, arg):
         if len(arg) == 10 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
         elif len(arg) < 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except:
         raise ArgumentError('You must specify a target. Use /disemvowel <id>.')
     if targets:
@@ -886,7 +894,7 @@ def ooc_cmd_rpmode(p_client, arg):
         p_client.server.rp_mode = True
         for i_client in p_client.server.client_manager.clients:
             i_client.send_host_message('RP mode enabled!')
-            if not i_client.is_mod:
+            if not i_client.is_mod and not i_client.is_gm:
                 i_client.in_rp = True
     elif arg == 'off':
         p_client.server.rp_mode = False
