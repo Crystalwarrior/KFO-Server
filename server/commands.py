@@ -601,7 +601,7 @@ def ooc_cmd_lock(client, arg):
         client.send_host_message('Area is already locked.')
     else:
         client.area.is_locked = True
-        client.area.send_host_message('Area locked.')
+        client.send_host_message('Area locked.')
         for i in client.area.clients:
             client.area.invite_list[i.ipid] = None
         return
@@ -614,20 +614,10 @@ def ooc_cmd_gmlock(client, arg):
         raise ClientError('Area is already gm-locked.')
     else:
         client.area.is_gmlocked = True
-        client.area.send_host_message('Area gm-locked.')
+        client.send_host_message('Area gm-locked.')
         for i in client.area.clients:
             client.area.invite_list[i.ipid] = None
         return
-
-
-def ooc_cmd_gmunlock(client, arg):
-    if not client.is_mod and not client.is_gm:
-        raise ClientError('You must be authorized to do that.')
-    if not client.area.is_gmlocked:
-        raise ClientError('Area is already open.')
-    else:
-        client.area.gmunlock()
-        client.send_host_message('Area is now unlocked.')
 
 
 def ooc_cmd_modlock(client, arg):
@@ -637,25 +627,21 @@ def ooc_cmd_modlock(client, arg):
         raise ClientError('Area is already mod-locked.')
     else:
         client.area.is_modlocked = True
-        client.area.send_host_message('Area mod-locked.')
-
-
-def ooc_cmd_modunlock(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if not client.area.is_modlocked:
-        raise ClientError('Area is already open.')
-    else:
-        client.area.modunlock()
-        client.send_host_message('Area is now unlocked.')
+        client.send_host_message('Area mod-locked.')
 
 
 def ooc_cmd_unlock(client, arg):
-    if not client.area.is_locked:
+    if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
         raise ClientError('Area is already open.')
-#    if not client.is_cm or client.is_gm or client.is_mod:
-#        raise ClientError('Only GM, CM, or Mod can unlock area.')
-    client.area.unlock()
+    else:
+        if client.is_mod:
+            client.area.modunlock()
+        elif client.is_gm and not client.area.is_modlocked:
+            client.area.gmunlock()
+        elif not client.area.is_gmlocked and not client.area.is_modlocked:
+            client.area.unlock()
+        else:
+            raise ClientError('You must be of higher authorization to do that.')
     client.send_host_message('Area is unlocked.')
 
 
