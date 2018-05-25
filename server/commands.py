@@ -906,6 +906,8 @@ def ooc_cmd_refresh(client, arg):
 
 
 def ooc_cmd_follow(client, arg):
+    if not client.is_gm and not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         client.send_host_message('You must specify an ID. Use /follow <id>.')
     try:
@@ -917,6 +919,8 @@ def ooc_cmd_follow(client, arg):
 
 
 def ooc_cmd_unfollow(client, arg):
+    if not client.is_gm and not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
     try:
         client.unfollow_user()
     except AttributeError:
