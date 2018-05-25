@@ -906,9 +906,14 @@ def ooc_cmd_refresh(client, arg):
 
 
 def ooc_cmd_follow(client, arg):
-    targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    c = targets[0]
-    client.follow_user(c)
+    if len(arg) == 0:
+        client.send_host_message('You must specify an ID. Use /follow <id>.')
+    try:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+        c = targets[0]
+        client.follow_user(c)
+    except IndexError:
+        raise ClientError('Target not found.')
 
 
 def ooc_cmd_unfollow(client, arg):
