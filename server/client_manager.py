@@ -55,6 +55,9 @@ class ClientManager:
             self.mod_call_time = 0
             self.in_rp = False
             self.ipid = ipid
+
+            self.following = ''
+            self.followedby = ''
             
             #music flood-guard stuff
             self.mus_counter = 0
@@ -170,6 +173,22 @@ class ClientManager:
             self.send_command('HP', 2, self.area.hp_pro)
             self.send_command('BN', self.area.background)
             self.send_command('LE', *self.area.get_evidence_list(self))
+
+            if self.followedby != "":
+                self.followedby.change_area(area)
+                self.followedby.send_host_message('Moved to area at {}'.format(time.asctime( time.localtime(time.time()) )))
+
+        def follow_user(self, arg):
+            self.following = arg
+            arg.followedby = self
+            if self.area != arg.area:
+                self.change_area(arg.area)
+            self.send_host_message('Began following at {}'.format(time.asctime(time.localtime(time.time()))))
+
+        def unfollow_user(self):
+            self.following.followedby = ""
+            self.following = ""
+            self.send_host_message("Stopped following at {}.".format(time.asctime(time.localtime(time.time()))))
 
         def send_area_list(self):
             msg = '=== Areas ==='
@@ -424,6 +443,7 @@ class ClientManager:
                        'PLAY NORMIES PLS']
             return random.choice(message)
 
+
     def __init__(self, server):
         self.clients = set()
         self.server = server
@@ -442,6 +462,10 @@ class ClientManager:
         return c
 
     def remove_client(self, client):
+        try:
+            client.followedby.unfollow_user()
+        except AttributeError:
+            pass
         self.cur_id[client.id] = False
         self.clients.remove(client)
 

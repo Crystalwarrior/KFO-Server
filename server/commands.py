@@ -18,6 +18,7 @@
 import random
 import hashlib
 import string
+import time
 from server.constants import TargetType
 
 from server import logger
@@ -217,14 +218,14 @@ def ooc_cmd_kick(client, arg):
     else:
         client.send_host_message("No targets found.")
 
-		
+
 def ooc_cmd_kms(client, arg):
     targets = client.server.client_manager.get_targets(client, TargetType.IPID, client.ipid, False)
     for target in targets:
         if target != client:
             target.disconnect()
     client.send_host_message('Kicked other instances of client.')
-	
+
 
 def ooc_cmd_ban(client, arg):
     if not client.is_mod:
@@ -902,3 +903,21 @@ def ooc_cmd_refresh(client, arg):
             client.send_host_message('You have reloaded the server.')
         except ServerError:
             raise
+
+
+def ooc_cmd_follow(client, arg):
+    targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    c = targets[0]
+    client.follow_user(c)
+
+
+def ooc_cmd_unfollow(client, arg):
+    try:
+        client.unfollow_user()
+    except AttributeError:
+        client.send_host_message('You are not following anyone.')
+
+
+def ooc_cmd_time(client, arg):
+    client.send_host_message(time.asctime(time.localtime(time.time())))
+
