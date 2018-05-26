@@ -175,20 +175,60 @@ class ClientManager:
             self.send_command('LE', *self.area.get_evidence_list(self))
 
             if self.followedby != "":
-                self.followedby.change_area(area)
-                self.followedby.send_host_message('Moved to area at {}'.format(time.asctime( time.localtime(time.time()) )))
+                self.followedby.follow_area(area)
 
         def follow_user(self, arg):
             self.following = arg
             arg.followedby = self
-            if self.area != arg.area:
-                self.change_area(arg.area)
             self.send_host_message('Began following at {}'.format(time.asctime(time.localtime(time.time()))))
+            if self.area != arg.area:
+                self.follow_area(arg.area)
 
         def unfollow_user(self):
             self.following.followedby = ""
             self.following = ""
             self.send_host_message("Stopped following at {}.".format(time.asctime(time.localtime(time.time()))))
+
+        def follow_area(self, area):
+            self.send_host_message('Followed user moved area at {}'.format(time.asctime(time.localtime(time.time()))))
+            if self.area == area:
+                self.send_host_message('Unable to follow to {}: Already in target area.'.format(area.name))
+                return
+            if area.is_locked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
+                self.send_host_message('Unable to follow to {}: Area is locked.'.format(area.name))
+                return
+            if area.is_gmlocked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
+                self.send_host_message('Unable to follow to {}: Area is GM-locked.'.format(area.name))
+                return
+            if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
+                self.send_host_message('Unable to follow to {}: Area is Mod-Locked.'.format(area.name))
+                return
+            old_area = self.area
+            if not area.is_char_available(self.char_id):
+                try:
+                    new_char_id = area.get_rand_avail_char_id()
+                except AreaError:
+                    self.send_host_message('Unable to follow to {}: No available characters.'.format(area.name))
+                    return
+
+                self.change_character(new_char_id)
+                self.send_host_message('Character taken, switched to {}.'.format(self.get_char_name()))
+
+            self.area.remove_client(self)
+            self.area = area
+            area.new_client(self)
+
+            self.send_host_message('Changed area to {}.[{}]'.format(area.name, self.area.status))
+            logger.log_server(
+                '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
+                                                                   self.area.name, self.area.id), self)
+            #logger.log_rp(
+            #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
+            #                                                       self.area.name, self.area.id), self)
+            self.send_command('HP', 1, self.area.hp_def)
+            self.send_command('HP', 2, self.area.hp_pro)
+            self.send_command('BN', self.area.background)
+            self.send_command('LE', *self.area.get_evidence_list(self))
 
         def send_area_list(self):
             msg = '=== Areas ==='

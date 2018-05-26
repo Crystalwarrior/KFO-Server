@@ -914,7 +914,7 @@ def ooc_cmd_follow(client, arg):
         targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
         c = targets[0]
         client.follow_user(c)
-    except IndexError:
+    except:
         raise ClientError('Target not found.')
 
 
