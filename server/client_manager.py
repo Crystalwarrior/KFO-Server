@@ -46,6 +46,8 @@ class ClientManager:
             self.is_cm = False
             self.evi_list = []
             self.disemvowel = False
+            self.remove_h = False
+            self.disemconsonant = False
             self.gimp = False
             self.muted_global = False
             self.muted_adverts = False
@@ -338,19 +340,40 @@ class ClientManager:
             else:
                 raise ClientError('Invalid password.')
 
+        def auth_cm(self, password):
+            if self.is_cm:
+                raise ClientError('Already logged in.')
+            if password == self.server.config['cmpass']:
+                self.is_cm = True
+                self.in_rp = False
+            else:
+                raise ClientError('Invalid password.')
+
         def auth_gm(self, password):
             if self.is_gm:
                 raise ClientError('Already logged in.')
             if password == self.server.config['gmpass']:
                 self.is_gm = True
                 self.in_rp = False
-            elif password == self.server.config['gmpass1'] and ((datetime.datetime.today().weekday() == 0 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour < 15) or (datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour < 15)):
+            elif password == self.server.config['gmpass1'] and ((datetime.datetime.today().weekday() == 6 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 0 and datetime.datetime.now().hour < 15)):
                 self.is_gm = True
                 self.in_rp = False
-            elif password == self.server.config['gmpass2'] and ((datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour < 15) or (datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour < 15)):
+            elif password == self.server.config['gmpass2'] and ((datetime.datetime.today().weekday() == 0 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour < 15)):
                 self.is_gm = True
                 self.in_rp = False
-            elif password == self.server.config['gmpass3'] and ((datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 5) or (datetime.datetime.today().weekday() == 6 and datetime.datetime.now().hour < 15)):
+            elif password == self.server.config['gmpass3'] and ((datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour < 15)):
+                self.is_gm = True
+                self.in_rp = False
+            elif password == self.server.config['gmpass4'] and ((datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour < 15)):
+                self.is_gm = True
+                self.in_rp = False
+            elif password == self.server.config['gmpass5'] and ((datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour < 15)):
+                self.is_gm = True
+                self.in_rp = False
+            elif password == self.server.config['gmpass6'] and ((datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 5 and datetime.datetime.now().hour < 15)):
+                self.is_gm = True
+                self.in_rp = False
+            elif password == self.server.config['gmpass7'] and ((datetime.datetime.today().weekday() == 5 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 6 and datetime.datetime.now().hour < 15)):
                 self.is_gm = True
                 self.in_rp = False
             else:
@@ -409,77 +432,6 @@ class ClientManager:
                        'When do we remove dangits',
                        'MODS STOP GIMPING ME',
                        'Please don\'t say things like ni**er and f**k it\'s very rude and I don\'t like it',
-                       'Chiaki is my waifu',
-                       'Kyoko is my waifu',
-                       'Junko has pink hair!',
-                       'Junko has blonde hair!',
-                       'Ouma did nothing wrong.',
-                       'Junko did nothing wrong.',
-                       'What\'s a Moonfall?',
-                       'Let\'s make another Shikashi!',
-                       'Decision Game when?',
-                       'I have made a terrible mistake.',
-                       'COINSCOINSCOINSCOINSCOINSCOINSCOINSCOINS',
-                       '*incompetency intensifies*',
-                       'GO STEP ON A LEGO!',
-                       'Can somebody pet me :3?',
-                       'Which area is for ERP?',
-                       'BOOM! SEESAW!',
-                       'WE NEED THE CHAIR!',
-                       'Korekiyo best girl!',
-                       'This shit is why I murder people.',
-                       '*11 dead* This is fine.',
-                       'R E P O P U L A T I O N',
-                       'Guidance.',
-                       'Estimo.',
-                       'My mission was to stop the Disease Virus.',
-                       'So, on a scale of dead to dead, how dead are we?',
-                       'Tell them, Naegi.',
-                       '*tap tap tap* Craaaaaaaazy, biiiiiiiiiisssshhhhhh.',
-                       'VRRRRRRRRRRRRRRRR',
-                       'Kiyotaka Ishimaru Ultimate Spy',
-                       'HOPE!! DESPAIR!! HOPE!! DESPAIR!!',
-                       'All hail the holy angel Dio. He died for your lack of logic.',
-                       '*STAAAAAAAAAAAAAAAAAAAARE*',
-                       'I was gimped, huh. I guess...I\'VE STILL GOT A WAAAAAAYS TO GO!',
-                       'Every day, we stray further away from God\'s light...',
-                       '*crashes in the trial room* NOW LEMME TELL YOU WHY THIS IS BS!',
-                       'Moonaka is watching.',
-                       'I assert that the one who was murdered was Miss Sayaka Maizono!',
-                       '... The bullet of truth... It hurts.',
-                       '*Goes behind bar, grabs a few canned bears*',
-                       'HELPING',
-                       'I see white people...',
-                       'Who even makes chainsaw-proof doors?',
-                       'I don\'t really get it, but it sounds like that makes sense.',
-                       '*rolls for cow*',
-                       'Haha despaire',
-                       'Everyone is Peko.',
-                       'I eat strawberries with a fork.',
-                       'kinku *omiy*',
-                       'Why? For the glory of despair of course!',
-                       'Really, Shion-chan?',
-                       'Thaaaanks, lag-chan.',
-                       'Pardon me. I have had a long day of just existing.',
-                       'How good would you be at making a meatloaf out of a wooden chair?',
-                       'NOBODY expects the Ultimate Despair!',
-                       'SDRS is cancer.',
-                       'Would ANYONE ELSE like to do something STUPID today?',
-                       '*SUSPICIOUS GLARE*',
-                       'Here lies Miles Nottingham. He never got the hat.',
-                       '"No one cares who you are." - The Ultimate Friend',
-                       'It\'s a beautiful wif.',
-                       'She is winking at me, what do I do?',
-                       'I am Nagitox.',
-                       'Bone on the meat! On the meat bone! Bone meat on the!',
-                       'Do you want to die?',
-                       '*slowly removes tie*',
-                       '*Extreme smugness*',
-                       'IT\'S ALWAYS SUICIDE.',
-                       'Mukuro Ikusaba. The sixteenth student hidden in this academy. The girl referred to as the Ultimate Despair. Beware of Mukuro Ikusaba.',
-                       'i dont know what going on',
-                       'Jack can never have paper.',
-                       'SENPAI YOU GIMPED MEEEEEEEEEEE',
                        'PLAY NORMIES PLS']
             return random.choice(message)
 
