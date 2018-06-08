@@ -68,26 +68,6 @@ def ooc_cmd_bglock(client, arg):
     logger.log_server('[{}][{}]Changed bglock to {}'.format(client.area.id, client.get_char_name(), client.area.bg_lock), client)
 
 
-def ooc_cmd_evidence_mod(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if not arg:
-        client.send_host_message('current evidence mod: {}'.format(client.area.evidence_mod))
-        return
-    if arg in ['FFA', 'Mods', 'CM', 'HiddenCM']:
-        if arg == client.area.evidence_mod:
-            client.send_host_message('current evidence mod: {}'.format(client.area.evidence_mod))
-            return
-        if client.area.evidence_mod == 'HiddenCM':
-            for i in range(len(client.area.evi_list.evidences)):
-                client.area.evi_list.evidences[i].pos = 'all'
-        client.area.evidence_mod = arg
-        client.send_host_message('current evidence mod: {}'.format(client.area.evidence_mod))
-        return
-    else:
-        raise ArgumentError('Wrong Argument. Use /evidence_mod <MOD>. Possible values: FFA, CM, Mods, HiddenCM')
-
-
 def ooc_cmd_allow_iniswap(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
@@ -200,12 +180,12 @@ def ooc_cmd_help(client, arg):
     help_msg = 'Available commands, source code and issues can be found here: {}'.format(help_url)
     client.send_host_message(help_msg)
 
-
+	
 def ooc_cmd_kick(client, arg):
-    if not client.is_mod:
+    if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError('You must specify a target. Use /kick <ipid>, <id>.')
+    if len(arg) == 0 or len(arg) > 10:
+        raise ArgumentError('You must specify a target. Use /kick <ip, ipid>.')
     if len(arg) == 10 and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
     elif len(arg) < 10 and arg.isdigit():
@@ -213,20 +193,20 @@ def ooc_cmd_kick(client, arg):
     if targets:
         for c in targets:
             logger.log_server('Kicked {}.'.format(c.ipid), client)
-            client.send_host_message("{} was kicked.".format(c.get_char_name()))
+            client.area.send_host_message("{} was kicked.".format(c.get_char_name()))
             c.disconnect()
     else:
         client.send_host_message("No targets found.")
 
-
-def ooc_cmd_kms(client, arg):
+		
+def ooc_cmd_kickself(client, arg):
     targets = client.server.client_manager.get_targets(client, TargetType.IPID, client.ipid, False)
     for target in targets:
         if target != client:
             target.disconnect()
     client.send_host_message('Kicked other instances of client.')
-
-
+	
+	
 def ooc_cmd_ban(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
@@ -251,7 +231,7 @@ def ooc_cmd_ban(client, arg):
             for c in targets:
                 c.disconnect()
             client.send_host_message('{} clients were kicked.'.format(len(targets)))
-        client.send_host_message('{} was banned.'.format(ipid))
+        client.area.send_host_message('{} was banned.'.format(c.get_char_name))
         logger.log_server('Banned {}.'.format(ipid), client)
 
 
@@ -267,7 +247,7 @@ def ooc_cmd_unban(client, arg):
 
 
 def ooc_cmd_play(client, arg):
-    if not client.is_mod:
+    if not client.is_mod and not client.is_gm and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         raise ArgumentError('You must specify a song.')
@@ -277,7 +257,7 @@ def ooc_cmd_play(client, arg):
 
 
 def ooc_cmd_mute(client, arg):
-    if not client.is_mod:
+    if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0 or len(arg) > 10:
         raise ArgumentError('You must specify a target.')
@@ -285,7 +265,7 @@ def ooc_cmd_mute(client, arg):
         if len(arg) == 10 and arg.isdigit():
             c = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
         elif len(arg) < 10 and arg.isdigit():
-            c = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
+            c = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
         c.is_muted = True
         client.send_host_message('{} existing client(s).'.format(c.get_char_name()))
     except:
@@ -293,7 +273,7 @@ def ooc_cmd_mute(client, arg):
 
 
 def ooc_cmd_unmute(client, arg):
-    if not client.is_mod:
+    if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0 or len(arg) > 10:
         raise ArgumentError('You must specify a target.')
@@ -301,7 +281,7 @@ def ooc_cmd_unmute(client, arg):
         if len(arg) == 10 and arg.isdigit():
             c = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
         elif len(arg) < 10 and arg.isdigit():
-            c = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0]
+            c = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
         c.is_muted = False
         client.send_host_message('{} existing client(s).'.format(c.get_char_name()))
     except:
@@ -332,6 +312,19 @@ def ooc_cmd_login(client, arg):
         client.area.broadcast_evidence_list()
     client.send_host_message('Logged in as a moderator.')
     logger.log_server('Logged in as moderator.', client)
+	
+	
+def ooc_cmd_logincm(client, arg):
+    if len(arg) == 0:
+        raise ArgumentError('You must specify the password.')
+    try:
+        client.auth_cm(arg)
+    except ClientError:
+        raise
+    if client.area.evidence_mod == 'HiddenCM':
+        client.area.broadcast_evidence_list()
+    client.send_host_message('Logged in as a community manager.')
+    logger.log_server('Logged in as community manager.', client)
 
 
 def ooc_cmd_g(client, arg):
@@ -384,25 +377,6 @@ def ooc_cmd_toggleglobal(client, arg):
     client.send_host_message('Global chat turned {}.'.format(glob_stat))
 
 
-def ooc_cmd_need(client, arg):
-    if client.muted_adverts:
-        raise ClientError('You have advertisements muted.')
-    if len(arg) == 0:
-        raise ArgumentError("You must specify what you need.")
-    client.server.broadcast_need(client, arg)
-    logger.log_server('[{}][{}][NEED]{}.'.format(client.area.id, client.get_char_name(), arg), client)
-
-
-def ooc_cmd_toggleadverts(client, arg):
-    if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
-    client.muted_adverts = not client.muted_adverts
-    adv_stat = 'on'
-    if client.muted_adverts:
-        adv_stat = 'off'
-    client.send_host_message('Advertisements turned {}.'.format(adv_stat))
-
-
 def ooc_cmd_doc(client, arg):
     if len(arg) == 0:
         client.send_host_message('Document: {}'.format(client.area.doc))
@@ -421,19 +395,6 @@ def ooc_cmd_cleardoc(client, arg):
     logger.log_server('[{}][{}]Cleared document. Old link: {}'
                       .format(client.area.id, client.get_char_name(), client.area.doc))
     client.area.change_doc()
-
-
-def ooc_cmd_status(client, arg):
-    if len(arg) == 0:
-        client.send_host_message('Current status: {}'.format(client.area.status))
-    else:
-        try:
-            client.area.change_status(arg)
-            client.area.send_host_message('{} changed status to {}.'.format(client.get_char_name(), client.area.status))
-            logger.log_server(
-                '[{}][{}]Changed status to {}'.format(client.area.id, client.get_char_name(), client.area.status))
-        except AreaError:
-            raise
 
 
 def ooc_cmd_area(client, arg):
@@ -548,40 +509,19 @@ def ooc_cmd_getareas(client, arg):
     client.send_area_info(-1, False)
 
 
-def ooc_cmd_evi_swap(client, arg):
-    args = list(arg.split(' '))
-    if len(args) != 2:
-        raise ClientError("You must specify 2 numbers.")
-    try:
-        client.area.evi_list.evidence_swap(client, int(args[0]), int(args[1]))
-        client.area.broadcast_evidence_list()
-    except:
-        raise ClientError("You must specify 2 numbers.")
-
-
-def ooc_cmd_cm(client, arg):
-    if 'CM' not in client.area.evidence_mod:
-        raise ClientError('You can\'t become a CM in this area.')
-    if not client.area.owned:
-        client.area.owned = True
-        client.is_cm = True
-        if client.area.evidence_mod == 'HiddenCM':
-            client.area.broadcast_evidence_list()
-        client.area.send_host_message('{} is CM in this area now.'.format(client.get_char_name()))
-
-
 def ooc_cmd_logout(client, arg):
     client.is_mod = False
     client.is_gm = False
+    client.is_cm = False
     if client.server.rp_mode:
         client.in_rp = True
     if client.area.evidence_mod == 'HiddenCM':
         client.area.broadcast_evidence_list()
-    client.send_host_message('You are no longer a mod or GM.')
+    client.send_host_message('You are no longer logged in.')
 
 
 def ooc_cmd_cleargm(client, arg):
-    if not client.is_mod:
+    if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
         raise ClientError('This command does not take arguments.')
@@ -595,49 +535,58 @@ def ooc_cmd_cleargm(client, arg):
 
 
 def ooc_cmd_lock(client, arg):
-    if not client.area.locking_allowed and not client.is_mod:
+    if not client.area.locking_allowed:
         client.send_host_message('Area locking is disabled in this area')
         return
     if client.area.is_locked:
         client.send_host_message('Area is already locked.')
     else:
         client.area.is_locked = True
-        client.send_host_message('Area locked.')
+        client.area.send_host_message('Area locked.')
         for i in client.area.clients:
             client.area.invite_list[i.ipid] = None
         return
 
 
 def ooc_cmd_gmlock(client, arg):
-    if not client.area.locking_allowed and not client.is_gm and not client.is_mod:
+    if not client.area.locking_allowed:
+        client.send_host_message('Area locking is disabled in this area')
+        return
+    if not client.is_gm and not client.is_cm and not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if client.area.is_gmlocked:
         raise ClientError('Area is already gm-locked.')
     else:
         client.area.is_gmlocked = True
-        client.send_host_message('Area gm-locked.')
+        client.area.send_host_message('Area gm-locked.')
         for i in client.area.clients:
             client.area.invite_list[i.ipid] = None
         return
 
 
 def ooc_cmd_modlock(client, arg):
-    if not client.area.locking_allowed and not client.is_mod:
+    if not client.area.locking_allowed:
+        client.send_host_message('Area locking is disabled in this area')
+        return
+    if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if client.area.is_modlocked:
         raise ClientError('Area is already mod-locked.')
     else:
         client.area.is_modlocked = True
-        client.send_host_message('Area mod-locked.')
+        client.area.send_host_message('Area mod-locked.')
+        for i in client.area.clients:
+            client.area.invite_list[i.ipid] = None
+        return
 
 
 def ooc_cmd_unlock(client, arg):
     if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
         raise ClientError('Area is already open.')
     else:
-        if client.is_mod:
+        if client.is_mod and client.area.is_modlocked:
             client.area.modunlock()
-        elif client.is_gm and not client.area.is_modlocked:
+        elif client.is_gm or client.is_cm or client.is_mod and not client.area.is_modlocked:
             client.area.gmunlock()
         elif not client.area.is_gmlocked and not client.area.is_modlocked:
             client.area.unlock()
@@ -726,7 +675,7 @@ def ooc_cmd_area_kick(client, arg):
 
 
 def ooc_cmd_ooc_mute(client, arg):
-    if not client.is_mod:
+    if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         raise ArgumentError('You must specify a target. Use /ooc_mute <OOC-name>.')
@@ -739,11 +688,11 @@ def ooc_cmd_ooc_mute(client, arg):
 
 
 def ooc_cmd_ooc_unmute(client, arg):
-    if not client.is_mod:
+    if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         raise ArgumentError('You must specify a target. Use /ooc_mute <OOC-name>.')
-    targets = client.server.client_manager.get_targets(client, TargetType.IPID, arg, False)
+    targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, False)
     if not targets:
         raise ArgumentError('Target not found. Use /ooc_mute <OOC-name>.')
     for target in targets:
@@ -770,6 +719,69 @@ def ooc_cmd_disemvowel(client, arg):
         client.send_host_message('Disemvowelled {} existing client(s).'.format(len(targets)))
     else:
         client.send_host_message('No targets found.')
+		
+		
+def ooc_cmd_disemconsonant(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    elif len(arg) == 0:
+        raise ArgumentError('You must specify a target.')
+    try:
+        if len(arg) == 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        elif len(arg) < 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    except:
+        raise ArgumentError('You must specify a target. Use /disemconsonant <id>.')
+    if targets:
+        for c in targets:
+            logger.log_server('Disemconsonanting {}.'.format(c.get_ip()), client)
+            c.disemconsonant = True
+        client.send_host_message('Disemconsonanted {} existing client(s).'.format(len(targets)))
+    else:
+        client.send_host_message('No targets found.')
+		
+		
+def ooc_cmd_undisemconsonant(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    elif len(arg) == 0:
+        raise ArgumentError('You must specify a target.')
+    try:
+        if len(arg) == 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        elif len(arg) < 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    except:
+        raise ArgumentError('You must specify a target. Use /disemvowel <id>.')
+    if targets:
+        for c in targets:
+            logger.log_server('Undisemconsonanting {}.'.format(c.get_ip()), client)
+            c.disemconsonant = False
+        client.send_host_message('Undisemconsonanted {} existing client(s).'.format(len(targets)))
+    else:
+        client.send_host_message('No targets found.')
+		
+		
+def ooc_cmd_remove_h(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    elif len(arg) == 0:
+        raise ArgumentError('You must specify a target.')
+    try:
+        if len(arg) == 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        elif len(arg) < 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    except:
+        raise ArgumentError('You must specify a target. Use /remove_h <id>.')
+    if targets:
+        for c in targets:
+            logger.log_server('Removing h from {}.'.format(c.get_ip()), client)
+            c.remove_h = True
+        client.send_host_message('Removed h from {} existing client(s).'.format(len(targets)))
+    else:
+        client.send_host_message('No targets found.')
 
 
 def ooc_cmd_undisemvowel(client, arg):
@@ -791,6 +803,27 @@ def ooc_cmd_undisemvowel(client, arg):
         client.send_host_message('Undisemvowelled {} existing client(s).'.format(len(targets)))
     else:
         client.send_host_message('No targets found.')
+		
+
+def ooc_cmd_unremove_h(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    elif len(arg) == 0:
+        raise ArgumentError('You must specify a target.')
+    try:
+        if len(arg) == 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        elif len(arg) < 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    except:
+        raise ArgumentError('You must specify a target. Use /unremove_h <id>.')
+    if targets:
+        for c in targets:
+            logger.log_server('Adding h to {}.'.format(c.get_ip()), client)
+            c.remove_h = False
+        client.send_host_message('Added h to {} existing client(s).'.format(len(targets)))
+    else:
+        client.send_host_message('No targets found.')
 
 
 def ooc_cmd_gimp(client, arg):
@@ -804,7 +837,7 @@ def ooc_cmd_gimp(client, arg):
         elif len(arg) < 10 and arg.isdigit():
             targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except:
-        raise ArgumentError('You must specify a target. Use /gimp <id>.')
+        raise ArgumentError('You must specify a target. Use /gimp <id, ipid>.')
     if targets:
         for c in targets:
             logger.log_server('Gimping {}.'.format(c.get_ip(), client))
@@ -820,9 +853,12 @@ def ooc_cmd_ungimp(client, arg):
     elif len(arg) == 0:
         raise ArgumentError('You must specify a target.')
     try:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        if len(arg) == 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        elif len(arg) < 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except:
-        raise ArgumentError('You must specify a target. Use /gimp <id>.')
+        raise ArgumentError('You must specify a target. Use /gimp <id, ipid>.')
     if targets:
         for c in targets:
             logger.log_server('Ungimping {}.'.format(c.get_ip(), client))
@@ -833,16 +869,19 @@ def ooc_cmd_ungimp(client, arg):
 
 
 def ooc_cmd_blockdj(client, arg):
-    if not client.is_mod:
+    if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         raise ArgumentError('You must specify a target. Use /blockdj <id>.')
     try:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        if len(arg) == 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        elif len(arg) < 10 and arg.isdigit():
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except:
-         raise ArgumentError('You must enter a number. Use /blockdj <id>.')
+         raise ArgumentError('You must enter a number. Use /blockdj <id, ipid>.')
     if not targets:
-        raise ArgumentError('Target not found. Use /blockdj <id>.')
+        raise ArgumentError('Target not found. Use /blockdj <id, ipid>.')
     for target in targets:
         target.is_dj = False
         target.send_host_message('You have been muted of changing music by moderator.')
@@ -850,7 +889,7 @@ def ooc_cmd_blockdj(client, arg):
 
 
 def ooc_cmd_unblockdj(client, arg):
-    if not client.is_mod:
+    if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0 and len(arg) < 10:
         raise ArgumentError('You must specify a target. Use /unblockdj <id>.')
@@ -873,7 +912,7 @@ def ooc_cmd_rpmode(p_client, arg):
     if not p_client.server.config['rp_mode_enabled']:
         p_client.send_host_message("RP mode is disabled in this server!")
         return
-    if not p_client.is_mod and not p_client.is_gm:
+    if not p_client.is_mod and not p_client.is_gm and not p_client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         raise ArgumentError('You must specify either on or off')
@@ -881,7 +920,7 @@ def ooc_cmd_rpmode(p_client, arg):
         p_client.server.rp_mode = True
         for i_client in p_client.server.client_manager.clients:
             i_client.send_host_message('RP mode enabled!')
-            if not i_client.is_mod and not i_client.is_gm:
+            if not i_client.is_mod and not i_client.is_cm and not i_client.is_gm:
                 i_client.in_rp = True
     elif arg == 'off':
         p_client.server.rp_mode = False
@@ -903,8 +942,34 @@ def ooc_cmd_refresh(client, arg):
             client.send_host_message('You have reloaded the server.')
         except ServerError:
             raise
+			
+			
+def ooc_cmd_ToD(client, arg):
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    coin = ['truth', 'dare']
+    flip = random.choice(coin)
+    client.area.send_host_message('{} has to do a {}.'.format(client.get_char_name(), flip))
+    logger.log_server(
+        '[{}][{}]has to do a {}.'.format(client.area.id, client.get_char_name(), flip))
+		
+		
+def ooc_cmd_8ball(client, arg):
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    coin = ['yes', 'no', 'maybe', 'I dont know', 'perhaps', 'Please do not', 'try again', 'you shouldn\'t ask that']
+    flip = random.choice(coin)
+    client.area.send_host_message('The magic 8 ball says {}.'.format(flip))
+    logger.log_server(
+        'The magic 8 ball said {}.'.format(flip))
+		
 
+def ooc_cmd_discord(client, arg):
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    client.send_host_message('Discord Invite Link: \r\ninsert link here \r\nBlank\'s tag: \r\nName(tag)0000 \r\nBlank\'s tag: \r\nName(tag)0000 \r\nBlank\'s tag: \r\nName(hashtag)0000')
 
+	
 def ooc_cmd_follow(client, arg):
     if not client.is_gm and not client.is_mod:
         raise ClientError('You must be authorized to do that.')
@@ -930,4 +995,3 @@ def ooc_cmd_unfollow(client, arg):
 
 def ooc_cmd_time(client, arg):
     client.send_host_message(time.asctime(time.localtime(time.time())))
-
