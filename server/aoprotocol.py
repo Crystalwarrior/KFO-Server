@@ -336,8 +336,10 @@ class AOProtocol(asyncio.Protocol):
             return
         if color not in (0, 1, 2, 3, 4, 5, 6):
             return
+        if color == 5 and not self.client.is_mod and not self.client.is_cm:
+            color = 0
         if color == 6:
-            text = re.sub(r'[^\x00-\x7F]+',' ', text) #remove all unicode to prevent redtext abuse
+            text = re.sub(r'[^\x00-\x7F]+',' ', text) #remove all unicode to prevent now yellow text abuse
             if len(text.strip( ' ' )) == 1:
                 color = 0
             else:
@@ -353,6 +355,8 @@ class AOProtocol(asyncio.Protocol):
             msg = self.client.gimp_message(msg)
         if self.client.disemvowel: #If you're disemvoweled, replace string.
             msg = self.client.disemvowel_message(msg)
+        if self.client.remove_h: #If h is removed, replace string.
+            msg = self.client.remove_h_message(msg)
         self.client.pos = pos
         if evidence:
             if self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos != 'all':
