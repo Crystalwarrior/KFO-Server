@@ -3,12 +3,18 @@ playerlimit: 100
 port: 50000
 local: false
 
-guardpass: guard
-modpass: mod
-gmpass: gm
-gmpass1: gm1
-gmpass2: gm2
-gmpass3: gm3
+guardpass: Guard
+modpass: Mod
+cmpass: Community Manager
+
+gmpass: Universal
+gmpass1: Sunday-Monday
+gmpass2: Monday-Tuesday
+gmpass3: Tuesday-Wednesday
+gmpass4: Wednesday-Thursday
+gmpass5: Thursday-Friday
+gmpass6: Friday-Saturday
+gmpass7: Saturday-Sunday
 
 motd: Welcome to my server!
 help_msg: TODO
@@ -33,4 +39,4 @@ announce_areas: true
 music_change_floodguard:
   times_per_interval: 3
   interval_length: 20
-  mute_length: 180
+  mute_length: 10
