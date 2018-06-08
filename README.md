@@ -36,10 +36,6 @@ Requires Python 3.6+ and PyYAML.
     - Sends a serverwide message
 * **toggleglobal** 
     - Toggles global on and off
-* **need** "message" 
-    - Sends a serverwide advert
-* **toggleadverts** 
-    - Toggles adverts on and off
 * **area** "area number" 
     - Displays all areas when blank, swaps to area with number
 * **getarea** 
@@ -50,9 +46,6 @@ Requires Python 3.6+ and PyYAML.
     - Gives the doc url if blank, updates the doc url
 * **cleardoc** 
     - Clears the doc url
-* **status** "status" 
-    - Shows current areas status if blank, updates the status
-    - Statuses: 'idle', 'building-open', 'building-full', 'casing-open', 'casing-full', 'recess'
 * **pm** "target" "Message" 
     - PMs the target, can either be character name or OOC name
 * **pmmute**
@@ -70,10 +63,16 @@ Requires Python 3.6+ and PyYAML.
     - Positions: 'def', 'pro', 'hld', 'hlp', 'jud', 'wit'
 * **bg** "background" 
     - Changes the current background
-* **roll** "max" 
+* **roll** "max, number of dice" 
     - Rolls a 1D6 if blank
+* **roll** "max, number of dice" 
+    - Same as above but unseen by other clients
+* **kickself**
+    - Removes all of of the user's clients except the one that used the command.
 * **coinflip**
     - Flips a coin
+* **8ball**
+    - Gain insight from the magic 8 ball.
 * **currentmusic** 
     - Displays the current music
 * **evi_swap** <id1> <id2>
@@ -82,67 +81,73 @@ Requires Python 3.6+ and PyYAML.
     - Locks your area.
 * **unlock**
     - Unlocks your area.
-* **cm**
-    - Makes you a CM of this area.
+* **discord**
+    - Displays message of current admins' Discord tags.
+* **time**
+    - Displays the time according to the local timezone of whoever is running the server.
+### GM Commands
 * **loginrp** "Password"
     - Makes you a GM.
     - GMs can: 
       - Bypass Locks.
       - See all areas even in RP mode.
       - Use GM commands.
-### GM Commands
+* **rpmode** "on, off"
+    - Toggles RP mode.
+* **follow** "ID"
+    - Moves user clients to target client's area.
+* **unfollow** "ID"
+    - Undo previous command.
 * **invite** "ID"
     - Adds target in invite list of your area.
 * **area_kick** "ID"
     - Kicks target and all his(same for all genders) multi-accs from your area and remove him from invite-list.
-### Mod Commands
-* **login** "Password"
-* **gm** "Message" 
-    - Sends a serverwide message with mod tag
-* **lm** "Message" 
-    - Sends an area OOC message with mod tag
 * **play** "song.mp3" 
     - Plays a song
-* **judgelog** 
-    - Displays the last judge actions in the current area
-* **announce** "Message" 
-    - Sends a serverwide announcement
-* **charselect** "ID"
-    - Kicks a player back to the character select screen. If no ID was entered then target yourself.
+* **gmlock**
+    - Locks your area. Prevents other GMs from entering.
+### Community Manager Commands
+
+* **logincm**
+    - Makes you a Community Manager.
 * **kick** "IPID" 
     - Kicks the targets with this IPID.
-* **ban** "IPID"/"IP" 
-    - Bans the IPID/IP (hdid is linked to ipid so all bans happens in a same time).
-* **unban** "IPID" 
-    - Unbans the specified IPID .
 * **mute** "Target" 
     - Mutes the target from all IC actions, can be IP or Character name
 * **unmute** "Target","all" 
     - Unmutes the target, "all" will unmute all muted clients
-* **oocmute** "Target" 
+* **ooc_mute** "Target" 
     - Mutes the target from all OOC actions via OOC-name.
-* **oocunmute** "Target" 
+* **ooc_unmute** "Target" 
     - Unmutes the target.
-* **bglock** 
-    - Toggles the background lock in the current area
-* **disemvowel** "Target"
-    - Removes the vowels from everything said by the target
-* **undisemvowel** "Target"
-    - Lifts the disemvowel curse from the target
 * **blockdj** "target"
     - Mutes the target from changing music. 
 * **unblockdj** "target"
     - Undo previous command.
-* **evidence_mod** <MOD>
-    - Changes evidence_mod in this area. Possible values: FFA, CM, HiddenCM, Mods
-        * **FFA**
-            - Everyone can add, edit and remove evidence.
-        * **Mods**
-            - Only moderators can add, edit or remove evidence.
-        * **CM**
-            - Only CM (case-maker, look at /cm for more info) or moderators can add, edit or remove evidence.
-        * **HiddenCM**
-            - Same as CM, but every evidence has a preset "owner's position" which can be set by a CM or moderator, such that only one side/position of the court may see the evidence. After presenting the evidence, the position of the evidence changes to "all." Possible positions include def (defense), pro (prosecutor), wit (witness), jud (judge), pos (hidden from everyone), and all (everyone can see the evidence).
+### Moderator Commands
+
+* **login** "Password"
+    - Makes you a Moderator.
+* **gm** "Message" 
+    - Sends a serverwide message with mod tag
+* **lm** "Message" 
+    - Sends an area OOC message with mod tag
+* **announce** "Message" 
+    - Sends a serverwide announcement
+* **modlock**
+    - Locks your area. Prevents other mods from entering.
+* **charselect** "ID"
+    - Kicks a player back to the character select screen. If no ID was entered then target yourself.
+* **ban** "IPID"/"IP" 
+    - Bans the IPID/IP (hdid is linked to ipid so all bans happens in a same time).
+* **unban** "IPID" 
+    - Unbans the specified IPID .
+* **bglock** 
+    - Toggles the background lock in the current area
+* **disemvowel/disemconsonant/remove_h** "Target"
+    - Removes the respective letters from everything said by the target
+* **undisemvowel/undisemconsonant/unremove_h** "Target"
+    - Undo correlating command.
 * **allow_iniswap**
     - Toggle allow_iniswap var in this area. 
     - Even if iniswap at all is forbidden you can configure all-time allowed iniswaps in *iniswaps.yaml*
