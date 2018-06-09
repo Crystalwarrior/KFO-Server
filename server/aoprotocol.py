@@ -322,13 +322,13 @@ class AOProtocol(asyncio.Protocol):
             return
         if msg_type not in ('chat', '0', '1'):
             return
-        if anim_type not in (0, 1, 2, 5, 6):
+        if anim_type not in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10):
             return
         if cid != self.client.char_id:
             return
         if sfx_delay < 0:
             return
-        if button not in (0, 1, 2, 3, 4):
+        if button not in (0, 1, 2, 3, 4, 5, 6, 7):
             return
         if evidence < 0:
             return
