@@ -952,8 +952,8 @@ def ooc_cmd_ToD(client, arg):
     client.area.send_host_message('{} has to do a {}.'.format(client.get_char_name(), flip))
     logger.log_server(
         '[{}][{}]has to do a {}.'.format(client.area.id, client.get_char_name(), flip))
-		
-		
+
+				
 def ooc_cmd_8ball(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
@@ -971,7 +971,7 @@ def ooc_cmd_discord(client, arg):
 
 	
 def ooc_cmd_follow(client, arg):
-    if not client.is_gm and not client.is_mod:
+    if not client.is_gm and not client.is_cm and not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         client.send_host_message('You must specify an ID. Use /follow <id>.')
@@ -985,7 +985,7 @@ def ooc_cmd_follow(client, arg):
 
 
 def ooc_cmd_unfollow(client, arg):
-    if not client.is_gm and not client.is_mod:
+    if not client.is_gm and not client.is_cm and not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     try:
         client.unfollow_user()
