@@ -332,7 +332,7 @@ class AOProtocol(asyncio.Protocol):
             return
         if evidence < 0:
             return
-        if ding not in (0, 1):
+        if ding not in (0, 1, 2):
             return
         if color not in (0, 1, 2, 3, 4, 5, 6):
             return
