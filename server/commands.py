@@ -42,7 +42,7 @@ def ooc_cmd_switch(client, arg):
 def ooc_cmd_bg(client, arg):
     if len(arg) == 0:
         raise ArgumentError('You must specify a name. Use /bg <background>.')
-    if not client.is_mod and client.area.bg_lock == "true":
+    if not client.is_mod and client.area.bg_lock == True: #CHANGED
         raise AreaError("This area's background is locked")
     try:
         if client.is_mod or client.is_gm:
@@ -60,10 +60,10 @@ def ooc_cmd_bglock(client, arg):
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
-    if client.area.bg_lock  == "true":
-        client.area.bg_lock = "false"
+    if client.area.bg_lock == True:
+        client.area.bg_lock = False
     else:
-        client.area.bg_lock = "true"
+        client.area.bg_lock = True #CHANGED
     client.area.send_host_message('A mod has set the background lock to {}.'.format(client.area.bg_lock))
     logger.log_server('[{}][{}]Changed bglock to {}'.format(client.area.id, client.get_char_name(), client.area.bg_lock), client)
 
@@ -76,7 +76,234 @@ def ooc_cmd_allow_iniswap(client, arg):
     client.send_host_message('iniswap is {}.'.format(answer[client.area.iniswap_allowed]))
     return
 
+def ooc_cmd_ddroll(client, arg):
+    DICE_MAX = 11037
+    NUMDICE_MAX = 20
+    MODIFIER_LENGTH_MAX = 12 #Change to a higher at your own risk
+    ACCEPTABLE_IN_MODIFIER = '1234567890+-*/().r'
+    MAXDIVZERO_ATTEMPTS = 10
+    MAXACCEPTABLETERM = 10*DICE_MAX #Change to a higher number at your own risk
     
+    special_calculation = False
+    args = arg.split(' ')
+    arg_length = len(args)
+    
+    if arg != '':
+        if arg_length == 2:
+            dice_type, modifiers = args
+            if len(modifiers) > MODIFIER_LENGTH_MAX:
+                raise ArgumentError('The given modifier is too long to compute. Please try a shorter one')
+        elif arg_length == 1:
+            dice_type, modifiers = arg, ''
+        else:
+             raise ArgumentError('This command takes one or two arguments. Use /ddroll [<num of rolls>]d[<max>] [modifiers]')
+
+        dice_type = dice_type.split('d')
+        if len(dice_type) == 1:
+            dice_type.insert(0,1)
+        if dice_type[0] == '':
+            dice_type[0] = '1'
+            
+        try:
+            num_dice,chosen_max = int(dice_type[0]),int(dice_type[1])
+        except ValueError:
+            raise ArgumentError('Expected integer value for number of rolls and max value of dice')
+
+        if not 1 <= num_dice <= NUMDICE_MAX: 
+            raise ArgumentError('Number of rolls must be between 1 and {}'.format(NUMDICE_MAX))
+        if not 1 <= chosen_max <= DICE_MAX:
+            raise ArgumentError('Dice value must be between 1 and {}'.format(DICE_MAX))
+            
+        for char in modifiers:
+            if char not in ACCEPTABLE_IN_MODIFIER:
+                raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
+            if char == 'r':
+                special_calculation = True
+        if '**' in modifiers: #Exponentiation manually disabled, it can be pretty dangerous
+            raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
+    else:
+        num_dice,chosen_max,modifiers = 1,6,'' #Default
+        
+    roll = ''
+    
+    for i in range(num_dice):
+        divzero_attempts = 0
+        while True:
+            raw_roll = str(random.randint(1, chosen_max))
+            if modifiers == '':
+                aux_modifier = ''
+                mid_roll = int(raw_roll)
+            else:
+                if special_calculation:
+                    aux_modifier = modifiers.replace('r',raw_roll)+'='
+                elif modifiers[0].isdigit():
+                    aux_modifier = raw_roll+"+"+modifiers+'='
+                else:
+                    aux_modifier = raw_roll+modifiers+'='
+                
+                #Prevent any terms from reaching past MAXACCEPTABLETERM in order to prevent server lag due to potentially frivolous dice rolls
+                aux = aux_modifier[:-1]
+                for i in "+-*/()":
+                    aux = aux.replace(i,"!")
+                aux = aux.split('!')
+                for i in aux:
+                    try:
+                        if i != '' and round(float(i)) > MAXACCEPTABLETERM:
+                            raise ArgumentError("Given mathematical formula takes numbers past the server's computation limit")
+                    except ValueError:
+                        raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                        
+                try: 
+                    mid_roll = round(eval(aux_modifier[:-1])) #By this point it should be 'safe' to run eval
+                except SyntaxError:
+                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                except TypeError: #Deals with inputs like 3(r-1)
+                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                except ZeroDivisionError:
+                    divzero_attempts += 1
+                    if divzero_attempts == MAXDIVZERO_ATTEMPTS:
+                        raise ArgumentError('Given mathematical formula produces divisions by zero too often and cannot be computed')
+                    continue
+            break
+
+        final_roll = min(chosen_max,max(1,mid_roll))
+        if final_roll != mid_roll:
+            final_roll = "|"+str(final_roll) #This visually indicates the roll was capped off due to exceeding the acceptable roll range
+        else:
+            final_roll = str(final_roll)
+        if modifiers != '':
+            roll += str(raw_roll+':')
+        roll += str(aux_modifier+final_roll) + ', '
+    roll = roll[:-2]
+    if num_dice > 1:
+        roll = '(' + roll + ')'
+    
+    
+    
+    client.area.send_host_message('{} rolled {} out of {}.'.format(client.get_char_name(), roll, chosen_max))
+    logger.log_server(
+        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), roll, chosen_max))
+    
+def ooc_cmd_ddrollp(client, arg):
+    if not client.area.rollp_allowed and (not client.is_mod and not client.is_gm and not client.is_cm):
+        client.send_host_message("This command has been restricted to authorized users only in this area.")
+        return
+    
+    DICE_MAX = 11037
+    NUMDICE_MAX = 20
+    MODIFIER_LENGTH_MAX = 12 #Change to a higher at your own risk
+    ACCEPTABLE_IN_MODIFIER = '1234567890+-*/().r'
+    MAXDIVZERO_ATTEMPTS = 10
+    MAXACCEPTABLETERM = 10*DICE_MAX #Change to a higher number at your own risk
+    
+    special_calculation = False
+    args = arg.split(' ')
+    arg_length = len(args)
+    
+    if arg != '':
+        if arg_length == 2:
+            dice_type, modifiers = args
+            if len(modifiers) > MODIFIER_LENGTH_MAX:
+                raise ArgumentError('The given modifier is too long to compute. Please try a shorter one')
+        elif arg_length == 1:
+            dice_type, modifiers = arg, ''
+        else:
+             raise ArgumentError('This command takes one or two arguments. Use /ddroll [<num of rolls>]d[<max>] [modifiers]')
+
+        dice_type = dice_type.split('d')
+        if len(dice_type) == 1:
+            dice_type.insert(0,1)
+        if dice_type[0] == '':
+            dice_type[0] = '1'
+            
+        try:
+            num_dice,chosen_max = int(dice_type[0]),int(dice_type[1])
+        except ValueError:
+            raise ArgumentError('Expected integer value for number of rolls and max value of dice')
+
+        if not 1 <= num_dice <= NUMDICE_MAX: 
+            raise ArgumentError('Number of rolls must be between 1 and {}'.format(NUMDICE_MAX))
+        if not 1 <= chosen_max <= DICE_MAX:
+            raise ArgumentError('Dice value must be between 1 and {}'.format(DICE_MAX))
+            
+        for char in modifiers:
+            if char not in ACCEPTABLE_IN_MODIFIER:
+                raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
+            if char == 'r':
+                special_calculation = True
+        if '**' in modifiers: #Exponentiation manually disabled, it can be pretty dangerous
+            raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
+    else:
+        num_dice,chosen_max,modifiers = 1,6,'' #Default
+        
+    roll = ''
+    
+    for i in range(num_dice):
+        divzero_attempts = 0
+        while True:
+            raw_roll = str(random.randint(1, chosen_max))
+            if modifiers == '':
+                aux_modifier = ''
+                mid_roll = int(raw_roll)
+            else:
+                if special_calculation:
+                    aux_modifier = modifiers.replace('r',raw_roll)+'='
+                elif modifiers[0].isdigit():
+                    aux_modifier = raw_roll+"+"+modifiers+'='
+                else:
+                    aux_modifier = raw_roll+modifiers+'='
+                
+                #Prevent any terms from reaching past MAXACCEPTABLETERM in order to prevent server lag due to potentially frivolous dice rolls
+                aux = aux_modifier[:-1]
+                for i in "+-*/()":
+                    aux = aux.replace(i,"!")
+                aux = aux.split('!')
+                for i in aux:
+                    try:
+                        if i != '' and round(float(i)) > MAXACCEPTABLETERM:
+                            raise ArgumentError("Given mathematical formula takes numbers past the server's computation limit")
+                    except ValueError:
+                        raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                        
+                try: 
+                    mid_roll = round(eval(aux_modifier[:-1])) #By this point it should be 'safe' to run eval
+                except SyntaxError:
+                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                except TypeError: #Deals with inputs like 3(r-1)
+                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                except ZeroDivisionError:
+                    divzero_attempts += 1
+                    if divzero_attempts == MAXDIVZERO_ATTEMPTS:
+                        raise ArgumentError('Given mathematical formula produces divisions by zero too often and cannot be computed')
+                    continue
+            break
+
+        final_roll = min(chosen_max,max(1,mid_roll))
+        if final_roll != mid_roll:
+            final_roll = "|"+str(final_roll) #This visually indicates the roll was capped off due to exceeding the acceptable roll range
+        else:
+            final_roll = str(final_roll)
+        if modifiers != '':
+            roll += str(raw_roll+':')
+        roll += str(aux_modifier+final_roll) + ', '
+    roll = roll[:-2]
+    if num_dice > 1:
+        roll = '(' + roll + ')'
+        
+    client.send_host_message('You privately rolled {} out of {}.'.format(roll, chosen_max))    
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    'Someone rolled.', pred=lambda c: not (c.is_mod or c.is_gm or c.is_cm) 
+                                    and c != client and c.area.id == client.area.id) 
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    '{} privately rolled {} out of {} in {} ({}).'
+                                    .format(client.get_char_name(), roll, chosen_max, client.area.name, client.area.id), 
+                                    pred=lambda c: (c.is_mod or c.is_gm or c.is_cm) and c != client)
+    
+    SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
+    logger.log_server(
+        '[{}][{}]Used /ddrollp and got {} out of {}.'.format(client.area.id, client.get_char_name(), hashlib.sha1((str(roll) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, chosen_max))
+
+                                      
 def ooc_cmd_roll(client, arg):
     roll_max = 11037
     if len(arg) != 0:
@@ -103,7 +330,6 @@ def ooc_cmd_roll(client, arg):
     client.area.send_host_message('{} rolled {} out of {}.'.format(client.get_char_name(), roll, val[0]))
     logger.log_server(
         '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), roll, val[0]))
-
 
 def ooc_cmd_rollp(client, arg):
     roll_max = 11037
@@ -134,6 +360,17 @@ def ooc_cmd_rollp(client, arg):
     logger.log_server(
         '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), hashlib.sha1((str(roll) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, val[0]))
 
+def ooc_cmd_toggle_rollp(client, arg):
+    if (not client.is_mod and not client.is_gm and not client.is_cm):
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    if client.area.rollp_allowed:
+        client.area.rollp_allowed = False
+        client.area.send_host_message('The use of the private roll commands in this area has been restricted to authorized users only.')
+    else:
+        client.area.rollp_allowed = True
+        client.area.send_host_message('The use of the private roll commands in this area has been enabled to all users.')
 
 def ooc_cmd_currentmusic(client, arg):
     if len(arg) != 0:
@@ -496,18 +733,41 @@ def ooc_cmd_randomchar(client, arg):
 
 
 def ooc_cmd_getarea(client, arg):
-    if client.in_rp:
-        client.send_host_message("This command is not available in RP mode!")
+    if client.in_rp and client.area.rp_getarea_allowed == False:
+        client.send_host_message("This command has been restricted to authorized users only in this area while in RP mode.")
         return
     client.send_area_info(client.area.id, False)
 
 
 def ooc_cmd_getareas(client, arg):
-    if client.in_rp:
-        client.send_host_message("This command is not available in RP mode!")
+    if client.in_rp and client.area.rp_getareas_allowed == False:
+        client.send_host_message("This command has been restricted to authorized users only in this area while in RP mode.")
         return
     client.send_area_info(-1, False)
 
+def ooc_cmd_toggle_rpgetarea(client, arg):
+    if (not client.is_mod and not client.is_gm and not client.is_cm):
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    if client.area.rp_getarea_allowed == True:
+        client.area.rp_getarea_allowed = False
+        client.area.send_host_message('The use of the /getarea command in this area while in RP mode has been restricted to authorized users only.')
+    else:
+        client.area.rp_getarea_allowed = True
+        client.area.send_host_message('The use of the /getarea command in this area while in RP mode has been enabled to all users.')
+
+def ooc_cmd_toggle_rpgetareas(client, arg):
+    if (not client.is_mod and not client.is_gm and not client.is_cm):
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    if client.area.rp_getareas_allowed == True:
+        client.area.rp_getareas_allowed = False
+        client.area.send_host_message('The use of the /getareas command in this area while in RP mode has been restricted to authorized users only.')
+    else:
+        client.area.rp_getareas_allowed = True
+        client.area.send_host_message('The use of the /getareas command in this area while in RP mode has been enabled to all users.')
 
 def ooc_cmd_logout(client, arg):
     client.is_mod = False
@@ -995,3 +1255,12 @@ def ooc_cmd_unfollow(client, arg):
 
 def ooc_cmd_time(client, arg):
     client.send_host_message(time.asctime(time.localtime(time.time())))
+
+def ooc_cmd_time12(client, arg):
+    client.send_host_message(time.strftime('%a %b %e %I:%M:%S %p (%z) %Y'))
+    
+def ooc_cmd_st(client, arg):
+    if not client.is_gm and not client.is_cm and not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    client.server.send_all_cmd_pred('CT','{} [Staff] {}'.format(client.server.config['hostname'],client.name),arg,
+                                    pred=lambda c: c.is_mod or c.is_gm or c.is_cm)

@@ -243,6 +243,16 @@ class TsuServer3:
                 client.send_command(cmd, *args)
 
     def broadcast_global(self, client, msg, as_mod=False):
+        username = client.name
+        ooc_name = '{}[{}][{}]'.format('<dollar>G', client.area.id, username)
+        if as_mod:
+            ooc_name += '[M]'
+        self.send_all_cmd_pred('CT', ooc_name, msg, pred=lambda x: not x.muted_global)
+        if self.config['use_district']:
+            self.district_client.send_raw_message(
+                'GLOBAL#{}#{}#{}#{}'.format(int(as_mod), client.area.id, username, msg))
+            
+    def broadcast_global_old(self, client, msg, as_mod=False):
         char_name = client.get_char_name()
         ooc_name = '{}[{}][{}]'.format('<dollar>G', client.area.id, char_name)
         if as_mod:

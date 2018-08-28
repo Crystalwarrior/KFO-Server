@@ -26,7 +26,8 @@ from server.evidence import EvidenceList
 
 class AreaManager:
     class Area:
-        def __init__(self, area_id, server, name, background, bg_lock, evidence_mod = 'FFA', locking_allowed = False, iniswap_allowed = True):
+        def __init__(self, area_id, server, name, background, bg_lock, evidence_mod = 'FFA', locking_allowed = False, 
+                     iniswap_allowed = True, rp_getarea_allowed = True, rp_getareas_allowed = True, rollp_allowed = True):
             self.iniswap_allowed = iniswap_allowed
             self.clients = set()
             self.invite_list = {}
@@ -50,7 +51,9 @@ class AreaManager:
             self.evidence_mod = evidence_mod
             self.locking_allowed = locking_allowed
             self.owned = False
-
+            self.rp_getarea_allowed = rp_getarea_allowed
+            self.rp_getareas_allowed = rp_getareas_allowed
+            self.rollp_allowed = rollp_allowed
             """
             #debug
             self.evidence_list.append(Evidence("WOW", "desc", "1.png"))
@@ -200,8 +203,17 @@ class AreaManager:
                 item['locking_allowed'] = False
             if 'iniswap_allowed' not in item:
                 item['iniswap_allowed'] = True
+            if 'rp_getarea_allowed' not in item:
+                item['rp_getarea_allowed'] = True
+            if 'rp_getareas_allowed' not in item:
+                item['rp_getareas_allowed'] = True
+            if 'rollp_allowed' not in item:
+                item['rollp_allowed'] = True
+            
             self.areas.append(
-                self.Area(self.cur_id, self.server, item['area'], item['background'], item['bglock'], item['evidence_mod'], item['locking_allowed'], item['iniswap_allowed']))
+                self.Area(self.cur_id, self.server, item['area'], item['background'], 
+                          item['bglock'], item['evidence_mod'], item['locking_allowed'], 
+                          item['iniswap_allowed'], item['rp_getarea_allowed'], item['rp_getareas_allowed'], item['rollp_allowed']))
             self.cur_id += 1
 
     def default_area(self):
