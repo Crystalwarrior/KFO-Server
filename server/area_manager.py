@@ -96,7 +96,7 @@ class AreaManager:
             self.invite_list = {}
         
         def is_char_available(self, char_id):
-            return char_id not in [x.char_id for x in self.clients]
+            return (char_id == -1) or (char_id not in [x.char_id for x in self.clients])
 
         def get_rand_avail_char_id(self):
             avail_set = set(range(len(self.server.char_list))) - set([x.char_id for x in self.clients])

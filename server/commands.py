@@ -1264,3 +1264,4 @@ def ooc_cmd_st(client, arg):
         raise ClientError('You must be authorized to do that.')
     client.server.send_all_cmd_pred('CT','{} [Staff] {}'.format(client.server.config['hostname'],client.name),arg,
                                     pred=lambda c: c.is_mod or c.is_gm or c.is_cm)
+    

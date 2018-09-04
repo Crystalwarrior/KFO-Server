@@ -152,7 +152,7 @@ class ClientManager:
             if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
                 raise ClientError('That area is mod-locked!')
             old_area = self.area
-            if not area.is_char_available(self.char_id) and not self.char_id == -1:
+            if not area.is_char_available(self.char_id):
                 try:
                     new_char_id = area.get_rand_avail_char_id()
                 except AreaError:
@@ -388,7 +388,7 @@ class ClientManager:
 
         def get_char_name(self):
             if self.char_id == -1:
-                return 'CHAR_SELECT'
+                return self.server.spectator_name
             return self.server.char_list[self.char_id]
 
         def change_position(self, pos=''):

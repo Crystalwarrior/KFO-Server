@@ -60,6 +60,7 @@ class TsuServer3:
         self.ms_client = None
         self.rp_mode = False
         self.user_auth_req = False
+        self.spectator_name = 'SPECTATOR'
         logger.setup_logger(debug=self.config['debug'])
 
     def start(self):
@@ -132,6 +133,7 @@ class TsuServer3:
     def load_characters(self):
         with open('config/characters.yaml', 'r', encoding = 'utf-8') as chars:
             self.char_list = yaml.load(chars)
+        print(self.char_list)
         self.build_char_pages_ao1()
 
     def load_music(self):
@@ -218,9 +220,11 @@ class TsuServer3:
                 self.music_list_ao2.append(song['name'])
 
     def is_valid_char_id(self, char_id):
-        return len(self.char_list) > char_id >= 0
+        return len(self.char_list) > char_id >= -1
 
     def get_char_id_by_name(self, name):
+        if name == self.spectator_name:
+            return -1
         for i, ch in enumerate(self.char_list):
             if ch.lower() == name.lower():
                 return i
