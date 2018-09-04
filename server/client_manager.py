@@ -57,7 +57,8 @@ class ClientManager:
             self.mod_call_time = 0
             self.in_rp = False
             self.ipid = ipid
-
+            self.is_user_auth = False
+            
             self.following = ''
             self.followedby = ''
             
@@ -151,7 +152,7 @@ class ClientManager:
             if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
                 raise ClientError('That area is mod-locked!')
             old_area = self.area
-            if not area.is_char_available(self.char_id):
+            if not area.is_char_available(self.char_id) and not self.char_id == -1:
                 try:
                     new_char_id = area.get_rand_avail_char_id()
                 except AreaError:

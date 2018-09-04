@@ -379,7 +379,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_ooc_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_host_message("You have been muted by a moderator")
             return
-        if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR):
+        if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR, needs_auth=False):
             return
         if self.client.name != args[0] and self.client.fake_name != args[0]:
             if self.client.is_valid_name(args[0]):
@@ -390,6 +390,9 @@ class AOProtocol(asyncio.Protocol):
                 self.client.name = ''
         if self.client.name == '':
             self.client.send_host_message('You must insert a name with at least one letter')
+            return
+        if self.client.name.startswith(' '):
+            self.client.send_host_message('You must insert a name that starts with a letter')
             return
         if self.server.config['hostname'] in self.client.name or '<dollar>G' in self.client.name:
             self.client.send_host_message('That name is reserved!')

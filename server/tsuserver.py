@@ -59,6 +59,7 @@ class TsuServer3:
         self.district_client = None
         self.ms_client = None
         self.rp_mode = False
+        self.user_auth_req = False
         logger.setup_logger(debug=self.config['debug'])
 
     def start(self):

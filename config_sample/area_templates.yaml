@@ -1,0 +1,32 @@
+- apply_template_ranges: true
+  default: 0/1, 4/6, 5/7
+  RP: 3, 4, 9/15
+  AO_Courtroom: 1
+- template_name: default
+  area: Default Area Name <AN>
+  background: Gym_HD
+  evidence_mod: FFA
+  bglock: false
+  locking_allowed: false
+  iniswap_allowed: true
+- template_name: RP
+  area: Room <AN>
+  background: Kitchen_HD
+  bglock: true
+  evidence_mod: CM
+  locking_allowed: true
+  iniswap_allowed: true
+  rp_getarea_allowed: false
+- template_name: AO_Courtroom 
+  area: Courtroom No. <AN>
+  background: gs4
+  bglock: true
+  evidence_mod: CM
+  locking_allowed: false
+  rp_getarea_allowed: true
+  rp_getareas_allowed: true
+- template_name: OOC_Stuff
+  area: OOC
+  background: Principal's Room_HD
+  eivdence_mod: HiddenCM
+  iniswap_allowed: true
