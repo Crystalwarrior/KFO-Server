@@ -60,7 +60,7 @@ class TsuServer3:
         self.ms_client = None
         self.rp_mode = False
         self.user_auth_req = False
-        self.spectator_name = 'SPECTATOR'
+        self.spectator_name = 'CHAR_SELECT'
         logger.setup_logger(debug=self.config['debug'])
 
     def start(self):
@@ -133,7 +133,6 @@ class TsuServer3:
     def load_characters(self):
         with open('config/characters.yaml', 'r', encoding = 'utf-8') as chars:
             self.char_list = yaml.load(chars)
-        print(self.char_list)
         self.build_char_pages_ao1()
 
     def load_music(self):
@@ -208,11 +207,16 @@ class TsuServer3:
                 index += 1
         self.music_pages_ao1 = [self.music_pages_ao1[x:x + 10] for x in range(0, len(self.music_pages_ao1), 10)]
 
-    def build_music_list_ao2(self):
+    def build_music_list_ao2(self,from_area=None):
         self.music_list_ao2 = []
+        #Uncomment when client is fixed to actually support music list changes
+        #need_to_check = (from_area is None or '<ALL>' in from_area.reachable_areas)
+        need_to_check = True #Comment out when uncommenting previous line
+        
         # add areas first
         for area in self.area_manager.areas:
-            self.music_list_ao2.append(area.name)
+            if need_to_check or area.name in from_area.reachable_areas:
+                self.music_list_ao2.append(area.name)
             # then add music
         for item in self.music_list:
             self.music_list_ao2.append(item['category'])

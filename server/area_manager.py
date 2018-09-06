@@ -27,7 +27,8 @@ from server.evidence import EvidenceList
 class AreaManager:
     class Area:
         def __init__(self, area_id, server, name, background, bg_lock, evidence_mod = 'FFA', locking_allowed = False, 
-                     iniswap_allowed = True, rp_getarea_allowed = True, rp_getareas_allowed = True, rollp_allowed = True):
+                     iniswap_allowed = True, rp_getarea_allowed = True, rp_getareas_allowed = True, 
+                     rollp_allowed = True, reachable_areas = '<ALL>', change_reachability_allowed = False):
             self.iniswap_allowed = iniswap_allowed
             self.clients = set()
             self.invite_list = {}
@@ -54,6 +55,12 @@ class AreaManager:
             self.rp_getarea_allowed = rp_getarea_allowed
             self.rp_getareas_allowed = rp_getareas_allowed
             self.rollp_allowed = rollp_allowed
+            #print(name,reachable_areas)
+            self.reachable_areas = set(reachable_areas.split(", "))
+            if '<ALL>' not in self.reachable_areas:
+                self.reachable_areas.add(self.name) #Safety feature, yay sets
+            self.change_reachability_allowed = change_reachability_allowed
+            
             """
             #debug
             self.evidence_list.append(Evidence("WOW", "desc", "1.png"))
@@ -193,6 +200,18 @@ class AreaManager:
         self.areas = []
         self.load_areas()
 
+    def get_area_by_name(self, name):
+        for area in self.areas:
+            if area.name == name:
+                return area
+        raise AreaError('Area not found.')
+
+    def get_area_by_id(self, num):
+        for area in self.areas:
+            if area.id == num:
+                return area
+        raise AreaError('Area not found.')
+        
     def load_areas(self):
         with open('config/areas.yaml', 'r') as chars:
             areas = yaml.load(chars)
@@ -209,24 +228,28 @@ class AreaManager:
                 item['rp_getareas_allowed'] = True
             if 'rollp_allowed' not in item:
                 item['rollp_allowed'] = True
+            if 'reachable_areas' not in item:
+                item['reachable_areas'] = '<ALL>'
+            if 'change_reachability_allowed' not in item:
+                item['change_reachability_allowed'] = False
             
             self.areas.append(
                 self.Area(self.cur_id, self.server, item['area'], item['background'], 
                           item['bglock'], item['evidence_mod'], item['locking_allowed'], 
-                          item['iniswap_allowed'], item['rp_getarea_allowed'], item['rp_getareas_allowed'], item['rollp_allowed']))
+                          item['iniswap_allowed'], item['rp_getarea_allowed'], item['rp_getareas_allowed'], 
+                          item['rollp_allowed'],item['reachable_areas'],item['change_reachability_allowed']))
             self.cur_id += 1
-
+        
+        #This code guarantees area reachability being a bidirectional relationship on bootup
+        for area in self.areas:
+            for reachable_area_name in area.reachable_areas:
+                if reachable_area_name in ['<ALL>',area.name]:
+                    continue
+                reachable_area = self.get_area_by_name(reachable_area_name)
+                if '<ALL>' not in reachable_area.reachable_areas:
+                    reachable_area.reachable_areas.add(area.name) #Yay sets
+            #print(area.reachable_areas)
+                    
     def default_area(self):
         return self.areas[0]
 
-    def get_area_by_name(self, name):
-        for area in self.areas:
-            if area.name == name:
-                return area
-        raise AreaError('Area not found.')
-
-    def get_area_by_id(self, num):
-        for area in self.areas:
-            if area.id == num:
-                return area
-        raise AreaError('Area not found.')

@@ -266,7 +266,9 @@ class AOProtocol(asyncio.Protocol):
         AM#%
 
         """
-
+        #Uncomment when client is fixed to actually support music list changes
+        #self.server.build_music_list_ao2(self.client.area)
+        #print(self.server.music_list_ao2)
         self.client.send_command('SM', *self.server.music_list_ao2)
         
 
@@ -370,6 +372,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.area.is_recording:
             self.client.area.recorded_messages.append(args)
 
+        self.client.send_command('SM', *self.server.music_list_ao2)
     def net_cmd_ct(self, args):
         """ OOC Message
 

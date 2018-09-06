@@ -736,14 +736,14 @@ def ooc_cmd_getarea(client, arg):
     if client.in_rp and client.area.rp_getarea_allowed == False:
         client.send_host_message("This command has been restricted to authorized users only in this area while in RP mode.")
         return
-    client.send_area_info(client.area.id, False)
+    client.send_area_info(client.area, client.area.id, False)
 
 
 def ooc_cmd_getareas(client, arg):
     if client.in_rp and client.area.rp_getareas_allowed == False:
         client.send_host_message("This command has been restricted to authorized users only in this area while in RP mode.")
         return
-    client.send_area_info(-1, False)
+    client.send_area_info(client.area, -1, False)
 
 def ooc_cmd_toggle_rpgetarea(client, arg):
     if (not client.is_mod and not client.is_gm and not client.is_cm):
@@ -1265,3 +1265,9 @@ def ooc_cmd_st(client, arg):
     client.server.send_all_cmd_pred('CT','{} [Staff] {}'.format(client.server.config['hostname'],client.name),arg,
                                     pred=lambda c: c.is_mod or c.is_gm or c.is_cm)
     
+def ooc_cmd_minimap(client, arg):
+    info = '== Areas reachable from {} =='.format(client.area.name)
+    for area in client.area.reachable_areas:
+        if area != client.area.name:
+            info += '\r\n*{}'.format(area)
+    client.send_host_message(info)

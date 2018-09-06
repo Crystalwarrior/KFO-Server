@@ -151,6 +151,14 @@ class ClientManager:
                 raise ClientError('That area is gm-locked!')
             if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
                 raise ClientError('That area is mod-locked!')
+                
+            if not (area.name in self.area.reachable_areas or '<ALL>' in self.area.reachable_areas or \
+            (self.is_mod or self.is_gm or self.is_cm)):
+                info = 'Selected area cannot be reached from the current one without authorization. Try one of the following instead: '
+                for area in self.area.reachable_areas:
+                    if area != self.area.name:
+                        info += '\r\n*{}'.format(area)
+                raise ClientError(info)
             old_area = self.area
             if not area.is_char_available(self.char_id):
                 try:
@@ -176,7 +184,10 @@ class ClientManager:
             self.send_command('HP', 2, self.area.hp_pro)
             self.send_command('BN', self.area.background)
             self.send_command('LE', *self.area.get_evidence_list(self))
-
+            #Uncomment when client is fixed to actually support music list changes
+            #self.server.build_music_list_ao2(self.area)
+            #print(self.server.music_list_ao2)
+            #self.send_command('SM', *self.server.music_list_ao2)
             if self.followedby != "":
                 self.followedby.follow_area(area)
 
@@ -277,14 +288,16 @@ class ClientManager:
                     info += ' ({})'.format(c.ipid)
             return info
 
-        def send_area_info(self, area_id, mods): 
+        def send_area_info(self, current_area, area_id, mods): 
             #if area_id is -1 then return all areas. If mods is True then return only mods
             info = ''
             if area_id == -1:
                 # all areas info
                 info = '== Area List =='
+                unrestricted_access_area = '<ALL>' in current_area.reachable_areas
                 for i in range(len(self.server.area_manager.areas)):
-                    if len(self.server.area_manager.areas[i].clients) > 0:
+                    if ((unrestricted_access_area or self.server.area_manager.areas[i].name in current_area.reachable_areas) or \
+                        (self.is_mod or self.is_cm or self.is_gm)) and len(self.server.area_manager.areas[i].clients) > 0:
                         info += '\r\n{}'.format(self.get_area_info(i, mods))
             else:
                 try:
