@@ -142,7 +142,7 @@ class ClientManager:
             except ClientError:
                 raise
 
-        def change_area(self, area):
+        def change_area(self, area,override = False):
             if self.area == area:
                 raise ClientError('User is already in target area.')
             if area.is_locked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
@@ -153,11 +153,18 @@ class ClientManager:
                 raise ClientError('That area is mod-locked!')
                 
             if not (area.name in self.area.reachable_areas or '<ALL>' in self.area.reachable_areas or \
-            (self.is_mod or self.is_gm or self.is_cm)):
+            (self.is_mod or self.is_gm or self.is_cm) or override):
                 info = 'Selected area cannot be reached from the current one without authorization. Try one of the following instead: '
-                for area in self.area.reachable_areas:
-                    if area != self.area.name:
-                        info += '\r\n*{}'.format(area)
+                if self.area.reachable_areas == {self.area.name}:
+                    info += '\r\n*No areas available.'
+                else:
+                    try:
+                        sorted_areas = sorted(self.area.reachable_areas,key = lambda area_name: self.server.area_manager.get_area_by_name(area_name).id)
+                        for area in sorted_areas:
+                            if area != self.area.name:
+                                info += '\r\n*{}'.format(area)
+                    except AreaError: #When would you ever execute this piece of code is beyond me, but meh
+                        info += '\r\n<ALL>'
                 raise ClientError(info)
             old_area = self.area
             if not area.is_char_available(self.char_id):

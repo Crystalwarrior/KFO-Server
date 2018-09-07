@@ -796,7 +796,7 @@ def ooc_cmd_cleargm(client, arg):
 
 def ooc_cmd_lock(client, arg):
     if not client.area.locking_allowed:
-        client.send_host_message('Area locking is disabled in this area')
+        client.send_host_message('Area locking is disabled in this area.')
         return
     if client.area.is_locked:
         client.send_host_message('Area is already locked.')
@@ -807,7 +807,94 @@ def ooc_cmd_lock(client, arg):
             client.area.invite_list[i.ipid] = None
         return
 
+def ooc_cmd_bilock(client, arg):
+    areas = arg.split(', ')
+    if len(areas) > 2 or arg == '':
+        raise ClientError('This command takes one or two arguments.')
+    if len(areas) == 1:
+        areas.insert(0,client.area.name)
+    for i in range(2):
+        #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
+        #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
+        #If you are that person... just... why
+        try:
+            areas[i] = client.server.area_manager.get_area_by_name(areas[i].replace(',\\',','))
+        except AreaError:
+            try:
+                areas[i] = client.server.area_manager.get_area_by_name(areas[i])
+            except AreaError:
+                try:
+                    areas[i] = client.server.area_manager.get_area_by_id(areas[i])
+                except:
+                    raise ClientError('Could not parse argument {}'.format(areas[i]))
+        if not areas[i].change_reachability_allowed and not (client.is_mod or client.is_cm or client.is_gm):
+            client.send_host_message('Changing area reachability without authorization is disabled in area {}.'.format(areas[i].name))
+            return
+    
+    if areas[0] == areas[1]:
+        raise ClientError('Areas must be different.')
+        
+    now_reachable = []
+    for i in range(2):
+        reachable = areas[i].reachable_areas
+        #print(areas[i].name,reachable)
+        now_reachable.append(False)
+        if reachable == {'<ALL>'}:
+            reachable = client.server.area_manager.area_names - {areas[1-i].name}
+        else:
+            if areas[1-i].name in reachable:
+                reachable = reachable - {areas[1-i].name}
+            else:
+                reachable.add(areas[1-i].name)
+                now_reachable[i] = True
+        areas[i].reachable_areas = reachable
+    if now_reachable[0] == now_reachable[1]:
+        client.send_host_message('Set area reachability between {} and {} to {}'.format(areas[0].name,areas[1].name,now_reachable[0]))
+    else:
+        client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name,areas[1].name,now_reachable[0]))
+        client.send_host_message('Set area reachbility from {} to {} to {}'.format(areas[1].name,areas[0].name,now_reachable[1]))
+        
+def ooc_cmd_unilock(client, arg):
+    areas = arg.split(', ')
+    if len(areas) > 2 or arg == '':
+        raise ClientError('This command takes one or two arguments.')
+    if len(areas) == 1:
+        areas.insert(0,client.area.name)
+    for i in range(2):
+        #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
+        #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
+        #If you are that person... just... why
+        try:
+            areas[i] = client.server.area_manager.get_area_by_name(areas[i].replace(',\\',','))
+        except AreaError:
+            try:
+                areas[i] = client.server.area_manager.get_area_by_name(areas[i])
+            except AreaError:
+                try:
+                    areas[i] = client.server.area_manager.get_area_by_id(areas[i])
+                except:
+                    raise ClientError('Could not parse argument {}'.format(areas[i]))
 
+    if not areas[0].change_reachability_allowed and not (client.is_mod or client.is_cm or client.is_gm):
+        client.send_host_message('Changing area reachability without authorization is disabled in area {}.'.format(areas[0].name))
+        return
+
+    if areas[0] == areas[1]:
+        raise ClientError('Areas must be different.')
+        
+    now_reachable = False
+    reachable = areas[0].reachable_areas
+    if reachable == {'<ALL>'}:
+        reachable = client.server.area_manager.area_names - {areas[1].name}
+    else:
+        if areas[1].name in reachable:
+            reachable = reachable - {areas[1].name}
+        else:
+            reachable.add(areas[1].name)
+            now_reachable = True
+    areas[0].reachable_areas = reachable
+    client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name,areas[1].name,now_reachable))
+ 
 def ooc_cmd_gmlock(client, arg):
     if not client.area.locking_allowed:
         client.send_host_message('Area locking is disabled in this area')
@@ -922,7 +1009,7 @@ def ooc_cmd_area_kick(client, arg):
                     except AreaError:
                         raise
                 client.send_host_message("Attempting to kick {} to area {}.".format(c.get_char_name(), output))
-                c.change_area(area)
+                c.change_area(area,override=True)
                 c.send_host_message("You were kicked from the area to area {}.".format(output))
                 if client.area.is_locked or client.area.is_modlocked:
                     client.area.invite_list.pop(c.ipid)
@@ -1267,7 +1354,14 @@ def ooc_cmd_st(client, arg):
     
 def ooc_cmd_minimap(client, arg):
     info = '== Areas reachable from {} =='.format(client.area.name)
-    for area in client.area.reachable_areas:
-        if area != client.area.name:
-            info += '\r\n*{}'.format(area)
+    try:
+        sorted_areas = sorted(client.area.reachable_areas,key = lambda area_name: client.server.area_manager.get_area_by_name(area_name).id)
+        if len(sorted_areas) <= 1:
+            info += '\r\n*No areas available.'
+        else:
+            for area in sorted_areas:
+                if area != client.area.name:
+                    info += '\r\n*{}'.format(area)
+    except AreaError:
+        info += '\r\n<ALL>'
     client.send_host_message(info)
