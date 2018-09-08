@@ -59,7 +59,9 @@ class AreaManager:
             self.reachable_areas = reachable_areas.split(", ")
             for i in range(len(self.reachable_areas)): #Ah, escape characters... again...
                 self.reachable_areas[i] = self.reachable_areas[i].replace(',\\',',')
+            self.default_reachable_areas = set(self.reachable_areas[:])
             self.reachable_areas = set(self.reachable_areas)
+
             if '<ALL>' not in self.reachable_areas:
                 self.reachable_areas.add(self.name) #Safety feature, yay sets
             self.change_reachability_allowed = change_reachability_allowed

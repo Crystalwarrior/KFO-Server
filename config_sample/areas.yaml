@@ -11,7 +11,7 @@
   evidence_mod: CM
   locking_allowed: true
   iniswap_allowed: true
-  reachable_areas: Courtroom,\ 2
+  reachable_areas: Courtroom,\ 2, Basement
 - area: Courtroom, 2
   background: gs4
   bglock: false
