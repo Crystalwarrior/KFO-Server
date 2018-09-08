@@ -863,7 +863,7 @@ def ooc_cmd_bilock(client, arg):
             else:
                 if not (client.is_mod or client.is_cm or client.is_gm) and not (areas[1-i].name in areas[i].default_reachable_areas or
                        areas[i].default_reachable_areas == {'<ALL>'}):
-                    client.send_host_message('You must be authorized to create new link from {} to {}.'.format(areas[i].name,areas[1-i].name))
+                    client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[i].name,areas[1-i].name))
                     areas[0].reachable_areas = formerly_reachable[0]
                     areas[1].reachable_areas = formerly_reachable[1]
                     return
@@ -918,7 +918,7 @@ def ooc_cmd_unilock(client, arg):
         else:
             if not (client.is_mod or client.is_cm or client.is_gm) and not (areas[1].name in areas[0].default_reachable_areas or
                    areas[0].default_reachable_areas == {'<ALL>'}):
-                client.send_host_message('You must be authorized to create new link from {} to {}.'.format(areas[0].name,areas[1].name))
+                client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[0].name,areas[1].name))
                 return
             reachable.add(areas[1].name)
             now_reachable = True
@@ -931,8 +931,10 @@ def ooc_cmd_restore_areareachlock(client, arg):
     if not (client.is_mod or client.is_cm or client.is_gm): 
         raise ClientError('You must be authorized to do that.')
     areas = arg.split(', ')
-    if len(areas) > 2 or arg == '':
-        raise ClientError('This command takes two arguments.')
+    if len(areas) > 2:
+        raise ClientError('This command takes at most two arguments.')
+    elif arg == '':
+        areas = [client.area.name,client.area.name]
     elif len(areas) == 1:
         areas.append(areas[0])
         
