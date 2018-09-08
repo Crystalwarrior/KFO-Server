@@ -372,7 +372,6 @@ class AOProtocol(asyncio.Protocol):
         if self.client.area.is_recording:
             self.client.area.recorded_messages.append(args)
 
-        self.client.send_command('SM', *self.server.music_list_ao2)
     def net_cmd_ct(self, args):
         """ OOC Message
 
