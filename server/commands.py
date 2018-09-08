@@ -861,8 +861,8 @@ def ooc_cmd_bilock(client, arg):
             if areas[1-i].name in reachable:
                 reachable = reachable - {areas[1-i].name}
             else:
-                if not (client.is_mod or client.is_cm or client.is_gm) and not (areas[1-i].name in areas[i].default_reachable_areas or
-                       areas[i].default_reachable_areas == {'<ALL>'}):
+                if not (client.is_mod or client.is_cm or client.is_gm) and not (areas[1-i].name in areas[i].staffset_reachable_areas or
+                       areas[i].staffset_reachable_areas == {'<ALL>'}):
                     client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[i].name,areas[1-i].name))
                     areas[0].reachable_areas = formerly_reachable[0]
                     areas[1].reachable_areas = formerly_reachable[1]
@@ -871,7 +871,7 @@ def ooc_cmd_bilock(client, arg):
                 now_reachable[i] = True
         areas[i].reachable_areas = reachable
         if (client.is_mod or client.is_cm or client.is_gm):
-            areas[i].default_reachable_areas = reachable
+            areas[i].staffset_reachable_areas = reachable
     if now_reachable[0] == now_reachable[1]:
         client.send_host_message('Set area reachability between {} and {} to {}'.format(areas[0].name,areas[1].name,now_reachable[0]))
     else:
@@ -916,15 +916,15 @@ def ooc_cmd_unilock(client, arg):
         if areas[1].name in reachable:
             reachable = reachable - {areas[1].name}
         else:
-            if not (client.is_mod or client.is_cm or client.is_gm) and not (areas[1].name in areas[0].default_reachable_areas or
-                   areas[0].default_reachable_areas == {'<ALL>'}):
+            if not (client.is_mod or client.is_cm or client.is_gm) and not (areas[1].name in areas[0].staffset_reachable_areas or
+                   areas[0].staffset_reachable_areas == {'<ALL>'}):
                 client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[0].name,areas[1].name))
                 return
             reachable.add(areas[1].name)
             now_reachable = True
     areas[0].reachable_areas = reachable
     if (client.is_mod or client.is_cm or client.is_gm):
-        areas[0].default_reachable_areas = reachable
+        areas[0].staffset_reachable_areas = reachable
     client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name,areas[1].name,now_reachable))
     
 def ooc_cmd_restore_areareachlock(client, arg):
@@ -959,6 +959,7 @@ def ooc_cmd_restore_areareachlock(client, arg):
     for i in range(areas[0].id,areas[1].id+1):
         area = client.server.area_manager.get_area_by_id(i)
         area.reachable_areas = set(list(area.default_reachable_areas)[:])
+        area.change_reachability_allowed = area.default_change_reachability_allowed
 
     client.send_host_message('Restored area reachability from {} to {} to their default values.'.format(areas[0].name,areas[1].name))
 

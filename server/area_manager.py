@@ -55,16 +55,17 @@ class AreaManager:
             self.rp_getarea_allowed = rp_getarea_allowed
             self.rp_getareas_allowed = rp_getareas_allowed
             self.rollp_allowed = rollp_allowed
-            #print(name,reachable_areas)
             self.reachable_areas = reachable_areas.split(", ")
             for i in range(len(self.reachable_areas)): #Ah, escape characters... again...
                 self.reachable_areas[i] = self.reachable_areas[i].replace(',\\',',')
             self.default_reachable_areas = set(self.reachable_areas[:])
+            self.staffset_reachable_areas = set(self.reachable_areas[:])
             self.reachable_areas = set(self.reachable_areas)
 
             if '<ALL>' not in self.reachable_areas:
                 self.reachable_areas.add(self.name) #Safety feature, yay sets
             self.change_reachability_allowed = change_reachability_allowed
+            self.default_change_reachability_allowed = change_reachability_allowed #yay
             
             """
             #debug
