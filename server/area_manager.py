@@ -205,6 +205,7 @@ class AreaManager:
         self.cur_id = 0
         self.areas = []
         self.area_names = set()
+        self.reachable_area_names = set() #only used for validation
         self.load_areas()
 
     def get_area_by_name(self, name):
@@ -248,8 +249,20 @@ class AreaManager:
             if item['area'] in self.area_names:
                 raise AreaError('Unexpected duplicated area names in areas.yaml: {}'.format(item['area']))
             self.area_names.add(item['area'])
+            self.reachable_area_names = self.reachable_area_names.union(self.areas[-1].reachable_areas)
             self.cur_id += 1
         
+        unrecognized_areas = self.reachable_area_names-self.area_names-{'<ALL>'}
+        if unrecognized_areas != set():
+            raise AreaError('Unrecognized area names defined as a reachable area in areas.yaml: {}'.format(unrecognized_areas))
+        
+#        for area in self.areas:
+#            for reachable_area in area.reachable_areas:
+#                try:
+#                    self.get_area_by_name(reachable_area)
+#                except:
+#                    if reachable_area != '<ALL>':
+#                        raise AreaError('Unexpected reachable area name {} within the area definition of {} in areas.yaml'.format(reachable_area,area.name))
 #        #This code guarantees area reachability being a bidirectional relationship on bootup (commented out on purpose)
 #        for area in self.areas:
 #            for reachable_area_name in area.reachable_areas:
@@ -259,7 +272,8 @@ class AreaManager:
 #                if '<ALL>' not in reachable_area.reachable_areas:
 #                    reachable_area.reachable_areas.add(area.name) #Yay sets
 #            #print(area.reachable_areas)
-                    
+        
+        
     def default_area(self):
         return self.areas[0]
 
