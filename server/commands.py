@@ -422,19 +422,21 @@ def ooc_cmd_kick(client, arg):
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0 or len(arg) > 10:
-        raise ArgumentError('You must specify a target. Use /kick <ip, ipid>.')
+        raise ArgumentError('You must specify a target. Use /kick <id, ipid>.')
     if len(arg) == 10 and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
     elif len(arg) < 10 and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    if targets:
-        for c in targets:
-            logger.log_server('Kicked {}.'.format(c.ipid), client)
-            client.area.send_host_message("{} was kicked.".format(c.get_char_name()))
-            c.disconnect()
-    else:
-        client.send_host_message("No targets found.")
-
+    try:
+        if targets:
+            for c in targets:
+                logger.log_server('Kicked {}.'.format(c.ipid), client)
+                client.area.send_host_message("{} was kicked.".format(c.get_char_name()))
+                c.disconnect()
+        else:
+            client.send_host_message("No targets found.")
+    except UnboundLocalError:
+        raise ClientError('Unrecognized client ID or IPID: {}'.format(arg))
 		
 def ooc_cmd_kickself(client, arg):
     targets = client.server.client_manager.get_targets(client, TargetType.IPID, client.ipid, False)
