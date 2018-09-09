@@ -872,12 +872,32 @@ def ooc_cmd_bilock(client, arg):
         areas[i].reachable_areas = reachable
         if (client.is_mod or client.is_cm or client.is_gm):
             areas[i].staffset_reachable_areas = reachable
+        
     if now_reachable[0] == now_reachable[1]:
         client.send_host_message('Set area reachability between {} and {} to {}'.format(areas[0].name,areas[1].name,now_reachable[0]))
+ 
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    '{} used /bilock to {} area reachability between {} and {} in {} ({}).'
+                                    .format(client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
+                                            client.area.name, client.area.id), pred=lambda c: (c.is_mod or c.is_gm or c.is_cm) and c != client)
+        logger.log_server(
+            '[{}][{}] Used /bilock to {} area reachability between {} and {}.'
+            .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name))
+
     else:
         client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name,areas[1].name,now_reachable[0]))
         client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[1].name,areas[0].name,now_reachable[1]))
         
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    '{} used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {} in {} ({}).'
+                                    .format(client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
+                                            'unlock' if now_reachable[1] else 'lock', areas[1].name, areas[0].name, 
+                                            client.area.name, client.area.id), pred=lambda c: (c.is_mod or c.is_gm or c.is_cm) and c != client)
+        logger.log_server(
+            '[{}][{}] Used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {}.'
+            .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
+                                                            'unlock' if now_reachable[1] else 'lock', areas[1].name, areas[0].name))
+
 def ooc_cmd_unilock(client, arg):
     areas = arg.split(', ')
     if len(areas) > 2 or arg == '':
@@ -926,7 +946,15 @@ def ooc_cmd_unilock(client, arg):
     if (client.is_mod or client.is_cm or client.is_gm):
         areas[0].staffset_reachable_areas = reachable
     client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name,areas[1].name,now_reachable))
-    
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                '{} used /unilock to {} area reachability from {} to {} in {} ({}).'
+                                .format(client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name, 
+                                        client.area.name, client.area.id), pred=lambda c: (c.is_mod or c.is_gm or c.is_cm) and c != client)
+    logger.log_server(
+        '[{}][{}] Used /unilock to {} area reachability from {} to {}.'
+        .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name))
+
+
 def ooc_cmd_restore_areareachlock(client, arg):
     if not (client.is_mod or client.is_cm or client.is_gm): 
         raise ClientError('You must be authorized to do that.')
