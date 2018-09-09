@@ -182,7 +182,7 @@ def ooc_cmd_ddroll(client, arg):
     
     client.area.send_host_message('{} rolled {} out of {}.'.format(client.get_char_name(), roll, chosen_max))
     logger.log_server(
-        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), roll, chosen_max))
+        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), roll, chosen_max), client)
     
 def ooc_cmd_ddrollp(client, arg):
     if not client.area.rollp_allowed and (not client.is_mod and not client.is_gm and not client.is_cm):
@@ -301,7 +301,7 @@ def ooc_cmd_ddrollp(client, arg):
     
     SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
     logger.log_server(
-        '[{}][{}]Used /ddrollp and got {} out of {}.'.format(client.area.id, client.get_char_name(), hashlib.sha1((str(roll) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, chosen_max))
+        '[{}][{}]Used /ddrollp and got {} out of {}.'.format(client.area.id, client.get_char_name(), hashlib.sha1((str(roll) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, chosen_max), client)
 
                                       
 def ooc_cmd_roll(client, arg):
@@ -329,7 +329,7 @@ def ooc_cmd_roll(client, arg):
         roll = '(' + roll + ')'
     client.area.send_host_message('{} rolled {} out of {}.'.format(client.get_char_name(), roll, val[0]))
     logger.log_server(
-        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), roll, val[0]))
+        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), roll, val[0]), client)
 
 def ooc_cmd_rollp(client, arg):
     roll_max = 11037
@@ -358,7 +358,7 @@ def ooc_cmd_rollp(client, arg):
     client.area.send_host_message('{} rolled.'.format(client.get_char_name(), roll, val[0]))
     SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
     logger.log_server(
-        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), hashlib.sha1((str(roll) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, val[0]))
+        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), hashlib.sha1((str(roll) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, val[0]), client)
 
 def ooc_cmd_toggle_rollp(client, arg):
     if (not client.is_mod and not client.is_gm and not client.is_cm):
@@ -388,7 +388,7 @@ def ooc_cmd_coinflip(client, arg):
     flip = random.choice(coin)
     client.area.send_host_message('{} flipped a coin and got {}.'.format(client.get_char_name(), flip))
     logger.log_server(
-        '[{}][{}]Used /coinflip and got {}.'.format(client.area.id, client.get_char_name(), flip))
+        '[{}][{}]Used /coinflip and got {}.'.format(client.area.id, client.get_char_name(), flip), client)
 
 
 def ooc_cmd_motd(client, arg):
@@ -618,11 +618,11 @@ def ooc_cmd_doc(client, arg):
     if len(arg) == 0:
         client.send_host_message('Document: {}'.format(client.area.doc))
         logger.log_server(
-            '[{}][{}]Requested document. Link: {}'.format(client.area.id, client.get_char_name(), client.area.doc))
+            '[{}][{}]Requested document. Link: {}'.format(client.area.id, client.get_char_name(), client.area.doc), client)
     else:
         client.area.change_doc(arg)
         client.area.send_host_message('{} changed the doc link.'.format(client.get_char_name()))
-        logger.log_server('[{}][{}]Changed document to: {}'.format(client.area.id, client.get_char_name(), arg))
+        logger.log_server('[{}][{}]Changed document to: {}'.format(client.area.id, client.get_char_name(), arg), client)
 
 
 def ooc_cmd_cleardoc(client, arg):
@@ -630,7 +630,7 @@ def ooc_cmd_cleardoc(client, arg):
         raise ArgumentError('This command has no arguments.')
     client.area.send_host_message('{} cleared the doc link.'.format(client.get_char_name()))
     logger.log_server('[{}][{}]Cleared document. Old link: {}'
-                      .format(client.area.id, client.get_char_name(), client.area.doc))
+                      .format(client.area.id, client.get_char_name(), client.area.doc), client)
     client.area.change_doc()
 
 
@@ -881,8 +881,8 @@ def ooc_cmd_bilock(client, arg):
                                     .format(client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
                                             client.area.name, client.area.id), pred=lambda c: (c.is_mod or c.is_gm or c.is_cm) and c != client)
         logger.log_server(
-            '[{}][{}] Used /bilock to {} area reachability between {} and {}.'
-            .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name))
+            '[{}][{}]Used /bilock to {} area reachability between {} and {}.'
+            .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name), client)
 
     else:
         client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name,areas[1].name,now_reachable[0]))
@@ -894,9 +894,9 @@ def ooc_cmd_bilock(client, arg):
                                             'unlock' if now_reachable[1] else 'lock', areas[1].name, areas[0].name, 
                                             client.area.name, client.area.id), pred=lambda c: (c.is_mod or c.is_gm or c.is_cm) and c != client)
         logger.log_server(
-            '[{}][{}] Used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {}.'
+            '[{}][{}]Used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {}.'
             .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
-                                                            'unlock' if now_reachable[1] else 'lock', areas[1].name, areas[0].name))
+                                                            'unlock' if now_reachable[1] else 'lock', areas[1].name, areas[0].name), client)
 
 def ooc_cmd_unilock(client, arg):
     areas = arg.split(', ')
@@ -951,8 +951,8 @@ def ooc_cmd_unilock(client, arg):
                                 .format(client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name, 
                                         client.area.name, client.area.id), pred=lambda c: (c.is_mod or c.is_gm or c.is_cm) and c != client)
     logger.log_server(
-        '[{}][{}] Used /unilock to {} area reachability from {} to {}.'
-        .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name))
+        '[{}][{}]Used /unilock to {} area reachability from {} to {}.'
+        .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name), client)
 
 
 def ooc_cmd_restore_areareachlock(client, arg):
@@ -1406,7 +1406,7 @@ def ooc_cmd_ToD(client, arg):
     flip = random.choice(coin)
     client.area.send_host_message('{} has to do a {}.'.format(client.get_char_name(), flip))
     logger.log_server(
-        '[{}][{}]has to do a {}.'.format(client.area.id, client.get_char_name(), flip))
+        '[{}][{}]has to do a {}.'.format(client.area.id, client.get_char_name(), flip), client)
 
 				
 def ooc_cmd_8ball(client, arg):
@@ -1416,7 +1416,7 @@ def ooc_cmd_8ball(client, arg):
     flip = random.choice(coin)
     client.area.send_host_message('The magic 8 ball says {}.'.format(flip))
     logger.log_server(
-        'The magic 8 ball said {}.'.format(flip))
+        '[{}][{}]called upon the magic 8 ball and it said {}.'.format(client.area.id,client.get_char_name(),flip), client)
 		
 
 def ooc_cmd_discord(client, arg):
@@ -1459,4 +1459,4 @@ def ooc_cmd_st(client, arg):
         raise ClientError('You must be authorized to do that.')
     client.server.send_all_cmd_pred('CT','{} [Staff] {}'.format(client.server.config['hostname'],client.name),arg,
                                     pred=lambda c: c.is_mod or c.is_gm or c.is_cm)
-    
+    logger.log_server('[{}][STAFFCHAT][{}][{}]{}.'.format(client.area.id,client.get_char_name(),client.name,arg), client)
