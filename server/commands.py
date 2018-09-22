@@ -67,6 +67,17 @@ def ooc_cmd_bglock(client, arg):
     client.area.send_host_message('A mod has set the background lock to {}.'.format(client.area.bg_lock))
     logger.log_server('[{}][{}]Changed bglock to {}'.format(client.area.id, client.get_char_name(), client.area.bg_lock), client)
 
+def ooc_cmd_iclock(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    if client.area.ic_lock == True:
+        client.area.ic_lock = False
+    else:
+        client.area.ic_lock = True
+    client.area.send_host_message('A mod has set the IC lock to {}.'.format(client.area.ic_lock))
+    logger.log_server('[{}][{}]Changed iclock to {}'.format(client.area.id, client.get_char_name(), client.area.ic_lock), client)
 
 def ooc_cmd_allow_iniswap(client, arg):
     if not client.is_mod:

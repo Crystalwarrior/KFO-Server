@@ -310,6 +310,9 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_host_message("You have been muted by a moderator")
             return
+        if self.client.area.ic_lock and not (self.client.is_mod or self.client.is_cm or self.client.is_gm):
+            self.client.send_host_message("IC chat in this area has been locked by a moderator")
+            return            
         if not self.client.area.can_send_message():
             return
         if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR_OR_EMPTY, self.ArgType.STR,

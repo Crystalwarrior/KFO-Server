@@ -55,6 +55,8 @@ class AreaManager:
             self.rp_getarea_allowed = rp_getarea_allowed
             self.rp_getareas_allowed = rp_getareas_allowed
             self.rollp_allowed = rollp_allowed
+            self.ic_lock = False
+            
             self.reachable_areas = reachable_areas.split(", ")
             for i in range(len(self.reachable_areas)): #Ah, escape characters... again...
                 self.reachable_areas[i] = self.reachable_areas[i].replace(',\\',',')
