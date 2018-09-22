@@ -992,9 +992,9 @@ def ooc_cmd_restore_areareachlock(client, arg):
         area.change_reachability_allowed = area.default_change_reachability_allowed
 
     if areas[0] == areas[1]:    
-        client.send_host_message('Restored area reachability for area {} to its original value.'.format(areas[0].name))
+        client.send_host_message('Area passage locks have been set to standard in {}.'.format(areas[0].name))
     else:
-        client.send_host_message('Restored area reachability for areas {} through {} to their original values.'.format(areas[0].name,areas[1].name))
+        client.send_host_message('Area passage locks have been set to standard in {} through {}'.format(areas[0].name,areas[1].name))
 
 def ooc_cmd_toggle_areareachlock(client, arg):
     if not (client.is_mod or client.is_gm or client.is_cm):
