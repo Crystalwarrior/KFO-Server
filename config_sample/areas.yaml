@@ -12,6 +12,7 @@
   locking_allowed: true
   iniswap_allowed: true
   reachable_areas: Courtroom,\ 2, Basement
+  gm_iclock_allowed: false
 - area: Courtroom, 2
   background: gs4
   bglock: false
@@ -19,6 +20,7 @@
   locking_allowed: false
   iniswap_allowed: true
   change_reachability_allowed: false
+  gm_iclock_allowed: true
 - area: Courtroom 3
   background: gs4
   bglock: false

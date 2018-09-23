@@ -28,7 +28,8 @@ class AreaManager:
     class Area:
         def __init__(self, area_id, server, name, background, bg_lock, evidence_mod = 'FFA', locking_allowed = False, 
                      iniswap_allowed = True, rp_getarea_allowed = True, rp_getareas_allowed = True, 
-                     rollp_allowed = True, reachable_areas = '<ALL>', change_reachability_allowed = True):
+                     rollp_allowed = True, reachable_areas = '<ALL>', change_reachability_allowed = True,
+                     gm_iclock_allowed = True):
             self.iniswap_allowed = iniswap_allowed
             self.clients = set()
             self.invite_list = {}
@@ -56,6 +57,7 @@ class AreaManager:
             self.rp_getareas_allowed = rp_getareas_allowed
             self.rollp_allowed = rollp_allowed
             self.ic_lock = False
+            self.gm_iclock_allowed = gm_iclock_allowed
             
             self.reachable_areas = reachable_areas.split(", ")
             for i in range(len(self.reachable_areas)): #Ah, escape characters... again...
@@ -242,12 +244,15 @@ class AreaManager:
                 item['reachable_areas'] = '<ALL>'
             if 'change_reachability_allowed' not in item:
                 item['change_reachability_allowed'] = True
+            if 'gm_iclock_allowed' not in item:
+                item['gm_iclock_allowed'] = True
 
             self.areas.append(
                 self.Area(self.cur_id, self.server, item['area'], item['background'], 
                           item['bglock'], item['evidence_mod'], item['locking_allowed'], 
                           item['iniswap_allowed'], item['rp_getarea_allowed'], item['rp_getareas_allowed'], 
-                          item['rollp_allowed'],item['reachable_areas'],item['change_reachability_allowed']))
+                          item['rollp_allowed'], item['reachable_areas'], item['change_reachability_allowed'],
+                          item['gm_iclock_allowed']))
             if item['area'] in self.area_names:
                 raise AreaError('Unexpected duplicated area names in areas.yaml: {}'.format(item['area']))
             self.area_names.add(item['area'])
@@ -257,24 +262,6 @@ class AreaManager:
         unrecognized_areas = self.reachable_area_names-self.area_names-{'<ALL>'}
         if unrecognized_areas != set():
             raise AreaError('Unrecognized area names defined as a reachable area in areas.yaml: {}'.format(unrecognized_areas))
-        
-#        for area in self.areas:
-#            for reachable_area in area.reachable_areas:
-#                try:
-#                    self.get_area_by_name(reachable_area)
-#                except:
-#                    if reachable_area != '<ALL>':
-#                        raise AreaError('Unexpected reachable area name {} within the area definition of {} in areas.yaml'.format(reachable_area,area.name))
-#        #This code guarantees area reachability being a bidirectional relationship on bootup (commented out on purpose)
-#        for area in self.areas:
-#            for reachable_area_name in area.reachable_areas:
-#                if reachable_area_name in ['<ALL>',area.name]:
-#                    continue
-#                reachable_area = self.get_area_by_name(reachable_area_name)
-#                if '<ALL>' not in reachable_area.reachable_areas:
-#                    reachable_area.reachable_areas.add(area.name) #Yay sets
-#            #print(area.reachable_areas)
-        
         
     def default_area(self):
         return self.areas[0]
