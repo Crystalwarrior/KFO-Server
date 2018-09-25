@@ -61,6 +61,7 @@ class TsuServer3:
         self.rp_mode = False
         self.user_auth_req = False
         self.spectator_name = 'CHAR_SELECT'
+        self.default_area = 0
         logger.setup_logger(debug=self.config['debug'])
 
     def start(self):

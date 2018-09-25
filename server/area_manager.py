@@ -264,5 +264,5 @@ class AreaManager:
             raise AreaError('Unrecognized area names defined as a reachable area in areas.yaml: {}'.format(unrecognized_areas))
         
     def default_area(self):
-        return self.areas[0]
+        return self.areas[self.server.default_area]
 

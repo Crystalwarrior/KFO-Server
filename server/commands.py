@@ -1465,6 +1465,18 @@ def ooc_cmd_unfollow(client, arg):
     except AttributeError:
         client.send_host_message('You are not following anyone.')
 
+def ooc_cmd_defaultarea(client, arg):
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ClientError('This command takes one argument.')
+    try:
+        area = client.server.area_manager.get_area_by_id(int(arg)) 
+    except:
+        raise ClientError('Invalid parameter ' + arg)
+
+    client.server.default_area = int(arg)
+    client.send_host_message('Set default area to ' + arg)        
 
 def ooc_cmd_time(client, arg):
     client.send_host_message(time.asctime(time.localtime(time.time())))
