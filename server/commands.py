@@ -1009,6 +1009,44 @@ def ooc_cmd_restore_areareachlock(client, arg):
     else:
         client.send_host_message('Area passage locks have been set to standard in {} through {}'.format(areas[0].name,areas[1].name))
 
+def ooc_cmd_delete_areareachlock(client, arg):
+    if not (client.is_mod or client.is_cm or client.is_gm): 
+        raise ClientError('You must be authorized to do that.')
+    areas = arg.split(', ')
+    if len(areas) > 2:
+        raise ClientError('This command takes at most two arguments.')
+    elif arg == '':
+        areas = [client.area.name,client.area.name]
+    elif len(areas) == 1:
+        areas.append(areas[0])
+        
+    for i in range(2):
+        #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
+        #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
+        #If you are that person... just... why
+        try:
+            areas[i] = client.server.area_manager.get_area_by_name(areas[i].replace(',\\',','))
+        except AreaError:
+            try:
+                areas[i] = client.server.area_manager.get_area_by_name(areas[i])
+            except AreaError:
+                try:
+                    areas[i] = client.server.area_manager.get_area_by_id(int(areas[i]))
+                except:
+                    raise ClientError('Could not parse argument {}'.format(areas[i]))
+    
+    if areas[0].id > areas[1].id:
+        raise ClientError('The ID of the first area must be lower than the ID of the second area.')
+        
+    for i in range(areas[0].id,areas[1].id+1):
+        area = client.server.area_manager.get_area_by_id(i)
+        area.reachable_areas = '<ALL>'
+
+    if areas[0] == areas[1]:    
+        client.send_host_message('Area passage locks have been removed in {}.'.format(areas[0].name))
+    else:
+        client.send_host_message('Area passage locks have been removed in areas {} through {}'.format(areas[0].name,areas[1].name))
+
 def ooc_cmd_toggle_areareachlock(client, arg):
     if not (client.is_mod or client.is_gm or client.is_cm):
         raise ClientError('You must be authorized to do that.')
@@ -1476,7 +1514,7 @@ def ooc_cmd_defaultarea(client, arg):
         raise ClientError('Invalid parameter ' + arg)
 
     client.server.default_area = int(arg)
-    client.send_host_message('Set default area to ' + arg)        
+    client.send_host_message('Set default area to %s'.format(arg))        
 
 def ooc_cmd_time(client, arg):
     client.send_host_message(time.asctime(time.localtime(time.time())))
