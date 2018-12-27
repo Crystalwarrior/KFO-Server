@@ -322,6 +322,8 @@ class TsuServer3:
                 return
             if client.char_id < 0: # Assumes spectators are exempted from AFK kicks
                 return
+            if client.is_mod or client.is_cm or client.is_gm: # Assumes staff are exempted from AFK kicks
+                return
             
             client.send_host_message("You were kicked from area {} to area {} for being inactive for {} minutes.".format(client.area.id, afk_sendto, afk_delay))
             client.change_area(area, override=True)

@@ -805,6 +805,9 @@ def ooc_cmd_logout(client, arg):
         client.in_rp = True
     if client.area.evidence_mod == 'HiddenCM':
         client.area.broadcast_evidence_list()
+    # Now bound by AFK rules
+    client.server.create_task(client, ['as_afk_kick', client.area.afk_delay, client.area.afk_sendto])
+
     client.send_host_message('You are no longer logged in.')
 
 
