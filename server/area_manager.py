@@ -29,7 +29,7 @@ class AreaManager:
         def __init__(self, area_id, server, name, background, bg_lock, evidence_mod = 'FFA', locking_allowed = False, 
                      iniswap_allowed = True, rp_getarea_allowed = True, rp_getareas_allowed = True, 
                      rollp_allowed = True, reachable_areas = '<ALL>', change_reachability_allowed = True,
-                     gm_iclock_allowed = True):
+                     gm_iclock_allowed = True, afk_delay = 0, afk_sendto = 0):
             self.iniswap_allowed = iniswap_allowed
             self.clients = set()
             self.invite_list = {}
@@ -71,6 +71,8 @@ class AreaManager:
             self.change_reachability_allowed = change_reachability_allowed
             self.default_change_reachability_allowed = change_reachability_allowed #yay
             
+            self.afk_delay = afk_delay
+            self.afk_sendto = afk_sendto
             """
             #debug
             self.evidence_list.append(Evidence("WOW", "desc", "1.png"))
@@ -246,13 +248,17 @@ class AreaManager:
                 item['change_reachability_allowed'] = True
             if 'gm_iclock_allowed' not in item:
                 item['gm_iclock_allowed'] = True
+            if 'afk_delay' not in item:
+                item['afk_delay'] = 0
+            if 'afk_sendto' not in item:
+                item['afk_sendto'] = 0
 
             self.areas.append(
                 self.Area(self.cur_id, self.server, item['area'], item['background'], 
                           item['bglock'], item['evidence_mod'], item['locking_allowed'], 
                           item['iniswap_allowed'], item['rp_getarea_allowed'], item['rp_getareas_allowed'], 
                           item['rollp_allowed'], item['reachable_areas'], item['change_reachability_allowed'],
-                          item['gm_iclock_allowed']))
+                          item['gm_iclock_allowed'], item['afk_delay'], item['afk_sendto']))
             if item['area'] in self.area_names:
                 raise AreaError('Unexpected duplicated area names in areas.yaml: {}'.format(item['area']))
             self.area_names.add(item['area'])

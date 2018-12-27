@@ -112,6 +112,11 @@ class ClientManager:
                             client.char_select()
                 else:
                     raise ClientError('Character not available.')
+            
+            if self.char_id < 0 and char_id >= 0: # No longer spectator?
+                # Now bound by AFK rules
+                self.server.create_task(self, ['as_afk_kick', self.area.afk_delay, self.area.afk_sendto])
+            
             old_char = self.get_char_name()
             self.char_id = char_id
             self.pos = ''
@@ -175,7 +180,7 @@ class ClientManager:
 
                 self.change_character(new_char_id)
                 self.send_host_message('Character taken, switched to {}.'.format(self.get_char_name()))
-
+            self.server.create_task(self, ['as_afk_kick', area.afk_delay, area.afk_sendto])
             self.area.remove_client(self)
             self.area = area
             area.new_client(self)
@@ -472,6 +477,7 @@ class ClientManager:
         c = self.Client(self.server, transport, cur_id, self.server.get_ipid(transport.get_extra_info('peername')[0]))
         self.clients.add(c)
         self.cur_id[cur_id] = True
+        self.server.client_tasks[cur_id] = dict()
         return c
 
     def remove_client(self, client):
@@ -480,6 +486,8 @@ class ClientManager:
         except AttributeError:
             pass
         self.cur_id[client.id] = False
+        for task_id in self.server.client_tasks[client.id].keys(): # Cancel client's pending tasks 
+            self.server.client_tasks[client.id][task_id].cancel()
         self.clients.remove(client)
 
     def get_targets(self, client, key, value, local = False):

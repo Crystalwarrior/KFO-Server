@@ -62,38 +62,39 @@ class TsuServer3:
         self.user_auth_req = False
         self.spectator_name = 'CHAR_SELECT'
         self.default_area = 0
+        self.client_tasks = dict()
         logger.setup_logger(debug=self.config['debug'])
 
     def start(self):
-        loop = asyncio.get_event_loop()
+        self.loop = asyncio.get_event_loop()
 
         bound_ip = '0.0.0.0'
         if self.config['local']:
             bound_ip = '127.0.0.1'
 
-        ao_server_crt = loop.create_server(lambda: AOProtocol(self), bound_ip, self.config['port'])
-        ao_server = loop.run_until_complete(ao_server_crt)
+        ao_server_crt = self.loop.create_server(lambda: AOProtocol(self), bound_ip, self.config['port'])
+        ao_server = self.loop.run_until_complete(ao_server_crt)
 
         if self.config['use_district']:
             self.district_client = DistrictClient(self)
-            asyncio.ensure_future(self.district_client.connect(), loop=loop)
+            asyncio.ensure_future(self.district_client.connect(), loop=self.loop)
 
         if self.config['use_masterserver']:
             self.ms_client = MasterServerClient(self)
-            asyncio.ensure_future(self.ms_client.connect(), loop=loop)
+            asyncio.ensure_future(self.ms_client.connect(), loop=self.loop)
 
         logger.log_debug('Server started.')
 
         try:
-            loop.run_forever()
+            self.loop.run_forever()
         except KeyboardInterrupt:
             pass
 
         logger.log_debug('Server shutting down.')
 
         ao_server.close()
-        loop.run_until_complete(ao_server.wait_closed())
-        loop.close()
+        self.loop.run_until_complete(ao_server.wait_closed())
+        self.loop.close()
 
     def get_version_string(self):
         return str(self.release) + '.' + str(self.major_version) + '.' + str(self.minor_version)
@@ -281,3 +282,48 @@ class TsuServer3:
                                .format(char_name, area_name, area_id, msg), pred=lambda x: not x.muted_adverts)
         if self.config['use_district']:
             self.district_client.send_raw_message('NEED#{}#{}#{}#{}'.format(char_name, area_name, area_id, msg))
+
+    def create_task(self, client, args):
+        # Abort old task if it exists
+        try:
+            old_task = self.client_tasks[client.id][args[0]]
+            if not old_task.done() and not old_task.cancelled():
+                old_task.cancel()
+                asyncio.ensure_future(self.cancel_old_task(old_task))
+        except KeyError:
+            pass
+        
+        # Start new task
+        self.client_tasks[client.id][args[0]] = asyncio.ensure_future(getattr(self, args[0])(client, args[1:]), loop=self.loop)
+
+    async def cancel_old_task(self, old_task):
+        # Wait until it is able to properly retrieve the cancellation exception
+        try:
+            await old_task
+        except asyncio.CancelledError:
+            pass
+        
+    async def as_afk_kick(self, client, args):
+        afk_delay, afk_sendto = args
+        if afk_delay <= 0: # Assumes 0-minute delay means that AFK kicking is disabled
+            return
+        
+        try:
+            await asyncio.sleep(afk_delay*60) # afk_delay is in minutes, so convert to seconds
+        except asyncio.CancelledError:
+            raise
+        else:
+            try:
+                area = client.server.area_manager.get_area_by_id(int(afk_sendto))
+            except AreaError:
+                raise
+                
+            if client.area.id == afk_sendto: # Don't try and kick back to same area
+                return
+            if client.char_id < 0: # Assumes spectators are exempted from AFK kicks
+                return
+            
+            client.send_host_message("You were kicked from area {} to area {} for being inactive for {} minutes.".format(client.area.id, afk_sendto, afk_delay))
+            client.change_area(area, override=True)
+            if client.area.is_locked or client.area.is_modlocked:
+                client.area.invite_list.pop(client.ipid)

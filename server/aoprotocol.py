@@ -149,7 +149,7 @@ class AOProtocol(asyncio.Protocol):
         logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
         self.client.send_command('ID', self.client.id, self.server.software, self.server.get_version_string())
         self.client.send_command('PN', self.server.get_player_count() - 1, self.server.config['playerlimit'])
-
+        
     def net_cmd_id(self, args):
         """ Client version and PV
 
@@ -372,6 +372,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
 
+        self.server.create_task(self.client, ['as_afk_kick', self.client.area.afk_delay, self.client.area.afk_sendto])
         if self.client.area.is_recording:
             self.client.area.recorded_messages.append(args)
 
