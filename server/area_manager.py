@@ -91,11 +91,14 @@ class AreaManager:
             self.clients.remove(client)
             if len(self.clients) == 0:
                 self.unlock()
-            if client.is_cm:
-                client.is_cm = False
-                self.owned = False
-                if self.is_locked:
-                    self.unlock()
+            
+            # Commented out, uncommenting forces CMs to relog every time
+            # they switch areas.
+#            if client.is_cm:
+#                client.is_cm = False
+#                self.owned = False
+#                if self.is_locked:
+#                    self.unlock()
         
         def unlock(self):
             self.is_locked = False
