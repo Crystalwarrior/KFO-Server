@@ -487,7 +487,7 @@ class ClientManager:
             pass
         self.cur_id[client.id] = False
         for task_id in self.server.client_tasks[client.id].keys(): # Cancel client's pending tasks 
-            self.server.client_tasks[client.id][task_id].cancel()
+            self.server.get_task(client, [task_id]).cancel()
         self.clients.remove(client)
 
     def get_targets(self, client, key, value, local = False):

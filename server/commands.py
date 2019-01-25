@@ -1531,3 +1531,149 @@ def ooc_cmd_st(client, arg):
     client.server.send_all_cmd_pred('CT','{} [Staff] {}'.format(client.server.config['hostname'],client.name),arg,
                                     pred=lambda c: c.is_mod or c.is_gm or c.is_cm)
     logger.log_server('[{}][STAFFCHAT][{}][{}]{}.'.format(client.area.id,client.get_char_name(),client.name,arg), client)
+    
+def ooc_cmd_timer(client, arg):
+    TIMER_LIMIT = 21600 # 6 hours in seconds, can be changed to any amount in seconds
+    
+    if len(arg) == 0:
+        raise ClientError('This command takes at least one argument.')
+    arg = arg.split(' ')
+    arg_type = arg[0]
+    
+    if arg_type == 'start':
+        if len(arg) == 1:
+            raise ClientError('This command variation takes at least one subargument.')
+        elif len(arg) >= 5:
+            raise ClientError('This command variation takes at most three subarguments.')
+        
+        raw_length = arg[1].split(':')
+        try:
+            length = [int(entry) for entry in raw_length]
+        except ValueError:
+            raise ClientError('Expected length of time.')
+
+        if len(length) == 1:
+            length = length[0]
+        elif len(length) == 2:
+            length = length[0]*60 + length[1]
+        elif len(length) == 3:
+            length = length[0]*3600 + length[1]*60 + length[2]
+        else:
+            raise ClientError('Expected length of time.')
+        
+        if length > TIMER_LIMIT:
+            raise ClientError('Suggested timer length exceeds server limit.')
+        
+        if len(arg) > 2:
+            name = arg[2]
+        else:
+            name = client.name.replace(" ", "") + "Timer" # No spaces!
+        if name in client.server.active_timers.keys():
+            raise ClientError('Timer name {} is already taken.'.format(name))
+            
+        if len(arg) > 3 and arg[3] in ['False', 'false', '0', 'No', 'no']:
+            is_public = False
+        else:
+            is_public = True
+        
+        client.server.active_timers[name] = client #Add to active timers list
+        client.send_host_message('You initiated a timer "{}" of length {} seconds.'.format(name, length))
+        # Functionality
+        # Non-public timers will only send timer announcements/can only be consulted by
+        # the person who initiated the timer and staff
+        # Public timers initiated by non-staff will only send timer announcements/can only be
+        # be consulted by staff and people in the same area as the person who initiated the timer
+        # Public timers initiated by staff will send timer announcements/can be consulted by
+        # anyone at any area.
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                        '{} initiated a timer "{}" of length {} seconds in area {}.'
+                                        .format(client.get_char_name(), name, length, client.area.name),
+                                        pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
+                                                        or (is_public and c.area == client.area)) and c != client)
+        
+        client.server.create_task(client, ['as_timer', time.time(), length, name, is_public])
+    elif arg_type == 'get':
+        if len(arg) > 2:
+            raise ClientError('This command variation takes at most one subargument.')
+
+        string_of_timers = ""
+        
+        if len(arg) == 2:
+            # Check specific timer
+            timer_name = arg[1]
+            if timer_name not in client.server.active_timers.keys():
+                raise ClientError('Timer {} is not an active timer.'.format(timer_name))
+            timers_to_check = [timer_name]
+            
+        else: # Case len(arg) == 1
+            # List all timers
+            timers_to_check = client.server.active_timers.keys()
+            if len(timers_to_check) == 0:
+                raise ClientError('No active timers.')
+            
+        for timer_name in timers_to_check:
+            # TODO
+            # Make timers invisible to unauthorized users
+            timer_client = client.server.active_timers[timer_name]
+            start, length, _, is_public = client.server.get_task_args(timer_client, ['as_timer']) 
+            current = time.time()
+            remaining = start+length-current
+            
+            # Non-public timers can only be consulted by staff and the client who started the timer
+            if not is_public and not ((client.is_mod or client.is_gm or client.is_cm) 
+                                       or client == timer_client):
+                continue
+            
+            
+            # Non-staff initiated public timers can only be consulted by all staff and 
+            # clients in the same area as the timer initiator
+            elif is_public and not (timer_client.is_mod or timer_client.is_gm or timer_client.is_gm) \
+                 and not ((client.is_mod or client.is_gm or client.is_cm)
+                          or client == timer_client or client.area == timer_client.area):
+                continue
+            
+            if remaining < 10:
+                remain_text = "{} seconds".format('{0:.1f}'.format(remaining))
+            elif remaining < 60:
+                remain_text = "{} seconds".format(int(remaining))
+            elif remaining < 3600:
+                remain_text = "{}:{}".format(int(remaining//60), 
+                                             '{0:02d}'.format(int(remaining%60)))
+            else:
+                remain_text = "{}:{}:{}".format(int(remaining//3600), 
+                                                '{0:02d}'.format(int((remaining%3600)//60)), 
+                                                '{0:02d}'.format(int(remaining%60)))
+            string_of_timers += 'Timer {} has {} remaining.\n*'.format(timer_name, remain_text)        
+        
+        if string_of_timers == "": # No matching timers
+            if len(arg) == 2: # Checked for a specific timer
+                # This case happens when a non-authorized user attempts to check
+                # a non-public timer
+                string_of_timers = "Timer {} is not an active timer.  ".format(timer_name)
+                # Double space intentional
+            else: # len(arg) == 1
+                # This case happens when a non-authorized user attempts to check
+                # all timers and all timers are non-public or non-viewable.
+                string_of_timers = "No timers available.  " # Double space intentional
+        elif len(arg) == 1: # Used /timer get
+            string_of_timers = "Current active timers:\n*" + string_of_timers # Add lead
+                
+        client.send_host_message(string_of_timers[:-2]) # Ignore last newline character
+    elif arg_type == 'cancel':
+        if len(arg) != 2:
+            raise ClientError('This command variation takes exactly one subargument.')
+
+        timer_name = arg[1]
+        try:
+            timer_client = client.server.active_timers[timer_name]
+        except KeyError:
+            raise ClientError('Timer {} is not an active timer.'.format(timer_name))
+        
+        # Non-staff are only allowed to cancel their own timers
+        if not (client.is_mod or client.is_cm or client.is_gm) and client != timer_client:
+            raise ClientError('You must be authorized to do that.')
+            
+        timer = client.server.get_task(timer_client, ['as_timer'])
+        client.server.cancel_task(timer)
+    else:
+        raise ClientError('The command variation {} does not exist.'.format(arg_type))

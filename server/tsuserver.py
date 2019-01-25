@@ -20,6 +20,7 @@ import asyncio
 import yaml
 import json
 import random
+import time
 
 from server import logger
 from server.aoprotocol import AOProtocol
@@ -63,6 +64,7 @@ class TsuServer3:
         self.spectator_name = 'CHAR_SELECT'
         self.default_area = 0
         self.client_tasks = dict()
+        self.active_timers = dict()
         logger.setup_logger(debug=self.config['debug'])
 
     def start(self):
@@ -286,17 +288,30 @@ class TsuServer3:
     def create_task(self, client, args):
         # Abort old task if it exists
         try:
-            old_task = self.client_tasks[client.id][args[0]]
+            old_task = self.get_task(client, args) #client_tasks[client.id][args[0]]
             if not old_task.done() and not old_task.cancelled():
-                old_task.cancel()
-                asyncio.ensure_future(self.cancel_old_task(old_task))
+                self.cancel_task(old_task)
         except KeyError:
             pass
         
         # Start new task
-        self.client_tasks[client.id][args[0]] = asyncio.ensure_future(getattr(self, args[0])(client, args[1:]), loop=self.loop)
-
-    async def cancel_old_task(self, old_task):
+        self.client_tasks[client.id][args[0]] = (asyncio.ensure_future(getattr(self, args[0])(client, args[1:]), loop=self.loop),
+                                                 args[1:])
+    
+    def cancel_task(self, task):
+        """ Cancels current task and sends order to await cancellation """
+        task.cancel()
+        asyncio.ensure_future(self.await_cancellation(task))
+        
+    def get_task(self, client, args):
+        """ Returns actual task instance """
+        return self.client_tasks[client.id][args[0]][0]
+    
+    def get_task_args(self, client, args):
+        """ Returns input arguments of task """
+        return self.client_tasks[client.id][args[0]][1]
+    
+    async def await_cancellation(self, old_task):
         # Wait until it is able to properly retrieve the cancellation exception
         try:
             await old_task
@@ -329,3 +344,24 @@ class TsuServer3:
             client.change_area(area, override=True)
             if client.area.is_locked or client.area.is_modlocked:
                 client.area.invite_list.pop(client.ipid)
+    
+    async def as_timer(self, client, args):
+        start, length, name, is_public = args # Length in seconds, already converted
+        client_name = client.name # Failsafe in case client disconnects before task is cancelled/expires
+        
+        try:
+            await asyncio.sleep(length)
+        except asyncio.CancelledError:
+            self.send_all_cmd_pred('CT','{}'.format(self.config['hostname']),
+                                            'Timer "{}" initiated by {} has been cancelled.'
+                                            .format(name,client_name),
+                                            pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
+                                                        or (is_public and c.area == client.area)) or c == client)
+        else:
+            self.send_all_cmd_pred('CT','{}'.format(self.config['hostname']),
+                                            'Timer "{}" initiated by {} has expired.'
+                                            .format(name,client_name),
+                                            pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
+                                                        or (is_public and c.area == client.area)) or c == client)
+        finally:
+            del self.active_timers[name]
