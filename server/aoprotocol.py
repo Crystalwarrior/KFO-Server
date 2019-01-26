@@ -266,9 +266,10 @@ class AOProtocol(asyncio.Protocol):
         AM#%
 
         """
-        #Uncomment when client is fixed to actually support music list changes
-        #self.server.build_music_list_ao2(self.client.area)
-        #print(self.server.music_list_ao2)
+        # Force the server to rebuild the music list, so that clients who just
+        # join get the correct music list (as well as every time they request
+        # an updated music list directly).
+        self.server.build_music_list_ao2()
         self.client.send_command('SM', *self.server.music_list_ao2)
         
 
@@ -286,7 +287,9 @@ class AOProtocol(asyncio.Protocol):
             else:
                 self.client.send_area_list()
         self.client.send_motd()
-
+        self.client.reload_music_list() # Reload the default area's music list
+        # so that it only includes areas reachable from that default area.
+        
     def net_cmd_cc(self, args):
         """ Character selection.
 

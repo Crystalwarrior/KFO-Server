@@ -147,6 +147,15 @@ class ClientManager:
             except ClientError:
                 raise
 
+        def reload_music_list(self):
+            # Rebuild the music list so that it only contains the target area's
+            # reachable areas+music. Useful when moving areas/logging in or out.
+            self.server.build_music_list_ao2(self.area, self)
+            # KEEP THE ASTERISK, unless you want a very weird single area comprised
+            # of all areas back to back forming a black hole area of doom and despair
+            # that crashes all clients that dare attempt join this area.
+            self.send_command('FM', *self.server.music_list_ao2)
+            
         def change_area(self, area,override = False):
             if self.area == area:
                 raise ClientError('User is already in target area.')
@@ -196,10 +205,8 @@ class ClientManager:
             self.send_command('HP', 2, self.area.hp_pro)
             self.send_command('BN', self.area.background)
             self.send_command('LE', *self.area.get_evidence_list(self))
-            #Uncomment when client is fixed to actually support music list changes
-            #self.server.build_music_list_ao2(self.area)
-            #print(self.server.music_list_ao2)
-            #self.send_command('SM', *self.server.music_list_ao2)
+            self.reload_music_list() # Update music list to include new area's reachable areas
+
             if self.followedby != "":
                 self.followedby.follow_area(area)
 

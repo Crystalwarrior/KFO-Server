@@ -211,17 +211,19 @@ class TsuServer3:
                 index += 1
         self.music_pages_ao1 = [self.music_pages_ao1[x:x + 10] for x in range(0, len(self.music_pages_ao1), 10)]
 
-    def build_music_list_ao2(self,from_area=None):
+    def build_music_list_ao2(self, from_area=None, c=None):
         self.music_list_ao2 = []
-        #Uncomment when client is fixed to actually support music list changes
-        #need_to_check = (from_area is None or '<ALL>' in from_area.reachable_areas)
-        need_to_check = True #Comment out when uncommenting previous line
+        # Uncomment when client is fixed to actually support music list changes
+        # Determine whether to filter the music list or not
+        need_to_check = (from_area is None or '<ALL>' in from_area.reachable_areas
+                         or (c is not None and (c.is_mod or c.is_gm or c.is_cm)))
+        # need_to_check = True #Comment this line out when uncommenting previous line
         
         # add areas first
         for area in self.area_manager.areas:
             if need_to_check or area.name in from_area.reachable_areas:
                 self.music_list_ao2.append(area.name)
-            # then add music
+        # then add music
         for item in self.music_list:
             self.music_list_ao2.append(item['category'])
             for song in item['songs']:

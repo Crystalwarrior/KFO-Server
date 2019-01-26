@@ -549,6 +549,8 @@ def ooc_cmd_loginrp(client, arg):
         raise
     if client.area.evidence_mod == 'HiddenCM':
         client.area.broadcast_evidence_list()
+
+    client.reload_music_list() # Update music list to show all areas
     client.send_host_message('Logged in as a game master.')
     logger.log_server('Logged in as game master.', client)
 
@@ -562,6 +564,7 @@ def ooc_cmd_login(client, arg):
         raise
     if client.area.evidence_mod == 'HiddenCM':
         client.area.broadcast_evidence_list()
+    client.reload_music_list() # Update music list to show all areas
     client.send_host_message('Logged in as a moderator.')
     logger.log_server('Logged in as moderator.', client)
 	
@@ -575,6 +578,7 @@ def ooc_cmd_logincm(client, arg):
         raise
     if client.area.evidence_mod == 'HiddenCM':
         client.area.broadcast_evidence_list()
+    client.reload_music_list() # Update music list to show all areas
     client.send_host_message('Logged in as a community manager.')
     logger.log_server('Logged in as community manager.', client)
 
@@ -805,6 +809,8 @@ def ooc_cmd_logout(client, arg):
         client.in_rp = True
     if client.area.evidence_mod == 'HiddenCM':
         client.area.broadcast_evidence_list()
+    client.reload_music_list() # Update music list to show default reachable areas
+    
     # Now bound by AFK rules
     client.server.create_task(client, ['as_afk_kick', client.area.afk_delay, client.area.afk_sendto])
 
@@ -1540,12 +1546,38 @@ def ooc_cmd_timer(client, arg):
     arg = arg.split(' ')
     arg_type = arg[0]
     
+    # Support for three command variations at the moment
+    # Start (start timers)
+    # Get (get status of given timer(s))
+    # Cancel (cancel given timer)
+    
     if arg_type == 'start':
+        """ Start a timer
+        SYNTAX 
+        /timer start $length <timername> <public or not>
+        
+        REQUIRED
+         $length: time in seconds, or in mm:ss, or in h:mm:ss; limited to TIMER_LIMIT
+        
+        OPTIONAL
+         <timername>: Timer name; defaults to username+"Timer" if empty
+         <public or not>: Whether the timer is public or not; defaults to public if
+         not fed one of "False", "false", "0", "No", "no".
+
+        Public status functionality
+        * Non-public timers will only send timer announcements/can only be consulted by
+          the person who initiated the timer and staff
+        * Public timers initiated by non-staff will only send timer announcements/can only be
+          be consulted by staff and people in the same area as the person who initiated the timer
+        * Public timers initiated by staff will send timer announcements/can be consulted by
+          anyone at any area.
+        """
         if len(arg) == 1:
             raise ClientError('This command variation takes at least one subargument.')
         elif len(arg) >= 5:
             raise ClientError('This command variation takes at most three subarguments.')
-        
+
+        # Check if valid length and convert to seconds        
         raw_length = arg[1].split(':')
         try:
             length = [int(entry) for entry in raw_length]
@@ -1564,13 +1596,15 @@ def ooc_cmd_timer(client, arg):
         if length > TIMER_LIMIT:
             raise ClientError('Suggested timer length exceeds server limit.')
         
+        # Check name
         if len(arg) > 2:
             name = arg[2]
         else:
             name = client.name.replace(" ", "") + "Timer" # No spaces!
         if name in client.server.active_timers.keys():
             raise ClientError('Timer name {} is already taken.'.format(name))
-            
+        
+        # Check public status
         if len(arg) > 3 and arg[3] in ['False', 'false', '0', 'No', 'no']:
             is_public = False
         else:
@@ -1578,13 +1612,6 @@ def ooc_cmd_timer(client, arg):
         
         client.server.active_timers[name] = client #Add to active timers list
         client.send_host_message('You initiated a timer "{}" of length {} seconds.'.format(name, length))
-        # Functionality
-        # Non-public timers will only send timer announcements/can only be consulted by
-        # the person who initiated the timer and staff
-        # Public timers initiated by non-staff will only send timer announcements/can only be
-        # be consulted by staff and people in the same area as the person who initiated the timer
-        # Public timers initiated by staff will send timer announcements/can be consulted by
-        # anyone at any area.
         client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
                                         '{} initiated a timer "{}" of length {} seconds in area {}.'
                                         .format(client.get_char_name(), name, length, client.area.name),
@@ -1593,10 +1620,19 @@ def ooc_cmd_timer(client, arg):
         
         client.server.create_task(client, ['as_timer', time.time(), length, name, is_public])
     elif arg_type == 'get':
+        """ Get remaining time from given timer.
+        SYNTAX
+        /timer get <timername>
+        
+        OPTIONAL
+        <timername>: Check time remaining in given timer; defaults to all timers
+        if not given one.
+        """
         if len(arg) > 2:
             raise ClientError('This command variation takes at most one subargument.')
 
         string_of_timers = ""
+        
         
         if len(arg) == 2:
             # Check specific timer
@@ -1612,8 +1648,6 @@ def ooc_cmd_timer(client, arg):
                 raise ClientError('No active timers.')
             
         for timer_name in timers_to_check:
-            # TODO
-            # Make timers invisible to unauthorized users
             timer_client = client.server.active_timers[timer_name]
             start, length, _, is_public = client.server.get_task_args(timer_client, ['as_timer']) 
             current = time.time()
@@ -1660,6 +1694,15 @@ def ooc_cmd_timer(client, arg):
                 
         client.send_host_message(string_of_timers[:-2]) # Ignore last newline character
     elif arg_type == 'cancel':
+        """ Cancel given timer. Requires logging in to cancel timers initiated by
+        other users.
+        SYNTAX
+        /timer cancel $timername
+        
+        PARAMETERS
+         $timername: Given timer name; returns an error if non-existant or if 
+         unauthorized to cancel the timer.
+        """
         if len(arg) != 2:
             raise ClientError('This command variation takes exactly one subargument.')
 
@@ -1676,4 +1719,5 @@ def ooc_cmd_timer(client, arg):
         timer = client.server.get_task(timer_client, ['as_timer'])
         client.server.cancel_task(timer)
     else:
+        """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
