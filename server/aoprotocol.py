@@ -43,7 +43,22 @@ class AOProtocol(asyncio.Protocol):
         self.client = None
         self.buffer = ''
         self.ping_timeout = None
-
+        
+        # Determine whether /exec is active or not and warn server owner if so.
+        if getattr(commands, "ooc_cmd_exec")(self.client, "1+1") == 1:
+            print("""
+                  
+                  WARNING
+                  
+                  THE /exec COMMAND IN commands.py IS ACTIVE.
+                  
+                  UNLESS YOU ABSOLUTELY MEANT IT AND KNOW WHAT YOU ARE DOING, 
+                  PLEASE STOP YOUR SERVER RIGHT NOW AND DEACTIVATE IT BY GOING TO THE
+                  commands.py FILE AND FOLLOWING THE INSTRUCTIONS UNDER ooc_cmd_exec.\n
+                  BAD THINGS CAN AND WILL HAPPEN OTHERWISE
+                  
+                  """)
+        
     def data_received(self, data):
         """ Handles any data received from the network.
 

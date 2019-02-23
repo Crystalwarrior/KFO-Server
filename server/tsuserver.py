@@ -86,14 +86,14 @@ class TsuServer3:
             asyncio.ensure_future(self.ms_client.connect(), loop=self.loop)
 
         logger.log_debug('Server started.')
-
+        
         try:
             self.loop.run_forever()
         except KeyboardInterrupt:
             pass
 
         logger.log_debug('Server shutting down.')
-
+        
         ao_server.close()
         self.loop.run_until_complete(ao_server.wait_closed())
         self.loop.close()

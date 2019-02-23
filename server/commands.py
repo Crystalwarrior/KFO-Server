@@ -2292,7 +2292,7 @@ def ooc_cmd_timer(client, arg):
 def ooc_cmd_scream(client, arg):
     """
     Sends a message in the OOC chat visible to all staff members and users that 
-    are in an area reachable from the sender's area 
+    are in an area reachable from the sender's area.
     Returns an error if the user has global chat off or sends an empty message.
     
     SYNTAX
@@ -2318,6 +2318,17 @@ def ooc_cmd_scream(client, arg):
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE THERE FOR DEBUGGING.
+    
+    DID I MENTION THIS IS VERY DANGEROUS?
+    
+    DO NOT ENABLE THIS FUNCTION UNLESS YOU KNOW WHAT YOU ARE DOING.
+    
+    I MEAN IT.
+    
+    PEOPLE WILL BREAK YOUR SERVER AND POSSIBLY THE HOST MACHINE IT IS ON IF YOU KEEP IT ON.
+    
+    DO NOT BE STUPID.
+    
     Executes a Python expression and returns the evaluated expression.
     If passed in a Python statement, it will execute code in the global environment.
     Returns an error if the expression would raise an error in a normal Python environment.
@@ -2328,17 +2339,24 @@ def ooc_cmd_exec(client, arg):
     PARAMETERS
     <command>
     
-    EXAMPLE
+    EXAMPLES
     /exec 1+1                                           :: Returns 2
     /exec while True: client.send_host_message("Hi")    :: Commit sudoku
     """
-    # Comment next line to enable /exec
+    # IF YOU WANT TO DISABLE /exec: REMOVE THE # IN FRONT OF return
+    # IF YOU WANT TO ENABLE /exec: ADD A # IN FRONT OF return, LIKE SO: # return
     return
+    
     try:
         client.send_host_message(eval(arg))
     except:
         try:
-            exec(arg, globals(), locals())
+            exec(arg, globals())
             client.send_host_message("Executed {}".format(arg))
         except Exception as e:
-            client.send_host_message("Python error: {}".format(e))
+            try:
+                client.send_host_message("Python error: {}".format(e))
+            except:
+                pass
+            
+    return 1    # Indication that /exec is live
