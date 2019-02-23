@@ -2288,3 +2288,57 @@ def ooc_cmd_timer(client, arg):
     else:
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
+        
+def ooc_cmd_scream(client, arg):
+    """
+    Sends a message in the OOC chat visible to all staff members and users that 
+    are in an area reachable from the sender's area 
+    Returns an error if the user has global chat off or sends an empty message.
+    
+    SYNTAX
+    /scream <message>
+    
+    PARAMETERS
+    <message>: Message to be sent
+    
+    EXAMPLE
+    /scream Hello World      :: Sends Hello World to users in reachable areas+staff.
+    """
+    if client.muted_global:
+        raise ClientError('You have the global chat muted.')
+    if len(arg) == 0:
+        raise ArgumentError("You cannot send an empty message.")
+    
+    client.server.broadcast_global(client, arg, mtype="<dollar>S", 
+                                   condition=lambda c: not c.muted_global and 
+                                   (c.is_staff() or c.area.name in client.area.reachable_areas
+                                    or client.area.reachable_areas == {'<ALL>'}))
+    logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+    
+def ooc_cmd_exec(client, arg):
+    """
+    VERY DANGEROUS. SHOULD ONLY BE THERE FOR DEBUGGING.
+    Executes a Python expression and returns the evaluated expression.
+    If passed in a Python statement, it will execute code in the global environment.
+    Returns an error if the expression would raise an error in a normal Python environment.
+    
+    SYNTAX
+    /exec <command>
+    
+    PARAMETERS
+    <command>
+    
+    EXAMPLE
+    /exec 1+1                                           :: Returns 2
+    /exec while True: client.send_host_message("Hi")    :: Commit sudoku
+    """
+    # Comment next line to enable /exec
+    return
+    try:
+        client.send_host_message(eval(arg))
+    except:
+        try:
+            exec(arg, globals(), locals())
+            client.send_host_message("Executed {}".format(arg))
+        except Exception as e:
+            client.send_host_message("Python error: {}".format(e))
