@@ -102,6 +102,12 @@ class ClientManager:
         def disconnect(self):
             self.transport.close()
 
+        def is_staff(self):
+            """
+            Returns True if logged in as 'any' staff role.
+            """
+            return self.is_mod or self.is_cm or self.is_gm
+        
         def change_character(self, char_id, force=False):
             if not self.server.is_valid_char_id(char_id):
                 raise ClientError('Invalid Character ID.')
@@ -148,15 +154,18 @@ class ClientManager:
                 raise
 
         def reload_music_list(self):
-            # Rebuild the music list so that it only contains the target area's
-            # reachable areas+music. Useful when moving areas/logging in or out.
+            """
+            Rebuild the music list so that it only contains the target area's
+            reachable areas+music. Useful when moving areas/logging in or out.
+            """
+            
             self.server.build_music_list_ao2(self.area, self)
             # KEEP THE ASTERISK, unless you want a very weird single area comprised
             # of all areas back to back forming a black hole area of doom and despair
             # that crashes all clients that dare attempt join this area.
             self.send_command('FM', *self.server.music_list_ao2)
             
-        def change_area(self, area,override = False):
+        def change_area(self, area, override = False):
             if self.area == area:
                 raise ClientError('User is already in target area.')
             if area.is_locked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
@@ -467,7 +476,6 @@ class ClientManager:
                        'Please don\'t say things like ni**er and f**k it\'s very rude and I don\'t like it',
                        'PLAY NORMIES PLS']
             return random.choice(message)
-
 
     def __init__(self, server):
         self.clients = set()

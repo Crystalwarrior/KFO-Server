@@ -24,642 +24,239 @@ from server.constants import TargetType
 from server import logger
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
+""" SUGGESTED IDEAS
+/scream: /g but for reachable areas
+/char_restrict: Restrict a char to staff only
+/area_ban: Ban a user from a certain area
+"""
 
-def ooc_cmd_switch(client, arg):
+""" <parameter_name>: required parameter
+{parameter_name}: optional parameter
+"""
+
+def arg_num(arg):
+    """
+    Return number of arguments, i.e. keywords separated by spaces.
+    """
+    if arg == "":
+        return 0
+    
+    args = arg.split(" ")
+    print(arg, args)
+    return len(args)
+
+def dice_roll(arg, command_type):
+    """
+    HELPER FUNCTION
+    Calculate roll results.
+    Confront /roll documentation for more details.
+    """
+    NUMFACES_MAX = 11037
+    NUMDICE_MAX = 20
+    MODIFIER_LENGTH_MAX = 12 #Change to a higher at your own risk
+    ACCEPTABLE_IN_MODIFIER = '1234567890+-*/().r'
+    MAXDIVZERO_ATTEMPTS = 10
+    MAXACCEPTABLETERM = 10 * NUMFACES_MAX #Change to a higher number at your own risk
+    
+    # Default values
+    DEF_NUMDICE = 1
+    DEF_NUMFACES = 6
+    DEF_MODIFIER = ''
+    
+    special_calculation = False # Is it given a modifier? False until proven otherwise
+    args = arg.split(' ')
+    arg_length = len(args)
+    
+    # Parse number of dice, number of faces and modifiers
+    if arg != '':
+        if arg_length == 2:
+            dice_type, modifiers = args
+            if len(modifiers) > MODIFIER_LENGTH_MAX:
+                raise ArgumentError('The given modifier is too long to compute. Please try a shorter one')
+        elif arg_length == 1:
+            dice_type, modifiers = arg, ''
+        else:
+             raise ArgumentError('This command takes one or two arguments. Use /{} {num_dice}d<num_faces> {modifiers}'.format(command_type))
+
+        dice_type = dice_type.split('d')
+        if len(dice_type) == 1:
+            dice_type.insert(0, 1)
+        if dice_type[0] == '':
+            dice_type[0] = '1'
+            
+        try:
+            num_dice, num_faces = int(dice_type[0]), int(dice_type[1])
+        except ValueError:
+            raise ArgumentError('Expected integer value for number of rolls and max value of dice')
+
+        if not 1 <= num_dice <= NUMDICE_MAX: 
+            raise ArgumentError('Number of rolls must be between 1 and {}'.format(NUMDICE_MAX))
+        if not 1 <= num_faces <= NUMFACES_MAX:
+            raise ArgumentError('Dice value must be between 1 and {}'.format(NUMFACES_MAX))
+            
+        for char in modifiers:
+            if char not in ACCEPTABLE_IN_MODIFIER:
+                raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
+            if char == 'r':
+                special_calculation = True
+        if '**' in modifiers: #Exponentiation manually disabled, it can be pretty dangerous
+            raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
+    else:
+        num_dice, num_faces, modifiers = DEF_NUMDICE, DEF_NUMFACES, DEF_MODIFIER #Default
+        
+    roll = ''
+    
+    for i in range(num_dice):
+        divzero_attempts = 0
+        while True: # Roll until no division by zeroes happen (or it gives up)
+            # raw_roll: original roll
+            # mid_roll: result after modifiers (if any) have been applied to original roll
+            # final_roll: result after previous result has been capped between 1 and NUMFACES_MAX
+            
+            raw_roll = str(random.randint(1, num_faces))
+            if modifiers == '':
+                aux_modifier = ''
+                mid_roll = int(raw_roll)
+            else:
+                if special_calculation: # Ex: /roll 20 3*r+1
+                    aux_modifier = modifiers.replace('r', raw_roll) + '='
+                elif modifiers[0].isdigit(): # Ex /roll 20 3
+                    aux_modifier = raw_roll + "+" + modifiers + '='
+                else: # Ex /roll 20 -3
+                    aux_modifier = raw_roll + modifiers + '='
+                
+                # Prevent any terms from reaching past MAXACCEPTABLETERM in order to prevent server lag due to potentially frivolous dice rolls
+                # In order to do that, it will split the string by the numbers it uses
+                # and check if any individual number is larger than said term.
+                # This also doubles as a second-line defense to junk entries.
+                aux = aux_modifier[:-1]
+                for i in "+-*/()":
+                    aux = aux.replace(i,"!")
+                aux = aux.split('!')
+                for i in aux:
+                    try:
+                        if i != '' and round(float(i)) > MAXACCEPTABLETERM:
+                            raise ArgumentError("Given mathematical formula takes numbers past the server's computation limit")
+                    except ValueError:
+                        raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                        
+                try: 
+                    mid_roll = round(eval(aux_modifier[:-1])) #By this point it should be 'safe' to run eval
+                except SyntaxError:
+                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                except TypeError: #Deals with inputs like 3(r-1), which act like Python functions.
+                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                except ZeroDivisionError:
+                    divzero_attempts += 1
+                    if divzero_attempts == MAXDIVZERO_ATTEMPTS:
+                        raise ArgumentError('Given mathematical formula produces divisions by zero too often and cannot be computed')
+                    continue
+            break
+
+        final_roll = min(num_faces, max(1, mid_roll))
+        
+        # Build output string
+        if final_roll != mid_roll:
+            final_roll = "|" + str(final_roll) #This visually indicates the roll was capped off due to exceeding the acceptable roll range
+        else:
+            final_roll = str(final_roll)
+            
+        if modifiers != '':
+            roll += str(raw_roll+':')
+        roll += str(aux_modifier+final_roll) + ', '
+        
+    roll = roll[:-2] # Remove last ', '
+    if num_dice > 1:
+        roll = '(' + roll + ')'
+
+    return roll, num_faces
+
+def login(client, arg, auth_command, role):
     if len(arg) == 0:
-        raise ArgumentError('You must specify a character name.')
+        raise ArgumentError('You must specify the password.')
     try:
-        cid = client.server.get_char_id_by_name(arg)
-    except ServerError:
-        raise
-    try:
-        client.change_character(cid, client.is_mod)
+        auth_command(arg)
     except ClientError:
         raise
-    client.send_host_message('Character changed.')
-
-
-def ooc_cmd_bg(client, arg):
-    if len(arg) == 0:
-        raise ArgumentError('You must specify a name. Use /bg <background>.')
-    if not client.is_mod and client.area.bg_lock == True: #CHANGED
-        raise AreaError("This area's background is locked")
-    try:
-        if client.is_mod or client.is_gm:
-            client.area.change_background_mod(arg)
-        else:
-            client.area.change_background(arg)
-    except AreaError:
-        raise
-    client.area.send_host_message('{} changed the background to {}.'.format(client.get_char_name(), arg))
-    logger.log_server('[{}][{}]Changed background to {}'.format(client.area.id, client.get_char_name(), arg), client)
-
-
-def ooc_cmd_bglock(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    if client.area.bg_lock == True:
-        client.area.bg_lock = False
-    else:
-        client.area.bg_lock = True #CHANGED
-    client.area.send_host_message('A mod has set the background lock to {}.'.format(client.area.bg_lock))
-    logger.log_server('[{}][{}]Changed bglock to {}'.format(client.area.id, client.get_char_name(), client.area.bg_lock), client)
-
-def ooc_cmd_iclock(client, arg):
-    if not (client.is_mod or client.is_cm or client.is_gm):
-        raise ClientError('You must be authorized to do that.')
-    if not (client.is_mod or client.is_cm) and (client.is_gm and not client.area.gm_iclock_allowed):
-        raise ClientError('GMs are not authorized to change IC locks in this area.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    if client.area.ic_lock:
-        client.area.ic_lock = False
-    else:
-        client.area.ic_lock = True
-    client.area.send_host_message('A staff member has set the IC lock to {}.'.format(client.area.ic_lock))
-    logger.log_server('[{}][{}]Changed IC lock to {}'.format(client.area.id, client.get_char_name(), client.area.ic_lock), client)
-
+    if client.area.evidence_mod == 'HiddenCM':
+        client.area.broadcast_evidence_list()
+    client.reload_music_list() # Update music list to show all areas
+    client.send_host_message('Logged in as a {}.'.format(role))
+    logger.log_server('Logged in as a {}.'.format(role), client)
+    
 def ooc_cmd_allow_iniswap(client, arg):
+    """ (MOD ONLY)
+    Toggles iniswapping by non-staff in the current area being allowed/disallowed.
+    
+    SYNTAX
+    /allow_iniswap
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /allow_iniswap
+    """
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command takes no arguments.')
+
     client.area.iniswap_allowed = not client.area.iniswap_allowed
-    answer = {True: 'allowed', False: 'forbidden'}
-    client.send_host_message('iniswap is {}.'.format(answer[client.area.iniswap_allowed]))
-    return
+    client.area.send_host_message('A mod has set iniswapping being allowed to {}.'.format(client.area.iniswap_allowed))
+    logger.log_server('[{}][{}]Changed iniswapping allowed to {}'.format(client.area.id, client.get_char_name(), client.area.iniswap_allowed), client)
 
-def ooc_cmd_ddroll(client, arg):
-    DICE_MAX = 11037
-    NUMDICE_MAX = 20
-    MODIFIER_LENGTH_MAX = 12 #Change to a higher at your own risk
-    ACCEPTABLE_IN_MODIFIER = '1234567890+-*/().r'
-    MAXDIVZERO_ATTEMPTS = 10
-    MAXACCEPTABLETERM = 10*DICE_MAX #Change to a higher number at your own risk
-    
-    special_calculation = False
-    args = arg.split(' ')
-    arg_length = len(args)
-    
-    if arg != '':
-        if arg_length == 2:
-            dice_type, modifiers = args
-            if len(modifiers) > MODIFIER_LENGTH_MAX:
-                raise ArgumentError('The given modifier is too long to compute. Please try a shorter one')
-        elif arg_length == 1:
-            dice_type, modifiers = arg, ''
-        else:
-             raise ArgumentError('This command takes one or two arguments. Use /ddroll [<num of rolls>]d[<max>] [modifiers]')
-
-        dice_type = dice_type.split('d')
-        if len(dice_type) == 1:
-            dice_type.insert(0,1)
-        if dice_type[0] == '':
-            dice_type[0] = '1'
-            
-        try:
-            num_dice,chosen_max = int(dice_type[0]),int(dice_type[1])
-        except ValueError:
-            raise ArgumentError('Expected integer value for number of rolls and max value of dice')
-
-        if not 1 <= num_dice <= NUMDICE_MAX: 
-            raise ArgumentError('Number of rolls must be between 1 and {}'.format(NUMDICE_MAX))
-        if not 1 <= chosen_max <= DICE_MAX:
-            raise ArgumentError('Dice value must be between 1 and {}'.format(DICE_MAX))
-            
-        for char in modifiers:
-            if char not in ACCEPTABLE_IN_MODIFIER:
-                raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
-            if char == 'r':
-                special_calculation = True
-        if '**' in modifiers: #Exponentiation manually disabled, it can be pretty dangerous
-            raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
-    else:
-        num_dice,chosen_max,modifiers = 1,6,'' #Default
-        
-    roll = ''
-    
-    for i in range(num_dice):
-        divzero_attempts = 0
-        while True:
-            raw_roll = str(random.randint(1, chosen_max))
-            if modifiers == '':
-                aux_modifier = ''
-                mid_roll = int(raw_roll)
-            else:
-                if special_calculation:
-                    aux_modifier = modifiers.replace('r',raw_roll)+'='
-                elif modifiers[0].isdigit():
-                    aux_modifier = raw_roll+"+"+modifiers+'='
-                else:
-                    aux_modifier = raw_roll+modifiers+'='
-                
-                #Prevent any terms from reaching past MAXACCEPTABLETERM in order to prevent server lag due to potentially frivolous dice rolls
-                aux = aux_modifier[:-1]
-                for i in "+-*/()":
-                    aux = aux.replace(i,"!")
-                aux = aux.split('!')
-                for i in aux:
-                    try:
-                        if i != '' and round(float(i)) > MAXACCEPTABLETERM:
-                            raise ArgumentError("Given mathematical formula takes numbers past the server's computation limit")
-                    except ValueError:
-                        raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
-                        
-                try: 
-                    mid_roll = round(eval(aux_modifier[:-1])) #By this point it should be 'safe' to run eval
-                except SyntaxError:
-                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
-                except TypeError: #Deals with inputs like 3(r-1)
-                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
-                except ZeroDivisionError:
-                    divzero_attempts += 1
-                    if divzero_attempts == MAXDIVZERO_ATTEMPTS:
-                        raise ArgumentError('Given mathematical formula produces divisions by zero too often and cannot be computed')
-                    continue
-            break
-
-        final_roll = min(chosen_max,max(1,mid_roll))
-        if final_roll != mid_roll:
-            final_roll = "|"+str(final_roll) #This visually indicates the roll was capped off due to exceeding the acceptable roll range
-        else:
-            final_roll = str(final_roll)
-        if modifiers != '':
-            roll += str(raw_roll+':')
-        roll += str(aux_modifier+final_roll) + ', '
-    roll = roll[:-2]
-    if num_dice > 1:
-        roll = '(' + roll + ')'
-    
-    
-    
-    client.area.send_host_message('{} rolled {} out of {}.'.format(client.get_char_name(), roll, chosen_max))
-    logger.log_server(
-        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), roll, chosen_max), client)
-    
-def ooc_cmd_ddrollp(client, arg):
-    if not client.area.rollp_allowed and (not client.is_mod and not client.is_gm and not client.is_cm):
-        client.send_host_message("This command has been restricted to authorized users only in this area.")
-        return
-    
-    DICE_MAX = 11037
-    NUMDICE_MAX = 20
-    MODIFIER_LENGTH_MAX = 12 #Change to a higher at your own risk
-    ACCEPTABLE_IN_MODIFIER = '1234567890+-*/().r'
-    MAXDIVZERO_ATTEMPTS = 10
-    MAXACCEPTABLETERM = 10*DICE_MAX #Change to a higher number at your own risk
-    
-    special_calculation = False
-    args = arg.split(' ')
-    arg_length = len(args)
-    
-    if arg != '':
-        if arg_length == 2:
-            dice_type, modifiers = args
-            if len(modifiers) > MODIFIER_LENGTH_MAX:
-                raise ArgumentError('The given modifier is too long to compute. Please try a shorter one')
-        elif arg_length == 1:
-            dice_type, modifiers = arg, ''
-        else:
-             raise ArgumentError('This command takes one or two arguments. Use /ddroll [<num of rolls>]d[<max>] [modifiers]')
-
-        dice_type = dice_type.split('d')
-        if len(dice_type) == 1:
-            dice_type.insert(0,1)
-        if dice_type[0] == '':
-            dice_type[0] = '1'
-            
-        try:
-            num_dice,chosen_max = int(dice_type[0]),int(dice_type[1])
-        except ValueError:
-            raise ArgumentError('Expected integer value for number of rolls and max value of dice')
-
-        if not 1 <= num_dice <= NUMDICE_MAX: 
-            raise ArgumentError('Number of rolls must be between 1 and {}'.format(NUMDICE_MAX))
-        if not 1 <= chosen_max <= DICE_MAX:
-            raise ArgumentError('Dice value must be between 1 and {}'.format(DICE_MAX))
-            
-        for char in modifiers:
-            if char not in ACCEPTABLE_IN_MODIFIER:
-                raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
-            if char == 'r':
-                special_calculation = True
-        if '**' in modifiers: #Exponentiation manually disabled, it can be pretty dangerous
-            raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
-    else:
-        num_dice,chosen_max,modifiers = 1,6,'' #Default
-        
-    roll = ''
-    
-    for i in range(num_dice):
-        divzero_attempts = 0
-        while True:
-            raw_roll = str(random.randint(1, chosen_max))
-            if modifiers == '':
-                aux_modifier = ''
-                mid_roll = int(raw_roll)
-            else:
-                if special_calculation:
-                    aux_modifier = modifiers.replace('r',raw_roll)+'='
-                elif modifiers[0].isdigit():
-                    aux_modifier = raw_roll+"+"+modifiers+'='
-                else:
-                    aux_modifier = raw_roll+modifiers+'='
-                
-                #Prevent any terms from reaching past MAXACCEPTABLETERM in order to prevent server lag due to potentially frivolous dice rolls
-                aux = aux_modifier[:-1]
-                for i in "+-*/()":
-                    aux = aux.replace(i,"!")
-                aux = aux.split('!')
-                for i in aux:
-                    try:
-                        if i != '' and round(float(i)) > MAXACCEPTABLETERM:
-                            raise ArgumentError("Given mathematical formula takes numbers past the server's computation limit")
-                    except ValueError:
-                        raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
-                        
-                try: 
-                    mid_roll = round(eval(aux_modifier[:-1])) #By this point it should be 'safe' to run eval
-                except SyntaxError:
-                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
-                except TypeError: #Deals with inputs like 3(r-1)
-                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
-                except ZeroDivisionError:
-                    divzero_attempts += 1
-                    if divzero_attempts == MAXDIVZERO_ATTEMPTS:
-                        raise ArgumentError('Given mathematical formula produces divisions by zero too often and cannot be computed')
-                    continue
-            break
-
-        final_roll = min(chosen_max,max(1,mid_roll))
-        if final_roll != mid_roll:
-            final_roll = "|"+str(final_roll) #This visually indicates the roll was capped off due to exceeding the acceptable roll range
-        else:
-            final_roll = str(final_roll)
-        if modifiers != '':
-            roll += str(raw_roll+':')
-        roll += str(aux_modifier+final_roll) + ', '
-    roll = roll[:-2]
-    if num_dice > 1:
-        roll = '(' + roll + ')'
-        
-    client.send_host_message('You privately rolled {} out of {}.'.format(roll, chosen_max))    
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                    'Someone rolled.', pred=lambda c: not (c.is_mod or c.is_gm or c.is_cm) 
-                                    and c != client and c.area.id == client.area.id) 
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                    '{} privately rolled {} out of {} in {} ({}).'
-                                    .format(client.get_char_name(), roll, chosen_max, client.area.name, client.area.id), 
-                                    pred=lambda c: (c.is_mod or c.is_gm or c.is_cm) and c != client)
-    
-    SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
-    logger.log_server(
-        '[{}][{}]Used /ddrollp and got {} out of {}.'.format(client.area.id, client.get_char_name(), hashlib.sha1((str(roll) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, chosen_max), client)
-
-                                      
-def ooc_cmd_roll(client, arg):
-    roll_max = 11037
-    if len(arg) != 0:
-        try:
-            val = list(map(int, arg.split(' ')))
-            if not 1 <= val[0] <= roll_max:
-                raise ArgumentError('Roll value must be between 1 and {}.'.format(roll_max))
-        except ValueError:
-            raise ArgumentError('Wrong argument. Use /roll [<max>] [<num of rolls>]')
-    else:
-        val = [6]
-    if len(val) == 1:
-        val.append(1)
-    if len(val) > 2:
-        raise ArgumentError('Too much arguments. Use /roll [<max>] [<num of rolls>]')
-    if val[1] > 20 or val[1] < 1:
-        raise ArgumentError('Num of rolls must be between 1 and 20')
-    roll = ''
-    for i in range(val[1]):
-        roll += str(random.randint(1, val[0])) + ', '
-    roll = roll[:-2]
-    if val[1] > 1:
-        roll = '(' + roll + ')'
-    client.area.send_host_message('{} rolled {} out of {}.'.format(client.get_char_name(), roll, val[0]))
-    logger.log_server(
-        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), roll, val[0]), client)
-
-def ooc_cmd_rollp(client, arg):
-    roll_max = 11037
-    if len(arg) != 0:
-        try:
-            val = list(map(int, arg.split(' ')))
-            if not 1 <= val[0] <= roll_max:
-                raise ArgumentError('Roll value must be between 1 and {}.'.format(roll_max))
-        except ValueError:
-            raise ArgumentError('Wrong argument. Use /roll [<max>] [<num of rolls>]')
-    else:
-        val = [6]
-    if len(val) == 1:
-        val.append(1)
-    if len(val) > 2:
-        raise ArgumentError('Too much arguments. Use /roll [<max>] [<num of rolls>]')
-    if val[1] > 20 or val[1] < 1:
-        raise ArgumentError('Num of rolls must be between 1 and 20')
-    roll = ''
-    for i in range(val[1]):
-        roll += str(random.randint(1, val[0])) + ', '
-    roll = roll[:-2]
-    if val[1] > 1:
-        roll = '(' + roll + ')'
-    client.send_host_message('{} rolled {} out of {}.'.format(client.get_char_name(), roll, val[0]))
-    client.area.send_host_message('{} rolled.'.format(client.get_char_name(), roll, val[0]))
-    SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
-    logger.log_server(
-        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), hashlib.sha1((str(roll) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, val[0]), client)
-
-def ooc_cmd_toggle_rollp(client, arg):
-    if (not client.is_mod and not client.is_gm and not client.is_cm):
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    if client.area.rollp_allowed:
-        client.area.rollp_allowed = False
-        client.area.send_host_message('The use of the private roll commands in this area has been restricted to authorized users only.')
-    else:
-        client.area.rollp_allowed = True
-        client.area.send_host_message('The use of the private roll commands in this area has been enabled to all users.')
-
-def ooc_cmd_currentmusic(client, arg):
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    if client.area.current_music == '':
-        raise ClientError('There is no music currently playing.')
-    client.send_host_message('The current music is {} and was played by {}.'.format(client.area.current_music,
-                                                                                    client.area.current_music_player))
-
-
-def ooc_cmd_coinflip(client, arg):
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    coin = ['heads', 'tails']
-    flip = random.choice(coin)
-    client.area.send_host_message('{} flipped a coin and got {}.'.format(client.get_char_name(), flip))
-    logger.log_server(
-        '[{}][{}]Used /coinflip and got {}.'.format(client.area.id, client.get_char_name(), flip), client)
-
-
-def ooc_cmd_motd(client, arg):
-    if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
-    client.send_motd()
-
-
-def ooc_cmd_pos(client, arg):
-    if len(arg) == 0:
-        client.change_position()
-        client.send_host_message('Position reset.')
-    else:
-        try:
-            client.change_position(arg)
-        except ClientError:
-            raise
-        client.area.broadcast_evidence_list()
-        client.send_host_message('Position changed.')   
-
-
-def ooc_cmd_help(client, arg):
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    help_url = 'https://github.com/AttorneyOnlineVidya/tsuserver3'
-    help_msg = 'Available commands, source code and issues can be found here: {}'.format(help_url)
-    client.send_host_message(help_msg)
-
-	
-def ooc_cmd_kick(client, arg):
-    if not client.is_mod and not client.is_cm:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10:
-        raise ArgumentError('You must specify a target. Use /kick <id, ipid>.')
-    if len(arg) == 10 and arg.isdigit():
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-    elif len(arg) < 10 and arg.isdigit():
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    try:
-        if targets:
-            for c in targets:
-                logger.log_server('Kicked {}.'.format(c.ipid), client)
-                client.area.send_host_message("{} was kicked.".format(c.get_char_name()))
-                c.disconnect()
-        else:
-            client.send_host_message("No targets found.")
-    except UnboundLocalError:
-        raise ClientError('Unrecognized client ID or IPID: {}'.format(arg))
-		
-def ooc_cmd_kickself(client, arg):
-    targets = client.server.client_manager.get_targets(client, TargetType.IPID, client.ipid, False)
-    for target in targets:
-        if target != client:
-            target.disconnect()
-    client.send_host_message('Kicked other instances of client.')
-	
-	
-def ooc_cmd_ban(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    try:
-        ipid = int(arg.strip())
-        if len(str(ipid)) != 10:
-            raise ClientError('Argument must be an IP address or 10-digit number.')
-        integer = True
-    except ValueError:
-        ipid = arg.strip()
-        integer = False
-    try:
-        client.server.ban_manager.add_ban(ipid)
-    except ServerError:
-        raise
-    if ipid is not None:
-        if integer:
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, ipid, False)
-        else:
-            targets = client.server.client_manager.get_targets(client, TargetType.IP, ipid, False)
-        if targets:
-            for c in targets:
-                c.disconnect()
-            client.send_host_message('{} clients were kicked.'.format(len(targets)))
-        client.area.send_host_message('{} was banned.'.format(c.get_char_name))
-        logger.log_server('Banned {}.'.format(ipid), client)
-
-
-def ooc_cmd_unban(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    try:
-        client.server.ban_manager.remove_ban(int(arg.strip()))
-    except:
-        raise ClientError('You must specify \'hdid\'')
-    logger.log_server('Unbanned {}.'.format(arg), client)
-    client.send_host_message('Unbanned {}'.format(arg))
-
-
-def ooc_cmd_play(client, arg):
-    if not client.is_mod and not client.is_gm and not client.is_cm:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError('You must specify a song.')
-    client.area.play_music(arg, client.char_id, -1)
-    client.area.add_music_playing(client, arg)
-    logger.log_server('[{}][{}]Changed music to {}.'.format(client.area.id, client.get_char_name(), arg), client)
-
-
-def ooc_cmd_mute(client, arg):
-    if not client.is_mod and not client.is_cm:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10:
-        raise ArgumentError('You must specify a target.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            c = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            c = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-        c.is_muted = True
-        client.send_host_message('{} existing client(s).'.format(c.get_char_name()))
-    except:
-        client.send_host_message("No targets found. Use /mute <id> for mute")
-
-
-def ooc_cmd_unmute(client, arg):
-    if not client.is_mod and not client.is_cm:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10:
-        raise ArgumentError('You must specify a target.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            c = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            c = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-        c.is_muted = False
-        client.send_host_message('{} existing client(s).'.format(c.get_char_name()))
-    except:
-        client.send_host_message("No targets found. Use /mute <id> for mute")
-
-
-def ooc_cmd_loginrp(client, arg):
-    if len(arg) == 0:
-        raise ArgumentError('You must specify the password.')
-    try:
-        client.auth_gm(arg)
-    except ClientError:
-        raise
-    if client.area.evidence_mod == 'HiddenCM':
-        client.area.broadcast_evidence_list()
-
-    client.reload_music_list() # Update music list to show all areas
-    client.send_host_message('Logged in as a game master.')
-    logger.log_server('Logged in as game master.', client)
-
-
-def ooc_cmd_login(client, arg):
-    if len(arg) == 0:
-        raise ArgumentError('You must specify the password.')
-    try:
-        client.auth_mod(arg)
-    except ClientError:
-        raise
-    if client.area.evidence_mod == 'HiddenCM':
-        client.area.broadcast_evidence_list()
-    client.reload_music_list() # Update music list to show all areas
-    client.send_host_message('Logged in as a moderator.')
-    logger.log_server('Logged in as moderator.', client)
-	
-	
-def ooc_cmd_logincm(client, arg):
-    if len(arg) == 0:
-        raise ArgumentError('You must specify the password.')
-    try:
-        client.auth_cm(arg)
-    except ClientError:
-        raise
-    if client.area.evidence_mod == 'HiddenCM':
-        client.area.broadcast_evidence_list()
-    client.reload_music_list() # Update music list to show all areas
-    client.send_host_message('Logged in as a community manager.')
-    logger.log_server('Logged in as community manager.', client)
-
-
-def ooc_cmd_g(client, arg):
-    if client.muted_global:
-        raise ClientError('Global chat toggled off.')
-    if len(arg) == 0:
-        raise ArgumentError("You can't send an empty message.")
-    client.server.broadcast_global(client, arg)
-    logger.log_server('[{}][{}][GLOBAL]{}.'.format(client.area.id, client.get_char_name(), arg), client)
-
-
-def ooc_cmd_gm(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if client.muted_global:
-        raise ClientError('You have the global chat muted.')
-    if len(arg) == 0:
-        raise ArgumentError("Can't send an empty message.")
-    client.server.broadcast_global(client, arg, True)
-    logger.log_server('[{}][{}][GLOBAL-MOD]{}.'.format(client.area.id, client.get_char_name(), arg), client)
-
-
-def ooc_cmd_lm(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError("Can't send an empty message.")
-    client.area.send_command('CT', '{}[MOD][{}]'
-                             .format(client.server.config['hostname'], client.get_char_name()), arg)
-    logger.log_server('[{}][{}][LOCAL-MOD]{}.'.format(client.area.id, client.get_char_name(), arg), client)
-
+    # answer = {True: 'allowed', False: 'forbidden'}
+    # client.send_host_message('iniswap is {}.'.format(answer[client.area.iniswap_allowed]))
 
 def ooc_cmd_announce(client, arg):
+    """ (MOD ONLY)
+    Sends an "announcement" to all users in the server, regardless of whether they have global chat turned on or off.
+    Returns an error if user sends an empty message.
+    
+    SYNTAX
+    /announce <message>
+    
+    PARAMETERS
+    <message>: Message to be sent
+    
+    EXAMPLE
+    /announce Hello World       :: Sends Hello World to all users in the server.
+    """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         raise ArgumentError("Can't send an empty message.")
+    
     client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                     '=== Announcement ===\r\n{}\r\n=================='.format(arg))
     logger.log_server('[{}][{}][ANNOUNCEMENT]{}.'.format(client.area.id, client.get_char_name(), arg), client)
 
-
-def ooc_cmd_toggleglobal(client, arg):
-    if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
-    client.muted_global = not client.muted_global
-    glob_stat = 'on'
-    if client.muted_global:
-        glob_stat = 'off'
-    client.send_host_message('Global chat turned {}.'.format(glob_stat))
-
-
-def ooc_cmd_doc(client, arg):
-    if len(arg) == 0:
-        client.send_host_message('Document: {}'.format(client.area.doc))
-        logger.log_server(
-            '[{}][{}]Requested document. Link: {}'.format(client.area.id, client.get_char_name(), client.area.doc), client)
-    else:
-        client.area.change_doc(arg)
-        client.area.send_host_message('{} changed the doc link.'.format(client.get_char_name()))
-        logger.log_server('[{}][{}]Changed document to: {}'.format(client.area.id, client.get_char_name(), arg), client)
-
-
-def ooc_cmd_cleardoc(client, arg):
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    client.area.send_host_message('{} cleared the doc link.'.format(client.get_char_name()))
-    logger.log_server('[{}][{}]Cleared document. Old link: {}'
-                      .format(client.area.id, client.get_char_name(), client.area.doc), client)
-    client.area.change_doc()
-
-
 def ooc_cmd_area(client, arg):
+    """
+    Either lists all areas in the server or switches the user to a new given area.
+    Returns an error if user is unathorized to list all areas or unable to move to the intended new area.
+    
+    PARAMETERS
+    /area {new_area_id}
+    
+    SYNTAX
+    {new_area_id}: ID of the area
+    
+    EXAMPLES
+    /area                   :: Lists all areas in the server with usercount.
+    /area {new_area_id}     :: Moves 
+    """
     args = arg.split()
+    # List all areas case
     if len(args) == 0:
         if client.in_rp:
             client.send_limited_area_list()
         else:
             client.send_area_list()
+    
+    # Switch to new area
     elif len(args) == 1:
         try:
             area = client.server.area_manager.get_area_by_id(int(args[0]))
@@ -670,24 +267,774 @@ def ooc_cmd_area(client, arg):
             raise
     else:
         raise ArgumentError('Too many arguments. Use /area <id>.')
+        
+def ooc_cmd_ban(client, arg):
+    """ (MOD ONLY)
+    Kicks given user from the server and prevents them from rejoining. The user can be identified by either their IPID or IP address
+    Requires /unban to undo.
+    Returns an error if given identifier does not correspond to a user.
+    
+    SYNTAX
+    /ban <client_ipid>
+    /ban <client_ip>
+    
+    PARAMETERS
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ip>: user IP
+    
+    EXAMPLES
+    /ban 1234567890             :: Bans the user whose IPID is 1234567890
+    /ban 127.0.0.1              :: Bans the user whose IP is 127.0.0.1
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    
+    # Guesess that any number of length 10 is an IPID
+    # and that any non-numerical entry is an IP address.
+    try:
+        # IPID
+        identifier = int(arg.strip())
+        if len(str(identifier)) != 10:
+            raise ClientError('Argument must be an IP address or 10-digit number.')
+        is_ipid = True
+    except ValueError:
+        # IP Address
+        identifier = arg.strip()
+        is_ipid = False
+        
+    # Try and add the user to the ban list based on the given identifier
+    try:
+        client.server.ban_manager.add_ban(identifier)
+    except ServerError:
+        raise
+    
+    # Try and kick the user from the server, as well as announce their ban.
+    if identifier:
+        if is_ipid:
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, identifier, False)
+        else:
+            targets = client.server.client_manager.get_targets(client, TargetType.IP, identifier, False)
+        
+        # Kick+ban all clients opened by the targeted user.
+        if targets:
+            for c in targets:
+                client.area.send_host_message('{} was banned.'.format(c.get_char_name()))
+                c.disconnect()
+        
+        client.send_host_message('{} clients were banned.'.format(len(targets)))
+        logger.log_server('Banned {}.'.format(identifier), client)
+    
+def ooc_cmd_bg(client, arg):
+    """
+    Change the background of the current area.
+    Returns an error if area background is locked and user is unathorized or sought background does not exist.
+    
+    SYNTAX
+    /bg <background_name>
+    
+    PARAMETERS
+    <background_name>: New background name, possibly with spaces (e.g. Principal's Room)
+    
+    EXAMPLES
+    /bg Principal's Room   :: Changes background to Principal's Room
+    """
+    if len(arg) == 0:
+        raise ArgumentError('You must specify a name. Use /bg <background>.')
+    
+    if not client.is_mod and client.area.bg_lock == True: 
+        raise AreaError("This area's background is locked.")
+    try:
+        if client.is_staff():
+            client.area.change_background_mod(arg)
+        else:
+            client.area.change_background(arg)
+    except AreaError:
+        raise
+    client.area.send_host_message('{} changed the background to {}.'.format(client.get_char_name(), arg))
+    logger.log_server('[{}][{}]Changed background to {}'.format(client.area.id, client.get_char_name(), arg), client)
 
+def ooc_cmd_bglock(client, arg):
+    """ (MOD ONLY)
+    Toggles background changes by non-mods in the current area being allowed/disallowed.
+    
+    SYNTAX
+    /bglock
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /bglock         
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    client.area.bg_lock = not client.area.bg_lock
+    client.area.send_host_message('A mod has set the background lock to {}.'.format(client.area.bg_lock))
+    logger.log_server('[{}][{}]Changed bglock to {}'.format(client.area.id, client.get_char_name(), client.area.bg_lock), client)
+
+def ooc_cmd_charselect(client, arg):
+    """
+    Opens the character selection screen for the current user
+    OR (MOD ONLY) forces another user by identifier to have that screen open.
+    
+    SYNTAX
+    /charselect 
+    /charselect {client_id}
+    /charselect {client_ipid}
+    
+    PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea).
+    {client_ipid}: 10-digit user identifier (number in parentheses in /getarea).
+    
+    EXAMPLES
+    /charselect                    :: Open character selection screen for the current user.
+    /charselect 1234567890         :: Forces open the character selection screen for the user whose IPID is 1234567890
+    /charselect 127.0.0.1          :: Forces open the character selection screen for the user whose IP is 127.0.0.1    
+    """
+    
+    # Open for current user case
+    if not arg:
+        client.char_select()
+    
+    # Force open for different user
+    else:
+        if not client.is_mod:
+            raise ClientError('You must be authorized to do that.')
+        elif not arg.isdigit() or len(arg) > 10:
+            raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
+ 
+        # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
+        # This places the assumption that there are no more than 10 billion clients connected simultaneously
+        # but if that is the case, you probably have a much larger issue at hand.
+        if len(arg) == 10:
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        else:
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+        
+        # Force character selection screen on matching targets
+        if targets:
+            for c in targets:
+                c.char_select()
+        else:
+            client.send_host_message("No targets found.")
+            
+def ooc_cmd_cleardoc(client, arg):
+    """
+    Clears the current area's doc.
+    
+    SYNTAX
+    /cleardoc
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /cleardoc
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
+    client.area.send_host_message('{} cleared the doc link.'.format(client.get_char_name()))
+    logger.log_server('[{}][{}]Cleared document. Old link: {}'
+                      .format(client.area.id, client.get_char_name(), client.area.doc), client)
+    client.area.change_doc()
+
+def ooc_cmd_cleargm(client, arg):
+    """ (CM AND MOD ONLY)
+    Logs out all game masters in the server and puts them in RP mode if needed.
+    
+    SYNTAX
+    /cleargm
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /cleargm
+    """
+    if not client.is_mod and not client.is_cm:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    for i, area in enumerate(client.server.area_manager.areas):
+        for c in [x for x in area.clients if x.is_gm]:
+            c.is_gm = False
+            if client.server.rp_mode:
+                c.in_rp = True
+            # Update the music list to show reachable areas and activate the AFK timer
+            c.reload_music_list()
+            c.server.create_task(client, ['as_afk_kick', client.area.afk_delay, client.area.afk_sendto])
+
+            c.send_host_message('You are no longer a GM.')
+    client.send_host_message('All GMs logged out.')
+
+def ooc_cmd_coinflip(client, arg):
+    """
+    Flips a coin and returns the result.
+    
+    SYNTAX
+    /coinflip
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /coinflip
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    coin = ['heads', 'tails']
+    flip = random.choice(coin)
+    client.area.send_host_message('{} flipped a coin and got {}.'.format(client.get_char_name(), flip))
+    logger.log_server(
+        '[{}][{}]Used /coinflip and got {}.'.format(client.area.id, client.get_char_name(), flip), client)
+
+def ooc_cmd_currentmusic(client, arg):
+    """
+    Returns the music currently playing (and who played it), or None if no music is playing.
+    
+    SYNTAX
+    /currentmusic
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /currentmusic
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    if client.area.current_music == '':
+        raise ClientError('There is no music currently playing.')
+    client.send_host_message('The current music is {} and was played by {}.'.format(client.area.current_music,
+                                                                                    client.area.current_music_player))
+
+def ooc_cmd_doc(client, arg):
+    """
+    Sends the area's current doc link to the user, or sets it to a new one.
+    
+    SYNTAX
+    /doc {doc_link}
+    
+    PARAMETERS
+    {doc_link}: Link to new document.
+    
+    EXAMPLES
+    /doc https://www.google.com     :: Sets the document link to the Google homepage.
+    /doc                            :: Returns the current document (e.g. https://www.google.com) 
+    """
+    
+    # Clear doc case
+    if len(arg) == 0:
+        client.send_host_message('Document: {}'.format(client.area.doc))
+        logger.log_server(
+            '[{}][{}]Requested document. Link: {}'.format(client.area.id, client.get_char_name(), client.area.doc), client)
+    # Set new doc case
+    else:
+        client.area.change_doc(arg)
+        client.area.send_host_message('{} changed the doc link.'.format(client.get_char_name()))
+        logger.log_server('[{}][{}]Changed document to: {}'.format(client.area.id, client.get_char_name(), arg), client)
+
+def ooc_cmd_g(client, arg):
+    """
+    Sends a global message in the OOC chat (i.e. visible to all users in the server who have not disabled global chat).
+    Returns an error if the user has global chat off or sends an empty message.
+    
+    SYNTAX
+    /g <message>
+    
+    PARAMETERS
+    <message>: Message to be sent
+    
+    EXAMPLE
+    /g Hello World      :: Sends Hello World to global chat.
+    """
+    if client.muted_global:
+        raise ClientError('You have the global chat muted.')
+    if len(arg) == 0:
+        raise ArgumentError("You cannot send an empty message.")
+    
+    client.server.broadcast_global(client, arg)
+    logger.log_server('[{}][{}][GLOBAL]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+
+def ooc_cmd_getarea(client, arg):
+    """
+    List the characters (and associated client IDs) in the current area.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getarea.
+    
+    SYNTAX
+    /getarea
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /getarea
+    """
+    if client.in_rp and client.area.rp_getarea_allowed == False:
+        raise ClientError("This command has been restricted to authorized users only in this area while in RP mode.")
+        
+    client.send_area_info(client.area, client.area.id, False)
+
+def ooc_cmd_getareas(client, arg):
+    """
+    List the characters (and associated client IDs) in each area.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getareas.
+    
+    SYNTAX
+    /getarea
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /getarea
+    """
+    if client.in_rp and client.area.rp_getareas_allowed == False:
+        raise ClientError("This command has been restricted to authorized users only in this area while in RP mode.")
+
+    client.send_area_info(client.area, -1, False)
+
+def ooc_cmd_gm(client, arg):
+    """ (MOD ONLY)
+    Similar to /g, but with the following changes:
+    *Includes a "[GLOBAL-MOD]" tag to the message to indicate a mod sent the message.
+    *Uses the OOC username as opposed to the character name when displaying the message.
+    Returns an error if the user has global chat off or sends an empty message.
+    
+    SYNTAX
+    /gm <message>
+    
+    PARAMETERS
+    <message>: Message to be sent
+    
+    EXAMPLE
+    /gm Hello World     :: Sends Hello World to globat chat, preceded with [GLOBAL-MOD].
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if client.muted_global:
+        raise ClientError('You have the global chat muted.')
+    if len(arg) == 0:
+        raise ArgumentError("You cannot send an empty message.")
+        
+    client.server.broadcast_global(client, arg, True)
+    logger.log_server('[{}][{}][GLOBAL-MOD]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+
+def ooc_cmd_help(client, arg):
+    """
+    Returns the website with all available commands and their instructions (usually a GitHub repository)
+    
+    SYNTAX
+    /help
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /help
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    help_url = 'https://github.com/AttorneyOnlineVidya/tsuserver3'
+    help_msg = 'Available commands, source code and issues can be found here: {}'.format(help_url)
+    client.send_host_message(help_msg)
+    
+def ooc_cmd_iclock(client, arg):
+    """ (STAFF ONLY)
+    Toggles IC messages by non-staff in the current area being allowed/disallowed.
+    Returns an error if not authorized, or if a GM attempts to lock IC in an area where such an action is forbidden.
+    
+    SYNTAX
+    /iclock
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /iclock
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if not (client.is_mod or client.is_cm) and (client.is_gm and not client.area.gm_iclock_allowed):
+        raise ClientError('GMs are not authorized to change IC locks in this area.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    client.area.ic_lock = not client.area.ic_lock
+    client.area.send_host_message('A staff member has set the IC lock to {}.'.format(client.area.ic_lock))
+    logger.log_server('[{}][{}]Changed IC lock to {}'.format(client.area.id, client.get_char_name(), client.area.ic_lock), client)
+
+def ooc_cmd_kick(client, arg):
+    """ (CM AND MOD ONLY)
+    Kicks a user from the server. The target is identified by either client ID (number in brackets) or IPID (number in parentheses).
+    If given IPID, it will kick all clients opened by the user. Otherwise, it will just kick the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /kick <client_id>
+    /kick <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /kick 1                     :: Kicks client whose ID is 1.
+    /kick 1234567890            :: Kick all clients opened by the user whose IPID is 1234567890.
+    """
+    if not client.is_mod and not client.is_cm:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
+        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
+    
+    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
+    # This places the assumption that there are no more than 10 billion clients connected simultaneously
+    # but if that is the case, you probably have a much larger issue at hand.
+    if len(arg) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+    else:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    
+    # Kick matching targets
+    if targets:
+        for c in targets:
+            logger.log_server('Kicked {}.'.format(c.ipid), client)
+            client.area.send_host_message("{} was kicked.".format(c.get_char_name()))
+            c.disconnect()
+    else:
+        client.send_host_message("No targets found.")
+		
+def ooc_cmd_kickself(client, arg):
+    """
+    Kicks other clients opened by the current user. Useful whenever a user loses connection and the old client is ghosting.
+    
+    SYNTAX
+    /kickself
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /kickself
+    """
+    targets = client.server.client_manager.get_targets(client, TargetType.IPID, client.ipid, False)
+    
+    for target in targets:
+        if target != client:
+            target.disconnect()
+    
+    client.send_host_message('Kicked other instances of client.')
+
+def ooc_cmd_lm(client, arg):
+    """ (MOD ONLY)
+    Similar to /lm, but only broadcasts the message to users in the current area, regardless of their global chat status.
+    Returns an error if the user sends an empty message.
+    SYNTAX
+    /lm <message>
+    
+    PARAMETERS
+    <message>: Message to be sent
+    
+    EXAMPLE
+    /lm Hello World     :: Sends Hello World to all users in the current area, preceded with [MOD].
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ArgumentError("Can't send an empty message.")
+    client.area.send_command('CT', '{}[MOD][{}]'
+                             .format(client.server.config['hostname'], client.get_char_name()), arg)
+    logger.log_server('[{}][{}][LOCAL-MOD]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+
+def ooc_cmd_lock(client, arg):
+    """
+    Locks the current area, preventing anyone not in the area (except staff) from joining. It also clears out the current invite list.
+    Returns an error if the area does not allow locking or is already locked.
+    
+    SYNTAX
+    /lock
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /lock
+    """
+    if not client.area.locking_allowed:
+        raise ClientError('Area locking is disabled in this area.')
+    if client.area.is_locked:
+        raise ClientError('Area is already locked.')
+        
+    client.area.is_locked = True
+    for i in client.area.clients:
+        client.area.invite_list[i.ipid] = None
+
+    client.area.send_host_message('Area locked.')
+    
+def ooc_cmd_login(client, arg):
+    """
+    Logs in current user as a moderator, provided they input the correct password.
+    
+    SYNTAX
+    /login <mod_password>
+    
+    PARAMETERS
+    <mod_password>: Mod password, found in \config\config.yaml
+    
+    EXAMPLES
+    /login Mod      :: Attempt to log in as mod with "Mod" as password.
+    """
+    login(client, arg, client.auth_mod, 'moderator')
+	
+def ooc_cmd_logincm(client, arg):
+    """
+    Logs in current user as a community manager, provided they input the correct password.
+    
+    SYNTAX
+    /login <cm_password>
+    
+    PARAMETERS
+    <cm_password>: Community manager password, found in \config\config.yaml
+    
+    EXAMPLES
+    /logincm CM     :: Attempt to log in as community maanger with "CM" as password.
+    """
+    login(client, arg, client.auth_cm, 'community manager')
+
+def ooc_cmd_loginrp(client, arg):
+    """
+    Logs in current user as a game master, provided they input the correct password.
+    
+    SYNTAX
+    /login <gm_password>
+    
+    PARAMETERS
+    <gm_password>: Game master password, found in \config\config.yaml
+    
+    EXAMPLES
+    /loginrp GM     :: Attempt to log in as game master with "GM" as password.
+    """
+    login(client, arg, client.auth_gm, 'game master')
+
+def ooc_cmd_logout(client, arg):
+    """
+    Logs out the current user from all staff roles and puts them in RP mode if needed.
+    
+    SYNTAX
+    /logout
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /logout
+    """
+    client.is_mod = False
+    client.is_gm = False
+    client.is_cm = False
+    
+    if client.server.rp_mode:
+        client.in_rp = True
+    if client.area.evidence_mod == 'HiddenCM':
+        client.area.broadcast_evidence_list()
+   
+    # Update the music list to show reachable areas and activate the AFK timer
+    client.reload_music_list()
+    client.server.create_task(client, ['as_afk_kick', client.area.afk_delay, client.area.afk_sendto])
+
+    client.send_host_message('You are no longer logged in.')
+
+def ooc_cmd_minimap(client, arg):
+    """
+    Lists all areas that can be reached from the current area according to areas.yaml and passages set in-game.
+    Returns all areas if no passages were defined or created for the current area.
+    
+    SYNTAX
+    /minimap
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /minimap
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    info = '== Areas reachable from {} =='.format(client.area.name)
+    try:
+        # Get all reachable areas and sort them by area ID
+        sorted_areas = sorted(client.area.reachable_areas,
+                              key = lambda area_name: client.server.area_manager.get_area_by_name(area_name).id)
+        
+        # No areas found or just the current area found means there are no reachable areas.
+        if len(sorted_areas) == 0 or sorted_areas == [client.area.name]:
+            info += '\r\n*No areas available.'
+        # Otherwise, build the list of all reachable areas
+        else:
+            for area in sorted_areas:
+                if area != client.area.name:
+                    info += '\r\n*{}'.format(area)
+    except AreaError:
+        # In case no passages are set, send '<ALL>' as default answer.
+        info += '\r\n<ALL>'
+        
+    client.send_host_message(info)
+    
+def ooc_cmd_motd(client, arg):
+    """
+    Returns the server's Message Of The Day.
+    
+    SYNTAX
+    /motd
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /motd
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    client.send_motd()
+
+def ooc_cmd_mute(client, arg):
+    """ (CM AND MOD ONLY)
+    Mutes given user based on client ID or IPID so that they are unable to speak in IC chat.
+    If given IPID, it will mute all clients opened by the user. Otherwise, it will just mute the given client.
+    Requires /unmute to undo.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /mute <client_id>
+    /mute <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /mute 1                     :: Mutes client whose ID is 1.
+    /mute 1234567890            :: Mutes all clients opened by the user whose IPID is 1234567890.
+    """
+    
+    if not client.is_mod and not client.is_cm:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
+        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
+    
+    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
+    # This places the assumption that there are no more than 10 billion clients connected simultaneously
+    # but if that is the case, you probably have a much larger issue at hand.
+    if len(arg) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+    else:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    
+    # Mute matching targets
+    if targets:
+        for c in targets:
+            logger.log_server('Muted {}.'.format(c.ipid), client)
+            client.area.send_host_message("{} was muted.".format(c.get_char_name()))
+            c.is_muted = True
+    else:
+        client.send_host_message("No targets found.")
+
+def ooc_cmd_mutepm(client, arg):
+    """
+    Toggles between being able to receive PMs or not.
+    
+    SYNTAX
+    /mutepm
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /mutepm
+    """
+    if len(arg) != 0:
+        raise ArgumentError("This command doesn't take any arguments.")
+    
+    client.pm_mute = not client.pm_mute
+    status = {True: 'You stopped receiving PMs.', False: 'You are now receiving PMs.'}
+    client.send_host_message(status[client.pm_mute]) 
+    
+def ooc_cmd_play(client, arg):
+    """ (STAFF ONLY)
+    Plays a given track, even if not explicitly in the music list. It is the way to play custom music.
+    
+    SYNTAX
+    /play <track_name>
+    
+    PARAMETERS:
+    <track_name>: Track to play
+    
+    EXAMPLES:
+    /play Trial(AJ).mp3         :: Plays Trial(AJ).mp3
+    /play CustomTrack.mp3       :: Plays CustomTrack.mp3 (will only be audible to users with CustomTrack.mp3)
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    if len(arg) == 0:
+        raise ArgumentError('You must specify a song.')
+    
+    client.area.play_music(arg, client.char_id, -1)
+    client.area.add_music_playing(client, arg)
+    logger.log_server('[{}][{}]Changed music to {}.'.format(client.area.id, client.get_char_name(), arg), client)
 
 def ooc_cmd_pm(client, arg):
+    """
+    Sends a personal message to a specified user.
+    Returns an error if the user could not be found.
+    
+    SYNTAX
+    /pm <user_id> <message>
+    
+    PARAMETERS
+    <user_id>: Either the character name, the client ID (number in brackets in /getarea) or OOC username of the intended recipient.
+    <message>: Message to be sent.
+    
+    EXAMPLES
+    /pm Santa What will I get for Christmas?    :: Sends that message to the user whose name is Santa.
+    /pm 0 Nothing                               :: Sends that message to the user whose client ID is 0.
+    /pm Santa_HD Sad                            :: Sends that message to the user whose character name is Santa_HD.
+    """
     args = arg.split()
     key = ''
     msg = None
     if len(args) < 2:
         raise ArgumentError('Not enough arguments. use /pm <target> <message>. Target should be ID, OOC-name or char-name. Use /getarea for getting info like "[ID] char-name".')
+    
+    # Pretend the identifier is a character name
     targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, arg, True)
     key = TargetType.CHAR_NAME
+    
+    # If still needed, pretend the identifier is a client ID
     if len(targets) == 0 and args[0].isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
         key = TargetType.ID
+    
+    # If still needed, pretend the identifier is an OOC username
     if len(targets) == 0:
         targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, True)
         key = TargetType.OOC_NAME
+    
+    # If no matching targets found, be sad.
     if len(targets) == 0:
         raise ArgumentError('No targets found.')
+        
+    # Obtain the message from the given arguments
     try:
         if key == TargetType.ID:
             msg = ' '.join(args[1:])
@@ -698,159 +1045,380 @@ def ooc_cmd_pm(client, arg):
                 msg = arg[len(targets[0].name) + 1:]
     except:
         raise ArgumentError('Not enough arguments. Use /pm <target> <message>.')
+    
+    # Attempt to send the message to the target, provided they do not have PMs disabled.
     c = targets[0]
     if c.pm_mute:
         raise ClientError('This user muted all pm conversation')
     else:
         c.send_host_message('PM from {} in {} ({}): {}'.format(client.name, client.area.name, client.get_char_name(), msg))
         client.send_host_message('PM sent to {}. Message: {}'.format(args[0], msg))
-
-
-def ooc_cmd_mutepm(client, arg):
-    if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
-    client.pm_mute = not client.pm_mute
-    client.send_host_message({True:'You stopped receiving PMs', False:'You are now receiving PMs'}[client.pm_mute]) 
-
-
-def ooc_cmd_charselect(client, arg):
-    if not arg:
-        client.char_select()
+        
+def ooc_cmd_pos(client, arg):
+    """
+    Switches the character to the given position, or to its original position if not given one.
+    Returns an error if position is invalid.
+    
+    SYNTAX
+    /pos {new_position}
+    
+    PARAMETERS
+    {new_position}: New character position (jud, def, pro, hlp, hld)
+    
+    EXAMPLES
+    /pos jud                :: Switches to the judge position
+    /pos                    :: Resets to original position
+    """
+    # Resetting to original position
+    if len(arg) == 0:
+        client.change_position()
+        client.send_host_message('Position reset.')
+    
+    # Switching position
     else:
-        if client.is_mod:
-            try:
-                if len(arg) < 10 and arg.isdigit():
-                    client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].char_select()
-                elif len(arg) == 10 and arg.isdigit():
-                    client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False).char_select()
-            except:
-                raise ArgumentError('Wrong arguments. Use /charselect <target\'s id>')
-
-
-def ooc_cmd_reload(client, arg):
-    if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
-    try:
-        client.reload_character()
-    except ClientError:
-        raise
-    client.send_host_message('Character reloaded.') 
-
+        try:
+            client.change_position(arg)
+        except ClientError:
+            raise
+        client.area.broadcast_evidence_list()
+        client.send_host_message('Position changed.')   
 
 def ooc_cmd_randomchar(client, arg):
+    """
+    Switches the user to a random character.
+    Returns an error if new character is available.
+    
+    SYNTAX
+    /randomchar
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /randomchar
+    """
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
+   
     try:
         free_id = client.area.get_rand_avail_char_id()
     except AreaError:
         raise
+    
     try:
         client.change_character(free_id)
     except ClientError:
         raise
+    
     client.send_host_message('Randomly switched to {}'.format(client.get_char_name()))
 
+def ooc_cmd_reload(client, arg):
+    """
+    Reloads the character for the current user (equivalent to switching to the current character).
+    
+    SYNTAX
+    /reload
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /reload
+    """
+    if len(arg) != 0:
+        raise ArgumentError("This command doesn't take any arguments")
+    
+    try:
+        client.reload_character()
+    except ClientError:
+        raise
+    
+    client.send_host_message('Character reloaded.') 
+    
+def ooc_cmd_roll(client, arg):
+    """
+    Rolls a given number of dice with given number of faces and modifiers.
+    If certain parameters are not given, command assumes preset defaults.
+    Raises an error if parameters exceed specified constants or an invalid mathematical operation is put as a modifier.
+    
+    For modifiers, the modifier's result will ignore the given number of faces cap and instead use NUMFACES_MAX (so dice rolls can exceed number of faces).
+    However, the modifier's result is bottom capped at 1 (so non-positive values are not allowed).
+    Modifiers follow PEMDAS, and if not given the dice result (character "r"), will try and perform the operation directly.
+    
+    SYNTAX
+    /roll {num_faces} {modifier}
+    /roll {num_dice}d<num_faces> {modifier}
+    
+    PARAMETERS
+    {num_faces}: Number of faces the dice will have (capped at NUMFACES_MAX)
+    {num_dice}: Number of dice to roll (capped at NUMDICE_MAX)
+    {modifier}: Operation to perform on rolls
+    
+    EXAMPLES
+    /roll                           :: Rolls DEF_NUMDICE dice with DEF_NUMFACES faces and DEF_MODIFIER modifier
+    /roll 20                        :: Rolls a d20.
+    /roll 5d30                      :: Rolls 5 d30's.
+    /roll d20 +3                    :: Rolls a d20 and adds 3 to the result.
+    /roll 1d20 +3*2                 :: Rolls a d20 and adds 3*2=6 to the result.
+    /roll 6 -1+3*r                  :: Rolls a d6, multiplies the result by 3 and subtracts 1 to it.
+    /roll 3d6 (-1+3)*r              :: Rolls 3 d6's and mutliplies each result by 2.
+    """
+    
+    roll_result, num_faces = dice_roll(arg, 'roll') # Moved calculation of roll code to helper function so rollp can reuse it
 
-def ooc_cmd_getarea(client, arg):
-    if client.in_rp and client.area.rp_getarea_allowed == False:
-        client.send_host_message("This command has been restricted to authorized users only in this area while in RP mode.")
+    client.area.send_host_message('{} rolled {} out of {}.'.format(client.get_char_name(), roll_result, num_faces))
+    logger.log_server(
+        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), roll_result, num_faces), client)
+    
+def ooc_cmd_rollp(client, arg):
+    """
+    Similar to /roll, but instead only announces roll results (and who rolled) to staff members.
+    Returns an error if current area does not authorize /rollp and user is not logged in.
+    
+    SYNTAX
+    /rollp {num_faces} {modifier}
+    /rollp {num_dice}d<num_faces> {modifier}
+    
+    PARAMETERS
+    {num_faces}: Number of faces the dice will have (capped at NUMFACES_MAX)
+    {num_dice}: Number of dice to roll (capped at NUMDICE_MAX)
+    {modifier}: Operation to perform on rolls
+    
+    EXAMPLES
+    /rollp                           :: Rolls DEF_NUMDICE dice with DEF_NUMFACES faces and DEF_MODIFIER modifier
+    /rollp 20                        :: Rolls a d20.
+    /rollp 5d30                      :: Rolls 5 d30's.
+    /rollp d20 +3                    :: Rolls a d20 and adds 3 to the result.
+    /rollp 1d20 +3*2                 :: Rolls a d20 and adds 3*2=6 to the result.
+    /rollp 6 -1+3*r                  :: Rolls a d6, multiplies the result by 3 and subtracts 1 to it.
+    /rollp 3d6 (-1+3)*r              :: Rolls 3 d6's and mutliplies each result by 2.
+    """
+    if not client.area.rollp_allowed and not client.is_staff():
+        client.send_host_message("This command has been restricted to authorized users only in this area.")
         return
-    client.send_area_info(client.area, client.area.id, False)
+    
+    roll_result, num_faces = dice_roll(arg, 'rollp') # Moved calculation of roll code to helper function so roll can reuse it
+        
+    client.send_host_message('You privately rolled {} out of {}.'.format(roll_result, num_faces))    
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    'Someone rolled.', pred=lambda c: not c.is_staff() 
+                                    and c != client and c.area.id == client.area.id) 
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    '{} privately rolled {} out of {} in {} ({}).'
+                                    .format(client.get_char_name(), roll_result, num_faces, client.area.name, client.area.id), 
+                                    pred=lambda c: c.is_staff() and c != client)
+    
+    SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
+    logger.log_server(
+        '[{}][{}]Used /rollp and got {} out of {}.'
+        .format(client.area.id, client.get_char_name(), 
+                hashlib.sha1((str(roll_result) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, num_faces), client)
 
-def ooc_cmd_getareas(client, arg):
-    if client.in_rp and client.area.rp_getareas_allowed == False:
-        client.send_host_message("This command has been restricted to authorized users only in this area while in RP mode.")
-        return
-    client.send_area_info(client.area, -1, False)
+def ooc_cmd_switch(client, arg):
+    """ 
+    Switches current user's character to a different one. 
+    Raises an error if character is unavailable or non-existant.
+    
+    SYNTAX
+    /switch <char_name>
+    
+    PARAMETERS
+    <char_name>: Character name 
+    
+    EXAMPLES
+    /switch Phoenix_HD      
+    """
+    if len(arg) == 0:
+        raise ArgumentError('You must specify a character name.')
+    
+    # Obtain char_id if character exists
+    try:
+        cid = client.server.get_char_id_by_name(arg)
+    except ServerError:
+        raise
+        
+    # Try and change to given char if available
+    try:
+        client.change_character(cid, client.is_mod)
+    except ClientError:
+        raise
+    client.send_host_message('Character changed.')
+
+def ooc_cmd_toggleglobal(client, arg):
+    """
+    Toggles global messages being sent to the current user being allowed/disallowed
+    
+    SYNTAX
+    /toggleglobal
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /toggleglobal
+    """
+    if len(arg) != 0:
+        raise ArgumentError("This command has no arguments.")
+        
+    client.muted_global = not client.muted_global
+    status = {False: 'on', True: 'off'}
+    
+    client.send_host_message('Global chat turned {}.'.format(status[client.muted_global]))
+    
+def ooc_cmd_toggle_rollp(client, arg):
+    """ (STAFF ONLY)
+    Toggles private rolls by non-staff in the current area being allowed/disallowed.
+    
+    SYNTAX
+    /toggle_rollp
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /toggle_rollp 
+    """
+    
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
+    client.area.rollp_allowed = not client.area.rollp_allowed
+    status = {False: 'disabled', True: 'enabled'}
+    
+    client.area.send_host_message('A staff member has {} the use of private roll commands in this area.'.format(status[client.area.rollp_allowed]))
+    logger.log_server('[{}][{}]{} private roll commands in this area.'
+                      .format(client.area.id, client.get_char_name(), 
+                              status[client.area.rollp_allowed].capitalize()), client)
 
 def ooc_cmd_toggle_rpgetarea(client, arg):
-    if (not client.is_mod and not client.is_gm and not client.is_cm):
+    """ (STAFF ONLY)
+    Toggles users subject to RP mode being able/unable to use /getarea in the current area.
+    
+    SYNTAX
+    /toggle_rpgetarea
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /toggle_rpgetarea
+    """
+    if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
-    if client.area.rp_getarea_allowed == True:
-        client.area.rp_getarea_allowed = False
-        client.area.send_host_message('The use of the /getarea command in this area while in RP mode has been restricted to authorized users only.')
-    else:
-        client.area.rp_getarea_allowed = True
-        client.area.send_host_message('The use of the /getarea command in this area while in RP mode has been enabled to all users.')
-
+    
+    client.area.rp_getarea_allowed = not client.area.rp_getarea_allowed
+    status = {False: 'disabled', True: 'enabled'}
+    
+    client.area.send_host_message('A staff member has {} the use of /getarea in this area.'.format(status[client.area.rp_getarea_allowed]))
+    logger.log_server('[{}][{}]{} /getarea in this area.'
+                      .format(client.area.id, client.get_char_name(), 
+                              status[client.area.rp_getarea_allowed].capitalize()), client)
+     
 def ooc_cmd_toggle_rpgetareas(client, arg):
-    if (not client.is_mod and not client.is_gm and not client.is_cm):
+    """ (STAFF ONLY)
+    Toggles users subject to RP mode being able/unable to use /getareas in the current area.
+    
+    SYNTAX
+    /toggle_rpgetareas
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /toggle_rpgetareas
+    """
+    if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
-    if client.area.rp_getareas_allowed == True:
-        client.area.rp_getareas_allowed = False
-        client.area.send_host_message('The use of the /getareas command in this area while in RP mode has been restricted to authorized users only.')
-    else:
-        client.area.rp_getareas_allowed = True
-        client.area.send_host_message('The use of the /getareas command in this area while in RP mode has been enabled to all users.')
-
-def ooc_cmd_minimap(client, arg):
-    info = '== Areas reachable from {} =='.format(client.area.name)
+    
+    client.area.rp_getareas_allowed = not client.area.rp_getareas_allowed
+    status = {False: 'disabled', True: 'enabled'}
+    
+    client.area.send_host_message('A staff member has {} the use of /getareas in this area.'.format(status[client.area.rp_getareas_allowed]))
+    logger.log_server('[{}][{}]{} /getareas in this area.'
+                      .format(client.area.id, client.get_char_name(), 
+                              status[client.area.rp_getareas_allowed].capitalize()), client)
+     
+def ooc_cmd_unban(client, arg):
+    """ (MOD ONLY)
+    Removes given user from the server banlist, allowing them to rejoin the server.
+    Returns an error if given IPID does not correspond to a banned user.
+    
+    SYNTAX
+    /unban <client_ipid>
+    
+    PARAMETERS
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /unban 1234567890           :: Unbans user whose IPID is 1234567890
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    
+    # Assumes that any error is caused by putting something other than an IPID.
     try:
-        sorted_areas = sorted(client.area.reachable_areas,key = lambda area_name: client.server.area_manager.get_area_by_name(area_name).id)
-        if len(sorted_areas) == 0 or sorted_areas == [client.area.name]:
-            info += '\r\n*No areas available.'
-        else:
-            for area in sorted_areas:
-                if area != client.area.name:
-                    info += '\r\n*{}'.format(area)
-    except AreaError:
-        info += '\r\n<ALL>'
-    client.send_host_message(info)
+        client.server.ban_manager.remove_ban(int(arg.strip()))
+    except:
+        raise ClientError('You must specify \'hdid\'')
     
-def ooc_cmd_logout(client, arg):
-    client.is_mod = False
-    client.is_gm = False
-    client.is_cm = False
-    if client.server.rp_mode:
-        client.in_rp = True
-    if client.area.evidence_mod == 'HiddenCM':
-        client.area.broadcast_evidence_list()
-    client.reload_music_list() # Update music list to show default reachable areas
+    logger.log_server('Unbanned {}.'.format(arg), client)
+    client.send_host_message('Unbanned {}'.format(arg))
+
+def ooc_cmd_unmute(client, arg):
+    """ (CM AND MOD ONLY)
+    Unmutes given user based on client ID or IPID so that they are unable to speak in IC chat.
+    If given IPID, it will unmute all clients opened by the user. Otherwise, it will just mute the given client.
+    This command does nothing for clients that are not actively muted.
+    Returns an error if the given identifier does not correspond to a user.
     
-    # Now bound by AFK rules
-    client.server.create_task(client, ['as_afk_kick', client.area.afk_delay, client.area.afk_sendto])
-
-    client.send_host_message('You are no longer logged in.')
-
-
-def ooc_cmd_cleargm(client, arg):
+    SYNTAX
+    /unmute <client_id>
+    /unmute <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /unmute 1                     :: Unmutes client whose ID is 1.
+    /unmute 1234567890            :: Unmutes all clients opened by the user whose IPID is 1234567890.
+    """
+    
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ClientError('This command does not take arguments.')
-    for i, area in enumerate(client.server.area_manager.areas):
-        for c in [x for x in area.clients if x.is_gm]:
-            c.is_gm = False
-            if client.server.rp_mode:
-                c.in_rp = True
-            c.send_host_message('You are no longer a GM.')
-    client.send_host_message('All GMs logged out.')
-
-
-def ooc_cmd_lock(client, arg):
-    if not client.area.locking_allowed:
-        client.send_host_message('Area locking is disabled in this area.')
-        return
-    if client.area.is_locked:
-        client.send_host_message('Area is already locked.')
+    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
+        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
+    
+    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
+    # This places the assumption that there are no more than 10 billion clients connected simultaneously
+    # but if that is the case, you probably have a much larger issue at hand.
+    if len(arg) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
     else:
-        client.area.is_locked = True
-        client.area.send_host_message('Area locked.')
-        for i in client.area.clients:
-            client.area.invite_list[i.ipid] = None
-        return
-
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    
+    # Mute matching targets
+    if targets:
+        for c in targets:
+            logger.log_server('Unmuted {}.'.format(c.ipid), client)
+            client.area.send_host_message("{} was unmuted.".format(c.get_char_name()))
+            c.is_muted = False
+    else:
+        client.send_host_message("No targets found.")
+    
 def ooc_cmd_bilock(client, arg):
     areas = arg.split(', ')
     if len(areas) > 2 or arg == '':
         raise ClientError('This command takes one or two arguments.')
     if len(areas) == 1:
         areas.insert(0,client.area.name)
-    elif not (client.is_mod or client.is_gm or client.is_cm):
+    elif not client.is_staff():
         raise ClientError('You must be authorized to use the two-parameter version of this command.')
     for i in range(2):
         #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
@@ -866,7 +1434,7 @@ def ooc_cmd_bilock(client, arg):
                     areas[i] = client.server.area_manager.get_area_by_id(int(areas[i]))
                 except:
                     raise ClientError('Could not parse argument {}'.format(areas[i]))
-        if not areas[i].change_reachability_allowed and not (client.is_mod or client.is_cm or client.is_gm):
+        if not areas[i].change_reachability_allowed and not client.is_staff():
             client.send_host_message('Changing area reachability without authorization is disabled in area {}.'.format(areas[i].name))
             return
     
@@ -885,7 +1453,7 @@ def ooc_cmd_bilock(client, arg):
             if areas[1-i].name in reachable:
                 reachable = reachable - {areas[1-i].name}
             else:
-                if not (client.is_mod or client.is_cm or client.is_gm) and not (areas[1-i].name in areas[i].staffset_reachable_areas or
+                if not client.is_staff() and not (areas[1-i].name in areas[i].staffset_reachable_areas or
                        areas[i].staffset_reachable_areas == {'<ALL>'}):
                     client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[i].name,areas[1-i].name))
                     areas[0].reachable_areas = formerly_reachable[0]
@@ -894,7 +1462,7 @@ def ooc_cmd_bilock(client, arg):
                 reachable.add(areas[1-i].name)
                 now_reachable[i] = True
         areas[i].reachable_areas = reachable
-        if (client.is_mod or client.is_cm or client.is_gm):
+        if client.is_staff():
             areas[i].staffset_reachable_areas = reachable
         
     if now_reachable[0] == now_reachable[1]:
@@ -903,7 +1471,7 @@ def ooc_cmd_bilock(client, arg):
         client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
                                     '{} used /bilock to {} area reachability between {} and {} in {} ({}).'
                                     .format(client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
-                                            client.area.name, client.area.id), pred=lambda c: (c.is_mod or c.is_gm or c.is_cm) and c != client)
+                                            client.area.name, client.area.id), pred=lambda c: c.is_staff() and c != client)
         logger.log_server(
             '[{}][{}]Used /bilock to {} area reachability between {} and {}.'
             .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name), client)
@@ -916,7 +1484,7 @@ def ooc_cmd_bilock(client, arg):
                                     '{} used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {} in {} ({}).'
                                     .format(client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
                                             'unlock' if now_reachable[1] else 'lock', areas[1].name, areas[0].name, 
-                                            client.area.name, client.area.id), pred=lambda c: (c.is_mod or c.is_gm or c.is_cm) and c != client)
+                                            client.area.name, client.area.id), pred=lambda c: c.is_staff() and c != client)
         logger.log_server(
             '[{}][{}]Used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {}.'
             .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
@@ -928,7 +1496,7 @@ def ooc_cmd_unilock(client, arg):
         raise ClientError('This command takes one or two arguments.')
     if len(areas) == 1:
         areas.insert(0,client.area.name)
-    elif not (client.is_mod or client.is_gm or client.is_cm):
+    elif not client.is_staff():
         raise ClientError('You must be authorized to use the two-parameter version of this command')
     for i in range(2):
         #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
@@ -945,7 +1513,7 @@ def ooc_cmd_unilock(client, arg):
                 except:
                     raise ClientError('Could not parse argument {}'.format(areas[i]))
 
-    if not areas[0].change_reachability_allowed and not (client.is_mod or client.is_cm or client.is_gm):
+    if not areas[0].change_reachability_allowed and not client.is_staff():
         client.send_host_message('Changing area reachability without authorization is disabled in area {}.'.format(areas[0].name))
         return
 
@@ -960,27 +1528,27 @@ def ooc_cmd_unilock(client, arg):
         if areas[1].name in reachable:
             reachable = reachable - {areas[1].name}
         else:
-            if not (client.is_mod or client.is_cm or client.is_gm) and not (areas[1].name in areas[0].staffset_reachable_areas or
+            if not client.is_staff() and not (areas[1].name in areas[0].staffset_reachable_areas or
                    areas[0].staffset_reachable_areas == {'<ALL>'}):
                 client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[0].name,areas[1].name))
                 return
             reachable.add(areas[1].name)
             now_reachable = True
     areas[0].reachable_areas = reachable
-    if (client.is_mod or client.is_cm or client.is_gm):
+    if client.is_staff():
         areas[0].staffset_reachable_areas = reachable
     client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name,areas[1].name,now_reachable))
     client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
                                 '{} used /unilock to {} area reachability from {} to {} in {} ({}).'
                                 .format(client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name, 
-                                        client.area.name, client.area.id), pred=lambda c: (c.is_mod or c.is_gm or c.is_cm) and c != client)
+                                        client.area.name, client.area.id), pred=lambda c: c.is_staff() and c != client)
     logger.log_server(
         '[{}][{}]Used /unilock to {} area reachability from {} to {}.'
         .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name), client)
 
 
 def ooc_cmd_restore_areareachlock(client, arg):
-    if not (client.is_mod or client.is_cm or client.is_gm): 
+    if not client.is_staff(): 
         raise ClientError('You must be authorized to do that.')
     areas = arg.split(', ')
     if len(areas) > 2:
@@ -1019,7 +1587,7 @@ def ooc_cmd_restore_areareachlock(client, arg):
         client.send_host_message('Area passage locks have been set to standard in {} through {}'.format(areas[0].name,areas[1].name))
 
 def ooc_cmd_delete_areareachlock(client, arg):
-    if not (client.is_mod or client.is_cm or client.is_gm): 
+    if not client.is_staff(): 
         raise ClientError('You must be authorized to do that.')
     areas = arg.split(', ')
     if len(areas) > 2:
@@ -1057,7 +1625,7 @@ def ooc_cmd_delete_areareachlock(client, arg):
         client.send_host_message('Area passage locks have been removed in areas {} through {}'.format(areas[0].name,areas[1].name))
 
 def ooc_cmd_toggle_areareachlock(client, arg):
-    if not (client.is_mod or client.is_gm or client.is_cm):
+    if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
@@ -1072,7 +1640,7 @@ def ooc_cmd_gmlock(client, arg):
     if not client.area.locking_allowed:
         client.send_host_message('Area locking is disabled in this area')
         return
-    if not client.is_gm and not client.is_cm and not client.is_mod:
+    if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if client.area.is_gmlocked:
         raise ClientError('Area is already gm-locked.')
@@ -1106,7 +1674,7 @@ def ooc_cmd_unlock(client, arg):
     else:
         if client.is_mod and client.area.is_modlocked:
             client.area.modunlock()
-        elif client.is_gm or client.is_cm or client.is_mod and not client.area.is_modlocked:
+        elif client.is_staff() and not client.area.is_modlocked:
             client.area.gmunlock()
         elif not client.area.is_gmlocked and not client.area.is_modlocked:
             client.area.unlock()
@@ -1116,7 +1684,7 @@ def ooc_cmd_unlock(client, arg):
 
 
 def ooc_cmd_invite(client, arg):
-    if not client.is_cm and not client.is_gm and not client.is_mod:
+    if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
         raise ClientError('Area isn\'t locked.')
@@ -1158,7 +1726,7 @@ def ooc_cmd_uninvite(client, arg):
 
 
 def ooc_cmd_area_kick(client, arg):
-    if not client.is_cm and not client.is_gm and not client.is_mod:
+    if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if not client.area.is_locked and not client.is_gm and not client.is_mod:
         raise ClientError('Area isn\'t locked.')
@@ -1432,7 +2000,7 @@ def ooc_cmd_rpmode(p_client, arg):
     if not p_client.server.config['rp_mode_enabled']:
         p_client.send_host_message("RP mode is disabled in this server!")
         return
-    if not p_client.is_mod and not p_client.is_gm and not p_client.is_cm:
+    if not p_client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         raise ArgumentError('You must specify either on or off')
@@ -1440,7 +2008,7 @@ def ooc_cmd_rpmode(p_client, arg):
         p_client.server.rp_mode = True
         for i_client in p_client.server.client_manager.clients:
             i_client.send_host_message('RP mode enabled!')
-            if not i_client.is_mod and not i_client.is_cm and not i_client.is_gm:
+            if not i_client.is_staff():
                 i_client.in_rp = True
     elif arg == 'off':
         p_client.server.rp_mode = False
@@ -1491,7 +2059,7 @@ def ooc_cmd_discord(client, arg):
 
 	
 def ooc_cmd_follow(client, arg):
-    if not client.is_gm and not client.is_cm and not client.is_mod:
+    if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         client.send_host_message('You must specify an ID. Use /follow <id>.')
@@ -1505,7 +2073,7 @@ def ooc_cmd_follow(client, arg):
 
 
 def ooc_cmd_unfollow(client, arg):
-    if not client.is_gm and not client.is_cm and not client.is_mod:
+    if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     try:
         client.unfollow_user()
@@ -1532,10 +2100,10 @@ def ooc_cmd_time12(client, arg):
     client.send_host_message(time.strftime('%a %b %e %I:%M:%S %p (%z) %Y'))
     
 def ooc_cmd_st(client, arg):
-    if not client.is_gm and not client.is_cm and not client.is_mod:
+    if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     client.server.send_all_cmd_pred('CT','{} [Staff] {}'.format(client.server.config['hostname'],client.name),arg,
-                                    pred=lambda c: c.is_mod or c.is_gm or c.is_cm)
+                                    pred=lambda c: c.is_staff())
     logger.log_server('[{}][STAFFCHAT][{}][{}]{}.'.format(client.area.id,client.get_char_name(),client.name,arg), client)
     
 def ooc_cmd_timer(client, arg):
@@ -1615,7 +2183,7 @@ def ooc_cmd_timer(client, arg):
         client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
                                         '{} initiated a timer "{}" of length {} seconds in area {}.'
                                         .format(client.get_char_name(), name, length, client.area.name),
-                                        pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
+                                        pred=lambda c: (c.is_staff()
                                                         or (is_public and c.area == client.area)) and c != client)
         
         client.server.create_task(client, ['as_timer', time.time(), length, name, is_public])
@@ -1654,16 +2222,15 @@ def ooc_cmd_timer(client, arg):
             remaining = start+length-current
             
             # Non-public timers can only be consulted by staff and the client who started the timer
-            if not is_public and not ((client.is_mod or client.is_gm or client.is_cm) 
+            if not is_public and not (client.is_staff() 
                                        or client == timer_client):
                 continue
             
             
             # Non-staff initiated public timers can only be consulted by all staff and 
             # clients in the same area as the timer initiator
-            elif is_public and not (timer_client.is_mod or timer_client.is_gm or timer_client.is_gm) \
-                 and not ((client.is_mod or client.is_gm or client.is_cm)
-                          or client == timer_client or client.area == timer_client.area):
+            elif is_public and not timer_client.is_staff() \
+                 and not (client.is_staff() or client == timer_client or client.area == timer_client.area):
                 continue
             
             if remaining < 10:
@@ -1713,7 +2280,7 @@ def ooc_cmd_timer(client, arg):
             raise ClientError('Timer {} is not an active timer.'.format(timer_name))
         
         # Non-staff are only allowed to cancel their own timers
-        if not (client.is_mod or client.is_cm or client.is_gm) and client != timer_client:
+        if not client.is_staff() and client != timer_client:
             raise ClientError('You must be authorized to do that.')
             
         timer = client.server.get_task(timer_client, ['as_timer'])
