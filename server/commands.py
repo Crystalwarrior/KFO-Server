@@ -1230,7 +1230,7 @@ def ooc_cmd_switch(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify a character name.')
-    
+#    
     # Obtain char_id if character exists
     try:
         cid = client.server.get_char_id_by_name(arg)
@@ -2288,7 +2288,33 @@ def ooc_cmd_timer(client, arg):
     else:
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
-        
+
+def ooc_cmd_rplay(client, arg):
+    """ (STAFF ONLY)
+    Plays a given track in currently reachable areas, even if not explicitly in the music list. 
+    It is the way to play custom music in multiple areas.
+    
+    SYNTAX
+    /rplay <track_name>
+    
+    PARAMETERS
+    <track_name>: Track to play
+    
+    EXAMPLES
+    /rplay Trial(AJ).mp3         :: Plays Trial(AJ).mp3
+    /rplay CustomTrack.mp3       :: Plays CustomTrack.mp3 (will only be audible to users with CustomTrack.mp3)
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ArgumentError('You must specify a song.')
+    
+    for reachable_area_name in client.area.reachable_areas:
+        reachable_area = client.server.area_manager.get_area_by_name(reachable_area_name)
+        reachable_area.play_music(arg, client.char_id, -1)
+        reachable_area.add_music_playing(client, arg)
+        logger.log_server('[{}][{}]Changed music to {}.'.format(client.area.id, client.get_char_name(), arg), client)
+
 def ooc_cmd_scream(client, arg):
     """
     Sends a message in the OOC chat visible to all staff members and users that 
@@ -2309,7 +2335,7 @@ def ooc_cmd_scream(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You cannot send an empty message.")
     
-    client.server.broadcast_global(client, arg, mtype="<dollar>S", 
+    client.server.broadcast_global(client, arg, mtype="<dollar>SCREAM", 
                                    condition=lambda c: not c.muted_global and 
                                    (c.is_staff() or c.area.name in client.area.reachable_areas
                                     or client.area.reachable_areas == {'<ALL>'}))
