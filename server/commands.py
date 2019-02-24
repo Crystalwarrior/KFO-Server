@@ -2348,15 +2348,18 @@ def ooc_cmd_exec(client, arg):
     return
     
     try:
-        client.send_host_message(eval(arg))
+        result = eval(arg)
+        if result:
+            client.send_host_message(eval(arg))
     except:
         try:
+            globals()['client'] = client
             exec(arg, globals())
             client.send_host_message("Executed {}".format(arg))
         except Exception as e:
             try:
-                client.send_host_message("Python error: {}".format(e))
+                client.send_host_message("Python error: {}: {}".format(type(e).__name__, e))
             except:
                 pass
-            
+    globals().pop('client', None) # Don't really want client to be a global variable
     return 1    # Indication that /exec is live
