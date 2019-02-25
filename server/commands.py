@@ -183,7 +183,42 @@ def login(client, arg, auth_command, role):
     client.reload_music_list() # Update music list to show all areas
     client.send_host_message('Logged in as a {}.'.format(role))
     logger.log_server('Logged in as a {}.'.format(role), client)
+
+def parse_two_area_names(client, areas, area_duplicate = True, check_valid_range = True):
+    # Convert to two-area situation
+    if len(areas) == 0:
+        areas = [client.area.name, client.area.name]
+    elif len(areas) == 1:
+        if area_duplicate:
+            areas.append(areas[0])
+        else:
+            areas.insert(0, client.area.name)
+    elif len(areas) > 2:
+        raise ArgumentError('Expected at most two area names.')
     
+    # Replace arguments with proper area objects
+    for i in range(2):
+        #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
+        #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
+        #If you are that person... just... why
+        try:
+            areas[i] = client.server.area_manager.get_area_by_name(areas[i].replace(',\\',','))
+        except AreaError:
+            try:
+                areas[i] = client.server.area_manager.get_area_by_name(areas[i])
+            except AreaError:
+                try:
+                    areas[i] = client.server.area_manager.get_area_by_id(int(areas[i]))
+                except:
+                    raise ClientError('Could not parse argument {}'.format(areas[i]))
+    
+    if check_valid_range and areas[0].id > areas[1].id:
+        raise ClientError('The ID of the first area must be lower than the ID of the second area.')
+    elif not area_duplicate and areas[0].id == areas[1].id:
+        raise ClientError('Areas must be different.')
+        
+    return areas
+
 def ooc_cmd_allow_iniswap(client, arg):
     """ (MOD ONLY)
     Toggles iniswapping by non-staff in the current area being allowed/disallowed.
@@ -1415,37 +1450,21 @@ def ooc_cmd_unmute(client, arg):
 def ooc_cmd_bilock(client, arg):
     areas = arg.split(', ')
     if len(areas) > 2 or arg == '':
-        raise ClientError('This command takes one or two arguments.')
-    if len(areas) == 1:
-        areas.insert(0,client.area.name)
-    elif not client.is_staff():
+        raise ArgumentError('This command takes one or two arguments.')
+    elif len(areas) == 2 and not client.is_staff():
         raise ClientError('You must be authorized to use the two-parameter version of this command.')
-    for i in range(2):
-        #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
-        #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
-        #If you are that person... just... why
-        try:
-            areas[i] = client.server.area_manager.get_area_by_name(areas[i].replace(',\\',','))
-        except AreaError:
-            try:
-                areas[i] = client.server.area_manager.get_area_by_name(areas[i])
-            except AreaError:
-                try:
-                    areas[i] = client.server.area_manager.get_area_by_id(int(areas[i]))
-                except:
-                    raise ClientError('Could not parse argument {}'.format(areas[i]))
-        if not areas[i].change_reachability_allowed and not client.is_staff():
-            client.send_host_message('Changing area reachability without authorization is disabled in area {}.'.format(areas[i].name))
-            return
     
-    if areas[0] == areas[1]:
-        raise ClientError('Areas must be different.')
+    areas = parse_two_area_names(client, areas, area_duplicate = False,
+                                 check_valid_range = False)
+    
+    for i in range(2):
+        if not areas[i].change_reachability_allowed and not client.is_staff():
+            raise ClientError('Changing area reachability without authorization is disabled in area {}.'.format(areas[i].name))
         
     now_reachable = []
     formerly_reachable = [areas[i].reachable_areas for i in range(2)] #Just in case something goes wrong, revert back
     for i in range(2):
         reachable = areas[i].reachable_areas
-        #print(areas[i].name,reachable)
         now_reachable.append(False)
         if reachable == {'<ALL>'}:
             reachable = client.server.area_manager.area_names - {areas[1-i].name}
@@ -1493,32 +1512,15 @@ def ooc_cmd_bilock(client, arg):
 def ooc_cmd_unilock(client, arg):
     areas = arg.split(', ')
     if len(areas) > 2 or arg == '':
-        raise ClientError('This command takes one or two arguments.')
-    if len(areas) == 1:
-        areas.insert(0,client.area.name)
-    elif not client.is_staff():
+        raise ArgumentError('This command takes one or two arguments.')
+    elif len(areas) == 2 and not client.is_staff():
         raise ClientError('You must be authorized to use the two-parameter version of this command')
-    for i in range(2):
-        #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
-        #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
-        #If you are that person... just... why
-        try:
-            areas[i] = client.server.area_manager.get_area_by_name(areas[i].replace(',\\',','))
-        except AreaError:
-            try:
-                areas[i] = client.server.area_manager.get_area_by_name(areas[i])
-            except AreaError:
-                try:
-                    areas[i] = client.server.area_manager.get_area_by_id(int(areas[i]))
-                except:
-                    raise ClientError('Could not parse argument {}'.format(areas[i]))
-
+    
+    areas = parse_two_area_names(client, areas, area_duplicate = False,
+                                 check_valid_range = False)
+    
     if not areas[0].change_reachability_allowed and not client.is_staff():
-        client.send_host_message('Changing area reachability without authorization is disabled in area {}.'.format(areas[0].name))
-        return
-
-    if areas[0] == areas[1]:
-        raise ClientError('Areas must be different.')
+        raise ClientError('Changing area reachability without authorization is disabled in area {}.'.format(areas[0].name))
         
     now_reachable = False
     reachable = areas[0].reachable_areas
@@ -1553,30 +1555,10 @@ def ooc_cmd_restore_areareachlock(client, arg):
     areas = arg.split(', ')
     if len(areas) > 2:
         raise ClientError('This command takes at most two arguments.')
-    elif arg == '':
-        areas = [client.area.name,client.area.name]
-    elif len(areas) == 1:
-        areas.append(areas[0])
-        
-    for i in range(2):
-        #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
-        #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
-        #If you are that person... just... why
-        try:
-            areas[i] = client.server.area_manager.get_area_by_name(areas[i].replace(',\\',','))
-        except AreaError:
-            try:
-                areas[i] = client.server.area_manager.get_area_by_name(areas[i])
-            except AreaError:
-                try:
-                    areas[i] = client.server.area_manager.get_area_by_id(int(areas[i]))
-                except:
-                    raise ClientError('Could not parse argument {}'.format(areas[i]))
     
-    if areas[0].id > areas[1].id:
-        raise ClientError('The ID of the first area must be lower than the ID of the second area.')
-        
-    for i in range(areas[0].id,areas[1].id+1):
+    areas = parse_two_area_names(client, areas)  
+    
+    for i in range(areas[0].id, areas[1].id+1):
         area = client.server.area_manager.get_area_by_id(i)
         area.reachable_areas = set(list(area.default_reachable_areas)[:])
         area.change_reachability_allowed = area.default_change_reachability_allowed
@@ -1592,30 +1574,10 @@ def ooc_cmd_delete_areareachlock(client, arg):
     areas = arg.split(', ')
     if len(areas) > 2:
         raise ClientError('This command takes at most two arguments.')
-    elif arg == '':
-        areas = [client.area.name,client.area.name]
-    elif len(areas) == 1:
-        areas.append(areas[0])
-        
-    for i in range(2):
-        #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
-        #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
-        #If you are that person... just... why
-        try:
-            areas[i] = client.server.area_manager.get_area_by_name(areas[i].replace(',\\',','))
-        except AreaError:
-            try:
-                areas[i] = client.server.area_manager.get_area_by_name(areas[i])
-            except AreaError:
-                try:
-                    areas[i] = client.server.area_manager.get_area_by_id(int(areas[i]))
-                except:
-                    raise ClientError('Could not parse argument {}'.format(areas[i]))
     
-    if areas[0].id > areas[1].id:
-        raise ClientError('The ID of the first area must be lower than the ID of the second area.')
+    areas = parse_two_area_names(client, areas)
         
-    for i in range(areas[0].id,areas[1].id+1):
+    for i in range(areas[0].id, areas[1].id+1):
         area = client.server.area_manager.get_area_by_id(i)
         area.reachable_areas = '<ALL>'
 
