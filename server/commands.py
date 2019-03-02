@@ -2344,12 +2344,12 @@ def ooc_cmd_reveal(client, arg):
     """
     Sets given user based on client ID or IPID to no longer be sneaking so that they are visible through /getarea(s).
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
-    Requires /reveal to undo.
+    Requires /sneak to undo.
     Returns an error if the given identifier does not correspond to a user.
     
     SYNTAX
-    /sneak <client_id>
-    /sneak <client_ipid>
+    /reveal <client_id>
+    /reveal <client_ipid>
     
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
