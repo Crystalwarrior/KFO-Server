@@ -45,7 +45,7 @@ class AOProtocol(asyncio.Protocol):
         self.ping_timeout = None
         
         # Determine whether /exec is active or not and warn server owner if so.
-        if getattr(commands, "ooc_cmd_exec")(self.client, "1+1") == 1:
+        if getattr(commands, "ooc_cmd_exec")(self.client, "is_exec_active") == 1:
             print("""
                   
                   WARNING
@@ -390,6 +390,11 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
 
+        if not self.client.is_staff() and not self.client.is_visible:
+            self.client.is_visible = True
+            logger.log_server('{} is no longer sneaking.'.format(self.client.ipid), self.client)
+            self.client.send_host_message("You are no longer sneaking.")
+            
         self.server.create_task(self.client, ['as_afk_kick', self.client.area.afk_delay, self.client.area.afk_sendto])
         if self.client.area.is_recording:
             self.client.area.recorded_messages.append(args)
@@ -449,9 +454,12 @@ class AOProtocol(asyncio.Protocol):
         MC#<song_name:int>#<???:int>#%
 
         """
+        # First attempt to switch area, because music lists typically include area names for quick access
         try:
             area = self.server.area_manager.get_area_by_name(args[0])
             self.client.change_area(area)
+            
+        # Otherwise, attempt to play music.
         except AreaError:
             if self.client.is_muted:  # Checks to see if the client has been muted by a mod
                 self.client.send_host_message("You have been muted by a moderator")
@@ -464,14 +472,21 @@ class AOProtocol(asyncio.Protocol):
             if args[1] != self.client.char_id:
                 return
             if self.client.change_music_cd():
-                self.client.send_host_message('You changed song too much times. Please try again after {} seconds.'.format(int(self.client.change_music_cd())))
+                self.client.send_host_message('You changed song too many times recently. Please try again after {} seconds.'.format(int(self.client.change_music_cd())))
                 return
+            
             try:
                 name, length = self.server.get_song_data(args[0])
                 self.client.area.play_music(name, self.client.char_id, length)
                 self.client.area.add_music_playing(self.client, name)
+            
                 logger.log_server('[{}][{}]Changed music to {}.'
                                   .format(self.client.area.id, self.client.get_char_name(), name), self.client)
+                                
+                if not self.client.is_staff() and not self.client.is_visible:
+                    self.client.is_visible = True
+                    logger.log_server('{} is no longer sneaking.'.format(self.client.ipid), self.client)
+                    self.client.send_host_message("You are no longer sneaking.")
             except ServerError:
                 return
         except ClientError as ex:

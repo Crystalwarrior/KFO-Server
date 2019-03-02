@@ -58,6 +58,7 @@ class ClientManager:
             self.in_rp = False
             self.ipid = ipid
             self.is_user_auth = False
+            self.is_visible = True
             
             self.following = ''
             self.followedby = ''
@@ -285,7 +286,13 @@ class ClientManager:
                     locked = True
                 else:
                     locked = False
-                msg += '\r\nArea {}: {} (users: {}) {}'.format(i, area.name, len(area.clients), lock[locked])
+                    
+                if self.is_staff():
+                    num_clients = len(area.clients)
+                else:
+                    num_clients = len([c for c in area.clients if c.is_visible])
+                    
+                msg += '\r\nArea {}: {} (users: {}) {}'.format(i, area.name, num_clients, lock[locked])
                 if self.area == area:
                     msg += ' [*]'
             self.send_host_message(msg)
@@ -304,14 +311,23 @@ class ClientManager:
                 area = self.server.area_manager.get_area_by_id(area_id)
             except AreaError:
                 raise
+                
             info += '= Area {}: {} =='.format(area.id, area.name)
             sorted_clients = []
-            for client in area.clients:
-                if (not mods) or client.is_mod:
-                    sorted_clients.append(client)
+            for c in area.clients:
+                # Conditions to print out a client in /getarea(s) (must satisfy at least one of four)
+                # 1. Client is yourself.
+                # 2. You are a staff member.
+                # 3. Client is visible.
+                # 4. Client is a mod when requiring only mods be printed.
+                if (c == self or self.is_staff() or c.is_visible or (mods and c.is_mod)):
+                    sorted_clients.append(c)
             sorted_clients = sorted(sorted_clients, key=lambda x: x.get_char_name())
+            
             for c in sorted_clients:
                 info += '\r\n[{}] {}'.format(c.id, c.get_char_name())
+                if not c.is_visible:
+                    info += ' (S)'
                 if self.is_mod:
                     info += ' ({})'.format(c.ipid)
             return info
@@ -325,7 +341,7 @@ class ClientManager:
                 unrestricted_access_area = '<ALL>' in current_area.reachable_areas
                 for i in range(len(self.server.area_manager.areas)):
                     if ((unrestricted_access_area or self.server.area_manager.areas[i].name in current_area.reachable_areas) or \
-                        (self.is_mod or self.is_cm or self.is_gm)) and len(self.server.area_manager.areas[i].clients) > 0:
+                        (self.is_staff())) and len(self.server.area_manager.areas[i].clients) > 0:
                         info += '\r\n{}'.format(self.get_area_info(i, mods))
             else:
                 try:

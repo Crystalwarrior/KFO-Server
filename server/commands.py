@@ -1249,6 +1249,58 @@ def ooc_cmd_rollp(client, arg):
         .format(client.area.id, client.get_char_name(), 
                 hashlib.sha1((str(roll_result) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, num_faces), client)
 
+def ooc_cmd_rplay(client, arg):
+    """ (STAFF ONLY)
+    Plays a given track in currently reachable areas, even if not explicitly in the music list. 
+    It is the way to play custom music in multiple areas.
+    
+    SYNTAX
+    /rplay <track_name>
+    
+    PARAMETERS
+    <track_name>: Track to play
+    
+    EXAMPLES
+    /rplay Trial(AJ).mp3         :: Plays Trial(AJ).mp3
+    /rplay CustomTrack.mp3       :: Plays CustomTrack.mp3 (will only be audible to users with CustomTrack.mp3)
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ArgumentError('You must specify a song.')
+    
+    for reachable_area_name in client.area.reachable_areas:
+        reachable_area = client.server.area_manager.get_area_by_name(reachable_area_name)
+        reachable_area.play_music(arg, client.char_id, -1)
+        reachable_area.add_music_playing(client, arg)
+        logger.log_server('[{}][{}]Changed music to {}.'.format(client.area.id, client.get_char_name(), arg), client)
+
+def ooc_cmd_scream(client, arg):
+    """
+    Sends a message in the OOC chat visible to all staff members and users that 
+    are in an area reachable from the sender's area.
+    Returns an error if the user has global chat off or sends an empty message.
+    
+    SYNTAX
+    /scream <message>
+    
+    PARAMETERS
+    <message>: Message to be sent
+    
+    EXAMPLE
+    /scream Hello World      :: Sends Hello World to users in reachable areas+staff.
+    """
+    if client.muted_global:
+        raise ClientError('You have the global chat muted.')
+    if len(arg) == 0:
+        raise ArgumentError("You cannot send an empty message.")
+    
+    client.server.broadcast_global(client, arg, mtype="<dollar>SCREAM", 
+                                   condition=lambda c: not c.muted_global and 
+                                   (c.is_staff() or c.area.name in client.area.reachable_areas
+                                    or client.area.reachable_areas == {'<ALL>'}))
+    logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+    
 def ooc_cmd_switch(client, arg):
     """ 
     Switches current user's character to a different one. 
@@ -1980,7 +2032,6 @@ def ooc_cmd_rpmode(p_client, arg):
     else:
         p_client.send_host_message('Invalid argument! Valid arguments: on, off. Your argument: ' + arg)
 
-
 def ooc_cmd_refresh(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
@@ -1993,7 +2044,6 @@ def ooc_cmd_refresh(client, arg):
         except ServerError:
             raise
 			
-			
 def ooc_cmd_ToD(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
@@ -2002,8 +2052,7 @@ def ooc_cmd_ToD(client, arg):
     client.area.send_host_message('{} has to do a {}.'.format(client.get_char_name(), flip))
     logger.log_server(
         '[{}][{}]has to do a {}.'.format(client.area.id, client.get_char_name(), flip), client)
-
-				
+		
 def ooc_cmd_8ball(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
@@ -2013,13 +2062,11 @@ def ooc_cmd_8ball(client, arg):
     logger.log_server(
         '[{}][{}]called upon the magic 8 ball and it said {}.'.format(client.area.id,client.get_char_name(),flip), client)
 		
-
 def ooc_cmd_discord(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
     client.send_host_message('Discord Invite Link: \r\ninsert link here \r\nBlank\'s tag: \r\nName(tag)0000 \r\nBlank\'s tag: \r\nName(tag)0000 \r\nBlank\'s tag: \r\nName(hashtag)0000')
 
-	
 def ooc_cmd_follow(client, arg):
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
@@ -2032,7 +2079,6 @@ def ooc_cmd_follow(client, arg):
         logger.log_server('{} began following {}.'.format(client.get_char_name(), c.get_char_name()), client)
     except:
         raise ClientError('Target not found.')
-
 
 def ooc_cmd_unfollow(client, arg):
     if not client.is_staff():
@@ -2251,58 +2297,92 @@ def ooc_cmd_timer(client, arg):
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
 
-def ooc_cmd_rplay(client, arg):
-    """ (STAFF ONLY)
-    Plays a given track in currently reachable areas, even if not explicitly in the music list. 
-    It is the way to play custom music in multiple areas.
+def ooc_cmd_sneak(client, arg):    
+    """
+    Sets given user based on client ID or IPID to be sneaking so that they are invisible through /getarea(s).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /reveal to undo.
+    Returns an error if the given identifier does not correspond to a user.
     
     SYNTAX
-    /rplay <track_name>
+    /sneak <client_id>
+    /sneak <client_ipid>
     
     PARAMETERS
-    <track_name>: Track to play
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
     
     EXAMPLES
-    /rplay Trial(AJ).mp3         :: Plays Trial(AJ).mp3
-    /rplay CustomTrack.mp3       :: Plays CustomTrack.mp3 (will only be audible to users with CustomTrack.mp3)
+    /sneak 1                     :: Set client whose ID is 1 to be sneaking.
+    /sneak 1234567890            :: Set all clients opened by the user whose IPID is 1234567890 to be sneaking.
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError('You must specify a song.')
+    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
+        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
     
-    for reachable_area_name in client.area.reachable_areas:
-        reachable_area = client.server.area_manager.get_area_by_name(reachable_area_name)
-        reachable_area.play_music(arg, client.char_id, -1)
-        reachable_area.add_music_playing(client, arg)
-        logger.log_server('[{}][{}]Changed music to {}.'.format(client.area.id, client.get_char_name(), arg), client)
-
-def ooc_cmd_scream(client, arg):
+    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
+    # This places the assumption that there are no more than 10 billion clients connected simultaneously
+    # but if that is the case, you probably have a much larger issue at hand.
+    if len(arg) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+    else:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    
+    # Sneak matching targets
+    if targets:
+        for c in targets:
+            logger.log_server('{} is now sneaking.'.format(c.ipid), client)
+            if c != client:
+                client.send_host_message("{} is now sneaking.".format(c.get_char_name()))
+            c.send_host_message("You are now sneaking.")
+            c.is_visible = False
+    else:
+        client.send_host_message("No targets found.")
+        
+def ooc_cmd_reveal(client, arg):    
     """
-    Sends a message in the OOC chat visible to all staff members and users that 
-    are in an area reachable from the sender's area.
-    Returns an error if the user has global chat off or sends an empty message.
+    Sets given user based on client ID or IPID to no longer be sneaking so that they are visible through /getarea(s).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /reveal to undo.
+    Returns an error if the given identifier does not correspond to a user.
     
     SYNTAX
-    /scream <message>
+    /sneak <client_id>
+    /sneak <client_ipid>
     
     PARAMETERS
-    <message>: Message to be sent
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
     
-    EXAMPLE
-    /scream Hello World      :: Sends Hello World to users in reachable areas+staff.
+    EXAMPLES
+    /reveal 1                     :: Set client whose ID is 1 to no longer be sneaking.
+    /reveal 1234567890            :: Set all clients opened by the user whose IPID is 1234567890 to no longer be sneaking.
     """
-    if client.muted_global:
-        raise ClientError('You have the global chat muted.')
-    if len(arg) == 0:
-        raise ArgumentError("You cannot send an empty message.")
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
+        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
     
-    client.server.broadcast_global(client, arg, mtype="<dollar>SCREAM", 
-                                   condition=lambda c: not c.muted_global and 
-                                   (c.is_staff() or c.area.name in client.area.reachable_areas
-                                    or client.area.reachable_areas == {'<ALL>'}))
-    logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
+    # This places the assumption that there are no more than 10 billion clients connected simultaneously
+    # but if that is the case, you probably have a much larger issue at hand.
+    if len(arg) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+    else:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     
+    # Unsneak matching targets
+    if targets:
+        for c in targets:
+            logger.log_server('{} is no longer sneaking.'.format(c.ipid), client)
+            if c != client:
+                client.send_host_message("{} is no longer sneaking.".format(c.get_char_name()))
+            c.send_host_message("You are no longer sneaking.")
+            c.is_visible = True
+    else:
+        client.send_host_message("No targets found.")
+        
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE THERE FOR DEBUGGING.
@@ -2335,9 +2415,10 @@ def ooc_cmd_exec(client, arg):
     # IF YOU WANT TO ENABLE /exec: ADD A # IN FRONT OF return, LIKE SO: # return
     return
     
+    print("Attempting to run instruction {}".format(arg))
     try:
         result = eval(arg)
-        if result:
+        if result is not None:
             client.send_host_message(eval(arg))
     except:
         try:
