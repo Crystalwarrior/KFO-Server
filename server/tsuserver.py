@@ -323,11 +323,16 @@ class TsuServer3:
         
     async def as_afk_kick(self, client, args):
         afk_delay, afk_sendto = args
-        if afk_delay <= 0: # Assumes 0-minute delay means that AFK kicking is disabled
+        try:
+            delay = int(afk_delay)*60 # afk_delay is in minutes, so convert to seconds
+        except (TypeError, ValueError):
+            raise ServerError('areas.yaml contains an invalid AFK kick delay for area {}: {}'.format(client.area.id, afk_delay))
+            
+        if delay <= 0: # Assumes 0-minute delay means that AFK kicking is disabled
             return
         
         try:
-            await asyncio.sleep(afk_delay*60) # afk_delay is in minutes, so convert to seconds
+            await asyncio.sleep(delay)
         except asyncio.CancelledError:
             raise
         else:
