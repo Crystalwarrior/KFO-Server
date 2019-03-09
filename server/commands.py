@@ -1185,7 +1185,7 @@ def ooc_cmd_roll(client, arg):
     /roll {num_dice}d<num_faces> {modifier}
     
     PARAMETERS
-    {num_faces}: Number of faces the dice will have (capped at NUMFACES_MAX)
+    <num_faces>: Number of faces the dice will have (capped at NUMFACES_MAX)
     {num_dice}: Number of dice to roll (capped at NUMDICE_MAX)
     {modifier}: Operation to perform on rolls
     
@@ -2391,6 +2391,30 @@ def ooc_cmd_reveal(client, arg):
         client.send_host_message("No targets found.")
 
 def ooc_cmd_globalic(client, arg):
+    """ (STAFF ONLY)
+    Send client's subsequent IC messages to users only in specified areas. Can take either area IDs or area names.
+    If current user is not in intended destination range, it will NOT send messages to their area.
+    Requires /unglobalic to undo.
+    
+    If given two areas, it will send their IC messages to all areas between the given ones inclusive.
+    If given one area, it will send their IC messages only to the given area.
+    
+    SYNTAX
+    /globalic <target_area>
+    /globalic <area_range_start>, <area_range_end>
+    
+    PARAMETERS
+    <target_area>: Send IC messages just to this area.
+    
+    <area_range_start>: Send IC messages from this area onwards up to...
+    <area_range_end>: Send IC messages up to (and including) this area.
+    
+    EXAMPLES
+    /globalic 1, Courtroom 3                :: Send IC messages to areas 1 through "Courtroom 3" (if client in area 0, they will not see their own message).
+    /globalic 3                             :: Send IC messages just to area 3.
+    /globalic 1, 1                          :: Send IC messages just to area 1.
+    /globalic Courtroom,\ 2, Courtroom 3    :: Send IC messages to areas "Courtroom, 2" through "Courtroom 3" (note the escape character).
+    """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     areas = arg.split(', ')
@@ -2401,18 +2425,31 @@ def ooc_cmd_globalic(client, arg):
     client.multi_ic = areas
     
     if areas[0] == areas[1]:    
-        client.send_host_message('Your IC messages will now be sent to {}.'.format(areas[0].name))
+        client.send_host_message('Your IC messages will now be sent to area {}.'.format(areas[0].name))
     else:
-        client.send_host_message('Your IC messages will now be sent to {} through {}'.format(areas[0].name,areas[1].name))
+        client.send_host_message('Your IC messages will now be sent to areas {} through {}.'.format(areas[0].name,areas[1].name))
 
 def ooc_cmd_unglobalic(client, arg):
+    """ (STAFF ONLY)
+    Send subsequent IC messages to users in the same area as the client (i.e. as normal).
+    It is the way to undo a /globalic command.
+    
+    SYNTAX
+    /unglobalic
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /unglobalic             :: Send subsequent messages normally (only to users in current area).
+    """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
         
     client.multi_ic = None
-    client.send_host_message('Your IC messages will now be just sent to the current area.')
+    client.send_host_message('Your IC messages will now be just sent to your current area.')
     
 def ooc_cmd_exec(client, arg):
     """
@@ -2461,5 +2498,5 @@ def ooc_cmd_exec(client, arg):
                 client.send_host_message("Python error: {}: {}".format(type(e).__name__, e))
             except:
                 pass
-    globals().pop('client', None) # Don't really want client to be a global variable
+    globals().pop('client', None) # Don't really want "client" to be a global variable
     return 1    # Indication that /exec is live
