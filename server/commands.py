@@ -1764,7 +1764,7 @@ def ooc_cmd_area_kick(client, arg):
                     except AreaError:
                         raise
                 client.send_host_message("Attempting to kick {} to area {}.".format(c.get_char_name(), output))
-                c.change_area(area,override=True)
+                c.change_area(area, override=True)
                 c.send_host_message("You were kicked from the area to area {}.".format(output))
                 if client.area.is_locked or client.area.is_modlocked:
                     client.area.invite_list.pop(c.ipid)
@@ -2320,7 +2320,7 @@ def ooc_cmd_sneak(client, arg):
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
         raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
-    
+     
     # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
     # This places the assumption that there are no more than 10 billion clients connected simultaneously
     # but if that is the case, you probably have a much larger issue at hand.
@@ -2332,6 +2332,13 @@ def ooc_cmd_sneak(client, arg):
     # Sneak matching targets
     if targets:
         for c in targets:
+            if client.is_gm and c.area.lobby_area:
+                client.send_host_message('Target client is in a lobby area. You have insufficient permissions to hide someone in such an area.')
+                continue
+            if c.area.private_area:
+                client.send_host_message('Target client is in a private area. You are not allowed to hide someone in such an area.')
+                continue
+            
             logger.log_server('{} is now sneaking.'.format(c.ipid), client)
             if c != client:
                 client.send_host_message("{} is now sneaking.".format(c.get_char_name()))
@@ -2363,7 +2370,7 @@ def ooc_cmd_reveal(client, arg):
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
         raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
-    
+        
     # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
     # This places the assumption that there are no more than 10 billion clients connected simultaneously
     # but if that is the case, you probably have a much larger issue at hand.
@@ -2382,7 +2389,31 @@ def ooc_cmd_reveal(client, arg):
             c.is_visible = True
     else:
         client.send_host_message("No targets found.")
+
+def ooc_cmd_globalic(client, arg):
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    areas = arg.split(', ')
+    if len(arg) == 0 or len(areas) > 2:
+        raise ArgumentError('This command takes either one or two arguments.')
+    
+    areas = parse_two_area_names(client, areas)
+    client.multi_ic = areas
+    
+    if areas[0] == areas[1]:    
+        client.send_host_message('Your IC messages will now be sent to {}.'.format(areas[0].name))
+    else:
+        client.send_host_message('Your IC messages will now be sent to {} through {}'.format(areas[0].name,areas[1].name))
+
+def ooc_cmd_unglobalic(client, arg):
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
         
+    client.multi_ic = None
+    client.send_host_message('Your IC messages will now be just sent to the current area.')
+    
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE THERE FOR DEBUGGING.

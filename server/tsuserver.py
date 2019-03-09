@@ -291,7 +291,7 @@ class TsuServer3:
     def create_task(self, client, args):
         # Abort old task if it exists
         try:
-            old_task = self.get_task(client, args) #client_tasks[client.id][args[0]]
+            old_task = self.get_task(client, args) 
             if not old_task.done() and not old_task.cancelled():
                 self.cancel_task(old_task)
         except KeyError:
@@ -327,26 +327,31 @@ class TsuServer3:
             return
         
         try:
-            await asyncio.sleep(afk_delay*60) # afk_delay is in minutes, so convert to seconds
+            await asyncio.sleep(afk_delay) # afk_delay is in minutes, so convert to seconds
         except asyncio.CancelledError:
             raise
         else:
             try:
-                area = client.server.area_manager.get_area_by_id(int(afk_sendto))
-            except AreaError:
-                raise
+                area = client.server.area_manager.get_area_by_id(int(afk_sendto*60))
+            except:
+                raise ServerError('areas.yaml contains an invalid AFK kick destination area for area {}: {}'.format(client.area.id, afk_sendto))
                 
             if client.area.id == afk_sendto: # Don't try and kick back to same area
                 return
             if client.char_id < 0: # Assumes spectators are exempted from AFK kicks
                 return
-            if client.is_mod or client.is_cm or client.is_gm: # Assumes staff are exempted from AFK kicks
+            if client.is_staff(): # Assumes staff are exempted from AFK kicks
                 return
-            
-            client.send_host_message("You were kicked from area {} to area {} for being inactive for {} minutes.".format(client.area.id, afk_sendto, afk_delay))
-            client.change_area(area, override=True)
-            if client.area.is_locked or client.area.is_modlocked:
-                client.area.invite_list.pop(client.ipid)
+
+            try:
+                client.change_area(area, override=True)
+            except:
+                pass # Server raised an error trying to perform the AFK kick, ignore AFK kick
+            else:
+                client.send_host_message("You were kicked from area {} to area {} for being inactive for {} minutes.".format(client.area.id, afk_sendto, afk_delay))
+
+                if client.area.is_locked or client.area.is_modlocked:
+                    client.area.invite_list.pop(client.ipid)
     
     async def as_timer(self, client, args):
         start, length, name, is_public = args # Length in seconds, already converted

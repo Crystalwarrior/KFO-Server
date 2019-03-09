@@ -59,6 +59,7 @@ class ClientManager:
             self.ipid = ipid
             self.is_user_auth = False
             self.is_visible = True
+            self.multi_ic = None
             
             self.following = ''
             self.followedby = ''
@@ -167,6 +168,11 @@ class ClientManager:
             self.send_command('FM', *self.server.music_list_ao2)
             
         def change_area(self, area, override = False):
+            if area.lobby_area and not self.is_visible and not self.is_mod and not self.is_cm:
+                raise ClientError('Lobby areas do not let non-authorized users remain sneaking. Please change the music, speak IC or ask a staff member to reveal you.')
+            if area.private_area and not self.is_visible:
+                raise ClientError('Private areas do not let sneaked users in. Please change the music, speak IC or ask a staff member to reveal you.')   
+                
             if self.area == area:
                 raise ClientError('User is already in target area.')
             if area.is_locked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
