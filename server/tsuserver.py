@@ -327,12 +327,12 @@ class TsuServer3:
             return
         
         try:
-            await asyncio.sleep(afk_delay) # afk_delay is in minutes, so convert to seconds
+            await asyncio.sleep(afk_delay*60) # afk_delay is in minutes, so convert to seconds
         except asyncio.CancelledError:
             raise
         else:
             try:
-                area = client.server.area_manager.get_area_by_id(int(afk_sendto*60))
+                area = client.server.area_manager.get_area_by_id(int(afk_sendto))
             except:
                 raise ServerError('areas.yaml contains an invalid AFK kick destination area for area {}: {}'.format(client.area.id, afk_sendto))
                 
