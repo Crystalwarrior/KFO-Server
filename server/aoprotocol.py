@@ -385,15 +385,15 @@ class AOProtocol(asyncio.Protocol):
             if self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos != 'all':
                 self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos = 'all'
                 self.client.area.broadcast_evidence_list()
-        
+
         if self.client.multi_ic is None:
             self.client.area.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
-                                      sfx_delay, button, self.client.evi_list[evidence], flip, ding, color)
+                                      sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, self.client.showname)
         else:
             for area_id in range(self.client.multi_ic[0].id, self.client.multi_ic[1].id + 1):
                 target_area = self.server.area_manager.get_area_by_id(area_id)
                 target_area.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
-                                      sfx_delay, button, self.client.evi_list[evidence], flip, ding, color)
+                                      sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, self.client.showname)
                 
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)

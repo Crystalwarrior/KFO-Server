@@ -2450,7 +2450,32 @@ def ooc_cmd_unglobalic(client, arg):
         
     client.multi_ic = None
     client.send_host_message('Your IC messages will now be just sent to your current area.')
+
+def ooc_cmd_showname(client, arg):
+    """
+    If given an argument, sets the client's showname to that. 
+    Otherwise, it clears their showname to use the default setting (character showname).
     
+    These custom shownames override whatever showname the current character has, and is 
+    persistent between between character swaps/area changes/etc.
+    
+    SYNTAX
+    /showname <new_showname>
+    /showname
+    
+    PARAMETERS
+    <new_showname>: New desired showname.
+    
+    EXAMPLES
+    /showname Phantom       :: Sets your showname as Phantom
+    /showname               :: Clears your showname
+    """
+    client.showname = arg
+    if arg != '':
+        client.send_host_message('You have set your showname as: {}'.format(arg))
+    else:
+        client.send_host_message('You have removed your custom showname.')
+        
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE THERE FOR DEBUGGING.

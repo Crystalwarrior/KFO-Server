@@ -60,7 +60,7 @@ class ClientManager:
             self.is_user_auth = False
             self.is_visible = True
             self.multi_ic = None
-            
+            self.showname = ''
             self.following = ''
             self.followedby = ''
             
@@ -70,6 +70,7 @@ class ClientManager:
             self.mus_change_time = [x * self.server.config['music_change_floodguard']['interval_length'] for x in range(self.server.config['music_change_floodguard']['times_per_interval'])]
 
         def send_raw_message(self, msg):
+            print("Sending: ", msg.encode('utf-8'))
             self.transport.write(msg.encode('utf-8'))
 
         def send_command(self, command, *args):
