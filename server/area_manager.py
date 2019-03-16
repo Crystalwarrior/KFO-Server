@@ -29,7 +29,8 @@ class AreaManager:
         def __init__(self, area_id, server, name, background, bg_lock, evidence_mod = 'FFA', locking_allowed = False, 
                      iniswap_allowed = True, rp_getarea_allowed = True, rp_getareas_allowed = True, 
                      rollp_allowed = True, reachable_areas = '<ALL>', change_reachability_allowed = True,
-                     gm_iclock_allowed = True, afk_delay = 0, afk_sendto = 0, lobby_area = False, private_area = False):
+                     gm_iclock_allowed = True, afk_delay = 0, afk_sendto = 0, lobby_area = False, private_area = False,
+                     sound_proof = False):
             self.iniswap_allowed = iniswap_allowed
             self.clients = set()
             self.invite_list = {}
@@ -60,6 +61,7 @@ class AreaManager:
             self.rollp_allowed = rollp_allowed
             self.ic_lock = False
             self.gm_iclock_allowed = gm_iclock_allowed
+            self.sound_proof = sound_proof
             
             self.reachable_areas = reachable_areas.split(", ")
             for i in range(len(self.reachable_areas)): #Ah, escape characters... again...
@@ -261,13 +263,16 @@ class AreaManager:
                 item['lobby_area'] = False
             if 'private_area' not in item:
                 item['private_area'] = False
+            if 'sound_proof' not in item:
+                item['sound_proof'] = False
+                
             self.areas.append(
                 self.Area(self.cur_id, self.server, item['area'], item['background'], 
                           item['bglock'], item['evidence_mod'], item['locking_allowed'], 
                           item['iniswap_allowed'], item['rp_getarea_allowed'], item['rp_getareas_allowed'], 
                           item['rollp_allowed'], item['reachable_areas'], item['change_reachability_allowed'],
                           item['gm_iclock_allowed'], item['afk_delay'], item['afk_sendto'],
-                          item['lobby_area'], item['private_area']))
+                          item['lobby_area'], item['private_area'], item['sound_proof']))
             if item['area'] in self.area_names:
                 raise AreaError('Unexpected duplicated area names in areas.yaml: {}'.format(item['area']))
             self.area_names.add(item['area'])

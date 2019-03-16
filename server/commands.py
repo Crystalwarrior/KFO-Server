@@ -1278,7 +1278,7 @@ def ooc_cmd_rplay(client, arg):
 def ooc_cmd_scream(client, arg):
     """
     Sends a message in the OOC chat visible to all staff members and users that 
-    are in an area reachable from the sender's area.
+    are in an area reachable from the sender's area that is not soundproof.
     Returns an error if the user has global chat off or sends an empty message.
     
     SYNTAX
@@ -1297,8 +1297,10 @@ def ooc_cmd_scream(client, arg):
     
     client.server.broadcast_global(client, arg, mtype="<dollar>SCREAM", 
                                    condition=lambda c: not c.muted_global and 
-                                   (c.is_staff() or c.area.name in client.area.reachable_areas
-                                    or client.area.reachable_areas == {'<ALL>'}))
+                                   (c.is_staff() or c.area == client.area or 
+                                    (not client.area.sound_proof and not c.area.sound_proof and 
+                                     (c.area.name in client.area.reachable_areas
+                                     or client.area.reachable_areas == {'<ALL>'}))))
     logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg), client)
     
 def ooc_cmd_switch(client, arg):
@@ -2189,8 +2191,8 @@ def ooc_cmd_timer(client, arg):
         client.server.active_timers[name] = client #Add to active timers list
         client.send_host_message('You initiated a timer "{}" of length {} seconds.'.format(name, length))
         client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                        '{} initiated a timer "{}" of length {} seconds in area {}.'
-                                        .format(client.get_char_name(), name, length, client.area.name),
+                                        '{} initiated a timer "{}" of length {} seconds in area {} ({}).'
+                                        .format(client.get_char_name(), name, length, client.area.name, client.area.id),
                                         pred=lambda c: (c.is_staff()
                                                         or (is_public and c.area == client.area)) and c != client)
         
@@ -2230,8 +2232,7 @@ def ooc_cmd_timer(client, arg):
             remaining = start+length-current
             
             # Non-public timers can only be consulted by staff and the client who started the timer
-            if not is_public and not (client.is_staff() 
-                                       or client == timer_client):
+            if not is_public and not (client.is_staff() or client == timer_client):
                 continue
             
             
@@ -2475,7 +2476,56 @@ def ooc_cmd_showname(client, arg):
         client.send_host_message('You have set your showname as: {}'.format(arg))
     else:
         client.send_host_message('You have removed your custom showname.')
+
+def ooc_cmd_knock(client, arg):
+    """
+    'Knock' on some area's door, sending a notification to users in said area.
+    Returns an error if the area could not be found, if the user is already in the 
+    target area or if the area cannot be reached as per the DEFAULT server configuration 
+    (as users may lock passages, but that does not mean the door no longer exists, usually).
+    
+    SYNTAX
+    /knock <area_name>
+    /knock <area_id>
+    
+    PARAMETERS
+    <area_name>: Name of the area whose door you want to knock.
+    <area_id>: ID of the area whose door you want to knock.
+    
+    EXAMPLES
+    /knock 0                :: Knock the door to area 0
+    /knock Courtroom, 2     :: Knock the door to area "Courtroom, 2"
+    """
+    if len(arg) == 0:
+        raise ArgumentError('This command takes one argument.')
+
+    # Get area by either name or ID    
+    try:
+        target_area = client.server.area_manager.get_area_by_name(arg)
+    except AreaError:
+        try:
+            target_area = client.server.area_manager.get_area_by_id(int(arg))
+        except:
+            raise ArgumentError('Could not parse area name {}.'.format(arg))
+    
+    # Filter out edge cases
+    if target_area.name == client.area.name:
+        raise ClientError('You cannot knock on the door of your current area.')
         
+    if client.area.default_reachable_areas != {'<ALL>'} and \
+    target_area.name not in client.area.default_reachable_areas | client.area.reachable_areas:
+        raise ClientError("You tried to knock on {}'s door but you realized the room is too far away."
+                          .format(target_area.name))
+
+    client.send_host_message('You knocked on the door to area {}.'.format(target_area.name))
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                'Someone knocked on your door from area {}.'.format(client.area.name),
+                                pred=lambda c: not c.is_staff() and c.area == target_area)
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                '{} knocked on the door to area {} in area {} ({}).'
+                                .format(client.get_char_name(), target_area.name, client.area.name, client.area.id),
+                                pred=lambda c: c != client and c.is_staff())
+    
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE THERE FOR DEBUGGING.
