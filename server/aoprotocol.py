@@ -394,6 +394,7 @@ class AOProtocol(asyncio.Protocol):
                 target_area = self.server.area_manager.get_area_by_id(area_id)
                 target_area.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
                                       sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, self.client.showname)
+                target_area.set_next_msg_delay(len(msg))
                 
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
@@ -464,11 +465,12 @@ class AOProtocol(asyncio.Protocol):
         """
         # First attempt to switch area, because music lists typically include area names for quick access
         try:
-            area = self.server.area_manager.get_area_by_name(args[0])
+            delimiter = args[0].find('-') 
+            area = self.server.area_manager.get_area_by_name(args[0][delimiter+1:])
             self.client.change_area(area)
             
         # Otherwise, attempt to play music.
-        except AreaError:
+        except (AreaError, ValueError):
             if self.client.is_muted:  # Checks to see if the client has been muted by a mod
                 self.client.send_host_message("You have been muted by a moderator")
                 return

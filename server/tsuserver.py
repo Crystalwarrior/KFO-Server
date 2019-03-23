@@ -222,7 +222,7 @@ class TsuServer3:
         # add areas first
         for area in self.area_manager.areas:
             if need_to_check or area.name in from_area.reachable_areas:
-                self.music_list_ao2.append(area.name)
+                self.music_list_ao2.append("{}-{}".format(area.id, area.name))
         # then add music
         for item in self.music_list:
             self.music_list_ao2.append(item['category'])
