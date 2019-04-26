@@ -2528,7 +2528,7 @@ def ooc_cmd_knock(client, arg):
 
 def ooc_cmd_music_list(client, arg):
     """
-    Sets 
+    Sets the current music list.
     """
     if len(arg) == 0:
         client.music_list = None
@@ -2538,15 +2538,15 @@ def ooc_cmd_music_list(client, arg):
         try:
             new_music_file = 'config/music_lists/{}.yaml'.format(arg)
             client.reload_music_list(new_music_file=new_music_file)
-            
-            ## client.area.music_list = 'config/music_lists/{}.yaml'.format(arg)
         except ServerError:
             raise ArgumentError('Could not find music list file: {}'.format(arg))
         
         client.send_host_message('Loaded music list: {}'.format(arg))
-        ## client.area.send_host_message('Loaded music list {}'.format(arg))
 
 def ooc_cmd_music_lists(client, arg):
+    """
+    Lists all available music lists.
+    """
     if len(arg) != 0:
         raise ArgumentError('This command takes no arguments.')
         
@@ -2558,6 +2558,7 @@ def ooc_cmd_music_lists(client, arg):
             client.send_host_message(output)
     except FileNotFoundError:
         raise ClientError('Server file music_lists.yaml not found.')
+        
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE THERE FOR DEBUGGING.

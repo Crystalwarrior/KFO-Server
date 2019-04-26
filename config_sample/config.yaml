@@ -1,7 +1,7 @@
 hostname: <dollar>H
 playerlimit: 100
 port: 50000
-local: true
+local: false
 
 guardpass: Guard
 modpass: Mod
