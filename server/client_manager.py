@@ -63,6 +63,7 @@ class ClientManager:
             self.showname = ''
             self.following = ''
             self.followedby = ''
+            self.music_list = None
             
             #music flood-guard stuff
             self.mus_counter = 0
@@ -155,13 +156,17 @@ class ClientManager:
             except ClientError:
                 raise
 
-        def reload_music_list(self):
+        def reload_music_list(self, new_music_file=None):
             """
             Rebuild the music list so that it only contains the target area's
             reachable areas+music. Useful when moving areas/logging in or out.
             """
-            
-            self.server.build_music_list_ao2(self.area, self)
+            if new_music_file:
+                new_music_list = self.server.load_music(music_list_file=new_music_file, server_music_list=False)
+                self.music_list = new_music_list
+                self.server.build_music_list_ao2(from_area=self.area, c=self, music_list=new_music_list)
+            else:
+                self.server.build_music_list_ao2(from_area=self.area, c=self)
             # KEEP THE ASTERISK, unless you want a very weird single area comprised
             # of all areas back to back forming a black hole area of doom and despair
             # that crashes all clients that dare attempt join this area.

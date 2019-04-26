@@ -1,12 +1,13 @@
 - area: Basement
-  background: gs4
+  background: Class Trial Debate Room V3-1_HD
   bglock: true
   evidence_mod: FFA
   locking_allowed: false
   iniswap_allowed: true
   reachable_areas: Courtroom 1, Courtroom 3
+  lobby_area: True
 - area: Courtroom 1
-  background: gs5
+  background: Class Trial Debate Room V3-1_HD
   bglock: false
   evidence_mod: CM
   locking_allowed: true
@@ -14,8 +15,10 @@
   reachable_areas: Courtroom,\ 2, Basement
   gm_iclock_allowed: false
   afk_delay: 5
+  private_area: True
+  sound_proof: False
 - area: Courtroom, 2
-  background: gs4
+  background: Class Trial Debate Room V3-1_HD
   bglock: false
   evidence_mod: Mods
   locking_allowed: false
@@ -24,8 +27,11 @@
   gm_iclock_allowed: true
   afk_delay: 10
   afk_sendto: 3
+  lobby_area: False
+  private_area: False
+  sound_proof: True
 - area: Courtroom 3
-  background: gs4
+  background: Class Trial Debate Room V3-1_HD
   bglock: false
   evidence_mod: HiddenCM
   locking_allowed: true
@@ -34,3 +40,5 @@
   change_reachability_allowed: true
   afk_delay: 5
   afk_sendto: 1
+  lobby_area: True
+  private_area: True

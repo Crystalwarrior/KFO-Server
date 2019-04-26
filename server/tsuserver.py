@@ -139,11 +139,19 @@ class TsuServer3:
             self.char_list = yaml.load(chars)
         self.build_char_pages_ao1()
 
-    def load_music(self):
-        with open('config/music.yaml', 'r', encoding = 'utf-8') as music:
-            self.music_list = yaml.load(music)
-        self.build_music_pages_ao1()
-        self.build_music_list_ao2()
+    def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
+        try:
+            with open(music_list_file, 'r', encoding = 'utf-8') as music:
+                music_list = yaml.load(music)
+        except FileNotFoundError:
+            raise ServerError('Could not find music list file {}'.format(music_list_file))
+        
+        if server_music_list:
+            self.music_list = music_list
+            self.build_music_pages_ao1()
+            self.build_music_list_ao2(music_list=music_list)
+        
+        return music_list
         
     def load_ids(self):
         self.ipid_list = {}
@@ -211,7 +219,14 @@ class TsuServer3:
                 index += 1
         self.music_pages_ao1 = [self.music_pages_ao1[x:x + 10] for x in range(0, len(self.music_pages_ao1), 10)]
 
-    def build_music_list_ao2(self, from_area=None, c=None):
+    def build_music_list_ao2(self, from_area=None, c=None, music_list=None):
+        # If not provided a specific music list to overwrite
+        if music_list is None:
+            music_list = self.music_list # Default value
+            # But just in case, check if there was a client who had a preference
+            if c and c.music_list is not None:
+                music_list = c.music_list
+            
         self.music_list_ao2 = []
         # Uncomment when client is fixed to actually support music list changes
         # Determine whether to filter the music list or not
@@ -223,8 +238,9 @@ class TsuServer3:
         for area in self.area_manager.areas:
             if need_to_check or area.name in from_area.reachable_areas:
                 self.music_list_ao2.append("{}-{}".format(area.id, area.name))
+                
         # then add music
-        for item in self.music_list:
+        for item in music_list:
             self.music_list_ao2.append(item['category'])
             for song in item['songs']:
                 self.music_list_ao2.append(song['name'])
@@ -349,11 +365,12 @@ class TsuServer3:
                 return
 
             try:
+                original_area = client.area
                 client.change_area(area, override=True)
             except:
                 pass # Server raised an error trying to perform the AFK kick, ignore AFK kick
             else:
-                client.send_host_message("You were kicked from area {} to area {} for being inactive for {} minutes.".format(client.area.id, afk_sendto, afk_delay))
+                client.send_host_message("You were kicked from area {} to area {} for being inactive for {} minutes.".format(original_area, afk_sendto, afk_delay))
 
                 if client.area.is_locked or client.area.is_modlocked:
                     client.area.invite_list.pop(client.ipid)

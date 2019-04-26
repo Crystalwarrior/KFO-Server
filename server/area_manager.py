@@ -265,7 +265,6 @@ class AreaManager:
                 item['private_area'] = False
             if 'sound_proof' not in item:
                 item['sound_proof'] = False
-                
             self.areas.append(
                 self.Area(self.cur_id, self.server, item['area'], item['background'], 
                           item['bglock'], item['evidence_mod'], item['locking_allowed'], 

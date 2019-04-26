@@ -2525,7 +2525,39 @@ def ooc_cmd_knock(client, arg):
                                 '{} knocked on the door to area {} in area {} ({}).'
                                 .format(client.get_char_name(), target_area.name, client.area.name, client.area.id),
                                 pred=lambda c: c != client and c.is_staff())
-    
+
+def ooc_cmd_music_list(client, arg):
+    """
+    Sets 
+    """
+    if len(arg) == 0:
+        client.music_list = None
+        client.reload_music_list()
+        client.send_host_message('Restored music list to its default value.')
+    else:
+        try:
+            new_music_file = 'config/music_lists/{}.yaml'.format(arg)
+            client.reload_music_list(new_music_file=new_music_file)
+            
+            ## client.area.music_list = 'config/music_lists/{}.yaml'.format(arg)
+        except ServerError:
+            raise ArgumentError('Could not find music list file: {}'.format(arg))
+        
+        client.send_host_message('Loaded music list: {}'.format(arg))
+        ## client.area.send_host_message('Loaded music list {}'.format(arg))
+
+def ooc_cmd_music_lists(client, arg):
+    if len(arg) != 0:
+        raise ArgumentError('This command takes no arguments.')
+        
+    try:
+        with open('config/music_lists.yaml', 'r') as f:
+            output = 'Available music lists:\n'
+            for line in f:
+                output += '*{}'.format(line)
+            client.send_host_message(output)
+    except FileNotFoundError:
+        raise ClientError('Server file music_lists.yaml not found.')
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE THERE FOR DEBUGGING.
