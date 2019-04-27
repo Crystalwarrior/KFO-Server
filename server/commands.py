@@ -413,7 +413,7 @@ def ooc_cmd_bglock(client, arg):
 def ooc_cmd_charselect(client, arg):
     """
     Opens the character selection screen for the current user
-    OR (MOD ONLY) forces another user by identifier to have that screen open.
+    OR (MOD ONLY) forces another user by identifier to have that screen open, freeing up their character in the process.
     
     SYNTAX
     /charselect 
@@ -426,8 +426,8 @@ def ooc_cmd_charselect(client, arg):
     
     EXAMPLES
     /charselect                    :: Open character selection screen for the current user.
+    /charselect 1                  :: Forces open the character selection screen for the user whose client ID is 1   
     /charselect 1234567890         :: Forces open the character selection screen for the user whose IPID is 1234567890
-    /charselect 127.0.0.1          :: Forces open the character selection screen for the user whose IP is 127.0.0.1    
     """
     
     # Open for current user case
@@ -549,7 +549,34 @@ def ooc_cmd_currentmusic(client, arg):
         raise ClientError('There is no music currently playing.')
     client.send_host_message('The current music is {} and was played by {}.'.format(client.area.current_music,
                                                                                     client.area.current_music_player))
+    
+def ooc_cmd_defaultarea(client, arg):
+    """ (MOD ONLY)
+    Set the default area by area ID for all future clients to join when connecting to the server.
+    Returns an error if the area ID is invalid.
+    
+    SYNTAX
+    /defaultarea <area_id>
+    
+    PARAMETERS
+    <area_id>: Intended default area ID
+    
+    EXAMPLES
+    /defaultarea 1          :: Set area 1 to be the default area.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ClientError('This command takes one argument.')
+        
+    try:
+        area = client.server.area_manager.get_area_by_id(int(arg)) 
+    except:
+        raise ClientError('Invalid parameter ' + arg)
 
+    client.server.default_area = int(arg)
+    client.send_host_message('Set default area to %s'.format(arg))        
+    
 def ooc_cmd_doc(client, arg):
     """
     Sends the area's current doc link to the user, or sets it to a new one.
@@ -635,6 +662,45 @@ def ooc_cmd_getareas(client, arg):
         raise ClientError("This command has been restricted to authorized users only in this area while in RP mode.")
 
     client.send_area_info(client.area, -1, False)
+
+def ooc_cmd_globalic(client, arg):
+    """ (STAFF ONLY)
+    Send client's subsequent IC messages to users only in specified areas. Can take either area IDs or area names.
+    If current user is not in intended destination range, it will NOT send messages to their area.
+    Requires /unglobalic to undo.
+    
+    If given two areas, it will send their IC messages to all areas between the given ones inclusive.
+    If given one area, it will send their IC messages only to the given area.
+    
+    SYNTAX
+    /globalic <target_area>
+    /globalic <area_range_start>, <area_range_end>
+    
+    PARAMETERS
+    <target_area>: Send IC messages just to this area.
+    
+    <area_range_start>: Send IC messages from this area onwards up to...
+    <area_range_end>: Send IC messages up to (and including) this area.
+    
+    EXAMPLES
+    /globalic 1, Courtroom 3                :: Send IC messages to areas 1 through "Courtroom 3" (if client in area 0, they will not see their own message).
+    /globalic 3                             :: Send IC messages just to area 3.
+    /globalic 1, 1                          :: Send IC messages just to area 1.
+    /globalic Courtroom,\ 2, Courtroom 3    :: Send IC messages to areas "Courtroom, 2" through "Courtroom 3" (note the escape character).
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    areas = arg.split(', ')
+    if len(arg) == 0 or len(areas) > 2:
+        raise ArgumentError('This command takes either one or two arguments.')
+    
+    areas = parse_two_area_names(client, areas)
+    client.multi_ic = areas
+    
+    if areas[0] == areas[1]:    
+        client.send_host_message('Your IC messages will now be sent to area {}.'.format(areas[0].name))
+    else:
+        client.send_host_message('Your IC messages will now be sent to areas {} through {}.'.format(areas[0].name,areas[1].name))
 
 def ooc_cmd_gm(client, arg):
     """ (MOD ONLY)
@@ -768,6 +834,55 @@ def ooc_cmd_kickself(client, arg):
     
     client.send_host_message('Kicked other instances of client.')
 
+def ooc_cmd_knock(client, arg):
+    """
+    'Knock' on some area's door, sending a notification to users in said area.
+    Returns an error if the area could not be found, if the user is already in the 
+    target area or if the area cannot be reached as per the DEFAULT server configuration 
+    (as users may lock passages, but that does not mean the door no longer exists, usually).
+    
+    SYNTAX
+    /knock <area_name>
+    /knock <area_id>
+    
+    PARAMETERS
+    <area_name>: Name of the area whose door you want to knock.
+    <area_id>: ID of the area whose door you want to knock.
+    
+    EXAMPLES
+    /knock 0                :: Knock the door to area 0
+    /knock Courtroom, 2     :: Knock the door to area "Courtroom, 2"
+    """
+    if len(arg) == 0:
+        raise ArgumentError('This command takes one argument.')
+
+    # Get area by either name or ID    
+    try:
+        target_area = client.server.area_manager.get_area_by_name(arg)
+    except AreaError:
+        try:
+            target_area = client.server.area_manager.get_area_by_id(int(arg))
+        except:
+            raise ArgumentError('Could not parse area name {}.'.format(arg))
+    
+    # Filter out edge cases
+    if target_area.name == client.area.name:
+        raise ClientError('You cannot knock on the door of your current area.')
+        
+    if client.area.default_reachable_areas != {'<ALL>'} and \
+    target_area.name not in client.area.default_reachable_areas | client.area.reachable_areas:
+        raise ClientError("You tried to knock on {}'s door but you realized the room is too far away."
+                          .format(target_area.name))
+
+    client.send_host_message('You knocked on the door to area {}.'.format(target_area.name))
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                'Someone knocked on your door from area {}.'.format(client.area.name),
+                                pred=lambda c: not c.is_staff() and c.area == target_area)
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                '{} knocked on the door to area {} in area {} ({}).'
+                                .format(client.get_char_name(), target_area.name, client.area.name, client.area.id),
+                                pred=lambda c: c != client and c.is_staff())
+        
 def ooc_cmd_lm(client, arg):
     """ (MOD ONLY)
     Similar to /lm, but only broadcasts the message to users in the current area, regardless of their global chat status.
@@ -942,6 +1057,65 @@ def ooc_cmd_motd(client, arg):
         
     client.send_motd()
 
+def ooc_cmd_music_list(client, arg):
+    """
+    Sets the client's current music list. This list is persistent between area changes and works on a client basis.
+    If given no arguments, it will return the music list to its default value (in music.yaml)
+    The list of music lists can be accessed with /music_lists.
+    Clients that do not process 'SM' packets can use this command without crashing, but it will have no visual effect.
+    Returns an error if the given music list was not found.
+    
+    SYNTAX
+    /music_list <music_list>
+    
+    PARAMETERS
+    <music_list>: Name of the intended music_list
+    
+    EXAMPLES
+    /music_list dr2         :: Load the "dr2" music list.
+    /music_list             :: Reset the music list to its default value.
+    """
+    if len(arg) == 0:
+        client.music_list = None
+        client.reload_music_list()
+        client.send_host_message('Restored music list to its default value.')
+    else:
+        try:
+            new_music_file = 'config/music_lists/{}.yaml'.format(arg)
+            client.reload_music_list(new_music_file=new_music_file)
+        except ServerError:
+            raise ArgumentError('Could not find music list file: {}'.format(arg))
+        
+        client.send_host_message('Loaded music list: {}'.format(arg))
+
+def ooc_cmd_music_lists(client, arg):
+    """
+    Lists all available music lists as established in config/music_lists.yaml
+    Note that, as this file is updated independently from the other music lists,
+    some music list does not need to be in this file in order to be usable, and
+    a music list in this list may no longer exist.
+    
+    SYNTAX
+    /music_lists
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /music_lists            :: Return all available music lists
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command takes no arguments.')
+        
+    try:
+        with open('config/music_lists.yaml', 'r') as f:
+            output = 'Available music lists:\n'
+            for line in f:
+                output += '*{}'.format(line)
+            client.send_host_message(output)
+    except FileNotFoundError:
+        raise ClientError('Server file music_lists.yaml not found.')
+        
 def ooc_cmd_mute(client, arg):
     """ (CM AND MOD ONLY)
     Mutes given user based on client ID or IPID so that they are unable to speak in IC chat.
@@ -1169,6 +1343,49 @@ def ooc_cmd_reload(client, arg):
         raise
     
     client.send_host_message('Character reloaded.') 
+
+def ooc_cmd_reveal(client, arg):    
+    """ (STAFF ONLY)
+    Sets given user based on client ID or IPID to no longer be sneaking so that they are visible through /getarea(s).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /sneak to undo.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /reveal <client_id>
+    /reveal <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /reveal 1                     :: Set client whose ID is 1 to no longer be sneaking.
+    /reveal 1234567890            :: Set all clients opened by the user whose IPID is 1234567890 to no longer be sneaking.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
+        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
+        
+    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
+    # This places the assumption that there are no more than 10 billion clients connected simultaneously
+    # but if that is the case, you probably have a much larger issue at hand.
+    if len(arg) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+    else:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    
+    # Unsneak matching targets
+    if targets:
+        for c in targets:
+            logger.log_server('{} is no longer sneaking.'.format(c.ipid), client)
+            if c != client:
+                client.send_host_message("{} is no longer sneaking.".format(c.get_char_name()))
+            c.send_host_message("You are no longer sneaking.")
+            c.is_visible = True
+    else:
+        client.send_host_message("No targets found.")
     
 def ooc_cmd_roll(client, arg):
     """
@@ -1302,7 +1519,103 @@ def ooc_cmd_scream(client, arg):
                                      (c.area.name in client.area.reachable_areas
                                      or client.area.reachable_areas == {'<ALL>'}))))
     logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+
+def ooc_cmd_showname(client, arg):
+    """
+    If given an argument, sets the client's showname to that. 
+    Otherwise, it clears their showname to use the default setting (character showname).
     
+    These custom shownames override whatever showname the current character has, and is 
+    persistent between between character swaps/area changes/etc.
+    
+    SYNTAX
+    /showname <new_showname>
+    /showname
+    
+    PARAMETERS
+    <new_showname>: New desired showname.
+    
+    EXAMPLES
+    /showname Phantom       :: Sets your showname as Phantom
+    /showname               :: Clears your showname
+    """
+    client.showname = arg
+    if arg != '':
+        client.send_host_message('You have set your showname as: {}'.format(arg))
+    else:
+        client.send_host_message('You have removed your custom showname.')
+
+def ooc_cmd_sneak(client, arg):    
+    """ (STAFF ONLY)
+    Sets given user based on client ID or IPID to be sneaking so that they are invisible through /getarea(s).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /reveal to undo.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /sneak <client_id>
+    /sneak <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /sneak 1                     :: Set client whose ID is 1 to be sneaking.
+    /sneak 1234567890            :: Set all clients opened by the user whose IPID is 1234567890 to be sneaking.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
+        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
+     
+    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
+    # This places the assumption that there are no more than 10 billion clients connected simultaneously
+    # but if that is the case, you probably have a much larger issue at hand.
+    if len(arg) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+    else:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
+    
+    # Sneak matching targets
+    if targets:
+        for c in targets:
+            if client.is_gm and c.area.lobby_area:
+                client.send_host_message('Target client is in a lobby area. You have insufficient permissions to hide someone in such an area.')
+                continue
+            if c.area.private_area:
+                client.send_host_message('Target client is in a private area. You are not allowed to hide someone in such an area.')
+                continue
+            
+            logger.log_server('{} is now sneaking.'.format(c.ipid), client)
+            if c != client:
+                client.send_host_message("{} is now sneaking.".format(c.get_char_name()))
+            c.send_host_message("You are now sneaking.")
+            c.is_visible = False
+    else:
+        client.send_host_message("No targets found.")
+
+def ooc_cmd_st(client, arg):
+    """ (STAFF ONLY)
+    Send a message to the private server-wide staff chat. Only staff members can send
+    and receive messages from it (i.e. it is not a report command for normal users).
+    
+    SYNTAX
+    /st <message>
+    
+    PARAMETERS
+    <message>: Your message
+    
+    EXAMPLES
+    /st Need help in area 0.       :: Sends "Need help in area 0" to all staff members.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+        
+    client.server.send_all_cmd_pred('CT','{} [Staff] {}'.format(client.server.config['hostname'], client.name), arg,
+                                    pred=lambda c: c.is_staff())
+    logger.log_server('[{}][STAFFCHAT][{}][{}]{}.'.format(client.area.id, client.get_char_name(), client.name, arg), client)
+            
 def ooc_cmd_switch(client, arg):
     """ 
     Switches current user's character to a different one. 
@@ -1332,6 +1645,65 @@ def ooc_cmd_switch(client, arg):
     except ClientError:
         raise
     client.send_host_message('Character changed.')
+
+def ooc_cmd_time(client, arg):
+    """
+    Return the current server date and time.
+    
+    SYNTAX
+    /time
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /time           :: May return something like "Sat Apr 27 09:04:17 2019"
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command takes no arguments.')
+        
+    client.send_host_message(time.asctime(time.localtime(time.time())))
+
+def ooc_cmd_time12(client, arg):
+    """
+    Return the current server date and time in 12 hour format.
+    Also includes the server timezone.
+    
+    SYNTAX
+    /time12
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /time12         :: May return something like "Sat Apr 27 09:04:47 AM (EST) 2019"
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command takes no arguments.')
+        
+    client.send_host_message(time.strftime('%a %b %e %I:%M:%S %p (%z) %Y'))
+			
+def ooc_cmd_ToD(client, arg):
+    """
+    Choose "Truth" or "Dare". Intended to be use for participants in Truth or Dare games.
+    
+    SYNTAX
+    /ToD
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /ToD                :: May return something like 'Phoenix_HD has to do a truth.'
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    coin = ['truth', 'dare']
+    flip = random.choice(coin)
+    client.area.send_host_message('{} has to do a {}.'.format(client.get_char_name(), flip))
+    logger.log_server(
+        '[{}][{}]has to do a {}.'.format(client.area.id, client.get_char_name(), flip), client)
 
 def ooc_cmd_toggleglobal(client, arg):
     """
@@ -1459,6 +1831,28 @@ def ooc_cmd_unban(client, arg):
     logger.log_server('Unbanned {}.'.format(arg), client)
     client.send_host_message('Unbanned {}'.format(arg))
 
+def ooc_cmd_unglobalic(client, arg):
+    """ (STAFF ONLY)
+    Send subsequent IC messages to users in the same area as the client (i.e. as normal).
+    It is the way to undo a /globalic command.
+    
+    SYNTAX
+    /unglobalic
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /unglobalic             :: Send subsequent messages normally (only to users in current area).
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    client.multi_ic = None
+    client.send_host_message('Your IC messages will now be just sent to your current area.')
+
 def ooc_cmd_unmute(client, arg):
     """ (CM AND MOD ONLY)
     Unmutes given user based on client ID or IPID so that they are unable to speak in IC chat.
@@ -1501,6 +1895,28 @@ def ooc_cmd_unmute(client, arg):
     else:
         client.send_host_message("No targets found.")
     
+def ooc_cmd_8ball(client, arg):
+    """
+    Call upon the wisdom of a magic 8 ball. The result is sent to all clients in the sender's area.
+    
+    SYNTAX
+    /8ball
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /8ball              :: May return something like "The magic 8 ball says You shouldn't ask that."
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    coin = ['yes', 'no', 'maybe', "I don't know", 'perhaps', 'please do not', 'try again', "you shouldn't ask that"]
+    flip = random.choice(coin)
+    client.area.send_host_message('The magic 8 ball says {}.'.format(flip))
+    logger.log_server(
+        '[{}][{}]called upon the magic 8 ball and it said {}.'.format(client.area.id,client.get_char_name(),flip), client)
+		
 def ooc_cmd_bilock(client, arg):
     areas = arg.split(', ')
     if len(areas) > 2 or arg == '':
@@ -1667,7 +2083,6 @@ def ooc_cmd_gmlock(client, arg):
             client.area.invite_list[i.ipid] = None
         return
 
-
 def ooc_cmd_modlock(client, arg):
     if not client.area.locking_allowed:
         client.send_host_message('Area locking is disabled in this area')
@@ -1683,7 +2098,6 @@ def ooc_cmd_modlock(client, arg):
             client.area.invite_list[i.ipid] = None
         return
 
-
 def ooc_cmd_unlock(client, arg):
     if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
         raise ClientError('Area is already open.')
@@ -1697,7 +2111,6 @@ def ooc_cmd_unlock(client, arg):
         else:
             raise ClientError('You must be of higher authorization to do that.')
     client.send_host_message('Area is unlocked.')
-
 
 def ooc_cmd_invite(client, arg):
     if not client.is_staff():
@@ -1717,7 +2130,6 @@ def ooc_cmd_invite(client, arg):
             raise ClientError('You must specify a valid target. Use /invite <id>')
     except:
         raise ClientError('You must specify a target. Use /invite <id>')
-
 
 def ooc_cmd_uninvite(client, arg):
     if len(arg) == 0:
@@ -1739,7 +2151,6 @@ def ooc_cmd_uninvite(client, arg):
                 raise ClientError('User is not on invite list.')
         else:
             raise ClientError('You must specify an ID or IPID.')
-
 
 def ooc_cmd_area_kick(client, arg):
     if not client.is_staff():
@@ -1777,7 +2188,6 @@ def ooc_cmd_area_kick(client, arg):
     else:
         client.send_host_message("No targets found.")
 
-
 def ooc_cmd_ooc_mute(client, arg):
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
@@ -1790,7 +2200,6 @@ def ooc_cmd_ooc_mute(client, arg):
         target.is_ooc_muted = True
     client.send_host_message('Muted {} existing client(s).'.format(len(targets)))
 
-
 def ooc_cmd_ooc_unmute(client, arg):
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
@@ -1802,7 +2211,6 @@ def ooc_cmd_ooc_unmute(client, arg):
     for target in targets:
         target.is_ooc_muted = False
     client.send_host_message('Unmuted {} existing client(s).'.format(len(targets)))
-
 
 def ooc_cmd_disemvowel(client, arg):
     if not client.is_mod:
@@ -1824,7 +2232,6 @@ def ooc_cmd_disemvowel(client, arg):
     else:
         client.send_host_message('No targets found.')
 		
-		
 def ooc_cmd_disemconsonant(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
@@ -1844,8 +2251,7 @@ def ooc_cmd_disemconsonant(client, arg):
         client.send_host_message('Disemconsonanted {} existing client(s).'.format(len(targets)))
     else:
         client.send_host_message('No targets found.')
-		
-		
+				
 def ooc_cmd_undisemconsonant(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
@@ -1865,8 +2271,7 @@ def ooc_cmd_undisemconsonant(client, arg):
         client.send_host_message('Undisemconsonanted {} existing client(s).'.format(len(targets)))
     else:
         client.send_host_message('No targets found.')
-		
-		
+				
 def ooc_cmd_remove_h(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
@@ -1886,7 +2291,6 @@ def ooc_cmd_remove_h(client, arg):
         client.send_host_message('Removed h from {} existing client(s).'.format(len(targets)))
     else:
         client.send_host_message('No targets found.')
-
 
 def ooc_cmd_undisemvowel(client, arg):
     if not client.is_mod:
@@ -1908,7 +2312,6 @@ def ooc_cmd_undisemvowel(client, arg):
     else:
         client.send_host_message('No targets found.')
 		
-
 def ooc_cmd_unremove_h(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
@@ -1928,7 +2331,6 @@ def ooc_cmd_unremove_h(client, arg):
         client.send_host_message('Added h to {} existing client(s).'.format(len(targets)))
     else:
         client.send_host_message('No targets found.')
-
 
 def ooc_cmd_gimp(client, arg):
     if not client.is_mod:
@@ -1950,7 +2352,6 @@ def ooc_cmd_gimp(client, arg):
     else:
         client.send_host_message('No targets found.')
 
-
 def ooc_cmd_ungimp(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
@@ -1971,7 +2372,6 @@ def ooc_cmd_ungimp(client, arg):
     else:
         client.send_host_message('No targets found.')
 
-
 def ooc_cmd_blockdj(client, arg):
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
@@ -1991,7 +2391,6 @@ def ooc_cmd_blockdj(client, arg):
         target.send_host_message('You have been muted of changing music by moderator.')
     client.send_host_message('blockdj\'d {}.'.format(targets[0].get_char_name()))
 
-
 def ooc_cmd_unblockdj(client, arg):
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
@@ -2010,7 +2409,6 @@ def ooc_cmd_unblockdj(client, arg):
         target.is_dj = True
         target.send_host_message('Now you can change music.')
     client.send_host_message('Unblockdj\'d {}.'.format(targets[0].get_char_name()))
-
 
 def ooc_cmd_rpmode(p_client, arg):
     if not p_client.server.config['rp_mode_enabled']:
@@ -2045,25 +2443,7 @@ def ooc_cmd_refresh(client, arg):
             client.send_host_message('You have reloaded the server.')
         except ServerError:
             raise
-			
-def ooc_cmd_ToD(client, arg):
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    coin = ['truth', 'dare']
-    flip = random.choice(coin)
-    client.area.send_host_message('{} has to do a {}.'.format(client.get_char_name(), flip))
-    logger.log_server(
-        '[{}][{}]has to do a {}.'.format(client.area.id, client.get_char_name(), flip), client)
-		
-def ooc_cmd_8ball(client, arg):
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    coin = ['yes', 'no', 'maybe', 'I dont know', 'perhaps', 'Please do not', 'try again', 'you shouldn\'t ask that']
-    flip = random.choice(coin)
-    client.area.send_host_message('The magic 8 ball says {}.'.format(flip))
-    logger.log_server(
-        '[{}][{}]called upon the magic 8 ball and it said {}.'.format(client.area.id,client.get_char_name(),flip), client)
-		
+            
 def ooc_cmd_discord(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
@@ -2090,32 +2470,6 @@ def ooc_cmd_unfollow(client, arg):
     except AttributeError:
         client.send_host_message('You are not following anyone.')
 
-def ooc_cmd_defaultarea(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ClientError('This command takes one argument.')
-    try:
-        area = client.server.area_manager.get_area_by_id(int(arg)) 
-    except:
-        raise ClientError('Invalid parameter ' + arg)
-
-    client.server.default_area = int(arg)
-    client.send_host_message('Set default area to %s'.format(arg))        
-
-def ooc_cmd_time(client, arg):
-    client.send_host_message(time.asctime(time.localtime(time.time())))
-
-def ooc_cmd_time12(client, arg):
-    client.send_host_message(time.strftime('%a %b %e %I:%M:%S %p (%z) %Y'))
-    
-def ooc_cmd_st(client, arg):
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    client.server.send_all_cmd_pred('CT','{} [Staff] {}'.format(client.server.config['hostname'],client.name),arg,
-                                    pred=lambda c: c.is_staff())
-    logger.log_server('[{}][STAFFCHAT][{}][{}]{}.'.format(client.area.id,client.get_char_name(),client.name,arg), client)
-    
 def ooc_cmd_timer(client, arg):
     TIMER_LIMIT = 21600 # 6 hours in seconds, can be changed to any amount in seconds
     
@@ -2298,267 +2652,6 @@ def ooc_cmd_timer(client, arg):
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
 
-def ooc_cmd_sneak(client, arg):    
-    """
-    Sets given user based on client ID or IPID to be sneaking so that they are invisible through /getarea(s).
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
-    Requires /reveal to undo.
-    Returns an error if the given identifier does not correspond to a user.
-    
-    SYNTAX
-    /sneak <client_id>
-    /sneak <client_ipid>
-    
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-    
-    EXAMPLES
-    /sneak 1                     :: Set client whose ID is 1 to be sneaking.
-    /sneak 1234567890            :: Set all clients opened by the user whose IPID is 1234567890 to be sneaking.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
-        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
-     
-    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-    # This places the assumption that there are no more than 10 billion clients connected simultaneously
-    # but if that is the case, you probably have a much larger issue at hand.
-    if len(arg) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-    else:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    
-    # Sneak matching targets
-    if targets:
-        for c in targets:
-            if client.is_gm and c.area.lobby_area:
-                client.send_host_message('Target client is in a lobby area. You have insufficient permissions to hide someone in such an area.')
-                continue
-            if c.area.private_area:
-                client.send_host_message('Target client is in a private area. You are not allowed to hide someone in such an area.')
-                continue
-            
-            logger.log_server('{} is now sneaking.'.format(c.ipid), client)
-            if c != client:
-                client.send_host_message("{} is now sneaking.".format(c.get_char_name()))
-            c.send_host_message("You are now sneaking.")
-            c.is_visible = False
-    else:
-        client.send_host_message("No targets found.")
-        
-def ooc_cmd_reveal(client, arg):    
-    """
-    Sets given user based on client ID or IPID to no longer be sneaking so that they are visible through /getarea(s).
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
-    Requires /sneak to undo.
-    Returns an error if the given identifier does not correspond to a user.
-    
-    SYNTAX
-    /reveal <client_id>
-    /reveal <client_ipid>
-    
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-    
-    EXAMPLES
-    /reveal 1                     :: Set client whose ID is 1 to no longer be sneaking.
-    /reveal 1234567890            :: Set all clients opened by the user whose IPID is 1234567890 to no longer be sneaking.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
-        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
-        
-    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-    # This places the assumption that there are no more than 10 billion clients connected simultaneously
-    # but if that is the case, you probably have a much larger issue at hand.
-    if len(arg) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-    else:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    
-    # Unsneak matching targets
-    if targets:
-        for c in targets:
-            logger.log_server('{} is no longer sneaking.'.format(c.ipid), client)
-            if c != client:
-                client.send_host_message("{} is no longer sneaking.".format(c.get_char_name()))
-            c.send_host_message("You are no longer sneaking.")
-            c.is_visible = True
-    else:
-        client.send_host_message("No targets found.")
-
-def ooc_cmd_globalic(client, arg):
-    """ (STAFF ONLY)
-    Send client's subsequent IC messages to users only in specified areas. Can take either area IDs or area names.
-    If current user is not in intended destination range, it will NOT send messages to their area.
-    Requires /unglobalic to undo.
-    
-    If given two areas, it will send their IC messages to all areas between the given ones inclusive.
-    If given one area, it will send their IC messages only to the given area.
-    
-    SYNTAX
-    /globalic <target_area>
-    /globalic <area_range_start>, <area_range_end>
-    
-    PARAMETERS
-    <target_area>: Send IC messages just to this area.
-    
-    <area_range_start>: Send IC messages from this area onwards up to...
-    <area_range_end>: Send IC messages up to (and including) this area.
-    
-    EXAMPLES
-    /globalic 1, Courtroom 3                :: Send IC messages to areas 1 through "Courtroom 3" (if client in area 0, they will not see their own message).
-    /globalic 3                             :: Send IC messages just to area 3.
-    /globalic 1, 1                          :: Send IC messages just to area 1.
-    /globalic Courtroom,\ 2, Courtroom 3    :: Send IC messages to areas "Courtroom, 2" through "Courtroom 3" (note the escape character).
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    areas = arg.split(', ')
-    if len(arg) == 0 or len(areas) > 2:
-        raise ArgumentError('This command takes either one or two arguments.')
-    
-    areas = parse_two_area_names(client, areas)
-    client.multi_ic = areas
-    
-    if areas[0] == areas[1]:    
-        client.send_host_message('Your IC messages will now be sent to area {}.'.format(areas[0].name))
-    else:
-        client.send_host_message('Your IC messages will now be sent to areas {} through {}.'.format(areas[0].name,areas[1].name))
-
-def ooc_cmd_unglobalic(client, arg):
-    """ (STAFF ONLY)
-    Send subsequent IC messages to users in the same area as the client (i.e. as normal).
-    It is the way to undo a /globalic command.
-    
-    SYNTAX
-    /unglobalic
-    
-    PARAMETERS
-    None
-    
-    EXAMPLES
-    /unglobalic             :: Send subsequent messages normally (only to users in current area).
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-        
-    client.multi_ic = None
-    client.send_host_message('Your IC messages will now be just sent to your current area.')
-
-def ooc_cmd_showname(client, arg):
-    """
-    If given an argument, sets the client's showname to that. 
-    Otherwise, it clears their showname to use the default setting (character showname).
-    
-    These custom shownames override whatever showname the current character has, and is 
-    persistent between between character swaps/area changes/etc.
-    
-    SYNTAX
-    /showname <new_showname>
-    /showname
-    
-    PARAMETERS
-    <new_showname>: New desired showname.
-    
-    EXAMPLES
-    /showname Phantom       :: Sets your showname as Phantom
-    /showname               :: Clears your showname
-    """
-    client.showname = arg
-    if arg != '':
-        client.send_host_message('You have set your showname as: {}'.format(arg))
-    else:
-        client.send_host_message('You have removed your custom showname.')
-
-def ooc_cmd_knock(client, arg):
-    """
-    'Knock' on some area's door, sending a notification to users in said area.
-    Returns an error if the area could not be found, if the user is already in the 
-    target area or if the area cannot be reached as per the DEFAULT server configuration 
-    (as users may lock passages, but that does not mean the door no longer exists, usually).
-    
-    SYNTAX
-    /knock <area_name>
-    /knock <area_id>
-    
-    PARAMETERS
-    <area_name>: Name of the area whose door you want to knock.
-    <area_id>: ID of the area whose door you want to knock.
-    
-    EXAMPLES
-    /knock 0                :: Knock the door to area 0
-    /knock Courtroom, 2     :: Knock the door to area "Courtroom, 2"
-    """
-    if len(arg) == 0:
-        raise ArgumentError('This command takes one argument.')
-
-    # Get area by either name or ID    
-    try:
-        target_area = client.server.area_manager.get_area_by_name(arg)
-    except AreaError:
-        try:
-            target_area = client.server.area_manager.get_area_by_id(int(arg))
-        except:
-            raise ArgumentError('Could not parse area name {}.'.format(arg))
-    
-    # Filter out edge cases
-    if target_area.name == client.area.name:
-        raise ClientError('You cannot knock on the door of your current area.')
-        
-    if client.area.default_reachable_areas != {'<ALL>'} and \
-    target_area.name not in client.area.default_reachable_areas | client.area.reachable_areas:
-        raise ClientError("You tried to knock on {}'s door but you realized the room is too far away."
-                          .format(target_area.name))
-
-    client.send_host_message('You knocked on the door to area {}.'.format(target_area.name))
-    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
-                                'Someone knocked on your door from area {}.'.format(client.area.name),
-                                pred=lambda c: not c.is_staff() and c.area == target_area)
-    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
-                                '{} knocked on the door to area {} in area {} ({}).'
-                                .format(client.get_char_name(), target_area.name, client.area.name, client.area.id),
-                                pred=lambda c: c != client and c.is_staff())
-
-def ooc_cmd_music_list(client, arg):
-    """
-    Sets the current music list.
-    """
-    if len(arg) == 0:
-        client.music_list = None
-        client.reload_music_list()
-        client.send_host_message('Restored music list to its default value.')
-    else:
-        try:
-            new_music_file = 'config/music_lists/{}.yaml'.format(arg)
-            client.reload_music_list(new_music_file=new_music_file)
-        except ServerError:
-            raise ArgumentError('Could not find music list file: {}'.format(arg))
-        
-        client.send_host_message('Loaded music list: {}'.format(arg))
-
-def ooc_cmd_music_lists(client, arg):
-    """
-    Lists all available music lists.
-    """
-    if len(arg) != 0:
-        raise ArgumentError('This command takes no arguments.')
-        
-    try:
-        with open('config/music_lists.yaml', 'r') as f:
-            output = 'Available music lists:\n'
-            for line in f:
-                output += '*{}'.format(line)
-            client.send_host_message(output)
-    except FileNotFoundError:
-        raise ClientError('Server file music_lists.yaml not found.')
-        
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE THERE FOR DEBUGGING.
