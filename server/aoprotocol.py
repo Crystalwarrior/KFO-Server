@@ -326,10 +326,10 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
-            self.client.send_host_message("You have been muted by a moderator")
+            self.client.send_host_message("You have been muted by a moderator.")
             return
         if self.client.area.ic_lock and not (self.client.is_mod or self.client.is_cm or self.client.is_gm):
-            self.client.send_host_message("IC chat in this area has been locked by a moderator")
+            self.client.send_host_message("IC chat in this area has been locked by a moderator.")
             return            
         if not self.client.area.can_send_message():
             return
@@ -341,7 +341,7 @@ class AOProtocol(asyncio.Protocol):
             return
         msg_type, pre, folder, anim, text, pos, sfx, anim_type, cid, sfx_delay, button, evidence, flip, ding, color = args
         if self.client.area.is_iniswap(self.client, pre, anim, folder) and folder != self.client.get_char_name():
-            self.client.send_host_message("Iniswap is blocked in this area")
+            self.client.send_host_message("Iniswap is blocked in this area.")
             return
         if msg_type not in ('chat', '0', '1'):
             return

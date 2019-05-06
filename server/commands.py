@@ -42,7 +42,6 @@ def arg_num(arg):
         return 0
     
     args = arg.split(" ")
-    print(arg, args)
     return len(args)
 
 def dice_roll(arg, command_type):
@@ -302,10 +301,78 @@ def ooc_cmd_area(client, arg):
             raise
     else:
         raise ArgumentError('Too many arguments. Use /area <id>.')
+
+def ooc_cmd_area_list(client, arg):
+    """ (MOD ONLY)
+    Sets the server's current area list (what areas exist at any given time). 
+    If given no arguments, it will return the area list to its original value (in areas.yaml)
+    The list of area lists can be accessed with /area_lists.
+    Clients that do not process 'SM' packets can be in servers that use this command without crashing, 
+    but they will continue to only see the areas they could see when joining.
+    Returns an error if the given area list was not found.
+    
+    SYNTAX
+    /area_list <area_list>
+    
+    PARAMETERS
+    <area_list>: Name of the intended area list
+    
+    EXAMPLES
+    /area_list dr1dr2       :: Load the "dr1dr2" area list.
+    /area_list              :: Reset the area list to its original value.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+        
+    if len(arg) == 0:
+        client.server.area_manager.load_areas()
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            'The area list of the server has been reset to its original value.')
+    else:
+        try:
+            new_area_file = 'config/area_lists/{}.yaml'.format(arg)
+            client.server.area_manager.load_areas(area_list_file=new_area_file)
+        except FileNotFoundError:
+            raise ArgumentError('Could not find the area list file {}'.format(new_area_file))
+        except AreaError as exc:
+            raise ArgumentError('The area list {} raised the following error when loading: {}'.format(new_area_file, exc))
+            
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            'The area list {} has been loaded.'.format(arg))
+        
+def ooc_cmd_area_lists(client, arg):
+    """ (MOD ONLY)
+    Lists all available area lists as established in config/area_lists.yaml
+    Note that, as this file is updated independently from the other area lists,
+    an area list does not need to be in this file in order to be usable, and
+    an area list in this list may no longer exist.
+    
+    SYNTAX
+    /area_lists
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /area_lists             :: Return all available area lists
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command takes no arguments.')
+        
+    try:
+        with open('config/area_lists.yaml', 'r') as f:
+            output = 'Available area lists:\n'
+            for line in f:
+                output += '*{}'.format(line)
+            client.send_host_message(output)
+    except FileNotFoundError:
+        raise ClientError('Server file area_lists.yaml not found.')
         
 def ooc_cmd_ban(client, arg):
     """ (MOD ONLY)
-    Kicks given user from the server and prevents them from rejoining. The user can be identified by either their IPID or IP address
+    Kicks given user from the server and prevents them from rejoining. The user can be identified by either their IPID or IP address.
     Requires /unban to undo.
     Returns an error if given identifier does not correspond to a user.
     
@@ -571,11 +638,13 @@ def ooc_cmd_defaultarea(client, arg):
         
     try:
         area = client.server.area_manager.get_area_by_id(int(arg)) 
-    except:
-        raise ClientError('Invalid parameter ' + arg)
+    except ValueError:
+        raise ArgumentError('Expected numerical value for area ID.')
+    except AreaError:
+        raise ClientError('ID {} does not correspond to a valid area ID.'.format(arg))
 
     client.server.default_area = int(arg)
-    client.send_host_message('Set default area to %s'.format(arg))        
+    client.send_host_message('Set default area to {}'.format(arg))        
     
 def ooc_cmd_doc(client, arg):
     """
@@ -1258,13 +1327,13 @@ def ooc_cmd_pm(client, arg):
     # Attempt to send the message to the target, provided they do not have PMs disabled.
     c = targets[0]
     if c.pm_mute:
-        raise ClientError('This user muted all pm conversation')
+        raise ClientError('This user muted all pm conversation.')
     else:
         c.send_host_message('PM from {} in {} ({}): {}'.format(client.name, client.area.name, client.get_char_name(), msg))
         client.send_host_message('PM sent to {}. Message: {}'.format(args[0], msg))
         
 def ooc_cmd_pos(client, arg):
-    """
+    """ 
     Switches the character to the given position, or to its original position if not given one.
     Returns an error if position is invalid.
     
@@ -2177,7 +2246,7 @@ def ooc_cmd_area_kick(client, arg):
                     except AreaError:
                         raise
                 client.send_host_message("Attempting to kick {} to area {}.".format(c.get_char_name(), output))
-                c.change_area(area, override=True)
+                c.change_area(area, override_passages=True)
                 c.send_host_message("You were kicked from the area to area {}.".format(output))
                 if client.area.is_locked or client.area.is_modlocked:
                     client.area.invite_list.pop(c.ipid)
@@ -2654,7 +2723,7 @@ def ooc_cmd_timer(client, arg):
 
 def ooc_cmd_exec(client, arg):
     """
-    VERY DANGEROUS. SHOULD ONLY BE THERE FOR DEBUGGING.
+    VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
     
     DID I MENTION THIS IS VERY DANGEROUS?
     
@@ -2692,7 +2761,9 @@ def ooc_cmd_exec(client, arg):
             client.send_host_message(eval(arg))
     except:
         try:
-            globals()['client'] = client
+            # Temporarily add "client" as a global variable, to allow using 
+            # expressions such as client.send_host_message("Hi")
+            globals()['client'] = client 
             exec(arg, globals())
             client.send_host_message("Executed {}".format(arg))
         except Exception as e:

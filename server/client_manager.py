@@ -172,64 +172,73 @@ class ClientManager:
             # that crashes all clients that dare attempt join this area.
             self.send_command('FM', *self.server.music_list_ao2)
             
-        def change_area(self, area, override = False):
-            if area.lobby_area and not self.is_visible and not self.is_mod and not self.is_cm:
-                raise ClientError('Lobby areas do not let non-authorized users remain sneaking. Please change the music, speak IC or ask a staff member to reveal you.')
-            if area.private_area and not self.is_visible:
-                raise ClientError('Private areas do not let sneaked users in. Please change the music, speak IC or ask a staff member to reveal you.')   
+        def change_area(self, area, override_passages = False, override_all = False):
+            # Override_passages performs the area change regardless of passages existing or not
+            # Override all performs the area change regardless of anything (only useful for complete area reload)
+            # In particular, override_all being False performs all the checks and announces the area change in OOC
+            if not override_all:
+                if area.lobby_area and not self.is_visible and not self.is_mod and not self.is_cm:
+                    raise ClientError('Lobby areas do not let non-authorized users remain sneaking. Please change the music, speak IC or ask a staff member to reveal you.')
+                if area.private_area and not self.is_visible:
+                    raise ClientError('Private areas do not let sneaked users in. Please change the music, speak IC or ask a staff member to reveal you.')   
+                    
+                if self.area == area:
+                    raise ClientError('User is already in target area.')
+                if area.is_locked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
+                    raise ClientError('That area is locked!')
+                if area.is_gmlocked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
+                    raise ClientError('That area is gm-locked!')
+                if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
+                    raise ClientError('That area is mod-locked!')
+                    
+                if not (area.name in self.area.reachable_areas or '<ALL>' in self.area.reachable_areas or \
+                (self.is_mod or self.is_gm or self.is_cm) or override_passages):
+                    info = 'Selected area cannot be reached from the current one without authorization. Try one of the following instead: '
+                    if self.area.reachable_areas == {self.area.name}:
+                        info += '\r\n*No areas available.'
+                    else:
+                        try:
+                            sorted_areas = sorted(self.area.reachable_areas,key = lambda area_name: self.server.area_manager.get_area_by_name(area_name).id)
+                            for area in sorted_areas:
+                                if area != self.area.name:
+                                    info += '\r\n*{}'.format(area)
+                        except AreaError: #When would you ever execute this piece of code is beyond me, but meh
+                            info += '\r\n<ALL>'
+                    raise ClientError(info)
                 
-            if self.area == area:
-                raise ClientError('User is already in target area.')
-            if area.is_locked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
-                raise ClientError('That area is locked!')
-            if area.is_gmlocked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
-                raise ClientError('That area is gm-locked!')
-            if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
-                raise ClientError('That area is mod-locked!')
-                
-            if not (area.name in self.area.reachable_areas or '<ALL>' in self.area.reachable_areas or \
-            (self.is_mod or self.is_gm or self.is_cm) or override):
-                info = 'Selected area cannot be reached from the current one without authorization. Try one of the following instead: '
-                if self.area.reachable_areas == {self.area.name}:
-                    info += '\r\n*No areas available.'
-                else:
+                if not area.is_char_available(self.char_id):
                     try:
-                        sorted_areas = sorted(self.area.reachable_areas,key = lambda area_name: self.server.area_manager.get_area_by_name(area_name).id)
-                        for area in sorted_areas:
-                            if area != self.area.name:
-                                info += '\r\n*{}'.format(area)
-                    except AreaError: #When would you ever execute this piece of code is beyond me, but meh
-                        info += '\r\n<ALL>'
-                raise ClientError(info)
-            old_area = self.area
-            if not area.is_char_available(self.char_id):
-                try:
-                    new_char_id = area.get_rand_avail_char_id()
-                except AreaError:
-                    raise ClientError('No available characters in that area.')
+                        new_char_id = area.get_rand_avail_char_id()
+                    except AreaError:
+                        raise ClientError('No available characters in that area.')
+    
+                    self.change_character(new_char_id)
+                    self.send_host_message('Character taken, switched to {}.'.format(self.get_char_name()))
+                    
+                self.send_host_message('Changed area to {}.[{}]'.format(area.name, self.area.status))
+                old_area = self.area
+                logger.log_server(
+                '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
+                                                                   self.area.name, self.area.id), self)
+                #logger.log_rp(
+                #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
+                #                                                       self.area.name, self.area.id), self)    
 
-                self.change_character(new_char_id)
-                self.send_host_message('Character taken, switched to {}.'.format(self.get_char_name()))
-            self.server.create_task(self, ['as_afk_kick', area.afk_delay, area.afk_sendto])
             self.area.remove_client(self)
             self.area = area
             area.new_client(self)
 
-            self.send_host_message('Changed area to {}.[{}]'.format(area.name, self.area.status))
-            logger.log_server(
-                '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
-                                                                   self.area.name, self.area.id), self)
-            #logger.log_rp(
-            #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
-            #                                                       self.area.name, self.area.id), self)
+
             self.send_command('HP', 1, self.area.hp_def)
             self.send_command('HP', 2, self.area.hp_pro)
             self.send_command('BN', self.area.background)
             self.send_command('LE', *self.area.get_evidence_list(self))
-            self.reload_music_list() # Update music list to include new area's reachable areas
-
+ 
             if self.followedby != "":
                 self.followedby.follow_area(area)
+                
+            self.reload_music_list() # Update music list to include new area's reachable areas
+            self.server.create_task(self, ['as_afk_kick', area.afk_delay, area.afk_sendto])
 
         def follow_user(self, arg):
             self.following = arg
@@ -508,7 +517,6 @@ class ClientManager:
         self.clients = set()
         self.server = server
         self.cur_id = [False] * self.server.config['playerlimit']
-        self.clients_list = []
 
     def new_client(self, transport):
         cur_id = 0

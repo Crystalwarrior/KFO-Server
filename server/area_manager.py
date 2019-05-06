@@ -26,18 +26,10 @@ from server.evidence import EvidenceList
 
 class AreaManager:
     class Area:
-        def __init__(self, area_id, server, name, background, bg_lock, evidence_mod = 'FFA', locking_allowed = False, 
-                     iniswap_allowed = True, rp_getarea_allowed = True, rp_getareas_allowed = True, 
-                     rollp_allowed = True, reachable_areas = '<ALL>', change_reachability_allowed = True,
-                     gm_iclock_allowed = True, afk_delay = 0, afk_sendto = 0, lobby_area = False, private_area = False,
-                     sound_proof = False):
-            self.iniswap_allowed = iniswap_allowed
+        def __init__(self, area_id, server, parameters):            
             self.clients = set()
             self.invite_list = {}
             self.id = area_id
-            self.name = name
-            self.background = background
-            self.bg_lock = bg_lock
             self.server = server
             self.music_looper = None
             self.next_message_time = 0
@@ -51,19 +43,28 @@ class AreaManager:
             self.evi_list = EvidenceList()
             self.is_recording = False
             self.recorded_messages = []
-            self.evidence_mod = evidence_mod
-            self.locking_allowed = locking_allowed
             self.owned = False
-            self.lobby_area = lobby_area
-            self.private_area = private_area
-            self.rp_getarea_allowed = rp_getarea_allowed
-            self.rp_getareas_allowed = rp_getareas_allowed
-            self.rollp_allowed = rollp_allowed
             self.ic_lock = False
-            self.gm_iclock_allowed = gm_iclock_allowed
-            self.sound_proof = sound_proof
             
-            self.reachable_areas = reachable_areas.split(", ")
+            self.name = parameters['area']
+            self.background = parameters['background']
+            self.bg_lock = parameters['bglock']
+            self.evidence_mod = parameters['evidence_mod']
+            self.locking_allowed = parameters['locking_allowed']
+            self.iniswap_allowed = parameters['iniswap_allowed']
+            self.rp_getarea_allowed = parameters['rp_getarea_allowed']
+            self.rp_getareas_allowed = parameters['rp_getareas_allowed'] 
+            self.rollp_allowed = parameters['rollp_allowed']
+            self.reachable_areas = parameters['reachable_areas'].split(", ")
+            self.change_reachability_allowed = parameters['change_reachability_allowed']
+            self.default_change_reachability_allowed = parameters['change_reachability_allowed']
+            self.gm_iclock_allowed = parameters['gm_iclock_allowed']
+            self.afk_delay = parameters['afk_delay']
+            self.afk_sendto = parameters['afk_sendto']
+            self.lobby_area = parameters['lobby_area']
+            self.private_area = parameters['private_area']
+            self.sound_proof = parameters['sound_proof']
+            
             for i in range(len(self.reachable_areas)): #Ah, escape characters... again...
                 self.reachable_areas[i] = self.reachable_areas[i].replace(',\\',',')
             self.default_reachable_areas = set(self.reachable_areas[:])
@@ -72,17 +73,6 @@ class AreaManager:
 
             if '<ALL>' not in self.reachable_areas:
                 self.reachable_areas.add(self.name) #Safety feature, yay sets
-            self.change_reachability_allowed = change_reachability_allowed
-            self.default_change_reachability_allowed = change_reachability_allowed #yay
-            
-            self.afk_delay = afk_delay
-            self.afk_sendto = afk_sendto
-            """
-            #debug
-            self.evidence_list.append(Evidence("WOW", "desc", "1.png"))
-            self.evidence_list.append(Evidence("wewz", "desc2", "2.png"))
-            self.evidence_list.append(Evidence("weeeeeew", "desc3", "3.png"))
-            """
             
             self.is_locked = False
             self.is_gmlocked = False
@@ -95,14 +85,6 @@ class AreaManager:
             self.clients.remove(client)
             if len(self.clients) == 0:
                 self.unlock()
-            
-            # Commented out, uncommenting forces CMs to relog every time
-            # they switch areas.
-#            if client.is_cm:
-#                client.is_cm = False
-#                self.owned = False
-#                if self.is_locked:
-#                    self.unlock()
         
         def unlock(self):
             self.is_locked = False
@@ -215,10 +197,8 @@ class AreaManager:
 
     def __init__(self, server):
         self.server = server
-        self.cur_id = 0
         self.areas = []
         self.area_names = set()
-        self.reachable_area_names = set() #only used for validation
         self.load_areas()
 
     def get_area_by_name(self, name):
@@ -233,10 +213,28 @@ class AreaManager:
                 return area
         raise AreaError('Area not found.')
         
-    def load_areas(self):
-        with open('config/areas.yaml', 'r') as chars:
-            areas = yaml.load(chars)
+    def load_areas(self, area_list_file='config/areas.yaml'):
+        self.area_names = set()
+        current_area_id = 0
+        temp_areas = list()
+        temp_area_names = set()
+        temp_reachable_area_names = set()
+                    
+        # Check if valid area list file
+        try:
+            with open(area_list_file, 'r') as chars:
+                areas = yaml.load(chars)
+        except FileNotFoundError:
+            raise FileNotFoundError('Could not find area list file {}'.format(area_list_file))
+        
+        # Create the areas
         for item in areas:
+            if 'area' not in item:
+                raise AreaError('Area {} has no name.'.format(current_area_id))
+            if 'background' not in item:
+                raise AreaError('Area {} has no background.'.format(item['area']))
+            if 'bglock' not in item:
+                item['bglock'] = False
             if 'evidence_mod' not in item:
                 item['evidence_mod'] = 'FFA'
             if 'locking_allowed' not in item:
@@ -265,22 +263,41 @@ class AreaManager:
                 item['private_area'] = False
             if 'sound_proof' not in item:
                 item['sound_proof'] = False
-            self.areas.append(
-                self.Area(self.cur_id, self.server, item['area'], item['background'], 
-                          item['bglock'], item['evidence_mod'], item['locking_allowed'], 
-                          item['iniswap_allowed'], item['rp_getarea_allowed'], item['rp_getareas_allowed'], 
-                          item['rollp_allowed'], item['reachable_areas'], item['change_reachability_allowed'],
-                          item['gm_iclock_allowed'], item['afk_delay'], item['afk_sendto'],
-                          item['lobby_area'], item['private_area'], item['sound_proof']))
-            if item['area'] in self.area_names:
+                
+            # Avoid having areas with the same name
+            if item['area'] in temp_area_names:
                 raise AreaError('Unexpected duplicated area names in areas.yaml: {}'.format(item['area']))
-            self.area_names.add(item['area'])
-            self.reachable_area_names = self.reachable_area_names.union(self.areas[-1].reachable_areas)
-            self.cur_id += 1
-        
-        unrecognized_areas = self.reachable_area_names-self.area_names-{'<ALL>'}
+                
+            temp_areas.append(self.Area(current_area_id, self.server, item))
+            temp_area_names.add(item['area'])
+            temp_reachable_area_names = temp_reachable_area_names.union(temp_areas[-1].reachable_areas)
+            current_area_id += 1
+            
+        # Check if a reachable area is not an area name
+        # Can only be done once all areas are created
+    
+        unrecognized_areas = temp_reachable_area_names-temp_area_names-{'<ALL>'}
         if unrecognized_areas != set():
-            raise AreaError('Unrecognized area names defined as a reachable area in areas.yaml: {}'.format(unrecognized_areas))
+            raise AreaError('Unrecognized area names defined as a reachable area in area list file:  {}'.format(unrecognized_areas))
+        
+        # Only once all areas have been created, actually set the corresponding values
+        # Helps avoiding junk area lists if there was an error
+        self.areas = temp_areas
+        self.area_names = temp_area_names
+        
+        # If the default area ID is now past the number of available areas, reset it back to zero
+        if self.server.default_area >= len(self.areas):
+            self.server.default_area = 0
+            
+        # Move existing clients to new corresponding area (or to default area if their previous area no longer exists)
+        for client in self.server.client_manager.clients:
+            try:
+                new_area = self.get_area_by_name(client.area.name)
+                client.change_area(new_area, override_all=True)
+                client.send_host_message('Moving you to new area {}'.format(new_area.name))
+            except AreaError:
+                client.change_area(self.default_area(), override_all=True)
+                client.send_host_message('Your previous area no longer exists. Moving you to default area {}'.format(client.area.name))
         
     def default_area(self):
         return self.areas[self.server.default_area]

@@ -37,6 +37,7 @@ class TsuServer3:
         self.allowed_iniswaps = None
         self.load_config()
         self.load_iniswaps()
+        self.default_area = 0        
         self.client_manager = ClientManager(self)
         self.area_manager = AreaManager(self)
         self.ban_manager = BanManager(self)
@@ -62,7 +63,6 @@ class TsuServer3:
         self.rp_mode = False
         self.user_auth_req = False
         self.spectator_name = 'CHAR_SELECT'
-        self.default_area = 0
         self.client_tasks = dict()
         self.active_timers = dict()
         logger.setup_logger(debug=self.config['debug'])
@@ -366,7 +366,7 @@ class TsuServer3:
 
             try:
                 original_area = client.area
-                client.change_area(area, override=True)
+                client.change_area(area, override_passages=True)
             except:
                 pass # Server raised an error trying to perform the AFK kick, ignore AFK kick
             else:
