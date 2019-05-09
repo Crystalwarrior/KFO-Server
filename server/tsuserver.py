@@ -256,8 +256,15 @@ class TsuServer3:
                 return i
         raise ServerError('Character not found.')
 
-    def get_song_data(self, music):
-        for item in self.music_list:
+    def get_song_data(self, music, c=None):
+        # The client's personal music list should also be a valid place to search
+        # so search in there too if possible
+        if c and c.music_list:
+            valid_music = self.music_list + c.music_list
+        else:
+            valid_music = self.music_list
+            
+        for item in valid_music:
             if item['category'] == music:
                 return item['category'], -1
             for song in item['songs']:

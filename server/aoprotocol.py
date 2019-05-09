@@ -486,7 +486,7 @@ class AOProtocol(asyncio.Protocol):
                 return
             
             try:
-                name, length = self.server.get_song_data(args[0])
+                name, length = self.server.get_song_data(args[0], c=self.client)
                 self.client.area.play_music(name, self.client.char_id, length)
                 self.client.area.add_music_playing(self.client, name)
             
