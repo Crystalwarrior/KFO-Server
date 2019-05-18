@@ -6,6 +6,7 @@
   iniswap_allowed: true
   reachable_areas: Class Trial Room 1, Class Trial Room 3
   lobby_area: True
+  scream_range: Class Trial Room 1
 - area: Class Trial Room 1
   background: Class Trial Debate Room V3-1_HD
   bglock: false
@@ -16,7 +17,7 @@
   gm_iclock_allowed: false
   afk_delay: 5
   private_area: True
-  sound_proof: False
+  scream_range: Basement
 - area: Class Trial Room, 2
   background: Class Trial Debate Room V3-1_HD
   bglock: false
@@ -29,7 +30,7 @@
   afk_sendto: 3
   lobby_area: False
   private_area: False
-  sound_proof: True
+  scream_range: Class Trial Room 3
 - area: Class Trial Room 3
   background: Class Trial Debate Room V3-1_HD
   bglock: false

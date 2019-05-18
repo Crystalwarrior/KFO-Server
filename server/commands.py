@@ -28,6 +28,8 @@ from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 /scream: /g but for reachable areas
 /char_restrict: Restrict a char to staff only
 /area_ban: Ban a user from a certain area
+set what areas will listen to a scream from a given area?
+
 """
 
 """ <parameter_name>: required parameter
@@ -196,7 +198,18 @@ def parse_two_area_names(client, areas, area_duplicate = True, check_valid_range
         raise ArgumentError('Expected at most two area names.')
     
     # Replace arguments with proper area objects
-    for i in range(2):
+    areas = parse_area_names(client, areas)
+    
+    if check_valid_range and areas[0].id > areas[1].id:
+        raise ClientError('The ID of the first area must be lower than the ID of the second area.')
+    elif not area_duplicate and areas[0].id == areas[1].id:
+        raise ClientError('Areas must be different.')
+        
+    return areas
+
+def parse_area_names(client, areas):
+    # Replace arguments with proper area objects
+    for i in range(len(areas)):
         #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
         #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
         #If you are that person... just... why
@@ -209,13 +222,7 @@ def parse_two_area_names(client, areas, area_duplicate = True, check_valid_range
                 try:
                     areas[i] = client.server.area_manager.get_area_by_id(int(areas[i]))
                 except:
-                    raise ClientError('Could not parse argument {}'.format(areas[i]))
-    
-    if check_valid_range and areas[0].id > areas[1].id:
-        raise ClientError('The ID of the first area must be lower than the ID of the second area.')
-    elif not area_duplicate and areas[0].id == areas[1].id:
-        raise ClientError('Areas must be different.')
-        
+                    raise ArgumentError('Could not parse area {}'.format(areas[i]))    
     return areas
 
 def ooc_cmd_allow_iniswap(client, arg):
@@ -708,7 +715,7 @@ def ooc_cmd_getarea(client, arg):
     EXAMPLE
     /getarea
     """
-    if client.in_rp and client.area.rp_getarea_allowed == False:
+    if client.in_rp and not client.area.rp_getarea_allowed:
         raise ClientError("This command has been restricted to authorized users only in this area while in RP mode.")
         
     client.send_area_info(client.area, client.area.id, False)
@@ -727,7 +734,7 @@ def ooc_cmd_getareas(client, arg):
     EXAMPLE
     /getarea
     """
-    if client.in_rp and client.area.rp_getareas_allowed == False:
+    if client.in_rp and not client.area.rp_getareas_allowed:
         raise ClientError("This command has been restricted to authorized users only in this area while in RP mode.")
 
     client.send_area_info(client.area, -1, False)
@@ -1523,7 +1530,7 @@ def ooc_cmd_rollp(client, arg):
     client.send_host_message('You privately rolled {} out of {}.'.format(roll_result, num_faces))    
     client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
                                     'Someone rolled.', pred=lambda c: not c.is_staff() 
-                                    and c != client and c.area.id == client.area.id) 
+                                    and c != client and c.area.name == client.area.name) 
     client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
                                     '{} privately rolled {} out of {} in {} ({}).'
                                     .format(client.get_char_name(), roll_result, num_faces, client.area.name, client.area.id), 
@@ -1584,9 +1591,7 @@ def ooc_cmd_scream(client, arg):
     client.server.broadcast_global(client, arg, mtype="<dollar>SCREAM", 
                                    condition=lambda c: not c.muted_global and 
                                    (c.is_staff() or c.area == client.area or 
-                                    (not client.area.sound_proof and not c.area.sound_proof and 
-                                     (c.area.name in client.area.reachable_areas
-                                     or client.area.reachable_areas == {'<ALL>'}))))
+                                    c.area.name in client.area.scream_range))
     logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg), client)
 
 def ooc_cmd_showname(client, arg):
@@ -2053,7 +2058,7 @@ def ooc_cmd_unilock(client, arg):
     if len(areas) > 2 or arg == '':
         raise ArgumentError('This command takes one or two arguments.')
     elif len(areas) == 2 and not client.is_staff():
-        raise ClientError('You must be authorized to use the two-parameter version of this command')
+        raise ClientError('You must be authorized to use the two-parameter version of this command.')
     
     areas = parse_two_area_names(client, areas, area_duplicate = False,
                                  check_valid_range = False)
@@ -2130,6 +2135,7 @@ def ooc_cmd_toggle_areareachlock(client, arg):
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
+        
     if client.area.change_reachability_allowed:
         client.area.change_reachability_allowed = False
         client.area.send_host_message('The use of the /unilock and /bilock commands affecting this area has been restricted to authorized users only.')
@@ -2479,27 +2485,27 @@ def ooc_cmd_unblockdj(client, arg):
         target.send_host_message('Now you can change music.')
     client.send_host_message('Unblockdj\'d {}.'.format(targets[0].get_char_name()))
 
-def ooc_cmd_rpmode(p_client, arg):
-    if not p_client.server.config['rp_mode_enabled']:
-        p_client.send_host_message("RP mode is disabled in this server!")
-        return
-    if not p_client.is_staff():
+def ooc_cmd_rpmode(client, arg):
+    if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
+    if not client.server.config['rp_mode_enabled']:
+        raise ClientError("RP mode is disabled in this server.")
     if len(arg) == 0:
-        raise ArgumentError('You must specify either on or off')
+        raise ArgumentError('You must specify either on or off.')
+        
     if arg == 'on':
-        p_client.server.rp_mode = True
-        for i_client in p_client.server.client_manager.clients:
-            i_client.send_host_message('RP mode enabled!')
-            if not i_client.is_staff():
-                i_client.in_rp = True
+        client.server.rp_mode = True
+        for c in client.server.client_manager.clients:
+            c.send_host_message('RP mode enabled.')
+            if not c.is_staff():
+                c.in_rp = True
     elif arg == 'off':
-        p_client.server.rp_mode = False
-        for i_client in p_client.server.client_manager.clients:
-            i_client.send_host_message('RP mode disabled!')
-            i_client.in_rp = False
+        client.server.rp_mode = False
+        for c in client.server.client_manager.clients:
+            c.send_host_message('RP mode disabled.')
+            c.in_rp = False
     else:
-        p_client.send_host_message('Invalid argument! Valid arguments: on, off. Your argument: ' + arg)
+        client.send_host_message('Invalid argument! Valid arguments: on, off. Your argument: ' + arg)
 
 def ooc_cmd_refresh(client, arg):
     if not client.is_mod:
@@ -2773,3 +2779,123 @@ def ooc_cmd_exec(client, arg):
                 pass
     globals().pop('client', None) # Don't really want "client" to be a global variable
     return 1    # Indication that /exec is live
+
+def ooc_cmd_scream_range(client, arg):
+    """ (STAFF ONLY)
+    Return the current area's scream range (i.e. users in which areas who would hear a /scream from the current area).
+    
+    SYNTAX
+    /scream_range
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /scream_range           :: Obtain the current area's scream range, for example {'Basement'}
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
+    if client.area.scream_range == set():
+        area_names = '{}'
+    else:
+        area_names = set([area for area in client.area.scream_range])
+    
+    client.send_host_message('The areas in the scream range of area {} are: {}'.format(client.area.name, area_names))
+    
+def ooc_cmd_scream_set_range(client, arg):
+    """ (STAFF ONLY)
+    Set the current area's scream range to a given list of areas by name or ID separated by commas.
+    This completely overrides the old scream range, unlike /scream_set.
+    Passing in no arguments sets the scream range to nothing (i.e. a soundproof room).
+    Note that scream ranges are unidirectional, so if you want two areas to hear one another, you must use this command twice.
+    Raises an error if an invalid area name or area ID is given, or if the current area is part of the selection.
+    
+    SYNTAX
+    /scream_set_range {area_1}, {area_2}, {area_3}, ...
+    
+    PARAMETERS
+    {area_n}: An area to add to the current scream range. Can be either an area name or area ID.
+    
+    EXAMPLES:
+    Assuming the current area is Basement...
+    /scream_set_range Class Trial Room 3                            :: Sets Basement's scream range to "Class Trial Room 3"
+    /scream_set_range Class Trial Room,\ 2, 1, Class Trial Room 3   :: Sets Basement's scream range to "Class Trial Room, 2" (note the \ escape character"), area 1 and "Class Trial Room 3".
+    /scream_set_range                                               :: Sets Basement's scream range to no areas.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    if len(arg) == 0:
+        client.area.scream_range = set()
+        area_names = '{}'
+    else:
+        areas = parse_area_names(client, arg.split(', '))       
+        if client.area in areas:
+            raise ArgumentError('You cannot add the current area to the scream range.')
+        area_names = set([area.name for area in areas]) 
+        client.area.scream_range = area_names
+        
+    client.send_host_message('Set the scream range of area {} to be: {}.'.format(client.area.name, area_names))
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                            '{} set the scream range of area {} to be: {} ({}).'
+                            .format(client.get_char_name(), client.area.name, area_names, client.area.id), 
+                            pred=lambda c: c.is_staff() and c != client)
+    logger.log_server(
+    '[{}][{}]Set the scream range of area {} to be: {}.'
+    .format(client.area.id, client.get_char_name(), client.area.name, area_names), client)
+    
+def ooc_cmd_scream_set(client, arg):
+    """ (STAFF ONLY)
+    Toggles the ability of ONE given area by name or ID to hear a scream from the current area on or off.
+    This only modifies the given area's status in the current area's scream range, unlike /scream_set_range.
+    Note that scream ranges are unidirectional, so if you want two areas to hear one another, you must use this command twice.
+    Raises an error if an invalid area name or area ID is given, or if the current area is the target of the selection.
+    
+    SYNTAX
+    /scream_set <target_area>
+    
+    PARAMETERS
+    <target_area>: The area whose ability to hear screams from the current area must be switched.
+    
+    EXAMPLES
+    Assuming Area 2: Class Trial Room, 2 starts as not part of the current area's (say Basement) scream range...
+    /scream_set Class Trial Room,\ 2 :: Adds "Class Trial Room, 2" to the scream range of Basement (note the \ escape character)-
+    /scream_set 2                    :: Removes "Class Trial Room, 2" from the scream range of Basement.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ArgumentError('This command takes one area name.')
+        
+    intended_area = parse_area_names(client, arg.split(', ')) # This should just return a list with one area
+    if len(intended_area) > 1:
+        raise ArgumentError('This command takes one area name (did you mean /scream_set_range ?).')
+        
+    intended_area = intended_area[0] # Convert the one element list into the area name
+    if intended_area == client.area:
+        raise ArgumentError('You cannot add or remove the current area from the scream range.')
+    
+    # If intended area not in range, add it
+    if intended_area.name not in client.area.scream_range:
+        client.area.scream_range.add(intended_area.name)
+        client.send_host_message('Added area {} to the scream range of area {}.'.format(intended_area.name, client.area.name))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                '{} added area {} to the scream range of area {} ({}).'
+                                .format(client.get_char_name(), intended_area.name, client.area.name, client.area.id), 
+                                pred=lambda c: c.is_staff() and c != client)
+        logger.log_server(
+        '[{}][{}]Added area {} to the scream range of area {}.'
+        .format(client.area.id, client.get_char_name(), intended_area.name, client.area.name), client)
+    else: # Otherwise, add it
+        client.area.scream_range.remove(intended_area.name)
+        client.send_host_message('Removed area {} from the scream range of area {}.'.format(intended_area.name, client.area.name))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                '{} removed area {} from the scream range of area {} ({}).'
+                                .format(client.get_char_name(), intended_area.name, client.area.name, client.area.id), 
+                                pred=lambda c: c.is_staff() and c != client)
+        logger.log_server(
+        '[{}][{}]Removed area {} from the scream range of area {}.'
+        .format(client.area.id, client.get_char_name(), intended_area.name, client.area.name), client)

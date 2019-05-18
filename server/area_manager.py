@@ -45,6 +45,9 @@ class AreaManager:
             self.recorded_messages = []
             self.owned = False
             self.ic_lock = False
+            self.is_locked = False
+            self.is_gmlocked = False
+            self.is_modlocked = False
             
             self.name = parameters['area']
             self.background = parameters['background']
@@ -63,21 +66,24 @@ class AreaManager:
             self.afk_sendto = parameters['afk_sendto']
             self.lobby_area = parameters['lobby_area']
             self.private_area = parameters['private_area']
-            self.sound_proof = parameters['sound_proof']
+            self.scream_range = parameters['scream_range'].split(", ")
             
             for i in range(len(self.reachable_areas)): #Ah, escape characters... again...
                 self.reachable_areas[i] = self.reachable_areas[i].replace(',\\',',')
+            for i in range(len(self.scream_range)): #Ah, escape characters... again...
+                self.scream_range[i] = self.scream_range[i].replace(',\\',',')
+                
             self.default_reachable_areas = set(self.reachable_areas[:])
             self.staffset_reachable_areas = set(self.reachable_areas[:])
             self.reachable_areas = set(self.reachable_areas)
-
             if '<ALL>' not in self.reachable_areas:
                 self.reachable_areas.add(self.name) #Safety feature, yay sets
-            
-            self.is_locked = False
-            self.is_gmlocked = False
-            self.is_modlocked = False
 
+            if self.scream_range == {''}:
+                self.scream_range = set()
+            else:
+                self.scream_range = set(self.scream_range)
+                
         def new_client(self, client):
             self.clients.add(client)
 
@@ -261,12 +267,15 @@ class AreaManager:
                 item['lobby_area'] = False
             if 'private_area' not in item:
                 item['private_area'] = False
-            if 'sound_proof' not in item:
-                item['sound_proof'] = False
-                
+            if 'scream_range' not in item:
+                item['scream_range'] = ''
+            
+            # Backwards compatibility notice
+            if 'sound_proof' in item:
+                raise AreaError('The sound_proof property was defined for area {}. Support for sound_proof was removed in favor of scream_range. Please replace the sound_proof tag with scream_range in your area list.'.format(item['area']))
             # Avoid having areas with the same name
             if item['area'] in temp_area_names:
-                raise AreaError('Unexpected duplicated area names in areas.yaml: {}'.format(item['area']))
+                raise AreaError('Unexpected duplicated area names in area list: {}'.format(item['area']))
                 
             temp_areas.append(self.Area(current_area_id, self.server, item))
             temp_area_names.add(item['area'])
