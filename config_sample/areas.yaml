@@ -18,6 +18,7 @@
   afk_delay: 5
   private_area: True
   scream_range: Basement
+  restricted_chars: Shuichi Saihara_HD
 - area: Class Trial Room, 2
   background: Class Trial Debate Room V3-1_HD
   bglock: false
@@ -31,6 +32,7 @@
   lobby_area: False
   private_area: False
   scream_range: Class Trial Room 3
+  restricted_chars: Kaede Akamatsu_HD, Monokuma_HD
 - area: Class Trial Room 3
   background: Class Trial Debate Room V3-1_HD
   bglock: false
