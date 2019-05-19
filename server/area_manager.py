@@ -58,7 +58,7 @@ class AreaManager:
             self.rp_getarea_allowed = parameters['rp_getarea_allowed']
             self.rp_getareas_allowed = parameters['rp_getareas_allowed'] 
             self.rollp_allowed = parameters['rollp_allowed']
-            self.reachable_areas = parameters['reachable_areas'].split(", ")
+            self.reachable_areas = parameters['reachable_areas']
             self.change_reachability_allowed = parameters['change_reachability_allowed']
             self.default_change_reachability_allowed = parameters['change_reachability_allowed']
             self.gm_iclock_allowed = parameters['gm_iclock_allowed']
@@ -66,24 +66,19 @@ class AreaManager:
             self.afk_sendto = parameters['afk_sendto']
             self.lobby_area = parameters['lobby_area']
             self.private_area = parameters['private_area']
-            self.scream_range = parameters['scream_range'].split(", ")
-            self.restricted_chars = parameters['restricted_chars'].split(", ")
+            self.scream_range = parameters['scream_range']
+            self.restricted_chars = parameters['restricted_chars']
             
-            for i in range(len(self.reachable_areas)): #Ah, escape characters... again...
-                self.reachable_areas[i] = self.reachable_areas[i].replace(',\\',',')
-            for i in range(len(self.scream_range)): #Ah, escape characters... again...
-                self.scream_range[i] = self.scream_range[i].replace(',\\',',')
-            for i in range(len(self.scream_range)): #Ah, escape characters... again...
-                self.restricted_chars[i] = self.restricted_chars[i].replace(',\\',',')
-                
-            self.default_reachable_areas = set(self.reachable_areas[:])
-            self.staffset_reachable_areas = set(self.reachable_areas[:])
-            self.reachable_areas = set(self.reachable_areas)
+            self.reachable_areas = fix_and_setify(self.reachable_areas)
+            self.scream_range = fix_and_setify(self.scream_range)
+            self.restricted_chars = fix_and_setify(self.restricted_chars)
+            
+            self.default_reachable_areas = self.reachable_areas.copy()
+            self.staffset_reachable_areas = self.reachable_areas.copy()
+            
             if '<ALL>' not in self.reachable_areas:
                 self.reachable_areas.add(self.name) #Safety feature, yay sets
 
-            self.scream_range = setify(self.scream_range)
-            self.restricted_chars = setify(self.restricted_chars)
             # Make sure only characters that exist are part of the restricted char set
             try:
                 for char_name in self.restricted_chars:
@@ -326,7 +321,13 @@ class AreaManager:
     def default_area(self):
         return self.areas[self.server.default_area]
 
-def setify(l):
+def fix_and_setify(csv_values):
+    # For the area parameters that include lists of comma-separated values, parse them appropiately
+    # before turning them into sets
+    l = csv_values.split(', ')
+    for i in range(len(l)): #Ah, escape characters... again...
+        l[i] = l[i].replace(',\\', ',')
+                
     if l in [list(), ['']]:
         return set()
     else:
