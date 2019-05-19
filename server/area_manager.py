@@ -67,11 +67,14 @@ class AreaManager:
             self.lobby_area = parameters['lobby_area']
             self.private_area = parameters['private_area']
             self.scream_range = parameters['scream_range'].split(", ")
+            self.restricted_chars = parameters['restricted_chars'].split(", ")
             
             for i in range(len(self.reachable_areas)): #Ah, escape characters... again...
                 self.reachable_areas[i] = self.reachable_areas[i].replace(',\\',',')
             for i in range(len(self.scream_range)): #Ah, escape characters... again...
                 self.scream_range[i] = self.scream_range[i].replace(',\\',',')
+            for i in range(len(self.scream_range)): #Ah, escape characters... again...
+                self.restricted_chars[i] = self.restricted_chars[i].replace(',\\',',')
                 
             self.default_reachable_areas = set(self.reachable_areas[:])
             self.staffset_reachable_areas = set(self.reachable_areas[:])
@@ -79,10 +82,14 @@ class AreaManager:
             if '<ALL>' not in self.reachable_areas:
                 self.reachable_areas.add(self.name) #Safety feature, yay sets
 
-            if self.scream_range == {''}:
-                self.scream_range = set()
-            else:
-                self.scream_range = set(self.scream_range)
+            self.scream_range = setify(self.scream_range)
+            self.restricted_chars = setify(self.restricted_chars)
+            # Make sure only characters that exist are part of the restricted char set
+            try:
+                for char_name in self.restricted_chars:
+                    self.server.char_list.index(char_name)
+            except ValueError:
+                raise AreaError('Area {} has an unrecognized character {} as a restricted character. Please make sure this character exists and try again.'.format(self.name, char_name))
                 
         def new_client(self, client):
             self.clients.add(client)
@@ -109,11 +116,17 @@ class AreaManager:
             self.is_locked = False
             self.invite_list = {}
         
-        def is_char_available(self, char_id):
-            return (char_id == -1) or (char_id not in [x.char_id for x in self.clients])
+        def get_chars_unusable(self, allow_restricted=False):
+            if allow_restricted:
+                return set([x.char_id for x in self.clients])
+            else:
+                return set([x.char_id for x in self.clients]).union(set([self.server.char_list.index(char_name) for char_name in self.restricted_chars]))
+        
+        def is_char_available(self, char_id, allow_restricted=False):
+            return (char_id == -1) or (char_id not in self.get_chars_unusable(allow_restricted=allow_restricted))
 
-        def get_rand_avail_char_id(self):
-            avail_set = set(range(len(self.server.char_list))) - set([x.char_id for x in self.clients])
+        def get_rand_avail_char_id(self, allow_restricted=False):
+            avail_set = set(range(len(self.server.char_list))) - self.get_chars_unusable(allow_restricted=allow_restricted)
             if len(avail_set) == 0:
                 raise AreaError('No available characters.')
             return random.choice(tuple(avail_set))
@@ -269,13 +282,15 @@ class AreaManager:
                 item['private_area'] = False
             if 'scream_range' not in item:
                 item['scream_range'] = ''
+            if 'restricted_chars' not in item:
+                item['restricted_chars'] = ''
             
             # Backwards compatibility notice
             if 'sound_proof' in item:
-                raise AreaError('The sound_proof property was defined for area {}. Support for sound_proof was removed in favor of scream_range. Please replace the sound_proof tag with scream_range in your area list.'.format(item['area']))
+                raise AreaError('The sound_proof property was defined for area {}. Support for sound_proof was removed in favor of scream_range. Please replace the sound_proof tag with scream_range in your area list and try again.'.format(item['area']))
             # Avoid having areas with the same name
             if item['area'] in temp_area_names:
-                raise AreaError('Unexpected duplicated area names in area list: {}'.format(item['area']))
+                raise AreaError('Unexpected duplicated area names in area list: {}. Please rename the duplicated areas and try again.'.format(item['area']))
                 
             temp_areas.append(self.Area(current_area_id, self.server, item))
             temp_area_names.add(item['area'])
@@ -287,7 +302,7 @@ class AreaManager:
     
         unrecognized_areas = temp_reachable_area_names-temp_area_names-{'<ALL>'}
         if unrecognized_areas != set():
-            raise AreaError('Unrecognized area names defined as a reachable area in area list file:  {}'.format(unrecognized_areas))
+            raise AreaError('Unrecognized area names defined as a reachable area in area list file: {}. Please rename the affected areas and try again.'.format(unrecognized_areas))
         
         # Only once all areas have been created, actually set the corresponding values
         # Helps avoiding junk area lists if there was an error
@@ -311,3 +326,9 @@ class AreaManager:
     def default_area(self):
         return self.areas[self.server.default_area]
 
+def setify(l):
+    if l in [list(), ['']]:
+        return set()
+    else:
+        return set(l)
+    

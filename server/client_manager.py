@@ -111,16 +111,22 @@ class ClientManager:
             """
             return self.is_mod or self.is_cm or self.is_gm
         
-        def change_character(self, char_id, force=False):
+        def change_character(self, char_id, force=False, target_area=None):
+            # Added target_area parameter because when switching areas, the change character code
+            # is run before the character's area actually changes, so it would look for the wrong
+            # area if I just did self.area
+            if target_area is None:
+                target_area = self.area
+                
             if not self.server.is_valid_char_id(char_id):
                 raise ClientError('Invalid Character ID.')
-            if not self.area.is_char_available(char_id):
+            if not target_area.is_char_available(char_id, allow_restricted=self.is_staff()):
                 if force:
                     for client in self.area.clients:
                         if client.char_id == char_id:
                             client.char_select()
                 else:
-                    raise ClientError('Character not available.')
+                    raise ClientError('Character {} not available.'.format(self.get_char_name(char_id)))
             
             if self.char_id < 0 and char_id >= 0: # No longer spectator?
                 # Now bound by AFK rules
@@ -132,7 +138,7 @@ class ClientManager:
             self.send_command('PV', self.id, 'CID', self.char_id)
             logger.log_server('[{}]Changed character from {} to {}.'
                               .format(self.area.id, old_char, self.get_char_name()), self)
-
+            
         def change_music_cd(self):
             if self.is_mod or self.is_cm:
                 return 0
@@ -179,7 +185,6 @@ class ClientManager:
             if not override_all:
                 if area.lobby_area and not self.is_visible and not self.is_mod and not self.is_cm:
                     raise ClientError('Lobby areas do not let non-authorized users remain sneaking. Please change the music, speak IC or ask a staff member to reveal you.')
-                if area.private_area and not self.is_visible:
                     raise ClientError('Private areas do not let sneaked users in. Please change the music, speak IC or ask a staff member to reveal you.')   
                     
                 if self.area == area:
@@ -206,14 +211,18 @@ class ClientManager:
                             info += '\r\n<ALL>'
                     raise ClientError(info)
                 
-                if not area.is_char_available(self.char_id):
+                if not area.is_char_available(self.char_id, allow_restricted=self.is_staff()):
                     try:
-                        new_char_id = area.get_rand_avail_char_id()
+                        new_char_id = area.get_rand_avail_char_id(allow_restricted=self.is_staff())
                     except AreaError:
                         raise ClientError('No available characters in that area.')
     
-                    self.change_character(new_char_id)
-                    self.send_host_message('Character taken, switched to {}.'.format(self.get_char_name()))
+                    old_char = self.get_char_name()
+                    self.change_character(new_char_id, target_area=area)
+                    if old_char in area.restricted_chars:
+                        self.send_host_message('Your character was restricted in your new area, switched to {}.'.format(self.get_char_name()))
+                    else:
+                        self.send_host_message('Your character was taken in your new area, switched to {}.'.format(self.get_char_name()))
                     
                 self.send_host_message('Changed area to {}.[{}]'.format(area.name, self.area.status))
                 old_area = self.area
@@ -227,7 +236,6 @@ class ClientManager:
             self.area.remove_client(self)
             self.area = area
             area.new_client(self)
-
 
             self.send_command('HP', 1, self.area.hp_def)
             self.send_command('HP', 2, self.area.hp_pro)
@@ -267,15 +275,19 @@ class ClientManager:
                 self.send_host_message('Unable to follow to {}: Area is Mod-Locked.'.format(area.name))
                 return
             old_area = self.area
-            if not area.is_char_available(self.char_id):
+            if not area.is_char_available(self.char_id, allow_restricted=self.is_staff()):
                 try:
-                    new_char_id = area.get_rand_avail_char_id()
+                    new_char_id = area.get_rand_avail_char_id(allow_restricted=self.is_staff())
                 except AreaError:
                     self.send_host_message('Unable to follow to {}: No available characters.'.format(area.name))
                     return
-
-                self.change_character(new_char_id)
-                self.send_host_message('Character taken, switched to {}.'.format(self.get_char_name()))
+                
+                old_char = self.get_char_name()
+                self.change_character(new_char_id, target_area=area)
+                if old_char in area.restricted_chars:
+                    self.send_host_message('Your character was restricted in your new area, switched to {}.'.format(self.get_char_name()))
+                else:
+                    self.send_host_message('Your character was taken in your new area, switched to {}.'.format(self.get_char_name()))
 
             self.area.remove_client(self)
             self.area = area
@@ -392,7 +404,7 @@ class ClientManager:
             self.send_host_message(info)
 
         def send_done(self):
-            avail_char_ids = set(range(len(self.server.char_list))) - set([x.char_id for x in self.area.clients])
+            avail_char_ids = set(range(len(self.server.char_list))) - self.area.get_chars_unusable(allow_restricted=self.is_staff())
             char_list = [-1] * len(self.server.char_list)
             for x in avail_char_ids:
                 char_list[x] = 0
@@ -463,10 +475,13 @@ class ClientManager:
         def get_ipreal(self):
             return self.transport.get_extra_info('peername')[0]
 
-        def get_char_name(self):
-            if self.char_id == -1:
+        def get_char_name(self, char_id=None):
+            if char_id is None:
+                char_id = self.char_id
+                
+            if char_id == -1:
                 return self.server.spectator_name
-            return self.server.char_list[self.char_id]
+            return self.server.char_list[char_id]
 
         def change_position(self, pos=''):
             if pos not in ('', 'def', 'pro', 'hld', 'hlp', 'jud', 'wit'):

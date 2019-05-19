@@ -366,7 +366,7 @@ def ooc_cmd_area_lists(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
-        raise ArgumentError('This command takes no arguments.')
+        raise ArgumentError('This command has no arguments.')
         
     try:
         with open('config/area_lists.yaml', 'r') as f:
@@ -1067,17 +1067,28 @@ def ooc_cmd_logout(client, arg):
     client.is_gm = False
     client.is_cm = False
     
+    client.send_host_message('You are no longer logged in.')
+        
+    # Clean-up operations
+    
     if client.server.rp_mode:
         client.in_rp = True
     if client.area.evidence_mod == 'HiddenCM':
         client.area.broadcast_evidence_list()
-   
+    
     # Update the music list to show reachable areas and activate the AFK timer
     client.reload_music_list()
     client.server.create_task(client, ['as_afk_kick', client.area.afk_delay, client.area.afk_sendto])
 
-    client.send_host_message('You are no longer logged in.')
-
+    # If using a character restricted in the area, switch out
+    if client.get_char_name() in client.area.restricted_chars:
+        try:
+            new_char_id = client.area.get_rand_avail_char_id(allow_restricted=False)
+        except AreaError:
+            new_char_id = -1 # Force into spectator mode if all other available characters are taken
+        client.change_character(new_char_id)
+        client.send_host_message('Your character has been set to restricted in this area by a staff member. Switching you to {}.'.format(client.get_char_name()))
+     
 def ooc_cmd_minimap(client, arg):
     """
     Lists all areas that can be reached from the current area according to areas.yaml and passages set in-game.
@@ -1181,7 +1192,7 @@ def ooc_cmd_music_lists(client, arg):
     /music_lists            :: Return all available music lists
     """
     if len(arg) != 0:
-        raise ArgumentError('This command takes no arguments.')
+        raise ArgumentError('This command has no arguments.')
         
     try:
         with open('config/music_lists.yaml', 'r') as f:
@@ -1386,7 +1397,7 @@ def ooc_cmd_randomchar(client, arg):
         raise ArgumentError('This command has no arguments.')
    
     try:
-        free_id = client.area.get_rand_avail_char_id()
+        free_id = client.area.get_rand_avail_char_id(allow_restricted=client.is_staff())
     except AreaError:
         raise
     
@@ -1734,7 +1745,7 @@ def ooc_cmd_time(client, arg):
     /time           :: May return something like "Sat Apr 27 09:04:17 2019"
     """
     if len(arg) != 0:
-        raise ArgumentError('This command takes no arguments.')
+        raise ArgumentError('This command has no arguments.')
         
     client.send_host_message(time.asctime(time.localtime(time.time())))
 
@@ -1753,7 +1764,7 @@ def ooc_cmd_time12(client, arg):
     /time12         :: May return something like "Sat Apr 27 09:04:47 AM (EST) 2019"
     """
     if len(arg) != 0:
-        raise ArgumentError('This command takes no arguments.')
+        raise ArgumentError('This command has no arguments.')
         
     client.send_host_message(time.strftime('%a %b %e %I:%M:%S %p (%z) %Y'))
 			
@@ -1797,7 +1808,7 @@ def ooc_cmd_toggleglobal(client, arg):
         
     client.muted_global = not client.muted_global
     status = {False: 'on', True: 'off'}
-    
+
     client.send_host_message('Global chat turned {}.'.format(status[client.muted_global]))
     
 def ooc_cmd_toggle_rollp(client, arg):
@@ -2726,84 +2737,6 @@ def ooc_cmd_timer(client, arg):
     else:
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
-
-def ooc_cmd_exec(client, arg):
-    """
-    VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
-    
-    DID I MENTION THIS IS VERY DANGEROUS?
-    
-    DO NOT ENABLE THIS FUNCTION UNLESS YOU KNOW WHAT YOU ARE DOING.
-    
-    I MEAN IT.
-    
-    PEOPLE WILL BREAK YOUR SERVER AND POSSIBLY THE HOST MACHINE IT IS ON IF YOU KEEP IT ON.
-    
-    DO NOT BE STUPID.
-    
-    Executes a Python expression and returns the evaluated expression.
-    If passed in a Python statement, it will execute code in the global environment.
-    Returns an error if the expression would raise an error in a normal Python environment.
-    
-    SYNTAX
-    /exec <command>
-    
-    PARAMETERS
-    <command>
-    
-    EXAMPLES
-    /exec 1+1                                           :: Returns 2
-    /exec while True: client.send_host_message("Hi")    :: Commit sudoku
-    """
-    # IF YOU WANT TO DISABLE /exec: REMOVE THE # IN FRONT OF return
-    # IF YOU WANT TO ENABLE /exec: ADD A # IN FRONT OF return, LIKE SO: # return
-    return
-    
-    print("Attempting to run instruction {}".format(arg))
-
-    try:
-        result = eval(arg)
-        if result is not None:
-            client.send_host_message(eval(arg))
-    except:
-        try:
-            # Temporarily add "client" as a global variable, to allow using 
-            # expressions such as client.send_host_message("Hi")
-            globals()['client'] = client 
-            exec(arg, globals())
-            client.send_host_message("Executed {}".format(arg))
-        except Exception as e:
-            try:
-                client.send_host_message("Python error: {}: {}".format(type(e).__name__, e))
-            except:
-                pass
-    globals().pop('client', None) # Don't really want "client" to be a global variable
-    return 1    # Indication that /exec is live
-
-def ooc_cmd_scream_range(client, arg):
-    """ (STAFF ONLY)
-    Return the current area's scream range (i.e. users in which areas who would hear a /scream from the current area).
-    
-    SYNTAX
-    /scream_range
-    
-    PARAMETERS
-    None
-    
-    EXAMPLES
-    /scream_range           :: Obtain the current area's scream range, for example {'Basement'}
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    
-    if client.area.scream_range == set():
-        area_names = '{}'
-    else:
-        area_names = set([area for area in client.area.scream_range])
-    
-    client.send_host_message('The areas in the scream range of area {} are: {}'.format(client.area.name, area_names))
     
 def ooc_cmd_scream_set_range(client, arg):
     """ (STAFF ONLY)
@@ -2899,3 +2832,155 @@ def ooc_cmd_scream_set(client, arg):
         logger.log_server(
         '[{}][{}]Removed area {} from the scream range of area {}.'
         .format(client.area.id, client.get_char_name(), intended_area.name, client.area.name), client)
+
+def ooc_cmd_scream_range(client, arg):
+    """ (STAFF ONLY)
+    Return the current area's scream range (i.e. users in which areas who would hear a /scream from the current area).
+    
+    SYNTAX
+    /scream_range
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /scream_range           :: Obtain the current area's scream range, for example {'Basement'}
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
+    info = '== Areas in scream range of area {} =='.format(client.area.name)
+    # If no areas in scream range, print a manual message.
+    if len(client.area.scream_range) == 0:
+        info += '\r\n*No areas.'
+    # Otherwise, build the list of all areas.
+    else:
+        for area in client.area.scream_range:
+            info += '\r\n*{}'.format(area)
+                
+    client.send_host_message(info)
+    
+def ooc_cmd_char_restrict(client, arg):
+    """ (STAFF ONLY)
+    Toggle a character by folder name (not showname!) being able to be used in the current area by non-staff members.
+    Raises an error if the character name is not recognized.
+    
+    SYNTAX
+    /char_restrict <char_name>
+    
+    PARAMETERS
+    <char_name>: Character name to restrict.
+    
+    EXAMPLES
+    Assuming Phantom_HD is initially unrestricted....
+    /char_restrict Phantom_HD           :: Restrict the use of Phantom_HD.
+    /char_restrict Phantom_HD           :: Unrestrict the use of Phantom_HD.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ArgumentError('This command takes one character name.')
+        
+    if arg not in client.server.char_list:
+        raise ArgumentError('Unrecognized character folder name: {}'.format(arg))
+
+    status = {True: 'enabled', False: 'disabled'}
+    client.area.send_host_message('A staff member has {} the use of character {} in this area.'.format(status[arg in client.area.restricted_chars], arg))
+
+    # If intended character not in area's restriction, add it
+    if arg not in client.area.restricted_chars:
+        client.area.restricted_chars.add(arg)
+        # For all clients using the now restricted character, switch them to some other character.
+        for c in client.area.clients:
+            if not c.is_staff() and c.get_char_name() == arg:
+                try:
+                    new_char_id = c.area.get_rand_avail_char_id(allow_restricted=False)
+                except AreaError:
+                    new_char_id = -1 # Force into spectator mode if all other available characters are taken
+                c.change_character(new_char_id)
+                c.send_host_message('Your character has been set to restricted in this area by a staff member. Switching you to {}.'.format(c.get_char_name()))
+    else:
+        client.area.restricted_chars.remove(arg)
+        
+def ooc_cmd_chars_restricted(client, arg):
+    """
+    Returns a list of all characters that are restricted in an area.
+    
+    SYNTAX
+    /chars_restricted
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    If only Phantom_HD is restricted in the current area...
+    /chars_restricted           :: Returns 'Phantom_HD'
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
+    info = '== Characters restricted in area {} =='.format(client.area.name)
+    # If no characters restricted, print a manual message.
+    if len(client.area.restricted_chars) == 0:
+        info += '\r\n*No characters restricted.'
+    # Otherwise, build the list of all restricted chars.
+    else:
+        for char_name in client.area.restricted_chars:
+            info += '\r\n*{}'.format(char_name)
+                
+    client.send_host_message(info)
+
+def ooc_cmd_exec(client, arg):
+    """
+    VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
+    
+    DID I MENTION THIS IS VERY DANGEROUS?
+    
+    DO NOT ENABLE THIS FUNCTION UNLESS YOU KNOW WHAT YOU ARE DOING.
+    
+    I MEAN IT.
+    
+    PEOPLE WILL BREAK YOUR SERVER AND POSSIBLY THE HOST MACHINE IT IS ON IF YOU KEEP IT ON.
+    
+    DO NOT BE STUPID.
+    
+    Executes a Python expression and returns the evaluated expression.
+    If passed in a Python statement, it will execute code in the global environment.
+    Returns an error if the expression would raise an error in a normal Python environment.
+    
+    SYNTAX
+    /exec <command>
+    
+    PARAMETERS
+    <command>
+    
+    EXAMPLES
+    /exec 1+1                                           :: Returns 2
+    /exec while True: client.send_host_message("Hi")    :: Commit sudoku
+    """
+    # IF YOU WANT TO DISABLE /exec: REMOVE THE # IN FRONT OF return
+    # IF YOU WANT TO ENABLE /exec: ADD A # IN FRONT OF return, LIKE SO: # return
+    return
+    
+    print("Attempting to run instruction {}".format(arg))
+
+    try:
+        result = eval(arg)
+        if result is not None:
+            client.send_host_message(eval(arg))
+    except:
+        try:
+            # Temporarily add "client" as a global variable, to allow using 
+            # expressions such as client.send_host_message("Hi")
+            globals()['client'] = client 
+            exec(arg, globals())
+            client.send_host_message("Executed {}".format(arg))
+        except Exception as e:
+            try:
+                client.send_host_message("Python error: {}: {}".format(type(e).__name__, e))
+            except:
+                pass
+    globals().pop('client', None) # Don't really want "client" to be a global variable
+    return 1    # Indication that /exec is live

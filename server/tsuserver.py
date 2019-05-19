@@ -38,6 +38,7 @@ class TsuServer3:
         self.load_config()
         self.load_iniswaps()
         self.default_area = 0        
+        self.load_characters()
         self.client_manager = ClientManager(self)
         self.area_manager = AreaManager(self)
         self.ban_manager = BanManager(self)
@@ -48,13 +49,11 @@ class TsuServer3:
         self.minor_version = 1
         self.ipid_list = {}
         self.hdid_list = {}
-        self.char_list = None
         self.char_pages_ao1 = None
         self.music_list = None
         self.music_list_ao2 = None
         self.music_pages_ao1 = None
         self.backgrounds = None
-        self.load_characters()
         self.load_music()
         self.load_backgrounds()
         self.load_ids()
@@ -377,7 +376,7 @@ class TsuServer3:
             except:
                 pass # Server raised an error trying to perform the AFK kick, ignore AFK kick
             else:
-                client.send_host_message("You were kicked from area {} to area {} for being inactive for {} minutes.".format(original_area, afk_sendto, afk_delay))
+                client.send_host_message("You were kicked from area {} to area {} for being inactive for {} minutes.".format(original_area.id, afk_sendto, afk_delay))
 
                 if client.area.is_locked or client.area.is_modlocked:
                     client.area.invite_list.pop(client.ipid)

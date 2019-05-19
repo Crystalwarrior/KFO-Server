@@ -343,6 +343,9 @@ class AOProtocol(asyncio.Protocol):
         if self.client.area.is_iniswap(self.client, pre, anim, folder) and folder != self.client.get_char_name():
             self.client.send_host_message("Iniswap is blocked in this area.")
             return
+        if folder in self.client.area.restricted_chars and not self.client.is_staff():
+            self.client.send_host_message('Your character is restricted in the current area.')
+            return
         if msg_type not in ('chat', '0', '1'):
             return
         if anim_type not in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10):
