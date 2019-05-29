@@ -239,7 +239,7 @@ class ClientManager:
                                     pred=lambda c: not c.is_staff() and c != self and c.area == area)
                 logger.log_server(
                 '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
-                                                                   self.area.name, self.area.id), self)
+                                                                   area.name, area.id), self)
                 #logger.log_rp(
                 #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
                 #                                                       self.area.name, self.area.id), self)    
@@ -285,7 +285,9 @@ class ClientManager:
             if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
                 self.send_host_message('Unable to follow to {}: Area is Mod-Locked.'.format(area.name))
                 return
+            
             old_area = self.area
+            
             if not area.is_char_available(self.char_id, allow_restricted=self.is_staff()):
                 try:
                     new_char_id = area.get_rand_avail_char_id(allow_restricted=self.is_staff())
@@ -300,17 +302,18 @@ class ClientManager:
                 else:
                     self.send_host_message('Your character was taken in your new area, switched to {}.'.format(self.get_char_name()))
 
+            self.send_host_message('Changed area to {}.[{}]'.format(area.name, area.status))
+            logger.log_server(
+                '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
+                                                                   area.name, area.id), self)
+            #logger.log_rp(
+            #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
+            #                                                       self.area.name, self.area.id), self)
+            
             self.area.remove_client(self)
             self.area = area
             area.new_client(self)
 
-            self.send_host_message('Changed area to {}.[{}]'.format(area.name, self.area.status))
-            logger.log_server(
-                '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
-                                                                   self.area.name, self.area.id), self)
-            #logger.log_rp(
-            #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
-            #                                                       self.area.name, self.area.id), self)
             self.send_command('HP', 1, self.area.hp_def)
             self.send_command('HP', 2, self.area.hp_pro)
             self.send_command('BN', self.area.background)
