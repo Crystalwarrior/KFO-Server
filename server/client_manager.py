@@ -64,6 +64,7 @@ class ClientManager:
             self.following = ''
             self.followedby = ''
             self.music_list = None
+            self.autopass = False
             
             #music flood-guard stuff
             self.mus_counter = 0
@@ -211,13 +212,14 @@ class ClientManager:
                             info += '\r\n<ALL>'
                     raise ClientError(info)
                 
+                old_char = self.get_char_name()
+                
                 if not area.is_char_available(self.char_id, allow_restricted=self.is_staff()):
                     try:
                         new_char_id = area.get_rand_avail_char_id(allow_restricted=self.is_staff())
                     except AreaError:
                         raise ClientError('No available characters in that area.')
     
-                    old_char = self.get_char_name()
                     self.change_character(new_char_id, target_area=area)
                     if old_char in area.restricted_chars:
                         self.send_host_message('Your character was restricted in your new area, switched to {}.'.format(self.get_char_name()))
@@ -226,6 +228,15 @@ class ClientManager:
                     
                 self.send_host_message('Changed area to {}.[{}]'.format(area.name, self.area.status))
                 old_area = self.area
+                if self.autopass and not self.is_staff() and not self.char_id < 0 and self.is_visible:
+                    self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
+                                    '{} has left to {}.'
+                                    .format(old_char, area.name), 
+                                    pred=lambda c: not c.is_staff() and c != self and c.area == old_area)
+                    self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
+                                    '{} has entered from {}.'
+                                    .format(old_char, old_area.name), 
+                                    pred=lambda c: not c.is_staff() and c != self and c.area == area)
                 logger.log_server(
                 '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
                                                                    self.area.name, self.area.id), self)

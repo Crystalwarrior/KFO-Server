@@ -2932,6 +2932,29 @@ def ooc_cmd_chars_restricted(client, arg):
                 
     client.send_host_message(info)
 
+def ooc_cmd_autopass(client, arg):
+    """
+    Toggles enter/leave messages being sent automatically or not to users in the current area.
+    Will not send those messages if logged in as staff or spectator, or while sneaking.
+    Staff members will NOT receive these messages either.
+    
+    SYNTAX
+    /autopass
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /autopass
+    """
+    if len(arg) != 0:
+        raise ArgumentError("This command has no arguments.")
+        
+    client.autopass = not client.autopass
+    status = {False: 'off', True: 'on'}
+
+    client.send_host_message('Autopass turned {}.'.format(status[client.autopass]))
+    
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
