@@ -102,13 +102,13 @@ class TsuServer3:
 
     def reload(self):
         with open('config/characters.yaml', 'r') as chars:
-            self.char_list = yaml.load(chars)
+            self.char_list = yaml.safe_load(chars)
         with open('config/music.yaml', 'r') as music:
-            self.music_list = yaml.load(music)
+            self.music_list = yaml.safe_load(music)
         self.build_music_pages_ao1()
         self.build_music_list_ao2()
         with open('config/backgrounds.yaml', 'r') as bgs:
-            self.backgrounds = yaml.load(bgs)
+            self.backgrounds = yaml.safe_load(bgs)
 
     def new_client(self, transport):
         c = self.client_manager.new_client(transport)
@@ -128,20 +128,20 @@ class TsuServer3:
 
     def load_config(self):
         with open('config/config.yaml', 'r', encoding = 'utf-8') as cfg:
-            self.config = yaml.load(cfg)
+            self.config = yaml.safe_load(cfg)
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n') 
         if 'music_change_floodguard' not in self.config:
             self.config['music_change_floodguard'] = {'times_per_interval': 1,  'interval_length': 0, 'mute_length': 0}
 
     def load_characters(self):
         with open('config/characters.yaml', 'r', encoding = 'utf-8') as chars:
-            self.char_list = yaml.load(chars)
+            self.char_list = yaml.safe_load(chars)
         self.build_char_pages_ao1()
 
     def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
         try:
             with open(music_list_file, 'r', encoding = 'utf-8') as music:
-                music_list = yaml.load(music)
+                music_list = yaml.safe_load(music)
         except FileNotFoundError:
             raise ServerError('Could not find music list file {}'.format(music_list_file))
         
@@ -188,12 +188,12 @@ class TsuServer3:
 
     def load_backgrounds(self):
         with open('config/backgrounds.yaml', 'r', encoding = 'utf-8') as bgs:
-            self.backgrounds = yaml.load(bgs)
+            self.backgrounds = yaml.safe_load(bgs)
             
     def load_iniswaps(self):
         try:
             with open('config/iniswaps.yaml', 'r', encoding = 'utf-8') as iniswaps:
-                self.allowed_iniswaps = yaml.load(iniswaps)
+                self.allowed_iniswaps = yaml.safe_load(iniswaps)
         except:
             logger.log_debug('cannot find iniswaps.yaml')
 

@@ -69,6 +69,7 @@ class AreaManager:
             self.scream_range = parameters['scream_range']
             self.restricted_chars = parameters['restricted_chars']
             
+            # Fix comma-separated entries
             self.reachable_areas = fix_and_setify(self.reachable_areas)
             self.scream_range = fix_and_setify(self.scream_range)
             self.restricted_chars = fix_and_setify(self.restricted_chars)
@@ -237,7 +238,7 @@ class AreaManager:
         # Check if valid area list file
         try:
             with open(area_list_file, 'r') as chars:
-                areas = yaml.load(chars)
+                areas = yaml.safe_load(chars)
         except FileNotFoundError:
             raise FileNotFoundError('Could not find area list file {}'.format(area_list_file))
         
