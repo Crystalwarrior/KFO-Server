@@ -34,7 +34,7 @@ class ClientManager:
             self.hdid = ''
             self.pm_mute = False
             self.id = user_id
-            self.char_id = -1
+            self.char_id = None
             self.area = server.area_manager.default_area()
             self.server = server
             self.name = ''
@@ -358,12 +358,14 @@ class ClientManager:
             info += '= Area {}: {} =='.format(area.id, area.name)
             sorted_clients = []
             for c in area.clients:
-                # Conditions to print out a client in /getarea(s) (must satisfy at least one of four)
+                # Conditions to print out a client in /getarea(s) 
+                # * Client is not in the server selection screen and,
+                # * Any of the four
                 # 1. Client is yourself.
                 # 2. You are a staff member.
                 # 3. Client is visible.
                 # 4. Client is a mod when requiring only mods be printed.
-                if (c == self or self.is_staff() or c.is_visible or (mods and c.is_mod)):
+                if (c.char_id is not None) and (c == self or self.is_staff() or c.is_visible or (mods and c.is_mod)):
                     sorted_clients.append(c)
             sorted_clients = sorted(sorted_clients, key=lambda x: x.get_char_name())
             
@@ -426,6 +428,8 @@ class ClientManager:
             self.send_command('LE', *self.area.get_evidence_list(self))
             self.send_command('MM', 1)
             self.send_command('OPPASS', fantacrypt.fanta_encrypt(self.server.config['guardpass']))
+            if self.char_id is None:
+                self.char_id = -1 # Set to a valid ID if still needed
             self.send_command('DONE')
 
         def char_select(self):
@@ -492,6 +496,8 @@ class ClientManager:
                 
             if char_id == -1:
                 return self.server.spectator_name
+            if char_id == None: 
+                return 'SERVER_SELECT'
             return self.server.char_list[char_id]
 
         def change_position(self, pos=''):

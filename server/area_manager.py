@@ -114,9 +114,9 @@ class AreaManager:
         
         def get_chars_unusable(self, allow_restricted=False):
             if allow_restricted:
-                return set([x.char_id for x in self.clients])
+                return set([x.char_id for x in self.clients if x.char_id is not None])
             else:
-                return set([x.char_id for x in self.clients]).union(set([self.server.char_list.index(char_name) for char_name in self.restricted_chars]))
+                return set([x.char_id for x in self.clients if x.char_id is not None]).union(set([self.server.char_list.index(char_name) for char_name in self.restricted_chars]))
         
         def is_char_available(self, char_id, allow_restricted=False):
             return (char_id == -1) or (char_id not in self.get_chars_unusable(allow_restricted=allow_restricted))

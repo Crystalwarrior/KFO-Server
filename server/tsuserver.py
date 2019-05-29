@@ -61,7 +61,7 @@ class TsuServer3:
         self.ms_client = None
         self.rp_mode = False
         self.user_auth_req = False
-        self.spectator_name = 'CHAR_SELECT'
+        self.spectator_name = 'SPECTATOR'
         self.client_tasks = dict()
         self.active_timers = dict()
         logger.setup_logger(debug=self.config['debug'])
@@ -124,7 +124,8 @@ class TsuServer3:
         self.client_manager.remove_client(client)
 
     def get_player_count(self):
-        return len(self.client_manager.clients)
+        # Ignore players in the server selection screen.
+        return len([client for client in self.client_manager.clients if client.char_id is not None])
 
     def load_config(self):
         with open('config/config.yaml', 'r', encoding = 'utf-8') as cfg:

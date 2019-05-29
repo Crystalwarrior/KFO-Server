@@ -163,7 +163,7 @@ class AOProtocol(asyncio.Protocol):
                 return
         logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
         self.client.send_command('ID', self.client.id, self.server.software, self.server.get_version_string())
-        self.client.send_command('PN', self.server.get_player_count() - 1, self.server.config['playerlimit'])
+        self.client.send_command('PN', self.server.get_player_count(), self.server.config['playerlimit'])
         
     def net_cmd_id(self, args):
         """ Client version and PV
