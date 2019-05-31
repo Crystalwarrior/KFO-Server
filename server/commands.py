@@ -1609,9 +1609,10 @@ def ooc_cmd_showname(client, arg):
     """
     If given an argument, sets the client's showname to that. 
     Otherwise, it clears their showname to use the default setting (character showname).
-    
     These custom shownames override whatever showname the current character has, and is 
     persistent between between character swaps/area changes/etc.
+    Returns an error if new custom showname exceeds the server limit (server.showname_max_length) or is already
+    used in the current area.
     
     SYNTAX
     /showname <new_showname>
@@ -1624,12 +1625,18 @@ def ooc_cmd_showname(client, arg):
     /showname Phantom       :: Sets your showname as Phantom
     /showname               :: Clears your showname
     """
-    client.showname = arg
+    try:
+        client.change_showname(arg)
+    except ValueError:
+        raise ClientError("Given showname {} is already in use in this area.".format(arg))
+            
     if arg != '':
-        client.send_host_message('You have set your showname as: {}'.format(arg))
+        client.send_host_message('You have set your showname as {}'.format(arg))
+        logger.log_server('{} set their showname to {}.'.format(client.ipid, arg), client)
     else:
         client.send_host_message('You have removed your custom showname.')
-
+        logger.log_server('{} removed their showname.'.format(client.ipid), client)
+        
 def ooc_cmd_sneak(client, arg):    
     """ (STAFF ONLY)
     Sets given user based on client ID or IPID to be sneaking so that they are invisible through /getarea(s).
@@ -2954,7 +2961,69 @@ def ooc_cmd_autopass(client, arg):
     status = {False: 'off', True: 'on'}
 
     client.send_host_message('Autopass turned {}.'.format(status[client.autopass]))
+
+def ooc_cmd_showname_set(client, arg):
+    """ (STAFF ONLY)
+    If given a second argument, sets the showname of the given client by ID or IPID to that. 
+    Otherwise, it clears their showname to use the default setting (character showname).
     
+    These custom shownames override whatever showname the current character has, and is 
+    persistent between between character swaps/area changes/etc.
+    
+    SYNTAX
+    /showname_set <client_id> {new_showname}
+    /showname_set <client_ipid> {new_showname}
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    {new_showname}: New desired showname.
+    
+    EXAMPLES
+    /showname_set 1 Phantom     :: Sets the showname of the client whose ID is 1 to Phantom.
+    /showname_set 1234567890    :: Clears the showname of the client(s) whose IPID is 1234567890.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    try:
+        separator = arg.index(" ")
+    except ValueError:
+        separator = len(arg)
+    
+    ID = arg[:separator]
+    showname = arg[separator+1:]
+    
+    if len(ID) == 0 or len(ID) > 10 or not ID.isdigit():
+        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
+    
+    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
+    # This places the assumption that there are no more than 10 billion clients connected simultaneously
+    # but if that is the case, you probably have a much larger issue at hand.
+    if len(ID) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(ID), False)
+    else:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(ID), False)
+    
+    # Set matching targets's showname
+    if targets:
+        for c in targets:
+            try:
+                c.change_showname(showname)
+            except ValueError:
+                raise ClientError("Unable to set the showname of {}: Given showname {} is already in use in area {}.".format(c.get_char_name(), showname, c.area.name))
+                
+            if showname != '':
+                logger.log_server('Set showname of {} to {}.'.format(c.ipid, showname), client)
+                client.send_host_message('Set showname of {} to {}.'.format(c.get_char_name(), showname))
+                c.send_host_message("Your showname was set to {} by a staff member.".format(showname))
+            else:
+                logger.log_server('Removed showname {} of {}.'.format(showname, c.ipid), client)
+                client.send_host_message('Removed showname {} of {}.'.format(showname, c.get_char_name()))
+                c.send_host_message("Your showname was removed by a staff member.")
+    else:
+        client.send_host_message("No targets found.")
+
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

@@ -225,6 +225,12 @@ class ClientManager:
                         self.send_host_message('Your character was restricted in your new area, switched to {}.'.format(self.get_char_name()))
                     else:
                         self.send_host_message('Your character was taken in your new area, switched to {}.'.format(self.get_char_name()))
+                
+                try:
+                    self.change_showname(self.showname) # Verify that showname is still valid
+                except ValueError:
+                    self.send_host_message("Your showname {} was already used in this area. Resetting it to none.".format(self.showname))
+                    self.showname = ''
                     
                 self.send_host_message('Changed area to {}.[{}]'.format(area.name, self.area.status))
                 old_area = self.area
@@ -259,6 +265,19 @@ class ClientManager:
             self.reload_music_list() # Update music list to include new area's reachable areas
             self.server.create_task(self, ['as_afk_kick', area.afk_delay, area.afk_sendto])
 
+        def change_showname(self, showname):
+            # Check length
+            if len(showname) > self.server.showname_max_length:
+                raise ClientError("Given showname {} exceeds the server's character limit of {}.".format(showname, self.server.showname_max_length))
+            
+            # Check if non-empty showname is already used within area
+            if showname != '':
+                for c in self.area.clients:
+                    if c.showname == showname:
+                        raise ValueError("Given showname {} is already in use in this area.".format(showname))
+                        # This ValueError must be recaught, otherwise the client will crash.
+            self.showname = showname
+            
         def follow_user(self, arg):
             self.following = arg
             arg.followedby = self
@@ -302,6 +321,12 @@ class ClientManager:
                 else:
                     self.send_host_message('Your character was taken in your new area, switched to {}.'.format(self.get_char_name()))
 
+            try:
+                self.change_showname(self.showname) # Verify that showname is still valid
+            except ValueError:
+                self.send_host_message("Your showname {} was already used in this area. Resetting it to none.".format(self.showname))
+                self.showname = ''
+                logger.log_server('{} had their showname removed due it being used in the new area.'.format(self.ipid), self)
             self.send_host_message('Changed area to {}.[{}]'.format(area.name, area.status))
             logger.log_server(
                 '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
