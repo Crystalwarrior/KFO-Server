@@ -3089,6 +3089,25 @@ def ooc_cmd_showname_nuke(client, arg):
                                 '{} has nuked all shownames.'.format(client.name),
                                 pred=lambda c: c.is_mod and c != client)
     logger.log_server('{} has nuked all shownames.'.format(client.name), client)
+
+def ooc_cmd_showname_list(client, arg):
+    """
+    List the characters (and associated client IDs) in each area, as well as their custom shownames if they have one.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getareas (as it is functionally identical).
+    
+    SYNTAX
+    /showname_list
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /showname_list
+    """
+    if client.in_rp and not client.area.rp_getareas_allowed:
+        raise ClientError("This command has been restricted to authorized users only in this area while in RP mode.")
+
+    client.send_area_info(client.area, -1, False, include_shownames=True)
     
 def ooc_cmd_exec(client, arg):
     """

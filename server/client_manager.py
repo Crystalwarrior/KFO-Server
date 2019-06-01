@@ -377,7 +377,7 @@ class ClientManager:
                     msg += ' [*]'
             self.send_host_message(msg)
 
-        def get_area_info(self, area_id, mods):
+        def get_area_info(self, area_id, mods, include_shownames=False):
             info = ''
             try:
                 area = self.server.area_manager.get_area_by_id(area_id)
@@ -400,26 +400,34 @@ class ClientManager:
             
             for c in sorted_clients:
                 info += '\r\n[{}] {}'.format(c.id, c.get_char_name())
+                if include_shownames and c.showname != '':
+                    info += ' ({})'.format(c.showname)
                 if not c.is_visible:
                     info += ' (S)'
                 if self.is_mod:
                     info += ' ({})'.format(c.ipid)
             return info
 
-        def send_area_info(self, current_area, area_id, mods): 
-            #if area_id is -1 then return all areas. If mods is True then return only mods
+        def send_area_info(self, current_area, area_id, mods, include_shownames=False): 
+            #If area_id is -1, then return all areas. 
+            #If mods is True, then return only mods
+            #If include_shownames is True, then include non-empty custom shownames.
             info = ''
             if area_id == -1:
                 # all areas info
                 info = '== Area List =='
                 unrestricted_access_area = '<ALL>' in current_area.reachable_areas
                 for i in range(len(self.server.area_manager.areas)):
-                    if ((unrestricted_access_area or self.server.area_manager.areas[i].name in current_area.reachable_areas) or \
-                        (self.is_staff())) and len(self.server.area_manager.areas[i].clients) > 0:
-                        info += '\r\n{}'.format(self.get_area_info(i, mods))
+                    # Get area i details...
+                    # If staff and there are clients in the area OR
+                    # If not staff, there are visible clients in the area, and the area is reachable from the current one
+                    if (self.is_staff() and len(self.server.area_manager.areas[i].clients) > 0) or \
+                    (not self.is_staff() and len([c for c in self.server.area_manager.areas[i].clients if c.is_visible or c == self]) > 0 and \
+                     (unrestricted_access_area or self.server.area_manager.areas[i].name in current_area.reachable_areas)):
+                        info += '\r\n{}'.format(self.get_area_info(i, mods, include_shownames=include_shownames))
             else:
                 try:
-                    info = self.get_area_info(area_id, mods)
+                    info = self.get_area_info(area_id, mods, include_shownames=include_shownames)
                 except AreaError:
                     raise
             self.send_host_message(info)
