@@ -65,6 +65,7 @@ class ClientManager:
             self.followedby = ''
             self.music_list = None
             self.autopass = False
+            self.showname_history = list()
             
             #music flood-guard stuff
             self.mus_counter = 0
@@ -227,10 +228,10 @@ class ClientManager:
                         self.send_host_message('Your character was taken in your new area, switched to {}.'.format(self.get_char_name()))
                 
                 try:
-                    self.change_showname(self.showname) # Verify that showname is still valid
+                    self.change_showname(self.showname, target_area=area) # Verify that showname is still valid
                 except ValueError:
                     self.send_host_message("Your showname {} was already used in this area. Resetting it to none.".format(self.showname))
-                    self.showname = ''
+                    self.change_showname('', target_area=area)
                     logger.log_server('{} had their showname removed due it being used in the new area.'.format(self.ipid), self)
                     
                 self.send_host_message('Changed area to {}.[{}]'.format(area.name, self.area.status))
@@ -266,19 +267,32 @@ class ClientManager:
             self.reload_music_list() # Update music list to include new area's reachable areas
             self.server.create_task(self, ['as_afk_kick', area.afk_delay, area.afk_sendto])
 
-        def change_showname(self, showname):
+        def change_showname(self, showname, target_area=None, forced=True):
+            # forced=True means that someone else other than the user themselves requested the showname change.
+            # Should only be false when using /showname.
+            if target_area is None:
+                target_area = self.area
+                
             # Check length
             if len(showname) > self.server.showname_max_length:
                 raise ClientError("Given showname {} exceeds the server's character limit of {}.".format(showname, self.server.showname_max_length))
             
             # Check if non-empty showname is already used within area
             if showname != '':
-                for c in self.area.clients:
+                for c in target_area.clients:
                     if c.showname == showname and c != self:
                         raise ValueError("Given showname {} is already in use in this area.".format(showname))
                         # This ValueError must be recaught, otherwise the client will crash.
-            self.showname = showname
+                        
+            if self.showname != showname:
+                status = {True: 'Was', False: 'Self'}
             
+                if showname != '':
+                    self.showname_history.append("{} | {} set to {}".format(time.asctime(time.localtime(time.time())), status[forced], showname))
+                else:
+                    self.showname_history.append("{} | {} cleared".format(time.asctime(time.localtime(time.time())), status[forced]))
+            self.showname = showname
+                    
         def follow_user(self, arg):
             self.following = arg
             arg.followedby = self
@@ -323,10 +337,10 @@ class ClientManager:
                     self.send_host_message('Your character was taken in your new area, switched to {}.'.format(self.get_char_name()))
 
             try:
-                self.change_showname(self.showname) # Verify that showname is still valid
+                self.change_showname(self.showname, target_area=area) # Verify that showname is still valid
             except ValueError:
                 self.send_host_message("Your showname {} was already used in this area. Resetting it to none.".format(self.showname))
-                self.showname = ''
+                self.change_showname('', target_area=area)
                 logger.log_server('{} had their showname removed due it being used in the new area.'.format(self.ipid), self)
             self.send_host_message('Changed area to {}.[{}]'.format(area.name, area.status))
             logger.log_server(
@@ -537,6 +551,16 @@ class ClientManager:
                 return 'SERVER_SELECT'
             return self.server.char_list[char_id]
 
+        def get_showname_history(self):
+            info = '== Showname history of client {} =='.format(self.id)
+            
+            if len(self.showname_history) == 0:
+                info += '\r\nClient has not changed their showname since joining the server.'
+            else:
+                for log in self.showname_history:
+                    info += '\r\n*{}'.format(log)
+            return info
+        
         def change_position(self, pos=''):
             if pos not in ('', 'def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 raise ClientError('Invalid position. Possible values: def, pro, hld, hlp, jud, wit.')

@@ -1622,19 +1622,19 @@ def ooc_cmd_showname(client, arg):
     <new_showname>: New desired showname.
     
     EXAMPLES
-    /showname Phantom       :: Sets your showname as Phantom
+    /showname Phantom       :: Sets your showname to Phantom
     /showname               :: Clears your showname
     """
     if client.server.showname_freeze and not client.is_staff():
         raise ClientError('Shownames are frozen.')
         
     try:
-        client.change_showname(arg)
+        client.change_showname(arg, forced=False)
     except ValueError:
         raise ClientError("Given showname {} is already in use in this area.".format(arg))
             
     if arg != '':
-        client.send_host_message('You have set your showname as {}'.format(arg))
+        client.send_host_message('You have set your showname to {}'.format(arg))
         logger.log_server('{} set their showname to {}.'.format(client.ipid, arg), client)
     else:
         client.send_host_message('You have removed your custom showname.')
@@ -2969,9 +2969,10 @@ def ooc_cmd_showname_set(client, arg):
     """ (STAFF ONLY)
     If given a second argument, sets the showname of the given client by ID or IPID to that. 
     Otherwise, it clears their showname to use the default setting (character showname).
-    
     These custom shownames override whatever showname the current character has, and is 
     persistent between between character swaps/area changes/etc.
+    If given IPID, it will set the shownames of all the clients opened by the user. Otherwise, it will just set the showname of the given client.
+    Returns an error if the given identifier does not correspond to a user.
     
     SYNTAX
     /showname_set <client_id> {new_showname}
@@ -3040,8 +3041,11 @@ def ooc_cmd_showname_freeze(client, arg):
     None
     
     EXAMPLE
-    /showname_freeze
+    Assuming shownames are not frozen originally...
+    /showname_freeze        :: Freezes all shownames. Only staff members can change or remove them.
+    /showname_freeze        :: Unfreezes all shownames. Everyone can use /showname again.
     """
+    
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -3070,7 +3074,7 @@ def ooc_cmd_showname_nuke(client, arg):
     None
     
     EXAMPLE
-    /showname_nuke
+    /showname_nuke          :: Clears all shownames
     """
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
@@ -3092,7 +3096,7 @@ def ooc_cmd_showname_nuke(client, arg):
 
 def ooc_cmd_showname_list(client, arg):
     """
-    List the characters (and associated client IDs) in each area, as well as their custom shownames if they have one.
+    List the characters (and associated client IDs) in each area, as well as their custom shownames if they have one in parentheses.
     Returns an error if the user is subject to RP mode and is in an area that disables /getareas (as it is functionally identical).
     
     SYNTAX
@@ -3102,13 +3106,70 @@ def ooc_cmd_showname_list(client, arg):
     None
     
     EXAMPLE
-    /showname_list
+    /showname_list          :: May list something like this
+    
+    == Area List == 
+    = Area 0: Basement == 
+    [0] Kaede Akamatsu_HD 
+    [1] Shuichi Saihara_HD (Just Suichi) 
     """
     if client.in_rp and not client.area.rp_getareas_allowed:
-        raise ClientError("This command has been restricted to authorized users only in this area while in RP mode.")
-
+        raise ClientError('This command has been restricted to authorized users only in this area while in RP mode.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
     client.send_area_info(client.area, -1, False, include_shownames=True)
+
+def ooc_cmd_showname_history(client, arg):
+    """ (MOD ONLY)
+    List all shownames a client by ID or IPID has had during the session.
+    Output differentiates between self-initiated showname changes (such as the ones via /showname) by using "Self"
+    and third-party-initiated ones by using "Was" (such as /showname_set, or by changing areas and having a showname conflict).
     
+    If given IPID, it will obtain the showname history of all the clients opened by the user. Otherwise, it will just obtain the showname history of the given client.
+    Returns an error if the given identifier does not correspond to a user.
+        
+    SYNTAX
+    /showname_history
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /showname_history       :: May list something like this
+    
+    == Showname history of client 1 == 
+    *Sat Jun 1 18:52:32 2019 | Self set to: Cas 
+    *Sat Jun 1 18:52:56 2019 | Was set to: NotCas 
+    *Sat Jun 1 18:53:47 2019 | Was set to: Ces 
+    *Sat Jun 1 18:53:54 2019 | Self cleared 
+    *Sat Jun 1 18:54:36 2019 | Self set to: Cos 
+    *Sat Jun 1 18:54:46 2019 | Was cleared 
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    
+    ID = arg
+    
+    if len(ID) == 0 or len(ID) > 10 or not ID.isdigit():
+        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
+    
+    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
+    # This places the assumption that there are no more than 10 billion clients connected simultaneously
+    # but if that is the case, you probably have a much larger issue at hand.
+    if len(ID) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(ID), False)
+    else:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(ID), False)
+    
+    # Obtain matching targets's showname history
+    if targets:
+        for c in targets:
+            info = c.get_showname_history()
+            client.send_host_message(info)
+    else:
+        client.send_host_message("No targets found.")
+
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
