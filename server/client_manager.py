@@ -231,6 +231,7 @@ class ClientManager:
                 except ValueError:
                     self.send_host_message("Your showname {} was already used in this area. Resetting it to none.".format(self.showname))
                     self.showname = ''
+                    logger.log_server('{} had their showname removed due it being used in the new area.'.format(self.ipid), self)
                     
                 self.send_host_message('Changed area to {}.[{}]'.format(area.name, self.area.status))
                 old_area = self.area
@@ -273,7 +274,7 @@ class ClientManager:
             # Check if non-empty showname is already used within area
             if showname != '':
                 for c in self.area.clients:
-                    if c.showname == showname:
+                    if c.showname == showname and c != self:
                         raise ValueError("Given showname {} is already in use in this area.".format(showname))
                         # This ValueError must be recaught, otherwise the client will crash.
             self.showname = showname
