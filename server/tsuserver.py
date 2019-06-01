@@ -65,6 +65,7 @@ class TsuServer3:
         self.client_tasks = dict()
         self.active_timers = dict()
         self.showname_max_length = 30
+        self.showname_freeze = False
         logger.setup_logger(debug=self.config['debug'])
 
     def start(self):

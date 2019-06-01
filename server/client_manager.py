@@ -582,9 +582,9 @@ class ClientManager:
     def new_client(self, transport):
         cur_id = 0
         for i in range(self.server.config['playerlimit']):
-                if not self.cur_id[i]:
-                    cur_id = i
-                    break
+            if not self.cur_id[i]:
+                cur_id = i
+                break
         c = self.Client(self.server, transport, cur_id, self.server.get_ipid(transport.get_extra_info('peername')[0]))
         self.clients.add(c)
         self.cur_id[cur_id] = True

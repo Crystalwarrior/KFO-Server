@@ -1611,8 +1611,8 @@ def ooc_cmd_showname(client, arg):
     Otherwise, it clears their showname to use the default setting (character showname).
     These custom shownames override whatever showname the current character has, and is 
     persistent between between character swaps/area changes/etc.
-    Returns an error if new custom showname exceeds the server limit (server.showname_max_length) or is already
-    used in the current area.
+    Returns an error if new custom showname exceeds the server limit (server.showname_max_length), is already
+    used in the current area, or if shownames have been frozen and user is not logged in.
     
     SYNTAX
     /showname <new_showname>
@@ -1625,6 +1625,9 @@ def ooc_cmd_showname(client, arg):
     /showname Phantom       :: Sets your showname as Phantom
     /showname               :: Clears your showname
     """
+    if client.server.showname_freeze and not client.is_staff():
+        raise ClientError('Shownames are frozen.')
+        
     try:
         client.change_showname(arg)
     except ValueError:
@@ -3024,6 +3027,69 @@ def ooc_cmd_showname_set(client, arg):
     else:
         client.send_host_message("No targets found.")
 
+def ooc_cmd_showname_freeze(client, arg):
+    """ (MOD ONLY)
+    Toggles non-staff members being able to use /showname or not.
+    It does NOT clear their shownames (see /showname_nuke).
+    Staff can still use /showname_set to set shownames of others.
+    
+    SYNTAX
+    /showname_freeze
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /showname_freeze
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
+    client.server.showname_freeze = not client.server.showname_freeze
+    status = {False: 'unfrozen', True: 'frozen'}
+
+    client.send_host_message('You have {} all shownames.'.format(status[client.server.showname_freeze])) 
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                'A mod has {} all shownames.'.format(status[client.server.showname_freeze]),
+                                pred=lambda c: not c.is_mod and c != client)
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                '{} has {} all shownames.'.format(client.name, status[client.server.showname_freeze]),
+                                pred=lambda c: c.is_mod and c != client)
+    logger.log_server('{} has {} all shownames.'.format(client.name, status[client.server.showname_freeze]), client)
+    
+def ooc_cmd_showname_nuke(client, arg):
+    """ (MOD ONLY)
+    Clears all shownames from non-staff members.
+    
+    SYNTAX
+    /showname_nuke
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /showname_nuke
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
+    for c in client.server.client_manager.clients:
+        if not c.is_staff() and c.showname != '':
+            c.change_showname('')
+        
+    client.send_host_message('You have nuked all shownames.')
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                'A mod has nuked all shownames.',
+                                pred=lambda c: not c.is_mod and c != client)
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                '{} has nuked all shownames.'.format(client.name),
+                                pred=lambda c: c.is_mod and c != client)
+    logger.log_server('{} has nuked all shownames.'.format(client.name), client)
+    
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
