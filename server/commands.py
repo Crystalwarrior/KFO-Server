@@ -25,10 +25,9 @@ from server import logger
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 """ SUGGESTED IDEAS
-/scream: /g but for reachable areas
-/char_restrict: Restrict a char to staff only
-/area_ban: Ban a user from a certain area
-set what areas will listen to a scream from a given area?
+/injury or something similar: set a timeout between changing areas
+/ : a command that allows a single person to ignore passage locks
+
 
 """
 
@@ -225,6 +224,28 @@ def parse_area_names(client, areas):
                     raise ArgumentError('Could not parse area {}'.format(areas[i]))    
     return areas
 
+def parse_id_or_ipid(client, identifier):
+    """
+    HELPER FUNCTION
+    Given either a client ID or IPID, returns all clients that match this identifier.
+ 
+    Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
+    This places the assumption that there are no more than 10 billion clients connected simultaneously
+    but if that is the case, you probably have a much larger issue at hand.
+    """
+    if not identifier.isdigit() or len(identifier) > 10:
+        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(identifier))
+
+    if len(identifier) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(identifier), False)
+    else:
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(identifier), False)
+    
+    if not targets:
+        raise ClientError('No targets found.')
+    
+    return targets
+            
 def ooc_cmd_allow_iniswap(client, arg):
     """ (MOD ONLY)
     Toggles iniswapping by non-staff in the current area being allowed/disallowed.
@@ -243,9 +264,11 @@ def ooc_cmd_allow_iniswap(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command takes no arguments.')
 
+    status = {True: 'now', False: 'no longer'}
     client.area.iniswap_allowed = not client.area.iniswap_allowed
-    client.area.send_host_message('A mod has set iniswapping being allowed to {}.'.format(client.area.iniswap_allowed))
-    logger.log_server('[{}][{}]Changed iniswapping allowed to {}'.format(client.area.id, client.get_char_name(), client.area.iniswap_allowed), client)
+    
+    client.area.send_host_message('Iniswapping is {} allowed.'.format(status[client.area.iniswap_allowed]))
+    logger.log_server('[{}][{}]Set iniswapping as {} allowed'.format(client.area.id, client.get_char_name(), status[client.area.iniswap_allowed]), client)
 
     # answer = {True: 'allowed', False: 'forbidden'}
     # client.send_host_message('iniswap is {}.'.format(answer[client.area.iniswap_allowed]))
@@ -512,23 +535,9 @@ def ooc_cmd_charselect(client, arg):
     else:
         if not client.is_mod:
             raise ClientError('You must be authorized to do that.')
-        elif not arg.isdigit() or len(arg) > 10:
-            raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
- 
-        # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-        # This places the assumption that there are no more than 10 billion clients connected simultaneously
-        # but if that is the case, you probably have a much larger issue at hand.
-        if len(arg) == 10:
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        else:
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
         
-        # Force character selection screen on matching targets
-        if targets:
-            for c in targets:
-                c.char_select()
-        else:
-            client.send_host_message("No targets found.")
+        for c in parse_id_or_ipid(client, arg):
+            c.char_select()
             
 def ooc_cmd_cleardoc(client, arg):
     """
@@ -869,25 +878,12 @@ def ooc_cmd_kick(client, arg):
     """
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
-        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
-    
-    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-    # This places the assumption that there are no more than 10 billion clients connected simultaneously
-    # but if that is the case, you probably have a much larger issue at hand.
-    if len(arg) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-    else:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    
+
     # Kick matching targets
-    if targets:
-        for c in targets:
-            logger.log_server('Kicked {}.'.format(c.ipid), client)
-            client.area.send_host_message("{} was kicked.".format(c.get_char_name()))
-            c.disconnect()
-    else:
-        client.send_host_message("No targets found.")
+    for c in parse_id_or_ipid(client, arg):
+        logger.log_server('Kicked {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was kicked.".format(c.get_char_name()))
+        c.disconnect()
 		
 def ooc_cmd_kickself(client, arg):
     """
@@ -1225,25 +1221,12 @@ def ooc_cmd_mute(client, arg):
     
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
-        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
-    
-    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-    # This places the assumption that there are no more than 10 billion clients connected simultaneously
-    # but if that is the case, you probably have a much larger issue at hand.
-    if len(arg) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-    else:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     
     # Mute matching targets
-    if targets:
-        for c in targets:
-            logger.log_server('Muted {}.'.format(c.ipid), client)
-            client.area.send_host_message("{} was muted.".format(c.get_char_name()))
-            c.is_muted = True
-    else:
-        client.send_host_message("No targets found.")
+    for c in parse_id_or_ipid(client, arg):
+        logger.log_server('Muted {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was muted.".format(c.get_char_name()))
+        c.is_muted = True
 
 def ooc_cmd_mutepm(client, arg):
     """
@@ -1452,27 +1435,14 @@ def ooc_cmd_reveal(client, arg):
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
-        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
         
-    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-    # This places the assumption that there are no more than 10 billion clients connected simultaneously
-    # but if that is the case, you probably have a much larger issue at hand.
-    if len(arg) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-    else:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    
     # Unsneak matching targets
-    if targets:
-        for c in targets:
-            logger.log_server('{} is no longer sneaking.'.format(c.ipid), client)
-            if c != client:
-                client.send_host_message("{} is no longer sneaking.".format(c.get_char_name()))
-            c.send_host_message("You are no longer sneaking.")
-            c.is_visible = True
-    else:
-        client.send_host_message("No targets found.")
+    for c in parse_id_or_ipid(client, arg):
+        if c != client:
+            client.send_host_message("{} is no longer sneaking.".format(c.get_char_name()))
+        c.send_host_message("You are no longer sneaking.")
+        c.is_visible = True
+        logger.log_server('{} is no longer sneaking.'.format(c.ipid), client)
     
 def ooc_cmd_roll(client, arg):
     """
@@ -1661,34 +1631,21 @@ def ooc_cmd_sneak(client, arg):
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
-        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
-     
-    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-    # This places the assumption that there are no more than 10 billion clients connected simultaneously
-    # but if that is the case, you probably have a much larger issue at hand.
-    if len(arg) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-    else:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     
     # Sneak matching targets
-    if targets:
-        for c in targets:
-            if client.is_gm and c.area.lobby_area:
-                client.send_host_message('Target client is in a lobby area. You have insufficient permissions to hide someone in such an area.')
-                continue
-            if c.area.private_area:
-                client.send_host_message('Target client is in a private area. You are not allowed to hide someone in such an area.')
-                continue
-            
-            logger.log_server('{} is now sneaking.'.format(c.ipid), client)
-            if c != client:
-                client.send_host_message("{} is now sneaking.".format(c.get_char_name()))
-            c.send_host_message("You are now sneaking.")
-            c.is_visible = False
-    else:
-        client.send_host_message("No targets found.")
+    for c in parse_id_or_ipid(client, arg):
+        if client.is_gm and c.area.lobby_area:
+            client.send_host_message('Target client is in a lobby area. You have insufficient permissions to hide someone in such an area.')
+            continue
+        if c.area.private_area:
+            client.send_host_message('Target client is in a private area. You are not allowed to hide someone in such an area.')
+            continue
+        
+        if c != client:
+            client.send_host_message("{} is now sneaking.".format(c.get_char_name()))
+        c.send_host_message("You are now sneaking.")
+        c.is_visible = False
+        logger.log_server('{} is now sneaking.'.format(c.ipid), client)
 
 def ooc_cmd_st(client, arg):
     """ (STAFF ONLY)
@@ -1970,25 +1927,12 @@ def ooc_cmd_unmute(client, arg):
     
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 or len(arg) > 10 or not arg.isdigit():
-        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
-    
-    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-    # This places the assumption that there are no more than 10 billion clients connected simultaneously
-    # but if that is the case, you probably have a much larger issue at hand.
-    if len(arg) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-    else:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     
     # Mute matching targets
-    if targets:
-        for c in targets:
-            logger.log_server('Unmuted {}.'.format(c.ipid), client)
-            client.area.send_host_message("{} was unmuted.".format(c.get_char_name()))
-            c.is_muted = False
-    else:
-        client.send_host_message("No targets found.")
+    for c in parse_id_or_ipid(client, arg):
+        logger.log_server('Unmuted {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was unmuted.".format(c.get_char_name()))
+        c.is_muted = False
     
 def ooc_cmd_8ball(client, arg):
     """
@@ -2252,37 +2196,27 @@ def ooc_cmd_area_kick(client, arg):
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if not client.area.is_locked and not client.is_gm and not client.is_mod:
-        raise ClientError('Area isn\'t locked.')
+        raise ClientError("Area is not locked.") # What is this for?????????
     if not arg:
         raise ClientError('You must specify a target. Use /area_kick <id>')
     arg = arg.split(' ')
-    if len(arg[0]) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg[0]), False)
-    elif len(arg[0]) < 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg[0]), False)
-    if targets:
-        try:
-            for c in targets:
-                if len(arg) == 1:
-                    area = client.server.area_manager.get_area_by_id(int(0))
-                    output = 0
-                else:
-                    try:
-                        area = client.server.area_manager.get_area_by_id(int(arg[1]))
-                        output = arg[1]
-                    except AreaError:
-                        raise
-                client.send_host_message("Attempting to kick {} to area {}.".format(c.get_char_name(), output))
-                c.change_area(area, override_passages=True)
-                c.send_host_message("You were kicked from the area to area {}.".format(output))
-                if client.area.is_locked or client.area.is_modlocked:
-                    client.area.invite_list.pop(c.ipid)
-        except AreaError:
-            raise
-        except ClientError:
-            raise
-    else:
-        client.send_host_message("No targets found.")
+
+    for c in parse_id_or_ipid(client, arg[0]):
+        if len(arg) == 1:
+            area = client.server.area_manager.get_area_by_id(0)
+            output = 0
+        else:
+            try:
+                area = client.server.area_manager.get_area_by_id(int(arg[1]))
+                output = arg[1]
+            except ValueError:
+                raise ArgumentError('Area ID must be a number.'.format(arg[1]))
+                
+        client.send_host_message("Attempting to kick {} to area {}.".format(c.get_char_name(), output))
+        c.change_area(area, override_passages=True)
+        c.send_host_message("You were kicked from the area to area {}.".format(output))
+        if client.area.is_locked or client.area.is_modlocked:
+            client.area.invite_list.pop(c.ipid)
 
 def ooc_cmd_ooc_mute(client, arg):
     if not client.is_mod and not client.is_cm:
@@ -2998,35 +2932,21 @@ def ooc_cmd_showname_set(client, arg):
     ID = arg[:separator]
     showname = arg[separator+1:]
     
-    if len(ID) == 0 or len(ID) > 10 or not ID.isdigit():
-        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
-    
-    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-    # This places the assumption that there are no more than 10 billion clients connected simultaneously
-    # but if that is the case, you probably have a much larger issue at hand.
-    if len(ID) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(ID), False)
-    else:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(ID), False)
-    
     # Set matching targets's showname
-    if targets:
-        for c in targets:
-            try:
-                c.change_showname(showname)
-            except ValueError:
-                raise ClientError("Unable to set the showname of {}: Given showname {} is already in use in area {}.".format(c.get_char_name(), showname, c.area.name))
-                
-            if showname != '':
-                logger.log_server('Set showname of {} to {}.'.format(c.ipid, showname), client)
-                client.send_host_message('Set showname of {} to {}.'.format(c.get_char_name(), showname))
-                c.send_host_message("Your showname was set to {} by a staff member.".format(showname))
-            else:
-                logger.log_server('Removed showname {} of {}.'.format(showname, c.ipid), client)
-                client.send_host_message('Removed showname {} of {}.'.format(showname, c.get_char_name()))
-                c.send_host_message("Your showname was removed by a staff member.")
-    else:
-        client.send_host_message("No targets found.")
+    for c in parse_id_or_ipid(client, ID):
+        try:
+            c.change_showname(showname)
+        except ValueError:
+            raise ClientError("Unable to set the showname of {}: Given showname {} is already in use in area {}.".format(c.get_char_name(), showname, c.area.name))
+            
+        if showname != '':
+            logger.log_server('Set showname of {} to {}.'.format(c.ipid, showname), client)
+            client.send_host_message('Set showname of {} to {}.'.format(c.get_char_name(), showname))
+            c.send_host_message("Your showname was set to {} by a staff member.".format(showname))
+        else:
+            logger.log_server('Removed showname {} of {}.'.format(showname, c.ipid), client)
+            client.send_host_message('Removed showname {} of {}.'.format(showname, c.get_char_name()))
+            c.send_host_message("Your showname was removed by a staff member.")
 
 def ooc_cmd_showname_freeze(client, arg):
     """ (MOD ONLY)
@@ -3139,32 +3059,18 @@ def ooc_cmd_showname_history(client, arg):
     /showname_history       :: May list something like this
     
     == Showname history of client 1 == 
-    *Sat Jun 1 18:52:32 2019 | Self set to: Cas 
-    *Sat Jun 1 18:52:56 2019 | Was set to: NotCas 
-    *Sat Jun 1 18:53:47 2019 | Was set to: Ces 
+    *Sat Jun 1 18:52:32 2019 | Self set to Cas 
+    *Sat Jun 1 18:52:56 2019 | Was set to NotCas 
+    *Sat Jun 1 18:53:47 2019 | Was set to Ces 
     *Sat Jun 1 18:53:54 2019 | Self cleared 
-    *Sat Jun 1 18:54:36 2019 | Self set to: Cos 
+    *Sat Jun 1 18:54:36 2019 | Self set to Cos 
     *Sat Jun 1 18:54:46 2019 | Was cleared 
     """
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     
-    ID = arg
-    
-    if len(ID) == 0 or len(ID) > 10 or not ID.isdigit():
-        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(arg))
-    
-    # Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-    # This places the assumption that there are no more than 10 billion clients connected simultaneously
-    # but if that is the case, you probably have a much larger issue at hand.
-    if len(ID) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(ID), False)
-    else:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(ID), False)
-    
     # Obtain matching targets's showname history
-    if targets:
-        for c in targets:
+    for c in parse_id_or_ipid(client, arg):
             info = c.get_showname_history()
             client.send_host_message(info)
     else:

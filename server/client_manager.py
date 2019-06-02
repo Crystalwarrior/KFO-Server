@@ -374,9 +374,9 @@ class ClientManager:
                     locked = False
                     
                 if self.is_staff():
-                    num_clients = len(area.clients)
+                    num_clients = len([c for c in area.clients if c.char_id is not None])
                 else:
-                    num_clients = len([c for c in area.clients if c.is_visible])
+                    num_clients = len([c for c in area.clients if c.is_visible and c.char_id is not None])
                     
                 msg += '\r\nArea {}: {} (users: {}) {}'.format(i, area.name, num_clients, lock[locked])
                 if self.area == area:
@@ -469,6 +469,11 @@ class ClientManager:
 
         def send_done(self):
             avail_char_ids = set(range(len(self.server.char_list))) - self.area.get_chars_unusable(allow_restricted=self.is_staff())
+            # Readd sneaked players if needed so that they don't appear as taken
+            # Their characters will not be able to be reused, but at least that's one less clue about their presence.
+            if not self.is_staff():
+                avail_char_ids |= set([c.char_id for c in self.area.clients if not c.is_visible])
+            
             char_list = [-1] * len(self.server.char_list)
             for x in avail_char_ids:
                 char_list[x] = 0
