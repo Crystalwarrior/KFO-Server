@@ -66,6 +66,7 @@ class ClientManager:
             self.music_list = None
             self.autopass = False
             self.showname_history = list()
+            self.is_transient = False
             
             #music flood-guard stuff
             self.mus_counter = 0
@@ -199,13 +200,13 @@ class ClientManager:
                     raise ClientError('That area is mod-locked!')
                     
                 if not (area.name in self.area.reachable_areas or '<ALL>' in self.area.reachable_areas or \
-                (self.is_mod or self.is_gm or self.is_cm) or override_passages):
+                self.is_transient or self.is_staff() or override_passages):
                     info = 'Selected area cannot be reached from the current one without authorization. Try one of the following instead: '
                     if self.area.reachable_areas == {self.area.name}:
                         info += '\r\n*No areas available.'
                     else:
                         try:
-                            sorted_areas = sorted(self.area.reachable_areas,key = lambda area_name: self.server.area_manager.get_area_by_name(area_name).id)
+                            sorted_areas = sorted(self.area.reachable_areas, key = lambda area_name: self.server.area_manager.get_area_by_name(area_name).id)
                             for area in sorted_areas:
                                 if area != self.area.name:
                                     info += '\r\n*{}'.format(area)
@@ -437,7 +438,7 @@ class ClientManager:
                     # If not staff, there are visible clients in the area, and the area is reachable from the current one
                     if (self.is_staff() and len(self.server.area_manager.areas[i].clients) > 0) or \
                     (not self.is_staff() and len([c for c in self.server.area_manager.areas[i].clients if c.is_visible or c == self]) > 0 and \
-                     (unrestricted_access_area or self.server.area_manager.areas[i].name in current_area.reachable_areas)):
+                     (unrestricted_access_area or self.server.area_manager.areas[i].name in current_area.reachable_areas or self.is_transient)):
                         info += '\r\n{}'.format(self.get_area_info(i, mods, include_shownames=include_shownames))
             else:
                 try:

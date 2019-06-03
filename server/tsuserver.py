@@ -225,16 +225,15 @@ class TsuServer3:
         # If not provided a specific music list to overwrite
         if music_list is None:
             music_list = self.music_list # Default value
-            # But just in case, check if there was a client who had a preference
+            # But just in case, check if this came as a request of a client who had a 
+            # previous music list preference
             if c and c.music_list is not None:
                 music_list = c.music_list
             
         self.music_list_ao2 = []
-        # Uncomment when client is fixed to actually support music list changes
         # Determine whether to filter the music list or not
         need_to_check = (from_area is None or '<ALL>' in from_area.reachable_areas
-                         or (c is not None and (c.is_mod or c.is_gm or c.is_cm)))
-        # need_to_check = True #Comment this line out when uncommenting previous line
+                         or (c is not None and (c.is_staff() or c.is_transient)))
         
         # add areas first
         for area in self.area_manager.areas:

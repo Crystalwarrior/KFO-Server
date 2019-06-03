@@ -233,6 +233,8 @@ def parse_id_or_ipid(client, identifier):
     This places the assumption that there are no more than 10 billion clients connected simultaneously
     but if that is the case, you probably have a much larger issue at hand.
     """
+    if identifier == '':
+        raise ArgumentError('Expected client ID or IPID.')
     if not identifier.isdigit() or len(identifier) > 10:
         raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(identifier))
 
@@ -242,7 +244,7 @@ def parse_id_or_ipid(client, identifier):
         targets = client.server.client_manager.get_targets(client, TargetType.ID, int(identifier), False)
     
     if not targets:
-        raise ClientError('No targets found.')
+        raise ArgumentError('No targets found.')
     
     return targets
             
@@ -943,7 +945,7 @@ def ooc_cmd_knock(client, arg):
         
     if client.area.default_reachable_areas != {'<ALL>'} and \
     target_area.name not in client.area.default_reachable_areas | client.area.reachable_areas:
-        raise ClientError("You tried to knock on {}'s door but you realized the room is too far away."
+        raise ClientError("You tried to knock on the door to {} but you realized the room is too far away."
                           .format(target_area.name))
 
     client.send_host_message('You knocked on the door to area {}.'.format(target_area.name))
@@ -2057,7 +2059,6 @@ def ooc_cmd_unilock(client, arg):
         '[{}][{}]Used /unilock to {} area reachability from {} to {}.'
         .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name), client)
 
-
 def ooc_cmd_restore_areareachlock(client, arg):
     if not client.is_staff(): 
         raise ClientError('You must be authorized to do that.')
@@ -3050,13 +3051,15 @@ def ooc_cmd_showname_history(client, arg):
     Returns an error if the given identifier does not correspond to a user.
         
     SYNTAX
-    /showname_history
+    /showname_history <client_id>
+    /showname_history <client_ipid>
     
     PARAMETERS
-    None
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
     
     EXAMPLE
-    /showname_history       :: May list something like this
+    /showname_history 1         :: For the client whose ID is 1, you may get something like this
     
     == Showname history of client 1 == 
     *Sat Jun 1 18:52:32 2019 | Self set to Cas 
@@ -3071,11 +3074,59 @@ def ooc_cmd_showname_history(client, arg):
     
     # Obtain matching targets's showname history
     for c in parse_id_or_ipid(client, arg):
-            info = c.get_showname_history()
-            client.send_host_message(info)
-    else:
-        client.send_host_message("No targets found.")
+        info = c.get_showname_history()
+        client.send_host_message(info)
 
+def ooc_cmd_online(client, arg):
+    """
+    Returns how many players are online.
+    
+    SYNTAX
+    /online
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    If there are 2 players online in a server of maximum capacity 100
+    /online         :: Will return: "Online: 2/100"
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    client.send_host_message("Online: {}/{}".format(client.server.get_player_count(), client.server.config['playerlimit']))
+
+def ooc_cmd_transient(client, arg):
+    """ (STAFF ONLY)
+    Toggles a client by IP or IPID being transient or not to passage locks (i.e. can access all areas or only reachable areas) 
+    
+    If given IPID, it will invert the transient status of all the clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /transient <client_id>
+    /transient <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLE
+    Assuming a player with client ID 0 and IPID 1234567890 starts as not being transient to passage locks
+    /transient 0            :: This player can now access all areas regardless of passage locks.
+    /transient 1234567890   :: This player can now only access only reachable areas.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    # Invert current transient status of matching targets
+    status = {False: 'no longer', True: 'now'}
+    for c in parse_id_or_ipid(client, arg):
+        c.is_transient = not c.is_transient
+        client.send_host_message('{} ({}) is {} transient to passage locks.'.format(c.get_char_name(), c.area.id, status[c.is_transient])) 
+        c.send_host_message('You are {} transient to passage locks.'.format(status[c.is_transient]))
+        c.reload_music_list() # Update their music list to reflect their new status
+    
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
