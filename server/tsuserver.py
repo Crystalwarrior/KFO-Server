@@ -61,10 +61,8 @@ class TsuServer3:
         self.ms_client = None
         self.rp_mode = False
         self.user_auth_req = False
-        self.spectator_name = 'SPECTATOR'
         self.client_tasks = dict()
         self.active_timers = dict()
-        self.showname_max_length = 30
         self.showname_freeze = False
         logger.setup_logger(debug=self.config['debug'])
 
@@ -135,7 +133,13 @@ class TsuServer3:
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n') 
         if 'music_change_floodguard' not in self.config:
             self.config['music_change_floodguard'] = {'times_per_interval': 1,  'interval_length': 0, 'mute_length': 0}
-
+        if 'spectator_name' not in self.config:
+            self.config['spectator_name'] = 'SPECTATOR'
+        if 'showname_max_length' not in self.config:
+            self.config['showname_max_length'] = 30
+        if 'sneak_handicap' not in self.config:
+            self.config['sneak_handicap'] = 5 # Seconds
+        
     def load_characters(self):
         with open('config/characters.yaml', 'r', encoding = 'utf-8') as chars:
             self.char_list = yaml.safe_load(chars)
@@ -163,13 +167,13 @@ class TsuServer3:
             with open('storage/ip_ids.json', 'r', encoding = 'utf-8') as whole_list:
                 self.ipid_list = json.loads(whole_list.read())
         except:
-            logger.log_debug('Failed to load ip_ids.json from ./storage. If ip_ids.json is exist then remove it.')
+            logger.log_debug('Failed to load ip_ids.json from ./storage. If ip_ids.json exists, then remove it.')
         #load hdids
         try:
             with open('storage/hd_ids.json', 'r', encoding = 'utf-8') as whole_list:
                 self.hdid_list = json.loads(whole_list.read())
         except:
-            logger.log_debug('Failed to load hd_ids.json from ./storage. If hd_ids.json is exist then remove it.')
+            logger.log_debug('Failed to load hd_ids.json from ./storage. If hd_ids.json exists, then remove it.')
            
     def dump_ipids(self):
         with open('storage/ip_ids.json', 'w') as whole_list:
@@ -250,7 +254,7 @@ class TsuServer3:
         return len(self.char_list) > char_id >= -1
 
     def get_char_id_by_name(self, name):
-        if name == self.spectator_name:
+        if name == self.config['spectator_name']:
             return -1
         for i, ch in enumerate(self.char_list):
             if ch.lower() == name.lower():
@@ -329,6 +333,11 @@ class TsuServer3:
         """ Cancels current task and sends order to await cancellation """
         task.cancel()
         asyncio.ensure_future(self.await_cancellation(task))
+    
+    def remove_task(self, client, args):
+        """ Given client and task name, removes task from server.client_tasks, and cancels it """
+        task = self.client_tasks[client.id].pop(args[0])
+        self.cancel_task(task[0])
         
     def get_task(self, client, args):
         """ Returns actual task instance """
@@ -374,7 +383,7 @@ class TsuServer3:
 
             try:
                 original_area = client.area
-                client.change_area(area, override_passages=True)
+                client.change_area(area, override_passages=True, override_effects=True)
             except:
                 pass # Server raised an error trying to perform the AFK kick, ignore AFK kick
             else:
@@ -391,15 +400,45 @@ class TsuServer3:
             await asyncio.sleep(length)
         except asyncio.CancelledError:
             self.send_all_cmd_pred('CT','{}'.format(self.config['hostname']),
-                                            'Timer "{}" initiated by {} has been cancelled.'
-                                            .format(name,client_name),
+                                            'Timer "{}" initiated by {} has been canceled.'
+                                            .format(name, client_name),
                                             pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
                                                         or (is_public and c.area == client.area)) or c == client)
         else:
             self.send_all_cmd_pred('CT','{}'.format(self.config['hostname']),
                                             'Timer "{}" initiated by {} has expired.'
-                                            .format(name,client_name),
+                                            .format(name, client_name),
                                             pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
                                                         or (is_public and c.area == client.area)) or c == client)
         finally:
             del self.active_timers[name]
+            
+    async def as_handicap(self, client, args):
+        start, length, name, announce_if_over = args
+        client.is_movement_handicapped = True
+        
+        try:
+            await asyncio.sleep(length)
+        except asyncio.CancelledError:
+            pass # Cancellation messages via send_host_messages must be sent manually
+        else:
+            if announce_if_over and not client.is_staff():
+                client.send_host_message('Your movement handicap has expired. You may now move to a new area.')
+        finally:
+            client.is_movement_handicapped = False
+    
+    def timer_remaining(self, start, length):
+        current = time.time()
+        remaining = start+length-current
+        if remaining < 10:
+            remain_text = "{} seconds".format('{0:.1f}'.format(remaining))
+        elif remaining < 60:
+            remain_text = "{} seconds".format(int(remaining))
+        elif remaining < 3600:
+            remain_text = "{}:{}".format(int(remaining//60), 
+                                         '{0:02d}'.format(int(remaining%60)))
+        else:
+            remain_text = "{}:{}:{}".format(int(remaining//3600), 
+                                            '{0:02d}'.format(int((remaining%3600)//60)), 
+                                            '{0:02d}'.format(int(remaining%60)))
+        return remaining, remain_text

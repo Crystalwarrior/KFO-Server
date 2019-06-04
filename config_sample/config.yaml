@@ -33,8 +33,12 @@ masterserver_description: This is my flashy new server
 timeout: 250
 debug: false
 
-rp_mode_enabled: false
+rp_mode_enabled: true
 announce_areas: true
+
+spectator_name: SPECTATOR
+showname_max_length: 30
+sneak_handicap: 5
 
 music_change_floodguard:
   times_per_interval: 3

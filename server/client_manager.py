@@ -67,6 +67,8 @@ class ClientManager:
             self.autopass = False
             self.showname_history = list()
             self.is_transient = False
+            self.handicap_backup = None # In case an old custom handicap is overwritten with a server one
+            self.is_movement_handicapped = False
             
             #music flood-guard stuff
             self.mus_counter = 0
@@ -181,13 +183,22 @@ class ClientManager:
             # that crashes all clients that dare attempt join this area.
             self.send_command('FM', *self.server.music_list_ao2)
             
-        def change_area(self, area, override_passages = False, override_all = False):
-            # Override_passages performs the area change regardless of passages existing or not
+        def change_area(self, area, override_passages = False, override_all = False, override_effects = False):
+            # Override_passages if true will ignore passages existing from the source area to the target area
+            # Override_effects if true will ignore current effects, such as movement handicaps
             # Override all performs the area change regardless of anything (only useful for complete area reload)
             # In particular, override_all being False performs all the checks and announces the area change in OOC
             if not override_all:
+                # Check if movement delay timer is not zero
+                if not self.is_staff() and self.is_movement_handicapped and not override_effects:
+                    start, length, name, _ = self.server.get_task_args(self, ['as_handicap'])
+                    _, remain_text = self.server.timer_remaining(start, length)
+                    raise ClientError("You are still under the effects of movement handicap '{}'. Please wait {} before changing areas.".format(name, remain_text))
+                    
+                # Check for sneaked players
                 if area.lobby_area and not self.is_visible and not self.is_mod and not self.is_cm:
                     raise ClientError('Lobby areas do not let non-authorized users remain sneaking. Please change the music, speak IC or ask a staff member to reveal you.')
+                elif area.private_area and not self.is_visible:
                     raise ClientError('Private areas do not let sneaked users in. Please change the music, speak IC or ask a staff member to reveal you.')   
                     
                 if self.area == area:
@@ -267,6 +278,13 @@ class ClientManager:
                 
             self.reload_music_list() # Update music list to include new area's reachable areas
             self.server.create_task(self, ['as_afk_kick', area.afk_delay, area.afk_sendto])
+            # Try and restart handicap if needed
+            try:
+                _, length, name, announce_if_over = self.server.get_task_args(self, ['as_handicap'])
+            except ValueError:
+                pass
+            else:
+                self.server.create_task(self, ['as_handicap', time.time(), length, name, announce_if_over])
 
         def change_showname(self, showname, target_area=None, forced=True):
             # forced=True means that someone else other than the user themselves requested the showname change.
@@ -275,8 +293,8 @@ class ClientManager:
                 target_area = self.area
                 
             # Check length
-            if len(showname) > self.server.showname_max_length:
-                raise ClientError("Given showname {} exceeds the server's character limit of {}.".format(showname, self.server.showname_max_length))
+            if len(showname) > self.server.config['showname_max_length']:
+                raise ClientError("Given showname {} exceeds the server's character limit of {}.".format(showname, self.server.config['showname_max_length']))
             
             # Check if non-empty showname is already used within area
             if showname != '':
@@ -293,7 +311,62 @@ class ClientManager:
                 else:
                     self.showname_history.append("{} | {} cleared".format(time.asctime(time.localtime(time.time())), status[forced]))
             self.showname = showname
-                    
+
+        def change_visibility(self, new_status):        
+            if new_status: # Changed to visible (e.g. through /reveal)
+                self.send_host_message("You are no longer sneaking.")
+                self.is_visible = True
+                
+                # Player should also no longer be under the effect of the server's sneaked handicap.
+                # Thus, we check if there existed a previous movement handicap that had a shorter delay 
+                # than the server's sneaked handicap and restore it (as by default the server will take the
+                # largest handicap when dealing with the automatic sneak handicap)
+                try:
+                    _, _, name, _ = self.server.get_task_args(self, ['as_handicap'])
+                except KeyError:
+                    pass
+                else:
+                    if name == "Sneaking":
+                        if self.server.config['sneak_handicap'] > 0 and self.handicap_backup:
+                            # Only way for a handicap backup to exist and to be in this situation is
+                            # for the player to had a custom handicap whose length was shorter than the server's
+                            # sneak handicap, then was set to be sneaking, then was revealed.
+                            # From this, we can recover the old handicap backup
+                            _, old_length, old_name, old_announce_if_over = self.handicap_backup[1]
+                            
+                            self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
+                                '{} was automatically imposed their former movement handicap "{}" of length {} seconds after being revealed in area {} ({}).'
+                                .format(self.get_char_name(), old_name, old_length, self.area.name, self.area.id),
+                                pred=lambda c: c.is_staff())
+                            self.send_host_message('You were automatically imposed your former movement handicap "{}" of length {} seconds when changing areas.'.format(old_name, old_length))
+                            self.server.create_task(self, ['as_handicap', time.time(), old_length, old_name, old_announce_if_over])
+                        else:
+                            self.server.remove_task(self, ['as_handicap'])
+                
+                logger.log_server('{} is no longer sneaking.'.format(self.ipid), self)
+            else: # Changed to invisible (e.g. through /sneak)
+                self.send_host_message("You are now sneaking.")
+                self.is_visible = False
+                
+                # Check to see if should impose the server's sneak handicap on the player
+                # This should only happen if two conditions are satisfied:
+                # 1. There is a positive sneak handicap and,
+                # 2. The player has no movement handicap or, if they do, it is shorter than the sneak handicap
+                if self.server.config['sneak_handicap'] > 0:
+                    try:
+                        _, length, _, _ = self.server.get_task_args(self, ['as_handicap'])
+                        if length < self.server.config['sneak_handicap']:
+                            self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
+                                '{} was automatically imposed the longer movement handicap "Sneaking" of length {} seconds in area {} ({}).'
+                                .format(self.get_char_name(), self.server.config['sneak_handicap'], self.area.name, self.area.id),
+                                pred=lambda c: c.is_staff())
+                            raise KeyError # Lazy way to get there, but it works
+                    except KeyError:
+                       self.send_host_message('You were automatically imposed a movement handicap "Sneaking" of length {} seconds when changing areas.'.format(self.server.config['sneak_handicap']))
+                       self.server.create_task(self, ['as_handicap', time.time(), self.server.config['sneak_handicap'], "Sneaking", True])
+                 
+                logger.log_server('{} is now sneaking.'.format(self.ipid), self)
+                
         def follow_user(self, arg):
             self.following = arg
             arg.followedby = self
@@ -552,7 +625,7 @@ class ClientManager:
                 char_id = self.char_id
                 
             if char_id == -1:
-                return self.server.spectator_name
+                return self.server.config['spectator_name']
             if char_id == None: 
                 return 'SERVER_SELECT'
             return self.server.char_list[char_id]

@@ -17,7 +17,7 @@
 
 import asyncio
 import re
-from time import localtime, strftime
+from time import localtime, strftime, time
 from enum import Enum
 
 from server import commands
@@ -358,7 +358,7 @@ class AOProtocol(asyncio.Protocol):
             return
         if evidence < 0:
             return
-        if ding not in (0, 1, 2):
+        if ding not in (0, 1, 2, 3, 4, 5, 6):
             return
         if color not in (0, 1, 2, 3, 4, 5, 6):
             return
@@ -402,10 +402,9 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
 
+        # Sending IC messages reveals sneaked players
         if not self.client.is_staff() and not self.client.is_visible:
-            self.client.is_visible = True
-            logger.log_server('{} is no longer sneaking.'.format(self.client.ipid), self.client)
-            self.client.send_host_message("You are no longer sneaking.")
+            self.client.change_visibility(True)
             
         self.server.create_task(self.client, ['as_afk_kick', self.client.area.afk_delay, self.client.area.afk_sendto])
         if self.client.area.is_recording:
@@ -495,11 +494,11 @@ class AOProtocol(asyncio.Protocol):
             
                 logger.log_server('[{}][{}]Changed music to {}.'
                                   .format(self.client.area.id, self.client.get_char_name(), name), self.client)
-                                
+                         
+                # Changing music reveals sneaked players
                 if not self.client.is_staff() and not self.client.is_visible:
-                    self.client.is_visible = True
-                    logger.log_server('{} is no longer sneaking.'.format(self.client.ipid), self.client)
-                    self.client.send_host_message("You are no longer sneaking.")
+                    self.client.change_visibility(True)
+                            
             except ServerError:
                 return
         except ClientError as ex:
@@ -516,11 +515,11 @@ class AOProtocol(asyncio.Protocol):
             return
         if not self.validate_net_cmd(args, self.ArgType.STR):
             return
-        if args[0] not in ('testimony1', 'testimony2'):
+        if args[0] not in ('testimony1', 'testimony2', 'testimony3', 'testimony4'):
             return
         self.client.area.send_command('RT', args[0])
-        self.client.area.add_to_judgelog(self.client, 'used WT/CE')
-        logger.log_server("[{}]{} Used WT/CE".format(self.client.area.id, self.client.get_char_name()), self.client)
+        self.client.area.add_to_judgelog(self.client, 'used judge button {}.'.format(args[0]))
+        logger.log_server("[{}]{} used judge button {}.".format(self.client.area.id, self.client.get_char_name(), args[0]), self.client)
 
     def net_cmd_hp(self, args):
         """ Sets the penalty bar.

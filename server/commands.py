@@ -247,7 +247,31 @@ def parse_id_or_ipid(client, identifier):
         raise ArgumentError('No targets found.')
     
     return targets
-            
+
+def parse_time_length(time_length):
+    TIMER_LIMIT = 21600 # 6 hours in seconds
+    # Check if valid length and convert to seconds        
+    raw_length = time_length.split(':')
+    try:
+        length = [int(entry) for entry in raw_length]
+    except ValueError:
+        raise ClientError('Expected length of time.')
+
+    if len(length) == 1:
+        length = length[0]
+    elif len(length) == 2:
+        length = length[0]*60 + length[1]
+    elif len(length) == 3:
+        length = length[0]*3600 + length[1]*60 + length[2]
+    else:
+        raise ClientError('Expected length of time.')
+    
+    if length > TIMER_LIMIT:
+        raise ClientError('Suggested timer length exceeds server limit.')
+    elif length <= 0:
+        raise ClientError('Expected positive time length.')
+    return length
+
 def ooc_cmd_allow_iniswap(client, arg):
     """ (MOD ONLY)
     Toggles iniswapping by non-staff in the current area being allowed/disallowed.
@@ -1442,9 +1466,7 @@ def ooc_cmd_reveal(client, arg):
     for c in parse_id_or_ipid(client, arg):
         if c != client:
             client.send_host_message("{} is no longer sneaking.".format(c.get_char_name()))
-        c.send_host_message("You are no longer sneaking.")
-        c.is_visible = True
-        logger.log_server('{} is no longer sneaking.'.format(c.ipid), client)
+        c.change_visibility(True)
     
 def ooc_cmd_roll(client, arg):
     """
@@ -1583,7 +1605,7 @@ def ooc_cmd_showname(client, arg):
     Otherwise, it clears their showname to use the default setting (character showname).
     These custom shownames override whatever showname the current character has, and is 
     persistent between between character swaps/area changes/etc.
-    Returns an error if new custom showname exceeds the server limit (server.showname_max_length), is already
+    Returns an error if new custom showname exceeds the server limit (server.config['showname_max_length']), is already
     used in the current area, or if shownames have been frozen and user is not logged in.
     
     SYNTAX
@@ -1645,9 +1667,7 @@ def ooc_cmd_sneak(client, arg):
         
         if c != client:
             client.send_host_message("{} is now sneaking.".format(c.get_char_name()))
-        c.send_host_message("You are now sneaking.")
-        c.is_visible = False
-        logger.log_server('{} is now sneaking.'.format(c.ipid), client)
+        c.change_visibility(False)
 
 def ooc_cmd_st(client, arg):
     """ (STAFF ONLY)
@@ -2214,7 +2234,7 @@ def ooc_cmd_area_kick(client, arg):
                 raise ArgumentError('Area ID must be a number.'.format(arg[1]))
                 
         client.send_host_message("Attempting to kick {} to area {}.".format(c.get_char_name(), output))
-        c.change_area(area, override_passages=True)
+        c.change_area(area, override_passages=True, override_effects=True)
         c.send_host_message("You were kicked from the area to area {}.".format(output))
         if client.area.is_locked or client.area.is_modlocked:
             client.area.invite_list.pop(c.ipid)
@@ -2502,8 +2522,6 @@ def ooc_cmd_unfollow(client, arg):
         client.send_host_message('You are not following anyone.')
 
 def ooc_cmd_timer(client, arg):
-    TIMER_LIMIT = 21600 # 6 hours in seconds, can be changed to any amount in seconds
-    
     if len(arg) == 0:
         raise ClientError('This command takes at least one argument.')
     arg = arg.split(' ')
@@ -2520,7 +2538,7 @@ def ooc_cmd_timer(client, arg):
         /timer start $length <timername> <public or not>
         
         REQUIRED
-         $length: time in seconds, or in mm:ss, or in h:mm:ss; limited to TIMER_LIMIT
+         $length: time in seconds, or in mm:ss, or in h:mm:ss; limited to TIMER_LIMIT in function parse_time_length
         
         OPTIONAL
          <timername>: Timer name; defaults to username+"Timer" if empty
@@ -2541,23 +2559,7 @@ def ooc_cmd_timer(client, arg):
             raise ClientError('This command variation takes at most three subarguments.')
 
         # Check if valid length and convert to seconds        
-        raw_length = arg[1].split(':')
-        try:
-            length = [int(entry) for entry in raw_length]
-        except ValueError:
-            raise ClientError('Expected length of time.')
-
-        if len(length) == 1:
-            length = length[0]
-        elif len(length) == 2:
-            length = length[0]*60 + length[1]
-        elif len(length) == 3:
-            length = length[0]*3600 + length[1]*60 + length[2]
-        else:
-            raise ClientError('Expected length of time.')
-        
-        if length > TIMER_LIMIT:
-            raise ClientError('Suggested timer length exceeds server limit.')
+        length = parse_time_length(arg[1]) # Also internally validates
         
         # Check name
         if len(arg) > 2:
@@ -2595,8 +2597,7 @@ def ooc_cmd_timer(client, arg):
             raise ClientError('This command variation takes at most one subargument.')
 
         string_of_timers = ""
-        
-        
+                
         if len(arg) == 2:
             # Check specific timer
             timer_name = arg[1]
@@ -2613,13 +2614,10 @@ def ooc_cmd_timer(client, arg):
         for timer_name in timers_to_check:
             timer_client = client.server.active_timers[timer_name]
             start, length, _, is_public = client.server.get_task_args(timer_client, ['as_timer']) 
-            current = time.time()
-            remaining = start+length-current
             
             # Non-public timers can only be consulted by staff and the client who started the timer
             if not is_public and not (client.is_staff() or client == timer_client):
                 continue
-            
             
             # Non-staff initiated public timers can only be consulted by all staff and 
             # clients in the same area as the timer initiator
@@ -2627,17 +2625,7 @@ def ooc_cmd_timer(client, arg):
                  and not (client.is_staff() or client == timer_client or client.area == timer_client.area):
                 continue
             
-            if remaining < 10:
-                remain_text = "{} seconds".format('{0:.1f}'.format(remaining))
-            elif remaining < 60:
-                remain_text = "{} seconds".format(int(remaining))
-            elif remaining < 3600:
-                remain_text = "{}:{}".format(int(remaining//60), 
-                                             '{0:02d}'.format(int(remaining%60)))
-            else:
-                remain_text = "{}:{}:{}".format(int(remaining//3600), 
-                                                '{0:02d}'.format(int((remaining%3600)//60)), 
-                                                '{0:02d}'.format(int(remaining%60)))
+            _, remain_text = client.server.timer_remaining(start, length)
             string_of_timers += 'Timer {} has {} remaining.\n*'.format(timer_name, remain_text)        
         
         if string_of_timers == "": # No matching timers
@@ -3126,7 +3114,72 @@ def ooc_cmd_transient(client, arg):
         client.send_host_message('{} ({}) is {} transient to passage locks.'.format(c.get_char_name(), c.area.id, status[c.is_transient])) 
         c.send_host_message('You are {} transient to passage locks.'.format(status[c.is_transient]))
         c.reload_music_list() # Update their music list to reflect their new status
+
+def ooc_cmd_handicap(client, arg):
+    """
+    /handicap <target> <length> {name} {announce_if_over}
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
     
+    args = arg.split(' ')
+    if len(args) < 2:
+        raise ClientError('This command variation takes at least two parameters (target and length).')
+    elif len(args) >= 5:
+        raise ClientError('This command variation takes at most four parameters (target, length, name, announce_if_over).')
+
+    # Obtain targets
+    targets = parse_id_or_ipid(client, args[0])
+
+    # Check if valid length and convert to seconds        
+    length = parse_time_length(args[1]) # Also internally validates
+    
+    # Check name
+    if len(args) >= 3:
+        name = args[2]
+    else:
+        name = "Handicap" # No spaces!
+    
+    # Check announce_if_over status
+    if len(args) >= 4 and args[3] in ['False', 'false', '0', 'No', 'no']:
+        announce_if_over = False
+    else:
+        announce_if_over = True
+    
+    for c in targets:
+        client.send_host_message('You imposed a movement handicap "{}" of length {} seconds on {}.'.format(name, length, c.get_char_name()))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                        '{} imposed a movement handicap "{}" of length {} seconds on {} in area {} ({}).'
+                                        .format(client.name, name, length, c.get_char_name(), client.area.name, client.area.id),
+                                        pred=lambda c: (c.is_staff() and c != client))
+        c.send_host_message('You were imposed a movement handicap "{}" of length {} seconds when changing areas.'.format(name, length))
+        
+        client.server.create_task(c, ['as_handicap', time.time(), length, name, announce_if_over])
+        c.handicap_backup = (client.server.get_task(c, ['as_handicap']), client.server.get_task_args(c, ['as_handicap']))
+        
+def ooc_cmd_unhandicap(client, arg):
+    """
+    /handicap <target> <length> {name} {announce_if_over}
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    # Obtain targets
+    for c in parse_id_or_ipid(client, arg):
+        try:
+            _, _, name, _ = client.server.get_task_args(c, ['as_handicap'])
+        except KeyError:
+            client.send_host_message('{} does not have an active movement handicap.'.format(c.get_char_name()))
+        else:
+            client.send_host_message('You removed the movement handicap "{}" on {}.'.format(name, c.get_char_name()))
+            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            '{} removed the movement handicap "{}" on {} in area {} ({}).'
+                                            .format(client.name, name, c.get_char_name(), client.area.name, client.area.id),
+                                            pred=lambda c: (c.is_staff() and c != client))
+            c.send_host_message('Your movement handicap "{}" when changing areas was removed.'.format(name))
+            c.handicap_backup = None
+            client.server.remove_task(c, ['as_handicap'])
+            
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
