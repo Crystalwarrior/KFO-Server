@@ -3116,8 +3116,36 @@ def ooc_cmd_transient(client, arg):
         c.reload_music_list() # Update their music list to reflect their new status
 
 def ooc_cmd_handicap(client, arg):
-    """
-    /handicap <target> <length> {name} {announce_if_over}
+    """ (STAFF ONLY)
+    Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of time between changing areas.
+    Requires /unhandicap to undo.
+    
+    This will override any previous handicaps the client(s) may have had, including custom ones and server ones (such as through sneak).
+    Server handicaps will override custom handicaps if the server handicap is longer.
+    However, as soon as the server handicap is over, it will recover the old custom handicap.
+    
+    If given IPID, it will set the movement handicap on all the clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user, or if given a non-positive length of time.
+    
+    SYNTAX
+    /handicap <client_id> <length> {name} {announce_if_over}
+    /handicap <client_ipid> <length> {name} {announce_if_over}
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <length>: Handicap length (in seconds)
+    
+    OPTIONAL PARAMETERS
+    {name}: Name of the handicap (e.g. "Injured", "Sleepy", etc.). By default it is "Handicap".
+    {announce_if_over}: If the server will send a notification once the player may move areas after waiting for their handicap timer. 
+    By default it is true. For the server not to send them, put one of these keywords: False, false, 0, No, no
+    
+    EXAMPLES
+    /handicap 0 5                   :: Sets a 5 second movement handicap on the player whose client ID is 0.
+    /handicap 1234567890 10 Injured :: Sets a 10 second movement handicap called "Injured" on the clients whose IPID is 1234567890.
+    /handicap 1 15 StabWound False  :: Sets a 15 second movement handicap called "StabWound" on the player whose client ID is 0 
+    which will not send notifications once the timer expires.
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
@@ -3158,8 +3186,26 @@ def ooc_cmd_handicap(client, arg):
         c.handicap_backup = (client.server.get_task(c, ['as_handicap']), client.server.get_task_args(c, ['as_handicap']))
         
 def ooc_cmd_unhandicap(client, arg):
-    """
-    /handicap <target> <length> {name} {announce_if_over}
+    """ (STAFF ONLY)
+    Removes movement handicaps on a client by ID or IPID so that they no longer need to wait a set amount of time between changing areas.
+    Requires /handicap to undo.
+    
+    This will also remove server handicaps, if any (such as automatic sneak handicaps).
+    
+    If given IPID, it will remove the movement handicap on all the clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /unhandicap <client_id>
+    /unhandicap <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /unhandicap 0           :: Removes all movement handicaps on the player whose client ID is 0
+    /unhandicap 1234567890  :: Removes all movement handicaps on the clients whose IPID is 1234567890
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
