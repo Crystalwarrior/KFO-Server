@@ -425,7 +425,30 @@ def ooc_cmd_area_lists(client, arg):
             client.send_host_message(output)
     except FileNotFoundError:
         raise ClientError('Server file area_lists.yaml not found.')
+
+def ooc_cmd_autopass(client, arg):
+    """
+    Toggles enter/leave messages being sent automatically or not to users in the current area.
+    Will not send those messages if logged in as staff or spectator, or while sneaking.
+    Staff members will NOT receive these messages either.
+    
+    SYNTAX
+    /autopass
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /autopass
+    """
+    if len(arg) != 0:
+        raise ArgumentError("This command has no arguments.")
         
+    client.autopass = not client.autopass
+    status = {False: 'off', True: 'on'}
+
+    client.send_host_message('Autopass turned {}.'.format(status[client.autopass]))
+
 def ooc_cmd_ban(client, arg):
     """ (MOD ONLY)
     Kicks given user from the server and prevents them from rejoining. The user can be identified by either their IPID or IP address.
@@ -564,7 +587,77 @@ def ooc_cmd_charselect(client, arg):
         
         for c in parse_id_or_ipid(client, arg):
             c.char_select()
-            
+
+def ooc_cmd_char_restrict(client, arg):
+    """ (STAFF ONLY)
+    Toggle a character by folder name (not showname!) being able to be used in the current area by non-staff members.
+    Raises an error if the character name is not recognized.
+    
+    SYNTAX
+    /char_restrict <char_name>
+    
+    PARAMETERS
+    <char_name>: Character name to restrict.
+    
+    EXAMPLES
+    Assuming Phantom_HD is initially unrestricted....
+    /char_restrict Phantom_HD           :: Restrict the use of Phantom_HD.
+    /char_restrict Phantom_HD           :: Unrestrict the use of Phantom_HD.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ArgumentError('This command takes one character name.')
+        
+    if arg not in client.server.char_list:
+        raise ArgumentError('Unrecognized character folder name: {}'.format(arg))
+
+    status = {True: 'enabled', False: 'disabled'}
+    client.area.send_host_message('A staff member has {} the use of character {} in this area.'.format(status[arg in client.area.restricted_chars], arg))
+
+    # If intended character not in area's restriction, add it
+    if arg not in client.area.restricted_chars:
+        client.area.restricted_chars.add(arg)
+        # For all clients using the now restricted character, switch them to some other character.
+        for c in client.area.clients:
+            if not c.is_staff() and c.get_char_name() == arg:
+                try:
+                    new_char_id = c.area.get_rand_avail_char_id(allow_restricted=False)
+                except AreaError:
+                    new_char_id = -1 # Force into spectator mode if all other available characters are taken
+                c.change_character(new_char_id)
+                c.send_host_message('Your character has been set to restricted in this area by a staff member. Switching you to {}.'.format(c.get_char_name()))
+    else:
+        client.area.restricted_chars.remove(arg)
+        
+def ooc_cmd_chars_restricted(client, arg):
+    """
+    Returns a list of all characters that are restricted in an area.
+    
+    SYNTAX
+    /chars_restricted
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    If only Phantom_HD is restricted in the current area...
+    /chars_restricted           :: Returns 'Phantom_HD'
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
+    info = '== Characters restricted in area {} =='.format(client.area.name)
+    # If no characters restricted, print a manual message.
+    if len(client.area.restricted_chars) == 0:
+        info += '\r\n*No characters restricted.'
+    # Otherwise, build the list of all restricted chars.
+    else:
+        for char_name in client.area.restricted_chars:
+            info += '\r\n*{}'.format(char_name)
+                
+    client.send_host_message(info)
+         
 def ooc_cmd_cleardoc(client, arg):
     """
     Clears the current area's doc.
@@ -839,6 +932,35 @@ def ooc_cmd_gm(client, arg):
     client.server.broadcast_global(client, arg, True)
     logger.log_server('[{}][{}][GLOBAL-MOD]{}.'.format(client.area.id, client.get_char_name(), arg), client)
 
+def ooc_cmd_gmlock(client, arg):
+    """ (STAFF ONLY)
+    Sets the current area as accessible only to staff members. 
+    Players in the area at the time of the lock will be able to leave and return to the area, regardless of authorization.
+    Requires /unlock to undo.
+    
+    Returns an error if the area is already gm-locked or if the area is set to be unlockable.
+    
+    SYNTAX
+    /gmlock
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /gmlock             :: Sets the current area as accessible only to staff members.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if not client.area.locking_allowed:
+        raise ClientError('Area locking is disabled in this area.')
+    if client.area.is_gmlocked:
+        raise ClientError('Area is already gm-locked.')
+
+    client.area.is_gmlocked = True
+    client.area.send_host_message('Area gm-locked.')
+    for i in client.area.clients:
+        client.area.invite_list[i.ipid] = None
+    
 def ooc_cmd_help(client, arg):
     """
     Returns the website with all available commands and their instructions (usually a GitHub repository)
@@ -1147,7 +1269,36 @@ def ooc_cmd_minimap(client, arg):
         info += '\r\n<ALL>'
         
     client.send_host_message(info)
+
+def ooc_cmd_modlock(client, arg):
+    """ (MOD ONLY)
+    Sets the current area as accessible only to mod members. 
+    Players in the area at the time of the lock will be able to leave and return to the area, regardless of authorization.
+    Requires /unlock to undo.
     
+    Returns an error if the area is already mod-locked or if the area is set to be unlockable.
+    
+    SYNTAX
+    /modlock
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /modlock             :: Sets the current area as accessible only to staff members.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if not client.area.locking_allowed:
+        raise ClientError('Area locking is disabled in this area')
+    if client.area.is_modlocked:
+        raise ClientError('Area is already mod-locked.')
+
+    client.area.is_modlocked = True
+    client.area.send_host_message('Area mod-locked.')
+    for i in client.area.clients:
+        client.area.invite_list[i.ipid] = None
+
 def ooc_cmd_motd(client, arg):
     """
     Returns the server's Message Of The Day.
@@ -1633,7 +1784,184 @@ def ooc_cmd_showname(client, arg):
     else:
         client.send_host_message('You have removed your custom showname.')
         logger.log_server('{} removed their showname.'.format(client.ipid), client)
+
+def ooc_cmd_showname_freeze(client, arg):
+    """ (MOD ONLY)
+    Toggles non-staff members being able to use /showname or not.
+    It does NOT clear their shownames (see /showname_nuke).
+    Staff can still use /showname_set to set shownames of others.
+    
+    SYNTAX
+    /showname_freeze
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    Assuming shownames are not frozen originally...
+    /showname_freeze        :: Freezes all shownames. Only staff members can change or remove them.
+    /showname_freeze        :: Unfreezes all shownames. Everyone can use /showname again.
+    """
+    
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
+    client.server.showname_freeze = not client.server.showname_freeze
+    status = {False: 'unfrozen', True: 'frozen'}
+
+    client.send_host_message('You have {} all shownames.'.format(status[client.server.showname_freeze])) 
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                'A mod has {} all shownames.'.format(status[client.server.showname_freeze]),
+                                pred=lambda c: not c.is_mod and c != client)
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                '{} has {} all shownames.'.format(client.name, status[client.server.showname_freeze]),
+                                pred=lambda c: c.is_mod and c != client)
+    logger.log_server('{} has {} all shownames.'.format(client.name, status[client.server.showname_freeze]), client)
+
+def ooc_cmd_showname_history(client, arg):
+    """ (MOD ONLY)
+    List all shownames a client by ID or IPID has had during the session.
+    Output differentiates between self-initiated showname changes (such as the ones via /showname) by using "Self"
+    and third-party-initiated ones by using "Was" (such as /showname_set, or by changing areas and having a showname conflict).
+    
+    If given IPID, it will obtain the showname history of all the clients opened by the user. Otherwise, it will just obtain the showname history of the given client.
+    Returns an error if the given identifier does not correspond to a user.
         
+    SYNTAX
+    /showname_history <client_id>
+    /showname_history <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLE
+    /showname_history 1         :: For the client whose ID is 1, you may get something like this
+    
+    == Showname history of client 1 == 
+    *Sat Jun 1 18:52:32 2019 | Self set to Cas 
+    *Sat Jun 1 18:52:56 2019 | Was set to NotCas 
+    *Sat Jun 1 18:53:47 2019 | Was set to Ces 
+    *Sat Jun 1 18:53:54 2019 | Self cleared 
+    *Sat Jun 1 18:54:36 2019 | Self set to Cos 
+    *Sat Jun 1 18:54:46 2019 | Was cleared 
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    
+    # Obtain matching targets's showname history
+    for c in parse_id_or_ipid(client, arg):
+        info = c.get_showname_history()
+        client.send_host_message(info)
+    
+def ooc_cmd_showname_list(client, arg):
+    """
+    List the characters (and associated client IDs) in each area, as well as their custom shownames if they have one in parentheses.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getareas (as it is functionally identical).
+    
+    SYNTAX
+    /showname_list
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /showname_list          :: May list something like this
+    
+    == Area List == 
+    = Area 0: Basement == 
+    [0] Kaede Akamatsu_HD 
+    [1] Shuichi Saihara_HD (Just Suichi) 
+    """
+    if client.in_rp and not client.area.rp_getareas_allowed:
+        raise ClientError('This command has been restricted to authorized users only in this area while in RP mode.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    client.send_area_info(client.area, -1, False, include_shownames=True)
+
+def ooc_cmd_showname_nuke(client, arg):
+    """ (MOD ONLY)
+    Clears all shownames from non-staff members.
+    
+    SYNTAX
+    /showname_nuke
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /showname_nuke          :: Clears all shownames
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
+    for c in client.server.client_manager.clients:
+        if not c.is_staff() and c.showname != '':
+            c.change_showname('')
+        
+    client.send_host_message('You have nuked all shownames.')
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                'A mod has nuked all shownames.',
+                                pred=lambda c: not c.is_mod and c != client)
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                '{} has nuked all shownames.'.format(client.name),
+                                pred=lambda c: c.is_mod and c != client)
+    logger.log_server('{} has nuked all shownames.'.format(client.name), client)
+
+def ooc_cmd_showname_set(client, arg):
+    """ (STAFF ONLY)
+    If given a second argument, sets the showname of the given client by ID or IPID to that. 
+    Otherwise, it clears their showname to use the default setting (character showname).
+    These custom shownames override whatever showname the current character has, and is 
+    persistent between between character swaps/area changes/etc.
+    If given IPID, it will set the shownames of all the clients opened by the user. Otherwise, it will just set the showname of the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /showname_set <client_id> {new_showname}
+    /showname_set <client_ipid> {new_showname}
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    {new_showname}: New desired showname.
+    
+    EXAMPLES
+    /showname_set 1 Phantom     :: Sets the showname of the client whose ID is 1 to Phantom.
+    /showname_set 1234567890    :: Clears the showname of the client(s) whose IPID is 1234567890.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    try:
+        separator = arg.index(" ")
+    except ValueError:
+        separator = len(arg)
+    
+    ID = arg[:separator]
+    showname = arg[separator+1:]
+    
+    # Set matching targets's showname
+    for c in parse_id_or_ipid(client, ID):
+        try:
+            c.change_showname(showname)
+        except ValueError:
+            raise ClientError("Unable to set the showname of {}: Given showname {} is already in use in area {}.".format(c.get_char_name(), showname, c.area.name))
+            
+        if showname != '':
+            logger.log_server('Set showname of {} to {}.'.format(c.ipid, showname), client)
+            client.send_host_message('Set showname of {} to {}.'.format(c.get_char_name(), showname))
+            c.send_host_message("Your showname was set to {} by a staff member.".format(showname))
+        else:
+            logger.log_server('Removed showname {} of {}.'.format(showname, c.ipid), client)
+            client.send_host_message('Removed showname {} of {}.'.format(showname, c.get_char_name()))
+            c.send_host_message("Your showname was removed by a staff member.")
+
 def ooc_cmd_sneak(client, arg):    
     """ (STAFF ONLY)
     Sets given user based on client ID or IPID to be sneaking so that they are invisible through /getarea(s).
@@ -1927,6 +2255,37 @@ def ooc_cmd_unglobalic(client, arg):
     client.multi_ic = None
     client.send_host_message('Your IC messages will now be just sent to your current area.')
 
+def ooc_cmd_unlock(client, arg):
+    """ (VARYING REQUIREMENTS)
+    If the area is locked in some manner, attempt to perform exactly one of the following area unlocks in order.
+    1. If player is a mod and the area is mod-locked, then mod-unlock.
+    2. If player is staff and the area is gm-locked, then gm-unlock.
+    3. If the area is not mod-locked nor gm-locked, then unlock.
+    
+    Returns an error if the area was locked but the unlock could not be performed (would happen due to insufficient permissions).
+    
+    SYNTAX
+    /unlock
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /unlock             :: Perform one of the unlocks described above if possible
+    """
+    if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
+        raise ClientError('Area is already open.')
+    else:
+        if client.is_mod and client.area.is_modlocked:
+            client.area.modunlock()
+        elif client.is_staff() and not client.area.is_modlocked:
+            client.area.gmunlock()
+        elif not client.area.is_gmlocked and not client.area.is_modlocked:
+            client.area.unlock()
+        else:
+            raise ClientError('You must be authorized to do that.')
+    client.send_host_message('Area is unlocked.')
+
 def ooc_cmd_unmute(client, arg):
     """ (CM AND MOD ONLY)
     Unmutes given user based on client ID or IPID so that they are unable to speak in IC chat.
@@ -2129,90 +2488,62 @@ def ooc_cmd_toggle_areareachlock(client, arg):
         client.area.change_reachability_allowed = True
         client.area.send_host_message('The use of the /unilock and /bilock commands affecting this area commands in this area has been enabled to all users.')
 
-def ooc_cmd_gmlock(client, arg):
-    if not client.area.locking_allowed:
-        client.send_host_message('Area locking is disabled in this area')
-        return
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if client.area.is_gmlocked:
-        raise ClientError('Area is already gm-locked.')
-    else:
-        client.area.is_gmlocked = True
-        client.area.send_host_message('Area gm-locked.')
-        for i in client.area.clients:
-            client.area.invite_list[i.ipid] = None
-        return
-
-def ooc_cmd_modlock(client, arg):
-    if not client.area.locking_allowed:
-        client.send_host_message('Area locking is disabled in this area')
-        return
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if client.area.is_modlocked:
-        raise ClientError('Area is already mod-locked.')
-    else:
-        client.area.is_modlocked = True
-        client.area.send_host_message('Area mod-locked.')
-        for i in client.area.clients:
-            client.area.invite_list[i.ipid] = None
-        return
-
-def ooc_cmd_unlock(client, arg):
-    if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
-        raise ClientError('Area is already open.')
-    else:
-        if client.is_mod and client.area.is_modlocked:
-            client.area.modunlock()
-        elif client.is_staff() and not client.area.is_modlocked:
-            client.area.gmunlock()
-        elif not client.area.is_gmlocked and not client.area.is_modlocked:
-            client.area.unlock()
-        else:
-            raise ClientError('You must be of higher authorization to do that.')
-    client.send_host_message('Area is unlocked.')
-
 def ooc_cmd_invite(client, arg):
-    if not client.is_staff():
+    """ (STAFF ONLY)
+    Adds a client based on client ID or IPID to the area's invite list.
+    If given IPID, it will invite all clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /invite <client_id>
+    /invite <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /invite 1                     :: Invites the player whose client ID is 1.
+    /invite 1234567890            :: Invites all clients opened by the player whose IPID is 1234567890.
+    """
+    if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
-        raise ClientError('Area isn\'t locked.')
-    if not arg:
-        raise ClientError('You must specify a target. Use /invite <id>')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            client.area.invite_list[arg] = None
-            client.send_host_message('{} is invited to your area.'.format(arg))
-        elif len(arg) < 10 and arg.isdigit():
-            client.area.invite_list[client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid] = None
-            client.send_host_message('{} is invited to your area.'.format(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].get_char_name()))
-        else:
-            raise ClientError('You must specify a valid target. Use /invite <id>')
-    except:
-        raise ClientError('You must specify a target. Use /invite <id>')
-
+        raise ClientError('Area is not locked.')
+        
+    # Invite matching targets
+    for c in parse_id_or_ipid(client, arg):
+        client.area.invite_list[c.ipid] = None
+        client.send_host_message('Client {} has been invited to your area.'.format(c.id))
+        c.send_host_message('You have been invited to area {}.'.format(client.area.name))
+        
 def ooc_cmd_uninvite(client, arg):
-    if len(arg) == 0:
-        raise ClientError('You must specify a user to uninvite.')
-    else:
-        if len(arg) == 10 and arg.isdigit():
-            try:
-                client.area.invite_list.pop(arg)
-                client.send_host_message('{} was removed from the invite list.'.format(arg))
-            except KeyError:
-                raise ClientError('User is not on invite list.')
-        elif len(arg) < 10 and arg.isdigit():
-            try:
-                client.area.invite_list.pop(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].ipid)
-                client.send_host_message('{} was removed from the invite list.'.format(client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)[0].get_char_name()))
-            except KeyError:
-                raise ClientError('User is not on invite list.')
-            except IndexError:
-                raise ClientError('User is not on invite list.')
-        else:
-            raise ClientError('You must specify an ID or IPID.')
-
+    """
+    Removes a client based on client ID or IPID from the area's invite list.
+    If given IPID, it will uninvite all clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /uninvite <client_id>
+    /uninvite <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /uninvite 1                   :: Uninvites the player whose client ID is 1.
+    /uninvite 1234567890          :: Uninvites all clients opened by the player whose IPID is 1234567890.
+    """
+    # Uninvite matching targets
+    for c in parse_id_or_ipid(client, arg):
+        try:
+            client.area.invite_list.pop(c.ipid)
+            client.send_host_message('Client {} was removed from the invite list of your area.'.format(c.id))
+            c.send_host_message('You have been removed from the invite list of area {}.'.format(client.area.name))
+        except (KeyError, IndexError):
+            client.send_host_message('Client {} is not in the invite list.'.format(c.id))
+            
 def ooc_cmd_area_kick(client, arg):
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
@@ -2795,276 +3126,6 @@ def ooc_cmd_scream_range(client, arg):
                 
     client.send_host_message(info)
     
-def ooc_cmd_char_restrict(client, arg):
-    """ (STAFF ONLY)
-    Toggle a character by folder name (not showname!) being able to be used in the current area by non-staff members.
-    Raises an error if the character name is not recognized.
-    
-    SYNTAX
-    /char_restrict <char_name>
-    
-    PARAMETERS
-    <char_name>: Character name to restrict.
-    
-    EXAMPLES
-    Assuming Phantom_HD is initially unrestricted....
-    /char_restrict Phantom_HD           :: Restrict the use of Phantom_HD.
-    /char_restrict Phantom_HD           :: Unrestrict the use of Phantom_HD.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError('This command takes one character name.')
-        
-    if arg not in client.server.char_list:
-        raise ArgumentError('Unrecognized character folder name: {}'.format(arg))
-
-    status = {True: 'enabled', False: 'disabled'}
-    client.area.send_host_message('A staff member has {} the use of character {} in this area.'.format(status[arg in client.area.restricted_chars], arg))
-
-    # If intended character not in area's restriction, add it
-    if arg not in client.area.restricted_chars:
-        client.area.restricted_chars.add(arg)
-        # For all clients using the now restricted character, switch them to some other character.
-        for c in client.area.clients:
-            if not c.is_staff() and c.get_char_name() == arg:
-                try:
-                    new_char_id = c.area.get_rand_avail_char_id(allow_restricted=False)
-                except AreaError:
-                    new_char_id = -1 # Force into spectator mode if all other available characters are taken
-                c.change_character(new_char_id)
-                c.send_host_message('Your character has been set to restricted in this area by a staff member. Switching you to {}.'.format(c.get_char_name()))
-    else:
-        client.area.restricted_chars.remove(arg)
-        
-def ooc_cmd_chars_restricted(client, arg):
-    """
-    Returns a list of all characters that are restricted in an area.
-    
-    SYNTAX
-    /chars_restricted
-    
-    PARAMETERS
-    None
-    
-    EXAMPLES
-    If only Phantom_HD is restricted in the current area...
-    /chars_restricted           :: Returns 'Phantom_HD'
-    """
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    
-    info = '== Characters restricted in area {} =='.format(client.area.name)
-    # If no characters restricted, print a manual message.
-    if len(client.area.restricted_chars) == 0:
-        info += '\r\n*No characters restricted.'
-    # Otherwise, build the list of all restricted chars.
-    else:
-        for char_name in client.area.restricted_chars:
-            info += '\r\n*{}'.format(char_name)
-                
-    client.send_host_message(info)
-
-def ooc_cmd_autopass(client, arg):
-    """
-    Toggles enter/leave messages being sent automatically or not to users in the current area.
-    Will not send those messages if logged in as staff or spectator, or while sneaking.
-    Staff members will NOT receive these messages either.
-    
-    SYNTAX
-    /autopass
-    
-    PARAMETERS
-    None
-    
-    EXAMPLE
-    /autopass
-    """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
-        
-    client.autopass = not client.autopass
-    status = {False: 'off', True: 'on'}
-
-    client.send_host_message('Autopass turned {}.'.format(status[client.autopass]))
-
-def ooc_cmd_showname_set(client, arg):
-    """ (STAFF ONLY)
-    If given a second argument, sets the showname of the given client by ID or IPID to that. 
-    Otherwise, it clears their showname to use the default setting (character showname).
-    These custom shownames override whatever showname the current character has, and is 
-    persistent between between character swaps/area changes/etc.
-    If given IPID, it will set the shownames of all the clients opened by the user. Otherwise, it will just set the showname of the given client.
-    Returns an error if the given identifier does not correspond to a user.
-    
-    SYNTAX
-    /showname_set <client_id> {new_showname}
-    /showname_set <client_ipid> {new_showname}
-    
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-    {new_showname}: New desired showname.
-    
-    EXAMPLES
-    /showname_set 1 Phantom     :: Sets the showname of the client whose ID is 1 to Phantom.
-    /showname_set 1234567890    :: Clears the showname of the client(s) whose IPID is 1234567890.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    
-    try:
-        separator = arg.index(" ")
-    except ValueError:
-        separator = len(arg)
-    
-    ID = arg[:separator]
-    showname = arg[separator+1:]
-    
-    # Set matching targets's showname
-    for c in parse_id_or_ipid(client, ID):
-        try:
-            c.change_showname(showname)
-        except ValueError:
-            raise ClientError("Unable to set the showname of {}: Given showname {} is already in use in area {}.".format(c.get_char_name(), showname, c.area.name))
-            
-        if showname != '':
-            logger.log_server('Set showname of {} to {}.'.format(c.ipid, showname), client)
-            client.send_host_message('Set showname of {} to {}.'.format(c.get_char_name(), showname))
-            c.send_host_message("Your showname was set to {} by a staff member.".format(showname))
-        else:
-            logger.log_server('Removed showname {} of {}.'.format(showname, c.ipid), client)
-            client.send_host_message('Removed showname {} of {}.'.format(showname, c.get_char_name()))
-            c.send_host_message("Your showname was removed by a staff member.")
-
-def ooc_cmd_showname_freeze(client, arg):
-    """ (MOD ONLY)
-    Toggles non-staff members being able to use /showname or not.
-    It does NOT clear their shownames (see /showname_nuke).
-    Staff can still use /showname_set to set shownames of others.
-    
-    SYNTAX
-    /showname_freeze
-    
-    PARAMETERS
-    None
-    
-    EXAMPLE
-    Assuming shownames are not frozen originally...
-    /showname_freeze        :: Freezes all shownames. Only staff members can change or remove them.
-    /showname_freeze        :: Unfreezes all shownames. Everyone can use /showname again.
-    """
-    
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    
-    client.server.showname_freeze = not client.server.showname_freeze
-    status = {False: 'unfrozen', True: 'frozen'}
-
-    client.send_host_message('You have {} all shownames.'.format(status[client.server.showname_freeze])) 
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                'A mod has {} all shownames.'.format(status[client.server.showname_freeze]),
-                                pred=lambda c: not c.is_mod and c != client)
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                '{} has {} all shownames.'.format(client.name, status[client.server.showname_freeze]),
-                                pred=lambda c: c.is_mod and c != client)
-    logger.log_server('{} has {} all shownames.'.format(client.name, status[client.server.showname_freeze]), client)
-    
-def ooc_cmd_showname_nuke(client, arg):
-    """ (MOD ONLY)
-    Clears all shownames from non-staff members.
-    
-    SYNTAX
-    /showname_nuke
-    
-    PARAMETERS
-    None
-    
-    EXAMPLE
-    /showname_nuke          :: Clears all shownames
-    """
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    
-    for c in client.server.client_manager.clients:
-        if not c.is_staff() and c.showname != '':
-            c.change_showname('')
-        
-    client.send_host_message('You have nuked all shownames.')
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                'A mod has nuked all shownames.',
-                                pred=lambda c: not c.is_mod and c != client)
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                '{} has nuked all shownames.'.format(client.name),
-                                pred=lambda c: c.is_mod and c != client)
-    logger.log_server('{} has nuked all shownames.'.format(client.name), client)
-
-def ooc_cmd_showname_list(client, arg):
-    """
-    List the characters (and associated client IDs) in each area, as well as their custom shownames if they have one in parentheses.
-    Returns an error if the user is subject to RP mode and is in an area that disables /getareas (as it is functionally identical).
-    
-    SYNTAX
-    /showname_list
-    
-    PARAMETERS
-    None
-    
-    EXAMPLE
-    /showname_list          :: May list something like this
-    
-    == Area List == 
-    = Area 0: Basement == 
-    [0] Kaede Akamatsu_HD 
-    [1] Shuichi Saihara_HD (Just Suichi) 
-    """
-    if client.in_rp and not client.area.rp_getareas_allowed:
-        raise ClientError('This command has been restricted to authorized users only in this area while in RP mode.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-        
-    client.send_area_info(client.area, -1, False, include_shownames=True)
-
-def ooc_cmd_showname_history(client, arg):
-    """ (MOD ONLY)
-    List all shownames a client by ID or IPID has had during the session.
-    Output differentiates between self-initiated showname changes (such as the ones via /showname) by using "Self"
-    and third-party-initiated ones by using "Was" (such as /showname_set, or by changing areas and having a showname conflict).
-    
-    If given IPID, it will obtain the showname history of all the clients opened by the user. Otherwise, it will just obtain the showname history of the given client.
-    Returns an error if the given identifier does not correspond to a user.
-        
-    SYNTAX
-    /showname_history <client_id>
-    /showname_history <client_ipid>
-    
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-    
-    EXAMPLE
-    /showname_history 1         :: For the client whose ID is 1, you may get something like this
-    
-    == Showname history of client 1 == 
-    *Sat Jun 1 18:52:32 2019 | Self set to Cas 
-    *Sat Jun 1 18:52:56 2019 | Was set to NotCas 
-    *Sat Jun 1 18:53:47 2019 | Was set to Ces 
-    *Sat Jun 1 18:53:54 2019 | Self cleared 
-    *Sat Jun 1 18:54:36 2019 | Self set to Cos 
-    *Sat Jun 1 18:54:46 2019 | Was cleared 
-    """
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    
-    # Obtain matching targets's showname history
-    for c in parse_id_or_ipid(client, arg):
-        info = c.get_showname_history()
-        client.send_host_message(info)
-
 def ooc_cmd_online(client, arg):
     """
     Returns how many players are online.

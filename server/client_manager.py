@@ -248,7 +248,7 @@ class ClientManager:
                     
                 self.send_host_message('Changed area to {}.[{}]'.format(area.name, self.area.status))
                 old_area = self.area
-                if self.autopass and not self.is_staff() and not self.char_id < 0 and self.is_visible:
+                if self.autopass and not self.char_id < 0 and self.is_visible:
                     self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
                                     '{} has left to {}.'
                                     .format(old_char, area.name), 
