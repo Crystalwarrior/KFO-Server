@@ -390,13 +390,25 @@ class AOProtocol(asyncio.Protocol):
                 self.client.area.broadcast_evidence_list()
 
         if self.client.multi_ic is None:
-            self.client.area.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
-                                      sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, self.client.showname)
+            for c in self.client.area.clients:
+                if c.show_shownames:
+                    showname = self.client.showname
+                else:
+                    showname = ''
+            
+                c.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
+                               sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, showname)
         else:
             for area_id in range(self.client.multi_ic[0].id, self.client.multi_ic[1].id + 1):
                 target_area = self.server.area_manager.get_area_by_id(area_id)
-                target_area.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
-                                      sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, self.client.showname)
+                for c in target_area.clients:
+                    if c.show_shownames:
+                        showname = self.client.showname
+                    else:
+                        showname = ''
+                        
+                    c.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
+                                   sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, showname)
                 target_area.set_next_msg_delay(len(msg))
                 
         self.client.area.set_next_msg_delay(len(msg))

@@ -3286,7 +3286,31 @@ def ooc_cmd_unhandicap(client, arg):
             c.send_host_message('Your movement handicap "{}" when changing areas was removed.'.format(name))
             c.handicap_backup = None
             client.server.remove_task(c, ['as_handicap'])
-            
+
+def ooc_cmd_toggle_shownames(client, arg):
+    """
+    Toggles between receiving IC messages with custom shownames or receiving them all with character names.
+    When joining, players will receive IC messages with shownames.
+    
+    SYNTAX
+    /toggle_shownames
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    Assuming a player who just joined
+    /toggle_shownames           :: All subsequent messages will only include character names as the message sender.
+    /toggle_shownames           :: All subsequent messages will include the shownames of the senders if they have one.
+    """
+    if len(arg) != 0:
+        raise ArgumentError("This command has no arguments.")
+        
+    client.show_shownames = not client.show_shownames
+    status = {False: 'off', True: 'on'}
+
+    client.send_host_message('Shownames turned {}.'.format(status[client.show_shownames]))
+        
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

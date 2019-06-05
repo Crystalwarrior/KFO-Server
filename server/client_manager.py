@@ -69,6 +69,7 @@ class ClientManager:
             self.is_transient = False
             self.handicap_backup = None # In case an old custom handicap is overwritten with a server one
             self.is_movement_handicapped = False
+            self.show_shownames = True
             
             #music flood-guard stuff
             self.mus_counter = 0
