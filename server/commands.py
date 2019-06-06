@@ -339,7 +339,7 @@ def ooc_cmd_area(client, arg):
     /area {new_area_id}     :: Moves 
     """
     args = arg.split()
-    # List all areas case
+    # List all areas 
     if len(args) == 0:
         if client.in_rp:
             client.send_limited_area_list()
@@ -960,7 +960,77 @@ def ooc_cmd_gmlock(client, arg):
     client.area.send_host_message('Area gm-locked.')
     for i in client.area.clients:
         client.area.invite_list[i.ipid] = None
+
+def ooc_cmd_handicap(client, arg):
+    """ (STAFF ONLY)
+    Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of time between changing areas.
+    Requires /unhandicap to undo.
     
+    This will override any previous handicaps the client(s) may have had, including custom ones and server ones (such as through sneak).
+    Server handicaps will override custom handicaps if the server handicap is longer.
+    However, as soon as the server handicap is over, it will recover the old custom handicap.
+    
+    If given IPID, it will set the movement handicap on all the clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user, or if given a non-positive length of time.
+    
+    SYNTAX
+    /handicap <client_id> <length> {name} {announce_if_over}
+    /handicap <client_ipid> <length> {name} {announce_if_over}
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <length>: Handicap length (in seconds)
+    
+    OPTIONAL PARAMETERS
+    {name}: Name of the handicap (e.g. "Injured", "Sleepy", etc.). By default it is "Handicap".
+    {announce_if_over}: If the server will send a notification once the player may move areas after waiting for their handicap timer. 
+    By default it is true. For the server not to send them, put one of these keywords: False, false, 0, No, no
+    
+    EXAMPLES
+    /handicap 0 5                   :: Sets a 5 second movement handicap on the player whose client ID is 0.
+    /handicap 1234567890 10 Injured :: Sets a 10 second movement handicap called "Injured" on the clients whose IPID is 1234567890.
+    /handicap 1 15 StabWound False  :: Sets a 15 second movement handicap called "StabWound" on the player whose client ID is 0 
+    which will not send notifications once the timer expires.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    args = arg.split(' ')
+    if len(args) < 2:
+        raise ClientError('This command variation takes at least two parameters (target and length).')
+    elif len(args) >= 5:
+        raise ClientError('This command variation takes at most four parameters (target, length, name, announce_if_over).')
+
+    # Obtain targets
+    targets = parse_id_or_ipid(client, args[0])
+
+    # Check if valid length and convert to seconds        
+    length = parse_time_length(args[1]) # Also internally validates
+    
+    # Check name
+    if len(args) >= 3:
+        name = args[2]
+    else:
+        name = "Handicap" # No spaces!
+    
+    # Check announce_if_over status
+    if len(args) >= 4 and args[3] in ['False', 'false', '0', 'No', 'no']:
+        announce_if_over = False
+    else:
+        announce_if_over = True
+    
+    for c in targets:
+        client.send_host_message('You imposed a movement handicap "{}" of length {} seconds on {}.'.format(name, length, c.get_char_name()))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                        '{} imposed a movement handicap "{}" of length {} seconds on {} in area {} ({}).'
+                                        .format(client.name, name, length, c.get_char_name(), client.area.name, client.area.id),
+                                        pred=lambda c: (c.is_staff() and c != client))
+        c.send_host_message('You were imposed a movement handicap "{}" of length {} seconds when changing areas.'.format(name, length))
+        
+        client.server.create_task(c, ['as_handicap', time.time(), length, name, announce_if_over])
+        c.handicap_backup = (client.server.get_task(c, ['as_handicap']), client.server.get_task_args(c, ['as_handicap']))
+        
 def ooc_cmd_help(client, arg):
     """
     Returns the website with all available commands and their instructions (usually a GitHub repository)
@@ -1005,6 +1075,35 @@ def ooc_cmd_iclock(client, arg):
     client.area.ic_lock = not client.area.ic_lock
     client.area.send_host_message('A staff member has set the IC lock to {}.'.format(client.area.ic_lock))
     logger.log_server('[{}][{}]Changed IC lock to {}'.format(client.area.id, client.get_char_name(), client.area.ic_lock), client)
+
+def ooc_cmd_invite(client, arg):
+    """ (STAFF ONLY)
+    Adds a client based on client ID or IPID to the area's invite list.
+    If given IPID, it will invite all clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /invite <client_id>
+    /invite <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /invite 1                     :: Invites the player whose client ID is 1.
+    /invite 1234567890            :: Invites all clients opened by the player whose IPID is 1234567890.
+    """
+    if not client.is_mod and not client.is_cm:
+        raise ClientError('You must be authorized to do that.')
+    if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
+        raise ClientError('Area is not locked.')
+        
+    # Invite matching targets
+    for c in parse_id_or_ipid(client, arg):
+        client.area.invite_list[c.ipid] = None
+        client.send_host_message('Client {} has been invited to your area.'.format(c.id))
+        c.send_host_message('You have been invited to area {}.'.format(client.area.name))
 
 def ooc_cmd_kick(client, arg):
     """ (CM AND MOD ONLY)
@@ -1424,7 +1523,26 @@ def ooc_cmd_mutepm(client, arg):
     client.pm_mute = not client.pm_mute
     status = {True: 'You stopped receiving PMs.', False: 'You are now receiving PMs.'}
     client.send_host_message(status[client.pm_mute]) 
+
+def ooc_cmd_online(client, arg):
+    """
+    Returns how many players are online.
     
+    SYNTAX
+    /online
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    If there are 2 players online in a server of maximum capacity 100
+    /online         :: Will return: "Online: 2/100"
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    client.send_host_message("Online: {}/{}".format(client.server.get_player_count(), client.server.config['playerlimit']))
+
 def ooc_cmd_play(client, arg):
     """ (STAFF ONLY)
     Plays a given track, even if not explicitly in the music list. It is the way to play custom music.
@@ -1568,6 +1686,30 @@ def ooc_cmd_randomchar(client, arg):
     
     client.send_host_message('Randomly switched to {}'.format(client.get_char_name()))
 
+def ooc_cmd_refresh(client, arg):
+    """ (MOD ONLY)
+    Reloads the following files for the server: characters, default music list, and background list.
+    
+    SYNTAX
+    /refresh
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /refresh
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len (arg) > 0:
+        raise ClientError('This command does not take in any arguments!')
+
+    try:
+        client.server.reload()
+        client.send_host_message('You have reloaded the server.')
+    except ServerError:
+        raise
+        
 def ooc_cmd_reload(client, arg):
     """
     Reloads the character for the current user (equivalent to switching to the current character).
@@ -1723,6 +1865,42 @@ def ooc_cmd_rplay(client, arg):
         reachable_area.play_music(arg, client.char_id, -1)
         reachable_area.add_music_playing(client, arg)
         logger.log_server('[{}][{}]Changed music to {}.'.format(client.area.id, client.get_char_name(), arg), client)
+
+def ooc_cmd_rpmode(client, arg):
+    """ (STAFF ONLY)
+    Toggles RP mode on/off in the server. If turned on, all non-logged in users will be subject to RP rules.
+    Some effects include: unable to use /getarea and /getareas in areas that disable it.
+    
+    SYNTAX
+    /rpmode <new_status>
+    
+    PARAMETERS
+    <new_status>: 'on' or 'off'
+    
+    EXAMPLES
+    /rpmode on              :: Turns on RP mode
+    /rpmode off             :: Turns off RP mode
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if not client.server.config['rp_mode_enabled']:
+        raise ClientError("RP mode is disabled in this server.")
+    if len(arg) == 0:
+        raise ArgumentError('You must specify either on or off.')
+        
+    if arg == 'on':
+        client.server.rp_mode = True
+        for c in client.server.client_manager.clients:
+            c.send_host_message('RP mode enabled.')
+            if not c.is_staff():
+                c.in_rp = True
+    elif arg == 'off':
+        client.server.rp_mode = False
+        for c in client.server.client_manager.clients:
+            c.send_host_message('RP mode disabled.')
+            c.in_rp = False
+    else:
+        client.send_host_message('Invalid argument! Valid arguments: on, off. Your argument: ' + arg)
 
 def ooc_cmd_scream(client, arg):
     """
@@ -2206,7 +2384,38 @@ def ooc_cmd_toggle_rpgetareas(client, arg):
     logger.log_server('[{}][{}]{} /getareas in this area.'
                       .format(client.area.id, client.get_char_name(), 
                               status[client.area.rp_getareas_allowed].capitalize()), client)
-     
+
+def ooc_cmd_transient(client, arg):
+    """ (STAFF ONLY)
+    Toggles a client by IP or IPID being transient or not to passage locks (i.e. can access all areas or only reachable areas) 
+    
+    If given IPID, it will invert the transient status of all the clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /transient <client_id>
+    /transient <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLE
+    Assuming a player with client ID 0 and IPID 1234567890 starts as not being transient to passage locks
+    /transient 0            :: This player can now access all areas regardless of passage locks.
+    /transient 1234567890   :: This player can now only access only reachable areas.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    # Invert current transient status of matching targets
+    status = {False: 'no longer', True: 'now'}
+    for c in parse_id_or_ipid(client, arg):
+        c.is_transient = not c.is_transient
+        client.send_host_message('{} ({}) is {} transient to passage locks.'.format(c.get_char_name(), c.area.id, status[c.is_transient])) 
+        c.send_host_message('You are {} transient to passage locks.'.format(status[c.is_transient]))
+        c.reload_music_list() # Update their music list to reflect their new status
+
 def ooc_cmd_unban(client, arg):
     """ (MOD ONLY)
     Removes given user from the server banlist, allowing them to rejoin the server.
@@ -2255,6 +2464,74 @@ def ooc_cmd_unglobalic(client, arg):
     client.multi_ic = None
     client.send_host_message('Your IC messages will now be just sent to your current area.')
 
+def ooc_cmd_unhandicap(client, arg):
+    """ (STAFF ONLY)
+    Removes movement handicaps on a client by ID or IPID so that they no longer need to wait a set amount of time between changing areas.
+    Requires /handicap to undo.
+    
+    This will also remove server handicaps, if any (such as automatic sneak handicaps).
+    
+    If given IPID, it will remove the movement handicap on all the clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /unhandicap <client_id>
+    /unhandicap <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /unhandicap 0           :: Removes all movement handicaps on the player whose client ID is 0
+    /unhandicap 1234567890  :: Removes all movement handicaps on the clients whose IPID is 1234567890
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    # Obtain targets
+    for c in parse_id_or_ipid(client, arg):
+        try:
+            _, _, name, _ = client.server.get_task_args(c, ['as_handicap'])
+        except KeyError:
+            client.send_host_message('{} does not have an active movement handicap.'.format(c.get_char_name()))
+        else:
+            client.send_host_message('You removed the movement handicap "{}" on {}.'.format(name, c.get_char_name()))
+            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            '{} removed the movement handicap "{}" on {} in area {} ({}).'
+                                            .format(client.name, name, c.get_char_name(), client.area.name, client.area.id),
+                                            pred=lambda c: (c.is_staff() and c != client))
+            c.send_host_message('Your movement handicap "{}" when changing areas was removed.'.format(name))
+            c.handicap_backup = None
+            client.server.remove_task(c, ['as_handicap'])
+
+def ooc_cmd_uninvite(client, arg):
+    """
+    Removes a client based on client ID or IPID from the area's invite list.
+    If given IPID, it will uninvite all clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /uninvite <client_id>
+    /uninvite <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /uninvite 1                   :: Uninvites the player whose client ID is 1.
+    /uninvite 1234567890          :: Uninvites all clients opened by the player whose IPID is 1234567890.
+    """
+    # Uninvite matching targets
+    for c in parse_id_or_ipid(client, arg):
+        try:
+            client.area.invite_list.pop(c.ipid)
+            client.send_host_message('Client {} was removed from the invite list of your area.'.format(c.id))
+            c.send_host_message('You have been removed from the invite list of area {}.'.format(client.area.name))
+        except (KeyError, IndexError):
+            client.send_host_message('Client {} is not in the invite list.'.format(c.id))
+            
 def ooc_cmd_unlock(client, arg):
     """ (VARYING REQUIREMENTS)
     If the area is locked in some manner, attempt to perform exactly one of the following area unlocks in order.
@@ -2487,63 +2764,7 @@ def ooc_cmd_toggle_areareachlock(client, arg):
     else:
         client.area.change_reachability_allowed = True
         client.area.send_host_message('The use of the /unilock and /bilock commands affecting this area commands in this area has been enabled to all users.')
-
-def ooc_cmd_invite(client, arg):
-    """ (STAFF ONLY)
-    Adds a client based on client ID or IPID to the area's invite list.
-    If given IPID, it will invite all clients opened by the user. Otherwise, it will just do it to the given client.
-    Returns an error if the given identifier does not correspond to a user.
-    
-    SYNTAX
-    /invite <client_id>
-    /invite <client_ipid>
-    
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-    
-    EXAMPLES
-    /invite 1                     :: Invites the player whose client ID is 1.
-    /invite 1234567890            :: Invites all clients opened by the player whose IPID is 1234567890.
-    """
-    if not client.is_mod and not client.is_cm:
-        raise ClientError('You must be authorized to do that.')
-    if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
-        raise ClientError('Area is not locked.')
         
-    # Invite matching targets
-    for c in parse_id_or_ipid(client, arg):
-        client.area.invite_list[c.ipid] = None
-        client.send_host_message('Client {} has been invited to your area.'.format(c.id))
-        c.send_host_message('You have been invited to area {}.'.format(client.area.name))
-        
-def ooc_cmd_uninvite(client, arg):
-    """
-    Removes a client based on client ID or IPID from the area's invite list.
-    If given IPID, it will uninvite all clients opened by the user. Otherwise, it will just do it to the given client.
-    Returns an error if the given identifier does not correspond to a user.
-    
-    SYNTAX
-    /uninvite <client_id>
-    /uninvite <client_ipid>
-    
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-    
-    EXAMPLES
-    /uninvite 1                   :: Uninvites the player whose client ID is 1.
-    /uninvite 1234567890          :: Uninvites all clients opened by the player whose IPID is 1234567890.
-    """
-    # Uninvite matching targets
-    for c in parse_id_or_ipid(client, arg):
-        try:
-            client.area.invite_list.pop(c.ipid)
-            client.send_host_message('Client {} was removed from the invite list of your area.'.format(c.id))
-            c.send_host_message('You have been removed from the invite list of area {}.'.format(client.area.name))
-        except (KeyError, IndexError):
-            client.send_host_message('Client {} is not in the invite list.'.format(c.id))
-            
 def ooc_cmd_area_kick(client, arg):
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
@@ -2791,42 +3012,20 @@ def ooc_cmd_unblockdj(client, arg):
         target.is_dj = True
         target.send_host_message('Now you can change music.')
     client.send_host_message('Unblockdj\'d {}.'.format(targets[0].get_char_name()))
-
-def ooc_cmd_rpmode(client, arg):
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if not client.server.config['rp_mode_enabled']:
-        raise ClientError("RP mode is disabled in this server.")
-    if len(arg) == 0:
-        raise ArgumentError('You must specify either on or off.')
-        
-    if arg == 'on':
-        client.server.rp_mode = True
-        for c in client.server.client_manager.clients:
-            c.send_host_message('RP mode enabled.')
-            if not c.is_staff():
-                c.in_rp = True
-    elif arg == 'off':
-        client.server.rp_mode = False
-        for c in client.server.client_manager.clients:
-            c.send_host_message('RP mode disabled.')
-            c.in_rp = False
-    else:
-        client.send_host_message('Invalid argument! Valid arguments: on, off. Your argument: ' + arg)
-
-def ooc_cmd_refresh(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if len (arg) > 0:
-        raise ClientError('This command does not take in any arguments!')
-    else:
-        try:
-            client.server.reload()
-            client.send_host_message('You have reloaded the server.')
-        except ServerError:
-            raise
             
 def ooc_cmd_discord(client, arg):
+    """
+    Returns the server's Discord server invite link.
+    
+    SYNTAX
+    /discord
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /discord            :: Sends the Discord invite link
+    """
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
     client.send_host_message('Discord Invite Link: \r\ninsert link here \r\nBlank\'s tag: \r\nName(tag)0000 \r\nBlank\'s tag: \r\nName(tag)0000 \r\nBlank\'s tag: \r\nName(hashtag)0000')
@@ -3125,167 +3324,6 @@ def ooc_cmd_scream_range(client, arg):
             info += '\r\n*{}'.format(area)
                 
     client.send_host_message(info)
-    
-def ooc_cmd_online(client, arg):
-    """
-    Returns how many players are online.
-    
-    SYNTAX
-    /online
-    
-    PARAMETERS
-    None
-    
-    EXAMPLE
-    If there are 2 players online in a server of maximum capacity 100
-    /online         :: Will return: "Online: 2/100"
-    """
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-        
-    client.send_host_message("Online: {}/{}".format(client.server.get_player_count(), client.server.config['playerlimit']))
-
-def ooc_cmd_transient(client, arg):
-    """ (STAFF ONLY)
-    Toggles a client by IP or IPID being transient or not to passage locks (i.e. can access all areas or only reachable areas) 
-    
-    If given IPID, it will invert the transient status of all the clients opened by the user. Otherwise, it will just do it to the given client.
-    Returns an error if the given identifier does not correspond to a user.
-    
-    SYNTAX
-    /transient <client_id>
-    /transient <client_ipid>
-    
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-    
-    EXAMPLE
-    Assuming a player with client ID 0 and IPID 1234567890 starts as not being transient to passage locks
-    /transient 0            :: This player can now access all areas regardless of passage locks.
-    /transient 1234567890   :: This player can now only access only reachable areas.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    
-    # Invert current transient status of matching targets
-    status = {False: 'no longer', True: 'now'}
-    for c in parse_id_or_ipid(client, arg):
-        c.is_transient = not c.is_transient
-        client.send_host_message('{} ({}) is {} transient to passage locks.'.format(c.get_char_name(), c.area.id, status[c.is_transient])) 
-        c.send_host_message('You are {} transient to passage locks.'.format(status[c.is_transient]))
-        c.reload_music_list() # Update their music list to reflect their new status
-
-def ooc_cmd_handicap(client, arg):
-    """ (STAFF ONLY)
-    Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of time between changing areas.
-    Requires /unhandicap to undo.
-    
-    This will override any previous handicaps the client(s) may have had, including custom ones and server ones (such as through sneak).
-    Server handicaps will override custom handicaps if the server handicap is longer.
-    However, as soon as the server handicap is over, it will recover the old custom handicap.
-    
-    If given IPID, it will set the movement handicap on all the clients opened by the user. Otherwise, it will just do it to the given client.
-    Returns an error if the given identifier does not correspond to a user, or if given a non-positive length of time.
-    
-    SYNTAX
-    /handicap <client_id> <length> {name} {announce_if_over}
-    /handicap <client_ipid> <length> {name} {announce_if_over}
-    
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-    <length>: Handicap length (in seconds)
-    
-    OPTIONAL PARAMETERS
-    {name}: Name of the handicap (e.g. "Injured", "Sleepy", etc.). By default it is "Handicap".
-    {announce_if_over}: If the server will send a notification once the player may move areas after waiting for their handicap timer. 
-    By default it is true. For the server not to send them, put one of these keywords: False, false, 0, No, no
-    
-    EXAMPLES
-    /handicap 0 5                   :: Sets a 5 second movement handicap on the player whose client ID is 0.
-    /handicap 1234567890 10 Injured :: Sets a 10 second movement handicap called "Injured" on the clients whose IPID is 1234567890.
-    /handicap 1 15 StabWound False  :: Sets a 15 second movement handicap called "StabWound" on the player whose client ID is 0 
-    which will not send notifications once the timer expires.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    
-    args = arg.split(' ')
-    if len(args) < 2:
-        raise ClientError('This command variation takes at least two parameters (target and length).')
-    elif len(args) >= 5:
-        raise ClientError('This command variation takes at most four parameters (target, length, name, announce_if_over).')
-
-    # Obtain targets
-    targets = parse_id_or_ipid(client, args[0])
-
-    # Check if valid length and convert to seconds        
-    length = parse_time_length(args[1]) # Also internally validates
-    
-    # Check name
-    if len(args) >= 3:
-        name = args[2]
-    else:
-        name = "Handicap" # No spaces!
-    
-    # Check announce_if_over status
-    if len(args) >= 4 and args[3] in ['False', 'false', '0', 'No', 'no']:
-        announce_if_over = False
-    else:
-        announce_if_over = True
-    
-    for c in targets:
-        client.send_host_message('You imposed a movement handicap "{}" of length {} seconds on {}.'.format(name, length, c.get_char_name()))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                        '{} imposed a movement handicap "{}" of length {} seconds on {} in area {} ({}).'
-                                        .format(client.name, name, length, c.get_char_name(), client.area.name, client.area.id),
-                                        pred=lambda c: (c.is_staff() and c != client))
-        c.send_host_message('You were imposed a movement handicap "{}" of length {} seconds when changing areas.'.format(name, length))
-        
-        client.server.create_task(c, ['as_handicap', time.time(), length, name, announce_if_over])
-        c.handicap_backup = (client.server.get_task(c, ['as_handicap']), client.server.get_task_args(c, ['as_handicap']))
-        
-def ooc_cmd_unhandicap(client, arg):
-    """ (STAFF ONLY)
-    Removes movement handicaps on a client by ID or IPID so that they no longer need to wait a set amount of time between changing areas.
-    Requires /handicap to undo.
-    
-    This will also remove server handicaps, if any (such as automatic sneak handicaps).
-    
-    If given IPID, it will remove the movement handicap on all the clients opened by the user. Otherwise, it will just do it to the given client.
-    Returns an error if the given identifier does not correspond to a user.
-    
-    SYNTAX
-    /unhandicap <client_id>
-    /unhandicap <client_ipid>
-    
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-    
-    EXAMPLES
-    /unhandicap 0           :: Removes all movement handicaps on the player whose client ID is 0
-    /unhandicap 1234567890  :: Removes all movement handicaps on the clients whose IPID is 1234567890
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    
-    # Obtain targets
-    for c in parse_id_or_ipid(client, arg):
-        try:
-            _, _, name, _ = client.server.get_task_args(c, ['as_handicap'])
-        except KeyError:
-            client.send_host_message('{} does not have an active movement handicap.'.format(c.get_char_name()))
-        else:
-            client.send_host_message('You removed the movement handicap "{}" on {}.'.format(name, c.get_char_name()))
-            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                            '{} removed the movement handicap "{}" on {} in area {} ({}).'
-                                            .format(client.name, name, c.get_char_name(), client.area.name, client.area.id),
-                                            pred=lambda c: (c.is_staff() and c != client))
-            c.send_host_message('Your movement handicap "{}" when changing areas was removed.'.format(name))
-            c.handicap_backup = None
-            client.server.remove_task(c, ['as_handicap'])
 
 def ooc_cmd_toggle_shownames(client, arg):
     """
@@ -3310,7 +3348,46 @@ def ooc_cmd_toggle_shownames(client, arg):
     status = {False: 'off', True: 'on'}
 
     client.send_host_message('Shownames turned {}.'.format(status[client.show_shownames]))
+
+def ooc_cmd_lights(client, arg):
+    """ (STAFF ONLY)
+    Toggles RP mode on/off in the server. If turned on, all non-logged in users will be subject to RP rules.
+    Some effects include: unable to use /getarea and /getareas in areas that disable it.
+    
+    SYNTAX
+    /rpmode <new_status>
+    
+    PARAMETERS
+    <new_status>: 'on' or 'off'
+    
+    EXAMPLES
+    /rpmode on              :: Turns on RP mode
+    /rpmode off             :: Turns off RP mode
+    """    
+    if len(arg) == 0:
+        raise ArgumentError('You must specify either on or off.')
+    if arg not in ['off', 'on']:
+        raise ClientError('Invalid argument. Expected: on, off. Your argument: {}'.format(arg))
+    if not client.is_mod and client.area.bg_lock == True: 
+        raise AreaError("Unable to turn lights {}: This area's background is locked.".format(arg))
         
+    if arg == 'on':
+        if client.area.background == client.server.config['blackout_background']:
+            intended_background = client.area.background_backup
+        else:
+            intended_background = client.area.background
+    elif arg == 'off':
+        if client.area.background != client.server.config['blackout_background']:
+            client.area.background_backup = client.area.background
+        intended_background = client.server.config['blackout_background']
+        
+    try:
+        client.area.change_background(intended_background)
+    except AreaError:
+        raise ClientError('Unable to turn lights {}: Background {} not found'.format(arg, intended_background))
+    
+    client.area.send_host_message('The lights were turned {}'.format(arg))
+    
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

@@ -133,13 +133,16 @@ class TsuServer3:
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n') 
         if 'music_change_floodguard' not in self.config:
             self.config['music_change_floodguard'] = {'times_per_interval': 1,  'interval_length': 0, 'mute_length': 0}
+        # Backwards compatibility checks
         if 'spectator_name' not in self.config:
             self.config['spectator_name'] = 'SPECTATOR'
         if 'showname_max_length' not in self.config:
             self.config['showname_max_length'] = 30
         if 'sneak_handicap' not in self.config:
             self.config['sneak_handicap'] = 5 # Seconds
-        
+        if 'blackout_background' not in self.config:
+            self.config['blackout_background'] = 'Blackout_HD'
+            
     def load_characters(self):
         with open('config/characters.yaml', 'r', encoding = 'utf-8') as chars:
             self.char_list = yaml.safe_load(chars)

@@ -69,6 +69,7 @@ class AreaManager:
             self.scream_range = parameters['scream_range']
             self.restricted_chars = parameters['restricted_chars']
             
+            self.background_backup = self.background # Used for restoring temporary background changes
             # Fix comma-separated entries
             self.reachable_areas = fix_and_setify(self.reachable_areas)
             self.scream_range = fix_and_setify(self.scream_range)

@@ -39,6 +39,7 @@ announce_areas: true
 spectator_name: SPECTATOR
 showname_max_length: 30
 sneak_handicap: 5
+blackout_background: Blackout_HD
 
 music_change_floodguard:
   times_per_interval: 3
