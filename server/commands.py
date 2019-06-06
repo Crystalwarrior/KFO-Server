@@ -3351,18 +3351,20 @@ def ooc_cmd_toggle_shownames(client, arg):
 
 def ooc_cmd_lights(client, arg):
     """ (STAFF ONLY)
-    Toggles RP mode on/off in the server. If turned on, all non-logged in users will be subject to RP rules.
-    Some effects include: unable to use /getarea and /getareas in areas that disable it.
+    Toggles lights on or off in the background. If area is background locked, it requires mod privileges.
+    If turned off, the background will change to the server's blackout background.
+    If turned on, the background will revert to the background before the blackout one.
     
     SYNTAX
-    /rpmode <new_status>
+    /lights <new_status>
     
     PARAMETERS
     <new_status>: 'on' or 'off'
     
     EXAMPLES
-    /rpmode on              :: Turns on RP mode
-    /rpmode off             :: Turns off RP mode
+    Assuming lights were initially turned on
+    /lights off             :: Turns off lights
+    /lights on              :: Turns on lights
     """    
     if len(arg) == 0:
         raise ArgumentError('You must specify either on or off.')
