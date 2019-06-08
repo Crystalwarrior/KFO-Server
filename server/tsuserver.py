@@ -362,7 +362,7 @@ class TsuServer3:
         try:
             delay = int(afk_delay)*60 # afk_delay is in minutes, so convert to seconds
         except (TypeError, ValueError):
-            raise ServerError('areas.yaml contains an invalid AFK kick delay for area {}: {}'.format(client.area.id, afk_delay))
+            raise ServerError('The area file contains an invalid AFK kick delay for area {}: {}'.format(client.area.id, afk_delay))
             
         if delay <= 0: # Assumes 0-minute delay means that AFK kicking is disabled
             return
@@ -375,7 +375,7 @@ class TsuServer3:
             try:
                 area = client.server.area_manager.get_area_by_id(int(afk_sendto))
             except:
-                raise ServerError('areas.yaml contains an invalid AFK kick destination area for area {}: {}'.format(client.area.id, afk_sendto))
+                raise ServerError('The area file contains an invalid AFK kick destination area for area {}: {}'.format(client.area.id, afk_sendto))
                 
             if client.area.id == afk_sendto: # Don't try and kick back to same area
                 return
@@ -386,7 +386,7 @@ class TsuServer3:
 
             try:
                 original_area = client.area
-                client.change_area(area, override_passages=True, override_effects=True)
+                client.change_area(area, override_passages=True, override_effects=True, ignore_bleeding=True)
             except:
                 pass # Server raised an error trying to perform the AFK kick, ignore AFK kick
             else:

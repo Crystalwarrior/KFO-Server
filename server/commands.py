@@ -207,22 +207,23 @@ def parse_two_area_names(client, areas, area_duplicate = True, check_valid_range
     return areas
 
 def parse_area_names(client, areas):
+    area_list = list()
     # Replace arguments with proper area objects
     for i in range(len(areas)):
         #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
         #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
         #If you are that person... just... why
         try:
-            areas[i] = client.server.area_manager.get_area_by_name(areas[i].replace(',\\',','))
+            area_list.append(client.server.area_manager.get_area_by_name(areas[i].replace(',\\',',')))
         except AreaError:
             try:
-                areas[i] = client.server.area_manager.get_area_by_name(areas[i])
+                area_list.append(client.server.area_manager.get_area_by_name(areas[i]))
             except AreaError:
                 try:
-                    areas[i] = client.server.area_manager.get_area_by_id(int(areas[i]))
+                    area_list.append(client.server.area_manager.get_area_by_id(int(areas[i])))
                 except:
                     raise ArgumentError('Could not parse area {}'.format(areas[i]))    
-    return areas
+    return area_list
 
 def parse_id_or_ipid(client, identifier):
     """
@@ -2786,7 +2787,7 @@ def ooc_cmd_area_kick(client, arg):
                 raise ArgumentError('Area ID must be a number.'.format(arg[1]))
                 
         client.send_host_message("Attempting to kick {} to area {}.".format(c.get_char_name(), output))
-        c.change_area(area, override_passages=True, override_effects=True)
+        c.change_area(area, override_passages=True, override_effects=True, ignore_bleeding=True)
         c.send_host_message("You were kicked from the area to area {}.".format(output))
         if client.area.is_locked or client.area.is_modlocked:
             client.area.invite_list.pop(c.ipid)
@@ -3389,6 +3390,179 @@ def ooc_cmd_lights(client, arg):
         raise ClientError('Unable to turn lights {}: Background {} not found'.format(arg, intended_background))
     
     client.area.send_host_message('The lights were turned {}'.format(arg))
+    
+def ooc_cmd_bloodtrail(client, arg):
+    """ (STAFF ONLY)
+    Toggles a client by IP or IPID leaving a blood trail wherever they go or not. 
+    OOC announcements are made to players joining an area regarding the existence of a blood trail and where it leads to.
+    Turning off a player leaving a blood trail does not clean the blood in the area. For that, use /bloodtrail_clean
+    
+    If given IPID, it will invert the status of all the clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /bloodtrail <client_id>
+    /bloodtrail <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLE
+    Assuming a player with client ID 0 and IPID 1234567890 starts as not being leaving a blood trail
+    /bloodtrail 0            :: This player will now leave a blood trail wherever they go.
+    /bloodtrail 1234567890   :: This player will no longer leave blood trails wherever they go.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    # Invert current transient status of matching targets
+    status = {False: 'no longer', True: 'now'}
+    for c in parse_id_or_ipid(client, arg):
+        c.is_bleeding = not c.is_bleeding
+        client.send_host_message('{} ({}) is {} bleeding.'.format(c.get_char_name(), c.area.id, status[c.is_bleeding])) 
+        c.send_host_message('You are {} bleeding.'.format(status[c.is_bleeding]))
+        
+        if c.is_bleeding:
+            c.area.bleeds_to.add(c.area.name)
+
+def ooc_cmd_bloodtrail_clean(client, arg):
+    """ 
+    Cleans the blood trails of the current area or (STAFF ONLY) given areas by ID or name separated by commas.
+    If not given any areas, it will clean the blood trail of the current area.
+    
+    SYNTAX
+    /bloodtrail_clean {area_1}, {area_2}, ....
+    
+    OPTIONAL PARAMETERS
+    {area_n}: Area ID or name
+    
+    EXAMPLE
+    Assuming the player is in area 0
+    /bloodtrail_clean                           :: Cleans the blood trail in area 0
+    /bloodtrail_clean 3, Class Trial Room,\ 2   :: Cleans the blood trail in area 3 and Class Trial Room, 2 (note the ,\)
+    """
+    if len(arg) == 0:
+        areas_to_clean = [client.area]
+    else:
+        if not client.is_staff():
+            raise ClientError('You must be authorized to do that.')    
+        raw_areas_to_clean = arg.split(", ")
+        areas_to_clean = set(parse_area_names(client, raw_areas_to_clean)) # Make sure the input is valid before starting
+        
+    successful_cleans = set()
+    for area in areas_to_clean:
+        # Check if someone is currently bleeding in the area, which would prevent it from being cleaned.
+        # Yes, you can use for/else in Python, it works exactly like regular flags.
+        for c in area.clients:
+            if c.is_bleeding:
+                if not client.is_staff():
+                    client.send_host_message("You tried to clean the place up but the blood just keeps coming.")
+                else:
+                    client.send_host_message("{} in area {} is still bleeding, so the area cannot be cleaned.".format(c.get_char_name(), area.name))
+                break
+        else:
+            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                      'The blood trail in this area was cleaned.',
+                                      pred=lambda c: c.area == area and c != client)
+            area.bleeds_to = set()
+            successful_cleans.add(area.name)
+    
+    if len(successful_cleans) > 0:
+        if len(arg) == 0:
+            message = client.area.name
+            client.send_host_message("Cleaned the blood trail in the current area.")
+            if client.is_staff():            
+                client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            '{} cleaned the blood trail in area {}.'.format(client.name, client.area.name),
+                                            pred=lambda c: c.is_staff() and c != client)  
+            else:
+                client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            '{} cleaned the blood trail in area {}.'.format(client.get_char_name(), client.area.name),
+                                            pred=lambda c: c.is_staff() and c != client)  
+        elif len(successful_cleans) == 1:
+            message = str(successful_cleans.pop())
+            client.send_host_message("Cleaned blood trail in area {}".format(message))
+            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            '{} cleaned the blood trail in area {}.'.format(client.name, message),
+                                            pred=lambda c: c.is_staff() and c != client)            
+        elif len(successful_cleans) > 1:
+            message = ", ".join(successful_cleans)
+            client.send_host_message("Cleaned blood trails in areas {}".format(message))
+            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            '{} cleaned the blood trails in areas {}.'.format(client.name, message),
+                                            pred=lambda c: c.is_staff() and c != client)
+        logger.log_server(
+        '[{}][{}]Cleaned the blood trail in {}.'
+        .format(client.area.id, client.get_char_name(), message), client)
+
+def ooc_cmd_bloodtrail_list(client, arg):
+    """ (STAFF ONLY)
+    Lists all areas that contain non-empty blood trails and how those look like.
+    
+    SYNTAX
+    /bloodtrail_list
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /bloodtrail_list
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    info = '== Blood trails in this server =='
+    # Get all areas with blood in them
+    areas = [area for area in client.server.area_manager.areas if len(area.bleeds_to) > 0]
+    
+    # No areas found means there are no blood trails
+    if len(areas) == 0:
+        info += '\r\n*No areas have blood.'
+    # Otherwise, build the list of all areas with blood
+    else:
+        for area in areas:
+            info += '\r\n*{}: {}'.format(area.name, ", ".join(area.bleeds_to))
+        
+    client.send_host_message(info)
+    
+def ooc_cmd_bloodtrail_set(client, arg):
+    """ (STAFF ONLY)
+    Sets (and replaces!) the blood trail of the current area to link all relevant areas by ID or name separated by commas.
+    If not given any areas, it will set the blood trail to be a single unconnected pool of blood in the area.
+    Requires /bloodtrail_clean to undo.
+    
+    SYNTAX
+    /bloodtrail_set {area_1}, {area_2}, ....
+    
+    OPTIONAL PARAMETERS
+    {area_n}: Area ID or name
+    
+    EXAMPLE
+    Assuming the player is in area 0
+    /bloodtrail_set                           :: Sets the blood trail in area 0 to be a single pool of blood
+    /bloodtrail_set 3, Class Trial Room,\ 2   :: Sets the blood trail in area 0 to go to area 3 and Class Trial Room, 2 (note the ,\). 
+    
+    NOTE: This command will automatically add the current area to the blood trail if not explicitly included, as
+    it does not make too much physical sense to have a trail lead out of an area while there being no blood in 
+    the current area.
+    """
+    
+    if len(arg) == 0:
+        areas_to_link = [client.area]
+        message = 'be an unconnected pool of blood'
+    else:
+        raw_areas_to_link = arg.split(", ")
+        areas_to_link = set(parse_area_names(client, raw_areas_to_link) + [client.area]) # Make sure the input is valid before starting
+        message = 'go to {}'.format(", ".join([area.name for area in areas_to_link]))
+    
+    client.send_host_message('Set the blood trail in this area to {}.'.format(message))
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    'The blood trail in this area was set to {}.'.format(message),
+                                    pred=lambda c: not c.is_staff() and c.area == client.area and c != client)
+    client.area.bleeds_to = set([area.name for area in areas_to_link])
     
 def ooc_cmd_exec(client, arg):
     """

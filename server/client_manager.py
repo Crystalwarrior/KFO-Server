@@ -61,8 +61,8 @@ class ClientManager:
             self.is_visible = True
             self.multi_ic = None
             self.showname = ''
-            self.following = ''
-            self.followedby = ''
+            self.following = None
+            self.followedby = None
             self.music_list = None
             self.autopass = False
             self.showname_history = list()
@@ -70,6 +70,7 @@ class ClientManager:
             self.handicap_backup = None # In case an old custom handicap is overwritten with a server one
             self.is_movement_handicapped = False
             self.show_shownames = True
+            self.is_bleeding = False
             
             #music flood-guard stuff
             self.mus_counter = 0
@@ -184,33 +185,38 @@ class ClientManager:
             # that crashes all clients that dare attempt join this area.
             self.send_command('FM', *self.server.music_list_ao2)
             
-        def change_area(self, area, override_passages = False, override_all = False, override_effects = False):
-            # Override_passages if true will ignore passages existing from the source area to the target area
-            # Override_effects if true will ignore current effects, such as movement handicaps
-            # Override all performs the area change regardless of anything (only useful for complete area reload)
+        def change_area(self, area, override_all=False, override_passages=False, override_effects=False, 
+                        ignore_bleeding=False, ignore_followers=False):
+            # override_passages if true will ignore passages existing from the source area to the target area
+            # override_effects if true will ignore current effects, such as movement handicaps
+            # ignore_bleeding if true will not add blood to the area if the character is moving, such as from /area_kick or AFK kicks
+            # ignore_followers if true will avoid sending the follow instructions to followers (e.g. by using /follow)
+            # override_all performs the area change regardless of anything (only useful for complete area reload)
             # In particular, override_all being False performs all the checks and announces the area change in OOC
             if not override_all:
-                # Check if movement delay timer is not zero
+                # Check if player has waited a non-zero movement delay
                 if not self.is_staff() and self.is_movement_handicapped and not override_effects:
                     start, length, name, _ = self.server.get_task_args(self, ['as_handicap'])
                     _, remain_text = self.server.timer_remaining(start, length)
                     raise ClientError("You are still under the effects of movement handicap '{}'. Please wait {} before changing areas.".format(name, remain_text))
                     
-                # Check for sneaked players
+                # Check if trying to move to a lobby/private area while sneaking
                 if area.lobby_area and not self.is_visible and not self.is_mod and not self.is_cm:
                     raise ClientError('Lobby areas do not let non-authorized users remain sneaking. Please change the music, speak IC or ask a staff member to reveal you.')
                 elif area.private_area and not self.is_visible:
                     raise ClientError('Private areas do not let sneaked users in. Please change the music, speak IC or ask a staff member to reveal you.')   
-                    
+
+                # Check if area has some sort of lock
                 if self.area == area:
                     raise ClientError('User is already in target area.')
                 if area.is_locked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
-                    raise ClientError('That area is locked!')
+                    raise ClientError('That area is locked.')
                 if area.is_gmlocked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
-                    raise ClientError('That area is gm-locked!')
+                    raise ClientError('That area is gm-locked.')
                 if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
-                    raise ClientError('That area is mod-locked!')
-                    
+                    raise ClientError('That area is mod-locked.')
+                
+                # Check if trying to reach an unreachable area
                 if not (area.name in self.area.reachable_areas or '<ALL>' in self.area.reachable_areas or \
                 self.is_transient or self.is_staff() or override_passages):
                     info = 'Selected area cannot be reached from the current one without authorization. Try one of the following instead: '
@@ -226,8 +232,8 @@ class ClientManager:
                             info += '\r\n<ALL>'
                     raise ClientError(info)
                 
+                # Check if current character is taken in the new area
                 old_char = self.get_char_name()
-                
                 if not area.is_char_available(self.char_id, allow_restricted=self.is_staff()):
                     try:
                         new_char_id = area.get_rand_avail_char_id(allow_restricted=self.is_staff())
@@ -239,16 +245,22 @@ class ClientManager:
                         self.send_host_message('Your character was restricted in your new area, switched to {}.'.format(self.get_char_name()))
                     else:
                         self.send_host_message('Your character was taken in your new area, switched to {}.'.format(self.get_char_name()))
+    
+                # Code after this line assumes that the area change will be successful 
+                # (but has not yet been performed)
                 
+                old_area = self.area
+                self.send_host_message('Changed area to {}.[{}]'.format(area.name, area.status))                
+                
+                # Check if someone in the new area has the same showname
                 try:
                     self.change_showname(self.showname, target_area=area) # Verify that showname is still valid
                 except ValueError:
                     self.send_host_message("Your showname {} was already used in this area. Resetting it to none.".format(self.showname))
                     self.change_showname('', target_area=area)
                     logger.log_server('{} had their showname removed due it being used in the new area.'.format(self.ipid), self)
-                    
-                self.send_host_message('Changed area to {}.[{}]'.format(area.name, self.area.status))
-                old_area = self.area
+
+                # If autopassing, send OOC messages
                 if self.autopass and not self.char_id < 0 and self.is_visible:
                     self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
                                     '{} has left to {}.'
@@ -258,6 +270,64 @@ class ClientManager:
                                     '{} has entered from {}.'
                                     .format(old_char, old_area.name), 
                                     pred=lambda c: not c.is_staff() and c != self and c.area == area)
+
+                # If bleeding, send reminder, and notify everyone in the new area if not sneaking (otherwise, just vague message).
+                if self.is_bleeding:
+                    old_area.bleeds_to.add(old_area.name)
+                    area.bleeds_to.add(area.name)
+                if not ignore_bleeding and self.is_bleeding:
+                    # As these are sets, repetitions are automatically filtered out
+                    old_area.bleeds_to.add(area.name)
+                    area.bleeds_to.add(old_area.name)
+                    self.send_host_message('You are bleeding.')
+                    if self.is_visible:
+                        self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
+                                    'You see {} arrive and bleeding.'.format(self.get_char_name()), 
+                                    pred=lambda c: c != self and c.area == area)
+                    else:
+                        self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
+                                    'You start hearing faint drops of blood.', 
+                                    pred=lambda c: not c.is_staff() and c != self and c.area == area)
+                        self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
+                                    '{} is bleeding while sneaking.'.format(self.get_char_name()), 
+                                    pred=lambda c: c.is_staff() and c != self and c.area == area)
+                
+                # If someone else is bleeding in the new area, notify the person moving
+                # Special consideration is given if that someone else is sneaking
+                players_bleeding_visible = [c for c in area.clients if c.is_visible and c.is_bleeding]
+                players_bleeding_sneaking = [c for c in area.clients if not c.is_visible and c.is_bleeding]
+                info = ''
+                if len(players_bleeding_visible) == 1:
+                    info = 'You see {} is bleeding'.format(players_bleeding_visible[0].get_char_name())
+                elif len(players_bleeding_visible) > 1:
+                    info = 'You see {}'.format(players_bleeding_visible[0].get_char_name())
+                    for i in range(1, len(players_bleeding_visible)-1):
+                        info += ', {}'.format(players_bleeding_visible[i].get_char_name())
+                    info += ' and {} are bleeding'.format(players_bleeding_visible[-1].get_char_name())
+                
+                if len(players_bleeding_sneaking) > 0:
+                    if info == '':
+                        info = 'You hear faint drops of blood'
+                    else:
+                        info += ', and you hear faint drops of blood'
+                if info != '':
+                    self.send_host_message(info + '.')
+                
+                # If there is blood in the area, send notification
+                if area.bleeds_to == set([area.name]):
+                    self.send_host_message('You spot some blood in the area.')
+                elif len(area.bleeds_to) > 1:
+                    bleed_to_areas = list(area.bleeds_to - set([area.name]))
+                    random.shuffle(bleed_to_areas) # Lose potential order bias, yes, even with what originally was a set
+                    info = 'You spot a blood trail leading to the {}'.format(bleed_to_areas[0])
+                    if len(bleed_to_areas) > 1:
+                        for i in range(1, len(bleed_to_areas)-1):
+                            info += ', the {}'.format(bleed_to_areas[i])
+                        info += ' and the {}.'.format(bleed_to_areas[-1])
+                    else:
+                        info += '.'
+                    self.send_host_message(info)
+                    
                 logger.log_server(
                 '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
                                                                    area.name, area.id), self)
@@ -274,7 +344,7 @@ class ClientManager:
             self.send_command('BN', self.area.background)
             self.send_command('LE', *self.area.get_evidence_list(self))
  
-            if self.followedby != "":
+            if self.followedby is not None and not ignore_followers:
                 self.followedby.follow_area(area)
                 
             self.reload_music_list() # Update music list to include new area's reachable areas
@@ -368,72 +438,25 @@ class ClientManager:
                  
                 logger.log_server('{} is now sneaking.'.format(self.ipid), self)
                 
-        def follow_user(self, arg):
-            self.following = arg
-            arg.followedby = self
-            self.send_host_message('Began following at {}'.format(time.asctime(time.localtime(time.time()))))
-            if self.area != arg.area:
-                self.follow_area(arg.area)
+        def follow_user(self, target):
+            self.following = target
+            target.followedby = self
+            self.send_host_message('Began following client {} at {}'.format(target.id, time.asctime(time.localtime(time.time()))))
+            if self.area != target.area:
+                self.follow_area(target.area)
 
         def unfollow_user(self):
-            self.following.followedby = ""
-            self.following = ""
-            self.send_host_message("Stopped following at {}.".format(time.asctime(time.localtime(time.time()))))
+            self.send_host_message("Stopped following client {} at {}.".format(self.following.id, time.asctime(time.localtime(time.time()))))
+            self.following.followedby = None
+            self.following = None
 
         def follow_area(self, area):
-            self.send_host_message('Followed user moved area at {}'.format(time.asctime(time.localtime(time.time()))))
-            if self.area == area:
-                self.send_host_message('Unable to follow to {}: Already in target area.'.format(area.name))
-                return
-            if area.is_locked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
-                self.send_host_message('Unable to follow to {}: Area is locked.'.format(area.name))
-                return
-            if area.is_gmlocked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
-                self.send_host_message('Unable to follow to {}: Area is GM-locked.'.format(area.name))
-                return
-            if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
-                self.send_host_message('Unable to follow to {}: Area is Mod-Locked.'.format(area.name))
-                return
-            
-            old_area = self.area
-            
-            if not area.is_char_available(self.char_id, allow_restricted=self.is_staff()):
-                try:
-                    new_char_id = area.get_rand_avail_char_id(allow_restricted=self.is_staff())
-                except AreaError:
-                    self.send_host_message('Unable to follow to {}: No available characters.'.format(area.name))
-                    return
-                
-                old_char = self.get_char_name()
-                self.change_character(new_char_id, target_area=area)
-                if old_char in area.restricted_chars:
-                    self.send_host_message('Your character was restricted in your new area, switched to {}.'.format(self.get_char_name()))
-                else:
-                    self.send_host_message('Your character was taken in your new area, switched to {}.'.format(self.get_char_name()))
-
+            self.send_host_message('Followed user moved to {} at {}'.format(area.name, time.asctime(time.localtime(time.time()))))
             try:
-                self.change_showname(self.showname, target_area=area) # Verify that showname is still valid
-            except ValueError:
-                self.send_host_message("Your showname {} was already used in this area. Resetting it to none.".format(self.showname))
-                self.change_showname('', target_area=area)
-                logger.log_server('{} had their showname removed due it being used in the new area.'.format(self.ipid), self)
-            self.send_host_message('Changed area to {}.[{}]'.format(area.name, area.status))
-            logger.log_server(
-                '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
-                                                                   area.name, area.id), self)
-            #logger.log_rp(
-            #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
-            #                                                       self.area.name, self.area.id), self)
+                self.change_area(area, ignore_followers=True)
+            except ClientError as error:
+                self.send_host_message('Unable to follow to {}: {}'.format(area.name, error))
             
-            self.area.remove_client(self)
-            self.area = area
-            area.new_client(self)
-
-            self.send_command('HP', 1, self.area.hp_def)
-            self.send_command('HP', 2, self.area.hp_pro)
-            self.send_command('BN', self.area.background)
-            self.send_command('LE', *self.area.get_evidence_list(self))
-
         def send_area_list(self):
             msg = '=== Areas ==='
             lock = {True: '[LOCKED]', False: ''}
@@ -704,6 +727,7 @@ class ClientManager:
         return c
 
     def remove_client(self, client):
+        # Clients who are following the now leaving client should no longer follow them
         try:
             client.followedby.unfollow_user()
         except AttributeError:
