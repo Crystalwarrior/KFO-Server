@@ -352,7 +352,7 @@ class ClientManager:
             # Try and restart handicap if needed
             try:
                 _, length, name, announce_if_over = self.server.get_task_args(self, ['as_handicap'])
-            except ValueError:
+            except (ValueError, KeyError):
                 pass
             else:
                 self.server.create_task(self, ['as_handicap', time.time(), length, name, announce_if_over])

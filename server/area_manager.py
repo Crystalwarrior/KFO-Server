@@ -310,7 +310,7 @@ class AreaManager:
         # If the default area ID is now past the number of available areas, reset it back to zero
         if self.server.default_area >= len(self.areas):
             self.server.default_area = 0
-            
+
         # Move existing clients to new corresponding area (or to default area if their previous area no longer exists)
         for client in self.server.client_manager.clients:
             try:

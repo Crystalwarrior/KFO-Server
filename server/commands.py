@@ -384,7 +384,7 @@ def ooc_cmd_area_list(client, arg):
     if len(arg) == 0:
         client.server.area_manager.load_areas()
         client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                            'The area list of the server has been reset to its original value.')
+                                            'The area list of the server has been reset to its original state.')
     else:
         try:
             new_area_file = 'config/area_lists/{}.yaml'.format(arg)
