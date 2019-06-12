@@ -225,6 +225,23 @@ def parse_area_names(client, areas):
                     raise ArgumentError('Could not parse area {}'.format(areas[i]))    
     return area_list
 
+def parse_id(client, identifier):
+    """
+    HELPER FUNCTION
+    Given either a client ID, returns the client that matches this identifier.
+    """
+    if identifier == '':
+        raise ArgumentError('Expected client ID.')
+    if not identifier.isdigit():
+        raise ArgumentError('{} does not look like a valid client ID.'.format(identifier))
+
+    targets = client.server.client_manager.get_targets(client, TargetType.ID, int(identifier), False)
+    
+    if not targets:
+        raise ArgumentError('No targets found.')
+    
+    return targets[0]
+
 def parse_id_or_ipid(client, identifier):
     """
     HELPER FUNCTION
@@ -557,6 +574,179 @@ def ooc_cmd_bglock(client, arg):
     client.area.send_host_message('A mod has set the background lock to {}.'.format(client.area.bg_lock))
     logger.log_server('[{}][{}]Changed bglock to {}'.format(client.area.id, client.get_char_name(), client.area.bg_lock), client)
 
+def ooc_cmd_bloodtrail(client, arg):
+    """ (STAFF ONLY)
+    Toggles a client by IP or IPID leaving a blood trail wherever they go or not. 
+    OOC announcements are made to players joining an area regarding the existence of a blood trail and where it leads to.
+    Turning off a player leaving a blood trail does not clean the blood in the area. For that, use /bloodtrail_clean
+    
+    If given IPID, it will invert the status of all the clients opened by the user. Otherwise, it will just do it to the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /bloodtrail <client_id>
+    /bloodtrail <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLE
+    Assuming a player with client ID 0 and IPID 1234567890 starts as not being leaving a blood trail
+    /bloodtrail 0            :: This player will now leave a blood trail wherever they go.
+    /bloodtrail 1234567890   :: This player will no longer leave blood trails wherever they go.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    # Invert current transient status of matching targets
+    status = {False: 'no longer', True: 'now'}
+    for c in parse_id_or_ipid(client, arg):
+        c.is_bleeding = not c.is_bleeding
+        client.send_host_message('{} ({}) is {} bleeding.'.format(c.get_char_name(), c.area.id, status[c.is_bleeding])) 
+        c.send_host_message('You are {} bleeding.'.format(status[c.is_bleeding]))
+        
+        if c.is_bleeding:
+            c.area.bleeds_to.add(c.area.name)
+
+def ooc_cmd_bloodtrail_clean(client, arg):
+    """ 
+    Cleans the blood trails of the current area or (STAFF ONLY) given areas by ID or name separated by commas.
+    If not given any areas, it will clean the blood trail of the current area.
+    
+    SYNTAX
+    /bloodtrail_clean {area_1}, {area_2}, ....
+    
+    OPTIONAL PARAMETERS
+    {area_n}: Area ID or name
+    
+    EXAMPLE
+    Assuming the player is in area 0
+    /bloodtrail_clean                           :: Cleans the blood trail in area 0
+    /bloodtrail_clean 3, Class Trial Room,\ 2   :: Cleans the blood trail in area 3 and Class Trial Room, 2 (note the ,\)
+    """
+    if len(arg) == 0:
+        areas_to_clean = [client.area]
+    else:
+        if not client.is_staff():
+            raise ClientError('You must be authorized to do that.')    
+        raw_areas_to_clean = arg.split(", ")
+        areas_to_clean = set(parse_area_names(client, raw_areas_to_clean)) # Make sure the input is valid before starting
+        
+    successful_cleans = set()
+    for area in areas_to_clean:
+        # Check if someone is currently bleeding in the area, which would prevent it from being cleaned.
+        # Yes, you can use for/else in Python, it works exactly like regular flags.
+        for c in area.clients:
+            if c.is_bleeding:
+                if not client.is_staff():
+                    client.send_host_message("You tried to clean the place up but the blood just keeps coming.")
+                else:
+                    client.send_host_message("{} in area {} is still bleeding, so the area cannot be cleaned.".format(c.get_char_name(), area.name))
+                break
+        else:
+            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                      'The blood trail in this area was cleaned.',
+                                      pred=lambda c: c.area == area and c != client)
+            area.bleeds_to = set()
+            successful_cleans.add(area.name)
+    
+    if len(successful_cleans) > 0:
+        if len(arg) == 0:
+            message = client.area.name
+            client.send_host_message("Cleaned the blood trail in the current area.")
+            if client.is_staff():            
+                client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            '{} cleaned the blood trail in area {}.'.format(client.name, client.area.name),
+                                            pred=lambda c: c.is_staff() and c != client)  
+            else:
+                client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            '{} cleaned the blood trail in area {}.'.format(client.get_char_name(), client.area.name),
+                                            pred=lambda c: c.is_staff() and c != client)  
+        elif len(successful_cleans) == 1:
+            message = str(successful_cleans.pop())
+            client.send_host_message("Cleaned blood trail in area {}".format(message))
+            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            '{} cleaned the blood trail in area {}.'.format(client.name, message),
+                                            pred=lambda c: c.is_staff() and c != client)            
+        elif len(successful_cleans) > 1:
+            message = ", ".join(successful_cleans)
+            client.send_host_message("Cleaned blood trails in areas {}".format(message))
+            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                            '{} cleaned the blood trails in areas {}.'.format(client.name, message),
+                                            pred=lambda c: c.is_staff() and c != client)
+        logger.log_server(
+        '[{}][{}]Cleaned the blood trail in {}.'
+        .format(client.area.id, client.get_char_name(), message), client)
+
+def ooc_cmd_bloodtrail_list(client, arg):
+    """ (STAFF ONLY)
+    Lists all areas that contain non-empty blood trails and how those look like.
+    
+    SYNTAX
+    /bloodtrail_list
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /bloodtrail_list
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    info = '== Blood trails in this server =='
+    # Get all areas with blood in them
+    areas = [area for area in client.server.area_manager.areas if len(area.bleeds_to) > 0]
+    
+    # No areas found means there are no blood trails
+    if len(areas) == 0:
+        info += '\r\n*No areas have blood.'
+    # Otherwise, build the list of all areas with blood
+    else:
+        for area in areas:
+            info += '\r\n*{}: {}'.format(area.name, ", ".join(area.bleeds_to))
+        
+    client.send_host_message(info)
+    
+def ooc_cmd_bloodtrail_set(client, arg):
+    """ (STAFF ONLY)
+    Sets (and replaces!) the blood trail of the current area to link all relevant areas by ID or name separated by commas.
+    If not given any areas, it will set the blood trail to be a single unconnected pool of blood in the area.
+    Requires /bloodtrail_clean to undo.
+    
+    SYNTAX
+    /bloodtrail_set {area_1}, {area_2}, ....
+    
+    OPTIONAL PARAMETERS
+    {area_n}: Area ID or name
+    
+    EXAMPLE
+    Assuming the player is in area 0
+    /bloodtrail_set                           :: Sets the blood trail in area 0 to be a single pool of blood
+    /bloodtrail_set 3, Class Trial Room,\ 2   :: Sets the blood trail in area 0 to go to area 3 and Class Trial Room, 2 (note the ,\). 
+    
+    NOTE: This command will automatically add the current area to the blood trail if not explicitly included, as
+    it does not make too much physical sense to have a trail lead out of an area while there being no blood in 
+    the current area.
+    """
+    
+    if len(arg) == 0:
+        areas_to_link = [client.area]
+        message = 'be an unconnected pool of blood'
+    else:
+        raw_areas_to_link = arg.split(", ")
+        areas_to_link = set(parse_area_names(client, raw_areas_to_link) + [client.area]) # Make sure the input is valid before starting
+        message = 'go to {}'.format(", ".join([area.name for area in areas_to_link]))
+    
+    client.send_host_message('Set the blood trail in this area to {}.'.format(message))
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    'The blood trail in this area was set to {}.'.format(message),
+                                    pred=lambda c: not c.is_staff() and c.area == client.area and c != client)
+    client.area.bleeds_to = set([area.name for area in areas_to_link])
+    
 def ooc_cmd_charselect(client, arg):
     """
     Opens the character selection screen for the current user
@@ -773,7 +963,7 @@ def ooc_cmd_defaultarea(client, arg):
         raise ClientError('This command takes one argument.')
         
     try:
-        area = client.server.area_manager.get_area_by_id(int(arg)) 
+        client.server.area_manager.get_area_by_id(int(arg)) 
     except ValueError:
         raise ArgumentError('Expected numerical value for area ID.')
     except AreaError:
@@ -781,6 +971,23 @@ def ooc_cmd_defaultarea(client, arg):
 
     client.server.default_area = int(arg)
     client.send_host_message('Set default area to {}'.format(arg))        
+        
+def ooc_cmd_discord(client, arg):
+    """
+    Returns the server's Discord server invite link.
+    
+    SYNTAX
+    /discord
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /discord            :: Sends the Discord invite link
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    client.send_host_message('Discord Invite Link: {}'.format(client.server.config['discord_link']))
     
 def ooc_cmd_doc(client, arg):
     """
@@ -807,6 +1014,28 @@ def ooc_cmd_doc(client, arg):
         client.area.change_doc(arg)
         client.area.send_host_message('{} changed the doc link.'.format(client.get_char_name()))
         logger.log_server('[{}][{}]Changed document to: {}'.format(client.area.id, client.get_char_name(), arg), client)
+
+def ooc_cmd_follow(client, arg):
+    """ (STAFF ONLY)
+    Starts following a player by their client ID. When the target area moves area, you will follow them
+    automatically except if disallowed by the new area.
+    Requires /unfollow to undo.
+    
+    SYNTAX
+    /follow <client_id>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    
+    EXAMPLE
+    /follow 1                     :: Starts following the player whose client ID is 1
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    c = parse_id(client, arg)
+    client.follow_user(c)
+    logger.log_server('{} began following {}.'.format(client.get_char_name(), c.get_char_name()), client)
 
 def ooc_cmd_g(client, arg):
     """
@@ -1203,6 +1432,47 @@ def ooc_cmd_knock(client, arg):
                                 .format(client.get_char_name(), target_area.name, client.area.name, client.area.id),
                                 pred=lambda c: c != client and c.is_staff())
         
+def ooc_cmd_lights(client, arg):
+    """ (STAFF ONLY)
+    Toggles lights on or off in the background. If area is background locked, it requires mod privileges.
+    If turned off, the background will change to the server's blackout background.
+    If turned on, the background will revert to the background before the blackout one.
+    
+    SYNTAX
+    /lights <new_status>
+    
+    PARAMETERS
+    <new_status>: 'on' or 'off'
+    
+    EXAMPLES
+    Assuming lights were initially turned on
+    /lights off             :: Turns off lights
+    /lights on              :: Turns on lights
+    """    
+    if len(arg) == 0:
+        raise ArgumentError('You must specify either on or off.')
+    if arg not in ['off', 'on']:
+        raise ClientError('Invalid argument. Expected: on, off. Your argument: {}'.format(arg))
+    if not client.is_mod and client.area.bg_lock == True: 
+        raise AreaError("Unable to turn lights {}: This area's background is locked.".format(arg))
+        
+    if arg == 'on':
+        if client.area.background == client.server.config['blackout_background']:
+            intended_background = client.area.background_backup
+        else:
+            intended_background = client.area.background
+    elif arg == 'off':
+        if client.area.background != client.server.config['blackout_background']:
+            client.area.background_backup = client.area.background
+        intended_background = client.server.config['blackout_background']
+        
+    try:
+        client.area.change_background(intended_background)
+    except AreaError:
+        raise ClientError('Unable to turn lights {}: Background {} not found'.format(arg, intended_background))
+    
+    client.area.send_host_message('The lights were turned {}'.format(arg))
+    
 def ooc_cmd_lm(client, arg):
     """ (MOD ONLY)
     Similar to /lm, but only broadcasts the message to users in the current area, regardless of their global chat status.
@@ -1929,6 +2199,130 @@ def ooc_cmd_scream(client, arg):
                                     c.area.name in client.area.scream_range))
     logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg), client)
 
+def ooc_cmd_scream_set_range(client, arg):
+    """ (STAFF ONLY)
+    Set the current area's scream range to a given list of areas by name or ID separated by commas.
+    This completely overrides the old scream range, unlike /scream_set.
+    Passing in no arguments sets the scream range to nothing (i.e. a soundproof room).
+    Note that scream ranges are unidirectional, so if you want two areas to hear one another, you must use this command twice.
+    Raises an error if an invalid area name or area ID is given, or if the current area is part of the selection.
+    
+    SYNTAX
+    /scream_set_range {area_1}, {area_2}, {area_3}, ...
+    
+    PARAMETERS
+    {area_n}: An area to add to the current scream range. Can be either an area name or area ID.
+    
+    EXAMPLES:
+    Assuming the current area is Basement...
+    /scream_set_range Class Trial Room 3                            :: Sets Basement's scream range to "Class Trial Room 3"
+    /scream_set_range Class Trial Room,\ 2, 1, Class Trial Room 3   :: Sets Basement's scream range to "Class Trial Room, 2" (note the \ escape character"), area 1 and "Class Trial Room 3".
+    /scream_set_range                                               :: Sets Basement's scream range to no areas.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    
+    if len(arg) == 0:
+        client.area.scream_range = set()
+        area_names = '{}'
+    else:
+        areas = parse_area_names(client, arg.split(', '))       
+        if client.area in areas:
+            raise ArgumentError('You cannot add the current area to the scream range.')
+        area_names = set([area.name for area in areas]) 
+        client.area.scream_range = area_names
+        
+    client.send_host_message('Set the scream range of area {} to be: {}.'.format(client.area.name, area_names))
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                            '{} set the scream range of area {} to be: {} ({}).'
+                            .format(client.get_char_name(), client.area.name, area_names, client.area.id), 
+                            pred=lambda c: c.is_staff() and c != client)
+    logger.log_server(
+    '[{}][{}]Set the scream range of area {} to be: {}.'
+    .format(client.area.id, client.get_char_name(), client.area.name, area_names), client)
+    
+def ooc_cmd_scream_set(client, arg):
+    """ (STAFF ONLY)
+    Toggles the ability of ONE given area by name or ID to hear a scream from the current area on or off.
+    This only modifies the given area's status in the current area's scream range, unlike /scream_set_range.
+    Note that scream ranges are unidirectional, so if you want two areas to hear one another, you must use this command twice.
+    Raises an error if an invalid area name or area ID is given, or if the current area is the target of the selection.
+    
+    SYNTAX
+    /scream_set <target_area>
+    
+    PARAMETERS
+    <target_area>: The area whose ability to hear screams from the current area must be switched.
+    
+    EXAMPLES
+    Assuming Area 2: Class Trial Room, 2 starts as not part of the current area's (say Basement) scream range...
+    /scream_set Class Trial Room,\ 2 :: Adds "Class Trial Room, 2" to the scream range of Basement (note the \ escape character)-
+    /scream_set 2                    :: Removes "Class Trial Room, 2" from the scream range of Basement.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ArgumentError('This command takes one area name.')
+        
+    intended_area = parse_area_names(client, arg.split(', ')) # This should just return a list with one area
+    if len(intended_area) > 1:
+        raise ArgumentError('This command takes one area name (did you mean /scream_set_range ?).')
+        
+    intended_area = intended_area[0] # Convert the one element list into the area name
+    if intended_area == client.area:
+        raise ArgumentError('You cannot add or remove the current area from the scream range.')
+    
+    # If intended area not in range, add it
+    if intended_area.name not in client.area.scream_range:
+        client.area.scream_range.add(intended_area.name)
+        client.send_host_message('Added area {} to the scream range of area {}.'.format(intended_area.name, client.area.name))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                '{} added area {} to the scream range of area {} ({}).'
+                                .format(client.get_char_name(), intended_area.name, client.area.name, client.area.id), 
+                                pred=lambda c: c.is_staff() and c != client)
+        logger.log_server(
+        '[{}][{}]Added area {} to the scream range of area {}.'
+        .format(client.area.id, client.get_char_name(), intended_area.name, client.area.name), client)
+    else: # Otherwise, add it
+        client.area.scream_range.remove(intended_area.name)
+        client.send_host_message('Removed area {} from the scream range of area {}.'.format(intended_area.name, client.area.name))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                '{} removed area {} from the scream range of area {} ({}).'
+                                .format(client.get_char_name(), intended_area.name, client.area.name, client.area.id), 
+                                pred=lambda c: c.is_staff() and c != client)
+        logger.log_server(
+        '[{}][{}]Removed area {} from the scream range of area {}.'
+        .format(client.area.id, client.get_char_name(), intended_area.name, client.area.name), client)
+
+def ooc_cmd_scream_range(client, arg):
+    """ (STAFF ONLY)
+    Return the current area's scream range (i.e. users in which areas who would hear a /scream from the current area).
+    
+    SYNTAX
+    /scream_range
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    /scream_range           :: Obtain the current area's scream range, for example {'Basement'}
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
+    info = '== Areas in scream range of area {} =='.format(client.area.name)
+    # If no areas in scream range, print a manual message.
+    if len(client.area.scream_range) == 0:
+        info += '\r\n*No areas.'
+    # Otherwise, build the list of all areas.
+    else:
+        for area in client.area.scream_range:
+            info += '\r\n*{}'.format(area)
+                
+    client.send_host_message(info)
+
 def ooc_cmd_showname(client, arg):
     """
     If given an argument, sets the client's showname to that. 
@@ -2385,6 +2779,30 @@ def ooc_cmd_toggle_rpgetareas(client, arg):
     logger.log_server('[{}][{}]{} /getareas in this area.'
                       .format(client.area.id, client.get_char_name(), 
                               status[client.area.rp_getareas_allowed].capitalize()), client)
+    
+def ooc_cmd_toggle_shownames(client, arg):
+    """
+    Toggles between receiving IC messages with custom shownames or receiving them all with character names.
+    When joining, players will receive IC messages with shownames.
+    
+    SYNTAX
+    /toggle_shownames
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    Assuming a player who just joined
+    /toggle_shownames           :: All subsequent messages will only include character names as the message sender.
+    /toggle_shownames           :: All subsequent messages will include the shownames of the senders if they have one.
+    """
+    if len(arg) != 0:
+        raise ArgumentError("This command has no arguments.")
+        
+    client.show_shownames = not client.show_shownames
+    status = {False: 'off', True: 'on'}
+
+    client.send_host_message('Shownames turned {}.'.format(status[client.show_shownames]))
 
 def ooc_cmd_transient(client, arg):
     """ (STAFF ONLY)
@@ -2442,6 +2860,25 @@ def ooc_cmd_unban(client, arg):
     
     logger.log_server('Unbanned {}.'.format(arg), client)
     client.send_host_message('Unbanned {}'.format(arg))
+
+def ooc_cmd_unfollow(client, arg):
+    """ (STAFF ONLY)
+    Stops following the player you are following.
+    Returns an error if you are not following anyone.
+    
+    SYNTAX
+    /unfollow
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    Assuming you were following someone...
+    /unfollow                     :: Stops following the player
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    client.unfollow_user()
 
 def ooc_cmd_unglobalic(client, arg):
     """ (STAFF ONLY)
@@ -3013,44 +3450,6 @@ def ooc_cmd_unblockdj(client, arg):
         target.is_dj = True
         target.send_host_message('Now you can change music.')
     client.send_host_message('Unblockdj\'d {}.'.format(targets[0].get_char_name()))
-            
-def ooc_cmd_discord(client, arg):
-    """
-    Returns the server's Discord server invite link.
-    
-    SYNTAX
-    /discord
-    
-    PARAMETERS
-    None
-    
-    EXAMPLE
-    /discord            :: Sends the Discord invite link
-    """
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    client.send_host_message('Discord Invite Link: \r\ninsert link here \r\nBlank\'s tag: \r\nName(tag)0000 \r\nBlank\'s tag: \r\nName(tag)0000 \r\nBlank\'s tag: \r\nName(hashtag)0000')
-
-def ooc_cmd_follow(client, arg):
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        client.send_host_message('You must specify an ID. Use /follow <id>.')
-    try:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-        c = targets[0]
-        client.follow_user(c)
-        logger.log_server('{} began following {}.'.format(client.get_char_name(), c.get_char_name()), client)
-    except:
-        raise ClientError('Target not found.')
-
-def ooc_cmd_unfollow(client, arg):
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    try:
-        client.unfollow_user()
-    except AttributeError:
-        client.send_host_message('You are not following anyone.')
 
 def ooc_cmd_timer(client, arg):
     if len(arg) == 0:
@@ -3201,369 +3600,7 @@ def ooc_cmd_timer(client, arg):
     else:
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
-    
-def ooc_cmd_scream_set_range(client, arg):
-    """ (STAFF ONLY)
-    Set the current area's scream range to a given list of areas by name or ID separated by commas.
-    This completely overrides the old scream range, unlike /scream_set.
-    Passing in no arguments sets the scream range to nothing (i.e. a soundproof room).
-    Note that scream ranges are unidirectional, so if you want two areas to hear one another, you must use this command twice.
-    Raises an error if an invalid area name or area ID is given, or if the current area is part of the selection.
-    
-    SYNTAX
-    /scream_set_range {area_1}, {area_2}, {area_3}, ...
-    
-    PARAMETERS
-    {area_n}: An area to add to the current scream range. Can be either an area name or area ID.
-    
-    EXAMPLES:
-    Assuming the current area is Basement...
-    /scream_set_range Class Trial Room 3                            :: Sets Basement's scream range to "Class Trial Room 3"
-    /scream_set_range Class Trial Room,\ 2, 1, Class Trial Room 3   :: Sets Basement's scream range to "Class Trial Room, 2" (note the \ escape character"), area 1 and "Class Trial Room 3".
-    /scream_set_range                                               :: Sets Basement's scream range to no areas.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    
-    if len(arg) == 0:
-        client.area.scream_range = set()
-        area_names = '{}'
-    else:
-        areas = parse_area_names(client, arg.split(', '))       
-        if client.area in areas:
-            raise ArgumentError('You cannot add the current area to the scream range.')
-        area_names = set([area.name for area in areas]) 
-        client.area.scream_range = area_names
-        
-    client.send_host_message('Set the scream range of area {} to be: {}.'.format(client.area.name, area_names))
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                            '{} set the scream range of area {} to be: {} ({}).'
-                            .format(client.get_char_name(), client.area.name, area_names, client.area.id), 
-                            pred=lambda c: c.is_staff() and c != client)
-    logger.log_server(
-    '[{}][{}]Set the scream range of area {} to be: {}.'
-    .format(client.area.id, client.get_char_name(), client.area.name, area_names), client)
-    
-def ooc_cmd_scream_set(client, arg):
-    """ (STAFF ONLY)
-    Toggles the ability of ONE given area by name or ID to hear a scream from the current area on or off.
-    This only modifies the given area's status in the current area's scream range, unlike /scream_set_range.
-    Note that scream ranges are unidirectional, so if you want two areas to hear one another, you must use this command twice.
-    Raises an error if an invalid area name or area ID is given, or if the current area is the target of the selection.
-    
-    SYNTAX
-    /scream_set <target_area>
-    
-    PARAMETERS
-    <target_area>: The area whose ability to hear screams from the current area must be switched.
-    
-    EXAMPLES
-    Assuming Area 2: Class Trial Room, 2 starts as not part of the current area's (say Basement) scream range...
-    /scream_set Class Trial Room,\ 2 :: Adds "Class Trial Room, 2" to the scream range of Basement (note the \ escape character)-
-    /scream_set 2                    :: Removes "Class Trial Room, 2" from the scream range of Basement.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError('This command takes one area name.')
-        
-    intended_area = parse_area_names(client, arg.split(', ')) # This should just return a list with one area
-    if len(intended_area) > 1:
-        raise ArgumentError('This command takes one area name (did you mean /scream_set_range ?).')
-        
-    intended_area = intended_area[0] # Convert the one element list into the area name
-    if intended_area == client.area:
-        raise ArgumentError('You cannot add or remove the current area from the scream range.')
-    
-    # If intended area not in range, add it
-    if intended_area.name not in client.area.scream_range:
-        client.area.scream_range.add(intended_area.name)
-        client.send_host_message('Added area {} to the scream range of area {}.'.format(intended_area.name, client.area.name))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                '{} added area {} to the scream range of area {} ({}).'
-                                .format(client.get_char_name(), intended_area.name, client.area.name, client.area.id), 
-                                pred=lambda c: c.is_staff() and c != client)
-        logger.log_server(
-        '[{}][{}]Added area {} to the scream range of area {}.'
-        .format(client.area.id, client.get_char_name(), intended_area.name, client.area.name), client)
-    else: # Otherwise, add it
-        client.area.scream_range.remove(intended_area.name)
-        client.send_host_message('Removed area {} from the scream range of area {}.'.format(intended_area.name, client.area.name))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                '{} removed area {} from the scream range of area {} ({}).'
-                                .format(client.get_char_name(), intended_area.name, client.area.name, client.area.id), 
-                                pred=lambda c: c.is_staff() and c != client)
-        logger.log_server(
-        '[{}][{}]Removed area {} from the scream range of area {}.'
-        .format(client.area.id, client.get_char_name(), intended_area.name, client.area.name), client)
 
-def ooc_cmd_scream_range(client, arg):
-    """ (STAFF ONLY)
-    Return the current area's scream range (i.e. users in which areas who would hear a /scream from the current area).
-    
-    SYNTAX
-    /scream_range
-    
-    PARAMETERS
-    None
-    
-    EXAMPLES
-    /scream_range           :: Obtain the current area's scream range, for example {'Basement'}
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    
-    info = '== Areas in scream range of area {} =='.format(client.area.name)
-    # If no areas in scream range, print a manual message.
-    if len(client.area.scream_range) == 0:
-        info += '\r\n*No areas.'
-    # Otherwise, build the list of all areas.
-    else:
-        for area in client.area.scream_range:
-            info += '\r\n*{}'.format(area)
-                
-    client.send_host_message(info)
-
-def ooc_cmd_toggle_shownames(client, arg):
-    """
-    Toggles between receiving IC messages with custom shownames or receiving them all with character names.
-    When joining, players will receive IC messages with shownames.
-    
-    SYNTAX
-    /toggle_shownames
-    
-    PARAMETERS
-    None
-    
-    EXAMPLE
-    Assuming a player who just joined
-    /toggle_shownames           :: All subsequent messages will only include character names as the message sender.
-    /toggle_shownames           :: All subsequent messages will include the shownames of the senders if they have one.
-    """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
-        
-    client.show_shownames = not client.show_shownames
-    status = {False: 'off', True: 'on'}
-
-    client.send_host_message('Shownames turned {}.'.format(status[client.show_shownames]))
-
-def ooc_cmd_lights(client, arg):
-    """ (STAFF ONLY)
-    Toggles lights on or off in the background. If area is background locked, it requires mod privileges.
-    If turned off, the background will change to the server's blackout background.
-    If turned on, the background will revert to the background before the blackout one.
-    
-    SYNTAX
-    /lights <new_status>
-    
-    PARAMETERS
-    <new_status>: 'on' or 'off'
-    
-    EXAMPLES
-    Assuming lights were initially turned on
-    /lights off             :: Turns off lights
-    /lights on              :: Turns on lights
-    """    
-    if len(arg) == 0:
-        raise ArgumentError('You must specify either on or off.')
-    if arg not in ['off', 'on']:
-        raise ClientError('Invalid argument. Expected: on, off. Your argument: {}'.format(arg))
-    if not client.is_mod and client.area.bg_lock == True: 
-        raise AreaError("Unable to turn lights {}: This area's background is locked.".format(arg))
-        
-    if arg == 'on':
-        if client.area.background == client.server.config['blackout_background']:
-            intended_background = client.area.background_backup
-        else:
-            intended_background = client.area.background
-    elif arg == 'off':
-        if client.area.background != client.server.config['blackout_background']:
-            client.area.background_backup = client.area.background
-        intended_background = client.server.config['blackout_background']
-        
-    try:
-        client.area.change_background(intended_background)
-    except AreaError:
-        raise ClientError('Unable to turn lights {}: Background {} not found'.format(arg, intended_background))
-    
-    client.area.send_host_message('The lights were turned {}'.format(arg))
-    
-def ooc_cmd_bloodtrail(client, arg):
-    """ (STAFF ONLY)
-    Toggles a client by IP or IPID leaving a blood trail wherever they go or not. 
-    OOC announcements are made to players joining an area regarding the existence of a blood trail and where it leads to.
-    Turning off a player leaving a blood trail does not clean the blood in the area. For that, use /bloodtrail_clean
-    
-    If given IPID, it will invert the status of all the clients opened by the user. Otherwise, it will just do it to the given client.
-    Returns an error if the given identifier does not correspond to a user.
-    
-    SYNTAX
-    /bloodtrail <client_id>
-    /bloodtrail <client_ipid>
-    
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-    
-    EXAMPLE
-    Assuming a player with client ID 0 and IPID 1234567890 starts as not being leaving a blood trail
-    /bloodtrail 0            :: This player will now leave a blood trail wherever they go.
-    /bloodtrail 1234567890   :: This player will no longer leave blood trails wherever they go.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    
-    # Invert current transient status of matching targets
-    status = {False: 'no longer', True: 'now'}
-    for c in parse_id_or_ipid(client, arg):
-        c.is_bleeding = not c.is_bleeding
-        client.send_host_message('{} ({}) is {} bleeding.'.format(c.get_char_name(), c.area.id, status[c.is_bleeding])) 
-        c.send_host_message('You are {} bleeding.'.format(status[c.is_bleeding]))
-        
-        if c.is_bleeding:
-            c.area.bleeds_to.add(c.area.name)
-
-def ooc_cmd_bloodtrail_clean(client, arg):
-    """ 
-    Cleans the blood trails of the current area or (STAFF ONLY) given areas by ID or name separated by commas.
-    If not given any areas, it will clean the blood trail of the current area.
-    
-    SYNTAX
-    /bloodtrail_clean {area_1}, {area_2}, ....
-    
-    OPTIONAL PARAMETERS
-    {area_n}: Area ID or name
-    
-    EXAMPLE
-    Assuming the player is in area 0
-    /bloodtrail_clean                           :: Cleans the blood trail in area 0
-    /bloodtrail_clean 3, Class Trial Room,\ 2   :: Cleans the blood trail in area 3 and Class Trial Room, 2 (note the ,\)
-    """
-    if len(arg) == 0:
-        areas_to_clean = [client.area]
-    else:
-        if not client.is_staff():
-            raise ClientError('You must be authorized to do that.')    
-        raw_areas_to_clean = arg.split(", ")
-        areas_to_clean = set(parse_area_names(client, raw_areas_to_clean)) # Make sure the input is valid before starting
-        
-    successful_cleans = set()
-    for area in areas_to_clean:
-        # Check if someone is currently bleeding in the area, which would prevent it from being cleaned.
-        # Yes, you can use for/else in Python, it works exactly like regular flags.
-        for c in area.clients:
-            if c.is_bleeding:
-                if not client.is_staff():
-                    client.send_host_message("You tried to clean the place up but the blood just keeps coming.")
-                else:
-                    client.send_host_message("{} in area {} is still bleeding, so the area cannot be cleaned.".format(c.get_char_name(), area.name))
-                break
-        else:
-            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                      'The blood trail in this area was cleaned.',
-                                      pred=lambda c: c.area == area and c != client)
-            area.bleeds_to = set()
-            successful_cleans.add(area.name)
-    
-    if len(successful_cleans) > 0:
-        if len(arg) == 0:
-            message = client.area.name
-            client.send_host_message("Cleaned the blood trail in the current area.")
-            if client.is_staff():            
-                client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                            '{} cleaned the blood trail in area {}.'.format(client.name, client.area.name),
-                                            pred=lambda c: c.is_staff() and c != client)  
-            else:
-                client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                            '{} cleaned the blood trail in area {}.'.format(client.get_char_name(), client.area.name),
-                                            pred=lambda c: c.is_staff() and c != client)  
-        elif len(successful_cleans) == 1:
-            message = str(successful_cleans.pop())
-            client.send_host_message("Cleaned blood trail in area {}".format(message))
-            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                            '{} cleaned the blood trail in area {}.'.format(client.name, message),
-                                            pred=lambda c: c.is_staff() and c != client)            
-        elif len(successful_cleans) > 1:
-            message = ", ".join(successful_cleans)
-            client.send_host_message("Cleaned blood trails in areas {}".format(message))
-            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                            '{} cleaned the blood trails in areas {}.'.format(client.name, message),
-                                            pred=lambda c: c.is_staff() and c != client)
-        logger.log_server(
-        '[{}][{}]Cleaned the blood trail in {}.'
-        .format(client.area.id, client.get_char_name(), message), client)
-
-def ooc_cmd_bloodtrail_list(client, arg):
-    """ (STAFF ONLY)
-    Lists all areas that contain non-empty blood trails and how those look like.
-    
-    SYNTAX
-    /bloodtrail_list
-    
-    PARAMETERS
-    None
-    
-    EXAMPLE
-    /bloodtrail_list
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-        
-    info = '== Blood trails in this server =='
-    # Get all areas with blood in them
-    areas = [area for area in client.server.area_manager.areas if len(area.bleeds_to) > 0]
-    
-    # No areas found means there are no blood trails
-    if len(areas) == 0:
-        info += '\r\n*No areas have blood.'
-    # Otherwise, build the list of all areas with blood
-    else:
-        for area in areas:
-            info += '\r\n*{}: {}'.format(area.name, ", ".join(area.bleeds_to))
-        
-    client.send_host_message(info)
-    
-def ooc_cmd_bloodtrail_set(client, arg):
-    """ (STAFF ONLY)
-    Sets (and replaces!) the blood trail of the current area to link all relevant areas by ID or name separated by commas.
-    If not given any areas, it will set the blood trail to be a single unconnected pool of blood in the area.
-    Requires /bloodtrail_clean to undo.
-    
-    SYNTAX
-    /bloodtrail_set {area_1}, {area_2}, ....
-    
-    OPTIONAL PARAMETERS
-    {area_n}: Area ID or name
-    
-    EXAMPLE
-    Assuming the player is in area 0
-    /bloodtrail_set                           :: Sets the blood trail in area 0 to be a single pool of blood
-    /bloodtrail_set 3, Class Trial Room,\ 2   :: Sets the blood trail in area 0 to go to area 3 and Class Trial Room, 2 (note the ,\). 
-    
-    NOTE: This command will automatically add the current area to the blood trail if not explicitly included, as
-    it does not make too much physical sense to have a trail lead out of an area while there being no blood in 
-    the current area.
-    """
-    
-    if len(arg) == 0:
-        areas_to_link = [client.area]
-        message = 'be an unconnected pool of blood'
-    else:
-        raw_areas_to_link = arg.split(", ")
-        areas_to_link = set(parse_area_names(client, raw_areas_to_link) + [client.area]) # Make sure the input is valid before starting
-        message = 'go to {}'.format(", ".join([area.name for area in areas_to_link]))
-    
-    client.send_host_message('Set the blood trail in this area to {}.'.format(message))
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                    'The blood trail in this area was set to {}.'.format(message),
-                                    pred=lambda c: not c.is_staff() and c.area == client.area and c != client)
-    client.area.bleeds_to = set([area.name for area in areas_to_link])
-    
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

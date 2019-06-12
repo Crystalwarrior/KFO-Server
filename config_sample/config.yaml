@@ -40,6 +40,7 @@ spectator_name: SPECTATOR
 showname_max_length: 30
 sneak_handicap: 5
 blackout_background: Blackout_HD
+discord_link: None
 
 music_change_floodguard:
   times_per_interval: 3

@@ -142,6 +142,8 @@ class TsuServer3:
             self.config['sneak_handicap'] = 5 # Seconds
         if 'blackout_background' not in self.config:
             self.config['blackout_background'] = 'Blackout_HD'
+        if 'discord_link' not in self.config:
+            self.config['discord_link'] = 'None'
             
     def load_characters(self):
         with open('config/characters.yaml', 'r', encoding = 'utf-8') as chars:

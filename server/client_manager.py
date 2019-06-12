@@ -439,19 +439,38 @@ class ClientManager:
                 logger.log_server('{} is now sneaking.'.format(self.ipid), self)
                 
         def follow_user(self, target):
+            if target == self:
+                raise ClientError('You cannot follow yourself.')
+            if target == self.following:
+                raise ClientError('You are already following that player.')
+                
+            if target.followedby: # Only one person can follow someone else
+                target.followedby.send_host_message('{} started following your target, so you are no longer following them.'.format(self.name))
+                target.followedby.unfollow_user()
+                
+            self.send_host_message('Began following client {} at {}'.format(target.id, time.asctime(time.localtime(time.time()))))
             self.following = target
             target.followedby = self
-            self.send_host_message('Began following client {} at {}'.format(target.id, time.asctime(time.localtime(time.time()))))
+
             if self.area != target.area:
-                self.follow_area(target.area)
+                self.follow_area(target.area, just_moved=False)
 
         def unfollow_user(self):
+            if not self.following:
+                raise ClientError('You are not following anyone.')
+                
             self.send_host_message("Stopped following client {} at {}.".format(self.following.id, time.asctime(time.localtime(time.time()))))
             self.following.followedby = None
             self.following = None
 
-        def follow_area(self, area):
-            self.send_host_message('Followed user moved to {} at {}'.format(area.name, time.asctime(time.localtime(time.time()))))
+        def follow_area(self, area, just_moved=True):
+            # just_moved if True assumes the case where the followed user just moved
+            # It being false is the case where, when the following started, the followed user was in another area, and thus the followee is moved automtically
+            if just_moved:
+                self.send_host_message('Followed user moved to {} at {}'.format(area.name, time.asctime(time.localtime(time.time()))))
+            else:
+                self.send_host_message('Followed user was at {}'.format(area.name))
+                
             try:
                 self.change_area(area, ignore_followers=True)
             except ClientError as error:
