@@ -4,7 +4,7 @@
   evidence_mod: FFA
   locking_allowed: false
   iniswap_allowed: true
-  reachable_areas: Class Trial Room 1, Class Trial Room 3
+  reachable_areas: Class Trial Room 1, Class Trial Room 3, Test 1, Test 2, Test 3, Test 4
   lobby_area: True
   scream_range: Class Trial Room 1
 - area: Class Trial Room 1
@@ -45,3 +45,28 @@
   afk_sendto: 1
   lobby_area: True
   private_area: True
+- area: Test 1
+  background: Class Trial Debate Room V3-1_HD
+  bglock: false
+  evidence_mod: FFA
+  locking_allowed: false
+  iniswap_allowed: true
+  reachable_areas: <ALL>
+- area: Test 2
+  background: Class Trial Debate Room V3-1_HD
+  bglock: false
+  evidence_mod: FFA
+  iniswap_allowed: true
+  reachable_areas: <ALL>
+- area: Test 3
+  background: Class Trial Debate Room V3-1_HD
+  bglock: false
+  evidence_mod: FFA
+  iniswap_allowed: true
+  reachable_areas: <ALL>
+- area: Test 4
+  background: Class Trial Debate Room V3-1_HD
+  bglock: false
+  evidence_mod: FFA
+  iniswap_allowed: true
+  reachable_areas: <ALL>

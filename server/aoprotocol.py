@@ -330,9 +330,7 @@ class AOProtocol(asyncio.Protocol):
             return
         if self.client.area.ic_lock and not (self.client.is_mod or self.client.is_cm or self.client.is_gm):
             self.client.send_host_message("IC chat in this area has been locked by a moderator.")
-            return            
-        if not self.client.area.can_send_message():
-            return
+            return       
         if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR_OR_EMPTY, self.ArgType.STR,
                                      self.ArgType.STR,
                                      self.ArgType.STR, self.ArgType.STR, self.ArgType.STR, self.ArgType.INT,
@@ -354,11 +352,11 @@ class AOProtocol(asyncio.Protocol):
             return
         if sfx_delay < 0:
             return
-        if button not in (0, 1, 2, 3, 4, 5, 6, 7):
+        if button not in (0, 1, 2, 3, 4, 5, 6, 7): # Shouts
             return
         if evidence < 0:
             return
-        if ding not in (0, 1, 2, 3, 4, 5, 6):
+        if ding not in (0, 1, 2, 3, 4, 5, 6, 7): # Effects
             return
         if color not in (0, 1, 2, 3, 4, 5, 6):
             return
