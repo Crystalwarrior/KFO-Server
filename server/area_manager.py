@@ -49,7 +49,7 @@ class AreaManager:
             self.is_gmlocked = False
             self.is_modlocked = False
             self.bleeds_to = set()
-                        
+            
             self.name = parameters['area']
             self.background = parameters['background']
             self.bg_lock = parameters['bglock']
@@ -69,6 +69,7 @@ class AreaManager:
             self.private_area = parameters['private_area']
             self.scream_range = parameters['scream_range']
             self.restricted_chars = parameters['restricted_chars']
+            self.can_interrupt_message = parameters['shouts_can_interrupt_messages']
             
             self.background_backup = self.background # Used for restoring temporary background changes
             # Fix comma-separated entries
@@ -158,7 +159,9 @@ class AreaManager:
                 self.music_looper = asyncio.get_event_loop().call_later(length,
                                                                         lambda: self.play_music(name, -1, length))
 
-        def can_send_message(self):
+        def can_send_message(self, button):
+            if button > 0: # Shouts can ignore server timeout, except if cutting another shout
+                return (time.time() * 1000.0 - self.next_message_time) > 0 or self.can_interrupt_message
             return (time.time() * 1000.0 - self.next_message_time) > 0
 
         def change_hp(self, side, val):
@@ -282,6 +285,8 @@ class AreaManager:
                 item['scream_range'] = ''
             if 'restricted_chars' not in item:
                 item['restricted_chars'] = ''
+            if 'shouts_can_interrupt_messages' not in item:
+                item['shouts_can_interrupt_messages'] = False
             
             # Backwards compatibility notice
             if 'sound_proof' in item:

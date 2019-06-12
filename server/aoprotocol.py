@@ -331,8 +331,6 @@ class AOProtocol(asyncio.Protocol):
         if self.client.area.ic_lock and not (self.client.is_mod or self.client.is_cm or self.client.is_gm):
             self.client.send_host_message("IC chat in this area has been locked by a moderator.")
             return            
-        if not self.client.area.can_send_message():
-            return
         if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR_OR_EMPTY, self.ArgType.STR,
                                      self.ArgType.STR,
                                      self.ArgType.STR, self.ArgType.STR, self.ArgType.STR, self.ArgType.INT,
@@ -354,11 +352,11 @@ class AOProtocol(asyncio.Protocol):
             return
         if sfx_delay < 0:
             return
-        if button not in (0, 1, 2, 3, 4, 5, 6, 7):
+        if button not in (0, 1, 2, 3, 4, 5, 6, 7): # Shouts
             return
         if evidence < 0:
             return
-        if ding not in (0, 1, 2, 3, 4, 5, 6):
+        if ding not in (0, 1, 2, 3, 4, 5, 6, 7): # Effects
             return
         if color not in (0, 1, 2, 3, 4, 5, 6):
             return
@@ -376,6 +374,8 @@ class AOProtocol(asyncio.Protocol):
         else:
             if pos not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
+        if not self.client.area.can_send_message(button):
+            return
         msg = text[:256]
         if self.client.gimp: #If you're gimped, gimp message.
             msg = self.client.gimp_message(msg)
@@ -398,6 +398,10 @@ class AOProtocol(asyncio.Protocol):
             
                 c.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
                                sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, showname)
+                if button > 0:
+                    self.client.area.can_interrupt_message = False
+                else:
+                    self.client.area.can_interrupt_message = True
         else:
             for area_id in range(self.client.multi_ic[0].id, self.client.multi_ic[1].id + 1):
                 target_area = self.server.area_manager.get_area_by_id(area_id)
@@ -410,6 +414,7 @@ class AOProtocol(asyncio.Protocol):
                     c.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
                                    sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, showname)
                 target_area.set_next_msg_delay(len(msg))
+                target_area.can_interrupt_message = False
                 
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
