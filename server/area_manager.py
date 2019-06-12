@@ -158,7 +158,7 @@ class AreaManager:
                 self.music_looper = asyncio.get_event_loop().call_later(length,
                                                                         lambda: self.play_music(name, -1, length))
 
-        def can_send_message(self, button):
+        def can_send_message(self):
             return (time.time() * 1000.0 - self.next_message_time) > 0
 
         def change_hp(self, side, val):

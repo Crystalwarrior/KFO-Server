@@ -3631,7 +3631,7 @@ def ooc_cmd_exec(client, arg):
     """
     # IF YOU WANT TO DISABLE /exec: REMOVE THE # IN FRONT OF return
     # IF YOU WANT TO ENABLE /exec: ADD A # IN FRONT OF return, LIKE SO: # return
-    # return
+    return
     
     print("Attempting to run instruction {}".format(arg))
 
