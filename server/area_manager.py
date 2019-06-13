@@ -69,7 +69,9 @@ class AreaManager:
             self.private_area = parameters['private_area']
             self.scream_range = parameters['scream_range']
             self.restricted_chars = parameters['restricted_chars']
+            self.default_description = parameters['default_description']
             
+            self.description = self.default_description # Store the current description separately from the default description
             self.background_backup = self.background # Used for restoring temporary background changes
             # Fix comma-separated entries
             self.reachable_areas = fix_and_setify(self.reachable_areas)
@@ -282,6 +284,8 @@ class AreaManager:
                 item['scream_range'] = ''
             if 'restricted_chars' not in item:
                 item['restricted_chars'] = ''
+            if 'default_description' not in item:
+                item['default_description'] = self.server.config['default_area_description']
             
             # Backwards compatibility notice
             if 'sound_proof' in item:

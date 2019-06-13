@@ -144,6 +144,8 @@ class TsuServer3:
             self.config['blackout_background'] = 'Blackout_HD'
         if 'discord_link' not in self.config:
             self.config['discord_link'] = 'None'
+        if 'default_area_description' not in self.config:
+            self.config['default_area_description'] = 'No description.'
             
     def load_characters(self):
         with open('config/characters.yaml', 'r', encoding = 'utf-8') as chars:

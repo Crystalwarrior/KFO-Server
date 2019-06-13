@@ -707,7 +707,7 @@ def ooc_cmd_bloodtrail_list(client, arg):
     # Otherwise, build the list of all areas with blood
     else:
         for area in areas:
-            info += '\r\n*{}: {}'.format(area.name, ", ".join(area.bleeds_to))
+            info += '\r\n*({}) {}: {}'.format(area.id, area.name, ", ".join(area.bleeds_to))
         
     client.send_host_message(info)
     
@@ -732,7 +732,9 @@ def ooc_cmd_bloodtrail_set(client, arg):
     it does not make too much physical sense to have a trail lead out of an area while there being no blood in 
     the current area.
     """
-    
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+        
     if len(arg) == 0:
         areas_to_link = [client.area]
         message = 'be an unconnected pool of blood'
@@ -745,6 +747,9 @@ def ooc_cmd_bloodtrail_set(client, arg):
     client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
                                     'The blood trail in this area was set to {}.'.format(message),
                                     pred=lambda c: not c.is_staff() and c.area == client.area and c != client)
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    '{} set the blood trail in area {} to {}.'.format(client.name, client.area.name, message),
+                                    pred=lambda c: c.is_staff() and c != client)
     client.area.bleeds_to = set([area.name for area in areas_to_link])
     
 def ooc_cmd_charselect(client, arg):
@@ -1633,7 +1638,7 @@ def ooc_cmd_minimap(client, arg):
         else:
             for area in sorted_areas:
                 if area != client.area.name:
-                    info += '\r\n*{}'.format(area)
+                    info += '\r\n*({}) {}'.format(client.server.area_manager.get_area_by_name(area).id, area)
     except AreaError:
         # In case no passages are set, send '<ALL>' as default answer.
         info += '\r\n<ALL>'
@@ -2319,7 +2324,7 @@ def ooc_cmd_scream_range(client, arg):
     # Otherwise, build the list of all areas.
     else:
         for area in client.area.scream_range:
-            info += '\r\n*{}'.format(area)
+            info += '\r\n*({}) {}'.format(client.server.area_manager.get_area_by_name(area).id, area)
                 
     client.send_host_message(info)
 
@@ -3601,6 +3606,154 @@ def ooc_cmd_timer(client, arg):
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
 
+def ooc_cmd_look(client, arg):
+    """
+    Obtain the current area's description, which is either the description in the area list configuration, or a 
+    customized one defined via /look_set.
+    If the area has no set description, it will return the server's default description
+    stored in server.config['default_area'description']
+    
+    SYNTAX
+    /look
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    If the current area's description is "Literally a courtroom"
+    /look               :: Returns "Literally a courtroom"
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    client.send_host_message(client.area.description)
+    
+def ooc_cmd_look_clean(client, arg):
+    """ (STAFF ONLY)
+    Restores the default area descriptions of the given areas by ID or name separated by commas.
+    If not given any areas, it will restore the default area description of the current area.
+    
+    SYNTAX
+    /look_clean {area_1}, {area_2}, ....
+    
+    OPTIONAL PARAMETERS
+    {area_n}: Area ID or name
+    
+    EXAMPLE
+    Assuming the player is in area 0
+    /look_clean                           :: Restores the default area description in area 0
+    /look_clean 3, Class Trial Room,\ 2   :: Restores the default area descriptions in area 3 and Class Trial Room, 2 (note the ,\)
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')   
+
+    if len(arg) == 0:
+        areas_to_clean = [client.area]
+    else: 
+        raw_areas_to_clean = arg.split(", ")
+        areas_to_clean = set(parse_area_names(client, raw_areas_to_clean)) # Make sure the input is valid before starting
+        
+    successful_cleans = set()
+    for area in areas_to_clean:
+        area.description = area.default_description
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                        'The area description was updated to {}.'.format(area.description),
+                                        pred=lambda c: not c.is_staff() and c.area == area and c != client)
+        successful_cleans.add(area.name)
+        
+    if len(successful_cleans) == 1:
+        message = str(successful_cleans.pop())
+        client.send_host_message("Reset the area description of area {} to its original value.".format(message))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                        '{} reset the area description of area {} to its original value.'.format(client.name, message),
+                                        pred=lambda c: c.is_staff() and c != client)            
+    elif len(successful_cleans) > 1:
+        message = ", ".join(successful_cleans)
+        client.send_host_message("Reset the area descriptions of areas {} to their original values.".format(message))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                        '{} reset the area descriptions of areas {} to their original values.'.format(client.name, message),
+                                        pred=lambda c: c.is_staff() and c != client)
+        logger.log_server(
+        '[{}][{}]Reset the area description in {}.'
+        .format(client.area.id, client.get_char_name(), message), client)
+
+def ooc_cmd_look_list(client, arg):
+    """ (STAFF ONLY)
+    Lists all areas that contain custom descriptions.
+    
+    SYNTAX
+    /look_list
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    If area 0 called Basement is the only one with a custom description, and it happens to be "Not a courtroom"...
+    /look_list              :: May return something like
+    == Areas in this server with custom descriptions == 
+    *(0) Basement: Not a courtroom
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    info = '== Areas in this server with custom descriptions =='
+    # Get all areas with changed descriptions
+    areas = [area for area in client.server.area_manager.areas if area.description != area.default_description]
+    
+    # No areas found means there are no areas with changed descriptions
+    if len(areas) == 0:
+        info += '\r\n*No areas have changed their description.'
+    # Otherwise, build the list of all areas with changed descriptions
+    else:
+        for area in areas:
+            info += '\r\n*({}) {}: {}'.format(area.id, area.name, area.description)
+        
+    client.send_host_message(info)
+
+def ooc_cmd_look_set(client, arg):
+    """ (STAFF ONLY)
+    Sets (and replaces!) the area description of the current area to the given one.
+    If not given any description, it will set the description to be the area's default description.
+    Requires /look_clean to undo.
+    
+    SYNTAX
+    /look_set {area_1}, {area_2}, ....
+    
+    OPTIONAL PARAMETERS
+    {area_n}: Area ID or name
+    
+    EXAMPLE
+    Assuming the player is in area 0, which was set to have a default description of "A courtroom"
+    /look_set "Not literally a courtroom"       :: Sets the area description in area 0 to be "Not literally a courtroom".
+    /look_set                                   :: Sets the area description in area 0 to be the default "A courtroom".
+    """
+    
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+        
+    if len(arg) == 0:
+        client.area.description = client.area.default_description
+        client.send_host_message('Reset the area description to its original value.')
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                        '{} reset the area description of area {} to its original value.'.format(client.name, client.area.name),
+                                        pred=lambda c: c.is_staff() and c != client)   
+        logger.log_server('[{}][{}]Reset the area description in {}.'
+                          .format(client.area.id, client.get_char_name(), client.area.name), client)
+        
+    else:
+        client.area.description = arg
+        client.send_host_message('Updated the area descriptions to {}'.format(arg))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    '{} set the area descriptions of area {} to {}.'.format(client.name, client.area.name, client.area.description),
+                                    pred=lambda c: c.is_staff() and c != client)
+        logger.log_server('[{}][{}]Set the area descriptions to {}.'
+                          .format(client.area.id, client.get_char_name(), arg), client)
+        
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    'The area description was updated to {}.'.format(client.area.description),
+                                    pred=lambda c: not c.is_staff() and c.area == client.area and c != client)
+    
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

@@ -227,7 +227,7 @@ class ClientManager:
                             sorted_areas = sorted(self.area.reachable_areas, key = lambda area_name: self.server.area_manager.get_area_by_name(area_name).id)
                             for area in sorted_areas:
                                 if area != self.area.name:
-                                    info += '\r\n*{}'.format(area)
+                                    info += '\r\n*({}) {}'.format(self.server.area_manager.get_area_by_name(area).id, area)
                         except AreaError: #When would you ever execute this piece of code is beyond me, but meh
                             info += '\r\n<ALL>'
                     raise ClientError(info)

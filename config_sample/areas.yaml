@@ -7,6 +7,7 @@
   reachable_areas: Class Trial Room 1, Class Trial Room 3, Test 1, Test 2, Test 3, Test 4
   lobby_area: True
   scream_range: Class Trial Room 1
+  default_description: The basement and default area.
 - area: Class Trial Room 1
   background: Class Trial Debate Room V3-1_HD
   bglock: false
@@ -19,6 +20,7 @@
   private_area: True
   scream_range: Basement
   restricted_chars: Shuichi Saihara_HD
+  default_description: A class trial room that does not like Shuichi.
 - area: Class Trial Room, 2
   background: Class Trial Debate Room V3-1_HD
   bglock: false
