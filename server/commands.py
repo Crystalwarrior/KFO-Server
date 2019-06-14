@@ -488,7 +488,7 @@ def ooc_cmd_ban(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     
-    # Guesess that any number of length 10 is an IPID
+    # Guesses that any number of length 10 is an IPID
     # and that any non-numerical entry is an IP address.
     try:
         # IPID
@@ -573,6 +573,33 @@ def ooc_cmd_bglock(client, arg):
     client.area.bg_lock = not client.area.bg_lock
     client.area.send_host_message('A mod has set the background lock to {}.'.format(client.area.bg_lock))
     logger.log_server('[{}][{}]Changed bglock to {}'.format(client.area.id, client.get_char_name(), client.area.bg_lock), client)
+
+def ooc_cmd_blockdj(client, arg):
+    """ (CM AND MOD ONLY)
+    Revokes the ability of a player by client ID (number in brackets) or IPID (number in parentheses) to change music.
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /blockdj <client_id>
+    /blockdj <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /blockdj 1                     :: Revokes DJ permissions to the client whose ID is 1.
+    /blockdj 1234567890            :: Revokes DJ permissions to all clients opened by the user whose IPID is 1234567890.
+    """
+    if not client.is_mod and not client.is_cm:
+        raise ClientError('You must be authorized to do that.')
+
+    # Block DJ permissions to matching targets
+    for c in parse_id_or_ipid(client, arg):
+        c.is_dj = False
+        logger.log_server('Revoked DJ permissions to {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was revoked DJ permissions.".format(c.get_char_name()))
 
 def ooc_cmd_bloodtrail(client, arg):
     """ (STAFF ONLY)
@@ -1607,7 +1634,155 @@ def ooc_cmd_logout(client, arg):
             new_char_id = -1 # Force into spectator mode if all other available characters are taken
         client.change_character(new_char_id)
         client.send_host_message('Your character has been set to restricted in this area by a staff member. Switching you to {}.'.format(client.get_char_name()))
-     
+
+def ooc_cmd_look(client, arg):
+    """
+    Obtain the current area's description, which is either the description in the area list configuration, or a 
+    customized one defined via /look_set.
+    If the area has no set description, it will return the server's default description
+    stored in server.config['default_area_description']
+    
+    SYNTAX
+    /look
+    
+    PARAMETERS
+    None
+    
+    EXAMPLES
+    If the current area's description is "Literally a courtroom"
+    /look               :: Returns "Literally a courtroom"
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    client.send_host_message(client.area.description)
+    
+def ooc_cmd_look_clean(client, arg):
+    """ (STAFF ONLY)
+    Restores the default area descriptions of the given areas by ID or name separated by commas.
+    If not given any areas, it will restore the default area description of the current area.
+    
+    SYNTAX
+    /look_clean {area_1}, {area_2}, ....
+    
+    OPTIONAL PARAMETERS
+    {area_n}: Area ID or name
+    
+    EXAMPLE
+    Assuming the player is in area 0
+    /look_clean                           :: Restores the default area description in area 0
+    /look_clean 3, Class Trial Room,\ 2   :: Restores the default area descriptions in area 3 and Class Trial Room, 2 (note the ,\)
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')   
+
+    if len(arg) == 0:
+        areas_to_clean = [client.area]
+    else: 
+        raw_areas_to_clean = arg.split(", ")
+        areas_to_clean = set(parse_area_names(client, raw_areas_to_clean)) # Make sure the input is valid before starting
+        
+    successful_cleans = set()
+    for area in areas_to_clean:
+        area.description = area.default_description
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                        'The area description was updated to {}.'.format(area.description),
+                                        pred=lambda c: not c.is_staff() and c.area == area and c != client)
+        successful_cleans.add(area.name)
+        
+    if len(successful_cleans) == 1:
+        message = str(successful_cleans.pop())
+        client.send_host_message("Reset the area description of area {} to its original value.".format(message))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                        '{} reset the area description of area {} to its original value.'.format(client.name, message),
+                                        pred=lambda c: c.is_staff() and c != client)            
+    elif len(successful_cleans) > 1:
+        message = ", ".join(successful_cleans)
+        client.send_host_message("Reset the area descriptions of areas {} to their original values.".format(message))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                        '{} reset the area descriptions of areas {} to their original values.'.format(client.name, message),
+                                        pred=lambda c: c.is_staff() and c != client)
+        logger.log_server(
+        '[{}][{}]Reset the area description in {}.'
+        .format(client.area.id, client.get_char_name(), message), client)
+
+def ooc_cmd_look_list(client, arg):
+    """ (STAFF ONLY)
+    Lists all areas that contain custom descriptions.
+    
+    SYNTAX
+    /look_list
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    If area 0 called Basement is the only one with a custom description, and it happens to be "Not a courtroom"...
+    /look_list              :: May return something like
+    == Areas in this server with custom descriptions == 
+    *(0) Basement: Not a courtroom
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
+    info = '== Areas in this server with custom descriptions =='
+    # Get all areas with changed descriptions
+    areas = [area for area in client.server.area_manager.areas if area.description != area.default_description]
+    
+    # No areas found means there are no areas with changed descriptions
+    if len(areas) == 0:
+        info += '\r\n*No areas have changed their description.'
+    # Otherwise, build the list of all areas with changed descriptions
+    else:
+        for area in areas:
+            info += '\r\n*({}) {}: {}'.format(area.id, area.name, area.description)
+        
+    client.send_host_message(info)
+
+def ooc_cmd_look_set(client, arg):
+    """ (STAFF ONLY)
+    Sets (and replaces!) the area description of the current area to the given one.
+    If not given any description, it will set the description to be the area's default description.
+    Requires /look_clean to undo.
+    
+    SYNTAX
+    /look_set {area_1}, {area_2}, ....
+    
+    OPTIONAL PARAMETERS
+    {area_n}: Area ID or name
+    
+    EXAMPLE
+    Assuming the player is in area 0, which was set to have a default description of "A courtroom"
+    /look_set "Not literally a courtroom"       :: Sets the area description in area 0 to be "Not literally a courtroom".
+    /look_set                                   :: Sets the area description in area 0 to be the default "A courtroom".
+    """
+    
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+        
+    if len(arg) == 0:
+        client.area.description = client.area.default_description
+        client.send_host_message('Reset the area description to its original value.')
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                        '{} reset the area description of area {} to its original value.'.format(client.name, client.area.name),
+                                        pred=lambda c: c.is_staff() and c != client)   
+        logger.log_server('[{}][{}]Reset the area description in {}.'
+                          .format(client.area.id, client.get_char_name(), client.area.name), client)
+        
+    else:
+        client.area.description = arg
+        client.send_host_message('Updated the area descriptions to {}'.format(arg))
+        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    '{} set the area descriptions of area {} to {}.'.format(client.name, client.area.name, client.area.description),
+                                    pred=lambda c: c.is_staff() and c != client)
+        logger.log_server('[{}][{}]Set the area descriptions to {}.'
+                          .format(client.area.id, client.get_char_name(), arg), client)
+        
+    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+                                    'The area description was updated to {}.'.format(client.area.description),
+                                    pred=lambda c: not c.is_staff() and c.area == client.area and c != client)
+    
 def ooc_cmd_minimap(client, arg):
     """
     Lists all areas that can be reached from the current area according to areas.yaml and passages set in-game.
@@ -1819,6 +1994,64 @@ def ooc_cmd_online(client, arg):
         
     client.send_host_message("Online: {}/{}".format(client.server.get_player_count(), client.server.config['playerlimit']))
 
+def ooc_cmd_ooc_mute(client, arg):
+    """ (MOD AND CM ONLY)
+    Mutes a player from the OOC chat by their OOC username.
+    Requires /ooc_unmute to undo.
+    Returns an error if no player has the given OOC username.
+    
+    SYNTAX
+    /ooc_mute <ooc_name>
+    
+    PARAMETERS
+    <ooc_name>: Client OOC username
+    
+    EXAMPLE
+    /ooc_mute Aba           :: Mutes from OOC the player whose username is Aba
+    """
+    if not client.is_mod and not client.is_cm:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ArgumentError('You must specify a target. Use /ooc_mute <ooc_name>.')
+    
+    targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, False)
+    if not targets:
+        raise ArgumentError('Targets not found. Use /ooc_mute <ooc_name>.')
+        
+    for c in targets:
+        c.is_ooc_muted = True    
+        logger.log_server('OOC-muted {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was OOC-muted.".format(c.name))
+
+def ooc_cmd_ooc_unmute(client, arg):
+    """ (MOD AND CM ONLY)
+    Unmutes a player from the OOC chat by their OOC username.
+    Requires /ooc_mute to undo.
+    Returns an error if no player has the given OOC username.
+    
+    SYNTAX
+    /ooc_unmute <ooc_name>
+    
+    PARAMETERS
+    <ooc_name>: Client OOC username
+    
+    EXAMPLE
+    /ooc_unmute Aba         :: Unmutes from OOC the player whose username is Aba
+    """
+    if not client.is_mod and not client.is_cm:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ArgumentError('You must specify a target. Use /ooc_mute <ooc_name>.')
+    
+    targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, False)
+    if not targets:
+        raise ArgumentError('Target not found. Use /ooc_mute <ooc_name>.')
+    
+    for c in targets:
+        c.is_ooc_muted = False
+        logger.log_server('OOC-unmuted {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was OOC-unmuted.".format(c.name))
+
 def ooc_cmd_play(client, arg):
     """ (STAFF ONLY)
     Plays a given track, even if not explicitly in the music list. It is the way to play custom music.
@@ -1856,7 +2089,7 @@ def ooc_cmd_pm(client, arg):
     <message>: Message to be sent.
     
     EXAMPLES
-    /pm Santa What will I get for Christmas?    :: Sends that message to the user whose name is Santa.
+    /pm Santa What will I get for Christmas?    :: Sends that message to the user whose OOC name is Santa.
     /pm 0 Nothing                               :: Sends that message to the user whose client ID is 0.
     /pm Santa_HD Sad                            :: Sends that message to the user whose character name is Santa_HD.
     """
@@ -1864,7 +2097,7 @@ def ooc_cmd_pm(client, arg):
     key = ''
     msg = None
     if len(args) < 2:
-        raise ArgumentError('Not enough arguments. use /pm <target> <message>. Target should be ID, OOC-name or char-name. Use /getarea for getting info like "[ID] char-name".')
+        raise ArgumentError('Not enough arguments. Use /pm <target> <message>. Target should be ID, OOC-name or char-name. Use /getarea for getting info like "[ID] char-name".')
     
     # Pretend the identifier is a character name
     targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, arg, True)
@@ -1912,7 +2145,7 @@ def ooc_cmd_pos(client, arg):
     SYNTAX
     /pos {new_position}
     
-    PARAMETERS
+    OPTIONAL PARAMETERS
     {new_position}: New character position (jud, def, pro, hlp, hld)
     
     EXAMPLES
@@ -2612,7 +2845,7 @@ def ooc_cmd_switch(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify a character name.')
-#    
+    
     # Obtain char_id if character exists
     try:
         cid = client.server.get_char_id_by_name(arg)
@@ -2866,6 +3099,33 @@ def ooc_cmd_unban(client, arg):
     logger.log_server('Unbanned {}.'.format(arg), client)
     client.send_host_message('Unbanned {}'.format(arg))
 
+def ooc_cmd_unblockdj(client, arg):
+    """ (CM AND MOD ONLY)
+    Restores the ability of a player by client ID (number in brackets) or IPID (number in parentheses) to change music.
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /unblockdj <client_id>
+    /unblockdj <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /unblockdj 1                     :: Restores DJ permissions to the client whose ID is 1.
+    /unblockdj 1234567890            :: Restores DJ permissions to all clients opened by the user whose IPID is 1234567890.
+    """
+    if not client.is_mod and not client.is_cm:
+        raise ClientError('You must be authorized to do that.')
+
+    # Restore DJ permissions to matching targets
+    for c in parse_id_or_ipid(client, arg):
+        c.is_dj = True
+        logger.log_server('Restored DJ permissions to {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was restored DJ permissions.".format(c.get_char_name()))
+        
 def ooc_cmd_unfollow(client, arg):
     """ (STAFF ONLY)
     Stops following the player you are following.
@@ -3234,30 +3494,6 @@ def ooc_cmd_area_kick(client, arg):
         if client.area.is_locked or client.area.is_modlocked:
             client.area.invite_list.pop(c.ipid)
 
-def ooc_cmd_ooc_mute(client, arg):
-    if not client.is_mod and not client.is_cm:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError('You must specify a target. Use /ooc_mute <OOC-name>.')
-    targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, False)
-    if not targets:
-        raise ArgumentError('Targets not found. Use /ooc_mute <OOC-name>.')
-    for target in targets:
-        target.is_ooc_muted = True
-    client.send_host_message('Muted {} existing client(s).'.format(len(targets)))
-
-def ooc_cmd_ooc_unmute(client, arg):
-    if not client.is_mod and not client.is_cm:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError('You must specify a target. Use /ooc_mute <OOC-name>.')
-    targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, False)
-    if not targets:
-        raise ArgumentError('Target not found. Use /ooc_mute <OOC-name>.')
-    for target in targets:
-        target.is_ooc_muted = False
-    client.send_host_message('Unmuted {} existing client(s).'.format(len(targets)))
-
 def ooc_cmd_disemvowel(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
@@ -3418,44 +3654,6 @@ def ooc_cmd_ungimp(client, arg):
     else:
         client.send_host_message('No targets found.')
 
-def ooc_cmd_blockdj(client, arg):
-    if not client.is_mod and not client.is_cm:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError('You must specify a target. Use /blockdj <id>.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    except:
-         raise ArgumentError('You must enter a number. Use /blockdj <id, ipid>.')
-    if not targets:
-        raise ArgumentError('Target not found. Use /blockdj <id, ipid>.')
-    for target in targets:
-        target.is_dj = False
-        target.send_host_message('You have been muted of changing music by moderator.')
-    client.send_host_message('blockdj\'d {}.'.format(targets[0].get_char_name()))
-
-def ooc_cmd_unblockdj(client, arg):
-    if not client.is_mod and not client.is_cm:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0 and len(arg) < 10:
-        raise ArgumentError('You must specify a target. Use /unblockdj <id>.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    except:
-        raise ArgumentError('You must enter a number. Use /unblockdj <id>.')
-    if not targets:
-        raise ArgumentError('Target not found. Use /blockdj <id>.')
-    for target in targets:
-        target.is_dj = True
-        target.send_host_message('Now you can change music.')
-    client.send_host_message('Unblockdj\'d {}.'.format(targets[0].get_char_name()))
-
 def ooc_cmd_timer(client, arg):
     if len(arg) == 0:
         raise ClientError('This command takes at least one argument.')
@@ -3606,154 +3804,6 @@ def ooc_cmd_timer(client, arg):
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
 
-def ooc_cmd_look(client, arg):
-    """
-    Obtain the current area's description, which is either the description in the area list configuration, or a 
-    customized one defined via /look_set.
-    If the area has no set description, it will return the server's default description
-    stored in server.config['default_area'description']
-    
-    SYNTAX
-    /look
-    
-    PARAMETERS
-    None
-    
-    EXAMPLES
-    If the current area's description is "Literally a courtroom"
-    /look               :: Returns "Literally a courtroom"
-    """
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    client.send_host_message(client.area.description)
-    
-def ooc_cmd_look_clean(client, arg):
-    """ (STAFF ONLY)
-    Restores the default area descriptions of the given areas by ID or name separated by commas.
-    If not given any areas, it will restore the default area description of the current area.
-    
-    SYNTAX
-    /look_clean {area_1}, {area_2}, ....
-    
-    OPTIONAL PARAMETERS
-    {area_n}: Area ID or name
-    
-    EXAMPLE
-    Assuming the player is in area 0
-    /look_clean                           :: Restores the default area description in area 0
-    /look_clean 3, Class Trial Room,\ 2   :: Restores the default area descriptions in area 3 and Class Trial Room, 2 (note the ,\)
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')   
-
-    if len(arg) == 0:
-        areas_to_clean = [client.area]
-    else: 
-        raw_areas_to_clean = arg.split(", ")
-        areas_to_clean = set(parse_area_names(client, raw_areas_to_clean)) # Make sure the input is valid before starting
-        
-    successful_cleans = set()
-    for area in areas_to_clean:
-        area.description = area.default_description
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                        'The area description was updated to {}.'.format(area.description),
-                                        pred=lambda c: not c.is_staff() and c.area == area and c != client)
-        successful_cleans.add(area.name)
-        
-    if len(successful_cleans) == 1:
-        message = str(successful_cleans.pop())
-        client.send_host_message("Reset the area description of area {} to its original value.".format(message))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                        '{} reset the area description of area {} to its original value.'.format(client.name, message),
-                                        pred=lambda c: c.is_staff() and c != client)            
-    elif len(successful_cleans) > 1:
-        message = ", ".join(successful_cleans)
-        client.send_host_message("Reset the area descriptions of areas {} to their original values.".format(message))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                        '{} reset the area descriptions of areas {} to their original values.'.format(client.name, message),
-                                        pred=lambda c: c.is_staff() and c != client)
-        logger.log_server(
-        '[{}][{}]Reset the area description in {}.'
-        .format(client.area.id, client.get_char_name(), message), client)
-
-def ooc_cmd_look_list(client, arg):
-    """ (STAFF ONLY)
-    Lists all areas that contain custom descriptions.
-    
-    SYNTAX
-    /look_list
-    
-    PARAMETERS
-    None
-    
-    EXAMPLE
-    If area 0 called Basement is the only one with a custom description, and it happens to be "Not a courtroom"...
-    /look_list              :: May return something like
-    == Areas in this server with custom descriptions == 
-    *(0) Basement: Not a courtroom
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-        
-    info = '== Areas in this server with custom descriptions =='
-    # Get all areas with changed descriptions
-    areas = [area for area in client.server.area_manager.areas if area.description != area.default_description]
-    
-    # No areas found means there are no areas with changed descriptions
-    if len(areas) == 0:
-        info += '\r\n*No areas have changed their description.'
-    # Otherwise, build the list of all areas with changed descriptions
-    else:
-        for area in areas:
-            info += '\r\n*({}) {}: {}'.format(area.id, area.name, area.description)
-        
-    client.send_host_message(info)
-
-def ooc_cmd_look_set(client, arg):
-    """ (STAFF ONLY)
-    Sets (and replaces!) the area description of the current area to the given one.
-    If not given any description, it will set the description to be the area's default description.
-    Requires /look_clean to undo.
-    
-    SYNTAX
-    /look_set {area_1}, {area_2}, ....
-    
-    OPTIONAL PARAMETERS
-    {area_n}: Area ID or name
-    
-    EXAMPLE
-    Assuming the player is in area 0, which was set to have a default description of "A courtroom"
-    /look_set "Not literally a courtroom"       :: Sets the area description in area 0 to be "Not literally a courtroom".
-    /look_set                                   :: Sets the area description in area 0 to be the default "A courtroom".
-    """
-    
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-        
-    if len(arg) == 0:
-        client.area.description = client.area.default_description
-        client.send_host_message('Reset the area description to its original value.')
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                        '{} reset the area description of area {} to its original value.'.format(client.name, client.area.name),
-                                        pred=lambda c: c.is_staff() and c != client)   
-        logger.log_server('[{}][{}]Reset the area description in {}.'
-                          .format(client.area.id, client.get_char_name(), client.area.name), client)
-        
-    else:
-        client.area.description = arg
-        client.send_host_message('Updated the area descriptions to {}'.format(arg))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                    '{} set the area descriptions of area {} to {}.'.format(client.name, client.area.name, client.area.description),
-                                    pred=lambda c: c.is_staff() and c != client)
-        logger.log_server('[{}][{}]Set the area descriptions to {}.'
-                          .format(client.area.id, client.get_char_name(), arg), client)
-        
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                    'The area description was updated to {}.'.format(client.area.description),
-                                    pred=lambda c: not c.is_staff() and c.area == client.area and c != client)
-    
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
