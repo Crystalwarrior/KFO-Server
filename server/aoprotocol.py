@@ -17,10 +17,11 @@
 
 import asyncio
 import re
+
 from time import localtime, strftime, time
 from enum import Enum
 
-from server import commands
+#from server import commands
 from server import logger
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server.fantacrypt import fanta_decrypt
@@ -45,7 +46,7 @@ class AOProtocol(asyncio.Protocol):
         self.ping_timeout = None
         
         # Determine whether /exec is active or not and warn server owner if so.
-        if getattr(commands, "ooc_cmd_exec")(self.client, "is_exec_active") == 1:
+        if getattr(self.server.commands, "ooc_cmd_exec")(self.client, "is_exec_active") == 1:
             print("""
                   
                   WARNING
@@ -457,7 +458,7 @@ class AOProtocol(asyncio.Protocol):
                 arg = spl[1][:256]
             try:
                 called_function = 'ooc_cmd_{}'.format(cmd)
-                getattr(commands, called_function)(self.client, arg)
+                getattr(self.server.commands, called_function)(self.client, arg)
             except AttributeError:
                 print('Attribute error with ' + called_function)
                 self.client.send_host_message('Invalid command.')

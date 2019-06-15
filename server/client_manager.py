@@ -268,7 +268,7 @@ class ClientManager:
                                     pred=lambda c: not c.is_staff() and c != self and c.area == old_area)
                     self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
                                     '{} has entered from {}.'
-                                    .format(old_char, old_area.name), 
+                                    .format(self.get_char_name(), old_area.name), 
                                     pred=lambda c: not c.is_staff() and c != self and c.area == area)
 
                 # If bleeding, send reminder, and notify everyone in the new area if not sneaking (otherwise, just vague message).

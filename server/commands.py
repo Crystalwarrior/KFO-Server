@@ -228,7 +228,7 @@ def parse_area_names(client, areas):
 def parse_id(client, identifier):
     """
     HELPER FUNCTION
-    Given either a client ID, returns the client that matches this identifier.
+    Given a client ID, returns the client that matches this identifier.
     """
     if identifier == '':
         raise ArgumentError('Expected client ID.')
@@ -3803,7 +3803,35 @@ def ooc_cmd_timer(client, arg):
     else:
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
+    
+def ooc_cmd_reload_commands(client, arg):
+    """ (MOD ONLY)
+    Reloads the commands.py file.
+    Use only if restarting is not a viable option.
+    Note that this ONLY updates the contents of this file.
+    If anything you update relies on other files, they will still use the old contents, regardless of whatever changes you made.
+    
+    SYNTAX
+    /reload_commands
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /reload_commands
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len (arg) > 0:
+        raise ClientError('This command does not take in any arguments.')
 
+    outcome = client.server.reload_commands()
+    if outcome:
+        info = "\n{}: {}".format(type(outcome).__name__, outcome)
+        raise ClientError('Server ran into a problem while reloading the commands: {}'.format(info))
+        
+    client.send_host_message("The commands have been reloaded.")
+    
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

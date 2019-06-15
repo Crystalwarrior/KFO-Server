@@ -21,6 +21,7 @@ import yaml
 import json
 import random
 import time
+import importlib
 
 from server import logger
 from server.aoprotocol import AOProtocol
@@ -64,6 +65,7 @@ class TsuServer3:
         self.client_tasks = dict()
         self.active_timers = dict()
         self.showname_freeze = False
+        self.commands = importlib.import_module('server.commands')
         logger.setup_logger(debug=self.config['debug'])
 
     def start(self):
@@ -109,7 +111,13 @@ class TsuServer3:
         self.build_music_list_ao2()
         with open('config/backgrounds.yaml', 'r') as bgs:
             self.backgrounds = yaml.safe_load(bgs)
-
+    
+    def reload_commands(self):
+        try:
+            self.commands = importlib.reload(self.commands)
+        except Exception as error:
+            return error
+        
     def new_client(self, transport):
         c = self.client_manager.new_client(transport)
         if self.rp_mode:
