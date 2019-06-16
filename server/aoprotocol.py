@@ -21,12 +21,10 @@ import re
 from time import localtime, strftime, time
 from enum import Enum
 
-#from server import commands
 from server import logger
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server.fantacrypt import fanta_decrypt
 from server.evidence import EvidenceList
-
 
 class AOProtocol(asyncio.Protocol):
     """

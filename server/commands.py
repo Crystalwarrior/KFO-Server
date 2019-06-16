@@ -353,7 +353,7 @@ def ooc_cmd_area(client, arg):
     {new_area_id}: ID of the area
     
     EXAMPLES
-    /area                   :: Lists all areas in the server with usercount.
+    /area                   :: Lists all areas in the server along with their user count.
     /area {new_area_id}     :: Moves 
     """
     args = arg.split()
@@ -375,7 +375,53 @@ def ooc_cmd_area(client, arg):
             raise
     else:
         raise ArgumentError('Too many arguments. Use /area <id>.')
+        
+def ooc_cmd_area_kick(client, arg):
+    """ (STAFF ONLY)
+    Kicks a player by client ID or IPID to a given area by ID or name, or the default area if not given an area.
+    If given IPID, it will kick all clients opened by the user. Otherwise, it will just kick the given client.
+    Returns an error if the given identifier does not correspond to a user, or if there was an error kicking the user to the area (e.g. full area).
+    
+    SYNTAX
+    /area_kick <client_id> {target_area}
+    /area_kick <client_ipid> {target_area}
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    OPTIONAL PARAMETERS
+    {target_area}: Intended area to kick the player, by ID or name
+    
+    EXAMPLES
+    Assuming the default area of the server is area 0...
+    /area_kick 1                        :: Kicks the player whose client ID is 1 to area 0.
+    /area_kick 1234567890 3             :: Kicks all the clients opened by the player whose IPID is 1234567890 to area 3.
+    /area_kick 0987654321 Lobby         :: Kicks all the clients opened by the player whose IPID is 0987654321 to Lobby.
+    /area_kick 3 Class Trial Room,\ 2   :: Kicks the player whose client ID is 1 to Class Trial Room, 2 (note the ,\).
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    arg = arg.split(' ')
+    if len(arg) == 1:
+        area = client.server.area_manager.get_area_by_id(client.server.default_area)
+    else:
+        area = parse_area_names(client, [" ".join(arg[1:])])[0]
+        print(area)
+    output = area.id
 
+    for c in parse_id_or_ipid(client, arg[0]):
+        current_char = c.get_char_name() # Failsafe in case kicked player has their character changed due to their character being used
+        try:
+            c.change_area(area, override_passages=True, override_effects=True, ignore_bleeding=True)
+        except Exception as error:
+            client.send_host_message('Unable to kick {} to area {}: {}'.format(current_char, output, ", ".join([str(s) for s in error.args])))
+        else:
+            client.send_host_message("Kicked {} to area {}.".format(current_char, output))
+            c.send_host_message("You were kicked from the area to area {}.".format(output))
+            if client.area.is_locked or client.area.is_modlocked:
+                client.area.invite_list.pop(c.ipid)
+                
 def ooc_cmd_area_list(client, arg):
     """ (MOD ONLY)
     Sets the server's current area list (what areas exist at any given time). 
@@ -1129,6 +1175,35 @@ def ooc_cmd_getareas(client, arg):
 
     client.send_area_info(client.area, -1, False)
 
+def ooc_cmd_gimp(client, arg):
+    """ (MOD ONLY)
+    Gimps all IC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
+    In particular, their message will be replaced by one of the messages listed in gimp_message in client_manager.py.
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /ungimp to undo.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /gimp <client_id>
+    /gimp <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /gimp 1                     :: Gimps the player whose client ID is 1.
+    /gimp 1234567890            :: Gimps all clients opened by the user whose IPID is 1234567890.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+
+    # Gimp matching targets
+    for c in parse_id_or_ipid(client, arg):
+        c.gimp = True
+        logger.log_server('Gimping {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was gimped.".format(c.get_char_name()))
+        
 def ooc_cmd_globalic(client, arg):
     """ (STAFF ONLY)
     Send client's subsequent IC messages to users only in specified areas. Can take either area IDs or area names.
@@ -3145,6 +3220,34 @@ def ooc_cmd_unfollow(client, arg):
         raise ClientError('You must be authorized to do that.')
     client.unfollow_user()
 
+def ooc_cmd_ungimp(client, arg):
+    """ (MOD ONLY)
+    Ungimps all IC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /gimp to undo.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /ungimp <client_id>
+    /ungimp <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /ungimp 1                     :: Gimps the player whose client ID is 1.
+    /ungimp 1234567890            :: Gimps all clients opened by the user whose IPID is 1234567890.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+
+    # Ungimp matching targets
+    for c in parse_id_or_ipid(client, arg):
+        c.gimp = False
+        logger.log_server('Ungimping {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was ungimped.".format(c.get_char_name()))
+
 def ooc_cmd_unglobalic(client, arg):
     """ (STAFF ONLY)
     Send subsequent IC messages to users in the same area as the client (i.e. as normal).
@@ -3467,32 +3570,6 @@ def ooc_cmd_toggle_areareachlock(client, arg):
     else:
         client.area.change_reachability_allowed = True
         client.area.send_host_message('The use of the /unilock and /bilock commands affecting this area commands in this area has been enabled to all users.')
-        
-def ooc_cmd_area_kick(client, arg):
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if not client.area.is_locked and not client.is_gm and not client.is_mod:
-        raise ClientError("Area is not locked.") # What is this for?????????
-    if not arg:
-        raise ClientError('You must specify a target. Use /area_kick <id>')
-    arg = arg.split(' ')
-
-    for c in parse_id_or_ipid(client, arg[0]):
-        if len(arg) == 1:
-            area = client.server.area_manager.get_area_by_id(0)
-            output = 0
-        else:
-            try:
-                area = client.server.area_manager.get_area_by_id(int(arg[1]))
-                output = arg[1]
-            except ValueError:
-                raise ArgumentError('Area ID must be a number.'.format(arg[1]))
-                
-        client.send_host_message("Attempting to kick {} to area {}.".format(c.get_char_name(), output))
-        c.change_area(area, override_passages=True, override_effects=True, ignore_bleeding=True)
-        c.send_host_message("You were kicked from the area to area {}.".format(output))
-        if client.area.is_locked or client.area.is_modlocked:
-            client.area.invite_list.pop(c.ipid)
 
 def ooc_cmd_disemvowel(client, arg):
     if not client.is_mod:
@@ -3613,47 +3690,7 @@ def ooc_cmd_unremove_h(client, arg):
         client.send_host_message('Added h to {} existing client(s).'.format(len(targets)))
     else:
         client.send_host_message('No targets found.')
-
-def ooc_cmd_gimp(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    elif len(arg) == 0:
-        raise ArgumentError('You must specify a target.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    except:
-        raise ArgumentError('You must specify a target. Use /gimp <id, ipid>.')
-    if targets:
-        for c in targets:
-            logger.log_server('Gimping {}.'.format(c.get_ip(), client))
-            c.gimp = True
-        client.send_host_message('Gimped {} targets.'.format(len(targets)))
-    else:
-        client.send_host_message('No targets found.')
-
-def ooc_cmd_ungimp(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    elif len(arg) == 0:
-        raise ArgumentError('You must specify a target.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    except:
-        raise ArgumentError('You must specify a target. Use /gimp <id, ipid>.')
-    if targets:
-        for c in targets:
-            logger.log_server('Ungimping {}.'.format(c.get_ip(), client))
-            c.gimp = False
-        client.send_host_message('Ungimped {} targets.'.format(len(targets)))
-    else:
-        client.send_host_message('No targets found.')
-
+        
 def ooc_cmd_timer(client, arg):
     if len(arg) == 0:
         raise ClientError('This command takes at least one argument.')
