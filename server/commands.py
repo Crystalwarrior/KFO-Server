@@ -25,25 +25,14 @@ from server import logger
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 """ SUGGESTED IDEAS
-/injury or something similar: set a timeout between changing areas
-/ : a command that allows a single person to ignore passage locks
-
-
+*Buff the power of lights being off
+*Add a global callword system
+*Add /slippery for slippery traps
 """
 
 """ <parameter_name>: required parameter
 {parameter_name}: optional parameter
 """
-
-def arg_num(arg):
-    """
-    Return number of arguments, i.e. keywords separated by spaces.
-    """
-    if arg == "":
-        return 0
-    
-    args = arg.split(" ")
-    return len(args)
 
 def dice_roll(arg, command_type):
     """
@@ -53,7 +42,7 @@ def dice_roll(arg, command_type):
     """
     NUMFACES_MAX = 11037
     NUMDICE_MAX = 20
-    MODIFIER_LENGTH_MAX = 12 #Change to a higher at your own risk
+    MODIFIER_LENGTH_MAX = 12 #Change to a higher number at your own risk
     ACCEPTABLE_IN_MODIFIER = '1234567890+-*/().r'
     MAXDIVZERO_ATTEMPTS = 10
     MAXACCEPTABLETERM = 10 * NUMFACES_MAX #Change to a higher number at your own risk
@@ -174,10 +163,8 @@ def dice_roll(arg, command_type):
 def login(client, arg, auth_command, role):
     if len(arg) == 0:
         raise ArgumentError('You must specify the password.')
-    try:
-        auth_command(arg)
-    except ClientError:
-        raise
+    auth_command(arg)
+    
     if client.area.evidence_mod == 'HiddenCM':
         client.area.broadcast_evidence_list()
     client.reload_music_list() # Update music list to show all areas
@@ -314,9 +301,6 @@ def ooc_cmd_allow_iniswap(client, arg):
     client.area.send_host_message('Iniswapping is {} allowed.'.format(status[client.area.iniswap_allowed]))
     logger.log_server('[{}][{}]Set iniswapping as {} allowed'.format(client.area.id, client.get_char_name(), status[client.area.iniswap_allowed]), client)
 
-    # answer = {True: 'allowed', False: 'forbidden'}
-    # client.send_host_message('iniswap is {}.'.format(answer[client.area.iniswap_allowed]))
-
 def ooc_cmd_announce(client, arg):
     """ (MOD ONLY)
     Sends an "announcement" to all users in the server, regardless of whether they have global chat turned on or off.
@@ -331,7 +315,6 @@ def ooc_cmd_announce(client, arg):
     EXAMPLE
     /announce Hello World       :: Sends Hello World to all users in the server.
     """
-
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -371,8 +354,6 @@ def ooc_cmd_area(client, arg):
             client.change_area(area)
         except ValueError:
             raise ArgumentError('Area ID must be a number.')
-        except (AreaError, ClientError):
-            raise
     else:
         raise ArgumentError('Too many arguments. Use /area <id>.')
         
@@ -455,7 +436,7 @@ def ooc_cmd_area_list(client, arg):
         except FileNotFoundError:
             raise ArgumentError('Could not find the area list file {}'.format(new_area_file))
         except AreaError as exc:
-            raise ArgumentError('The area list {} raised the following error when loading: {}'.format(new_area_file, exc))
+            raise ArgumentError('The area list {} returned the following error when loading: {}'.format(new_area_file, exc))
             
         client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
                                             'The area list {} has been loaded.'.format(arg))
@@ -548,10 +529,7 @@ def ooc_cmd_ban(client, arg):
         is_ipid = False
         
     # Try and add the user to the ban list based on the given identifier
-    try:
-        client.server.ban_manager.add_ban(identifier)
-    except ServerError:
-        raise
+    client.server.ban_manager.add_ban(identifier)
     
     # Try and kick the user from the server, as well as announce their ban.
     if identifier:
@@ -585,16 +563,13 @@ def ooc_cmd_bg(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify a name. Use /bg <background>.')
-    
     if not client.is_mod and client.area.bg_lock == True: 
         raise AreaError("This area's background is locked.")
-    try:
-        if client.is_staff():
-            client.area.change_background_mod(arg)
-        else:
-            client.area.change_background(arg)
-    except AreaError:
-        raise
+
+    if client.is_staff():
+        client.area.change_background_mod(arg)
+    else:
+        client.area.change_background(arg)
     client.area.send_host_message('{} changed the background to {}.'.format(client.get_char_name(), arg))
     logger.log_server('[{}][{}]Changed background to {}'.format(client.area.id, client.get_char_name(), arg), client)
 
@@ -860,7 +835,7 @@ def ooc_cmd_charselect(client, arg):
 def ooc_cmd_char_restrict(client, arg):
     """ (STAFF ONLY)
     Toggle a character by folder name (not showname!) being able to be used in the current area by non-staff members.
-    Raises an error if the character name is not recognized.
+    Returns an error if the character name is not recognized.
     
     SYNTAX
     /char_restrict <char_name>
@@ -1081,7 +1056,6 @@ def ooc_cmd_doc(client, arg):
     /doc https://www.google.com     :: Sets the document link to the Google homepage.
     /doc                            :: Returns the current document (e.g. https://www.google.com) 
     """
-    
     # Clear doc case
     if len(arg) == 0:
         client.send_host_message('Document: {}'.format(client.area.doc))
@@ -1687,11 +1661,9 @@ def ooc_cmd_logout(client, arg):
     client.is_mod = False
     client.is_gm = False
     client.is_cm = False
-    
     client.send_host_message('You are no longer logged in.')
         
     # Clean-up operations
-    
     if client.server.rp_mode:
         client.in_rp = True
     if client.area.evidence_mod == 'HiddenCM':
@@ -2234,10 +2206,7 @@ def ooc_cmd_pos(client, arg):
     
     # Switching position
     else:
-        try:
-            client.change_position(arg)
-        except ClientError:
-            raise
+        client.change_position(arg)
         client.area.broadcast_evidence_list()
         client.send_host_message('Position changed.')   
 
@@ -2258,16 +2227,8 @@ def ooc_cmd_randomchar(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
    
-    try:
-        free_id = client.area.get_rand_avail_char_id(allow_restricted=client.is_staff())
-    except AreaError:
-        raise
-    
-    try:
-        client.change_character(free_id)
-    except ClientError:
-        raise
-    
+    free_id = client.area.get_rand_avail_char_id(allow_restricted=client.is_staff())
+    client.change_character(free_id)    
     client.send_host_message('Randomly switched to {}'.format(client.get_char_name()))
 
 def ooc_cmd_refresh(client, arg):
@@ -2285,14 +2246,11 @@ def ooc_cmd_refresh(client, arg):
     """
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
-    if len (arg) > 0:
+    if len(arg) > 0:
         raise ClientError('This command does not take in any arguments!')
 
-    try:
-        client.server.reload()
-        client.send_host_message('You have reloaded the server.')
-    except ServerError:
-        raise
+    client.server.reload()
+    client.send_host_message('You have reloaded the server.')
         
 def ooc_cmd_reload(client, arg):
     """
@@ -2310,11 +2268,7 @@ def ooc_cmd_reload(client, arg):
     if len(arg) != 0:
         raise ArgumentError("This command doesn't take any arguments")
     
-    try:
-        client.reload_character()
-    except ClientError:
-        raise
-    
+    client.reload_character()
     client.send_host_message('Character reloaded.') 
 
 def ooc_cmd_reveal(client, arg):    
@@ -2349,7 +2303,7 @@ def ooc_cmd_roll(client, arg):
     """
     Rolls a given number of dice with given number of faces and modifiers.
     If certain parameters are not given, command assumes preset defaults.
-    Raises an error if parameters exceed specified constants or an invalid mathematical operation is put as a modifier.
+    Returns an error if parameters exceed specified constants or an invalid mathematical operation is put as a modifier.
     
     For modifiers, the modifier's result will ignore the given number of faces cap and instead use NUMFACES_MAX (so dice rolls can exceed number of faces).
     However, the modifier's result is bottom capped at 1 (so non-positive values are not allowed).
@@ -2518,7 +2472,7 @@ def ooc_cmd_scream_set_range(client, arg):
     This completely overrides the old scream range, unlike /scream_set.
     Passing in no arguments sets the scream range to nothing (i.e. a soundproof room).
     Note that scream ranges are unidirectional, so if you want two areas to hear one another, you must use this command twice.
-    Raises an error if an invalid area name or area ID is given, or if the current area is part of the selection.
+    Returns an error if an invalid area name or area ID is given, or if the current area is part of the selection.
     
     SYNTAX
     /scream_set_range {area_1}, {area_2}, {area_3}, ...
@@ -2559,7 +2513,7 @@ def ooc_cmd_scream_set(client, arg):
     Toggles the ability of ONE given area by name or ID to hear a scream from the current area on or off.
     This only modifies the given area's status in the current area's scream range, unlike /scream_set_range.
     Note that scream ranges are unidirectional, so if you want two areas to hear one another, you must use this command twice.
-    Raises an error if an invalid area name or area ID is given, or if the current area is the target of the selection.
+    Returns an error if an invalid area name or area ID is given, or if the current area is the target of the selection.
     
     SYNTAX
     /scream_set <target_area>
@@ -2907,7 +2861,7 @@ def ooc_cmd_st(client, arg):
 def ooc_cmd_switch(client, arg):
     """ 
     Switches current user's character to a different one. 
-    Raises an error if character is unavailable or non-existant.
+    Returns an error if character is unavailable or non-existant.
     
     SYNTAX
     /switch <char_name>
@@ -2921,17 +2875,9 @@ def ooc_cmd_switch(client, arg):
     if len(arg) == 0:
         raise ArgumentError('You must specify a character name.')
     
-    # Obtain char_id if character exists
-    try:
-        cid = client.server.get_char_id_by_name(arg)
-    except ServerError:
-        raise
-        
-    # Try and change to given char if available
-    try:
-        client.change_character(cid, client.is_mod)
-    except ClientError:
-        raise
+    # Obtain char_id if character exists and then try and change to given char if available
+    cid = client.server.get_char_id_by_name(arg)
+    client.change_character(cid, client.is_mod)
     client.send_host_message('Character changed.')
 
 def ooc_cmd_time(client, arg):

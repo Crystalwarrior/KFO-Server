@@ -57,7 +57,6 @@ class ClientManager:
             self.mod_call_time = 0
             self.in_rp = False
             self.ipid = ipid
-            self.is_user_auth = False
             self.is_visible = True
             self.multi_ic = None
             self.showname = ''
