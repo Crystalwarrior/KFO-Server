@@ -393,11 +393,11 @@ class AOProtocol(asyncio.Protocol):
         if color == 5 and not self.client.is_mod and not self.client.is_cm:
             color = 0
         if color == 6:
-            text = re.sub(r'[^\x00-\x7F]+',' ', text) #remove all unicode to prevent now yellow text abuse
-            if len(text.strip( ' ' )) == 1:
+            text = re.sub(r'[^\x00-\x7F]+', ' ', text) #remove all unicode to prevent now yellow text abuse
+            if len(text.strip(' ')) == 1:
                 color = 0
             else:
-                if text.strip( ' ' ) in ('<num>', '<percent>', '<dollar>', '<and>'):
+                if text.strip(' ') in ('<num>', '<percent>', '<dollar>', '<and>'):
                     color = 0
         if self.client.pos:
             pos = self.client.pos

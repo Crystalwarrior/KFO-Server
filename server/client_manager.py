@@ -15,17 +15,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from server import fantacrypt
-from server import logger
-from server.exceptions import ClientError, AreaError
-from enum import Enum
-from server.constants import TargetType
-
 import datetime
 import time
 import re
 import random
 
+from server import fantacrypt
+from server import logger
+from server.exceptions import ClientError, AreaError
+from server.constants import TargetType
 
 class ClientManager:
     class Client:
@@ -208,11 +206,11 @@ class ClientManager:
                 # Check if area has some sort of lock
                 if self.area == area:
                     raise ClientError('User is already in target area.')
-                if area.is_locked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
+                if area.is_locked and not self.is_mod and not self.is_gm and not self.ipid in area.invite_list:
                     raise ClientError('That area is locked.')
-                if area.is_gmlocked and not self.is_mod and not self.is_gm and not (self.ipid in area.invite_list):
+                if area.is_gmlocked and not self.is_mod and not self.is_gm and not self.ipid in area.invite_list:
                     raise ClientError('That area is gm-locked.')
-                if area.is_modlocked and not self.is_mod and not (self.ipid in area.invite_list):
+                if area.is_modlocked and not self.is_mod and not self.ipid in area.invite_list:
                     raise ClientError('That area is mod-locked.')
                 
                 # Check if trying to reach an unreachable area
@@ -223,10 +221,10 @@ class ClientManager:
                         info += '\r\n*No areas available.'
                     else:
                         try:
-                            sorted_areas = sorted(self.area.reachable_areas, key = lambda area_name: self.server.area_manager.get_area_by_name(area_name).id)
-                            for area in sorted_areas:
-                                if area != self.area.name:
-                                    info += '\r\n*({}) {}'.format(self.server.area_manager.get_area_by_name(area).id, area)
+                            sorted_areas = sorted(self.area.reachable_areas, key=lambda area_name: self.server.area_manager.get_area_by_name(area_name).id)
+                            for reachable_area in sorted_areas:
+                                if reachable_area != self.area.name:
+                                    info += '\r\n*({}) {}'.format(self.server.area_manager.get_area_by_name(reachable_area).id, reachable_area)
                         except AreaError: #When would you ever execute this piece of code is beyond me, but meh
                             info += '\r\n<ALL>'
                     raise ClientError(info)
@@ -261,14 +259,14 @@ class ClientManager:
 
                 # If autopassing, send OOC messages
                 if self.autopass and not self.char_id < 0 and self.is_visible:
-                    self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
-                                    '{} has left to {}.'
-                                    .format(old_char, area.name), 
-                                    pred=lambda c: not c.is_staff() and c != self and c.area == old_area)
-                    self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
-                                    '{} has entered from {}.'
-                                    .format(self.get_char_name(), old_area.name), 
-                                    pred=lambda c: not c.is_staff() and c != self and c.area == area)
+                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                                  '{} has left to {}.'
+                                                  .format(old_char, area.name), 
+                                                  pred=lambda c: not c.is_staff() and c != self and c.area == old_area)
+                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                                  '{} has entered from {}.'
+                                                  .format(self.get_char_name(), old_area.name), 
+                                                  pred=lambda c: not c.is_staff() and c != self and c.area == area)
 
                 # If bleeding, send reminder, and notify everyone in the new area if not sneaking (otherwise, just vague message).
                 if self.is_bleeding:
@@ -280,16 +278,16 @@ class ClientManager:
                     area.bleeds_to.add(old_area.name)
                     self.send_host_message('You are bleeding.')
                     if self.is_visible:
-                        self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
-                                    'You see {} arrive and bleeding.'.format(self.get_char_name()), 
-                                    pred=lambda c: c != self and c.area == area)
+                        self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                                      'You see {} arrive and bleeding.'.format(self.get_char_name()), 
+                                                      pred=lambda c: c != self and c.area == area)
                     else:
-                        self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
-                                    'You start hearing faint drops of blood.', 
-                                    pred=lambda c: not c.is_staff() and c != self and c.area == area)
-                        self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
-                                    '{} is bleeding while sneaking.'.format(self.get_char_name()), 
-                                    pred=lambda c: c.is_staff() and c != self and c.area == area)
+                        self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                                      'You start hearing faint drops of blood.', 
+                                                      pred=lambda c: not c.is_staff() and c != self and c.area == area)
+                        self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                                      '{} is bleeding while sneaking.'.format(self.get_char_name()), 
+                                                      pred=lambda c: c.is_staff() and c != self and c.area == area)
                 
                 # If someone else is bleeding in the new area, notify the person moving
                 # Special consideration is given if that someone else is sneaking
@@ -327,9 +325,8 @@ class ClientManager:
                         info += '.'
                     self.send_host_message(info)
                     
-                logger.log_server(
-                '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
-                                                                   area.name, area.id), self)
+                logger.log_server('[{}]Changed area from {} ({}) to {} ({}).'
+                                  .format(self.get_char_name(), old_area.name, old_area.id, area.name, area.id), self)
                 #logger.log_rp(
                 #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
                 #                                                       self.area.name, self.area.id), self)    
@@ -404,10 +401,10 @@ class ClientManager:
                             # From this, we can recover the old handicap backup
                             _, old_length, old_name, old_announce_if_over = self.handicap_backup[1]
                             
-                            self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
-                                '{} was automatically imposed their former movement handicap "{}" of length {} seconds after being revealed in area {} ({}).'
-                                .format(self.get_char_name(), old_name, old_length, self.area.name, self.area.id),
-                                pred=lambda c: c.is_staff())
+                            self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                                          '{} was automatically imposed their former movement handicap "{}" of length {} seconds after being revealed in area {} ({}).'
+                                                          .format(self.get_char_name(), old_name, old_length, self.area.name, self.area.id),
+                                                          pred=lambda c: c.is_staff())
                             self.send_host_message('You were automatically imposed your former movement handicap "{}" of length {} seconds when changing areas.'.format(old_name, old_length))
                             self.server.create_task(self, ['as_handicap', time.time(), old_length, old_name, old_announce_if_over])
                         else:
@@ -426,14 +423,14 @@ class ClientManager:
                     try:
                         _, length, _, _ = self.server.get_task_args(self, ['as_handicap'])
                         if length < self.server.config['sneak_handicap']:
-                            self.server.send_all_cmd_pred('CT','{}'.format(self.server.config['hostname']),
-                                '{} was automatically imposed the longer movement handicap "Sneaking" of length {} seconds in area {} ({}).'
-                                .format(self.get_char_name(), self.server.config['sneak_handicap'], self.area.name, self.area.id),
-                                pred=lambda c: c.is_staff())
+                            self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                                          '{} was automatically imposed the longer movement handicap "Sneaking" of length {} seconds in area {} ({}).'
+                                                          .format(self.get_char_name(), self.server.config['sneak_handicap'], self.area.name, self.area.id),
+                                                          pred=lambda c: c.is_staff())
                             raise KeyError # Lazy way to get there, but it works
                     except KeyError:
-                       self.send_host_message('You were automatically imposed a movement handicap "Sneaking" of length {} seconds when changing areas.'.format(self.server.config['sneak_handicap']))
-                       self.server.create_task(self, ['as_handicap', time.time(), self.server.config['sneak_handicap'], "Sneaking", True])
+                        self.send_host_message('You were automatically imposed a movement handicap "Sneaking" of length {} seconds when changing areas.'.format(self.server.config['sneak_handicap']))
+                        self.server.create_task(self, ['as_handicap', time.time(), self.server.config['sneak_handicap'], "Sneaking", True])
                  
                 logger.log_server('{} is now sneaking.'.format(self.ipid), self)
                 
@@ -484,10 +481,7 @@ class ClientManager:
                     for client in [x for x in area.clients if x.is_cm]:
                         owner = 'MASTER: {}'.format(client.get_char_name())
                         break
-                if area.is_gmlocked or area.is_modlocked or area.is_locked:
-                    locked = True
-                else:
-                    locked = False
+                locked = area.is_gmlocked or area.is_modlocked or area.is_locked
                     
                 if self.is_staff():
                     num_clients = len([c for c in area.clients if c.char_id is not None])
@@ -571,15 +565,15 @@ class ClientManager:
 
         def send_all_area_hdid(self):
             info = '== HDID List =='
-            for i in range (len(self.server.area_manager.areas)):
-                 if len(self.server.area_manager.areas[i].clients) > 0:
+            for i in range(len(self.server.area_manager.areas)):
+                if len(self.server.area_manager.areas[i].clients) > 0:
                     info += '\r\n{}'.format(self.get_area_hdid(i))
             self.send_host_message(info)			
 
         def send_all_area_ip(self):
             info = '== IP List =='
-            for i in range (len(self.server.area_manager.areas)):
-                 if len(self.server.area_manager.areas[i].clients) > 0:
+            for i in range(len(self.server.area_manager.areas)):
+                if len(self.server.area_manager.areas[i].clients) > 0:
                     info += '\r\n{}'.format(self.get_area_ip(i))
             self.send_host_message(info)
 
@@ -668,7 +662,7 @@ class ClientManager:
                 
             if char_id == -1:
                 return self.server.config['spectator_name']
-            if char_id == None: 
+            if char_id is None: 
                 return 'SERVER_SELECT'
             return self.server.char_list[char_id]
 
@@ -763,7 +757,7 @@ class ClientManager:
             self.server.get_task(client, [task_id]).cancel()
         self.clients.remove(client)
 
-    def get_targets(self, client, key, value, local = False):
+    def get_targets(self, client, key, value, local=False):
         #possible keys: ip, OOC, id, cname, ipid, hdid
         areas = None
         if local:
@@ -775,22 +769,22 @@ class ClientManager:
             for nkey in range(6):
                 targets += self.get_targets(client, nkey, value, local)
         for area in areas:
-            for client in area.clients:
+            for c in area.clients:
                 if key == TargetType.IP:
-                    if value.lower().startswith(client.get_ipreal().lower()):
-                        targets.append(client)
+                    if value.lower().startswith(c.get_ipreal().lower()):
+                        targets.append(c)
                 elif key == TargetType.OOC_NAME:
-                    if value.lower().startswith(client.name.lower()) and client.name:
-                        targets.append(client)
+                    if value.lower().startswith(c.name.lower()) and c.name:
+                        targets.append(c)
                 elif key == TargetType.CHAR_NAME:
-                    if value.lower().startswith(client.get_char_name().lower()):
-                        targets.append(client)
+                    if value.lower().startswith(c.get_char_name().lower()):
+                        targets.append(c)
                 elif key == TargetType.ID:
-                    if client.id == value:
-                        targets.append(client)
+                    if c.id == value:
+                        targets.append(c)
                 elif key == TargetType.IPID:
-                    if client.ipid == value:
-                        targets.append(client)
+                    if c.ipid == value:
+                        targets.append(c)
         return targets
 
     def get_muted_clients(self):

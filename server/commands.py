@@ -65,7 +65,7 @@ def dice_roll(arg, command_type):
         elif arg_length == 1:
             dice_type, modifiers = arg, ''
         else:
-             raise ArgumentError('This command takes one or two arguments. Use /{} {num_dice}d<num_faces> {modifiers}'.format(command_type))
+            raise ArgumentError('This command takes one or two arguments. Use /{} {num_dice}d<num_faces> {modifiers}'.format(command_type))
 
         dice_type = dice_type.split('d')
         if len(dice_type) == 1:
@@ -95,7 +95,7 @@ def dice_roll(arg, command_type):
         
     roll = ''
     
-    for i in range(num_dice):
+    for _ in range(num_dice):
         divzero_attempts = 0
         while True: # Roll until no division by zeroes happen (or it gives up)
             # raw_roll: original roll
@@ -119,12 +119,12 @@ def dice_roll(arg, command_type):
                 # and check if any individual number is larger than said term.
                 # This also doubles as a second-line defense to junk entries.
                 aux = aux_modifier[:-1]
-                for i in "+-*/()":
-                    aux = aux.replace(i,"!")
+                for j in "+-*/()":
+                    aux = aux.replace(j, "!")
                 aux = aux.split('!')
-                for i in aux:
+                for j in aux:
                     try:
-                        if i != '' and round(float(i)) > MAXACCEPTABLETERM:
+                        if j != '' and round(float(j)) > MAXACCEPTABLETERM:
                             raise ArgumentError("Given mathematical formula takes numbers past the server's computation limit")
                     except ValueError:
                         raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
@@ -161,6 +161,10 @@ def dice_roll(arg, command_type):
     return roll, num_faces
 
 def login(client, arg, auth_command, role):
+    """ 
+    HELPER FUNCTION
+    Wrapper function for the login method for all roles (GM, CM, Mod)
+    """
     if len(arg) == 0:
         raise ArgumentError('You must specify the password.')
     auth_command(arg)
@@ -171,7 +175,12 @@ def login(client, arg, auth_command, role):
     client.send_host_message('Logged in as a {}.'.format(role))
     logger.log_server('Logged in as a {}.'.format(role), client)
 
-def parse_two_area_names(client, areas, area_duplicate = True, check_valid_range = True):
+def parse_two_area_names(client, areas, area_duplicate=True, check_valid_range=True):
+    """
+    HELPER FUNCTION
+    Convert the area passage commands inputs into inputs for parse_area_names.
+    and check for the different cases it needs to possibly handle
+    """
     # Convert to two-area situation
     if len(areas) == 0:
         areas = [client.area.name, client.area.name]
@@ -194,6 +203,10 @@ def parse_two_area_names(client, areas, area_duplicate = True, check_valid_range
     return areas
 
 def parse_area_names(client, areas):
+    """
+    HELPER FUNCTION
+    Convert a list of area names or IDs into area objects.
+    """
     area_list = list()
     # Replace arguments with proper area objects
     for i in range(len(areas)):
@@ -201,7 +214,7 @@ def parse_area_names(client, areas):
         #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
         #If you are that person... just... why
         try:
-            area_list.append(client.server.area_manager.get_area_by_name(areas[i].replace(',\\',',')))
+            area_list.append(client.server.area_manager.get_area_by_name(areas[i].replace(',\\', ',')))
         except AreaError:
             try:
                 area_list.append(client.server.area_manager.get_area_by_name(areas[i]))
@@ -254,6 +267,10 @@ def parse_id_or_ipid(client, identifier):
     return targets
 
 def parse_time_length(time_length):
+    """
+    HELPER FUNCTION
+    Convert seconds into a formatted string representing timelength.
+    """
     TIMER_LIMIT = 21600 # 6 hours in seconds
     # Check if valid length and convert to seconds        
     raw_length = time_length.split(':')
@@ -427,8 +444,8 @@ def ooc_cmd_area_list(client, arg):
         
     if len(arg) == 0:
         client.server.area_manager.load_areas()
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                            'The area list of the server has been reset to its original state.')
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                        'The area list of the server has been reset to its original state.')
     else:
         try:
             new_area_file = 'config/area_lists/{}.yaml'.format(arg)
@@ -438,8 +455,8 @@ def ooc_cmd_area_list(client, arg):
         except AreaError as exc:
             raise ArgumentError('The area list {} returned the following error when loading: {}'.format(new_area_file, exc))
             
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                            'The area list {} has been loaded.'.format(arg))
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                        'The area list {} has been loaded.'.format(arg))
         
 def ooc_cmd_area_lists(client, arg):
     """ (MOD ONLY)
@@ -563,7 +580,7 @@ def ooc_cmd_bg(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify a name. Use /bg <background>.')
-    if not client.is_mod and client.area.bg_lock == True: 
+    if not client.is_mod and client.area.bg_lock: 
         raise AreaError("This area's background is locked.")
 
     if client.is_staff():
@@ -693,9 +710,9 @@ def ooc_cmd_bloodtrail_clean(client, arg):
                     client.send_host_message("{} in area {} is still bleeding, so the area cannot be cleaned.".format(c.get_char_name(), area.name))
                 break
         else:
-            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                      'The blood trail in this area was cleaned.',
-                                      pred=lambda c: c.area == area and c != client)
+            client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                            'The blood trail in this area was cleaned.',
+                                            pred=lambda x: x.area == area and x != client)
             area.bleeds_to = set()
             successful_cleans.add(area.name)
     
@@ -704,28 +721,27 @@ def ooc_cmd_bloodtrail_clean(client, arg):
             message = client.area.name
             client.send_host_message("Cleaned the blood trail in the current area.")
             if client.is_staff():            
-                client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                            '{} cleaned the blood trail in area {}.'.format(client.name, client.area.name),
-                                            pred=lambda c: c.is_staff() and c != client)  
+                client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                                '{} cleaned the blood trail in area {}.'.format(client.name, client.area.name),
+                                                pred=lambda x: x.is_staff() and x != client)  
             else:
-                client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                            '{} cleaned the blood trail in area {}.'.format(client.get_char_name(), client.area.name),
-                                            pred=lambda c: c.is_staff() and c != client)  
+                client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                                '{} cleaned the blood trail in area {}.'.format(client.get_char_name(), client.area.name),
+                                                pred=lambda c: c.is_staff() and c != client)  
         elif len(successful_cleans) == 1:
             message = str(successful_cleans.pop())
             client.send_host_message("Cleaned blood trail in area {}".format(message))
-            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+            client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                             '{} cleaned the blood trail in area {}.'.format(client.name, message),
                                             pred=lambda c: c.is_staff() and c != client)            
         elif len(successful_cleans) > 1:
             message = ", ".join(successful_cleans)
             client.send_host_message("Cleaned blood trails in areas {}".format(message))
-            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+            client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                             '{} cleaned the blood trails in areas {}.'.format(client.name, message),
                                             pred=lambda c: c.is_staff() and c != client)
-        logger.log_server(
-        '[{}][{}]Cleaned the blood trail in {}.'
-        .format(client.area.id, client.get_char_name(), message), client)
+        logger.log_server('[{}][{}]Cleaned the blood trail in {}.'
+                          .format(client.area.id, client.get_char_name(), message), client)
 
 def ooc_cmd_bloodtrail_list(client, arg):
     """ (STAFF ONLY)
@@ -792,10 +808,10 @@ def ooc_cmd_bloodtrail_set(client, arg):
         message = 'go to {}'.format(", ".join([area.name for area in areas_to_link]))
     
     client.send_host_message('Set the blood trail in this area to {}.'.format(message))
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                     'The blood trail in this area was set to {}.'.format(message),
                                     pred=lambda c: not c.is_staff() and c.area == client.area and c != client)
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                     '{} set the blood trail in area {} to {}.'.format(client.name, client.area.name, message),
                                     pred=lambda c: c.is_staff() and c != client)
     client.area.bleeds_to = set([area.name for area in areas_to_link])
@@ -941,7 +957,7 @@ def ooc_cmd_cleargm(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
         
-    for i, area in enumerate(client.server.area_manager.areas):
+    for area in client.server.area_manager.areas:
         for c in [x for x in area.clients if x.is_gm]:
             c.is_gm = False
             if client.server.rp_mode:
@@ -1041,7 +1057,65 @@ def ooc_cmd_discord(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
     client.send_host_message('Discord Invite Link: {}'.format(client.server.config['discord_link']))
+
+def ooc_cmd_disemconsonant(client, arg):
+    """ (MOD ONLY)
+    Disemconsonants all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
+    In particular, all their messages will have all their consonants removed.
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /undisemconsonant to undo.
+    Returns an error if the given identifier does not correspond to a user.
     
+    SYNTAX
+    /disemconsonant <client_id>
+    /disemconsonant <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /disemconsonant 1           :: Disemconsonants the player whose client ID is 1.
+    /disemconsonant 1234567890  :: Disemconsonants all clients opened by the user whose IPID is 1234567890.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+
+    # Disemconsonant matching targets
+    for c in parse_id_or_ipid(client, arg):
+        c.disemconsonant = True
+        logger.log_server('Disemconsonanted {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was disemconsonanted.".format(c.get_char_name()))
+        
+def ooc_cmd_disemvowel(client, arg):
+    """ (MOD ONLY)
+    Disemvowels all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
+    In particular, all their messages will have all their vowels removed.
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /undisemvowel to undo.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /disemvowel <client_id>
+    /disemvowel <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /disemvowel 1                     :: Disemvowels the player whose client ID is 1.
+    /disemvowel 1234567890            :: Disemwvowels all clients opened by the user whose IPID is 1234567890.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+
+    # Disemvowel matching targets
+    for c in parse_id_or_ipid(client, arg):
+        c.disemvowel = True
+        logger.log_server('Disemvowelled {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was disemvowelled.".format(c.get_char_name()))
+		
 def ooc_cmd_doc(client, arg):
     """
     Sends the area's current doc link to the user, or sets it to a new one.
@@ -1125,6 +1199,8 @@ def ooc_cmd_getarea(client, arg):
     EXAMPLE
     /getarea
     """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
     if client.in_rp and not client.area.rp_getarea_allowed:
         raise ClientError("This command has been restricted to authorized users only in this area while in RP mode.")
         
@@ -1144,6 +1220,8 @@ def ooc_cmd_getareas(client, arg):
     EXAMPLE
     /getarea
     """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
     if client.in_rp and not client.area.rp_getareas_allowed:
         raise ClientError("This command has been restricted to authorized users only in this area while in RP mode.")
 
@@ -1215,7 +1293,7 @@ def ooc_cmd_globalic(client, arg):
     if areas[0] == areas[1]:    
         client.send_host_message('Your IC messages will now be sent to area {}.'.format(areas[0].name))
     else:
-        client.send_host_message('Your IC messages will now be sent to areas {} through {}.'.format(areas[0].name,areas[1].name))
+        client.send_host_message('Your IC messages will now be sent to areas {} through {}.'.format(areas[0].name, areas[1].name))
 
 def ooc_cmd_gm(client, arg):
     """ (MOD ONLY)
@@ -1259,9 +1337,12 @@ def ooc_cmd_gmlock(client, arg):
     
     EXAMPLE
     /gmlock             :: Sets the current area as accessible only to staff members.
-    """
+    """    
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
     if not client.area.locking_allowed:
         raise ClientError('Area locking is disabled in this area.')
     if client.area.is_gmlocked:
@@ -1333,7 +1414,7 @@ def ooc_cmd_handicap(client, arg):
     
     for c in targets:
         client.send_host_message('You imposed a movement handicap "{}" of length {} seconds on {}.'.format(name, length, c.get_char_name()))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                         '{} imposed a movement handicap "{}" of length {} seconds on {} in area {} ({}).'
                                         .format(client.name, name, length, c.get_char_name(), client.area.name, client.area.id),
                                         pred=lambda c: (c.is_staff() and c != client))
@@ -1436,7 +1517,9 @@ def ooc_cmd_kick(client, arg):
     """
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
-
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
     # Kick matching targets
     for c in parse_id_or_ipid(client, arg):
         logger.log_server('Kicked {}.'.format(c.ipid), client)
@@ -1456,6 +1539,9 @@ def ooc_cmd_kickself(client, arg):
     EXAMPLES
     /kickself
     """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
     targets = client.server.client_manager.get_targets(client, TargetType.IPID, client.ipid, False)
     
     for target in targets:
@@ -1506,12 +1592,12 @@ def ooc_cmd_knock(client, arg):
 
     client.send_host_message('You knocked on the door to area {}.'.format(target_area.name))
     client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
-                                'Someone knocked on your door from area {}.'.format(client.area.name),
-                                pred=lambda c: not c.is_staff() and c.area == target_area)
+                                    'Someone knocked on your door from area {}.'.format(client.area.name),
+                                    pred=lambda c: not c.is_staff() and c.area == target_area)
     client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
-                                '{} knocked on the door to area {} in area {} ({}).'
-                                .format(client.get_char_name(), target_area.name, client.area.name, client.area.id),
-                                pred=lambda c: c != client and c.is_staff())
+                                    '{} knocked on the door to area {} in area {} ({}).'
+                                    .format(client.get_char_name(), target_area.name, client.area.name, client.area.id),
+                                    pred=lambda c: c != client and c.is_staff())
         
 def ooc_cmd_lights(client, arg):
     """ (STAFF ONLY)
@@ -1534,7 +1620,7 @@ def ooc_cmd_lights(client, arg):
         raise ArgumentError('You must specify either on or off.')
     if arg not in ['off', 'on']:
         raise ClientError('Invalid argument. Expected: on, off. Your argument: {}'.format(arg))
-    if not client.is_mod and client.area.bg_lock == True: 
+    if not client.is_mod and client.area.bg_lock: 
         raise AreaError("Unable to turn lights {}: This area's background is locked.".format(arg))
         
     if arg == 'on':
@@ -1571,6 +1657,7 @@ def ooc_cmd_lm(client, arg):
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         raise ArgumentError("Can't send an empty message.")
+        
     client.area.send_command('CT', '{}[MOD][{}]'
                              .format(client.server.config['hostname'], client.get_char_name()), arg)
     logger.log_server('[{}][{}][LOCAL-MOD]{}.'.format(client.area.id, client.get_char_name(), arg), client)
@@ -1589,6 +1676,9 @@ def ooc_cmd_lock(client, arg):
     EXAMPLE
     /lock
     """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
     if not client.area.locking_allowed:
         raise ClientError('Area locking is disabled in this area.')
     if client.area.is_locked:
@@ -1658,6 +1748,9 @@ def ooc_cmd_logout(client, arg):
     EXAMPLE
     /logout
     """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    
     client.is_mod = False
     client.is_gm = False
     client.is_cm = False
@@ -1731,7 +1824,7 @@ def ooc_cmd_look_clean(client, arg):
     successful_cleans = set()
     for area in areas_to_clean:
         area.description = area.default_description
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                         'The area description was updated to {}.'.format(area.description),
                                         pred=lambda c: not c.is_staff() and c.area == area and c != client)
         successful_cleans.add(area.name)
@@ -1739,18 +1832,17 @@ def ooc_cmd_look_clean(client, arg):
     if len(successful_cleans) == 1:
         message = str(successful_cleans.pop())
         client.send_host_message("Reset the area description of area {} to its original value.".format(message))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                         '{} reset the area description of area {} to its original value.'.format(client.name, message),
                                         pred=lambda c: c.is_staff() and c != client)            
     elif len(successful_cleans) > 1:
         message = ", ".join(successful_cleans)
         client.send_host_message("Reset the area descriptions of areas {} to their original values.".format(message))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                         '{} reset the area descriptions of areas {} to their original values.'.format(client.name, message),
                                         pred=lambda c: c.is_staff() and c != client)
-        logger.log_server(
-        '[{}][{}]Reset the area description in {}.'
-        .format(client.area.id, client.get_char_name(), message), client)
+        logger.log_server('[{}][{}]Reset the area description in {}.'
+                          .format(client.area.id, client.get_char_name(), message), client)
 
 def ooc_cmd_look_list(client, arg):
     """ (STAFF ONLY)
@@ -1811,7 +1903,7 @@ def ooc_cmd_look_set(client, arg):
     if len(arg) == 0:
         client.area.description = client.area.default_description
         client.send_host_message('Reset the area description to its original value.')
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                         '{} reset the area description of area {} to its original value.'.format(client.name, client.area.name),
                                         pred=lambda c: c.is_staff() and c != client)   
         logger.log_server('[{}][{}]Reset the area description in {}.'
@@ -1820,13 +1912,13 @@ def ooc_cmd_look_set(client, arg):
     else:
         client.area.description = arg
         client.send_host_message('Updated the area descriptions to {}'.format(arg))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                    '{} set the area descriptions of area {} to {}.'.format(client.name, client.area.name, client.area.description),
-                                    pred=lambda c: c.is_staff() and c != client)
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                        '{} set the area descriptions of area {} to {}.'.format(client.name, client.area.name, client.area.description),
+                                        pred=lambda c: c.is_staff() and c != client)
         logger.log_server('[{}][{}]Set the area descriptions to {}.'
                           .format(client.area.id, client.get_char_name(), arg), client)
         
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                     'The area description was updated to {}.'.format(client.area.description),
                                     pred=lambda c: not c.is_staff() and c.area == client.area and c != client)
     
@@ -1851,7 +1943,7 @@ def ooc_cmd_minimap(client, arg):
     try:
         # Get all reachable areas and sort them by area ID
         sorted_areas = sorted(client.area.reachable_areas,
-                              key = lambda area_name: client.server.area_manager.get_area_by_name(area_name).id)
+                              key=lambda area_name: client.server.area_manager.get_area_by_name(area_name).id)
         
         # No areas found or just the current area found means there are no reachable areas.
         if len(sorted_areas) == 0 or sorted_areas == [client.area.name]:
@@ -1886,6 +1978,9 @@ def ooc_cmd_modlock(client, arg):
     """
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
     if not client.area.locking_allowed:
         raise ClientError('Area locking is disabled in this area')
     if client.area.is_modlocked:
@@ -2016,7 +2111,7 @@ def ooc_cmd_mutepm(client, arg):
     /mutepm
     """
     if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments.")
+        raise ArgumentError("This command has no arguments.")
     
     client.pm_mute = not client.pm_mute
     status = {True: 'You stopped receiving PMs.', False: 'You are now receiving PMs.'}
@@ -2247,7 +2342,7 @@ def ooc_cmd_refresh(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) > 0:
-        raise ClientError('This command has no arguments.')
+        raise ArgumentError('This command has no arguments.')
 
     client.server.reload()
     client.send_host_message('You have reloaded the server.')
@@ -2266,10 +2361,67 @@ def ooc_cmd_reload(client, arg):
     /reload
     """
     if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
+        raise ArgumentError('This command has no arguments.')
     
     client.reload_character()
     client.send_host_message('Character reloaded.') 
+
+def ooc_cmd_reload_commands(client, arg):
+    """ (MOD ONLY)
+    Reloads the commands.py file.
+    Use only if restarting is not a viable option.
+    Note that this ONLY updates the contents of this file.
+    If anything you update relies on other files (for example, you call a method in client_manager), 
+    they will still use the old contents, regardless of whatever changes you may have made to the other files.
+    
+    SYNTAX
+    /reload_commands
+    
+    PARAMETERS
+    None
+    
+    EXAMPLE
+    /reload_commands
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) > 0:
+        raise ArgumentError('This command has no arguments.')
+
+    outcome = client.server.reload_commands()
+    if outcome:
+        info = "\n{}: {}".format(type(outcome).__name__, outcome)
+        raise ClientError('Server ran into a problem while reloading the commands: {}'.format(info))
+        
+    client.send_host_message("The commands have been reloaded.")
+    
+def ooc_cmd_remove_h(client, arg):
+    """ (MOD ONLY)
+    Removes all letter H's from all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /unremove_h to undo.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /remove_h <client_id>
+    /remove_h <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /remove_h 1           :: Has all messages sent by the player whose client ID is 1 have their H's removed.
+    /remove_h 1234567890  :: Has all messages sent by all clients opened by the user whose IPID is 1234567890 have their H's removed.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+
+    # Removes H's to matching targets
+    for c in parse_id_or_ipid(client, arg):
+        c.remove_h = True
+        logger.log_server('Removing h from {}.'.format(c.ipid), client)
+        client.area.send_host_message("Removed h from {}.".format(c.get_char_name()))
 
 def ooc_cmd_reveal(client, arg):    
     """ (STAFF ONLY)
@@ -2364,10 +2516,10 @@ def ooc_cmd_rollp(client, arg):
     roll_result, num_faces = dice_roll(arg, 'rollp') # Moved calculation of roll code to helper function so roll can reuse it
         
     client.send_host_message('You privately rolled {} out of {}.'.format(roll_result, num_faces))    
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                     'Someone rolled.', pred=lambda c: not c.is_staff() 
                                     and c != client and c.area.name == client.area.name) 
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                     '{} privately rolled {} out of {} in {} ({}).'
                                     .format(client.get_char_name(), roll_result, num_faces, client.area.name, client.area.id), 
                                     pred=lambda c: c.is_staff() and c != client)
@@ -2500,13 +2652,12 @@ def ooc_cmd_scream_set_range(client, arg):
         client.area.scream_range = area_names
         
     client.send_host_message('Set the scream range of area {} to be: {}.'.format(client.area.name, area_names))
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                            '{} set the scream range of area {} to be: {} ({}).'
-                            .format(client.get_char_name(), client.area.name, area_names, client.area.id), 
-                            pred=lambda c: c.is_staff() and c != client)
-    logger.log_server(
-    '[{}][{}]Set the scream range of area {} to be: {}.'
-    .format(client.area.id, client.get_char_name(), client.area.name, area_names), client)
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                    '{} set the scream range of area {} to be: {} ({}).'
+                                    .format(client.get_char_name(), client.area.name, area_names, client.area.id), 
+                                    pred=lambda c: c.is_staff() and c != client)
+    logger.log_server('[{}][{}]Set the scream range of area {} to be: {}.'
+                      .format(client.area.id, client.get_char_name(), client.area.name, area_names), client)
     
 def ooc_cmd_scream_set(client, arg):
     """ (STAFF ONLY)
@@ -2543,23 +2694,21 @@ def ooc_cmd_scream_set(client, arg):
     if intended_area.name not in client.area.scream_range:
         client.area.scream_range.add(intended_area.name)
         client.send_host_message('Added area {} to the scream range of area {}.'.format(intended_area.name, client.area.name))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                '{} added area {} to the scream range of area {} ({}).'
-                                .format(client.get_char_name(), intended_area.name, client.area.name, client.area.id), 
-                                pred=lambda c: c.is_staff() and c != client)
-        logger.log_server(
-        '[{}][{}]Added area {} to the scream range of area {}.'
-        .format(client.area.id, client.get_char_name(), intended_area.name, client.area.name), client)
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                        '{} added area {} to the scream range of area {} ({}).'
+                                        .format(client.get_char_name(), intended_area.name, client.area.name, client.area.id), 
+                                        pred=lambda c: c.is_staff() and c != client)
+        logger.log_server('[{}][{}]Added area {} to the scream range of area {}.'
+                          .format(client.area.id, client.get_char_name(), intended_area.name, client.area.name), client)
     else: # Otherwise, add it
         client.area.scream_range.remove(intended_area.name)
         client.send_host_message('Removed area {} from the scream range of area {}.'.format(intended_area.name, client.area.name))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                '{} removed area {} from the scream range of area {} ({}).'
-                                .format(client.get_char_name(), intended_area.name, client.area.name, client.area.id), 
-                                pred=lambda c: c.is_staff() and c != client)
-        logger.log_server(
-        '[{}][{}]Removed area {} from the scream range of area {}.'
-        .format(client.area.id, client.get_char_name(), intended_area.name, client.area.name), client)
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                        '{} removed area {} from the scream range of area {} ({}).'
+                                        .format(client.get_char_name(), intended_area.name, client.area.name, client.area.id), 
+                                        pred=lambda c: c.is_staff() and c != client)
+        logger.log_server('[{}][{}]Removed area {} from the scream range of area {}.'
+                          .format(client.area.id, client.get_char_name(), intended_area.name, client.area.name), client)
 
 def ooc_cmd_scream_range(client, arg):
     """ (STAFF ONLY)
@@ -2652,12 +2801,12 @@ def ooc_cmd_showname_freeze(client, arg):
     status = {False: 'unfrozen', True: 'frozen'}
 
     client.send_host_message('You have {} all shownames.'.format(status[client.server.showname_freeze])) 
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                'A mod has {} all shownames.'.format(status[client.server.showname_freeze]),
-                                pred=lambda c: not c.is_mod and c != client)
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                '{} has {} all shownames.'.format(client.name, status[client.server.showname_freeze]),
-                                pred=lambda c: c.is_mod and c != client)
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                    'A mod has {} all shownames.'.format(status[client.server.showname_freeze]),
+                                    pred=lambda c: not c.is_mod and c != client)
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                    '{} has {} all shownames.'.format(client.name, status[client.server.showname_freeze]),
+                                    pred=lambda c: c.is_mod and c != client)
     logger.log_server('{} has {} all shownames.'.format(client.name, status[client.server.showname_freeze]), client)
 
 def ooc_cmd_showname_history(client, arg):
@@ -2745,12 +2894,12 @@ def ooc_cmd_showname_nuke(client, arg):
             c.change_showname('')
         
     client.send_host_message('You have nuked all shownames.')
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                'A mod has nuked all shownames.',
-                                pred=lambda c: not c.is_mod and c != client)
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                '{} has nuked all shownames.'.format(client.name),
-                                pred=lambda c: c.is_mod and c != client)
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                    'A mod has nuked all shownames.',
+                                    pred=lambda c: not c.is_mod and c != client)
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                    '{} has nuked all shownames.'.format(client.name),
+                                    pred=lambda c: c.is_mod and c != client)
     logger.log_server('{} has nuked all shownames.'.format(client.name), client)
 
 def ooc_cmd_showname_set(client, arg):
@@ -2854,7 +3003,7 @@ def ooc_cmd_st(client, arg):
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
         
-    client.server.send_all_cmd_pred('CT','{} [Staff] {}'.format(client.server.config['hostname'], client.name), arg,
+    client.server.send_all_cmd_pred('CT', '{} [Staff] {}'.format(client.server.config['hostname'], client.name), arg,
                                     pred=lambda c: c.is_staff())
     logger.log_server('[{}][STAFFCHAT][{}][{}]{}.'.format(client.area.id, client.get_char_name(), client.name, arg), client)
             
@@ -3120,6 +3269,34 @@ def ooc_cmd_unban(client, arg):
     logger.log_server('Unbanned {}.'.format(arg), client)
     client.send_host_message('Unbanned {}'.format(arg))
 
+def ooc_cmd_undisemconsonant(client, arg):
+    """ (MOD ONLY)
+    Removes the disemconsonant effect on all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /disemconsonant to undo.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /undisemconsonant <client_id>
+    /undisemconsonant <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /undisemconsonant 1           :: Undisemconsonants the player whose client ID is 1.
+    /undisemconsonant 1234567890  :: Undisemconsonants all clients opened by the user whose IPID is 1234567890.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+
+    # Undisemconsonant matching targets
+    for c in parse_id_or_ipid(client, arg):
+        c.disemconsonant = False
+        logger.log_server('Undisemconsonanted {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was undisemconsonanted.".format(c.get_char_name()))
+				
 def ooc_cmd_unblockdj(client, arg):
     """ (CM AND MOD ONLY)
     Restores the ability of a player by client ID (number in brackets) or IPID (number in parentheses) to change music.
@@ -3146,6 +3323,34 @@ def ooc_cmd_unblockdj(client, arg):
         c.is_dj = True
         logger.log_server('Restored DJ permissions to {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was restored DJ permissions.".format(c.get_char_name()))
+
+def ooc_cmd_undisemvowel(client, arg):
+    """ (MOD ONLY)
+    Removes the disemvowel effect on all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /disemvowel to undo.
+    Returns an error if the given identifier does not correspond to a user.
+    
+    SYNTAX
+    /undisemvowel <client_id>
+    /undisemvowel <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /undisemvowel 1           :: Undisemvowel the player whose client ID is 1.
+    /undisemvowel 1234567890  :: Undisemvowel all clients opened by the user whose IPID is 1234567890.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+
+    # Undisemvowel matching targets
+    for c in parse_id_or_ipid(client, arg):
+        c.disemvowel = False
+        logger.log_server('Undisemvowelled {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was undisemvowelled.".format(c.get_char_name()))
         
 def ooc_cmd_unfollow(client, arg):
     """ (STAFF ONLY)
@@ -3164,6 +3369,9 @@ def ooc_cmd_unfollow(client, arg):
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
     client.unfollow_user()
 
 def ooc_cmd_ungimp(client, arg):
@@ -3249,7 +3457,7 @@ def ooc_cmd_unhandicap(client, arg):
             client.send_host_message('{} does not have an active movement handicap.'.format(c.get_char_name()))
         else:
             client.send_host_message('You removed the movement handicap "{}" on {}.'.format(name, c.get_char_name()))
-            client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+            client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                             '{} removed the movement handicap "{}" on {} in area {} ({}).'
                                             .format(client.name, name, c.get_char_name(), client.area.name, client.area.id),
                                             pred=lambda c: (c.is_staff() and c != client))
@@ -3302,6 +3510,9 @@ def ooc_cmd_unlock(client, arg):
     EXAMPLE
     /unlock             :: Perform one of the unlocks described above if possible
     """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+        
     if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
         raise ClientError('Area is already open.')
     else:
@@ -3343,7 +3554,35 @@ def ooc_cmd_unmute(client, arg):
         logger.log_server('Unmuted {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was unmuted.".format(c.get_char_name()))
         c.is_muted = False
+
+def ooc_cmd_unremove_h(client, arg):
+    """ (MOD ONLY)
+    Removes the 'Remove H' effect on all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Requires /remove_h to undo.
+    Returns an error if the given identifier does not correspond to a user.
     
+    SYNTAX
+    /unremove_h <client_id>
+    /unremove_h <client_ipid>
+    
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    
+    EXAMPLES
+    /unremove_h 1           :: Removes the 'Remove H' effect on the player whose client ID is 1.
+    /unremove_h 1234567890  :: Removes the 'Remove H' effect on all clients opened by the user whose IPID is 1234567890.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+
+    # Remove the 'Remove H' effect on matching targets
+    for c in parse_id_or_ipid(client, arg):
+        c.remove_h = False
+        logger.log_server("Removed 'Remove H' effect on {}.".format(c.ipid), client)
+        client.area.send_host_message("{} had the 'Remove H' effect removed.".format(c.get_char_name()))
+        
 def ooc_cmd_8ball(client, arg):
     """
     Call upon the wisdom of a magic 8 ball. The result is sent to all clients in the sender's area.
@@ -3363,8 +3602,7 @@ def ooc_cmd_8ball(client, arg):
     coin = ['yes', 'no', 'maybe', "I don't know", 'perhaps', 'please do not', 'try again', "you shouldn't ask that"]
     flip = random.choice(coin)
     client.area.send_host_message('The magic 8 ball says {}.'.format(flip))
-    logger.log_server(
-        '[{}][{}]called upon the magic 8 ball and it said {}.'.format(client.area.id,client.get_char_name(),flip), client)
+    logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'.format(client.area.id, client.get_char_name(), flip), client)
 		
 def ooc_cmd_bilock(client, arg):
     areas = arg.split(', ')
@@ -3373,8 +3611,8 @@ def ooc_cmd_bilock(client, arg):
     elif len(areas) == 2 and not client.is_staff():
         raise ClientError('You must be authorized to use the two-parameter version of this command.')
     
-    areas = parse_two_area_names(client, areas, area_duplicate = False,
-                                 check_valid_range = False)
+    areas = parse_two_area_names(client, areas, area_duplicate=False,
+                                 check_valid_range=False)
     
     for i in range(2):
         if not areas[i].change_reachability_allowed and not client.is_staff():
@@ -3392,8 +3630,8 @@ def ooc_cmd_bilock(client, arg):
                 reachable = reachable - {areas[1-i].name}
             else:
                 if not client.is_staff() and not (areas[1-i].name in areas[i].staffset_reachable_areas or
-                       areas[i].staffset_reachable_areas == {'<ALL>'}):
-                    client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[i].name,areas[1-i].name))
+                                                  areas[i].staffset_reachable_areas == {'<ALL>'}):
+                    client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[i].name, areas[1-i].name))
                     areas[0].reachable_areas = formerly_reachable[0]
                     areas[1].reachable_areas = formerly_reachable[1]
                     return
@@ -3404,29 +3642,27 @@ def ooc_cmd_bilock(client, arg):
             areas[i].staffset_reachable_areas = reachable
         
     if now_reachable[0] == now_reachable[1]:
-        client.send_host_message('Set area reachability between {} and {} to {}'.format(areas[0].name,areas[1].name,now_reachable[0]))
+        client.send_host_message('Set area reachability between {} and {} to {}'.format(areas[0].name, areas[1].name,now_reachable[0]))
  
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                    '{} used /bilock to {} area reachability between {} and {} in {} ({}).'
-                                    .format(client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
-                                            client.area.name, client.area.id), pred=lambda c: c.is_staff() and c != client)
-        logger.log_server(
-            '[{}][{}]Used /bilock to {} area reachability between {} and {}.'
-            .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name), client)
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                        '{} used /bilock to {} area reachability between {} and {} in {} ({}).'
+                                        .format(client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
+                                                client.area.name, client.area.id), pred=lambda c: c.is_staff() and c != client)
+        logger.log_server('[{}][{}]Used /bilock to {} area reachability between {} and {}.'
+                          .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name), client)
 
     else:
-        client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name,areas[1].name,now_reachable[0]))
-        client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[1].name,areas[0].name,now_reachable[1]))
+        client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name, areas[1].name, now_reachable[0]))
+        client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[1].name, areas[0].name, now_reachable[1]))
         
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                    '{} used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {} in {} ({}).'
-                                    .format(client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
-                                            'unlock' if now_reachable[1] else 'lock', areas[1].name, areas[0].name, 
-                                            client.area.name, client.area.id), pred=lambda c: c.is_staff() and c != client)
-        logger.log_server(
-            '[{}][{}]Used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {}.'
-            .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
-                                                            'unlock' if now_reachable[1] else 'lock', areas[1].name, areas[0].name), client)
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                        '{} used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {} in {} ({}).'
+                                        .format(client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
+                                                'unlock' if now_reachable[1] else 'lock', areas[1].name, areas[0].name, 
+                                                client.area.name, client.area.id), pred=lambda c: c.is_staff() and c != client)
+        logger.log_server('[{}][{}]Used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {}.'
+                          .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name, 
+                                  'unlock' if now_reachable[1] else 'lock', areas[1].name, areas[0].name), client)
 
 def ooc_cmd_unilock(client, arg):
     areas = arg.split(', ')
@@ -3435,8 +3671,8 @@ def ooc_cmd_unilock(client, arg):
     elif len(areas) == 2 and not client.is_staff():
         raise ClientError('You must be authorized to use the two-parameter version of this command.')
     
-    areas = parse_two_area_names(client, areas, area_duplicate = False,
-                                 check_valid_range = False)
+    areas = parse_two_area_names(client, areas, area_duplicate=False,
+                                 check_valid_range=False)
     
     if not areas[0].change_reachability_allowed and not client.is_staff():
         raise ClientError('Changing area reachability without authorization is disabled in area {}.'.format(areas[0].name))
@@ -3450,22 +3686,21 @@ def ooc_cmd_unilock(client, arg):
             reachable = reachable - {areas[1].name}
         else:
             if not client.is_staff() and not (areas[1].name in areas[0].staffset_reachable_areas or
-                   areas[0].staffset_reachable_areas == {'<ALL>'}):
-                client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[0].name,areas[1].name))
+                                              areas[0].staffset_reachable_areas == {'<ALL>'}):
+                client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[0].name, areas[1].name))
                 return
             reachable.add(areas[1].name)
             now_reachable = True
     areas[0].reachable_areas = reachable
     if client.is_staff():
         areas[0].staffset_reachable_areas = reachable
-    client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name,areas[1].name,now_reachable))
-    client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
-                                '{} used /unilock to {} area reachability from {} to {} in {} ({}).'
-                                .format(client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name, 
-                                        client.area.name, client.area.id), pred=lambda c: c.is_staff() and c != client)
-    logger.log_server(
-        '[{}][{}]Used /unilock to {} area reachability from {} to {}.'
-        .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name), client)
+    client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name, areas[1].name, now_reachable))
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                    '{} used /unilock to {} area reachability from {} to {} in {} ({}).'
+                                    .format(client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name, 
+                                            client.area.name, client.area.id), pred=lambda c: c.is_staff() and c != client)
+    logger.log_server('[{}][{}]Used /unilock to {} area reachability from {} to {}.'
+                      .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name), client)
 
 def ooc_cmd_restore_areareachlock(client, arg):
     if not client.is_staff(): 
@@ -3484,7 +3719,7 @@ def ooc_cmd_restore_areareachlock(client, arg):
     if areas[0] == areas[1]:    
         client.send_host_message('Area passage locks have been set to standard in {}.'.format(areas[0].name))
     else:
-        client.send_host_message('Area passage locks have been set to standard in {} through {}'.format(areas[0].name,areas[1].name))
+        client.send_host_message('Area passage locks have been set to standard in {} through {}'.format(areas[0].name, areas[1].name))
 
 def ooc_cmd_delete_areareachlock(client, arg):
     if not client.is_staff(): 
@@ -3502,7 +3737,7 @@ def ooc_cmd_delete_areareachlock(client, arg):
     if areas[0] == areas[1]:    
         client.send_host_message('Area passage locks have been removed in {}.'.format(areas[0].name))
     else:
-        client.send_host_message('Area passage locks have been removed in areas {} through {}'.format(areas[0].name,areas[1].name))
+        client.send_host_message('Area passage locks have been removed in areas {} through {}'.format(areas[0].name, areas[1].name))
 
 def ooc_cmd_toggle_areareachlock(client, arg):
     if not client.is_staff():
@@ -3517,126 +3752,6 @@ def ooc_cmd_toggle_areareachlock(client, arg):
         client.area.change_reachability_allowed = True
         client.area.send_host_message('The use of the /unilock and /bilock commands affecting this area commands in this area has been enabled to all users.')
 
-def ooc_cmd_disemvowel(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    elif len(arg) == 0:
-        raise ArgumentError('You must specify a target.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    except:
-        raise ArgumentError('You must specify a target. Use /disemvowel <id>.')
-    if targets:
-        for c in targets:
-            logger.log_server('Disemvowelling {}.'.format(c.get_ip()), client)
-            c.disemvowel = True
-        client.send_host_message('Disemvowelled {} existing client(s).'.format(len(targets)))
-    else:
-        client.send_host_message('No targets found.')
-		
-def ooc_cmd_disemconsonant(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    elif len(arg) == 0:
-        raise ArgumentError('You must specify a target.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    except:
-        raise ArgumentError('You must specify a target. Use /disemconsonant <id>.')
-    if targets:
-        for c in targets:
-            logger.log_server('Disemconsonanting {}.'.format(c.get_ip()), client)
-            c.disemconsonant = True
-        client.send_host_message('Disemconsonanted {} existing client(s).'.format(len(targets)))
-    else:
-        client.send_host_message('No targets found.')
-				
-def ooc_cmd_undisemconsonant(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    elif len(arg) == 0:
-        raise ArgumentError('You must specify a target.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    except:
-        raise ArgumentError('You must specify a target. Use /disemvowel <id>.')
-    if targets:
-        for c in targets:
-            logger.log_server('Undisemconsonanting {}.'.format(c.get_ip()), client)
-            c.disemconsonant = False
-        client.send_host_message('Undisemconsonanted {} existing client(s).'.format(len(targets)))
-    else:
-        client.send_host_message('No targets found.')
-				
-def ooc_cmd_remove_h(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    elif len(arg) == 0:
-        raise ArgumentError('You must specify a target.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    except:
-        raise ArgumentError('You must specify a target. Use /remove_h <id>.')
-    if targets:
-        for c in targets:
-            logger.log_server('Removing h from {}.'.format(c.get_ip()), client)
-            c.remove_h = True
-        client.send_host_message('Removed h from {} existing client(s).'.format(len(targets)))
-    else:
-        client.send_host_message('No targets found.')
-
-def ooc_cmd_undisemvowel(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    elif len(arg) == 0:
-        raise ArgumentError('You must specify a target.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    except:
-        raise ArgumentError('You must specify a target. Use /disemvowel <id>.')
-    if targets:
-        for c in targets:
-            logger.log_server('Undisemvowelling {}.'.format(c.get_ip()), client)
-            c.disemvowel = False
-        client.send_host_message('Undisemvowelled {} existing client(s).'.format(len(targets)))
-    else:
-        client.send_host_message('No targets found.')
-		
-def ooc_cmd_unremove_h(client, arg):
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    elif len(arg) == 0:
-        raise ArgumentError('You must specify a target.')
-    try:
-        if len(arg) == 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
-        elif len(arg) < 10 and arg.isdigit():
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
-    except:
-        raise ArgumentError('You must specify a target. Use /unremove_h <id>.')
-    if targets:
-        for c in targets:
-            logger.log_server('Adding h to {}.'.format(c.get_ip()), client)
-            c.remove_h = False
-        client.send_host_message('Added h to {} existing client(s).'.format(len(targets)))
-    else:
-        client.send_host_message('No targets found.')
-        
 def ooc_cmd_timer(client, arg):
     if len(arg) == 0:
         raise ClientError('This command takes at least one argument.')
@@ -3693,7 +3808,7 @@ def ooc_cmd_timer(client, arg):
         
         client.server.active_timers[name] = client #Add to active timers list
         client.send_host_message('You initiated a timer "{}" of length {} seconds.'.format(name, length))
-        client.server.send_all_cmd_pred('CT','{}'.format(client.server.config['hostname']),
+        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                         '{} initiated a timer "{}" of length {} seconds in area {} ({}).'
                                         .format(client.get_char_name(), name, length, client.area.name, client.area.id),
                                         pred=lambda c: (c.is_staff()
@@ -3786,34 +3901,6 @@ def ooc_cmd_timer(client, arg):
     else:
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
-
-def ooc_cmd_reload_commands(client, arg):
-    """ (MOD ONLY)
-    Reloads the commands.py file.
-    Use only if restarting is not a viable option.
-    Note that this ONLY updates the contents of this file.
-    If anything you update relies on other files, they will still use the old contents, regardless of whatever changes you made.
-    
-    SYNTAX
-    /reload_commands
-    
-    PARAMETERS
-    None
-    
-    EXAMPLE
-    /reload_commands
-    """
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) > 0:
-        raise ClientError('This command has no arguments.')
-
-    outcome = client.server.reload_commands()
-    if outcome:
-        info = "\n{}: {}".format(type(outcome).__name__, outcome)
-        raise ClientError('Server ran into a problem while reloading the commands: {}'.format(info))
-        
-    client.send_host_message("The commands have been reloaded.")
     
 def ooc_cmd_exec(client, arg):
     """

@@ -17,11 +17,11 @@
 
 import asyncio
 
-import yaml
 import json
 import random
 import time
 import importlib
+import yaml
 
 from server import logger
 from server.aoprotocol import AOProtocol
@@ -136,11 +136,11 @@ class TsuServer3:
         return len([client for client in self.client_manager.clients if client.char_id is not None])
 
     def load_config(self):
-        with open('config/config.yaml', 'r', encoding = 'utf-8') as cfg:
+        with open('config/config.yaml', 'r', encoding='utf-8') as cfg:
             self.config = yaml.safe_load(cfg)
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n') 
         if 'music_change_floodguard' not in self.config:
-            self.config['music_change_floodguard'] = {'times_per_interval': 1,  'interval_length': 0, 'mute_length': 0}
+            self.config['music_change_floodguard'] = {'times_per_interval': 1, 'interval_length': 0, 'mute_length': 0}
         # Backwards compatibility checks
         if 'spectator_name' not in self.config:
             self.config['spectator_name'] = 'SPECTATOR'
@@ -156,13 +156,13 @@ class TsuServer3:
             self.config['default_area_description'] = 'No description.'
             
     def load_characters(self):
-        with open('config/characters.yaml', 'r', encoding = 'utf-8') as chars:
+        with open('config/characters.yaml', 'r', encoding='utf-8') as chars:
             self.char_list = yaml.safe_load(chars)
         self.build_char_pages_ao1()
 
     def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
         try:
-            with open(music_list_file, 'r', encoding = 'utf-8') as music:
+            with open(music_list_file, 'r', encoding='utf-8') as music:
                 music_list = yaml.safe_load(music)
         except FileNotFoundError:
             raise ServerError('Could not find music list file {}'.format(music_list_file))
@@ -179,13 +179,13 @@ class TsuServer3:
         self.hdid_list = {}
         #load ipids
         try:
-            with open('storage/ip_ids.json', 'r', encoding = 'utf-8') as whole_list:
+            with open('storage/ip_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.ipid_list = json.loads(whole_list.read())
         except:
             logger.log_debug('Failed to load ip_ids.json from ./storage. If ip_ids.json exists, then remove it.')
         #load hdids
         try:
-            with open('storage/hd_ids.json', 'r', encoding = 'utf-8') as whole_list:
+            with open('storage/hd_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.hdid_list = json.loads(whole_list.read())
         except:
             logger.log_debug('Failed to load hd_ids.json from ./storage. If hd_ids.json exists, then remove it.')
@@ -199,9 +199,9 @@ class TsuServer3:
             json.dump(self.hdid_list, whole_list)
          
     def get_ipid(self, ip):
-        if not (ip in self.ipid_list):
+        if not ip in self.ipid_list:
             while True:
-                ipid = random.randint(0,10**10-1)
+                ipid = random.randint(0, 10**10-1)
                 if ipid not in self.ipid_list:
                     break
             self.ipid_list[ip] = ipid
@@ -209,12 +209,12 @@ class TsuServer3:
         return self.ipid_list[ip]
 
     def load_backgrounds(self):
-        with open('config/backgrounds.yaml', 'r', encoding = 'utf-8') as bgs:
+        with open('config/backgrounds.yaml', 'r', encoding='utf-8') as bgs:
             self.backgrounds = yaml.safe_load(bgs)
             
     def load_iniswaps(self):
         try:
-            with open('config/iniswaps.yaml', 'r', encoding = 'utf-8') as iniswaps:
+            with open('config/iniswaps.yaml', 'r', encoding='utf-8') as iniswaps:
                 self.allowed_iniswaps = yaml.safe_load(iniswaps)
         except:
             logger.log_debug('cannot find iniswaps.yaml')
@@ -398,28 +398,28 @@ class TsuServer3:
                     client.area.invite_list.pop(client.ipid)
     
     async def as_timer(self, client, args):
-        start, length, name, is_public = args # Length in seconds, already converted
+        _, length, name, is_public = args # Length in seconds, already converted
         client_name = client.name # Failsafe in case client disconnects before task is cancelled/expires
         
         try:
             await asyncio.sleep(length)
         except asyncio.CancelledError:
-            self.send_all_cmd_pred('CT','{}'.format(self.config['hostname']),
-                                            'Timer "{}" initiated by {} has been canceled.'
-                                            .format(name, client_name),
-                                            pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
-                                                        or (is_public and c.area == client.area)) or c == client)
+            self.send_all_cmd_pred('CT', '{}'.format(self.config['hostname']),
+                                   'Timer "{}" initiated by {} has been canceled.'
+                                   .format(name, client_name),
+                                   pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
+                                                   or (is_public and c.area == client.area)) or c == client)
         else:
-            self.send_all_cmd_pred('CT','{}'.format(self.config['hostname']),
-                                            'Timer "{}" initiated by {} has expired.'
-                                            .format(name, client_name),
-                                            pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
-                                                        or (is_public and c.area == client.area)) or c == client)
+            self.send_all_cmd_pred('CT', '{}'.format(self.config['hostname']),
+                                   'Timer "{}" initiated by {} has expired.'
+                                   .format(name, client_name),
+                                   pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
+                                                   or (is_public and c.area == client.area)) or c == client)
         finally:
             del self.active_timers[name]
             
     async def as_handicap(self, client, args):
-        start, length, name, announce_if_over = args
+        _, length, name, announce_if_over = args
         client.is_movement_handicapped = True
         
         try:
