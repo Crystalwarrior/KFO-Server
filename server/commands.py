@@ -2247,7 +2247,7 @@ def ooc_cmd_refresh(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) > 0:
-        raise ClientError('This command does not take in any arguments!')
+        raise ClientError('This command has no arguments.')
 
     client.server.reload()
     client.send_host_message('You have reloaded the server.')
@@ -3786,7 +3786,7 @@ def ooc_cmd_timer(client, arg):
     else:
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
-    
+
 def ooc_cmd_reload_commands(client, arg):
     """ (MOD ONLY)
     Reloads the commands.py file.
@@ -3805,8 +3805,8 @@ def ooc_cmd_reload_commands(client, arg):
     """
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
-    if len (arg) > 0:
-        raise ClientError('This command does not take in any arguments.')
+    if len(arg) > 0:
+        raise ClientError('This command has no arguments.')
 
     outcome = client.server.reload_commands()
     if outcome:

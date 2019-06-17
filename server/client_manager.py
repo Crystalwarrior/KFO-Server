@@ -693,11 +693,19 @@ class ClientManager:
         def can_call_mod(self):
             return (time.time() * 1000.0 - self.mod_call_time) > 0
 
-        # noinspection PyMethodMayBeStatic
         def disemvowel_message(self, message):
-            message = re.sub("[aeiou]", "", message, flags=re.IGNORECASE)
-            return re.sub(r"\s+", " ", message)
+            return self.remove_letters(message, 'aeiou')
 
+        def disemconsonant_message(self, message):
+            return self.remove_letters(message, 'bcdfghjklmnpqrstvwxyz')
+        
+        def remove_h_message(self, message):
+            return self.remove_letters(message, 'h')
+        
+        def remove_letters(self, message, target):
+            message = re.sub("[{}]".format(target), "", message, flags=re.IGNORECASE)
+            return re.sub(r"\s+", " ", message)
+        
         # noinspection PyMethodMayBeStatic
         def gimp_message(self, message):
             message = ['ERP IS BAN',

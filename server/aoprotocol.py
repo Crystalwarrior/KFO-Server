@@ -95,7 +95,7 @@ class AOProtocol(asyncio.Protocol):
                 file, line_num, module, func = tb[-1]
                 file = file[file.rfind('\\')+1:] # Remove unnecessary directories
                 info += '\r\n*Server time: {}'.format(current_time)
-                info += '\r\n*Packet type: {} {}'.format(cmd, args)
+                info += '\r\n*Packet details: {} {}'.format(cmd, args)
                 info += '\r\n*Client status: {}, {}, {}'.format(self.client.id, self.client.get_char_name(), self.client.is_staff())
                 info += '\r\n*Area status: {}, {}'.format(self.client.area.id, len(self.client.area.clients))
                 info += '\r\n*File: {}'.format(file)
@@ -108,7 +108,12 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_host_message(info)
                 
                 # Print complete traceback to console
-                print("TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING THE FOLLOWING PACKET ON {}: {} {}".format(current_time, cmd, args))
+                info = 'TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET'
+                info += '\r\n*Server time: {}'.format(current_time)
+                info += '\r\n*Packet details: {} {}'.format(cmd, args)
+                info += '\r\n*Client status: {}, {}, {}'.format(self.client.id, self.client.get_char_name(), self.client.is_staff())
+                info += '\r\n*Area status: {}, {}'.format(self.client.area.id, len(self.client.area.clients))
+                print(info)
                 traceback.print_exception(etype, evalue, etraceback)
 
     def connection_made(self, transport):
@@ -400,10 +405,12 @@ class AOProtocol(asyncio.Protocol):
             if pos not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
         msg = text[:256]
-        if self.client.gimp: #If you're gimped, gimp message.
+        if self.client.gimp: #If you are gimped, gimp message.
             msg = self.client.gimp_message(msg)
-        if self.client.disemvowel: #If you're disemvoweled, replace string.
+        if self.client.disemvowel: #If you are disemvoweled, replace string.
             msg = self.client.disemvowel_message(msg)
+        if self.client.disemconsonant: #If you are disemconsonanted, replace string.
+            msg = self.client.disemconsonant_message(msg)
         if self.client.remove_h: #If h is removed, replace string.
             msg = self.client.remove_h_message(msg)
         self.client.pos = pos
@@ -492,8 +499,13 @@ class AOProtocol(asyncio.Protocol):
                 except Exception:
                     raise # Explicit raising, even though not needed
         else:
-            if self.client.disemvowel:
+            if self.client.disemvowel: #If you are disemvoweled, replace string.
                 args[1] = self.client.disemvowel_message(args[1])
+            if self.client.disemconsonant: #If you are disemconsonanted, replace string.
+                args[1] = self.client.disemconsonant_message(args[1])
+            if self.client.remove_h: #If h is removed, replace string.
+                args[1] = self.client.remove_h_message(args[1])
+            
             self.client.area.send_command('CT', self.client.name, args[1])
             logger.log_server(
                 '[OOC][{}][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), self.client.name,
