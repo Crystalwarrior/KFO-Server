@@ -91,8 +91,10 @@ class AOProtocol(asyncio.Protocol):
                 info = '=========\nThe server ran into a Python issue. Please contact the server owner and send them the following logging information:'
                 etype, evalue, etraceback = sys.exc_info()
                 tb = traceback.extract_tb(tb=etraceback)
+                current_time = asctime(localtime(time()))
                 file, line_num, module, func = tb[-1]
                 file = file[file.rfind('\\')+1:] # Remove unnecessary directories
+                info += '\r\n*Server time: {}'.format(current_time)
                 info += '\r\n*Packet type: {} {}'.format(cmd, args)
                 info += '\r\n*Client status: {}, {}, {}'.format(self.client.id, self.client.get_char_name(), self.client.is_staff())
                 info += '\r\n*Area status: {}, {}'.format(self.client.area.id, len(self.client.area.clients))
@@ -106,7 +108,7 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_host_message(info)
                 
                 # Print complete traceback to console
-                print("TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING THE FOLLOWING PACKET ON {}: {} {}".format(asctime(localtime(time())), cmd, args))
+                print("TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING THE FOLLOWING PACKET ON {}: {} {}".format(current_time, cmd, args))
                 traceback.print_exception(etype, evalue, etraceback)
 
     def connection_made(self, transport):
