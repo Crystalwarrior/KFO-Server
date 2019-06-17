@@ -17,8 +17,10 @@
 
 import asyncio
 import re
+import sys
+import traceback
 
-from time import localtime, strftime, time
+from time import localtime, strftime, time, asctime
 from enum import Enum
 
 from server import logger
@@ -84,8 +86,28 @@ class AOProtocol(asyncio.Protocol):
             try:
                 cmd, *args = msg.split('#')
                 self.net_cmd_dispatcher[cmd](self, args)
-            except KeyError:
-                return
+            except Exception as ex:
+                # Send basic logging information to user
+                info = '=========\nThe server ran into a Python issue. Please contact the server owner and send them the following logging information:'
+                etype, evalue, etraceback = sys.exc_info()
+                tb = traceback.extract_tb(tb=etraceback)
+                file, line_num, module, func = tb[-1]
+                file = file[file.rfind('\\')+1:] # Remove unnecessary directories
+                info += '\r\n*Packet type: {} {}'.format(cmd, args)
+                info += '\r\n*Client status: {}, {}, {}'.format(self.client.id, self.client.get_char_name(), self.client.is_staff())
+                info += '\r\n*Area status: {}, {}'.format(self.client.area.id, len(self.client.area.clients))
+                info += '\r\n*File: {}'.format(file)
+                info += '\r\n*Line number: {}'.format(line_num)
+                info += '\r\n*Module: {}'.format(module)
+                info += '\r\n*Function: {}'.format(func)
+                info += '\r\n*Error: {}: {}'.format(type(ex).__name__, ex)
+                info += '\r\nYour help would be much appreciated.'
+                info += '\r\n========='
+                self.client.send_host_message(info)
+                
+                # Print complete traceback to console
+                print("TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING THE FOLLOWING PACKET ON {}: {} {}".format(asctime(localtime(time())), cmd, args))
+                traceback.print_exception(etype, evalue, etraceback)
 
     def connection_made(self, transport):
         """ Called upon a new client connecting
@@ -456,12 +478,17 @@ class AOProtocol(asyncio.Protocol):
                 arg = spl[1][:256]
             try:
                 called_function = 'ooc_cmd_{}'.format(cmd)
-                getattr(self.server.commands, called_function)(self.client, arg)
+                function = getattr(self.server.commands, called_function)
             except AttributeError:
                 print('Attribute error with ' + called_function)
                 self.client.send_host_message('Invalid command.')
-            except (ClientError, AreaError, ArgumentError, ServerError) as ex:
-                self.client.send_host_message(ex)
+            else:
+                try:
+                    function(self.client, arg)
+                except (ClientError, AreaError, ArgumentError, ServerError) as ex:
+                    self.client.send_host_message(ex)
+                except Exception:
+                    raise # Explicit raising, even though not needed
         else:
             if self.client.disemvowel:
                 args[1] = self.client.disemvowel_message(args[1])
