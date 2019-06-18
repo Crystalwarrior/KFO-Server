@@ -47,7 +47,7 @@ class AOProtocol(asyncio.Protocol):
         
         # Determine whether /exec is active or not and warn server owner if so.
         if getattr(self.server.commands, "ooc_cmd_exec")(self.client, "is_exec_active") == 1:
-            print("""
+            logger.log_print("""
                   
                   WARNING
                   
@@ -113,7 +113,7 @@ class AOProtocol(asyncio.Protocol):
                 info += '\r\n*Packet details: {} {}'.format(cmd, args)
                 info += '\r\n*Client status: {}, {}, {}'.format(self.client.id, self.client.get_char_name(), self.client.is_staff())
                 info += '\r\n*Area status: {}, {}'.format(self.client.area.id, len(self.client.area.clients))
-                print(info)
+                logger.log_print(info)
                 traceback.print_exception(etype, evalue, etraceback)
 
     def connection_made(self, transport):
@@ -489,7 +489,7 @@ class AOProtocol(asyncio.Protocol):
                 called_function = 'ooc_cmd_{}'.format(cmd)
                 function = getattr(self.server.commands, called_function)
             except AttributeError:
-                print('Attribute error with ' + called_function)
+                logger.log_print('Attribute error with ' + called_function)
                 self.client.send_host_message('Invalid command.')
             else:
                 try:

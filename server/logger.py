@@ -57,12 +57,23 @@ def log_debug(msg, client=None):
     msg = parse_client_info(client) + msg
     logging.getLogger('debug').debug(msg)
 
-
 def log_server(msg, client=None):
     msg = parse_client_info(client) + msg
     logging.getLogger('server').info(msg)
 
-
+def log_print(msg, client=None):
+    msg = parse_client_info(client) + msg
+    current_time = time.strftime('[%Y-%m-%dT%H:%M:%S]')
+    print('{}: {}'.format(current_time, msg))
+    
+def log_pdebug(msg, client=None):
+    log_debug(msg, client=client)
+    log_print(msg, client=client)
+    
+def log_pserver(msg, client=None):
+    log_server(msg, client=client)
+    log_print(msg, client=client)
+    
 #def log_rp(msg, client=None):
 #   msg = parse_client_info(client) + msg
 #    logging.getLogger('rp').info(msg)

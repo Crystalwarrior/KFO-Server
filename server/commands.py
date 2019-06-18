@@ -405,7 +405,6 @@ def ooc_cmd_area_kick(client, arg):
         area = client.server.area_manager.get_area_by_id(client.server.default_area)
     else:
         area = parse_area_names(client, [" ".join(arg[1:])])[0]
-        print(area)
     output = area.id
 
     for c in parse_id_or_ipid(client, arg[0]):
@@ -2210,7 +2209,6 @@ def ooc_cmd_play(client, arg):
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
-    
     if len(arg) == 0:
         raise ArgumentError('You must specify a song.')
     
@@ -3548,7 +3546,7 @@ def ooc_cmd_unmute(client, arg):
     
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
-    
+        
     # Mute matching targets
     for c in parse_id_or_ipid(client, arg):
         logger.log_server('Unmuted {}.'.format(c.ipid), client)
@@ -3642,7 +3640,7 @@ def ooc_cmd_bilock(client, arg):
             areas[i].staffset_reachable_areas = reachable
         
     if now_reachable[0] == now_reachable[1]:
-        client.send_host_message('Set area reachability between {} and {} to {}'.format(areas[0].name, areas[1].name,now_reachable[0]))
+        client.send_host_message('Set area reachability between {} and {} to {}'.format(areas[0].name, areas[1].name, now_reachable[0]))
  
         client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                         '{} used /bilock to {} area reachability between {} and {} in {} ({}).'
@@ -3934,7 +3932,7 @@ def ooc_cmd_exec(client, arg):
     # IF YOU WANT TO ENABLE /exec: ADD A # IN FRONT OF return, LIKE SO: # return
     return
     
-    print("Attempting to run instruction {}".format(arg))
+    logger.log_print("Attempting to run instruction {}".format(arg))
 
     try:
         result = eval(arg)

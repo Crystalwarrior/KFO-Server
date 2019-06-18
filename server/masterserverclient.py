@@ -18,6 +18,8 @@
 
 import asyncio
 import time
+import socket
+
 from server import logger
 
 
@@ -35,18 +37,18 @@ class MasterServerClient:
                                                                          self.server.config['masterserver_port'],
                                                                          loop=loop)
                 await self.handle_connection()
-            except (ConnectionRefusedError, TimeoutError):
+            except (ConnectionRefusedError, TimeoutError, socket.gaierror):
                 pass
             except (ConnectionResetError, asyncio.IncompleteReadError):
                 self.writer = None
                 self.reader = None
             finally:
-                logger.log_debug("Couldn't connect to the master server, retrying in 30 seconds.")
-                print("Couldn't connect to the master server, retrying in 30 seconds.")
-                await asyncio.sleep(30)
+                if not self.server.shutting_down:
+                    logger.log_pdebug("Unable to connect to the master server, retrying in 30 seconds.")
+                    await asyncio.sleep(30)
 
     async def handle_connection(self):
-        logger.log_debug('Master server connected.')
+        logger.log_pdebug('Master server connected.')
         await self.send_server_info()
         fl = False
         lastping = time.time() - 20

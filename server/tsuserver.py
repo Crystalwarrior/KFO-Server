@@ -35,6 +35,8 @@ from server.masterserverclient import MasterServerClient
 class TsuServer3:
     def __init__(self):
         self.config = None
+        self.global_connection = None
+        self.shutting_down = False
         self.allowed_iniswaps = None
         self.load_config()
         self.load_iniswaps()
@@ -80,25 +82,45 @@ class TsuServer3:
 
         if self.config['use_district']:
             self.district_client = DistrictClient(self)
-            asyncio.ensure_future(self.district_client.connect(), loop=self.loop)
-
+            self.global_connection = asyncio.ensure_future(self.district_client.connect(), loop=self.loop)
         if self.config['use_masterserver']:
             self.ms_client = MasterServerClient(self)
-            asyncio.ensure_future(self.ms_client.connect(), loop=self.loop)
-
-        logger.log_debug('Server started.')
+            self.global_connection = asyncio.ensure_future(self.ms_client.connect(), loop=self.loop)
         
+        logger.log_pdebug('Server started.')
         try:
             self.loop.run_forever()
         except KeyboardInterrupt:
             pass
 
-        logger.log_debug('Server shutting down.')
+        logger.log_pdebug('You have initiated a server shut down.')
+        self.shutdown()
         
         ao_server.close()
         self.loop.run_until_complete(ao_server.wait_closed())
         self.loop.close()
-
+        logger.log_print('Server has successfully shut down.')
+    
+    def shutdown(self):
+        # Cleanup operations
+        self.shutting_down = True
+        
+        # Cancel further polling for district/master server
+        if self.global_connection:
+            self.global_connection.cancel()
+            self.loop.run_until_complete(self.await_cancellation(self.global_connection))
+        
+        # Cancel pending client tasks and cleanly remove them from the areas
+        logger.log_print('Kicking {} remaining clients.'.format(self.get_player_count()))
+        
+        for area in self.area_manager.areas:
+            while area.clients:
+                client = next(iter(area.clients))
+                area.remove_client(client)
+                for task_id in self.client_tasks[client.id].keys(): 
+                    task = self.get_task(client, [task_id])
+                    self.loop.run_until_complete(self.await_cancellation(task))
+                    
     def get_version_string(self):
         return str(self.release) + '.' + str(self.major_version) + '.' + str(self.minor_version)
 
