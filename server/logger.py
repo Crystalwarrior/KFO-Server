@@ -16,9 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-
 import time
-
 
 def setup_logger(debug):
     logging.Formatter.converter = time.gmtime
@@ -52,7 +50,6 @@ def setup_logger(debug):
 #    rp_handler.setFormatter(rp_formatter)
 #    rp_log.addHandler(rp_handler)
 
-
 def log_debug(msg, client=None):
     msg = parse_client_info(client) + msg
     logging.getLogger('debug').debug(msg)
@@ -65,19 +62,18 @@ def log_print(msg, client=None):
     msg = parse_client_info(client) + msg
     current_time = time.strftime('[%Y-%m-%dT%H:%M:%S]')
     print('{}: {}'.format(current_time, msg))
-    
+
 def log_pdebug(msg, client=None):
     log_debug(msg, client=client)
     log_print(msg, client=client)
-    
+
 def log_pserver(msg, client=None):
     log_server(msg, client=client)
     log_print(msg, client=client)
-    
+
 #def log_rp(msg, client=None):
 #   msg = parse_client_info(client) + msg
 #    logging.getLogger('rp').info(msg)
-
 
 def parse_client_info(client):
     if client is None:

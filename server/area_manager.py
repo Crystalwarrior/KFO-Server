@@ -26,7 +26,7 @@ from server.evidence import EvidenceList
 
 class AreaManager:
     class Area:
-        def __init__(self, area_id, server, parameters):            
+        def __init__(self, area_id, server, parameters):
             self.clients = set()
             self.invite_list = {}
             self.id = area_id
@@ -49,7 +49,7 @@ class AreaManager:
             self.is_gmlocked = False
             self.is_modlocked = False
             self.bleeds_to = set()
-                        
+
             self.name = parameters['area']
             self.background = parameters['background']
             self.bg_lock = parameters['bglock']
@@ -57,7 +57,7 @@ class AreaManager:
             self.locking_allowed = parameters['locking_allowed']
             self.iniswap_allowed = parameters['iniswap_allowed']
             self.rp_getarea_allowed = parameters['rp_getarea_allowed']
-            self.rp_getareas_allowed = parameters['rp_getareas_allowed'] 
+            self.rp_getareas_allowed = parameters['rp_getareas_allowed']
             self.rollp_allowed = parameters['rollp_allowed']
             self.reachable_areas = parameters['reachable_areas']
             self.change_reachability_allowed = parameters['change_reachability_allowed']
@@ -70,17 +70,17 @@ class AreaManager:
             self.scream_range = parameters['scream_range']
             self.restricted_chars = parameters['restricted_chars']
             self.default_description = parameters['default_description']
-            
+
             self.description = self.default_description # Store the current description separately from the default description
             self.background_backup = self.background # Used for restoring temporary background changes
             # Fix comma-separated entries
             self.reachable_areas = fix_and_setify(self.reachable_areas)
             self.scream_range = fix_and_setify(self.scream_range)
             self.restricted_chars = fix_and_setify(self.restricted_chars)
-            
+
             self.default_reachable_areas = self.reachable_areas.copy()
             self.staffset_reachable_areas = self.reachable_areas.copy()
-            
+
             if '<ALL>' not in self.reachable_areas:
                 self.reachable_areas.add(self.name) #Safety feature, yay sets
 
@@ -90,7 +90,7 @@ class AreaManager:
                     self.server.char_list.index(char_name)
             except ValueError:
                 raise AreaError('Area {} has an unrecognized character {} as a restricted character. Please make sure this character exists and try again.'.format(self.name, char_name))
-                
+
         def new_client(self, client):
             self.clients.add(client)
 
@@ -98,7 +98,7 @@ class AreaManager:
             self.clients.remove(client)
             if len(self.clients) == 0:
                 self.unlock()
-        
+
         def unlock(self):
             self.is_locked = False
             if not self.is_gmlocked and not self.is_modlocked:
@@ -115,12 +115,12 @@ class AreaManager:
             self.is_gmlocked = False
             self.is_locked = False
             self.invite_list = {}
-        
+
         def get_chars_unusable(self, allow_restricted=False):
             if allow_restricted:
                 return set([x.char_id for x in self.clients if x.char_id is not None])
             return set([x.char_id for x in self.clients if x.char_id is not None]).union(set([self.server.char_list.index(char_name) for char_name in self.restricted_chars]))
-        
+
         def is_char_available(self, char_id, allow_restricted=False):
             return (char_id == -1) or (char_id not in self.get_chars_unusable(allow_restricted=allow_restricted))
 
@@ -140,7 +140,7 @@ class AreaManager:
         def set_next_msg_delay(self, msg_length):
             delay = min(3000, 100 + 60 * msg_length)
             self.next_message_time = round(time.time() * 1000.0 + delay)
-        
+
         def is_iniswap(self, client, anim1, anim2, char):
             if self.iniswap_allowed:
                 return False
@@ -150,7 +150,7 @@ class AreaManager:
                 if client.get_char_name() in char_link and char in char_link:
                     return False
             return True
-        
+
         def play_music(self, name, cid, length=-1):
             self.send_command('MC', name, cid)
             if self.music_looper:
@@ -208,7 +208,7 @@ class AreaManager:
         def broadcast_evidence_list(self):
             """
                 LE#<name>&<desc>&<img>#<name>
-                
+
             """
             for client in self.clients:
                 client.send_command('LE', *self.get_evidence_list(client))
@@ -230,21 +230,21 @@ class AreaManager:
             if area.id == num:
                 return area
         raise AreaError('Area not found.')
-        
+
     def load_areas(self, area_list_file='config/areas.yaml'):
         self.area_names = set()
         current_area_id = 0
         temp_areas = list()
         temp_area_names = set()
         temp_reachable_area_names = set()
-                    
+
         # Check if valid area list file
         try:
             with open(area_list_file, 'r') as chars:
                 areas = yaml.safe_load(chars)
         except FileNotFoundError:
             raise FileNotFoundError('Could not find area list file {}'.format(area_list_file))
-        
+
         # Create the areas
         for item in areas:
             if 'area' not in item:
@@ -285,31 +285,31 @@ class AreaManager:
                 item['restricted_chars'] = ''
             if 'default_description' not in item:
                 item['default_description'] = self.server.config['default_area_description']
-            
+
             # Backwards compatibility notice
             if 'sound_proof' in item:
                 raise AreaError('The sound_proof property was defined for area {}. Support for sound_proof was removed in favor of scream_range. Please replace the sound_proof tag with scream_range in your area list and try again.'.format(item['area']))
             # Avoid having areas with the same name
             if item['area'] in temp_area_names:
                 raise AreaError('Unexpected duplicated area names in area list: {}. Please rename the duplicated areas and try again.'.format(item['area']))
-                
+
             temp_areas.append(self.Area(current_area_id, self.server, item))
             temp_area_names.add(item['area'])
             temp_reachable_area_names = temp_reachable_area_names.union(temp_areas[-1].reachable_areas)
             current_area_id += 1
-            
+
         # Check if a reachable area is not an area name
         # Can only be done once all areas are created
-    
+
         unrecognized_areas = temp_reachable_area_names-temp_area_names-{'<ALL>'}
         if unrecognized_areas != set():
             raise AreaError('Unrecognized area names defined as a reachable area in area list file: {}. Please rename the affected areas and try again.'.format(unrecognized_areas))
-        
+
         # Only once all areas have been created, actually set the corresponding values
         # Helps avoiding junk area lists if there was an error
         self.areas = temp_areas
         self.area_names = temp_area_names
-        
+
         # If the default area ID is now past the number of available areas, reset it back to zero
         if self.server.default_area >= len(self.areas):
             self.server.default_area = 0
@@ -323,7 +323,7 @@ class AreaManager:
             except AreaError:
                 client.change_area(self.default_area(), override_all=True)
                 client.send_host_message('Your previous area no longer exists. Moving you to default area {}'.format(client.area.name))
-        
+
     def default_area(self):
         return self.areas[self.server.default_area]
 
@@ -333,8 +333,7 @@ def fix_and_setify(csv_values):
     l = csv_values.split(', ')
     for i in range(len(l)): #Ah, escape characters... again...
         l[i] = l[i].replace(',\\', ',')
-                
+
     if l in [list(), ['']]:
         return set()
     return set(l)
-    

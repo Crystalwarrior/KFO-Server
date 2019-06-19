@@ -44,22 +44,22 @@ class AOProtocol(asyncio.Protocol):
         self.client = None
         self.buffer = ''
         self.ping_timeout = None
-        
+
         # Determine whether /exec is active or not and warn server owner if so.
         if getattr(self.server.commands, "ooc_cmd_exec")(self.client, "is_exec_active") == 1:
             logger.log_print("""
-                  
+
                   WARNING
-                  
+
                   THE /exec COMMAND IN commands.py IS ACTIVE.
-                  
-                  UNLESS YOU ABSOLUTELY MEANT IT AND KNOW WHAT YOU ARE DOING, 
+
+                  UNLESS YOU ABSOLUTELY MEANT IT AND KNOW WHAT YOU ARE DOING,
                   PLEASE STOP YOUR SERVER RIGHT NOW AND DEACTIVATE IT BY GOING TO THE
                   commands.py FILE AND FOLLOWING THE INSTRUCTIONS UNDER ooc_cmd_exec.\n
                   BAD THINGS CAN AND WILL HAPPEN OTHERWISE
-                  
+
                   """)
-        
+
     def data_received(self, data):
         """ Handles any data received from the network.
 
@@ -106,7 +106,7 @@ class AOProtocol(asyncio.Protocol):
                 info += '\r\nYour help would be much appreciated.'
                 info += '\r\n========='
                 self.client.send_host_message(info)
-                
+
                 # Print complete traceback to console
                 info = 'TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET'
                 info += '\r\n*Server time: {}'.format(current_time)
@@ -192,7 +192,7 @@ class AOProtocol(asyncio.Protocol):
         logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
         self.client.send_command('ID', self.client.id, self.server.software, self.server.get_version_string())
         self.client.send_command('PN', self.server.get_player_count(), self.server.config['playerlimit'])
-        
+
     def net_cmd_id(self, args):
         """ Client version and PV
 
@@ -314,7 +314,7 @@ class AOProtocol(asyncio.Protocol):
         # an updated music list directly).
         self.server.build_music_list_ao2()
         self.client.send_command('SM', *self.server.music_list_ao2)
-        
+
 
     def net_cmd_rd(self, _):
         """ Asks for server metadata(charscheck, motd etc.) and a DONE#% signal(also best packet)
@@ -332,14 +332,15 @@ class AOProtocol(asyncio.Protocol):
         self.client.send_motd()
         self.client.reload_music_list() # Reload the default area's music list
         # so that it only includes areas reachable from that default area.
-        
+
     def net_cmd_cc(self, args):
         """ Character selection.
 
         CC#<client_id:int>#<char_id:int>#<hdid:string>#%
 
         """
-        if not self.validate_net_cmd(args, self.ArgType.INT, self.ArgType.INT, self.ArgType.STR, needs_auth=False):
+        if not self.validate_net_cmd(args, self.ArgType.INT, self.ArgType.INT, self.ArgType.STR,
+                                     needs_auth=False):
             return
         cid = args[1]
         try:
@@ -356,7 +357,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_host_message("You have been muted by a moderator.")
             return
-        if self.client.area.ic_lock and not (self.client.is_mod or self.client.is_cm or self.client.is_gm):
+        if self.client.area.ic_lock and not self.client.is_staff():
             self.client.send_host_message("IC chat in this area has been locked by a moderator.")
             return
         if not self.client.area.can_send_message():
@@ -425,7 +426,7 @@ class AOProtocol(asyncio.Protocol):
                     showname = self.client.showname
                 else:
                     showname = ''
-            
+
                 c.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
                                sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, showname)
         else:
@@ -436,18 +437,18 @@ class AOProtocol(asyncio.Protocol):
                         showname = self.client.showname
                     else:
                         showname = ''
-                        
+
                     c.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
                                    sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, showname)
                 target_area.set_next_msg_delay(len(msg))
-                
+
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
 
         # Sending IC messages reveals sneaked players
         if not self.client.is_staff() and not self.client.is_visible:
             self.client.change_visibility(True)
-            
+
         self.server.create_task(self.client, ['as_afk_kick', self.client.area.afk_delay, self.client.area.afk_sendto])
         if self.client.area.is_recording:
             self.client.area.recorded_messages.append(args)
@@ -505,7 +506,7 @@ class AOProtocol(asyncio.Protocol):
                 args[1] = self.client.disemconsonant_message(args[1])
             if self.client.remove_h: #If h is removed, replace string.
                 args[1] = self.client.remove_h_message(args[1])
-            
+
             self.client.area.send_command('CT', self.client.name, args[1])
             logger.log_server(
                 '[OOC][{}][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), self.client.name,
@@ -519,10 +520,10 @@ class AOProtocol(asyncio.Protocol):
         """
         # First attempt to switch area, because music lists typically include area names for quick access
         try:
-            delimiter = args[0].find('-') 
+            delimiter = args[0].find('-')
             area = self.server.area_manager.get_area_by_name(args[0][delimiter+1:])
             self.client.change_area(area)
-            
+
         # Otherwise, attempt to play music.
         except (AreaError, ValueError):
             if self.client.is_muted:  # Checks to see if the client has been muted by a mod
@@ -538,19 +539,19 @@ class AOProtocol(asyncio.Protocol):
             if self.client.change_music_cd():
                 self.client.send_host_message('You changed song too many times recently. Please try again after {} seconds.'.format(int(self.client.change_music_cd())))
                 return
-            
+
             try:
                 name, length = self.server.get_song_data(args[0], c=self.client)
                 self.client.area.play_music(name, self.client.char_id, length)
                 self.client.area.add_music_playing(self.client, name)
-            
+
                 logger.log_server('[{}][{}]Changed music to {}.'
                                   .format(self.client.area.id, self.client.get_char_name(), name), self.client)
-                         
+
                 # Changing music reveals sneaked players
                 if not self.client.is_staff() and not self.client.is_visible:
                     self.client.change_visibility(True)
-                            
+
             except ServerError:
                 return
         except ClientError as ex:
@@ -603,7 +604,7 @@ class AOProtocol(asyncio.Protocol):
 #        evi = Evidence(args[0], args[1], args[2], self.client.pos)
         self.client.area.evi_list.add_evidence(self.client, args[0], args[1], args[2], 'all')
         self.client.area.broadcast_evidence_list()
-    
+
     def net_cmd_de(self, args):
         """ Deletes a piece of evidence.
 

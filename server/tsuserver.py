@@ -36,12 +36,12 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = 190618
+        self.minor_version = 190619
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
-        
+
         logger.log_print('Launching {}.'.format(self.software))
-        
+
         logger.log_print('Loading server configurations...')
         self.config = None
         self.global_connection = None
@@ -49,7 +49,7 @@ class TsuServer3:
         self.allowed_iniswaps = None
         self.load_config()
         self.load_iniswaps()
-        self.default_area = 0        
+        self.default_area = 0
         self.load_characters()
         self.client_manager = ClientManager(self)
         self.area_manager = AreaManager(self)
@@ -74,7 +74,7 @@ class TsuServer3:
         self.showname_freeze = False
         self.commands = importlib.import_module('server.commands')
         logger.setup_logger(debug=self.config['debug'])
-        
+
     def start(self):
         self.loop = asyncio.get_event_loop()
 
@@ -82,12 +82,12 @@ class TsuServer3:
         if self.config['local']:
             bound_ip = '127.0.0.1'
             logger.log_print('Starting a local server. Ignore outbound connection attempts.')
-            
+
         ao_server_crt = self.loop.create_server(lambda: AOProtocol(self), bound_ip, self.config['port'])
         ao_server = self.loop.run_until_complete(ao_server_crt)
 
         logger.log_pdebug('Server started successfully!\n')
-        
+
         if self.config['use_district']:
             self.district_client = DistrictClient(self)
             self.global_connection = asyncio.ensure_future(self.district_client.connect(), loop=self.loop)
@@ -99,7 +99,7 @@ class TsuServer3:
             logger.log_print('Attempting to connect to the master server at {}:{} with the following details:'.format(self.config['masterserver_ip'], self.config['masterserver_port']))
             logger.log_print('*Server name: {}'.format(self.config['masterserver_name']))
             logger.log_print('*Server description: {}'.format(self.config['masterserver_description']))
-        
+
         try:
             self.loop.run_forever()
         except KeyboardInterrupt:
@@ -108,32 +108,32 @@ class TsuServer3:
         print('') # Lame
         logger.log_pdebug('You have initiated a server shut down.')
         self.shutdown()
-        
+
         ao_server.close()
         self.loop.run_until_complete(ao_server.wait_closed())
         self.loop.close()
         logger.log_print('Server has successfully shut down.')
-    
+
     def shutdown(self):
         # Cleanup operations
         self.shutting_down = True
-        
+
         # Cancel further polling for district/master server
         if self.global_connection:
             self.global_connection.cancel()
             self.loop.run_until_complete(self.await_cancellation(self.global_connection))
-        
+
         # Cancel pending client tasks and cleanly remove them from the areas
         logger.log_print('Kicking {} remaining clients.'.format(self.get_player_count()))
-        
+
         for area in self.area_manager.areas:
             while area.clients:
                 client = next(iter(area.clients))
                 area.remove_client(client)
-                for task_id in self.client_tasks[client.id].keys(): 
+                for task_id in self.client_tasks[client.id].keys():
                     task = self.get_task(client, [task_id])
                     self.loop.run_until_complete(self.await_cancellation(task))
-                    
+
     def get_version_string(self):
         return str(self.release) + '.' + str(self.major_version) + '.' + str(self.minor_version)
 
@@ -146,13 +146,13 @@ class TsuServer3:
         self.build_music_list_ao2()
         with open('config/backgrounds.yaml', 'r') as bgs:
             self.backgrounds = yaml.safe_load(bgs)
-    
+
     def reload_commands(self):
         try:
             self.commands = importlib.reload(self.commands)
         except Exception as error:
             return error
-        
+
     def new_client(self, transport):
         c = self.client_manager.new_client(transport)
         if self.rp_mode:
@@ -173,7 +173,7 @@ class TsuServer3:
     def load_config(self):
         with open('config/config.yaml', 'r', encoding='utf-8') as cfg:
             self.config = yaml.safe_load(cfg)
-            self.config['motd'] = self.config['motd'].replace('\\n', ' \n') 
+            self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
         if 'music_change_floodguard' not in self.config:
             self.config['music_change_floodguard'] = {'times_per_interval': 1, 'interval_length': 0, 'mute_length': 0}
         # Backwards compatibility checks
@@ -189,7 +189,7 @@ class TsuServer3:
             self.config['discord_link'] = 'None'
         if 'default_area_description' not in self.config:
             self.config['default_area_description'] = 'No description.'
-            
+
     def load_characters(self):
         with open('config/characters.yaml', 'r', encoding='utf-8') as chars:
             self.char_list = yaml.safe_load(chars)
@@ -201,14 +201,14 @@ class TsuServer3:
                 music_list = yaml.safe_load(music)
         except FileNotFoundError:
             raise ServerError('Could not find music list file {}'.format(music_list_file))
-        
+
         if server_music_list:
             self.music_list = music_list
             self.build_music_pages_ao1()
             self.build_music_list_ao2(music_list=music_list)
-        
+
         return music_list
-        
+
     def load_ids(self):
         self.ipid_list = {}
         self.hdid_list = {}
@@ -224,15 +224,15 @@ class TsuServer3:
                 self.hdid_list = json.loads(whole_list.read())
         except:
             logger.log_debug('Failed to load hd_ids.json from ./storage. If hd_ids.json exists, then remove it.')
-           
+
     def dump_ipids(self):
         with open('storage/ip_ids.json', 'w') as whole_list:
             json.dump(self.ipid_list, whole_list)
-            
+
     def dump_hdids(self):
         with open('storage/hd_ids.json', 'w') as whole_list:
             json.dump(self.hdid_list, whole_list)
-         
+
     def get_ipid(self, ip):
         if not ip in self.ipid_list:
             while True:
@@ -246,7 +246,7 @@ class TsuServer3:
     def load_backgrounds(self):
         with open('config/backgrounds.yaml', 'r', encoding='utf-8') as bgs:
             self.backgrounds = yaml.safe_load(bgs)
-            
+
     def load_iniswaps(self):
         try:
             with open('config/iniswaps.yaml', 'r', encoding='utf-8') as iniswaps:
@@ -279,21 +279,21 @@ class TsuServer3:
         # If not provided a specific music list to overwrite
         if music_list is None:
             music_list = self.music_list # Default value
-            # But just in case, check if this came as a request of a client who had a 
+            # But just in case, check if this came as a request of a client who had a
             # previous music list preference
             if c and c.music_list is not None:
                 music_list = c.music_list
-            
+
         self.music_list_ao2 = []
         # Determine whether to filter the music list or not
         need_to_check = (from_area is None or '<ALL>' in from_area.reachable_areas
                          or (c is not None and (c.is_staff() or c.is_transient)))
-        
+
         # add areas first
         for area in self.area_manager.areas:
             if need_to_check or area.name in from_area.reachable_areas:
                 self.music_list_ao2.append("{}-{}".format(area.id, area.name))
-                
+
         # then add music
         for item in music_list:
             self.music_list_ao2.append(item['category'])
@@ -318,7 +318,7 @@ class TsuServer3:
             valid_music = self.music_list + c.music_list
         else:
             valid_music = self.music_list
-            
+
         for item in valid_music:
             if item['category'] == music:
                 return item['category'], -1
@@ -335,7 +335,7 @@ class TsuServer3:
             if pred(client):
                 client.send_command(cmd, *args)
 
-    def broadcast_global(self, client, msg, as_mod=False, 
+    def broadcast_global(self, client, msg, as_mod=False,
                          mtype="<dollar>G", condition=lambda x: not x.muted_global):
         username = client.name
         ooc_name = '{}[{}][{}]'.format(mtype, client.area.id, username)
@@ -345,7 +345,7 @@ class TsuServer3:
         if self.config['use_district']:
             self.district_client.send_raw_message(
                 'GLOBAL#{}#{}#{}#{}'.format(int(as_mod), client.area.id, username, msg))
-            
+
     def broadcast_need(self, client, msg):
         char_name = client.get_char_name()
         area_name = client.area.name
@@ -359,51 +359,51 @@ class TsuServer3:
     def create_task(self, client, args):
         # Abort old task if it exists
         try:
-            old_task = self.get_task(client, args) 
+            old_task = self.get_task(client, args)
             if not old_task.done() and not old_task.cancelled():
                 self.cancel_task(old_task)
         except KeyError:
             pass
-        
+
         # Start new task
         self.client_tasks[client.id][args[0]] = (asyncio.ensure_future(getattr(self, args[0])(client, args[1:]), loop=self.loop),
                                                  args[1:])
-    
+
     def cancel_task(self, task):
         """ Cancels current task and sends order to await cancellation """
         task.cancel()
         asyncio.ensure_future(self.await_cancellation(task))
-    
+
     def remove_task(self, client, args):
         """ Given client and task name, removes task from server.client_tasks, and cancels it """
         task = self.client_tasks[client.id].pop(args[0])
         self.cancel_task(task[0])
-        
+
     def get_task(self, client, args):
         """ Returns actual task instance """
         return self.client_tasks[client.id][args[0]][0]
-    
+
     def get_task_args(self, client, args):
         """ Returns input arguments of task """
         return self.client_tasks[client.id][args[0]][1]
-    
+
     async def await_cancellation(self, old_task):
         # Wait until it is able to properly retrieve the cancellation exception
         try:
             await old_task
         except asyncio.CancelledError:
             pass
-        
+
     async def as_afk_kick(self, client, args):
         afk_delay, afk_sendto = args
         try:
             delay = int(afk_delay)*60 # afk_delay is in minutes, so convert to seconds
         except (TypeError, ValueError):
             raise ServerError('The area file contains an invalid AFK kick delay for area {}: {}'.format(client.area.id, afk_delay))
-            
+
         if delay <= 0: # Assumes 0-minute delay means that AFK kicking is disabled
             return
-        
+
         try:
             await asyncio.sleep(delay)
         except asyncio.CancelledError:
@@ -413,7 +413,7 @@ class TsuServer3:
                 area = client.server.area_manager.get_area_by_id(int(afk_sendto))
             except:
                 raise ServerError('The area file contains an invalid AFK kick destination area for area {}: {}'.format(client.area.id, afk_sendto))
-                
+
             if client.area.id == afk_sendto: # Don't try and kick back to same area
                 return
             if client.char_id < 0: # Assumes spectators are exempted from AFK kicks
@@ -431,32 +431,32 @@ class TsuServer3:
 
                 if client.area.is_locked or client.area.is_modlocked:
                     client.area.invite_list.pop(client.ipid)
-    
+
     async def as_timer(self, client, args):
         _, length, name, is_public = args # Length in seconds, already converted
         client_name = client.name # Failsafe in case client disconnects before task is cancelled/expires
-        
+
         try:
             await asyncio.sleep(length)
         except asyncio.CancelledError:
             self.send_all_cmd_pred('CT', '{}'.format(self.config['hostname']),
                                    'Timer "{}" initiated by {} has been canceled.'
                                    .format(name, client_name),
-                                   pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
+                                   pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm)
                                                    or (is_public and c.area == client.area)) or c == client)
         else:
             self.send_all_cmd_pred('CT', '{}'.format(self.config['hostname']),
                                    'Timer "{}" initiated by {} has expired.'
                                    .format(name, client_name),
-                                   pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm) 
+                                   pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm)
                                                    or (is_public and c.area == client.area)) or c == client)
         finally:
             del self.active_timers[name]
-            
+
     async def as_handicap(self, client, args):
         _, length, name, announce_if_over = args
         client.is_movement_handicapped = True
-        
+
         try:
             await asyncio.sleep(length)
         except asyncio.CancelledError:
@@ -466,7 +466,7 @@ class TsuServer3:
                 client.send_host_message('Your movement handicap has expired. You may now move to a new area.')
         finally:
             client.is_movement_handicapped = False
-    
+
     def timer_remaining(self, start, length):
         current = time.time()
         remaining = start+length-current
@@ -475,10 +475,10 @@ class TsuServer3:
         elif remaining < 60:
             remain_text = "{} seconds".format(int(remaining))
         elif remaining < 3600:
-            remain_text = "{}:{}".format(int(remaining//60), 
+            remain_text = "{}:{}".format(int(remaining//60),
                                          '{0:02d}'.format(int(remaining%60)))
         else:
-            remain_text = "{}:{}:{}".format(int(remaining//3600), 
-                                            '{0:02d}'.format(int((remaining%3600)//60)), 
+            remain_text = "{}:{}:{}".format(int(remaining//3600),
+                                            '{0:02d}'.format(int((remaining%3600)//60)),
                                             '{0:02d}'.format(int(remaining%60)))
         return remaining, remain_text
