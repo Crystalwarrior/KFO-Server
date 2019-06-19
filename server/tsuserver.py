@@ -34,6 +34,15 @@ from server.masterserverclient import MasterServerClient
 
 class TsuServer3:
     def __init__(self):
+        self.release = 3
+        self.major_version = 'DR'
+        self.minor_version = 190618
+        self.software = 'tsuserver{}'.format(self.get_version_string())
+        self.version = 'tsuserver{}dev'.format(self.get_version_string())
+        
+        logger.log_print('Launching {}.'.format(self.software))
+        
+        logger.log_print('Loading server configurations...')
         self.config = None
         self.global_connection = None
         self.shutting_down = False
@@ -45,11 +54,7 @@ class TsuServer3:
         self.client_manager = ClientManager(self)
         self.area_manager = AreaManager(self)
         self.ban_manager = BanManager(self)
-        self.software = 'tsuserver3'
-        self.version = 'tsuserver3dev'
-        self.release = 3
-        self.major_version = 1
-        self.minor_version = 1
+
         self.ipid_list = {}
         self.hdid_list = {}
         self.char_pages_ao1 = None
@@ -69,30 +74,38 @@ class TsuServer3:
         self.showname_freeze = False
         self.commands = importlib.import_module('server.commands')
         logger.setup_logger(debug=self.config['debug'])
-
+        
     def start(self):
         self.loop = asyncio.get_event_loop()
 
         bound_ip = '0.0.0.0'
         if self.config['local']:
             bound_ip = '127.0.0.1'
-
+            logger.log_print('Starting a local server. Ignore outbound connection attempts.')
+            
         ao_server_crt = self.loop.create_server(lambda: AOProtocol(self), bound_ip, self.config['port'])
         ao_server = self.loop.run_until_complete(ao_server_crt)
 
+        logger.log_pdebug('Server started successfully!\n')
+        
         if self.config['use_district']:
             self.district_client = DistrictClient(self)
             self.global_connection = asyncio.ensure_future(self.district_client.connect(), loop=self.loop)
+            logger.log_print('Attempting to connect to district at {}:{}.'.format(self.config['district_ip'], self.config['district_port']))
+
         if self.config['use_masterserver']:
             self.ms_client = MasterServerClient(self)
             self.global_connection = asyncio.ensure_future(self.ms_client.connect(), loop=self.loop)
+            logger.log_print('Attempting to connect to the master server at {}:{} with the following details:'.format(self.config['masterserver_ip'], self.config['masterserver_port']))
+            logger.log_print('*Server name: {}'.format(self.config['masterserver_name']))
+            logger.log_print('*Server description: {}'.format(self.config['masterserver_description']))
         
-        logger.log_pdebug('Server started.')
         try:
             self.loop.run_forever()
         except KeyboardInterrupt:
             pass
 
+        print('') # Lame
         logger.log_pdebug('You have initiated a server shut down.')
         self.shutdown()
         

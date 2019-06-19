@@ -44,11 +44,11 @@ class MasterServerClient:
                 self.reader = None
             finally:
                 if not self.server.shutting_down:
-                    logger.log_pdebug("Unable to connect to the master server, retrying in 30 seconds.")
-                    await asyncio.sleep(30)
+                    logger.log_pdebug("Unable to connect to the master server, retrying in 20 seconds.")
+                    await asyncio.sleep(20)
 
     async def handle_connection(self):
-        logger.log_pdebug('Master server connected.')
+        logger.log_pdebug('Connected to the master server.')
         await self.send_server_info()
         fl = False
         lastping = time.time() - 20
