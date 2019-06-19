@@ -89,7 +89,10 @@ class AreaManager:
                 for char_name in self.restricted_chars:
                     self.server.char_list.index(char_name)
             except ValueError:
-                raise AreaError('Area {} has an unrecognized character {} as a restricted character. Please make sure this character exists and try again.'.format(self.name, char_name))
+                info = ('Area {} has an unrecognized character {} as a restricted character. '
+                        'Please make sure this character exists and try again.'
+                        .format(self.name, char_name))
+                raise AreaError(info)
 
         def new_client(self, client):
             self.clients.add(client)
@@ -243,14 +246,17 @@ class AreaManager:
             with open(area_list_file, 'r') as chars:
                 areas = yaml.safe_load(chars)
         except FileNotFoundError:
-            raise FileNotFoundError('Could not find area list file {}'.format(area_list_file))
+            info = 'Could not find area list file {}'.format(area_list_file)
+            raise FileNotFoundError(info)
 
         # Create the areas
         for item in areas:
             if 'area' not in item:
-                raise AreaError('Area {} has no name.'.format(current_area_id))
+                info = 'Area {} has no name.'.format(current_area_id)
+                raise AreaError(info)
             if 'background' not in item:
-                raise AreaError('Area {} has no background.'.format(item['area']))
+                info = 'Area {} has no background.'.format(item['area'])
+                raise AreaError(info)
             if 'bglock' not in item:
                 item['bglock'] = False
             if 'evidence_mod' not in item:
@@ -288,10 +294,17 @@ class AreaManager:
 
             # Backwards compatibility notice
             if 'sound_proof' in item:
-                raise AreaError('The sound_proof property was defined for area {}. Support for sound_proof was removed in favor of scream_range. Please replace the sound_proof tag with scream_range in your area list and try again.'.format(item['area']))
+                info = ('The sound_proof property was defined for area {}. '
+                        'Support for sound_proof was removed in favor of scream_range. '
+                        'Please replace the sound_proof tag with scream_range in '
+                        'your area list and try again.'.format(item['area']))
+                raise AreaError(info)
+
             # Avoid having areas with the same name
             if item['area'] in temp_area_names:
-                raise AreaError('Unexpected duplicated area names in area list: {}. Please rename the duplicated areas and try again.'.format(item['area']))
+                info = ('Unexpected duplicated area names in area list: {}. '
+                        'Please rename the duplicated areas and try again.'.format(item['area']))
+                raise AreaError(info)
 
             temp_areas.append(self.Area(current_area_id, self.server, item))
             temp_area_names.add(item['area'])
@@ -303,7 +316,9 @@ class AreaManager:
 
         unrecognized_areas = temp_reachable_area_names-temp_area_names-{'<ALL>'}
         if unrecognized_areas != set():
-            raise AreaError('Unrecognized area names defined as a reachable area in area list file: {}. Please rename the affected areas and try again.'.format(unrecognized_areas))
+            info = ('Unrecognized area names defined as a reachable area in area list file: {}. '
+                    'Please rename the affected areas and try again.'.format(unrecognized_areas))
+            raise AreaError(info)
 
         # Only once all areas have been created, actually set the corresponding values
         # Helps avoiding junk area lists if there was an error

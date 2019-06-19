@@ -17,13 +17,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys
+import traceback
+import server.logger
+
+from time import asctime, localtime, time
 from server.tsuserver import TsuServer3
 
-
 def main():
-    server = TsuServer3()
-    server.start()
-
+    my_server = TsuServer3()
+    my_server.start()
 
 if __name__ == '__main__':
-    main()
+    try:
+        server.logger.log_print('Starting...')
+        main()
+    except KeyboardInterrupt:
+        raise
+    except Exception:
+        # Print complete traceback to console
+        etype, evalue, etraceback = sys.exc_info()
+        tb = traceback.extract_tb(tb=etraceback)
+        current_time = asctime(localtime(time()))
+        file, line_num, module, func = tb[-1]
+        file = file[file.rfind('\\')+1:] # Remove unnecessary directories
+
+        server.logger.log_print('TSUSERVER HAS ENCOUNTERED A PYTHON ERROR.')
+        traceback.print_exception(etype, evalue, etraceback)
+        server.logger.log_print('Server is shutting down.')

@@ -36,20 +36,22 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = 190619
+        self.minor_version = '190619b'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
-        logger.log_print('Launching {}.'.format(self.software))
+        logger.log_print('Launching {}...'.format(self.software))
 
         logger.log_print('Loading server configurations...')
         self.config = None
         self.global_connection = None
         self.shutting_down = False
+        self.loop = None
+
         self.allowed_iniswaps = None
+        self.default_area = 0
         self.load_config()
         self.load_iniswaps()
-        self.default_area = 0
         self.load_characters()
         self.client_manager = ClientManager(self)
         self.area_manager = AreaManager(self)
@@ -58,6 +60,7 @@ class TsuServer3:
         self.ipid_list = {}
         self.hdid_list = {}
         self.char_pages_ao1 = None
+        self.char_list = None
         self.music_list = None
         self.music_list_ao2 = None
         self.music_pages_ao1 = None
@@ -189,6 +192,27 @@ class TsuServer3:
             self.config['discord_link'] = 'None'
         if 'default_area_description' not in self.config:
             self.config['default_area_description'] = 'No description.'
+
+        # Check for uniqueness of all passwords
+        passwords = ['guardpass',
+                     'modpass',
+                     'cmpass',
+                     'gmpass',
+                     'gmpass1',
+                     'gmpass2',
+                     'gmpass3',
+                     'gmpass4',
+                     'gmpass5',
+                     'gmpass6',
+                     'gmpass7']
+
+        for (i, password1) in enumerate(passwords):
+            for (j, password2) in enumerate(passwords):
+                if i != j and self.config[password1] == self.config[password2]:
+                    info = ('Passwords "{}" and "{}" in server/config.yaml match. '
+                           'Please change them so they are different.'
+                           .format(password1, password2))
+                    raise ServerError(info)
 
     def load_characters(self):
         with open('config/characters.yaml', 'r', encoding='utf-8') as chars:
@@ -454,7 +478,7 @@ class TsuServer3:
             del self.active_timers[name]
 
     async def as_handicap(self, client, args):
-        _, length, name, announce_if_over = args
+        _, length, _, announce_if_over = args
         client.is_movement_handicapped = True
 
         try:
