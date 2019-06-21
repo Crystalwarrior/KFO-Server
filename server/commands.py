@@ -640,38 +640,56 @@ def ooc_cmd_blockdj(client, arg):
 
 def ooc_cmd_bloodtrail(client, arg):
     """ (STAFF ONLY)
-    Toggles a client by IP or IPID leaving a blood trail wherever they go or not.
-    OOC announcements are made to players joining an area regarding the existence of a blood trail and where it leads to.
-    Turning off a player leaving a blood trail does not clean the blood in the area. For that, use /bloodtrail_clean
-
-    If given IPID, it will invert the status of all the clients opened by the user. Otherwise, it will just do it to the given client.
+    Toggles a client by IPID leaving a blood trail wherever they go or not.
+    OOC announcements are made to players joining an area regarding the existence of a blood trail
+    and where it leads to. Turning off a player leaving a blood trail does not clean the blood in
+    the area. For that, use /bloodtrail_clean.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
     /bloodtrail <client_id>
-    /bloodtrail <client_ipid>
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
 
     EXAMPLE
     Assuming a player with client ID 0 and IPID 1234567890 starts as not being leaving a blood trail
     /bloodtrail 0            :: This player will now leave a blood trail wherever they go.
-    /bloodtrail 1234567890   :: This player will no longer leave blood trails wherever they go.
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
-    # Invert current transient status of matching targets
     status = {False: 'no longer', True: 'now'}
-    for c in parse_id_or_ipid(client, arg):
-        c.is_bleeding = not c.is_bleeding
-        client.send_host_message('{} ({}) is {} bleeding.'.format(c.get_char_name(), c.area.id, status[c.is_bleeding]))
-        c.send_host_message('You are {} bleeding.'.format(status[c.is_bleeding]))
+    target = parse_id(client, arg)
 
-        if c.is_bleeding:
-            c.area.bleeds_to.add(c.area.name)
+    num_bleeding_before = len([c for c in target.area.clients if c.is_bleeding])
+    target.is_bleeding = not target.is_bleeding
+    num_bleeding_after = len([c for c in target.area.clients if c.is_bleeding])
+
+    target.send_host_message('You are {} bleeding.'.format(status[target.is_bleeding]))
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
+                                  '{} is {} bleeding ({}).'.format(target.get_char_name(),
+                                   status[target.is_bleeding], target.area.id),
+                                  pred=lambda c: c.is_staff())
+
+    if not target.area.lights or not target.is_visible:
+        # Multiple cases to account for different situations
+        if num_bleeding_before == 0 and num_bleeding_after == 1:
+            message = 'You start hearing faint drops of blood.'
+        elif num_bleeding_before == 1 and num_bleeding_after == 0:
+            message = 'You no longer hear drops of blood.'
+        elif num_bleeding_before < num_bleeding_after:
+            message = 'You start hearing more drops of blood.'
+        elif num_bleeding_before > num_bleeding_after:
+            message = 'You start hearing less drops of blood.'
+        else: # Default case, should not be reachable but put just in case
+            message = 'You hear faint drops of blood.'
+    else:
+        message = '{} is {} bleeding.'.format(target.get_char_name(), status[target.is_bleeding])
+
+    client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']), message,
+                                    pred=lambda c: (not c.is_staff() and c != target
+                                                    and c.area == target.area))
 
 def ooc_cmd_bloodtrail_clean(client, arg):
     """
@@ -1200,8 +1218,6 @@ def ooc_cmd_getarea(client, arg):
     """
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
-    if client.in_rp and not client.area.rp_getarea_allowed:
-        raise ClientError("This command has been restricted to authorized users only in this area while in RP mode.")
 
     client.send_area_info(client.area, client.area.id, False)
 
@@ -1464,7 +1480,8 @@ def ooc_cmd_iclock(client, arg):
         raise ArgumentError('This command has no arguments.')
 
     client.area.ic_lock = not client.area.ic_lock
-    client.area.send_host_message('A staff member has set the IC lock to {}.'.format(client.area.ic_lock))
+    status = {True: 'enabled', False: 'disabled'}
+    client.area.send_host_message('A staff member has {} the IC lock in this area.'.format(status[client.area.ic_lock]))
     logger.log_server('[{}][{}]Changed IC lock to {}'.format(client.area.id, client.get_char_name(), client.area.ic_lock), client)
 
 def ooc_cmd_invite(client, arg):
@@ -1637,7 +1654,8 @@ def ooc_cmd_lights(client, arg):
     except AreaError:
         raise ClientError('Unable to turn lights {}: Background {} not found'.format(arg, intended_background))
 
-    client.area.send_host_message('The lights were turned {}'.format(arg))
+    client.area.lights = (arg == 'on')
+    client.area.send_host_message('The lights were turned {}.'.format(arg))
 
 def ooc_cmd_lm(client, arg):
     """ (MOD ONLY)
@@ -1779,7 +1797,9 @@ def ooc_cmd_look(client, arg):
     Obtain the current area's description, which is either the description in the area list configuration, or a
     customized one defined via /look_set.
     If the area has no set description, it will return the server's default description
-    stored in server.config['default_area_description']
+    stored in server.config['default_area_description'].
+    If the area has its lights turned off, it will send a generic 'cannot see anything' message
+    to non-staff members.
 
     SYNTAX
     /look
@@ -1788,11 +1808,14 @@ def ooc_cmd_look(client, arg):
     None
 
     EXAMPLES
-    If the current area's description is "Literally a courtroom"
+    If the current area's description is "Literally a courtroom"...
     /look               :: Returns "Literally a courtroom"
     """
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
+    if not client.is_staff() and not client.area.lights:
+        raise ClientError('The lights are off. You cannot see anything.')
+
     client.send_host_message(client.area.description)
 
 def ooc_cmd_look_clean(client, arg):
@@ -2862,8 +2885,6 @@ def ooc_cmd_showname_list(client, arg):
     [0] Kaede Akamatsu_HD
     [1] Shuichi Saihara_HD (Just Suichi)
     """
-    if client.in_rp and not client.area.rp_getareas_allowed:
-        raise ClientError('This command has been restricted to authorized users only in this area while in RP mode.')
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 

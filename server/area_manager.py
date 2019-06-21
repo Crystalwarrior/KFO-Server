@@ -49,6 +49,7 @@ class AreaManager:
             self.is_gmlocked = False
             self.is_modlocked = False
             self.bleeds_to = set()
+            self.lights = True
 
             self.name = parameters['area']
             self.background = parameters['background']

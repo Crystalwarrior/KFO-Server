@@ -36,7 +36,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190619b'
+        self.minor_version = '190621a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -52,6 +52,7 @@ class TsuServer3:
         self.default_area = 0
         self.load_config()
         self.load_iniswaps()
+        self.char_list = list()
         self.load_characters()
         self.client_manager = ClientManager(self)
         self.area_manager = AreaManager(self)
@@ -60,7 +61,6 @@ class TsuServer3:
         self.ipid_list = {}
         self.hdid_list = {}
         self.char_pages_ao1 = None
-        self.char_list = None
         self.music_list = None
         self.music_list_ao2 = None
         self.music_pages_ao1 = None

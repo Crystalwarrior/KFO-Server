@@ -270,18 +270,35 @@ class ClientManager:
                     self.change_showname('', target_area=area)
                     logger.log_server('{} had their showname removed due it being used in the new area.'.format(self.ipid), self)
 
-                # If autopassing, send OOC messages
-                if self.autopass and not self.char_id < 0 and self.is_visible:
-                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                  '{} has left to {}.'
-                                                  .format(old_char, area.name),
-                                                  pred=lambda c: not c.is_staff() and c != self and c.area == old_area)
-                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                  '{} has entered from {}.'
-                                                  .format(self.get_char_name(), old_area.name),
-                                                  pred=lambda c: not c.is_staff() and c != self and c.area == area)
+                # Check if the lights were turned off, and if so, let the client know
+                if not area.lights:
+                    self.send_host_message('You enter a pitch dark room.')
 
-                # If bleeding, send reminder, and notify everyone in the new area if not sneaking (otherwise, just vague message).
+                # If autopassing, send OOC messages, provided the lights are on
+                if self.autopass and not self.char_id < 0:
+                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                                  '{} has left to the {}.'
+                                                  .format(old_char, area.name),
+                                                  pred=lambda c: (c != self and c.area == old_area
+                                                  and (c.is_staff() or (old_area.lights and self.is_visible))))
+                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                                  '{} has entered from the {}.'
+                                                  .format(self.get_char_name(), old_area.name),
+                                                  pred=lambda c: (c != self and c.area == area
+                                                  and (c.is_staff() or (area.lights and self.is_visible))))
+
+                # If former or new area's lights are turned off, send special messages to non-staff
+                # announcing your presence
+                if not old_area.lights and not self.char_id < 0 and self.is_visible:
+                    for c in [x for x in old_area.clients if not x.is_staff() and x != self]:
+                        c.send_host_message('You hear footsteps going out of the room.')
+
+                if not area.lights and not self.char_id < 0 and self.is_visible:
+                    for c in [x for x in area.clients if not x.is_staff() and x != self]:
+                        c.send_host_message('You hear footsteps coming into the room.')
+
+                # If bleeding, send reminder, and notify everyone in the new area if not sneaking
+                # (otherwise, just send vague message).
                 if self.is_bleeding:
                     old_area.bleeds_to.add(old_area.name)
                     area.bleeds_to.add(area.name)
@@ -290,36 +307,115 @@ class ClientManager:
                     old_area.bleeds_to.add(area.name)
                     area.bleeds_to.add(old_area.name)
                     self.send_host_message('You are bleeding.')
-                    if self.is_visible:
+
+                    # Send notification to people in new area
+                    area_had_bleeding = (len([c for c in area.clients if c.is_bleeding]) > 0)
+                    if self.is_visible and area.lights:
+                        normal_mes = 'You see {} arrive and bleeding.'.format(self.get_char_name())
+                        staff_mes = normal_mes
+                    elif not self.is_visible and area.lights:
+                        s = {True: 'more', False: 'faint'}
+                        normal_mes = ('You start hearing {} drops of blood.'
+                                      .format(s[area_had_bleeding]))
+                        staff_mes = ('{} arrived to the area while bleeding and sneaking.'
+                                     .format(self.get_char_name()))
+                    elif self.is_visible and not area.lights:
+                        s = {True: 'more ', False: ''}
+                        normal_mes = ('You start hearing and smelling {}drips of blood.'
+                                      .format(s[area_had_bleeding]))
+                        staff_mes = ('{} arrived to the darkened area while bleeding.'
+                                     .format(self.get_char_name()))
+                    elif not self.is_visible and not area.lights:
+                        s = {True: 'more ', False: ''}
+                        normal_mes = ('You start hearing and smelling {}drips of blood.'
+                                      .format(self.get_char_name()))
+                        staff_mes = ('{} arrived to the darkened area while bleeding and sneaking.'
+                                     .format(self.get_char_name()))
+
+                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                                  normal_mes, pred=lambda c: (not c.is_staff()
+                                                  and c != self and c.area == area))
+                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                                  staff_mes, pred=lambda c: (c.is_staff()
+                                                  and c != self and c.area == area))
+
+                # If bleeding and either you were sneaking or your former area had its lights turned
+                # off, notify everyone in the new area to the less intense sounds and smells of
+                # blood. Do nothing if lights on and not sneaking.
+                if not ignore_bleeding and self.is_bleeding:
+                    area_sole_bleeding = (len([c for c in old_area.clients if c.is_bleeding]) == 1)
+                    if self.is_visible and old_area.lights:
+                        normal_mes = ''
+                        staff_mes = ''
+                    elif not self.is_visible and old_area.lights:
+                        s = {True: 'stop hearing', False: 'start hearing less'}
+                        normal_mes = 'You {} drops of blood.'.format(s[area_sole_bleeding])
+                        staff_mes = ('{} left the area while bleeding and sneaking.'
+                                     .format(self.get_char_name()))
+                    elif self.is_visible and not old_area.lights:
+                        s = {True: 'stop hearing and smelling',
+                             False: 'start hearing and smelling less'}
+                        normal_mes = 'You {} drops of blood.'.format(s[area_sole_bleeding])
+                        staff_mes = ('{} left the darkened area while bleeding.'
+                                     .format(self.get_char_name()))
+                    elif not self.is_visible and not old_area.lights:
+                        s = {True: 'stop hearing and smelling',
+                             False: 'start hearing and smelling less'}
+                        normal_mes = 'You {} drops of blood.'.format(s[area_sole_bleeding])
+                        staff_mes = ('{} left the darkened area while bleeding and sneaking.'
+                                     .format(self.get_char_name()))
+
+                    if normal_mes and staff_mes:
                         self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                      'You see {} arrive and bleeding.'.format(self.get_char_name()),
-                                                      pred=lambda c: c != self and c.area == area)
-                    else:
+                                                      normal_mes, pred=lambda c: (not c.is_staff()
+                                                      and c != self and c.area == old_area))
                         self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                      'You start hearing faint drops of blood.',
-                                                      pred=lambda c: not c.is_staff() and c != self and c.area == area)
-                        self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                      '{} is bleeding while sneaking.'.format(self.get_char_name()),
-                                                      pred=lambda c: c.is_staff() and c != self and c.area == area)
+                                                      staff_mes, pred=lambda c: (c.is_staff()
+                                                      and c != self and c.area == old_area))
 
                 # If someone else is bleeding in the new area, notify the person moving
-                # Special consideration is given if that someone else is sneaking
-                players_bleeding_visible = [c for c in area.clients if c.is_visible and c.is_bleeding]
-                players_bleeding_sneaking = [c for c in area.clients if not c.is_visible and c.is_bleeding]
+                # Special consideration is given if that someone else is sneaking or the area's
+                # lights are turned off, or the client is a staff member
+                bleeding_visible = [c for c in area.clients if c.is_visible and c.is_bleeding]
+                bleeding_sneaking = [c for c in area.clients if not c.is_visible and c.is_bleeding]
                 info = ''
-                if len(players_bleeding_visible) == 1:
-                    info = 'You see {} is bleeding'.format(players_bleeding_visible[0].get_char_name())
-                elif len(players_bleeding_visible) > 1:
-                    info = 'You see {}'.format(players_bleeding_visible[0].get_char_name())
-                    for i in range(1, len(players_bleeding_visible)-1):
-                        info += ', {}'.format(players_bleeding_visible[i].get_char_name())
-                    info += ' and {} are bleeding'.format(players_bleeding_visible[-1].get_char_name())
+                sneak_info = ''
 
-                if len(players_bleeding_sneaking) > 0:
-                    if info == '':
-                        info = 'You hear faint drops of blood'
-                    else:
-                        info += ', and you hear faint drops of blood'
+                # If lights are out and someone is bleeding, send generic drops of blood message
+                # to non-staff members
+                if not area.lights and not self.is_staff() and len(bleeding_visible + bleeding_sneaking) > 0:
+                    info = 'You hear faint drops of blood'
+                # Otherwise, send who is bleeding if not sneaking and alert to the sound of drops of
+                # blood if someone is bleeding while sneaking. Staff members get notified of the
+                # names of the people who are bleeding and sneaking.
+                else:
+                    if len(bleeding_visible) == 1:
+                        info = 'You see {} is bleeding'.format(bleeding_visible[0].get_char_name())
+                    elif len(bleeding_visible) > 1:
+                        info = 'You see {}'.format(bleeding_visible[0].get_char_name())
+                        for i in range(1, len(bleeding_visible)-1):
+                            info += ', {}'.format(bleeding_visible[i].get_char_name())
+                        info += ' and {} are bleeding'.format(bleeding_visible[-1].get_char_name())
+
+                    if len(bleeding_sneaking) > 0:
+                        if not self.is_staff():
+                            sneak_info = 'You hear faint drops of blood'
+                        elif len(bleeding_sneaking) == 1:
+                            sneak_info = 'You see {} is bleeding while sneaking'.format(bleeding_sneaking[0].get_char_name())
+                        else:
+                            sneak_info = 'You see {}'.format(bleeding_sneaking[0].get_char_name())
+                            for i in range(1, len(bleeding_sneaking)-1):
+                                sneak_info += ', {}'.format(bleeding_sneaking[i].get_char_name())
+                            sneak_info += (' and {} are bleeding while sneaking'
+                                           .format(bleeding_sneaking[-1].get_char_name()))
+
+                if info != '':
+                    if sneak_info != '':
+                        sneak_info = sneak_info[:1].lower() + sneak_info[1:]
+                        info = '{}, and {}'.format(info, sneak_info)
+                else:
+                    info = sneak_info
+
                 if info != '':
                     self.send_host_message(info + '.')
 
@@ -550,6 +646,16 @@ class ClientManager:
             #If area_id is -1, then return all areas.
             #If mods is True, then return only mods
             #If include_shownames is True, then include non-empty custom shownames.
+
+            # Verify that it should send the area info first
+            if not self.is_staff():
+                if (area_id == -1 and not self.area.rp_getareas_allowed) or \
+                   (area_id != -1 and not self.area.rp_getarea_allowed):
+                       raise ClientError('This command has been restricted to authorized users only in this area while in RP mode.')
+                if not self.area.lights:
+                    raise ClientError('The lights are off. You cannot see anything.')
+
+            # All code from here on assumes the area info will be sent successfully
             info = ''
             if area_id == -1:
                 # all areas info
