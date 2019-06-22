@@ -21,6 +21,7 @@
   scream_range: Basement
   restricted_chars: Shuichi Saihara_HD
   default_description: A class trial room that does not like Shuichi.
+  has_lights: False
 - area: Class Trial Room, 2
   background: Class Trial Debate Room V3-1_HD
   bglock: false
@@ -35,6 +36,7 @@
   private_area: False
   scream_range: Class Trial Room 3
   restricted_chars: Kaede Akamatsu_HD, Monokuma_HD
+  has_lights: True
 - area: Class Trial Room 3
   background: Class Trial Debate Room V3-1_HD
   bglock: false
