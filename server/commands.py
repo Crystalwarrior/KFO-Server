@@ -1616,7 +1616,7 @@ def ooc_cmd_knock(client, arg):
                                     pred=lambda c: c != client and c.is_staff())
 
 def ooc_cmd_lights(client, arg):
-    """ (STAFF ONLY)
+    """
     Toggles lights on or off in the background. If area is background locked, it requires mod privileges.
     If turned off, the background will change to the server's blackout background.
     If turned on, the background will revert to the background before the blackout one.
@@ -1634,28 +1634,15 @@ def ooc_cmd_lights(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify either on or off.')
+    if not client.is_staff() and not client.area.has_lights:
+        raise AreaError('This area has no lights to turn off or on.')
+    if not client.is_mod and client.area.bg_lock:
+        raise AreaError("Unable to turn lights off or on: This area's background is locked.".format(arg))
     if arg not in ['off', 'on']:
         raise ClientError('Invalid argument. Expected: on, off. Your argument: {}'.format(arg))
-    if not client.is_mod and client.area.bg_lock:
-        raise AreaError("Unable to turn lights {}: This area's background is locked.".format(arg))
 
-    if arg == 'on':
-        if client.area.background == client.server.config['blackout_background']:
-            intended_background = client.area.background_backup
-        else:
-            intended_background = client.area.background
-    elif arg == 'off':
-        if client.area.background != client.server.config['blackout_background']:
-            client.area.background_backup = client.area.background
-        intended_background = client.server.config['blackout_background']
-
-    try:
-        client.area.change_background(intended_background)
-    except AreaError:
-        raise ClientError('Unable to turn lights {}: Background {} not found'.format(arg, intended_background))
-
-    client.area.lights = (arg == 'on')
-    client.area.send_host_message('The lights were turned {}.'.format(arg))
+    new_lights = (arg == 'on')
+    client.area.change_lights(new_lights, initiator=client)
 
 def ooc_cmd_lm(client, arg):
     """ (MOD ONLY)

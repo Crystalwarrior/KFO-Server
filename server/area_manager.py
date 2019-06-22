@@ -71,6 +71,7 @@ class AreaManager:
             self.scream_range = parameters['scream_range']
             self.restricted_chars = parameters['restricted_chars']
             self.default_description = parameters['default_description']
+            self.has_lights = parameters['has_lights']
 
             self.description = self.default_description # Store the current description separately from the default description
             self.background_backup = self.background # Used for restoring temporary background changes
@@ -187,6 +188,59 @@ class AreaManager:
             self.background = bg
             self.send_command('BN', self.background)
 
+        def change_lights(self, new_lights, initiator=None):
+            status = {True: 'on', False: 'off'}
+
+            if new_lights:
+                if self.background == self.server.config['blackout_background']:
+                    intended_background = self.background_backup
+                else:
+                    intended_background = self.background
+            else:
+                if self.background != self.server.config['blackout_background']:
+                    self.background_backup = self.background
+                intended_background = self.server.config['blackout_background']
+
+            try:
+                self.change_background(intended_background)
+            except AreaError:
+                raise AreaError('Unable to turn lights {}: Background {} not found'
+                                .format(status[new_lights], intended_background))
+
+            self.lights = new_lights
+
+            if initiator: # If a player initiated the change light sequence, send targeted messages
+                initiator.send_host_message('You turned the lights {}.'.format(status[new_lights]))
+                self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                              'The lights were turned {}.'.format(status[new_lights]),
+                                              pred=lambda c: not c.is_staff() and c.area == self
+                                              and c != initiator)
+                self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                              '{} turned the lights {}.'
+                                              .format(initiator.get_char_name(), status[new_lights]),
+                                              pred=lambda c: c.is_staff() and c.area == self
+                                              and c != initiator)
+            else: # Otherwise, send generic message
+                self.send_host_message('The lights were turned {}.'.format(status[new_lights]))
+
+            # Reveal people bleeding and not sneaking if lights were turned on
+            if self.lights:
+                for c in self.clients:
+                    bleeding_visible = [x for x in self.clients if x.is_visible and x.is_bleeding
+                                        and x != c]
+                    info = ''
+
+                    if len(bleeding_visible) == 1:
+                        info = 'You now see {} is bleeding.'.format(bleeding_visible[0].get_char_name())
+                    elif len(bleeding_visible) > 1:
+                        info = 'You now see {}'.format(bleeding_visible[0].get_char_name())
+                        for i in range(1, len(bleeding_visible)-1):
+                            info += ', {}'.format(bleeding_visible[i].get_char_name())
+                        info += ' and {} are bleeding.'.format(bleeding_visible[-1].get_char_name())
+
+                    if info:
+                        c.send_host_message(info)
+
         def change_status(self, value):
             allowed_values = ('idle', 'building-open', 'building-full', 'casing-open', 'casing-full', 'recess')
             if value.lower() not in allowed_values:
@@ -292,6 +346,8 @@ class AreaManager:
                 item['restricted_chars'] = ''
             if 'default_description' not in item:
                 item['default_description'] = self.server.config['default_area_description']
+            if 'has_lights' not in item:
+                item['has_lights'] = True
 
             # Backwards compatibility notice
             if 'sound_proof' in item:
