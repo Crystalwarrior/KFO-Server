@@ -36,7 +36,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190622a'
+        self.minor_version = '190622b'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -466,14 +466,14 @@ class TsuServer3:
             self.send_all_cmd_pred('CT', '{}'.format(self.config['hostname']),
                                    'Timer "{}" initiated by {} has been canceled.'
                                    .format(name, client_name),
-                                   pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm)
-                                                   or (is_public and c.area == client.area)) or c == client)
+                                   pred=lambda c: (c == client or c.is_staff() or
+                                                   (is_public and c.area == client.area)))
         else:
             self.send_all_cmd_pred('CT', '{}'.format(self.config['hostname']),
                                    'Timer "{}" initiated by {} has expired.'
                                    .format(name, client_name),
-                                   pred=lambda c: ((c.is_mod or c.is_gm or c.is_cm)
-                                                   or (is_public and c.area == client.area)) or c == client)
+                                   pred=lambda c: (c == client or c.is_staff() or
+                                                   (is_public and c.area == client.area)))
         finally:
             del self.active_timers[name]
 

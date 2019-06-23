@@ -96,6 +96,32 @@ class ClientManager:
         def send_host_message(self, msg):
             self.send_command('CT', self.server.config['hostname'], msg)
 
+        def send_host_others(self, msg, is_staff=None, in_area=None, pred=None):
+            if is_staff is True:
+                cond1 = lambda c: c.is_staff()
+            elif is_staff is False:
+                cond1 = lambda c: not c.is_staff()
+            elif is_staff is None:
+                cond1 = lambda c: True
+            else:
+                raise KeyError('Invalid argument for send_host_others is_staff: {}'.format(is_staff))
+
+            if in_area is True:
+                cond2 = lambda c: c.area == self.area
+            elif type(in_area) is type(self.area): # Lazy way of checking if in_area is an area obj
+                cond2 = lambda c: c.area == in_area
+            elif in_area is None:
+                cond2 = lambda c: True
+            else:
+                raise KeyError('Invalid argument for send_host_others in_area: {}'.format(in_area))
+
+            if pred is None:
+                pred = lambda c: True
+
+            cond = lambda c: c != self and cond1(c) and cond2(c) and pred(c)
+
+            self.server.send_all_cmd_pred('CT', self.server.config['hostname'], msg, pred=cond)
+
         def send_motd(self):
             self.send_host_message('=== MOTD ===\r\n{}\r\n============='
                                    .format(self.server.config['motd']))
@@ -277,13 +303,11 @@ class ClientManager:
                 # If autopassing, send OOC messages, provided the lights are on
                 if self.autopass and not self.char_id < 0:
                     self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                  '{} has left to the {}.'
-                                                  .format(old_char, area.name),
+                                                  '{} has left to the {}.'.format(old_char, area.name),
                                                   pred=lambda c: (c != self and c.area == old_area
                                                   and (c.is_staff() or (old_area.lights and self.is_visible))))
                     self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                  '{} has entered from the {}.'
-                                                  .format(self.get_char_name(), old_area.name),
+                                                  '{} has entered from the {}.'.format(self.get_char_name(), old_area.name),
                                                   pred=lambda c: (c != self and c.area == area
                                                   and (c.is_staff() or (area.lights and self.is_visible))))
 
@@ -332,12 +356,8 @@ class ClientManager:
                         staff_mes = ('{} arrived to the darkened area while bleeding and sneaking.'
                                      .format(self.get_char_name()))
 
-                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                  normal_mes, pred=lambda c: (not c.is_staff()
-                                                  and c != self and c.area == area))
-                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                  staff_mes, pred=lambda c: (c.is_staff()
-                                                  and c != self and c.area == area))
+                    self.send_host_others(normal_mes, is_staff=False, in_area=True)
+                    self.send_host_others(staff_mes, is_staff=True, in_area=True)
 
                 # If bleeding and either you were sneaking or your former area had its lights turned
                 # off, notify everyone in the new area to the less intense sounds and smells of
@@ -366,12 +386,8 @@ class ClientManager:
                                      .format(self.get_char_name()))
 
                     if normal_mes and staff_mes:
-                        self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                      normal_mes, pred=lambda c: (not c.is_staff()
-                                                      and c != self and c.area == old_area))
-                        self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                      staff_mes, pred=lambda c: (c.is_staff()
-                                                      and c != self and c.area == old_area))
+                        self.send_host_others(normal_mes, is_staff=False, in_area=old_area)
+                        self.send_host_others(staff_mes, is_staff=True, in_area=old_area)
 
                 # If someone else is bleeding in the new area, notify the person moving
                 # Special consideration is given if that someone else is sneaking or the area's
@@ -510,11 +526,11 @@ class ClientManager:
                             # From this, we can recover the old handicap backup
                             _, old_length, old_name, old_announce_if_over = self.handicap_backup[1]
 
-                            self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                          '{} was automatically imposed their former movement handicap "{}" of length {} seconds after being revealed in area {} ({}).'
-                                                          .format(self.get_char_name(), old_name, old_length, self.area.name, self.area.id),
-                                                          pred=lambda c: c.is_staff())
-                            self.send_host_message('You were automatically imposed your former movement handicap "{}" of length {} seconds when changing areas.'.format(old_name, old_length))
+                            self.send_host_others('{} was automatically imposed their former movement handicap "{}" of length {} seconds after being revealed in area {} ({}).'
+                                                  .format(self.get_char_name(), old_name, old_length, self.area.name, self.area.id),
+                                                  is_staff=True)
+                            self.send_host_message('You were automatically imposed your former movement handicap "{}" of length {} seconds when changing areas.'
+                                                   .format(old_name, old_length))
                             self.server.create_task(self, ['as_handicap', time.time(), old_length, old_name, old_announce_if_over])
                         else:
                             self.server.remove_task(self, ['as_handicap'])
@@ -532,10 +548,9 @@ class ClientManager:
                     try:
                         _, length, _, _ = self.server.get_task_args(self, ['as_handicap'])
                         if length < self.server.config['sneak_handicap']:
-                            self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                          '{} was automatically imposed the longer movement handicap "Sneaking" of length {} seconds in area {} ({}).'
-                                                          .format(self.get_char_name(), self.server.config['sneak_handicap'], self.area.name, self.area.id),
-                                                          pred=lambda c: c.is_staff())
+                            self.send_host_others('{} was automatically imposed the longer movement handicap "Sneaking" of length {} seconds in area {} ({}).'
+                                                  .format(self.get_char_name(), self.server.config['sneak_handicap'], self.area.name, self.area.id),
+                                                  is_staff=True)
                             raise KeyError # Lazy way to get there, but it works
                     except KeyError:
                         self.send_host_message('You were automatically imposed a movement handicap "Sneaking" of length {} seconds when changing areas.'.format(self.server.config['sneak_handicap']))
