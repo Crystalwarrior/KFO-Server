@@ -335,7 +335,7 @@ def ooc_cmd_announce(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
-        raise ArgumentError("Can't send an empty message.")
+        raise ArgumentError('You cannot send an empty announcement.')
 
     client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                     '=== Announcement ===\r\n{}\r\n=================='.format(arg))
@@ -1522,8 +1522,6 @@ def ooc_cmd_kick(client, arg):
     """
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
 
     # Kick matching targets
     for c in parse_id_or_ipid(client, arg):

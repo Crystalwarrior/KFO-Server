@@ -187,9 +187,9 @@ class ClientManager:
             index = (self.mus_counter - self.mflood_times + 1) % self.mflood_times
             if time.time() - self.mus_change_time[index] < self.mflood_interval:
                 self.mute_time = time.time()
-                return self.server.config['music_change_floodguard']['mute_length']
+                return self.mflood_mutelength
 
-            self.mus_counter = (self.mus_counter + 1) % self.mflood_interval
+            self.mus_counter = (self.mus_counter + 1) % self.mflood_times
             self.mus_change_time[self.mus_counter] = time.time()
             return 0
 
