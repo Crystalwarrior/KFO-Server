@@ -1470,7 +1470,14 @@ def ooc_cmd_iclock(client, arg):
 
     client.area.ic_lock = not client.area.ic_lock
     status = {True: 'enabled', False: 'disabled'}
-    client.area.send_host_message('A staff member has {} the IC lock in this area.'.format(status[client.area.ic_lock]))
+
+    client.send_host_message('You {} the IC lock in this area.'.format(status[client.area.ic_lock]))
+    client.send_host_others('A staff member has {} the IC lock in this area.'.format(status[client.area.ic_lock]),
+                            is_staff=False, in_area=True)
+    client.send_host_others('{} has {} the IC lock in area {} ({}).'
+                            .format(client.name, status[client.area.ic_lock], client.area.name, client.area.id),
+                            is_staff=True)
+
     logger.log_server('[{}][{}]Changed IC lock to {}'.format(client.area.id, client.get_char_name(), client.area.ic_lock), client)
 
 def ooc_cmd_invite(client, arg):

@@ -356,8 +356,8 @@ class ClientManager:
                         staff_mes = ('{} arrived to the darkened area while bleeding and sneaking.'
                                      .format(self.get_char_name()))
 
-                    self.send_host_others(normal_mes, is_staff=False, in_area=True)
-                    self.send_host_others(staff_mes, is_staff=True, in_area=True)
+                    self.send_host_others(normal_mes, is_staff=False, in_area=area)
+                    self.send_host_others(staff_mes, is_staff=True, in_area=area)
 
                 # If bleeding and either you were sneaking or your former area had its lights turned
                 # off, notify everyone in the new area to the less intense sounds and smells of
