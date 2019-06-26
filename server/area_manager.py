@@ -363,6 +363,15 @@ class AreaManager:
                         'Please rename the duplicated areas and try again.'.format(item['area']))
                 raise AreaError(info)
 
+            # Check if any of the items were interpreted as Python Nones (maybe due to empty lines)
+            for parameter in item:
+                if item[parameter] is None:
+                    info = ('Parameter {} is manually undefined for area {}. This can be the case '
+                            'due to having an empty parameter line in your area list. '
+                            'Please fix or remove the parameter from the area definition and try '
+                            'again.'.format(parameter, item['area']))
+                    raise AreaError(info)
+
             temp_areas.append(self.Area(current_area_id, self.server, item))
             temp_area_names.add(item['area'])
             temp_reachable_area_names = temp_reachable_area_names.union(temp_areas[-1].reachable_areas)
