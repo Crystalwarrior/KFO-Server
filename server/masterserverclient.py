@@ -50,7 +50,7 @@ class MasterServerClient:
     async def handle_connection(self):
         logger.log_pdebug('Connected to the master server.')
         await self.send_server_info()
-        fl = False
+        ping_timeout = False
         lastping = time.time() - 20
         while True:
             self.reader.feed_data(b'END')
@@ -66,11 +66,12 @@ class MasterServerClient:
                     elif cmd == 'CHECK':
                         await self.send_raw_message('PING#%')
                     elif cmd == 'PONG':
-                        fl = False
+                        ping_timeout = False
                     elif cmd == 'NOSERV':
                         await self.send_server_info()
-            if time.time() - lastping > 5:
-                if fl:
+            if time.time() - lastping > 10:
+                if ping_timeout:
+                    self.writer.close()
                     return
                 lastping = time.time()
                 fl = True
