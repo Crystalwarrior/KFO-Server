@@ -36,7 +36,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190629a'
+        self.minor_version = '190629b'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -391,7 +391,7 @@ class TsuServer3:
 
         # Start new task
         self.client_tasks[client.id][args[0]] = (asyncio.ensure_future(getattr(self, args[0])(client, args[1:]), loop=self.loop),
-                                                 args[1:])
+                                                 args[1:], dict())
 
     def cancel_task(self, task):
         """ Cancels current task and sends order to await cancellation """
@@ -410,6 +410,14 @@ class TsuServer3:
     def get_task_args(self, client, args):
         """ Returns input arguments of task """
         return self.client_tasks[client.id][args[0]][1]
+
+    def get_task_attr(self, client, args, attr):
+        """ Returns task attribute """
+        return self.client_tasks[client.id][args[0]][2][attr]
+
+    def set_task_attr(self, client, args, attr, value):
+        """ Sets task attribute """
+        self.client_tasks[client.id][args[0]][2][attr] = value
 
     async def await_cancellation(self, old_task):
         # Wait until it is able to properly retrieve the cancellation exception
@@ -490,6 +498,88 @@ class TsuServer3:
                 client.send_host_message('Your movement handicap has expired. You may now move to a new area.')
         finally:
             client.is_movement_handicapped = False
+
+    async def as_day_cycle(self, client, args):
+        time_start, area_1, area_2, hour_length, hour_start, send_first_hour = args
+        hour = hour_start
+        minute_at_interruption = 0
+        self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False) # True after /clock_pause, False after 1 second
+        self.set_task_attr(client, ['as_day_cycle'], 'just_unpaused', False) # True after /clock_unpause, False after current hour elapses
+        self.set_task_attr(client, ['as_day_cycle'], 'is_paused', False) # True after /clock_pause, false after /clock_unpause
+
+        while True:
+            try:
+                # If an hour just finished without any interruptions
+                if (not self.get_task_attr(client, ['as_day_cycle'], 'is_paused') and
+                    not self.get_task_attr(client, ['as_day_cycle'], 'just_unpaused')):
+                    self.send_all_cmd_pred('CT', '{}'.format(self.config['hostname']),
+                                           'It is now {}:00.'.format('{0:02d}'.format(hour)),
+                                           pred=lambda c: ((c.is_staff() or send_first_hour) and
+                                                           area_1 <= c.area.id <= area_2) or c == client)
+                    hour_started_at = time.time()
+                    minute_at_interruption = 0
+                    self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False)
+                    await asyncio.sleep(hour_length)
+                # If the clock was just unpaused, send out notif and restart the current hour
+                elif (not self.get_task_attr(client, ['as_day_cycle'], 'is_paused') and
+                      self.get_task_attr(client, ['as_day_cycle'], 'just_unpaused')):
+                    client.send_host_message('Your day cycle in areas {} through {} has been unpaused.'
+                                             .format(area_1, area_2))
+                    client.send_host_others('The day cycle initiated by {} in areas {} through {} has been unpaused.'
+                                            .format(client.name, area_1, area_2, client.area.id),
+                                                    is_staff=True)
+                    self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False)
+                    self.set_task_attr(client, ['as_day_cycle'], 'just_unpaused', False)
+
+                    minute = minute_at_interruption + (hour_paused_at - hour_started_at)/hour_length*60
+                    hour_started_at = time.time()
+                    minute_at_interruption = minute
+                    self.send_all_cmd_pred('CT', '{}'.format(self.config['hostname']),
+                                           'It is now {}:{}.'
+                                           .format('{0:02d}'.format(hour),
+                                                   '{0:02d}'.format(int(minute))),
+                                           pred=lambda c: c == client or (c.is_staff() and area_1 <= c.area.id <= area_2))
+
+                    await asyncio.sleep((60-minute_at_interruption)/60 * hour_length)
+
+
+                # Otherwise, is paused. Check again in one second.
+                else:
+                    await asyncio.sleep(1)
+            except asyncio.CancelledError:
+                # Code can run here for one of two reasons
+                # 1. The timer was canceled
+                # 2. The timer was just paused
+
+                try:
+                    is_paused = self.get_task_attr(client, ['as_day_cycle'], 'is_paused')
+                except KeyError: # Task may be canceled, so it'll never get this values
+                    is_paused = False
+
+                if not is_paused:
+                    client.send_host_message('Your day cycle in areas {} through {} has been canceled.'
+                                             .format(area_1, area_2))
+                    client.send_host_others('The day cycle initiated by {} in areas {} through {} has been canceled.'
+                                            .format(client.name, area_1, area_2, client.area.id),
+                                                    is_staff=True)
+                    break
+                else:
+                    hour_paused_at = time.time()
+                    minute = minute_at_interruption + (hour_paused_at - hour_started_at)/hour_length*60
+                    time_at_pause = '{}:{}'.format('{0:02d}'.format(hour),
+                                                   '{0:02d}'.format(int(minute)))
+                    client.send_host_message('Your day cycle in areas {} through {} has been paused at {}.'
+                                             .format(area_1, area_2, time_at_pause))
+                    client.send_host_others('The day cycle initiated by {} in areas {} through {} has been paused at {}.'
+                                            .format(client.name, area_1, area_2, time_at_pause),
+                                                    is_staff=True)
+                    self.set_task_attr(client, ['as_day_cycle'], 'just_paused', True)
+            else:
+                if (not self.get_task_attr(client, ['as_day_cycle'], 'is_paused') and
+                    not self.get_task_attr(client, ['as_day_cycle'], 'just_unpaused')):
+                    hour = (hour + 1) % 24
+            finally:
+                send_first_hour = True
 
     def timer_remaining(self, start, length):
         current = time.time()

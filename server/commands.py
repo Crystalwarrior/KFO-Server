@@ -196,9 +196,9 @@ def parse_two_area_names(client, areas, area_duplicate=True, check_valid_range=T
     areas = parse_area_names(client, areas)
 
     if check_valid_range and areas[0].id > areas[1].id:
-        raise ClientError('The ID of the first area must be lower than the ID of the second area.')
+        raise ArgumentError('The ID of the first area must be lower than the ID of the second area.')
     elif not area_duplicate and areas[0].id == areas[1].id:
-        raise ClientError('Areas must be different.')
+        raise ArgumentError('Areas must be different.')
 
     return areas
 
@@ -238,7 +238,7 @@ def parse_id(client, identifier):
     targets = client.server.client_manager.get_targets(client, TargetType.ID, int(identifier), False)
 
     if not targets:
-        raise ArgumentError('No targets found.')
+        raise ClientError('No targets found.')
 
     return targets[0]
 
@@ -3801,7 +3801,7 @@ def ooc_cmd_timer(client, arg):
                                 .format(client.get_char_name(), name, length, client.area.name,
                                         client.area.id), is_staff=True)
         client.send_host_others('{} initiated a timer "{}" of length {} seconds.'
-                                .format(client.get_char_name(), name, length), is_staff=True,
+                                .format(client.get_char_name(), name, length), is_staff=False,
                                 pred=lambda c: is_public)
 
         client.server.create_task(client, ['as_timer', time.time(), length, name, is_public])
@@ -4006,6 +4006,183 @@ def ooc_cmd_shoutlog(client, arg):
     for area in parse_area_names(client, [arg]):
         info = area.get_shoutlog()
         client.send_host_message(info)
+
+def ooc_cmd_clock(client, arg):
+    """ (STAFF ONLY)
+    Set up a day cycle that will tick one hour every given number of seconds and provide a time announcement
+    to a given range of areas. Starting hour is also given. The clock ID is by default the client ID
+    of the player who started the clock.
+    Requires /clock_cancel to undo. Doing /clock while running an active clock will silently overwrite
+    the old clock with the new one.
+
+    SYNTAX
+    /clock <area_range_start> <area_range_end> <hour_length> <hour_start>
+
+    PARAMETERS
+    <area_range_start>: Send notifications from this area onwards up to...
+    <area_range_end>: Send notifications up to (and including) this area.
+    <hour_length>: Length of each ingame hour (in seconds)
+    <hour_start>: Starting hour (integer from 0 to 23)
+
+    EXAMPLES
+    /clock 16 116 900 8         :: Start a 900-second hour clock spanning areas 16 through 116, with starting hour 8 a.m.
+    /clock 0 5 10 19            :: Start a 10-second hour clock spanning areas 0 through 5, with starting hour 7 p.m.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+
+    # Perform input validation first
+    try:
+        pre_area_1, pre_area_2, pre_hour_length, pre_hour_start = arg.split(' ')
+    except ValueError:
+        raise ClientError('This command takes four arguments.')
+
+    area_1, area_2 = parse_two_area_names(client, [pre_area_1, pre_area_2], check_valid_range=True)
+    area_1, area_2 = area_1.id, area_2.id
+
+    try:
+        hour_length = int(pre_hour_length)
+        if hour_length <= 0:
+            raise ValueError
+    except ValueError:
+        raise ArgumentError('Invalid hour length {}.'.format(pre_hour_length))
+
+    try:
+        hour_start = int(pre_hour_start)
+        if hour_start < 0 or hour_start >= 24:
+            raise ValueError
+    except ValueError:
+        raise ArgumentError('Invalid hour start {}.'.format(pre_hour_start))
+
+    # Code after this assumes input is validated
+    try:
+        task = client.server.get_task(client, ['as_day_cycle'])
+    except KeyError:
+        normie_notif = True
+    else:
+        # Already existing day cycle. Will overwrite preexisting one
+        # But first, make sure normies do not get a new notification.
+        normie_notif = False
+
+    client.send_host_message('You initiated a day cycle of length {} seconds per hour in areas {} '
+                             'through {}. The cycle ID is {}.'
+                             .format(hour_length, area_1, area_2, client.id))
+    client.send_host_others('{} initiated a day cycle of length {} seconds per hour in areas {} '
+                            'through {}. The cycle ID is {} ({}).'
+                            .format(client.name, hour_length, area_1, area_2, client.id, client.area.id),
+                                    is_staff=True)
+    if normie_notif:
+        client.send_host_others('{} initiated a day cycle.'
+                                .format(client.get_char_name()), is_staff=False,
+                                pred=lambda c: area_1 <= c.area.id <= area_2)
+
+    client.server.create_task(client, ['as_day_cycle', time.time(), area_1, area_2, hour_length,
+                                       hour_start, normie_notif])
+
+def ooc_cmd_clock_cancel(client, arg):
+    """ (STAFF ONLY)
+    Cancel the day cycle established by a player by client ID (or own if not given ID)
+    Returns an error if the given player has no associated active day cycle.
+
+    SYNTAX
+    /clock_cancel {client_id}
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLE
+    /clock_cancel 0         :: Cancels the day cycle established by the player whose client ID is 0.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        arg = str(client.id)
+
+    try:
+        c = parse_id(client, arg)
+    except ClientError:
+        raise ArgumentError('Client {} is not online.'.format(arg))
+
+    try:
+        client.server.remove_task(c, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
+
+def ooc_cmd_clock_pause(client, arg):
+    """ (STAFF ONLY)
+    Pauses the day cycle established by a player by client ID (or own if not given an ID).
+    Requires /clock_unpause to undo.
+    Returns an error if the given player has no associated active day cycle, or if their day cycle
+    is already paused.
+
+    SYNTAX
+    /clock_pause {client_id}
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLE
+    /clock_pause 0         :: Pauses the day cycle established by the player whose client ID is 0.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        arg = str(client.id)
+
+    try:
+        c = parse_id(client, arg)
+    except ClientError:
+        raise ArgumentError('Client {} is not online.'.format(arg))
+
+    try:
+        task = client.server.get_task(c, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
+
+    is_paused = client.server.get_task_attr(c, ['as_day_cycle'], 'is_paused')
+    if is_paused:
+        raise ClientError('Day cycle is already paused.')
+
+    client.server.set_task_attr(c, ['as_day_cycle'], 'is_paused', True)
+    client.server.cancel_task(task)
+
+def ooc_cmd_clock_unpause(client, arg):
+    """ (STAFF ONLY)
+    Unpauses the day cycle established by a player by client ID (or own if not given an ID).
+    Requires /clock_pause to undo.
+    Returns an error if the given player has no associated active day cycle, or if their day cycle
+    is already unpaused.
+
+    SYNTAX
+    /clock_unpause {client_id}
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLE
+    /clock_unpause 0         :: Unpauses the day cycle established by the player whose client ID is 0.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        arg = str(client.id)
+
+    try:
+        c = parse_id(client, arg)
+    except ClientError:
+        raise ArgumentError('Client {} is not online.'.format(arg))
+
+    try:
+        task = client.server.get_task(c, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
+
+    is_paused = client.server.get_task_attr(c, ['as_day_cycle'], 'is_paused')
+    if not is_paused:
+        raise ClientError('Day cycle is already unpaused.')
+
+    client.server.set_task_attr(c, ['as_day_cycle'], 'is_paused', False)
+    client.server.set_task_attr(c, ['as_day_cycle'], 'just_unpaused', True)
 
 def ooc_cmd_exec(client, arg):
     """
