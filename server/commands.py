@@ -3892,6 +3892,121 @@ def ooc_cmd_timer(client, arg):
         """ Default case where the argument type is unrecognized. """
         raise ClientError('The command variation {} does not exist.'.format(arg_type))
 
+def ooc_cmd_version(client, arg):
+    """
+    Obtain the current version of the server software.
+
+    SYNTAX
+    /version
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /version        :: May return something like: This server is running tsuserver3.DR.190629a
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+
+    client.send_host_message('This server is running {}.'.format(client.server.software))
+
+def ooc_cmd_whereis(client, arg):
+    """ (STAFF ONLY)
+    Obtain the current area of a player by client ID (number in brackets) or IPID (number in parentheses).
+    If given IPID, it will obtain the area info for all clients opened by the user. Otherwise, it will just obtain the one from the given client.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /whereis <client_id>
+    /whereis <client_ipid>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+
+    EXAMPLES
+    Assuming client 1 with IPID 1234567890 is in the Basement (area 0)...
+    /whereis 1           :: May return something like this: Client 1 (1234567890) is in Basement (0)
+    /whereis 1234567890  :: May return something like this: Client 1 (1234567890) is in Basement (0)
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+
+    for c in parse_id_or_ipid(client, arg):
+        client.send_host_message("Client {} ({}) is in {} ({})."
+                                 .format(c.id, c.ipid, c.area.name, c.area.id))
+
+def ooc_cmd_judgelog(client, arg):
+    """ (STAFF ONLY)
+    List the last 20 judge actions performed in the current area. This includes using the judge
+    buttons and changing the penalty bars. If given an argument, it will return the judgelog of the
+    given area by ID or name. Otherwise, it will obtain the one from the current area.
+    Returns an error if the given identifier does not correspond to an area.
+
+    SYNTAX
+    /judgelog {target_area}
+
+    OPTIONAL PARAMETERS
+    {target_area}: area whose judgelog will be returned (either ID or name)
+
+    EXAMPLE
+    If currently in the Basement (area 0)...
+    /judgelog           :: You may get something like the next example
+    /judgelog 0         :: You may get something like this
+
+    == Judge log of Basement (0) ==
+    *Sat Jun 29 12:06:03 2019 | [1] Judge (1234567890) used judge button testimony1.
+    *Sat Jun 29 12:06:07 2019 | [1] Judge (1234567890) used judge button testimony4.
+    *Sat Jun 29 12:06:12 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
+    *Sat Jun 29 12:06:12 2019 | [1] Judge (1234567890) changed penalty bar 2 to 8.
+    *Sat Jun 29 12:06:14 2019 | [1] Judge (1234567890) changed penalty bar 1 to 9.
+    *Sat Jun 29 12:06:15 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
+    *Sat Jun 29 12:06:16 2019 | [1] Judge (1234567890) changed penalty bar 1 to 7.
+    *Sat Jun 29 12:06:17 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
+    *Sat Jun 29 12:06:19 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        arg = client.area.name
+
+    # Obtain matching area's judgelog
+    for area in parse_area_names(client, [arg]):
+        info = area.get_judgelog()
+        client.send_host_message(info)
+
+def ooc_cmd_shoutlog(client, arg):
+    """ (STAFF ONLY)
+    List the last 20 shouts performed in the current area (Hold it, Objection, Take That, etc.).
+    If given an argument, it will return the shoutlog of the given area by ID or name.
+    Otherwise, it will obtain the one from the current area.
+    Returns an error if the given identifier does not correspond to an area.
+
+    SYNTAX
+    /shoutlog {target_area}
+
+    OPTIONAL PARAMETERS
+    {target_area}: area whose shoutlog will be returned (either ID or name)
+
+    EXAMPLE
+    If currently in the Basement (area 0)...
+    /shoutlog           :: You may get something like the next example
+    /shoutlog 0         :: You may get something like this
+
+    == Shout log of Basement (0) ==
+    *Sat Jun 29 13:15:56 2019 | [1] Phantom (1234567890) used shout 1 with the message: I consent
+    *Sat Jun 29 13:16:41 2019 | [1] Phantom (1234567890) used shout 3 with the message: u wrong m9
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        arg = client.area.name
+
+    # Obtain matching area's shoutlog
+    for area in parse_area_names(client, [arg]):
+        info = area.get_shoutlog()
+        client.send_host_message(info)
+
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

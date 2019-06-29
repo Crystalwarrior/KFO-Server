@@ -632,7 +632,7 @@ class ClientManager:
             except AreaError:
                 raise
 
-            info += '= Area {}: {} =='.format(area.id, area.name)
+            info += '== Area {}: {} =='.format(area.id, area.name)
             sorted_clients = []
             for c in area.clients:
                 # Conditions to print out a client in /getarea(s)

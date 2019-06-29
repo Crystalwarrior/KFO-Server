@@ -38,6 +38,7 @@ class AreaManager:
             self.doc = 'No document.'
             self.status = 'IDLE'
             self.judgelog = []
+            self.shoutlog = []
             self.current_music = ''
             self.current_music_player = ''
             self.evi_list = EvidenceList()
@@ -251,9 +252,42 @@ class AreaManager:
             self.doc = doc
 
         def add_to_judgelog(self, client, msg):
-            if len(self.judgelog) >= 10:
+            if len(self.judgelog) >= 20:
                 self.judgelog = self.judgelog[1:]
-            self.judgelog.append('{} ({}) {}.'.format(client.get_char_name(), client.get_ip(), msg))
+
+            info = '{} | [{}] {} ({}) {}'.format(time.asctime(time.localtime(time.time())),
+                                                 client.id, client.get_char_name(), client.get_ip(),
+                                                 msg)
+            self.judgelog.append(info)
+
+        def get_judgelog(self):
+            info = '== Judge log of {} ({}) =='.format(self.name, self.id)
+
+            if len(self.judgelog) == 0:
+                info += '\r\nNo judge actions have been performed since the area was loaded.'
+            else:
+                for log in self.judgelog:
+                    info += '\r\n*{}'.format(log)
+            return info
+
+        def add_to_shoutlog(self, client, msg):
+            if len(self.shoutlog) >= 20:
+                self.shoutlog = self.shoutlog[1:]
+
+            info = '{} | [{}] {} ({}) {}'.format(time.asctime(time.localtime(time.time())),
+                                                 client.id, client.get_char_name(), client.get_ip(),
+                                                 msg)
+            self.shoutlog.append(info)
+
+        def get_shoutlog(self):
+            info = '== Shout log of {} ({}) =='.format(self.name, self.id)
+
+            if len(self.shoutlog) == 0:
+                info += '\r\nNo shouts have been performed since the area was loaded.'
+            else:
+                for log in self.shoutlog:
+                    info += '\r\n*{}'.format(log)
+            return info
 
         def add_music_playing(self, client, name):
             self.current_music_player = client.get_char_name()

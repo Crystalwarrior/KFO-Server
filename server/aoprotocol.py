@@ -420,8 +420,15 @@ class AOProtocol(asyncio.Protocol):
                 self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos = 'all'
                 self.client.area.broadcast_evidence_list()
 
+        # If client has multi-ic enable, set area range target to intended range
         if self.client.multi_ic is None:
-            for c in self.client.area.clients:
+            area_range = range(self.client.area.id, self.client.area.id + 1)
+        else:
+            area_range = range(self.client.multi_ic[0].id, self.client.multi_ic[1].id + 1)
+
+        for area_id in area_range:
+            target_area = self.server.area_manager.get_area_by_id(area_id)
+            for c in target_area.clients:
                 if c.show_shownames:
                     showname = self.client.showname
                 else:
@@ -429,18 +436,12 @@ class AOProtocol(asyncio.Protocol):
 
                 c.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
                                sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, showname)
-        else:
-            for area_id in range(self.client.multi_ic[0].id, self.client.multi_ic[1].id + 1):
-                target_area = self.server.area_manager.get_area_by_id(area_id)
-                for c in target_area.clients:
-                    if c.show_shownames:
-                        showname = self.client.showname
-                    else:
-                        showname = ''
+            target_area.set_next_msg_delay(len(msg))
 
-                    c.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
-                                   sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, showname)
-                target_area.set_next_msg_delay(len(msg))
+            # Deal with shoutlog
+            if button > 0:
+                info = 'used shout {} with the message: {}'.format(button, msg)
+                target_area.add_to_shoutlog(self.client, info)
 
         self.client.area.set_next_msg_delay(len(msg))
         logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
@@ -587,7 +588,8 @@ class AOProtocol(asyncio.Protocol):
             return
         try:
             self.client.area.change_hp(args[0], args[1])
-            self.client.area.add_to_judgelog(self.client, 'changed the penalties')
+            info = 'changed penalty bar {} to {}.'.format(args[0], args[1])
+            self.client.area.add_to_judgelog(self.client, info)
             logger.log_server('[{}]{} changed HP ({}) to {}'
                               .format(self.client.area.id, self.client.get_char_name(), args[0], args[1]), self.client)
         except AreaError:
