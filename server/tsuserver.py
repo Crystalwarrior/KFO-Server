@@ -36,7 +36,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190630a'
+        self.minor_version = '190701a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -526,8 +526,7 @@ class TsuServer3:
                     client.send_host_message('Your day cycle in areas {} through {} has been unpaused.'
                                              .format(area_1, area_2))
                     client.send_host_others('The day cycle initiated by {} in areas {} through {} has been unpaused.'
-                                            .format(client.name, area_1, area_2, client.area.id),
-                                                    is_staff=True)
+                                            .format(client.name, area_1, area_2), is_staff=True)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_unpaused', False)
 
@@ -560,8 +559,7 @@ class TsuServer3:
                     client.send_host_message('Your day cycle in areas {} through {} has been canceled.'
                                              .format(area_1, area_2))
                     client.send_host_others('The day cycle initiated by {} in areas {} through {} has been canceled.'
-                                            .format(client.name, area_1, area_2, client.area.id),
-                                                    is_staff=True)
+                                            .format(client.name, area_1, area_2), is_staff=True)
                     break
                 else:
                     hour_paused_at = time.time()

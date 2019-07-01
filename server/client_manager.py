@@ -181,8 +181,7 @@ class ClientManager:
             if self.mute_time:
                 if time.time() - self.mute_time < self.mflood_mutelength:
                     return self.mflood_mutelength - (time.time() - self.mute_time)
-                else:
-                    self.mute_time = 0
+                self.mute_time = 0
 
             index = (self.mus_counter - self.mflood_times + 1) % self.mflood_times
             if time.time() - self.mus_change_time[index] < self.mflood_interval:
@@ -194,10 +193,7 @@ class ClientManager:
             return 0
 
         def reload_character(self):
-            try:
-                self.change_character(self.char_id, True)
-            except ClientError:
-                raise
+            self.change_character(self.char_id, True)
 
         def reload_music_list(self, new_music_file=None):
             """
@@ -239,7 +235,7 @@ class ClientManager:
                 # Check if trying to move to a lobby/private area while sneaking
                 if area.lobby_area and not self.is_visible and not self.is_mod and not self.is_cm:
                     raise ClientError('Lobby areas do not let non-authorized users remain sneaking. Please change the music, speak IC or ask a staff member to reveal you.')
-                elif area.private_area and not self.is_visible:
+                if area.private_area and not self.is_visible:
                     raise ClientError('Private areas do not let sneaked users in. Please change the music, speak IC or ask a staff member to reveal you.')
 
                 # Check if area has some sort of lock
@@ -626,14 +622,10 @@ class ClientManager:
             self.send_host_message(msg)
 
         def get_area_info(self, area_id, mods, include_shownames=False):
-            info = ''
-            try:
-                area = self.server.area_manager.get_area_by_id(area_id)
-            except AreaError:
-                raise
-
-            info += '== Area {}: {} =='.format(area.id, area.name)
+            area = self.server.area_manager.get_area_by_id(area_id)
+            info = '== Area {}: {} =='.format(area.id, area.name)
             sorted_clients = []
+
             for c in area.clients:
                 # Conditions to print out a client in /getarea(s)
                 # * Client is not in the server selection screen and,
@@ -664,9 +656,9 @@ class ClientManager:
 
             # Verify that it should send the area info first
             if not self.is_staff():
-                if (area_id == -1 and not self.area.rp_getareas_allowed) or \
-                   (area_id != -1 and not self.area.rp_getarea_allowed):
-                       raise ClientError('This command has been restricted to authorized users only in this area while in RP mode.')
+                if ((area_id == -1 and not self.area.rp_getareas_allowed) or
+                    (area_id != -1 and not self.area.rp_getarea_allowed)):
+                    raise ClientError('This command has been restricted to authorized users only in this area while in RP mode.')
                 if not self.area.lights:
                     raise ClientError('The lights are off. You cannot see anything.')
 
@@ -687,17 +679,11 @@ class ClientManager:
                     (not self.is_staff() and not_staff_check):
                         info += '\r\n{}'.format(self.get_area_info(i, mods, include_shownames=include_shownames))
             else:
-                try:
-                    info = self.get_area_info(area_id, mods, include_shownames=include_shownames)
-                except AreaError:
-                    raise
+                info = self.get_area_info(area_id, mods, include_shownames=include_shownames)
             self.send_host_message(info)
 
         def send_area_hdid(self, area_id):
-            try:
-                info = self.get_area_hdid(area_id)
-            except AreaError:
-                raise
+            info = self.get_area_hdid(area_id)
             self.send_host_message(info)
 
         def get_area_hdid(self, area_id):
@@ -870,6 +856,11 @@ class ClientManager:
                        'Please don\'t say things like ni**er and f**k it\'s very rude and I don\'t like it',
                        'PLAY NORMIES PLS']
             return random.choice(message)
+
+        def __repr__(self):
+            return ('C::{}:{}:{}:{}:{}:{}:{}'
+                    .format(self.id, self.ipid, self.name, self.get_char_name(), self.showname,
+                            self.is_staff(), self.area.id))
 
     def __init__(self, server):
         self.clients = set()

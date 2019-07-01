@@ -74,7 +74,7 @@ class MasterServerClient:
                     self.writer.close()
                     return
                 lastping = time.time()
-                fl = True
+                ping_timeout = True
                 await self.send_raw_message('PING#%')
             await asyncio.sleep(1)
 

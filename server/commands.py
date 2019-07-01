@@ -197,7 +197,7 @@ def parse_two_area_names(client, areas, area_duplicate=True, check_valid_range=T
 
     if check_valid_range and areas[0].id > areas[1].id:
         raise ArgumentError('The ID of the first area must be lower than the ID of the second area.')
-    elif not area_duplicate and areas[0].id == areas[1].id:
+    if not area_duplicate and areas[0].id == areas[1].id:
         raise ArgumentError('Areas must be different.')
 
     return areas
@@ -290,7 +290,7 @@ def parse_time_length(time_length):
 
     if length > TIMER_LIMIT:
         raise ClientError('Suggested timer length exceeds server limit.')
-    elif length <= 0:
+    if length <= 0:
         raise ClientError('Expected positive time length.')
     return length
 
@@ -1396,7 +1396,7 @@ def ooc_cmd_handicap(client, arg):
     args = arg.split(' ')
     if len(args) < 2:
         raise ClientError('This command variation takes at least two parameters (target and length).')
-    elif len(args) >= 5:
+    if len(args) >= 5:
         raise ClientError('This command variation takes at most four parameters (target, length, name, announce_if_over).')
 
     # Obtain targets
@@ -1629,7 +1629,7 @@ def ooc_cmd_lights(client, arg):
     if not client.is_staff() and not client.area.has_lights:
         raise AreaError('This area has no lights to turn off or on.')
     if not client.is_mod and client.area.bg_lock:
-        raise AreaError("Unable to turn lights off or on: This area's background is locked.".format(arg))
+        raise AreaError("Unable to turn lights off or on: This area's background is locked.")
     if arg not in ['off', 'on']:
         raise ClientError('Invalid argument. Expected: on, off. Your argument: {}'.format(arg))
 
@@ -2273,9 +2273,9 @@ def ooc_cmd_pm(client, arg):
     c = targets[0]
     if c.pm_mute:
         raise ClientError('This user muted all pm conversation.')
-    else:
-        c.send_host_message('PM from {} in {} ({}): {}'.format(client.name, client.area.name, client.get_char_name(), msg))
-        client.send_host_message('PM sent to {}. Message: {}'.format(args[0], msg))
+
+    c.send_host_message('PM from {} in {} ({}): {}'.format(client.name, client.area.name, client.get_char_name(), msg))
+    client.send_host_message('PM sent to {}. Message: {}'.format(args[0], msg))
 
 def ooc_cmd_pos(client, arg):
     """
@@ -3505,15 +3505,15 @@ def ooc_cmd_unlock(client, arg):
 
     if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
         raise ClientError('Area is already open.')
+
+    if client.is_mod and client.area.is_modlocked:
+        client.area.modunlock()
+    elif client.is_staff() and not client.area.is_modlocked:
+        client.area.gmunlock()
+    elif not client.area.is_gmlocked and not client.area.is_modlocked:
+        client.area.unlock()
     else:
-        if client.is_mod and client.area.is_modlocked:
-            client.area.modunlock()
-        elif client.is_staff() and not client.area.is_modlocked:
-            client.area.gmunlock()
-        elif not client.area.is_gmlocked and not client.area.is_modlocked:
-            client.area.unlock()
-        else:
-            raise ClientError('You must be authorized to do that.')
+        raise ClientError('You must be authorized to do that.')
     client.send_host_message('Area is unlocked.')
 
 def ooc_cmd_unmute(client, arg):
@@ -3597,7 +3597,7 @@ def ooc_cmd_bilock(client, arg):
     areas = arg.split(', ')
     if len(areas) > 2 or arg == '':
         raise ArgumentError('This command takes one or two arguments.')
-    elif len(areas) == 2 and not client.is_staff():
+    if len(areas) == 2 and not client.is_staff():
         raise ClientError('You must be authorized to use the two-parameter version of this command.')
 
     areas = parse_two_area_names(client, areas, area_duplicate=False,
@@ -3657,7 +3657,7 @@ def ooc_cmd_unilock(client, arg):
     areas = arg.split(', ')
     if len(areas) > 2 or arg == '':
         raise ArgumentError('This command takes one or two arguments.')
-    elif len(areas) == 2 and not client.is_staff():
+    if len(areas) == 2 and not client.is_staff():
         raise ClientError('You must be authorized to use the two-parameter version of this command.')
 
     areas = parse_two_area_names(client, areas, area_duplicate=False,
@@ -3775,7 +3775,7 @@ def ooc_cmd_timer(client, arg):
         """
         if len(arg) == 1:
             raise ClientError('This command variation takes at least one subargument.')
-        elif len(arg) >= 5:
+        if len(arg) >= 5:
             raise ClientError('This command variation takes at most three subarguments.')
 
         # Check if valid length and convert to seconds
@@ -4219,19 +4219,22 @@ def ooc_cmd_exec(client, arg):
     logger.log_print("Attempting to run instruction {}".format(arg))
 
     try:
+        client.server.send_all_cmd_pred('CT', '>>>', arg, pred=lambda c: c == client)
         result = eval(arg)
         if result is not None:
-            client.send_host_message(eval(arg))
+            client.server.send_all_cmd_pred('CT', '', result, pred=lambda c: c == client)
     except:
         try:
             # Temporarily add "client" as a global variable, to allow using
             # expressions such as client.send_host_message("Hi")
             globals()['client'] = client
             exec(arg, globals())
-            client.send_host_message("Executed {}".format(arg))
+            #client.send_host_message("Executed {}".format(arg))
         except Exception as e:
             try:
-                client.send_host_message("Python error: {}: {}".format(type(e).__name__, e))
+                client.server.send_all_cmd_pred('CT', '',
+                                                'Python error: {}: {}'.format(type(e).__name__, e),
+                                                pred=lambda c: c == client)
             except:
                 pass
     globals().pop('client', None) # Don't really want "client" to be a global variable

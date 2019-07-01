@@ -305,6 +305,10 @@ class AreaManager:
             for client in self.clients:
                 client.send_command('LE', *self.get_evidence_list(client))
 
+        def __repr__(self):
+            return ('A::{}:{}:{}'
+                    .format(self.id, self.name, len(self.clients)))
+
     def __init__(self, server):
         self.server = server
         self.areas = []

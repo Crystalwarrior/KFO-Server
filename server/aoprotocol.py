@@ -96,8 +96,8 @@ class AOProtocol(asyncio.Protocol):
                 file = file[file.rfind('\\')+1:] # Remove unnecessary directories
                 info += '\r\n*Server time: {}'.format(current_time)
                 info += '\r\n*Packet details: {} {}'.format(cmd, args)
-                info += '\r\n*Client status: {}, {}, {}'.format(self.client.id, self.client.get_char_name(), self.client.is_staff())
-                info += '\r\n*Area status: {}, {}'.format(self.client.area.id, len(self.client.area.clients))
+                info += '\r\n*Client status: {}'.format(self.client)
+                info += '\r\n*Area status: {}'.format(self.client.area)
                 info += '\r\n*File: {}'.format(file)
                 info += '\r\n*Line number: {}'.format(line_num)
                 info += '\r\n*Module: {}'.format(module)
@@ -111,8 +111,8 @@ class AOProtocol(asyncio.Protocol):
                 info = 'TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET'
                 info += '\r\n*Server time: {}'.format(current_time)
                 info += '\r\n*Packet details: {} {}'.format(cmd, args)
-                info += '\r\n*Client status: {}, {}, {}'.format(self.client.id, self.client.get_char_name(), self.client.is_staff())
-                info += '\r\n*Area status: {}, {}'.format(self.client.area.id, len(self.client.area.clients))
+                info += '\r\n*Client status: {}'.format(self.client)
+                info += '\r\n*Area status: {}'.format(self.client.area)
                 logger.log_print(info)
                 traceback.print_exception(etype, evalue, etraceback)
 
@@ -214,19 +214,20 @@ class AOProtocol(asyncio.Protocol):
         major = int(version_list[1])
         minor = int(version_list[2])
 
+        # Versions of Attorney Online prior to 2.2.5 should not receive the new client instructions
+        # implemented in 2.2.5
         if args[0] != 'AO2':
             return
         if release < 2:
             return
-        elif release == 2:
+        if release == 2:
             if major < 2:
                 return
-            elif major == 2:
+            if major == 2:
                 if minor < 5:
                     return
 
         self.client.is_ao2 = True
-
         self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping', 'fastloading', 'noencryption', 'deskmod', 'evidence')
 
     def net_cmd_ch(self, _):
@@ -498,8 +499,6 @@ class AOProtocol(asyncio.Protocol):
                     function(self.client, arg)
                 except (ClientError, AreaError, ArgumentError, ServerError) as ex:
                     self.client.send_host_message(ex)
-                except Exception:
-                    raise # Explicit raising, even though not needed
         else:
             if self.client.disemvowel: #If you are disemvoweled, replace string.
                 args[1] = self.client.disemvowel_message(args[1])
