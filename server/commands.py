@@ -19,8 +19,9 @@ import random
 import hashlib
 import string
 import time
-from server.constants import TargetType
+import traceback
 
+from server.constants import TargetType
 from server import logger
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
@@ -4183,6 +4184,52 @@ def ooc_cmd_clock_unpause(client, arg):
 
     client.server.set_task_attr(c, ['as_day_cycle'], 'is_paused', False)
     client.server.set_task_attr(c, ['as_day_cycle'], 'just_unpaused', True)
+
+def ooc_cmd_lasterror(client, arg):
+    """ (MOD ONLY)
+    Obtain the latest uncaught error as a result of a client packet. This message emulates what is
+    output on the server console (i.e. it includes the full traceback as opposed to just the last
+    error which is what is usually sent to the offending client).
+    Note that ClientErrors, ServerErrors, AreaErrors and Argumenterrors are usually caught by the
+    client itself, and would not normally cause issues.
+    Returns a (Client)error if no errors had been raised and not been caught since server bootup.
+
+    SYNTAX
+    /lasterror
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /lasterror      :: May return something like this:
+
+     The last uncaught error message was the following:
+    TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET
+    *Server time: Mon Jul 1 14:10:26 2019
+    *Packet details: CT ['Iuvee', '/lasterror']
+    *Client status: C::0:1639795399:Iuvee:Kaede Akamatsu_HD:True:0
+    *Area status: A::0:Basement:1
+    Traceback (most recent call last):
+    File "...\server\aoprotocol.py", line 88, in data_received
+    self.net_cmd_dispatcher[cmd](self, args)
+    File "...\server\aoprotocol.py", line 500, in net_cmd_ct
+    function(self.client, arg)
+    File "...\server\commands.py", line 4210, in ooc_cmd_lasterror
+    final_trace = "".join(traceback.format_exc(etype, evalue, etraceback))
+    TypeError: format_exc() takes from 0 to 2 positional arguments but 3 were given
+
+    Note: yes, this is an error message that was created while testing this command.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if not client.server.last_error:
+        raise ClientError('No error messages have been raised and not been caught since server bootup.')
+
+    pre_info, etype, evalue, etraceback = client.server.last_error
+    final_trace = "".join(traceback.format_exception(etype, evalue, etraceback))
+    info = ('The last uncaught error message was the following:\n{}\n{}'
+            .format(pre_info, final_trace))
+    client.send_host_message(info)
 
 def ooc_cmd_exec(client, arg):
     """

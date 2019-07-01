@@ -36,7 +36,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190701a'
+        self.minor_version = '190701b'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -47,6 +47,7 @@ class TsuServer3:
         self.global_connection = None
         self.shutting_down = False
         self.loop = None
+        self.last_error = None
 
         self.allowed_iniswaps = None
         self.default_area = 0

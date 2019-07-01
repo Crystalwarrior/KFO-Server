@@ -115,6 +115,7 @@ class AOProtocol(asyncio.Protocol):
                 info += '\r\n*Area status: {}'.format(self.client.area)
                 logger.log_print(info)
                 traceback.print_exception(etype, evalue, etraceback)
+                self.server.last_error = [info, etype, evalue, etraceback]
 
     def connection_made(self, transport):
         """ Called upon a new client connecting
