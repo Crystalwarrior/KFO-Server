@@ -2607,10 +2607,10 @@ def ooc_cmd_scream(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You cannot send an empty message.")
 
-    client.server.broadcast_global(client, arg, mtype="<dollar>SCREAM",
-                                   condition=lambda c: not c.muted_global and
-                                   (c.is_staff() or c.area == client.area or
-                                    c.area.name in client.area.scream_range))
+    client.server.send_all_cmd_pred('CT', "<dollar>SCREAM[{}]".format(client.get_char_name()), arg,
+                                    pred=lambda c: not c.muted_global and
+                                    (c.is_staff() or c.area == client.area or
+                                     c.area.name in client.area.scream_range))
     logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg), client)
 
 def ooc_cmd_scream_set_range(client, arg):
