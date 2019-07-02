@@ -36,7 +36,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190701b'
+        self.minor_version = '190702a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -513,12 +513,15 @@ class TsuServer3:
                 # If an hour just finished without any interruptions
                 if (not self.get_task_attr(client, ['as_day_cycle'], 'is_paused') and
                     not self.get_task_attr(client, ['as_day_cycle'], 'just_unpaused')):
-                    self.send_all_cmd_pred('CT', '{}'.format(self.config['hostname']),
-                                           'It is now {}:00.'.format('{0:02d}'.format(hour)),
-                                           pred=lambda c: ((c.is_staff() or send_first_hour) and
-                                                           area_1 <= c.area.id <= area_2) or c == client)
+                    targets = [c for c in self.client_manager.clients if c == client or
+                               ((c.is_staff() or send_first_hour) and area_1 <= c.area.id <= area_2)]
+                    for c in targets:
+                        c.send_host_message('It is now {}:00.'.format('{0:02d}'.format(hour)))
+                        c.send_command('CL', client.id, hour)
+
                     hour_started_at = time.time()
                     minute_at_interruption = 0
+                    client.last_sent_clock = hour
                     self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False)
                     await asyncio.sleep(hour_length)
                 # If the clock was just unpaused, send out notif and restart the current hour
@@ -561,6 +564,11 @@ class TsuServer3:
                                              .format(area_1, area_2))
                     client.send_host_others('The day cycle initiated by {} in areas {} through {} has been canceled.'
                                             .format(client.name, area_1, area_2), is_staff=True)
+                    targets = [c for c in self.client_manager.clients if c == client or
+                               area_1 <= c.area.id <= area_2]
+                    for c in targets:
+                        c.send_command('CL', client.id, -1)
+
                     break
                 else:
                     hour_paused_at = time.time()

@@ -73,6 +73,8 @@ class AreaManager:
             self.restricted_chars = parameters['restricted_chars']
             self.default_description = parameters['default_description']
             self.has_lights = parameters['has_lights']
+            self.cbg_allowed = parameters['cbg_allowed']
+            self.song_switch_allowed = parameters['song_switch_allowed']
 
             self.description = self.default_description # Store the current description separately from the default description
             self.background_backup = self.background # Used for restoring temporary background changes
@@ -386,6 +388,10 @@ class AreaManager:
                 item['default_description'] = self.server.config['default_area_description']
             if 'has_lights' not in item:
                 item['has_lights'] = True
+            if 'cbg_allowed' not in item:
+                item['cbg_allowed'] = False
+            if 'song_switch_allowed' not in item:
+                item['song_switch_allowed'] = False
 
             # Backwards compatibility notice
             if 'sound_proof' in item:

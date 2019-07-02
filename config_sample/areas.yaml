@@ -22,6 +22,7 @@
   restricted_chars: Shuichi Saihara_HD
   default_description: A class trial room that does not like Shuichi.
   has_lights: False
+  cbg_allowed: True
 - area: Class Trial Room, 2
   background: Class Trial Debate Room V3-1_HD
   bglock: false
@@ -37,6 +38,8 @@
   scream_range: Class Trial Room 3
   restricted_chars: Kaede Akamatsu_HD, Monokuma_HD
   has_lights: True
+  song_switch_allowed: True
+  cbg_allowed: False
 - area: Class Trial Room 3
   background: Class Trial Debate Room V3-1_HD
   bglock: false
@@ -49,6 +52,8 @@
   afk_sendto: 1
   lobby_area: True
   private_area: True
+  song_switch_allowed: True
+  cbg_allowed: True
 - area: Test 1
   background: Class Trial Debate Room V3-1_HD
   bglock: false

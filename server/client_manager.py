@@ -68,6 +68,7 @@ class ClientManager:
             self.is_movement_handicapped = False
             self.show_shownames = True
             self.is_bleeding = False
+            self.last_sent_clock = None
 
             #music flood-guard stuff
             self.mus_counter = 0

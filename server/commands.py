@@ -583,7 +583,7 @@ def ooc_cmd_bg(client, arg):
     if not client.is_mod and client.area.bg_lock:
         raise AreaError("This area's background is locked.")
 
-    if client.is_staff():
+    if client.is_staff() or client.area.cbg_allowed:
         client.area.change_background_mod(arg)
     else:
         client.area.change_background(arg)
@@ -2197,6 +2197,8 @@ def ooc_cmd_ooc_unmute(client, arg):
 def ooc_cmd_play(client, arg):
     """ (STAFF ONLY)
     Plays a given track, even if not explicitly in the music list. It is the way to play custom music.
+    If the area parameter 'song_switch_allowed' is set to true, anyone in the area can use this
+    command even if they are not logged in.
 
     SYNTAX
     /play <track_name>
@@ -2208,7 +2210,7 @@ def ooc_cmd_play(client, arg):
     /play Trial(AJ).mp3         :: Plays Trial(AJ).mp3
     /play CustomTrack.mp3       :: Plays CustomTrack.mp3 (will only be audible to users with CustomTrack.mp3)
     """
-    if not client.is_staff():
+    if not (client.is_staff() or client.area.song_switch_allowed):
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
         raise ArgumentError('You must specify a song.')
