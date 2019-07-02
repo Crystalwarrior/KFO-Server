@@ -103,7 +103,12 @@ class AreaManager:
             self.clients.add(client)
 
         def remove_client(self, client):
-            self.clients.remove(client)
+            try:
+                self.clients.remove(client)
+            except KeyError:
+                info = 'Area {} does not contain client {}'.format(self, client)
+                raise KeyError(info)
+
             if len(self.clients) == 0:
                 self.unlock()
 

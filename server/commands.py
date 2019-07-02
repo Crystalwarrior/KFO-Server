@@ -267,6 +267,47 @@ def parse_id_or_ipid(client, identifier):
 
     return targets
 
+
+def parse_passage_lock(client, areas, bilock=False):
+    now_reachable = []
+    num_areas = 2 if bilock else 1
+
+    # First check if it is the case a non-authorized use is trying to change passages to areas that
+    # do not allow their passages to be modified
+    for i in range(num_areas):
+        if not areas[i].change_reachability_allowed and not client.is_staff():
+            raise ClientError('Changing area passages without authorization is disabled in area {}.'
+                              .format(areas[i].name))
+
+    # Just in case something goes wrong, have a backup to revert back
+    formerly_reachable = [areas[i].reachable_areas for i in range(num_areas)]
+
+    for i in range(num_areas):
+        reachable = areas[i].reachable_areas
+        now_reachable.append(False)
+
+        if reachable == {'<ALL>'}: # Case removing a passage from an area with passages to all areas
+            reachable = client.server.area_manager.area_names - {areas[1-i].name}
+        elif areas[1-i].name in reachable: # Case removing a passage
+            reachable = reachable - {areas[1-i].name}
+        else: # Case creating a passage
+            # Make sure that non-authorized users cannot create passages that were not already there
+            if not (client.is_staff() or areas[1-i].name in areas[i].staffset_reachable_areas or
+                    areas[i].staffset_reachable_areas == {'<ALL>'}):
+                # And if they do, restore formerly reachable areas
+                areas[0].reachable_areas = formerly_reachable[0]
+                areas[1].reachable_areas = formerly_reachable[1]
+                raise ClientError('You must be authorized to create a new area passage from {} to {}.'
+                                  .format(areas[i].name, areas[1-i].name))
+            reachable.add(areas[1-i].name)
+            now_reachable[i] = True
+
+        areas[i].reachable_areas = reachable
+        if client.is_staff():
+            areas[i].staffset_reachable_areas = reachable
+
+    return now_reachable
+
 def parse_time_length(time_length):
     """
     HELPER FUNCTION
@@ -822,7 +863,7 @@ def ooc_cmd_bloodtrail_set(client, arg):
                             is_staff=False, in_area=True)
     client.send_host_others('{} set the blood trail in area {} to {}.'
                             .format(client.name, client.area.name, message), is_staff=True)
-    client.area.bleeds_to = set([area.name for area in areas_to_link])
+    client.area.bleeds_to = {area.name for area in areas_to_link}
 
 def ooc_cmd_charselect(client, arg):
     """
@@ -2483,9 +2524,10 @@ def ooc_cmd_roll(client, arg):
 
     roll_result, num_faces = dice_roll(arg, 'roll') # Moved calculation of roll code to helper function so rollp can reuse it
 
-    client.area.send_host_message('{} rolled {} out of {}.'.format(client.get_char_name(), roll_result, num_faces))
-    logger.log_server(
-        '[{}][{}]Used /roll and got {} out of {}.'.format(client.area.id, client.get_char_name(), roll_result, num_faces), client)
+    client.area.send_host_message('{} rolled {} out of {}.'
+                                  .format(client.get_char_name(), roll_result, num_faces))
+    logger.log_server('[{}][{}]Used /roll and got {} out of {}.'
+                      .format(client.area.id, client.get_char_name(), roll_result, num_faces), client)
 
 def ooc_cmd_rollp(client, arg):
     """
@@ -2523,10 +2565,9 @@ def ooc_cmd_rollp(client, arg):
                                     client.area.id), is_staff=True)
 
     SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
-    logger.log_server(
-        '[{}][{}]Used /rollp and got {} out of {}.'
-        .format(client.area.id, client.get_char_name(),
-                hashlib.sha1((str(roll_result) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, num_faces), client)
+    logger.log_server('[{}][{}]Used /rollp and got {} out of {}.'
+                      .format(client.area.id, client.get_char_name(),
+                              hashlib.sha1((str(roll_result) + SALT).encode('utf-8')).hexdigest() + '|' + SALT, num_faces), client)
 
 def ooc_cmd_rplay(client, arg):
     """ (STAFF ONLY)
@@ -2646,7 +2687,7 @@ def ooc_cmd_scream_set_range(client, arg):
         areas = parse_area_names(client, arg.split(', '))
         if client.area in areas:
             raise ArgumentError('You cannot add the current area to the scream range.')
-        area_names = set([area.name for area in areas])
+        area_names = {area.name for area in areas}
         client.area.scream_range = area_names
 
     client.send_host_message('Set the scream range of area {} to be: {}.'
@@ -3603,8 +3644,7 @@ def ooc_cmd_bilock(client, arg):
     if len(areas) == 2 and not client.is_staff():
         raise ClientError('You must be authorized to use the two-parameter version of this command.')
 
-    areas = parse_two_area_names(client, areas, area_duplicate=False,
-                                 check_valid_range=False)
+    areas = parse_two_area_names(client, areas, area_duplicate=False, check_valid_range=False)
 
     for i in range(2):
         if not areas[i].change_reachability_allowed and not client.is_staff():
