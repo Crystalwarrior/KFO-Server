@@ -1,6 +1,6 @@
-# tsuserver3
+# tsuserver3.DR
 
-A Python-based server for Attorney Online.
+A Python-based server specialized for Danganronpa Online. It is a direct branch from tsuserver3, which is targeted towards Attorney Online.
 
 Requires Python 3.6+ and PyYAML.
 
@@ -21,9 +21,21 @@ Requires Python 3.6+ and PyYAML.
   ```
   This operation should not require administrator privileges, unless you decide to remove the `--user` option.
 * Rename `config_sample` to `config` and edit the values to your liking. Be sure to check your YAML file for syntax errors. *Use spaces only; do not use tabs.*
-* Run by either double-clicking `start_server.py` or typing in `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. It is normal to not see any output once you start the server.
-  - To stop the server, press Ctrl+C multiple times.
+* Run by either double-clicking `start_server.py` or typing in `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:
+[2019-07-02T17:33:30]: Starting...
+[2019-07-02T17:33:30]: Launching tsuserver3.DR.190702b...
+[2019-07-02T17:33:30]: Loading server configurations...
+[2019-07-02T17:33:31]: Server started successfully!
 
+* To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown process and notify you when it is done.
+[2019-07-03T14:23:04]: You have initiated a server shut down.
+[2019-07-03T14:23:04]: Kicking 12 remaining clients.
+[2019-07-03T14:23:04]: Server has successfully shut down.
+
+ - If you do not see said messages after a few seconds, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
+
+* In the unlikely event that there is an error during runtime, the server will do its best to print out to your terminal a complete traceback of the error with some additional information to help with debugging. Depending on the nature of the error, the server may or may not be able to continue execution normally.
+ 
 ## 
 
 ## Commands
@@ -32,59 +44,58 @@ Requires Python 3.6+ and PyYAML.
 
 * **help**
     - Links to this readme
-* **g** "message" 
-    - Sends a serverwide message
-* **toggleglobal** 
-    - Toggles global on and off
 * **area** "area number" 
     - Displays all areas when blank, swaps to area with number
+* **bg** "background" 
+    - Changes the current background
+* **charselect** 
+    - Puts you back to char select screen
+* **cleardoc** 
+    - Clears the doc url
+* **coinflip**
+    - Flips a coin
+* **currentmusic** 
+    - Displays the current music
+* **discord**
+    - Displays the invite link of the server's Discord server.
+* **doc** "url" 
+    - Gives the doc url if blank, updates the doc url otherwise
+* **g** "message" 
+    - Sends a serverwide message
 * **getarea** 
     - Shows the current characters in your area
 * **getareas** 
     - Shows all characters in all areas
-* **doc** "url" 
-    - Gives the doc url if blank, updates the doc url
-* **cleardoc** 
-    - Clears the doc url
+* **kickself**
+    - Removes all of of the user's clients except the one that used the command.
+* **lock**
+    - Locks your area.
 * **pm** "target" "Message" 
     - PMs the target, can either be character name or OOC name
 * **pmmute**
     - Disables all incoming PMs
-* **charselect** 
-    - Puts you back to char select screen
-* **reload** 
-    - Reloads your character ini
-* **switch** "character" 
-    - Quick switch to a character
-* **randomchar** 
-    - Randomly chooses a character
 * **pos** "position" 
     - Changes your position in the court
     - Positions: 'def', 'pro', 'hld', 'hlp', 'jud', 'wit'
-* **bg** "background" 
-    - Changes the current background
+* **randomchar** 
+    - Randomly chooses a character
+* **reload** 
+    - Reloads your character ini
 * **roll** "max, number of dice" 
     - Rolls a 1D6 if blank
 * **roll** "max, number of dice" 
     - Same as above but unseen by other clients
-* **kickself**
-    - Removes all of of the user's clients except the one that used the command.
-* **coinflip**
-    - Flips a coin
-* **8ball**
-    - Gain insight from the magic 8 ball.
-* **currentmusic** 
-    - Displays the current music
-* **evi_swap** <id1> <id2>
-    - Swaps <id1> and <id2> evidence.
-* **lock**
-    - Locks your area.
-* **unlock**
-    - Unlocks your area.
-* **discord**
-    - Displays message of current admins' Discord tags.
+* **switch** "character" 
+    - Quick switch to a character
 * **time**
     - Displays the time according to the local timezone of whoever is running the server.
+* **toggleglobal** 
+    - Toggles global on and off
+* **unlock**
+    - Unlocks your area.
+* **8ball**
+    - Gain insight from the magic 8 ball.
+	
 ### GM Commands
 * **loginrp** "Password"
     - Makes you a GM.
@@ -92,65 +103,67 @@ Requires Python 3.6+ and PyYAML.
       - Bypass Locks.
       - See all areas even in RP mode.
       - Use GM commands.
-* **rpmode** "on, off"
-    - Toggles RP mode.
-* **follow** "ID"
-    - Moves user clients to target client's area.
-* **unfollow** "ID"
-    - Undo previous command.
-* **invite** "ID"
-    - Adds target in invite list of your area.
 * **area_kick** "ID"
     - Kicks target and all his(same for all genders) multi-accs from your area and remove him from invite-list.
-* **play** "song.mp3" 
-    - Plays a song
+* **follow** "ID"
+    - Moves user clients to target client's area.
 * **gmlock**
     - Locks your area. Prevents other GMs from entering.
+* **invite** "ID"
+    - Adds target in invite list of your area.
+* **play** "song.mp3" 
+    - Plays a song
+* **rpmode** "on, off"
+    - Toggles RP mode.
+* **unfollow** "ID"
+    - Undo previous command.
+
 ### Community Manager Commands
 
 * **logincm**
     - Makes you a Community Manager.
+* **blockdj** "target"
+    - Mutes the target from changing music. 
 * **kick** "IPID" 
     - Kicks the targets with this IPID.
 * **mute** "Target" 
     - Mutes the target from all IC actions, can be IP or Character name
-* **unmute** "Target","all" 
-    - Unmutes the target, "all" will unmute all muted clients
+* **unblockdj** "target"
+    - Allows the target to change music again.
 * **ooc_mute** "Target" 
     - Mutes the target from all OOC actions via OOC-name.
 * **ooc_unmute** "Target" 
     - Unmutes the target.
-* **blockdj** "target"
-    - Mutes the target from changing music. 
-* **unblockdj** "target"
-    - Undo previous command.
+* **unmute** "Target","all" 
+    - Unmutes the target, "all" will unmute all muted clients
+
 ### Moderator Commands
 
 * **login** "Password"
     - Makes you a Moderator.
+* **allow_iniswap**
+    - Toggle allow_iniswap var in this area. 
+    - Even if iniswap at all is forbidden you can configure all-time allowed iniswaps in *iniswaps.yaml*
+* **announce** "Message" 
+    - Sends a serverwide announcement
+* **ban** "IPID"/"IP" 
+    - Bans the IPID/IP (hdid is linked to ipid so all bans happens in a same time).
+* **bglock** 
+    - Toggles the background lock in the current area
+* **charselect** "ID"
+    - Kicks a player back to the character select screen. If no ID was entered then target yourself.
+* **disemvowel/disemconsonant/remove_h** "Target"
+    - Removes the respective letters from everything said by the target
 * **gm** "Message" 
     - Sends a serverwide message with mod tag
 * **lm** "Message" 
     - Sends an area OOC message with mod tag
-* **announce** "Message" 
-    - Sends a serverwide announcement
 * **modlock**
     - Locks your area. Prevents other mods from entering.
-* **charselect** "ID"
-    - Kicks a player back to the character select screen. If no ID was entered then target yourself.
-* **ban** "IPID"/"IP" 
-    - Bans the IPID/IP (hdid is linked to ipid so all bans happens in a same time).
 * **unban** "IPID" 
     - Unbans the specified IPID .
-* **bglock** 
-    - Toggles the background lock in the current area
-* **disemvowel/disemconsonant/remove_h** "Target"
-    - Removes the respective letters from everything said by the target
 * **undisemvowel/undisemconsonant/unremove_h** "Target"
     - Undo correlating command.
-* **allow_iniswap**
-    - Toggle allow_iniswap var in this area. 
-    - Even if iniswap at all is forbidden you can configure all-time allowed iniswaps in *iniswaps.yaml*
 
 ## License
 

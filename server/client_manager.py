@@ -462,7 +462,7 @@ class ClientManager:
             self.send_command('BN', self.area.background)
             self.send_command('LE', *self.area.get_evidence_list(self))
 
-            if self.followedby is not None and not ignore_followers:
+            if self.followedby is not None and not ignore_followers and not override_all:
                 self.followedby.follow_area(area)
 
             self.reload_music_list() # Update music list to include new area's reachable areas
@@ -882,10 +882,13 @@ class ClientManager:
 
     def remove_client(self, client):
         # Clients who are following the now leaving client should no longer follow them
-        try:
+        if client.followedby:
             client.followedby.unfollow_user()
-        except AttributeError:
-            pass
+        # Clients who were being followed by the now leaving client should no longer have a pointer
+        # indicating they are being followed by them
+        if client.following:
+            client.following.followedby = None
+
         self.cur_id[client.id] = False
         for task_id in self.server.client_tasks[client.id].keys(): # Cancel client's pending tasks
             self.server.get_task(client, [task_id]).cancel()

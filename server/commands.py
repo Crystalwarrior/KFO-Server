@@ -1485,7 +1485,7 @@ def ooc_cmd_help(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
-    help_url = 'https://github.com/AttorneyOnlineVidya/tsuserver3'
+    help_url = 'https://github.com/Chrezm/Danganronpa-Online'
     help_msg = 'Available commands, source code and issues can be found here: {}'.format(help_url)
     client.send_host_message(help_msg)
 
