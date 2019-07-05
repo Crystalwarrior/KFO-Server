@@ -36,7 +36,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190704a'
+        self.minor_version = '190705a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -587,19 +587,3 @@ class TsuServer3:
                     hour = (hour + 1) % 24
             finally:
                 send_first_hour = True
-
-    def timer_remaining(self, start, length):
-        current = time.time()
-        remaining = start+length-current
-        if remaining < 10:
-            remain_text = "{} seconds".format('{0:.1f}'.format(remaining))
-        elif remaining < 60:
-            remain_text = "{} seconds".format(int(remaining))
-        elif remaining < 3600:
-            remain_text = "{}:{}".format(int(remaining//60),
-                                         '{0:02d}'.format(int(remaining%60)))
-        else:
-            remain_text = "{}:{}:{}".format(int(remaining//3600),
-                                            '{0:02d}'.format(int((remaining%3600)//60)),
-                                            '{0:02d}'.format(int(remaining%60)))
-        return remaining, remain_text

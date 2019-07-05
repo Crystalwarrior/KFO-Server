@@ -24,6 +24,7 @@ from time import localtime, strftime, time, asctime
 from enum import Enum
 
 from server import logger
+from server.constants import Constants
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server.fantacrypt import fanta_decrypt
 from server.evidence import EvidenceList
@@ -317,7 +318,6 @@ class AOProtocol(asyncio.Protocol):
         self.server.build_music_list_ao2()
         self.client.send_command('SM', *self.server.music_list_ao2)
 
-
     def net_cmd_rd(self, _):
         """ Asks for server metadata(charscheck, motd etc.) and a DONE#% signal(also best packet)
 
@@ -349,6 +349,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.change_character(cid)
         except ClientError:
             return
+        self.client.last_active = Constants.get_time()
 
     def net_cmd_ms(self, args):
         """ IC message.
@@ -456,6 +457,9 @@ class AOProtocol(asyncio.Protocol):
         if self.client.area.is_recording:
             self.client.area.recorded_messages.append(args)
 
+        self.client.last_ic_message = msg
+        self.client.last_active = Constants.get_time()
+
     def net_cmd_ct(self, args):
         """ OOC Message
 
@@ -509,9 +513,11 @@ class AOProtocol(asyncio.Protocol):
                 args[1] = self.client.remove_h_message(args[1])
 
             self.client.area.send_command('CT', self.client.name, args[1])
+            self.client.last_ooc_message = args[1]
             logger.log_server(
                 '[OOC][{}][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), self.client.name,
                                              args[1]), self.client)
+        self.client.last_active = Constants.get_time()
 
     def net_cmd_mc(self, args):
         """ Play music.
@@ -558,6 +564,8 @@ class AOProtocol(asyncio.Protocol):
         except ClientError as ex:
             self.client.send_host_message(ex)
 
+        self.client.last_active = Constants.get_time()
+
     def net_cmd_rt(self, args):
         """ Plays the Testimony/CE animation.
 
@@ -574,6 +582,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.send_command('RT', args[0])
         self.client.area.add_to_judgelog(self.client, 'used judge button {}.'.format(args[0]))
         logger.log_server("[{}]{} used judge button {}.".format(self.client.area.id, self.client.get_char_name(), args[0]), self.client)
+        self.client.last_active = Constants.get_time()
 
     def net_cmd_hp(self, args):
         """ Sets the penalty bar.
@@ -594,6 +603,7 @@ class AOProtocol(asyncio.Protocol):
                               .format(self.client.area.id, self.client.get_char_name(), args[0], args[1]), self.client)
         except AreaError:
             return
+        self.client.last_active = Constants.get_time()
 
     def net_cmd_pe(self, args):
         """ Adds a piece of evidence.
@@ -606,6 +616,7 @@ class AOProtocol(asyncio.Protocol):
 #        evi = Evidence(args[0], args[1], args[2], self.client.pos)
         self.client.area.evi_list.add_evidence(self.client, args[0], args[1], args[2], 'all')
         self.client.area.broadcast_evidence_list()
+        self.client.last_active = Constants.get_time()
 
     def net_cmd_de(self, args):
         """ Deletes a piece of evidence.
@@ -616,6 +627,7 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.area.evi_list.del_evidence(self.client, self.client.evi_list[int(args[0])])
         self.client.area.broadcast_evidence_list()
+        self.client.last_active = Constants.get_time()
 
     def net_cmd_ee(self, args):
         """ Edits a piece of evidence.
@@ -631,6 +643,7 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.area.evi_list.edit_evidence(self.client, self.client.evi_list[int(args[0])], evi)
         self.client.area.broadcast_evidence_list()
+        self.client.last_active = Constants.get_time()
 
     def net_cmd_zz(self, _):
         """ Sent on mod call.

@@ -23,7 +23,7 @@ import random
 from server import fantacrypt
 from server import logger
 from server.exceptions import ClientError, AreaError
-from server.constants import TargetType
+from server.constants import TargetType, Constants
 
 class ClientManager:
     class Client:
@@ -69,6 +69,10 @@ class ClientManager:
             self.show_shownames = True
             self.is_bleeding = False
             self.last_sent_clock = None
+            self.last_ic_message = ''
+            self.last_ooc_message = ''
+            self.joined = time.time()
+            self.last_active = Constants.get_time()
 
             #music flood-guard stuff
             self.mus_counter = 0
@@ -230,7 +234,7 @@ class ClientManager:
                 # Check if player has waited a non-zero movement delay
                 if not self.is_staff() and self.is_movement_handicapped and not override_effects:
                     start, length, name, _ = self.server.get_task_args(self, ['as_handicap'])
-                    _, remain_text = self.server.timer_remaining(start, length)
+                    _, remain_text = Constants.time_remaining(start, length)
                     raise ClientError("You are still under the effects of movement handicap '{}'. Please wait {} before changing areas.".format(name, remain_text))
 
                 # Check if trying to move to a lobby/private area while sneaking
@@ -622,9 +626,14 @@ class ClientManager:
                     msg += ' [*]'
             self.send_host_message(msg)
 
-        def get_area_info(self, area_id, mods, include_shownames=False):
+        def get_area_info(self, area_id, mods, as_mod=None, include_shownames=False,
+                          only_my_multiclients=False):
+            if as_mod is None:
+                as_mod = self.is_mod
+
             area = self.server.area_manager.get_area_by_id(area_id)
             info = '== Area {}: {} =='.format(area.id, area.name)
+
             sorted_clients = []
 
             for c in area.clients:
@@ -635,8 +644,12 @@ class ClientManager:
                 # 2. You are a staff member.
                 # 3. Client is visible.
                 # 4. Client is a mod when requiring only mods be printed.
+
+                # If only_my_multiclients is set to True, only the clients opened by the current
+                # user will be listed. Useful for /multiclients.
                 if c.char_id is not None:
-                    if c == self or self.is_staff() or c.is_visible or (mods and c.is_mod):
+                    if ((c == self or self.is_staff() or c.is_visible or (mods and c.is_mod))
+                        and not (only_my_multiclients and c.ipid != self.ipid)):
                         sorted_clients.append(c)
             sorted_clients = sorted(sorted_clients, key=lambda x: x.get_char_name())
 
@@ -646,15 +659,24 @@ class ClientManager:
                     info += ' ({})'.format(c.showname)
                 if not c.is_visible:
                     info += ' (S)'
-                if self.is_mod:
+                if as_mod:
                     info += ' ({})'.format(c.ipid)
             return info
 
-        def send_area_info(self, current_area, area_id, mods, include_shownames=False):
+        def send_area_info(self, current_area, area_id, mods, as_mod=None, include_shownames=False,
+                           only_my_multiclients=False):
+            info = self.prepare_area_info(self, current_area, area_id, mods, as_mod=as_mod,
+                                          include_shownames=include_shownames,
+                                          only_my_multiclients=only_my_multiclients)
+            info = '== Area List ==' + info
+            self.send_host_message(info)
+
+        def prepare_area_info(self, current_area, area_id, mods, as_mod=None,
+                              include_shownames=False, only_my_multiclients=False):
             #If area_id is -1, then return all areas.
             #If mods is True, then return only mods
             #If include_shownames is True, then include non-empty custom shownames.
-
+            #If only_my_multiclients is True, then include only clients opened by the current player
             # Verify that it should send the area info first
             if not self.is_staff():
                 if ((area_id == -1 and not self.area.rp_getareas_allowed) or
@@ -667,7 +689,7 @@ class ClientManager:
             info = ''
             if area_id == -1:
                 # all areas info
-                info = '== Area List =='
+                info = ''
                 unrestricted_access_area = '<ALL>' in current_area.reachable_areas
                 for i in range(len(self.server.area_manager.areas)):
                     # Get area i details...
@@ -678,10 +700,14 @@ class ClientManager:
 
                     if (self.is_staff() and len(self.server.area_manager.areas[i].clients) > 0) or \
                     (not self.is_staff() and not_staff_check):
-                        info += '\r\n{}'.format(self.get_area_info(i, mods, include_shownames=include_shownames))
+                        area_info = self.get_area_info(i, mods, as_mod=as_mod,
+                                                       include_shownames=include_shownames,
+                                                       only_my_multiclients=only_my_multiclients)
+                        info += '\r\n{}'.format(area_info)
             else:
                 info = self.get_area_info(area_id, mods, include_shownames=include_shownames)
-            self.send_host_message(info)
+
+            return info
 
         def send_area_hdid(self, area_id):
             info = self.get_area_hdid(area_id)
@@ -780,6 +806,9 @@ class ClientManager:
             else:
                 raise ClientError('Invalid password.')
 
+        def get_hdid(self):
+            return self.hdid
+
         def get_ip(self):
             return self.ipid
 
@@ -857,6 +886,34 @@ class ClientManager:
                        'Please don\'t say things like ni**er and f**k it\'s very rude and I don\'t like it',
                        'PLAY NORMIES PLS']
             return random.choice(message)
+
+        def get_multiclients(self):
+            return self.server.client_manager.get_targets(self, TargetType.IPID, self.ipid, False)
+
+        def get_info(self, as_mod=False, identifier=None):
+            if identifier is None:
+                identifier = self.id
+
+            info = '== Client information of {} =='.format(identifier)
+            info += ('\n*CID: {}. IPID: {}. HDID: {}'
+                     .format(self.id, self.ipid if as_mod else "-", self.hdid if as_mod else "-"))
+            info += ('\n*Character name: {}. Showname: {}. OOC username: {}'
+                     .format(self.get_char_name(), self.showname, self.name))
+            info += '\n*In area: {}-{}'.format(self.area.id, self.area.name)
+            info += '\n*Last IC message: {}'.format(self.last_ic_message)
+            info += '\n*Last OOC message: {}'.format(self.last_ooc_message)
+            info += ('\n*Is GM? {}. Is CM? {}. Is mod? {}.'
+                     .format(self.is_gm, self.is_cm, self.is_mod))
+            info += ('\n*Is sneaking? {}. Is bleeding? {}. Is handicapped? {}'
+                     .format(not self.is_visible, self.is_bleeding, self.is_movement_handicapped))
+            info += ('\n*Is transient? {}. Has autopass? {}. Clients open: {}'
+                     .format(self.is_transient, self.autopass, len(self.get_multiclients())))
+            info += '\n*Is muted? {}. Is OOC Muted? {}'.format(self.is_muted, self.is_ooc_muted)
+            info += '\n*Following: {}'.format(self.following.id if self.following else "-")
+            info += '\n*Followed by: {}'.format(self.followedby.id if self.followedby else "-")
+            info += ('\n*Online for: {}. Last active: {}'
+                     .format(Constants.time_elapsed(self.joined), self.last_active))
+            return info
 
         def __repr__(self):
             return ('C::{}:{}:{}:{}:{}:{}:{}'

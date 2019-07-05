@@ -23,6 +23,7 @@ import traceback
 
 from server.constants import TargetType
 from server import logger
+from server.constants import Constants
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 """ SUGGESTED IDEAS
@@ -1594,9 +1595,7 @@ def ooc_cmd_kickself(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
-    targets = client.server.client_manager.get_targets(client, TargetType.IPID, client.ipid, False)
-
-    for target in targets:
+    for target in client.get_multiclients():
         if target != client:
             target.disconnect()
 
@@ -3889,7 +3888,7 @@ def ooc_cmd_timer(client, arg):
                  and not (client.is_staff() or client == timer_client or client.area == timer_client.area):
                 continue
 
-            _, remain_text = client.server.timer_remaining(start, length)
+            _, remain_text = Constants.time_remaining(start, length)
             string_of_timers += 'Timer {} has {} remaining.\n*'.format(timer_name, remain_text)
 
         if string_of_timers == "": # No matching timers
@@ -4264,6 +4263,8 @@ def ooc_cmd_lasterror(client, arg):
     """
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
     if not client.server.last_error:
         raise ClientError('No error messages have been raised and not been caught since server bootup.')
 
@@ -4271,6 +4272,90 @@ def ooc_cmd_lasterror(client, arg):
     final_trace = "".join(traceback.format_exception(etype, evalue, etraceback))
     info = ('The last uncaught error message was the following:\n{}\n{}'
             .format(pre_info, final_trace))
+    client.send_host_message(info)
+
+def ooc_cmd_multiclients(client, arg):
+    """ (STAFF ONLY)
+    Lists all clients and the areas they are opened by a player by client ID or IPID.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /multiclients <client_id>
+    /multiclients <client_ipid>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+
+    EXAMPLES
+    Assuming client 1 with IPID 1234567890 is in the Basement (area 0) and has another client open,
+    whose client ID is 4...
+    /multiclients 1             :: May return something like the example below:
+    /multiclients 1234567890    :: May return something like the following:
+
+    == Clients of 1234567890 ==
+    == Area 0: Basement ==
+    [1] Spam_HD (1234567890)
+    == Area 4: Test 1 ==
+    [4] Eggs_HD (1234567890)
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+
+    target = parse_id_or_ipid(client, arg)[0]
+    info = target.prepare_area_info(client.area, -1, client.is_mod, as_mod=client.is_mod,
+                                    only_my_multiclients=True)
+    info = '== Clients of {} =={}'.format(target.ipid, info)
+    client.send_host_message(info)
+
+def ooc_cmd_whois(client, arg):
+    """ (STAFF ONLY)
+    List A LOT of a client properties. Mods additionally get access to a client's HDID.
+    The player can be filtered by either client ID, IPID, OOC username (in the same area) or
+    character name (in the same area). If multiple clients match the given identifier, only one of
+    them will be returned. For best results, use client ID (number in brackets), as this is the
+    only tag that is guaranteed to be unique.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /whois <target_id>
+
+    PARAMETER
+    <target_id>: Either client ID, IPID, OOC username or character name
+
+    EXAMPLES
+    /whois 1            :: Returns client info for the player whose client ID is 1.
+    /whois 1234567890   :: Returns client info for the player whose IPID is 1234567890.
+    /whois Phantom      :: Returns client info for the player whose OOC username is Phantom.
+    /whois Phantom_HD   :: Returns client info for the player whose character name is Phantom_HD.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ArgumentError('Expected identifier.')
+
+    targets = []
+    # Pretend the identifier is a client ID
+    if arg.isdigit():
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg[0]), False)
+
+    # If still needed, pretend the identifier is a client IPID
+    if len(targets) == 0 and arg.isdigit() and len(arg) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg[0]), False)
+
+    # If still needed, pretend the identifier is an OOC username
+    if len(targets) == 0:
+        targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, True)
+
+    # If still needed, pretend the identifier is a character name
+    if len(targets) == 0:
+        targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, arg, True)
+
+    # If still not found, too bad
+    if len(targets) == 0:
+        raise ArgumentError('Target not found.')
+    # Otherwise, send information
+    info = targets[0].get_info(as_mod=client.is_mod, identifier=arg)
     client.send_host_message(info)
 
 def ooc_cmd_exec(client, arg):

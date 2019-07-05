@@ -21,8 +21,8 @@ import sys
 import traceback
 import server.logger
 
-from time import asctime, localtime, time
 from server.tsuserver import TsuServer3
+from server.constants import Constants
 
 def main():
     my_server = TsuServer3()
@@ -38,7 +38,7 @@ if __name__ == '__main__':
         # Print complete traceback to console
         etype, evalue, etraceback = sys.exc_info()
         tb = traceback.extract_tb(tb=etraceback)
-        current_time = asctime(localtime(time()))
+        current_time = Constants.get_time_iso()
         file, line_num, module, func = tb[-1]
         file = file[file.rfind('\\')+1:] # Remove unnecessary directories
 

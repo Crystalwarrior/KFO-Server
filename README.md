@@ -1,10 +1,12 @@
 # tsuserver3.DR
 
-A Python-based server specialized for Danganronpa Online. It is a direct branch from tsuserver3, which is targeted towards Attorney Online.
+A Python-based server for Danganronpa Online. It is a direct branch from tsuserver3, which is targeted towards Attorney Online.
 
 Requires Python 3.6+ and PyYAML.
 
 ## How to use
+
+### Installing
 
 * Install the latest version of Python. **Python 2 will not work**, as tsuserver3 depends on async/await, which can only be found on Python 3.5 and newer.
   - If your system supports it, it is recommended that you use a separate virtual environment, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python).
@@ -21,23 +23,32 @@ Requires Python 3.6+ and PyYAML.
   ```
   This operation should not require administrator privileges, unless you decide to remove the `--user` option.
 * Rename `config_sample` to `config` and edit the values to your liking. Be sure to check your YAML file for syntax errors. *Use spaces only; do not use tabs.*
-* Run by either double-clicking `start_server.py` or typing in `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:
-[2019-07-02T17:33:30]: Starting...
-[2019-07-02T17:33:30]: Launching tsuserver3.DR.190702b...
-[2019-07-02T17:33:30]: Loading server configurations...
+
+### Running
+
+* Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:  
+[2019-07-02T17:33:30]: Starting...  
+[2019-07-02T17:33:30]: Launching tsuserver3.DR.190702b...  
+[2019-07-02T17:33:30]: Loading server configurations...  
 [2019-07-02T17:33:31]: Server started successfully!
 
-* To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown process and notify you when it is done.
-[2019-07-03T14:23:04]: You have initiated a server shut down.
-[2019-07-03T14:23:04]: Kicking 12 remaining clients.
+* To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown process and notify you when it is done.  
+[2019-07-03T14:23:04]: You have initiated a server shut down.  
+[2019-07-03T14:23:04]: Kicking 12 remaining clients.  
 [2019-07-03T14:23:04]: Server has successfully shut down.
 
- - If you do not see said messages after a few seconds, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
+  - If you do not see said messages after a few seconds, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
+* To restart a server, you can follow the steps outlined above to shut down and then start the server again.
+  
 * In the unlikely event that there is an error during runtime, the server will do its best to print out to your terminal a complete traceback of the error with some additional information to help with debugging. Depending on the nature of the error, the server may or may not be able to continue execution normally.
  
-## 
+### Updating
 
+* If you already have a version of tsuserver installed and wish to update to a new version, you can download the new version and then overwrite your previously existing files. Do note that you do not need to shut down your server before overwriting the files, but you must restart it from console in order for changes to take effect.
+
+  - This process will not overwrite your server configurations inside the "config" folder, your existing logs inside the "logs" folder, or the user information inside the "storage" folder. However, it will overwrite other files including the Python files inside the "server" folder. Therefore, make sure to save backups of those files before overwriting in case you have modified them and wish to keep an archive of your changes.
+ 
 ## Commands
 
 ### User Commands

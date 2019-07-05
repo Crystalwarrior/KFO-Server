@@ -18,6 +18,8 @@
 import logging
 import time
 
+from server.constants import Constants
+
 def setup_logger(debug):
     logging.Formatter.converter = time.gmtime
     debug_formatter = logging.Formatter('[%(asctime)s UTC]%(message)s')
@@ -60,7 +62,7 @@ def log_server(msg, client=None):
 
 def log_print(msg, client=None):
     msg = parse_client_info(client) + msg
-    current_time = time.strftime('[%Y-%m-%dT%H:%M:%S]')
+    current_time = Constants.get_time_iso()
     print('{}: {}'.format(current_time, msg))
 
 def log_pdebug(msg, client=None):
