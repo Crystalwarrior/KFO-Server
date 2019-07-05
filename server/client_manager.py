@@ -665,10 +665,11 @@ class ClientManager:
 
         def send_area_info(self, current_area, area_id, mods, as_mod=None, include_shownames=False,
                            only_my_multiclients=False):
-            info = self.prepare_area_info(self, current_area, area_id, mods, as_mod=as_mod,
+            info = self.prepare_area_info(current_area, area_id, mods, as_mod=as_mod,
                                           include_shownames=include_shownames,
                                           only_my_multiclients=only_my_multiclients)
-            info = '== Area List ==' + info
+            if area_id == -1:
+                info = '== Area List ==' + info
             self.send_host_message(info)
 
         def prepare_area_info(self, current_area, area_id, mods, as_mod=None,
@@ -689,7 +690,6 @@ class ClientManager:
             info = ''
             if area_id == -1:
                 # all areas info
-                info = ''
                 unrestricted_access_area = '<ALL>' in current_area.reachable_areas
                 for i in range(len(self.server.area_manager.areas)):
                     # Get area i details...
