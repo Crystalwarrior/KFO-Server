@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #possible keys: ip, OOC, id, cname, ipid, hdid
+
 import random
 import hashlib
 import string
@@ -55,8 +56,11 @@ def ooc_cmd_allow_iniswap(client, arg):
     status = {True: 'now', False: 'no longer'}
     client.area.iniswap_allowed = not client.area.iniswap_allowed
 
-    client.area.send_host_message('Iniswapping is {} allowed.'.format(status[client.area.iniswap_allowed]))
-    logger.log_server('[{}][{}]Set iniswapping as {} allowed'.format(client.area.id, client.get_char_name(), status[client.area.iniswap_allowed]), client)
+    client.area.send_host_message('Iniswapping is {} allowed.'
+                                  .format(status[client.area.iniswap_allowed]))
+    logger.log_server('[{}][{}]Set iniswapping as {} allowed'
+                      .format(client.area.id, client.get_char_name(),
+                              status[client.area.iniswap_allowed]), client)
 
 def ooc_cmd_announce(client, arg):
     """ (MOD ONLY)
@@ -116,9 +120,12 @@ def ooc_cmd_area(client, arg):
 
 def ooc_cmd_area_kick(client, arg):
     """ (STAFF ONLY)
-    Kicks a player by client ID or IPID to a given area by ID or name, or the default area if not given an area.
-    If given IPID, it will kick all clients opened by the user. Otherwise, it will just kick the given client.
-    Returns an error if the given identifier does not correspond to a user, or if there was an error kicking the user to the area (e.g. full area).
+    Kicks a player by client ID or IPID to a given area by ID or name, or the default area if not
+    given an area. GMs cannot perform this command on users in lobby areas.
+    If given IPID, it will kick all clients opened by the user. Otherwise, it will just kick the
+    given client.
+    Returns an error if the given identifier does not correspond to a user, or if there was some
+    sort of error in the process of kicking the user to the area (e.g. full area).
 
     SYNTAX
     /area_kick <client_id> {target_area}
@@ -140,6 +147,9 @@ def ooc_cmd_area_kick(client, arg):
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
+    if not client.is_mod and not client.is_cm and client.area.lobby_area:
+        raise ClientError('You must be authorized to kick clients in lobby areas.')
+
     arg = arg.split(' ')
     if len(arg) == 1:
         area = client.server.area_manager.get_area_by_id(client.server.default_area)
