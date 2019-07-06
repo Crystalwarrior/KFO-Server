@@ -2,3 +2,4 @@
 /storage/*.json
 /logs/*.log
 /server/__pycache__/*.pyc
+/.spyproject/

@@ -17,7 +17,6 @@
 
 import datetime
 import time
-import re
 import random
 
 from server import fantacrypt
@@ -143,12 +142,6 @@ class ClientManager:
 
         def disconnect(self):
             self.transport.close()
-
-        def is_staff(self):
-            """
-            Returns True if logged in as 'any' staff role.
-            """
-            return self.is_mod or self.is_cm or self.is_gm
 
         def change_character(self, char_id, force=False, target_area=None):
             # Added target_area parameter because when switching areas, the change character code
@@ -306,11 +299,11 @@ class ClientManager:
                     self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
                                                   '{} has left to the {}.'.format(old_char, area.name),
                                                   pred=lambda c: (c != self and c.area == old_area
-                                                  and (c.is_staff() or (old_area.lights and self.is_visible))))
+                                                                  and (c.is_staff() or (old_area.lights and self.is_visible))))
                     self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
                                                   '{} has entered from the {}.'.format(self.get_char_name(), old_area.name),
                                                   pred=lambda c: (c != self and c.area == area
-                                                  and (c.is_staff() or (area.lights and self.is_visible))))
+                                                                  and (c.is_staff() or (area.lights and self.is_visible))))
 
                 # If former or new area's lights are turned off, send special messages to non-staff
                 # announcing your presence
@@ -738,7 +731,7 @@ class ClientManager:
             # Readd sneaked players if needed so that they don't appear as taken
             # Their characters will not be able to be reused, but at least that's one less clue about their presence.
             if not self.is_staff():
-                avail_char_ids |= set([c.char_id for c in self.area.clients if not c.is_visible])
+                avail_char_ids |= {c.char_id for c in self.area.clients if not c.is_visible}
 
             char_list = [-1] * len(self.server.char_list)
             for x in avail_char_ids:
@@ -757,6 +750,26 @@ class ClientManager:
         def char_select(self):
             self.char_id = -1
             self.send_done()
+
+        def is_staff(self):
+            """
+            Returns True if logged in as 'any' staff role.
+            """
+            return self.is_mod or self.is_cm or self.is_gm
+
+        def login(self, arg, auth_command, role):
+            """
+            Wrapper function for the login method for all roles (GM, CM, Mod)
+            """
+            if len(arg) == 0:
+                raise ClientError('You must specify the password.')
+            auth_command(arg)
+
+            if self.area.evidence_mod == 'HiddenCM':
+                self.area.broadcast_evidence_list()
+            self.reload_music_list() # Update music list to show all areas
+            self.send_host_message('Logged in as a {}.'.format(role))
+            logger.log_server('Logged in as a {}.'.format(role), self)
 
         def auth_mod(self, password):
             if self.is_mod:
@@ -845,47 +858,6 @@ class ClientManager:
 
         def can_call_mod(self):
             return (time.time() * 1000.0 - self.mod_call_time) > 0
-
-        def disemvowel_message(self, message):
-            return self.remove_letters(message, 'aeiou')
-
-        def disemconsonant_message(self, message):
-            return self.remove_letters(message, 'bcdfghjklmnpqrstvwxyz')
-
-        def remove_h_message(self, message):
-            return self.remove_letters(message, 'h')
-
-        def remove_letters(self, message, target):
-            message = re.sub("[{}]".format(target), "", message, flags=re.IGNORECASE)
-            return re.sub(r"\s+", " ", message)
-
-        def gimp_message(self, message):
-            message = ['ERP IS BAN',
-                       'I\'m fucking gimped because I\'m both autistic and a retard!',
-                       'HELP ME',
-                       'Boy, I sure do love Dia, the best admin, and the cutest!!!!!',
-                       'I\'M SEVERELY AUTISTIC!!!!',
-                       '[PEES FREELY]',
-                       'KILL ME',
-                       'I found this place on reddit XD',
-                       '(((((case????)))))',
-                       'Anyone else a fan of MLP?',
-                       'does this server have sans from undertale?',
-                       'what does call mod do',
-                       'does anyone have a miiverse account?',
-                       'Drop me a PM if you want to ERP',
-                       'Join my discord server please',
-                       'can I have mod pls?',
-                       'why is everyone a missingo?',
-                       'how 2 change areas?',
-                       'does anyone want to check out my tumblr? :3',
-                       '19 years of perfection, i don\'t play games to fucking lose',
-                       'nah... your taunts are fucking useless... only defeat angers me... by trying to taunt just earns you my pitty',
-                       'When do we remove dangits',
-                       'MODS STOP GIMPING ME',
-                       'Please don\'t say things like ni**er and f**k it\'s very rude and I don\'t like it',
-                       'PLAY NORMIES PLS']
-            return random.choice(message)
 
         def get_multiclients(self):
             return self.server.client_manager.get_targets(self, TargetType.IPID, self.ipid, False)

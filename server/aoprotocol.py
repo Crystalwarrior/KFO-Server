@@ -410,13 +410,13 @@ class AOProtocol(asyncio.Protocol):
                 return
         msg = text[:256]
         if self.client.gimp: #If you are gimped, gimp message.
-            msg = self.client.gimp_message(msg)
+            msg = Constants.gimp_message()
         if self.client.disemvowel: #If you are disemvoweled, replace string.
-            msg = self.client.disemvowel_message(msg)
+            msg = Constants.disemvowel_message(msg)
         if self.client.disemconsonant: #If you are disemconsonanted, replace string.
-            msg = self.client.disemconsonant_message(msg)
+            msg = Constants.disemconsonant_message(msg)
         if self.client.remove_h: #If h is removed, replace string.
-            msg = self.client.remove_h_message(msg)
+            msg = Constants.remove_h_message(msg)
         self.client.pos = pos
         if evidence:
             if self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos != 'all':
@@ -506,11 +506,11 @@ class AOProtocol(asyncio.Protocol):
                     self.client.send_host_message(ex)
         else:
             if self.client.disemvowel: #If you are disemvoweled, replace string.
-                args[1] = self.client.disemvowel_message(args[1])
+                args[1] = Constants.disemvowel_message(args[1])
             if self.client.disemconsonant: #If you are disemconsonanted, replace string.
-                args[1] = self.client.disemconsonant_message(args[1])
+                args[1] = Constants.disemconsonant_message(args[1])
             if self.client.remove_h: #If h is removed, replace string.
-                args[1] = self.client.remove_h_message(args[1])
+                args[1] = Constants.remove_h_message(args[1])
 
             self.client.area.send_command('CT', self.client.name, args[1])
             self.client.last_ooc_message = args[1]

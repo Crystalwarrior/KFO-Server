@@ -14,12 +14,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import asyncio
 import random
-
 import time
 import yaml
 
+from server.constants import Constants
 from server.exceptions import AreaError
 from server.evidence import EvidenceList
 
@@ -79,9 +80,9 @@ class AreaManager:
             self.description = self.default_description # Store the current description separately from the default description
             self.background_backup = self.background # Used for restoring temporary background changes
             # Fix comma-separated entries
-            self.reachable_areas = fix_and_setify(self.reachable_areas)
-            self.scream_range = fix_and_setify(self.scream_range)
-            self.restricted_chars = fix_and_setify(self.restricted_chars)
+            self.reachable_areas = Constants.fix_and_setify(self.reachable_areas)
+            self.scream_range = Constants.fix_and_setify(self.scream_range)
+            self.restricted_chars = Constants.fix_and_setify(self.restricted_chars)
 
             self.default_reachable_areas = self.reachable_areas.copy()
             self.staffset_reachable_areas = self.reachable_areas.copy()
@@ -131,8 +132,8 @@ class AreaManager:
 
         def get_chars_unusable(self, allow_restricted=False):
             if allow_restricted:
-                return set([x.char_id for x in self.clients if x.char_id is not None])
-            return set([x.char_id for x in self.clients if x.char_id is not None]).union(set([self.server.char_list.index(char_name) for char_name in self.restricted_chars]))
+                return {x.char_id for x in self.clients if x.char_id is not None}
+            return {x.char_id for x in self.clients if x.char_id is not None}.union({self.server.char_list.index(char_name) for char_name in self.restricted_chars})
 
         def is_char_available(self, char_id, allow_restricted=False):
             return (char_id == -1) or (char_id not in self.get_chars_unusable(allow_restricted=allow_restricted))
@@ -456,14 +457,3 @@ class AreaManager:
 
     def default_area(self):
         return self.areas[self.server.default_area]
-
-def fix_and_setify(csv_values):
-    # For the area parameters that include lists of comma-separated values, parse them appropiately
-    # before turning them into sets
-    l = csv_values.split(', ')
-    for i in range(len(l)): #Ah, escape characters... again...
-        l[i] = l[i].replace(',\\', ',')
-
-    if l in [list(), ['']]:
-        return set()
-    return set(l)

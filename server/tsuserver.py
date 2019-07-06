@@ -16,11 +16,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
-
+import importlib
 import json
 import random
 import time
-import importlib
 import yaml
 
 from server import logger
@@ -36,7 +35,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190705b'
+        self.minor_version = '190706a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -211,8 +210,8 @@ class TsuServer3:
             for (j, password2) in enumerate(passwords):
                 if i != j and self.config[password1] == self.config[password2]:
                     info = ('Passwords "{}" and "{}" in server/config.yaml match. '
-                           'Please change them so they are different.'
-                           .format(password1, password2))
+                            'Please change them so they are different.'
+                            .format(password1, password2))
                     raise ServerError(info)
 
     def load_characters(self):
@@ -579,7 +578,7 @@ class TsuServer3:
                                              .format(area_1, area_2, time_at_pause))
                     client.send_host_others('The day cycle initiated by {} in areas {} through {} has been paused at {}.'
                                             .format(client.name, area_1, area_2, time_at_pause),
-                                                    is_staff=True)
+                                            is_staff=True)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_paused', True)
             else:
                 if (not self.get_task_attr(client, ['as_day_cycle'], 'is_paused') and

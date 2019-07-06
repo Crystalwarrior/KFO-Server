@@ -21,13 +21,11 @@ import string
 import time
 import traceback
 
-from server.constants import TargetType
 from server import logger
-from server.constants import Constants
+from server.constants import Constants, TargetType
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 """ SUGGESTED IDEAS
-*Buff the power of lights being off
 *Add a global callword system
 *Add /slippery for slippery traps
 """
@@ -35,307 +33,6 @@ from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 """ <parameter_name>: required parameter
 {parameter_name}: optional parameter
 """
-
-def dice_roll(arg, command_type):
-    """
-    HELPER FUNCTION
-    Calculate roll results.
-    Confront /roll documentation for more details.
-    """
-    NUMFACES_MAX = 11037
-    NUMDICE_MAX = 20
-    MODIFIER_LENGTH_MAX = 12 #Change to a higher number at your own risk
-    ACCEPTABLE_IN_MODIFIER = '1234567890+-*/().r'
-    MAXDIVZERO_ATTEMPTS = 10
-    MAXACCEPTABLETERM = 10 * NUMFACES_MAX #Change to a higher number at your own risk
-
-    # Default values
-    DEF_NUMDICE = 1
-    DEF_NUMFACES = 6
-    DEF_MODIFIER = ''
-
-    special_calculation = False # Is it given a modifier? False until proven otherwise
-    args = arg.split(' ')
-    arg_length = len(args)
-
-    # Parse number of dice, number of faces and modifiers
-    if arg != '':
-        if arg_length == 2:
-            dice_type, modifiers = args
-            if len(modifiers) > MODIFIER_LENGTH_MAX:
-                raise ArgumentError('The given modifier is too long to compute. Please try a shorter one')
-        elif arg_length == 1:
-            dice_type, modifiers = arg, ''
-        else:
-            raise ArgumentError('This command takes one or two arguments. Use /{} {num_dice}d<num_faces> {modifiers}'.format(command_type))
-
-        dice_type = dice_type.split('d')
-        if len(dice_type) == 1:
-            dice_type.insert(0, 1)
-        if dice_type[0] == '':
-            dice_type[0] = '1'
-
-        try:
-            num_dice, num_faces = int(dice_type[0]), int(dice_type[1])
-        except ValueError:
-            raise ArgumentError('Expected integer value for number of rolls and max value of dice')
-
-        if not 1 <= num_dice <= NUMDICE_MAX:
-            raise ArgumentError('Number of rolls must be between 1 and {}'.format(NUMDICE_MAX))
-        if not 1 <= num_faces <= NUMFACES_MAX:
-            raise ArgumentError('Dice value must be between 1 and {}'.format(NUMFACES_MAX))
-
-        for char in modifiers:
-            if char not in ACCEPTABLE_IN_MODIFIER:
-                raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
-            if char == 'r':
-                special_calculation = True
-        if '**' in modifiers: #Exponentiation manually disabled, it can be pretty dangerous
-            raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
-    else:
-        num_dice, num_faces, modifiers = DEF_NUMDICE, DEF_NUMFACES, DEF_MODIFIER #Default
-
-    roll = ''
-
-    for _ in range(num_dice):
-        divzero_attempts = 0
-        while True: # Roll until no division by zeroes happen (or it gives up)
-            # raw_roll: original roll
-            # mid_roll: result after modifiers (if any) have been applied to original roll
-            # final_roll: result after previous result has been capped between 1 and NUMFACES_MAX
-
-            raw_roll = str(random.randint(1, num_faces))
-            if modifiers == '':
-                aux_modifier = ''
-                mid_roll = int(raw_roll)
-            else:
-                if special_calculation: # Ex: /roll 20 3*r+1
-                    aux_modifier = modifiers.replace('r', raw_roll) + '='
-                elif modifiers[0].isdigit(): # Ex /roll 20 3
-                    aux_modifier = raw_roll + "+" + modifiers + '='
-                else: # Ex /roll 20 -3
-                    aux_modifier = raw_roll + modifiers + '='
-
-                # Prevent any terms from reaching past MAXACCEPTABLETERM in order to prevent server lag due to potentially frivolous dice rolls
-                # In order to do that, it will split the string by the numbers it uses
-                # and check if any individual number is larger than said term.
-                # This also doubles as a second-line defense to junk entries.
-                aux = aux_modifier[:-1]
-                for j in "+-*/()":
-                    aux = aux.replace(j, "!")
-                aux = aux.split('!')
-                for j in aux:
-                    try:
-                        if j != '' and round(float(j)) > MAXACCEPTABLETERM:
-                            raise ArgumentError("Given mathematical formula takes numbers past the server's computation limit")
-                    except ValueError:
-                        raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
-
-                try:
-                    mid_roll = round(eval(aux_modifier[:-1])) #By this point it should be 'safe' to run eval
-                except SyntaxError:
-                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
-                except TypeError: #Deals with inputs like 3(r-1), which act like Python functions.
-                    raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
-                except ZeroDivisionError:
-                    divzero_attempts += 1
-                    if divzero_attempts == MAXDIVZERO_ATTEMPTS:
-                        raise ArgumentError('Given mathematical formula produces divisions by zero too often and cannot be computed')
-                    continue
-            break
-
-        final_roll = min(num_faces, max(1, mid_roll))
-
-        # Build output string
-        if final_roll != mid_roll:
-            final_roll = "|" + str(final_roll) #This visually indicates the roll was capped off due to exceeding the acceptable roll range
-        else:
-            final_roll = str(final_roll)
-
-        if modifiers != '':
-            roll += str(raw_roll+':')
-        roll += str(aux_modifier+final_roll) + ', '
-
-    roll = roll[:-2] # Remove last ', '
-    if num_dice > 1:
-        roll = '(' + roll + ')'
-
-    return roll, num_faces
-
-def login(client, arg, auth_command, role):
-    """
-    HELPER FUNCTION
-    Wrapper function for the login method for all roles (GM, CM, Mod)
-    """
-    if len(arg) == 0:
-        raise ArgumentError('You must specify the password.')
-    auth_command(arg)
-
-    if client.area.evidence_mod == 'HiddenCM':
-        client.area.broadcast_evidence_list()
-    client.reload_music_list() # Update music list to show all areas
-    client.send_host_message('Logged in as a {}.'.format(role))
-    logger.log_server('Logged in as a {}.'.format(role), client)
-
-def parse_two_area_names(client, areas, area_duplicate=True, check_valid_range=True):
-    """
-    HELPER FUNCTION
-    Convert the area passage commands inputs into inputs for parse_area_names.
-    and check for the different cases it needs to possibly handle
-    """
-    # Convert to two-area situation
-    if len(areas) == 0:
-        areas = [client.area.name, client.area.name]
-    elif len(areas) == 1:
-        if area_duplicate:
-            areas.append(areas[0])
-        else:
-            areas.insert(0, client.area.name)
-    elif len(areas) > 2:
-        raise ArgumentError('Expected at most two area names.')
-
-    # Replace arguments with proper area objects
-    areas = parse_area_names(client, areas)
-
-    if check_valid_range and areas[0].id > areas[1].id:
-        raise ArgumentError('The ID of the first area must be lower than the ID of the second area.')
-    if not area_duplicate and areas[0].id == areas[1].id:
-        raise ArgumentError('Areas must be different.')
-
-    return areas
-
-def parse_area_names(client, areas):
-    """
-    HELPER FUNCTION
-    Convert a list of area names or IDs into area objects.
-    """
-    area_list = list()
-    # Replace arguments with proper area objects
-    for i in range(len(areas)):
-        #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
-        #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
-        #If you are that person... just... why
-        try:
-            area_list.append(client.server.area_manager.get_area_by_name(areas[i].replace(',\\', ',')))
-        except AreaError:
-            try:
-                area_list.append(client.server.area_manager.get_area_by_name(areas[i]))
-            except AreaError:
-                try:
-                    area_list.append(client.server.area_manager.get_area_by_id(int(areas[i])))
-                except:
-                    raise ArgumentError('Could not parse area {}'.format(areas[i]))
-    return area_list
-
-def parse_id(client, identifier):
-    """
-    HELPER FUNCTION
-    Given a client ID, returns the client that matches this identifier.
-    """
-    if identifier == '':
-        raise ArgumentError('Expected client ID.')
-    if not identifier.isdigit():
-        raise ArgumentError('{} does not look like a valid client ID.'.format(identifier))
-
-    targets = client.server.client_manager.get_targets(client, TargetType.ID, int(identifier), False)
-
-    if not targets:
-        raise ClientError('No targets found.')
-
-    return targets[0]
-
-def parse_id_or_ipid(client, identifier):
-    """
-    HELPER FUNCTION
-    Given either a client ID or IPID, returns all clients that match this identifier.
-
-    Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-    This places the assumption that there are no more than 10 billion clients connected simultaneously
-    but if that is the case, you probably have a much larger issue at hand.
-    """
-    if identifier == '':
-        raise ArgumentError('Expected client ID or IPID.')
-    if not identifier.isdigit() or len(identifier) > 10:
-        raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(identifier))
-
-    if len(identifier) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(identifier), False)
-    else:
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(identifier), False)
-
-    if not targets:
-        raise ArgumentError('No targets found.')
-
-    return targets
-
-
-def parse_passage_lock(client, areas, bilock=False):
-    now_reachable = []
-    num_areas = 2 if bilock else 1
-
-    # First check if it is the case a non-authorized use is trying to change passages to areas that
-    # do not allow their passages to be modified
-    for i in range(num_areas):
-        if not areas[i].change_reachability_allowed and not client.is_staff():
-            raise ClientError('Changing area passages without authorization is disabled in area {}.'
-                              .format(areas[i].name))
-
-    # Just in case something goes wrong, have a backup to revert back
-    formerly_reachable = [areas[i].reachable_areas for i in range(num_areas)]
-
-    for i in range(num_areas):
-        reachable = areas[i].reachable_areas
-        now_reachable.append(False)
-
-        if reachable == {'<ALL>'}: # Case removing a passage from an area with passages to all areas
-            reachable = client.server.area_manager.area_names - {areas[1-i].name}
-        elif areas[1-i].name in reachable: # Case removing a passage
-            reachable = reachable - {areas[1-i].name}
-        else: # Case creating a passage
-            # Make sure that non-authorized users cannot create passages that were not already there
-            if not (client.is_staff() or areas[1-i].name in areas[i].staffset_reachable_areas or
-                    areas[i].staffset_reachable_areas == {'<ALL>'}):
-                # And if they do, restore formerly reachable areas
-                areas[0].reachable_areas = formerly_reachable[0]
-                areas[1].reachable_areas = formerly_reachable[1]
-                raise ClientError('You must be authorized to create a new area passage from {} to {}.'
-                                  .format(areas[i].name, areas[1-i].name))
-            reachable.add(areas[1-i].name)
-            now_reachable[i] = True
-
-        areas[i].reachable_areas = reachable
-        if client.is_staff():
-            areas[i].staffset_reachable_areas = reachable
-
-    return now_reachable
-
-def parse_time_length(time_length):
-    """
-    HELPER FUNCTION
-    Convert seconds into a formatted string representing timelength.
-    """
-    TIMER_LIMIT = 21600 # 6 hours in seconds
-    # Check if valid length and convert to seconds
-    raw_length = time_length.split(':')
-    try:
-        length = [int(entry) for entry in raw_length]
-    except ValueError:
-        raise ClientError('Expected length of time.')
-
-    if len(length) == 1:
-        length = length[0]
-    elif len(length) == 2:
-        length = length[0]*60 + length[1]
-    elif len(length) == 3:
-        length = length[0]*3600 + length[1]*60 + length[2]
-    else:
-        raise ClientError('Expected length of time.')
-
-    if length > TIMER_LIMIT:
-        raise ClientError('Suggested timer length exceeds server limit.')
-    if length <= 0:
-        raise ClientError('Expected positive time length.')
-    return length
 
 def ooc_cmd_allow_iniswap(client, arg):
     """ (MOD ONLY)
@@ -447,10 +144,10 @@ def ooc_cmd_area_kick(client, arg):
     if len(arg) == 1:
         area = client.server.area_manager.get_area_by_id(client.server.default_area)
     else:
-        area = parse_area_names(client, [" ".join(arg[1:])])[0]
+        area = Constants.parse_area_names(client, [" ".join(arg[1:])])[0]
     output = area.id
 
-    for c in parse_id_or_ipid(client, arg[0]):
+    for c in Constants.parse_id_or_ipid(client, arg[0]):
         current_char = c.get_char_name() # Failsafe in case kicked player has their character changed due to their character being used
         try:
             c.change_area(area, override_passages=True, override_effects=True, ignore_bleeding=True)
@@ -676,7 +373,7 @@ def ooc_cmd_blockdj(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Block DJ permissions to matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         c.is_dj = False
         logger.log_server('Revoked DJ permissions to {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was revoked DJ permissions.".format(c.get_char_name()))
@@ -703,15 +400,16 @@ def ooc_cmd_bloodtrail(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     status = {False: 'no longer', True: 'now'}
-    target = parse_id(client, arg)
+    target = Constants.parse_id(client, arg)
 
     num_bleeding_before = len([c for c in target.area.clients if c.is_bleeding])
     target.is_bleeding = not target.is_bleeding
     num_bleeding_after = len([c for c in target.area.clients if c.is_bleeding])
 
     target.send_host_message('You are {} bleeding.'.format(status[target.is_bleeding]))
-    target.send_host_others('{} is {} bleeding ({}).'.format(target.get_char_name(),
-                            status[target.is_bleeding], target.area.id), is_staff=True)
+    target.send_host_others('{} is {} bleeding ({}).'
+                            .format(target.get_char_name(), status[target.is_bleeding], target.area.id),
+                            is_staff=True)
 
     if not target.area.lights or not target.is_visible:
         # Multiple cases to account for different situations
@@ -751,8 +449,9 @@ def ooc_cmd_bloodtrail_clean(client, arg):
     else:
         if not client.is_staff():
             raise ClientError('You must be authorized to do that.')
+        # Make sure the input is valid before starting
         raw_areas_to_clean = arg.split(", ")
-        areas_to_clean = set(parse_area_names(client, raw_areas_to_clean)) # Make sure the input is valid before starting
+        areas_to_clean = set(Constants.parse_area_names(client, raw_areas_to_clean))
 
     successful_cleans = set()
     for area in areas_to_clean:
@@ -856,7 +555,7 @@ def ooc_cmd_bloodtrail_set(client, arg):
     else:
         # Make sure the input is valid before starting
         raw_areas_to_link = arg.split(", ")
-        areas_to_link = set(parse_area_names(client, raw_areas_to_link) + [client.area])
+        areas_to_link = set(Constants.parse_area_names(client, raw_areas_to_link) + [client.area])
         message = 'go to {}'.format(", ".join([area.name for area in areas_to_link]))
 
     client.send_host_message('Set the blood trail in this area to {}.'.format(message))
@@ -895,7 +594,7 @@ def ooc_cmd_charselect(client, arg):
         if not client.is_mod:
             raise ClientError('You must be authorized to do that.')
 
-        for c in parse_id_or_ipid(client, arg):
+        for c in Constants.parse_id_or_ipid(client, arg):
             c.char_select()
 
 def ooc_cmd_char_restrict(client, arg):
@@ -1132,7 +831,7 @@ def ooc_cmd_disemconsonant(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Disemconsonant matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         c.disemconsonant = True
         logger.log_server('Disemconsonanted {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was disemconsonanted.".format(c.get_char_name()))
@@ -1161,7 +860,7 @@ def ooc_cmd_disemvowel(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Disemvowel matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         c.disemvowel = True
         logger.log_server('Disemvowelled {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was disemvowelled.".format(c.get_char_name()))
@@ -1209,7 +908,7 @@ def ooc_cmd_follow(client, arg):
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
-    c = parse_id(client, arg)
+    c = Constants.parse_id(client, arg)
     client.follow_user(c)
     logger.log_server('{} began following {}.'.format(client.get_char_name(), c.get_char_name()), client)
 
@@ -1299,7 +998,7 @@ def ooc_cmd_gimp(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Gimp matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         c.gimp = True
         logger.log_server('Gimping {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was gimped.".format(c.get_char_name()))
@@ -1335,7 +1034,7 @@ def ooc_cmd_globalic(client, arg):
     if len(arg) == 0 or len(areas) > 2:
         raise ArgumentError('This command takes either one or two arguments.')
 
-    areas = parse_two_area_names(client, areas)
+    areas = Constants.parse_two_area_names(client, areas)
     client.multi_ic = areas
 
     if areas[0] == areas[1]:
@@ -1443,10 +1142,10 @@ def ooc_cmd_handicap(client, arg):
         raise ClientError('This command variation takes at most four parameters (target, length, name, announce_if_over).')
 
     # Obtain targets
-    targets = parse_id_or_ipid(client, args[0])
+    targets = Constants.parse_id_or_ipid(client, args[0])
 
     # Check if valid length and convert to seconds
-    length = parse_time_length(args[1]) # Also internally validates
+    length = Constants.parse_time_length(args[1]) # Also internally validates
 
     # Check name
     if len(args) >= 3:
@@ -1547,7 +1246,7 @@ def ooc_cmd_invite(client, arg):
         raise ClientError('Area is not locked.')
 
     # Invite matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         client.area.invite_list[c.ipid] = None
         client.send_host_message('Client {} has been invited to your area.'.format(c.id))
         c.send_host_message('You have been invited to area {}.'.format(client.area.name))
@@ -1574,7 +1273,7 @@ def ooc_cmd_kick(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Kick matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         logger.log_server('Kicked {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was kicked.".format(c.get_char_name()))
         c.disconnect()
@@ -1740,14 +1439,14 @@ def ooc_cmd_login(client, arg):
     EXAMPLES
     /login Mod      :: Attempt to log in as mod with "Mod" as password.
     """
-    login(client, arg, client.auth_mod, 'moderator')
+    client.login(arg, client.auth_mod, 'moderator')
 
 def ooc_cmd_logincm(client, arg):
     """
     Logs in current user as a community manager, provided they input the correct password.
 
     SYNTAX
-    /login <cm_password>
+    /logincm <cm_password>
 
     PARAMETERS
     <cm_password>: Community manager password, found in \config\config.yaml
@@ -1755,14 +1454,14 @@ def ooc_cmd_logincm(client, arg):
     EXAMPLES
     /logincm CM     :: Attempt to log in as community maanger with "CM" as password.
     """
-    login(client, arg, client.auth_cm, 'community manager')
+    client.login(arg, client.auth_cm, 'community manager')
 
 def ooc_cmd_loginrp(client, arg):
     """
     Logs in current user as a game master, provided they input the correct password.
 
     SYNTAX
-    /login <gm_password>
+    /loginrp <gm_password>
 
     PARAMETERS
     <gm_password>: Game master password, found in \config\config.yaml
@@ -1770,7 +1469,7 @@ def ooc_cmd_loginrp(client, arg):
     EXAMPLES
     /loginrp GM     :: Attempt to log in as game master with "GM" as password.
     """
-    login(client, arg, client.auth_gm, 'game master')
+    client.login(arg, client.auth_gm, 'game master')
 
 def ooc_cmd_logout(client, arg):
     """
@@ -1860,8 +1559,9 @@ def ooc_cmd_look_clean(client, arg):
     if len(arg) == 0:
         areas_to_clean = [client.area]
     else:
+        # Make sure the input is valid before starting
         raw_areas_to_clean = arg.split(", ")
-        areas_to_clean = set(parse_area_names(client, raw_areas_to_clean)) # Make sure the input is valid before starting
+        areas_to_clean = set(Constants.parse_area_names(client, raw_areas_to_clean))
 
     successful_cleans = set()
     for area in areas_to_clean:
@@ -1960,7 +1660,7 @@ def ooc_cmd_look_set(client, arg):
                           .format(client.area.id, client.get_char_name(), arg), client)
 
     client.send_host_others('The area description was updated to {}.'
-                             .format(client.area.description), is_staff=False, in_area=True)
+                            .format(client.area.description), is_staff=False, in_area=True)
 
 def ooc_cmd_minimap(client, arg):
     """
@@ -2132,7 +1832,7 @@ def ooc_cmd_mute(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Mute matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         logger.log_server('Muted {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was muted.".format(c.get_char_name()))
         c.is_muted = True
@@ -2459,7 +2159,7 @@ def ooc_cmd_remove_h(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Removes H's to matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         c.remove_h = True
         logger.log_server('Removing h from {}.'.format(c.ipid), client)
         client.area.send_host_message("Removed h from {}.".format(c.get_char_name()))
@@ -2487,20 +2187,22 @@ def ooc_cmd_reveal(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Unsneak matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         if c != client:
             client.send_host_message("{} is no longer sneaking.".format(c.get_char_name()))
         c.change_visibility(True)
 
 def ooc_cmd_roll(client, arg):
     """
-    Rolls a given number of dice with given number of faces and modifiers.
-    If certain parameters are not given, command assumes preset defaults.
-    Returns an error if parameters exceed specified constants or an invalid mathematical operation is put as a modifier.
+    Rolls a given number of dice with given number of faces and modifiers. If certain parameters
+    are not given, command assumes preset defaults.
+    Returns an error if parameters exceed specified constants or an invalid mathematical operation
+    is put as a modifier.
 
-    For modifiers, the modifier's result will ignore the given number of faces cap and instead use NUMFACES_MAX (so dice rolls can exceed number of faces).
-    However, the modifier's result is bottom capped at 1 (so non-positive values are not allowed).
-    Modifiers follow PEMDAS, and if not given the dice result (character "r"), will try and perform the operation directly.
+    For modifiers, the modifier's result will ignore the given number of faces cap and instead use
+    NUMFACES_MAX (so dice rolls can exceed number of faces). However, the modifier's result is
+    bottom capped at 1 (so non-positive values are not allowed). Modifiers follow PEMDAS, and if
+    not given the dice result (character "r"), will try and perform the operation directly.
 
     SYNTAX
     /roll {num_faces} {modifier}
@@ -2521,8 +2223,7 @@ def ooc_cmd_roll(client, arg):
     /roll 3d6 (-1+3)*r              :: Rolls 3 d6's and mutliplies each result by 2.
     """
 
-    roll_result, num_faces = dice_roll(arg, 'roll') # Moved calculation of roll code to helper function so rollp can reuse it
-
+    roll_result, num_faces = Constants.dice_roll(arg, 'roll')
     client.area.send_host_message('{} rolled {} out of {}.'
                                   .format(client.get_char_name(), roll_result, num_faces))
     logger.log_server('[{}][{}]Used /roll and got {} out of {}.'
@@ -2552,11 +2253,9 @@ def ooc_cmd_rollp(client, arg):
     /rollp 3d6 (-1+3)*r              :: Rolls 3 d6's and mutliplies each result by 2.
     """
     if not client.area.rollp_allowed and not client.is_staff():
-        client.send_host_message("This command has been restricted to authorized users only in this area.")
-        return
+        raise ClientError("This command has been restricted to authorized users only in this area.")
 
-    roll_result, num_faces = dice_roll(arg, 'rollp') # Moved calculation of roll code to helper function so roll can reuse it
-
+    roll_result, num_faces = Constants.dice_roll(arg, 'rollp')
     client.send_host_message('You privately rolled {} out of {}.'.format(roll_result, num_faces))
     client.send_host_others('Someone rolled.', is_staff=False, in_area=True)
     client.send_host_others('{} privately rolled {} out of {} in {} ({}).'
@@ -2683,7 +2382,7 @@ def ooc_cmd_scream_set_range(client, arg):
         client.area.scream_range = set()
         area_names = '{}'
     else:
-        areas = parse_area_names(client, arg.split(', '))
+        areas = Constants.parse_area_names(client, arg.split(', '))
         if client.area in areas:
             raise ArgumentError('You cannot add the current area to the scream range.')
         area_names = {area.name for area in areas}
@@ -2720,7 +2419,8 @@ def ooc_cmd_scream_set(client, arg):
     if len(arg) == 0:
         raise ArgumentError('This command takes one area name.')
 
-    intended_area = parse_area_names(client, arg.split(', ')) # This should just return a list with one area
+    # This should just return a list with one area
+    intended_area = Constants.parse_area_names(client, arg.split(', '))
     if len(intended_area) > 1:
         raise ArgumentError('This command takes one area name (did you mean /scream_set_range ?).')
 
@@ -2879,7 +2579,7 @@ def ooc_cmd_showname_history(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Obtain matching targets's showname history
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         info = c.get_showname_history()
         client.send_host_message(info)
 
@@ -2968,7 +2668,7 @@ def ooc_cmd_showname_set(client, arg):
     showname = arg[separator+1:]
 
     # Set matching targets's showname
-    for c in parse_id_or_ipid(client, ID):
+    for c in Constants.parse_id_or_ipid(client, ID):
         try:
             c.change_showname(showname)
         except ValueError:
@@ -3006,7 +2706,7 @@ def ooc_cmd_sneak(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Sneak matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         if client.is_gm and c.area.lobby_area:
             client.send_host_message('Target client is in a lobby area. You have insufficient permissions to hide someone in such an area.')
             continue
@@ -3269,7 +2969,7 @@ def ooc_cmd_transient(client, arg):
 
     # Invert current transient status of matching targets
     status = {False: 'no longer', True: 'now'}
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         c.is_transient = not c.is_transient
         client.send_host_message('{} ({}) is {} transient to passage locks.'.format(c.get_char_name(), c.area.id, status[c.is_transient]))
         c.send_host_message('You are {} transient to passage locks.'.format(status[c.is_transient]))
@@ -3324,7 +3024,7 @@ def ooc_cmd_undisemconsonant(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Undisemconsonant matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         c.disemconsonant = False
         logger.log_server('Undisemconsonanted {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was undisemconsonanted.".format(c.get_char_name()))
@@ -3351,7 +3051,7 @@ def ooc_cmd_unblockdj(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Restore DJ permissions to matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         c.is_dj = True
         logger.log_server('Restored DJ permissions to {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was restored DJ permissions.".format(c.get_char_name()))
@@ -3379,7 +3079,7 @@ def ooc_cmd_undisemvowel(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Undisemvowel matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         c.disemvowel = False
         logger.log_server('Undisemvowelled {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was undisemvowelled.".format(c.get_char_name()))
@@ -3429,7 +3129,7 @@ def ooc_cmd_ungimp(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Ungimp matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         c.gimp = False
         logger.log_server('Ungimping {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was ungimped.".format(c.get_char_name()))
@@ -3482,7 +3182,7 @@ def ooc_cmd_unhandicap(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Obtain targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         try:
             _, _, name, _ = client.server.get_task_args(c, ['as_handicap'])
         except KeyError:
@@ -3517,7 +3217,7 @@ def ooc_cmd_uninvite(client, arg):
     /uninvite 1234567890          :: Uninvites all clients opened by the player whose IPID is 1234567890.
     """
     # Uninvite matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         try:
             client.area.invite_list.pop(c.ipid)
             client.send_host_message('Client {} was removed from the invite list of your area.'.format(c.id))
@@ -3582,7 +3282,7 @@ def ooc_cmd_unmute(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Mute matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         logger.log_server('Unmuted {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was unmuted.".format(c.get_char_name()))
         c.is_muted = False
@@ -3610,7 +3310,7 @@ def ooc_cmd_unremove_h(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     # Remove the 'Remove H' effect on matching targets
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         c.remove_h = False
         logger.log_server("Removed 'Remove H' effect on {}.".format(c.ipid), client)
         client.area.send_host_message("{} had the 'Remove H' effect removed.".format(c.get_char_name()))
@@ -3643,7 +3343,8 @@ def ooc_cmd_bilock(client, arg):
     if len(areas) == 2 and not client.is_staff():
         raise ClientError('You must be authorized to use the two-parameter version of this command.')
 
-    areas = parse_two_area_names(client, areas, area_duplicate=False, check_valid_range=False)
+    areas = Constants.parse_two_area_names(client, areas, area_duplicate=False,
+                                           check_valid_range=False)
 
     for i in range(2):
         if not areas[i].change_reachability_allowed and not client.is_staff():
@@ -3702,8 +3403,8 @@ def ooc_cmd_unilock(client, arg):
     if len(areas) == 2 and not client.is_staff():
         raise ClientError('You must be authorized to use the two-parameter version of this command.')
 
-    areas = parse_two_area_names(client, areas, area_duplicate=False,
-                                 check_valid_range=False)
+    areas = Constants.parse_two_area_names(client, areas, area_duplicate=False,
+                                           check_valid_range=False)
 
     if not areas[0].change_reachability_allowed and not client.is_staff():
         raise ClientError('Changing area reachability without authorization is disabled in area {}.'.format(areas[0].name))
@@ -3740,7 +3441,7 @@ def ooc_cmd_restore_areareachlock(client, arg):
     if len(areas) > 2:
         raise ClientError('This command takes at most two arguments.')
 
-    areas = parse_two_area_names(client, areas)
+    areas = Constants.parse_two_area_names(client, areas)
 
     for i in range(areas[0].id, areas[1].id+1):
         area = client.server.area_manager.get_area_by_id(i)
@@ -3759,7 +3460,7 @@ def ooc_cmd_delete_areareachlock(client, arg):
     if len(areas) > 2:
         raise ClientError('This command takes at most two arguments.')
 
-    areas = parse_two_area_names(client, areas)
+    areas = Constants.parse_two_area_names(client, areas)
 
     for i in range(areas[0].id, areas[1].id+1):
         area = client.server.area_manager.get_area_by_id(i)
@@ -3800,7 +3501,8 @@ def ooc_cmd_timer(client, arg):
         /timer start $length <timername> <public or not>
 
         REQUIRED
-         $length: time in seconds, or in mm:ss, or in h:mm:ss; limited to TIMER_LIMIT in function parse_time_length
+         $length: time in seconds, or in mm:ss, or in h:mm:ss; limited to TIMER_LIMIT in function
+                  Constants.parse_time_length
 
         OPTIONAL
          <timername>: Timer name; defaults to username+"Timer" if empty
@@ -3821,7 +3523,7 @@ def ooc_cmd_timer(client, arg):
             raise ClientError('This command variation takes at most three subarguments.')
 
         # Check if valid length and convert to seconds
-        length = parse_time_length(arg[1]) # Also internally validates
+        length = Constants.parse_time_length(arg[1]) # Also internally validates
 
         # Check name
         if len(arg) > 2:
@@ -3974,7 +3676,7 @@ def ooc_cmd_whereis(client, arg):
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
-    for c in parse_id_or_ipid(client, arg):
+    for c in Constants.parse_id_or_ipid(client, arg):
         client.send_host_message("Client {} ({}) is in {} ({})."
                                  .format(c.id, c.ipid, c.area.name, c.area.id))
 
@@ -4013,7 +3715,7 @@ def ooc_cmd_judgelog(client, arg):
         arg = client.area.name
 
     # Obtain matching area's judgelog
-    for area in parse_area_names(client, [arg]):
+    for area in Constants.parse_area_names(client, [arg]):
         info = area.get_judgelog()
         client.send_host_message(info)
 
@@ -4045,7 +3747,7 @@ def ooc_cmd_shoutlog(client, arg):
         arg = client.area.name
 
     # Obtain matching area's shoutlog
-    for area in parse_area_names(client, [arg]):
+    for area in Constants.parse_area_names(client, [arg]):
         info = area.get_shoutlog()
         client.send_host_message(info)
 
@@ -4079,7 +3781,8 @@ def ooc_cmd_clock(client, arg):
     except ValueError:
         raise ClientError('This command takes four arguments.')
 
-    area_1, area_2 = parse_two_area_names(client, [pre_area_1, pre_area_2], check_valid_range=True)
+    area_1, area_2 = Constants.parse_two_area_names(client, [pre_area_1, pre_area_2],
+                                                    check_valid_range=True)
     area_1, area_2 = area_1.id, area_2.id
 
     try:
@@ -4098,7 +3801,7 @@ def ooc_cmd_clock(client, arg):
 
     # Code after this assumes input is validated
     try:
-        task = client.server.get_task(client, ['as_day_cycle'])
+        client.server.get_task(client, ['as_day_cycle'])
     except KeyError:
         normie_notif = True
     else:
@@ -4112,7 +3815,7 @@ def ooc_cmd_clock(client, arg):
     client.send_host_others('{} initiated a day cycle of length {} seconds per hour in areas {} '
                             'through {}. The cycle ID is {} ({}).'
                             .format(client.name, hour_length, area_1, area_2, client.id, client.area.id),
-                                    is_staff=True)
+                            is_staff=True)
     if normie_notif:
         client.send_host_others('{} initiated a day cycle.'
                                 .format(client.get_char_name()), is_staff=False,
@@ -4141,7 +3844,7 @@ def ooc_cmd_clock_cancel(client, arg):
         arg = str(client.id)
 
     try:
-        c = parse_id(client, arg)
+        c = Constants.parse_id(client, arg)
     except ClientError:
         raise ArgumentError('Client {} is not online.'.format(arg))
 
@@ -4172,7 +3875,7 @@ def ooc_cmd_clock_pause(client, arg):
         arg = str(client.id)
 
     try:
-        c = parse_id(client, arg)
+        c = Constants.parse_id(client, arg)
     except ClientError:
         raise ArgumentError('Client {} is not online.'.format(arg))
 
@@ -4210,12 +3913,12 @@ def ooc_cmd_clock_unpause(client, arg):
         arg = str(client.id)
 
     try:
-        c = parse_id(client, arg)
+        c = Constants.parse_id(client, arg)
     except ClientError:
         raise ArgumentError('Client {} is not online.'.format(arg))
 
     try:
-        task = client.server.get_task(c, ['as_day_cycle'])
+        client.server.get_task(c, ['as_day_cycle'])
     except KeyError:
         raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
 
@@ -4302,7 +4005,7 @@ def ooc_cmd_multiclients(client, arg):
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
-    target = parse_id_or_ipid(client, arg)[0]
+    target = Constants.parse_id_or_ipid(client, arg)[0]
     info = target.prepare_area_info(client.area, -1, client.is_mod, as_mod=client.is_mod,
                                     only_my_multiclients=True)
     info = '== Clients of {} =={}'.format(target.ipid, info)

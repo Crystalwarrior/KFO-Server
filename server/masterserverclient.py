@@ -61,7 +61,7 @@ class MasterServerClient:
                 for data in data_list:
                     raw_msg = data.decode()
                     cmd, *args = raw_msg.split('#')
-                    if cmd != 'CHECK' and cmd != 'PONG':
+                    if cmd not in ('CHECK', 'PONG'):
                         logger.log_debug('[MASTERSERVER][INC][RAW]{}'.format(raw_msg))
                     elif cmd == 'CHECK':
                         await self.send_raw_message('PING#%')
