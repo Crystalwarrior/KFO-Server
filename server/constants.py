@@ -61,7 +61,7 @@ class Constants():
         MODIFIER_LENGTH_MAX = 12 #Change to a higher number at your own risk
         ACCEPTABLE_IN_MODIFIER = '1234567890+-*/().r'
         MAXDIVZERO_ATTEMPTS = 10
-        MAXACCEPTABLETERM = 10 * NUMFACES_MAX #Change to a higher number at your own risk
+        MAXACCEPTABLETERM = 2 * NUMFACES_MAX #Change to a higher number at your own risk
 
         # Default values
         DEF_NUMDICE = 1
@@ -158,7 +158,7 @@ class Constants():
                         continue
                 break
 
-            final_roll = min(num_faces, max(1, mid_roll))
+            final_roll = min(MAXACCEPTABLETERM, max(1, mid_roll))
 
             # Build output string
             if final_roll != mid_roll:
@@ -361,15 +361,6 @@ class Constants():
         return length
 
     @staticmethod
-    def remove_h_message(message):
-        return Constants.remove_letters(message, 'h')
-
-    @staticmethod
-    def remove_letters(message, target):
-        message = re.sub("[{}]".format(target), "", message, flags=re.IGNORECASE)
-        return re.sub(r"\s+", " ", message)
-
-    @staticmethod
     def parse_two_area_names(client, areas, area_duplicate=True, check_valid_range=True):
         """
         Convert the area passage commands inputs into inputs for parse_area_names.
@@ -395,3 +386,12 @@ class Constants():
             raise ArgumentError('Areas must be different.')
 
         return areas
+
+    @staticmethod
+    def remove_h_message(message):
+        return Constants.remove_letters(message, 'h')
+
+    @staticmethod
+    def remove_letters(message, target):
+        message = re.sub("[{}]".format(target), "", message, flags=re.IGNORECASE)
+        return re.sub(r"\s+", " ", message)

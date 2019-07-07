@@ -161,8 +161,10 @@ def ooc_cmd_area_kick(client, arg):
         current_char = c.get_char_name() # Failsafe in case kicked player has their character changed due to their character being used
         try:
             c.change_area(area, override_passages=True, override_effects=True, ignore_bleeding=True)
-        except Exception as error:
-            client.send_host_message('Unable to kick {} to area {}: {}'.format(current_char, output, ", ".join([str(s) for s in error.args])))
+        except ClientError as error:
+            error_mes = ", ".join([str(s) for s in error.args])
+            client.send_host_message('Unable to kick {} to area {}: {}'
+                                     .format(current_char, output, error_mes))
         else:
             client.send_host_message("Kicked {} to area {}.".format(current_char, output))
             c.send_host_message("You were kicked from the area to area {}.".format(output))
@@ -728,6 +730,183 @@ def ooc_cmd_cleargm(client, arg):
             c.send_host_message('You are no longer a GM.')
     client.send_host_message('All GMs logged out.')
 
+def ooc_cmd_clock(client, arg):
+    """ (STAFF ONLY)
+    Set up a day cycle that will tick one hour every given number of seconds and provide a time announcement
+    to a given range of areas. Starting hour is also given. The clock ID is by default the client ID
+    of the player who started the clock.
+    Requires /clock_cancel to undo. Doing /clock while running an active clock will silently overwrite
+    the old clock with the new one.
+
+    SYNTAX
+    /clock <area_range_start> <area_range_end> <hour_length> <hour_start>
+
+    PARAMETERS
+    <area_range_start>: Send notifications from this area onwards up to...
+    <area_range_end>: Send notifications up to (and including) this area.
+    <hour_length>: Length of each ingame hour (in seconds)
+    <hour_start>: Starting hour (integer from 0 to 23)
+
+    EXAMPLES
+    /clock 16 116 900 8         :: Start a 900-second hour clock spanning areas 16 through 116, with starting hour 8 a.m.
+    /clock 0 5 10 19            :: Start a 10-second hour clock spanning areas 0 through 5, with starting hour 7 p.m.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+
+    # Perform input validation first
+    try:
+        pre_area_1, pre_area_2, pre_hour_length, pre_hour_start = arg.split(' ')
+    except ValueError:
+        raise ClientError('This command takes four arguments.')
+
+    areas = Constants.parse_two_area_names(client, [pre_area_1, pre_area_2], check_valid_range=True)
+    area_1, area_2 = areas[0].id, areas[1].id
+
+    try:
+        hour_length = int(pre_hour_length)
+        if hour_length <= 0:
+            raise ValueError
+    except ValueError:
+        raise ArgumentError('Invalid hour length {}.'.format(pre_hour_length))
+
+    try:
+        hour_start = int(pre_hour_start)
+        if hour_start < 0 or hour_start >= 24:
+            raise ValueError
+    except ValueError:
+        raise ArgumentError('Invalid hour start {}.'.format(pre_hour_start))
+
+    # Code after this assumes input is validated
+    try:
+        client.server.get_task(client, ['as_day_cycle'])
+    except KeyError:
+        normie_notif = True
+    else:
+        # Already existing day cycle. Will overwrite preexisting one
+        # But first, make sure normies do not get a new notification.
+        normie_notif = False
+
+    client.send_host_message('You initiated a day cycle of length {} seconds per hour in areas {} '
+                             'through {}. The cycle ID is {}.'
+                             .format(hour_length, area_1, area_2, client.id))
+    client.send_host_others('{} initiated a day cycle of length {} seconds per hour in areas {} '
+                            'through {}. The cycle ID is {} ({}).'
+                            .format(client.name, hour_length, area_1, area_2, client.id,
+                                    client.area.id), is_staff=True)
+    if normie_notif:
+        client.send_host_others('{} initiated a day cycle.'
+                                .format(client.get_char_name()), is_staff=False,
+                                pred=lambda c: area_1 <= c.area.id <= area_2)
+
+    client.server.create_task(client, ['as_day_cycle', time.time(), area_1, area_2, hour_length,
+                                       hour_start, normie_notif])
+
+def ooc_cmd_clock_cancel(client, arg):
+    """ (STAFF ONLY)
+    Cancel the day cycle established by a player by client ID (or own if not given ID)
+    Returns an error if the given player has no associated active day cycle.
+
+    SYNTAX
+    /clock_cancel {client_id}
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLE
+    /clock_cancel 0         :: Cancels the day cycle established by the player whose client ID is 0.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        arg = str(client.id)
+
+    try:
+        c = Constants.parse_id(client, arg)
+    except ClientError:
+        raise ArgumentError('Client {} is not online.'.format(arg))
+
+    try:
+        client.server.remove_task(c, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
+
+def ooc_cmd_clock_pause(client, arg):
+    """ (STAFF ONLY)
+    Pauses the day cycle established by a player by client ID (or own if not given an ID).
+    Requires /clock_unpause to undo.
+    Returns an error if the given player has no associated active day cycle, or if their day cycle
+    is already paused.
+
+    SYNTAX
+    /clock_pause {client_id}
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLE
+    /clock_pause 0         :: Pauses the day cycle established by the player whose client ID is 0.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        arg = str(client.id)
+
+    try:
+        c = Constants.parse_id(client, arg)
+    except ClientError:
+        raise ArgumentError('Client {} is not online.'.format(arg))
+
+    try:
+        task = client.server.get_task(c, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
+
+    is_paused = client.server.get_task_attr(c, ['as_day_cycle'], 'is_paused')
+    if is_paused:
+        raise ClientError('Day cycle is already paused.')
+
+    client.server.set_task_attr(c, ['as_day_cycle'], 'is_paused', True)
+    client.server.cancel_task(task)
+
+def ooc_cmd_clock_unpause(client, arg):
+    """ (STAFF ONLY)
+    Unpauses the day cycle established by a player by client ID (or own if not given an ID).
+    Requires /clock_pause to undo.
+    Returns an error if the given player has no associated active day cycle, or if their day cycle
+    is already unpaused.
+
+    SYNTAX
+    /clock_unpause {client_id}
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLE
+    /clock_unpause 0         :: Unpauses the day cycle established by the player whose client ID is 0.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        arg = str(client.id)
+
+    try:
+        c = Constants.parse_id(client, arg)
+    except ClientError:
+        raise ArgumentError('Client {} is not online.'.format(arg))
+
+    try:
+        client.server.get_task(c, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
+
+    is_paused = client.server.get_task_attr(c, ['as_day_cycle'], 'is_paused')
+    if not is_paused:
+        raise ClientError('Day cycle is already unpaused.')
+
+    client.server.set_task_attr(c, ['as_day_cycle'], 'is_paused', False)
+    client.server.set_task_attr(c, ['as_day_cycle'], 'just_unpaused', True)
+
 def ooc_cmd_coinflip(client, arg):
     """
     Flips a coin and returns the result.
@@ -1181,7 +1360,8 @@ def ooc_cmd_handicap(client, arg):
 
 def ooc_cmd_help(client, arg):
     """
-    Returns the website with all available commands and their instructions (usually a GitHub repository)
+    Returns the website with all available commands and their instructions (usually a GitHub
+    repository).
 
     SYNTAX
     /help
@@ -1201,8 +1381,8 @@ def ooc_cmd_help(client, arg):
 
 def ooc_cmd_iclock(client, arg):
     """ (STAFF ONLY)
-    Toggles IC messages by non-staff in the current area being allowed/disallowed.
-    Returns an error if not authorized, or if a GM attempts to lock IC in an area where such an action is forbidden.
+    Toggles IC messages by non-staff in the current area being allowed/disallowed. Returns an error
+    if not authorized, or if a GM attempts to lock IC in an area where such an action is forbidden.
 
     SYNTAX
     /iclock
@@ -1224,18 +1404,19 @@ def ooc_cmd_iclock(client, arg):
     status = {True: 'enabled', False: 'disabled'}
 
     client.send_host_message('You {} the IC lock in this area.'.format(status[client.area.ic_lock]))
-    client.send_host_others('A staff member has {} the IC lock in this area.'.format(status[client.area.ic_lock]),
-                            is_staff=False, in_area=True)
+    client.send_host_others('A staff member has {} the IC lock in this area.'
+                            .format(status[client.area.ic_lock]), is_staff=False, in_area=True)
     client.send_host_others('{} has {} the IC lock in area {} ({}).'
-                            .format(client.name, status[client.area.ic_lock], client.area.name, client.area.id),
-                            is_staff=True)
+                            .format(client.name, status[client.area.ic_lock], client.area.name,
+                                    client.area.id), is_staff=True)
 
-    logger.log_server('[{}][{}]Changed IC lock to {}'.format(client.area.id, client.get_char_name(), client.area.ic_lock), client)
+    logger.log_server('[{}][{}]Changed IC lock to {}'.format(client.area.id, client.get_char_name(),
+                      client.area.ic_lock), client)
 
 def ooc_cmd_invite(client, arg):
     """ (STAFF ONLY)
-    Adds a client based on client ID or IPID to the area's invite list.
-    If given IPID, it will invite all clients opened by the user. Otherwise, it will just do it to the given client.
+    Adds a client based on client ID or IPID to the area's invite list. If given IPID, it will
+    invite all clients opened by the user. Otherwise, it will just do it to the given client.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -1248,7 +1429,7 @@ def ooc_cmd_invite(client, arg):
 
     EXAMPLES
     /invite 1                     :: Invites the player whose client ID is 1.
-    /invite 1234567890            :: Invites all clients opened by the player whose IPID is 1234567890.
+    /invite 1234567890            :: Invites all clients of the player whose IPID is 1234567890.
     """
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
@@ -1261,10 +1442,50 @@ def ooc_cmd_invite(client, arg):
         client.send_host_message('Client {} has been invited to your area.'.format(c.id))
         c.send_host_message('You have been invited to area {}.'.format(client.area.name))
 
+def ooc_cmd_judgelog(client, arg):
+    """ (STAFF ONLY)
+    List the last 20 judge actions performed in the current area. This includes using the judge
+    buttons and changing the penalty bars. If given an argument, it will return the judgelog of the
+    given area by ID or name. Otherwise, it will obtain the one from the current area.
+    Returns an error if the given identifier does not correspond to an area.
+
+    SYNTAX
+    /judgelog {target_area}
+
+    OPTIONAL PARAMETERS
+    {target_area}: area whose judgelog will be returned (either ID or name)
+
+    EXAMPLE
+    If currently in the Basement (area 0)...
+    /judgelog           :: You may get something like the next example
+    /judgelog 0         :: You may get something like this
+
+    == Judge log of Basement (0) ==
+    *Sat Jun 29 12:06:03 2019 | [1] Judge (1234567890) used judge button testimony1.
+    *Sat Jun 29 12:06:07 2019 | [1] Judge (1234567890) used judge button testimony4.
+    *Sat Jun 29 12:06:12 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
+    *Sat Jun 29 12:06:12 2019 | [1] Judge (1234567890) changed penalty bar 2 to 8.
+    *Sat Jun 29 12:06:14 2019 | [1] Judge (1234567890) changed penalty bar 1 to 9.
+    *Sat Jun 29 12:06:15 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
+    *Sat Jun 29 12:06:16 2019 | [1] Judge (1234567890) changed penalty bar 1 to 7.
+    *Sat Jun 29 12:06:17 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
+    *Sat Jun 29 12:06:19 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        arg = client.area.name
+
+    # Obtain matching area's judgelog
+    for area in Constants.parse_area_names(client, [arg]):
+        info = area.get_judgelog()
+        client.send_host_message(info)
+
 def ooc_cmd_kick(client, arg):
     """ (CM AND MOD ONLY)
-    Kicks a user from the server. The target is identified by either client ID (number in brackets) or IPID (number in parentheses).
-    If given IPID, it will kick all clients opened by the user. Otherwise, it will just kick the given client.
+    Kicks a user from the server. The target is identified by either client ID (number in brackets)
+    or IPID (number in parentheses). If given IPID, it will kick all clients opened by the user.
+    Otherwise, it will just kick the given client.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -1290,7 +1511,8 @@ def ooc_cmd_kick(client, arg):
 
 def ooc_cmd_kickself(client, arg):
     """
-    Kicks other clients opened by the current user. Useful whenever a user loses connection and the old client is ghosting.
+    Kicks other clients opened by the current user. Useful whenever a user loses connection and the
+    old client is ghosting.
 
     SYNTAX
     /kickself
@@ -1354,8 +1576,56 @@ def ooc_cmd_knock(client, arg):
     client.send_host_others('Someone knocked on your door from area {}.'.format(client.area.name),
                             is_staff=False, in_area=target_area)
     client.send_host_others('{} knocked on the door to area {} in area {} ({}).'
-                            .format(client.get_char_name(), target_area.name, client.area.name, client.area.id),
-                            is_staff=True)
+                            .format(client.get_char_name(), target_area.name, client.area.name,
+                                    client.area.id), is_staff=True)
+
+def ooc_cmd_lasterror(client, arg):
+    """ (MOD ONLY)
+    Obtain the latest uncaught error as a result of a client packet. This message emulates what is
+    output on the server console (i.e. it includes the full traceback as opposed to just the last
+    error which is what is usually sent to the offending client).
+    Note that ClientErrors, ServerErrors, AreaErrors and Argumenterrors are usually caught by the
+    client itself, and would not normally cause issues.
+    Returns a (Client)error if no errors had been raised and not been caught since server bootup.
+
+    SYNTAX
+    /lasterror
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /lasterror      :: May return something like this:
+
+     The last uncaught error message was the following:
+    TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET
+    *Server time: Mon Jul 1 14:10:26 2019
+    *Packet details: CT ['Iuvee', '/lasterror']
+    *Client status: C::0:1639795399:Iuvee:Kaede Akamatsu_HD:True:0
+    *Area status: A::0:Basement:1
+    Traceback (most recent call last):
+    File "...\server\aoprotocol.py", line 88, in data_received
+    self.net_cmd_dispatcher[cmd](self, args)
+    File "...\server\aoprotocol.py", line 500, in net_cmd_ct
+    function(self.client, arg)
+    File "...\server\commands.py", line 4210, in ooc_cmd_lasterror
+    final_trace = "".join(traceback.format_exc(etype, evalue, etraceback))
+    TypeError: format_exc() takes from 0 to 2 positional arguments but 3 were given
+
+    Note: yes, this is an error message that was created while testing this command.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+    if not client.server.last_error:
+        raise ClientError('No error messages have been raised and not been caught since server bootup.')
+
+    pre_info, etype, evalue, etraceback = client.server.last_error
+    final_trace = "".join(traceback.format_exception(etype, evalue, etraceback))
+    info = ('The last uncaught error message was the following:\n{}\n{}'
+            .format(pre_info, final_trace))
+    client.send_host_message(info)
 
 def ooc_cmd_lights(client, arg):
     """
@@ -1758,6 +2028,40 @@ def ooc_cmd_motd(client, arg):
         raise ArgumentError('This command has no arguments.')
 
     client.send_motd()
+
+def ooc_cmd_multiclients(client, arg):
+    """ (STAFF ONLY)
+    Lists all clients and the areas they are opened by a player by client ID or IPID.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /multiclients <client_id>
+    /multiclients <client_ipid>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+
+    EXAMPLES
+    Assuming client 1 with IPID 1234567890 is in the Basement (area 0) and has another client open,
+    whose client ID is 4...
+    /multiclients 1             :: May return something like the example below:
+    /multiclients 1234567890    :: May return something like the following:
+
+    == Clients of 1234567890 ==
+    == Area 0: Basement ==
+    [1] Spam_HD (1234567890)
+    == Area 4: Test 1 ==
+    [4] Eggs_HD (1234567890)
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+
+    target = Constants.parse_id_or_ipid(client, arg)[0]
+    info = target.prepare_area_info(client.area, -1, client.is_mod, as_mod=client.is_mod,
+                                    only_my_multiclients=True)
+    info = '== Clients of {} =={}'.format(target.ipid, info)
+    client.send_host_message(info)
 
 def ooc_cmd_music_list(client, arg):
     """
@@ -2489,6 +2793,38 @@ def ooc_cmd_scream_range(client, arg):
 
     client.send_host_message(info)
 
+def ooc_cmd_shoutlog(client, arg):
+    """ (STAFF ONLY)
+    List the last 20 shouts performed in the current area (Hold it, Objection, Take That, etc.).
+    If given an argument, it will return the shoutlog of the given area by ID or name.
+    Otherwise, it will obtain the one from the current area.
+    Returns an error if the given identifier does not correspond to an area.
+
+    SYNTAX
+    /shoutlog {target_area}
+
+    OPTIONAL PARAMETERS
+    {target_area}: area whose shoutlog will be returned (either ID or name)
+
+    EXAMPLE
+    If currently in the Basement (area 0)...
+    /shoutlog           :: You may get something like the next example
+    /shoutlog 0         :: You may get something like this
+
+    == Shout log of Basement (0) ==
+    *Sat Jun 29 13:15:56 2019 | [1] Phantom (1234567890) used shout 1 with the message: I consent
+    *Sat Jun 29 13:16:41 2019 | [1] Phantom (1234567890) used shout 3 with the message: u wrong m9
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        arg = client.area.name
+
+    # Obtain matching area's shoutlog
+    for area in Constants.parse_area_names(client, [arg]):
+        info = area.get_shoutlog()
+        client.send_host_message(info)
+
 def ooc_cmd_showname(client, arg):
     """
     If given an argument, sets the client's showname to that.
@@ -2807,6 +3143,174 @@ def ooc_cmd_time12(client, arg):
         raise ArgumentError('This command has no arguments.')
 
     client.send_host_message(time.strftime('%a %b %e %I:%M:%S %p (%z) %Y'))
+
+def ooc_cmd_timer(client, arg):
+    """
+    Start a timer.
+
+    SYNTAX
+    /timer <length> {timername} {public}
+
+    PARAMETERS
+    <length>: time in seconds, or in mm:ss, or in h:mm:ss; limited to TIMER_LIMIT in function
+             Constants.parse_time_length
+
+    OPTIONAL PARAMETERS
+    {timername}: Timer name; defaults to username+"Timer" if empty
+    {public or not}: Whether the timer is public or not; defaults to public if not fed one of
+    "False", "false", "0", "No", "no".
+
+    EXAMPLES
+    Assuming the player has OOC name Phantom...
+    /timer 10               :: Starts a public timer "PhantomTimer" of 10 seconds.
+    /timer 3:00 T           :: Starts a public timer "T" of length 3 minutes.
+    /timer 5:53:21 Spam No  :: Starts a private timer "Spam" of length 5 hours, 53 mins and 21 secs.
+
+    Public status functionality
+    * Non-public timers will only send timer announcements/can only be consulted by
+      the person who initiated the timer and staff
+    * Public timers initiated by non-staff will only send timer announcements/can only be
+      be consulted by staff and people in the same area as the person who initiated the timer
+    * Public timers initiated by staff will send timer announcements/can be consulted by
+      anyone at any area.
+    """
+    if len(arg) == 0:
+        raise ClientError('This command takes at least one argument.')
+    arg = arg.split(' ')
+    if len(arg) >= 4:
+        raise ClientError('This command takes at most three arguments.')
+
+    # Check if valid length and convert to seconds
+    length = Constants.parse_time_length(arg[0]) # Also internally validates
+
+    # Check name
+    if len(arg) > 1:
+        name = arg[1]
+    else:
+        name = client.name.replace(" ", "") + "Timer" # No spaces!
+    if name in client.server.active_timers.keys():
+        raise ClientError('Timer name {} is already taken.'.format(name))
+
+    # Check public status
+    if len(arg) > 2 and arg[2] in ['False', 'false', '0', 'No', 'no']:
+        is_public = False
+    else:
+        is_public = True
+
+    client.server.active_timers[name] = client #Add to active timers list
+    client.send_host_message('You initiated a timer "{}" of length {} seconds.'.format(name, length))
+    client.send_host_others('{} initiated a timer "{}" of length {} seconds in area {} ({}).'
+                            .format(client.get_char_name(), name, length, client.area.name,
+                                    client.area.id), is_staff=True)
+    client.send_host_others('{} initiated a timer "{}" of length {} seconds.'
+                            .format(client.get_char_name(), name, length), is_staff=False,
+                            pred=lambda c: is_public)
+
+    client.server.create_task(client, ['as_timer', time.time(), length, name, is_public])
+
+def ooc_cmd_timer_cancel(client, arg):
+    """
+    Cancel given timer by timer name. Requires logging in to cancel timers initiated by other users.
+    Returns an error if timer does not exist or if the user is not authorized to cancel the timer.
+
+    SYNTAX
+    /timer_cancel <timername>
+
+    PARAMETERS
+    <timername>: Timer name to cancel
+
+    EXAMPLES
+    Assuming player Spam started a timer "S", and the moderator Phantom started a timer "P"...
+    /timer_cancel S     :: Both Spam and Phantom would cancel timer S if either ran this.
+    /timer_cancel P     :: Only Phantom would cancel timer P if either ran this.
+    """
+    if len(arg) == 0:
+        raise ArgumentError('Expected timer name.')
+    arg = arg.split(' ')
+    if len(arg) != 1:
+        raise ClientError('This command variation takes exactly one argument.')
+
+    timer_name = arg[0]
+    try:
+        timer_client = client.server.active_timers[timer_name]
+    except KeyError:
+        raise ClientError('Timer {} is not an active timer.'.format(timer_name))
+
+    # Non-staff are only allowed to cancel their own timers
+    if not client.is_staff() and client != timer_client:
+        raise ClientError('You must be authorized to do that.')
+
+    timer = client.server.get_task(timer_client, ['as_timer'])
+    client.server.cancel_task(timer)
+
+def ooc_cmd_timer_get(client, arg):
+    """
+    Get remaining time from given timer if given a timer name. Otherwise, list all viewable timers.
+    Returns an error if user attempts to consult a timer they have no permissions for.
+
+    SYNTAX
+    /timer_get {timername}
+
+    OPTIONAL PARAMETERS
+    {timername}: Check time remaining in given timer; defaults to all timers if not given one.
+
+    EXAMPLES
+    Assuming a player Spam started a private timer "S", a moderator Phantom started a timer "P",
+    and a third player Eggs started a public timer "E"...
+    /timer_get      :: Spam and Phantom would get the remaining times of S, P and E; Eggs only S and P.
+    /timer_get S    :: Spam and Phantom would get the remaining time of S, Eggs would get an error.
+    /timer_get P    :: Spam, Phantom and Eggs would get the remaining time of P.
+    /timer_get E    :: Spam, Phantom and Eggs would get the remaining time of E.
+    """
+    arg = arg.split(' ') if arg else list()
+    if len(arg) > 1:
+        raise ClientError('This command takes at most one argument.')
+
+    string_of_timers = ""
+
+    if len(arg) == 1:
+        # Check specific timer
+        timer_name = arg[0]
+        if timer_name not in client.server.active_timers.keys():
+            raise ClientError('Timer {} is not an active timer.'.format(timer_name))
+        timers_to_check = [timer_name]
+    else: # Case len(arg) == 0
+        # List all timers
+        timers_to_check = client.server.active_timers.keys()
+        if len(timers_to_check) == 0:
+            raise ClientError('No active timers.')
+
+    for timer_name in timers_to_check:
+        timer_client = client.server.active_timers[timer_name]
+        start, length, _, is_public = client.server.get_task_args(timer_client, ['as_timer'])
+
+        # Non-public timers can only be consulted by staff and the client who started the timer
+        if not is_public and not (client.is_staff() or client == timer_client):
+            continue
+
+        # Non-staff initiated public timers can only be consulted by all staff and
+        # clients in the same area as the timer initiator
+        elif (is_public and not timer_client.is_staff() and not
+              (client.is_staff() or client == timer_client or client.area == timer_client.area)):
+            continue
+
+        _, remain_text = Constants.time_remaining(start, length)
+        string_of_timers += 'Timer {} has {} remaining.\n*'.format(timer_name, remain_text)
+
+    if string_of_timers == "": # No matching timers
+        if len(arg) == 1: # Checked for a specific timer
+            # This case happens when a non-authorized user attempts to check
+            # a non-public timer
+            string_of_timers = "Timer {} is not an active timer.  ".format(timer_name)
+            # Double space intentional
+        else: # len(arg) == 0
+            # This case happens when a non-authorized user attempts to check
+            # all timers and all timers are non-public or non-viewable.
+            string_of_timers = "No timers available.  " # Double space intentional
+    elif len(arg) == 0: # Used /timer_get
+        string_of_timers = "Current active timers:\n*" + string_of_timers # Add lead
+
+    client.send_host_message(string_of_timers[:-2]) # Ignore last newline character
 
 def ooc_cmd_ToD(client, arg):
     """
@@ -3325,6 +3829,100 @@ def ooc_cmd_unremove_h(client, arg):
         logger.log_server("Removed 'Remove H' effect on {}.".format(c.ipid), client)
         client.area.send_host_message("{} had the 'Remove H' effect removed.".format(c.get_char_name()))
 
+def ooc_cmd_version(client, arg):
+    """
+    Obtain the current version of the server software.
+
+    SYNTAX
+    /version
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /version        :: May return something like: This server is running tsuserver3.DR.190629a
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+
+    client.send_host_message('This server is running {}.'.format(client.server.software))
+
+def ooc_cmd_whereis(client, arg):
+    """ (STAFF ONLY)
+    Obtain the current area of a player by client ID (number in brackets) or IPID (number in parentheses).
+    If given IPID, it will obtain the area info for all clients opened by the user. Otherwise, it will just obtain the one from the given client.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /whereis <client_id>
+    /whereis <client_ipid>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+
+    EXAMPLES
+    Assuming client 1 with IPID 1234567890 is in the Basement (area 0)...
+    /whereis 1           :: May return something like this: Client 1 (1234567890) is in Basement (0)
+    /whereis 1234567890  :: May return something like this: Client 1 (1234567890) is in Basement (0)
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+
+    for c in Constants.parse_id_or_ipid(client, arg):
+        client.send_host_message("Client {} ({}) is in {} ({})."
+                                 .format(c.id, c.ipid, c.area.name, c.area.id))
+
+def ooc_cmd_whois(client, arg):
+    """ (STAFF ONLY)
+    List A LOT of a client properties. Mods additionally get access to a client's HDID.
+    The player can be filtered by either client ID, IPID, OOC username (in the same area) or
+    character name (in the same area). If multiple clients match the given identifier, only one of
+    them will be returned. For best results, use client ID (number in brackets), as this is the
+    only tag that is guaranteed to be unique.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /whois <target_id>
+
+    PARAMETER
+    <target_id>: Either client ID, IPID, OOC username or character name
+
+    EXAMPLES
+    /whois 1            :: Returns client info for the player whose client ID is 1.
+    /whois 1234567890   :: Returns client info for the player whose IPID is 1234567890.
+    /whois Phantom      :: Returns client info for the player whose OOC username is Phantom.
+    /whois Phantom_HD   :: Returns client info for the player whose character name is Phantom_HD.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) == 0:
+        raise ArgumentError('Expected identifier.')
+
+    targets = []
+    # Pretend the identifier is a client ID
+    if arg.isdigit():
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg[0]), False)
+
+    # If still needed, pretend the identifier is a client IPID
+    if len(targets) == 0 and arg.isdigit() and len(arg) == 10:
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg[0]), False)
+
+    # If still needed, pretend the identifier is an OOC username
+    if len(targets) == 0:
+        targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, True)
+
+    # If still needed, pretend the identifier is a character name
+    if len(targets) == 0:
+        targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, arg, True)
+
+    # If still not found, too bad
+    if len(targets) == 0:
+        raise ArgumentError('Target not found.')
+    # Otherwise, send information
+    info = targets[0].get_info(as_mod=client.is_mod, identifier=arg)
+    client.send_host_message(info)
+
 def ooc_cmd_8ball(client, arg):
     """
     Call upon the wisdom of a magic 8 ball. The result is sent to all clients in the sender's area.
@@ -3493,583 +4091,6 @@ def ooc_cmd_toggle_areareachlock(client, arg):
     else:
         client.area.change_reachability_allowed = True
         client.area.send_host_message('The use of the /unilock and /bilock commands affecting this area commands in this area has been enabled to all users.')
-
-def ooc_cmd_timer(client, arg):
-    if len(arg) == 0:
-        raise ClientError('This command takes at least one argument.')
-    arg = arg.split(' ')
-    arg_type = arg[0]
-
-    # Support for three command variations at the moment
-    # Start (start timers)
-    # Get (get status of given timer(s))
-    # Cancel (cancel given timer)
-
-    if arg_type == 'start':
-        """ Start a timer
-        SYNTAX
-        /timer start $length <timername> <public or not>
-
-        REQUIRED
-         $length: time in seconds, or in mm:ss, or in h:mm:ss; limited to TIMER_LIMIT in function
-                  Constants.parse_time_length
-
-        OPTIONAL
-         <timername>: Timer name; defaults to username+"Timer" if empty
-         <public or not>: Whether the timer is public or not; defaults to public if
-         not fed one of "False", "false", "0", "No", "no".
-
-        Public status functionality
-        * Non-public timers will only send timer announcements/can only be consulted by
-          the person who initiated the timer and staff
-        * Public timers initiated by non-staff will only send timer announcements/can only be
-          be consulted by staff and people in the same area as the person who initiated the timer
-        * Public timers initiated by staff will send timer announcements/can be consulted by
-          anyone at any area.
-        """
-        if len(arg) == 1:
-            raise ClientError('This command variation takes at least one subargument.')
-        if len(arg) >= 5:
-            raise ClientError('This command variation takes at most three subarguments.')
-
-        # Check if valid length and convert to seconds
-        length = Constants.parse_time_length(arg[1]) # Also internally validates
-
-        # Check name
-        if len(arg) > 2:
-            name = arg[2]
-        else:
-            name = client.name.replace(" ", "") + "Timer" # No spaces!
-        if name in client.server.active_timers.keys():
-            raise ClientError('Timer name {} is already taken.'.format(name))
-
-        # Check public status
-        if len(arg) > 3 and arg[3] in ['False', 'false', '0', 'No', 'no']:
-            is_public = False
-        else:
-            is_public = True
-
-        client.server.active_timers[name] = client #Add to active timers list
-        client.send_host_message('You initiated a timer "{}" of length {} seconds.'.format(name, length))
-        client.send_host_others('{} initiated a timer "{}" of length {} seconds in area {} ({}).'
-                                .format(client.get_char_name(), name, length, client.area.name,
-                                        client.area.id), is_staff=True)
-        client.send_host_others('{} initiated a timer "{}" of length {} seconds.'
-                                .format(client.get_char_name(), name, length), is_staff=False,
-                                pred=lambda c: is_public)
-
-        client.server.create_task(client, ['as_timer', time.time(), length, name, is_public])
-    elif arg_type == 'get':
-        """ Get remaining time from given timer.
-        SYNTAX
-        /timer get <timername>
-
-        OPTIONAL
-        <timername>: Check time remaining in given timer; defaults to all timers
-        if not given one.
-        """
-        if len(arg) > 2:
-            raise ClientError('This command variation takes at most one subargument.')
-
-        string_of_timers = ""
-
-        if len(arg) == 2:
-            # Check specific timer
-            timer_name = arg[1]
-            if timer_name not in client.server.active_timers.keys():
-                raise ClientError('Timer {} is not an active timer.'.format(timer_name))
-            timers_to_check = [timer_name]
-
-        else: # Case len(arg) == 1
-            # List all timers
-            timers_to_check = client.server.active_timers.keys()
-            if len(timers_to_check) == 0:
-                raise ClientError('No active timers.')
-
-        for timer_name in timers_to_check:
-            timer_client = client.server.active_timers[timer_name]
-            start, length, _, is_public = client.server.get_task_args(timer_client, ['as_timer'])
-
-            # Non-public timers can only be consulted by staff and the client who started the timer
-            if not is_public and not (client.is_staff() or client == timer_client):
-                continue
-
-            # Non-staff initiated public timers can only be consulted by all staff and
-            # clients in the same area as the timer initiator
-            elif is_public and not timer_client.is_staff() \
-                 and not (client.is_staff() or client == timer_client or client.area == timer_client.area):
-                continue
-
-            _, remain_text = Constants.time_remaining(start, length)
-            string_of_timers += 'Timer {} has {} remaining.\n*'.format(timer_name, remain_text)
-
-        if string_of_timers == "": # No matching timers
-            if len(arg) == 2: # Checked for a specific timer
-                # This case happens when a non-authorized user attempts to check
-                # a non-public timer
-                string_of_timers = "Timer {} is not an active timer.  ".format(timer_name)
-                # Double space intentional
-            else: # len(arg) == 1
-                # This case happens when a non-authorized user attempts to check
-                # all timers and all timers are non-public or non-viewable.
-                string_of_timers = "No timers available.  " # Double space intentional
-        elif len(arg) == 1: # Used /timer get
-            string_of_timers = "Current active timers:\n*" + string_of_timers # Add lead
-
-        client.send_host_message(string_of_timers[:-2]) # Ignore last newline character
-    elif arg_type == 'cancel':
-        """ Cancel given timer. Requires logging in to cancel timers initiated by
-        other users.
-        SYNTAX
-        /timer cancel $timername
-
-        PARAMETERS
-         $timername: Given timer name; returns an error if non-existant or if
-         unauthorized to cancel the timer.
-        """
-        if len(arg) != 2:
-            raise ClientError('This command variation takes exactly one subargument.')
-
-        timer_name = arg[1]
-        try:
-            timer_client = client.server.active_timers[timer_name]
-        except KeyError:
-            raise ClientError('Timer {} is not an active timer.'.format(timer_name))
-
-        # Non-staff are only allowed to cancel their own timers
-        if not client.is_staff() and client != timer_client:
-            raise ClientError('You must be authorized to do that.')
-
-        timer = client.server.get_task(timer_client, ['as_timer'])
-        client.server.cancel_task(timer)
-    else:
-        """ Default case where the argument type is unrecognized. """
-        raise ClientError('The command variation {} does not exist.'.format(arg_type))
-
-def ooc_cmd_version(client, arg):
-    """
-    Obtain the current version of the server software.
-
-    SYNTAX
-    /version
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /version        :: May return something like: This server is running tsuserver3.DR.190629a
-    """
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-
-    client.send_host_message('This server is running {}.'.format(client.server.software))
-
-def ooc_cmd_whereis(client, arg):
-    """ (STAFF ONLY)
-    Obtain the current area of a player by client ID (number in brackets) or IPID (number in parentheses).
-    If given IPID, it will obtain the area info for all clients opened by the user. Otherwise, it will just obtain the one from the given client.
-    Returns an error if the given identifier does not correspond to a user.
-
-    SYNTAX
-    /whereis <client_id>
-    /whereis <client_ipid>
-
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-
-    EXAMPLES
-    Assuming client 1 with IPID 1234567890 is in the Basement (area 0)...
-    /whereis 1           :: May return something like this: Client 1 (1234567890) is in Basement (0)
-    /whereis 1234567890  :: May return something like this: Client 1 (1234567890) is in Basement (0)
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-
-    for c in Constants.parse_id_or_ipid(client, arg):
-        client.send_host_message("Client {} ({}) is in {} ({})."
-                                 .format(c.id, c.ipid, c.area.name, c.area.id))
-
-def ooc_cmd_judgelog(client, arg):
-    """ (STAFF ONLY)
-    List the last 20 judge actions performed in the current area. This includes using the judge
-    buttons and changing the penalty bars. If given an argument, it will return the judgelog of the
-    given area by ID or name. Otherwise, it will obtain the one from the current area.
-    Returns an error if the given identifier does not correspond to an area.
-
-    SYNTAX
-    /judgelog {target_area}
-
-    OPTIONAL PARAMETERS
-    {target_area}: area whose judgelog will be returned (either ID or name)
-
-    EXAMPLE
-    If currently in the Basement (area 0)...
-    /judgelog           :: You may get something like the next example
-    /judgelog 0         :: You may get something like this
-
-    == Judge log of Basement (0) ==
-    *Sat Jun 29 12:06:03 2019 | [1] Judge (1234567890) used judge button testimony1.
-    *Sat Jun 29 12:06:07 2019 | [1] Judge (1234567890) used judge button testimony4.
-    *Sat Jun 29 12:06:12 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
-    *Sat Jun 29 12:06:12 2019 | [1] Judge (1234567890) changed penalty bar 2 to 8.
-    *Sat Jun 29 12:06:14 2019 | [1] Judge (1234567890) changed penalty bar 1 to 9.
-    *Sat Jun 29 12:06:15 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
-    *Sat Jun 29 12:06:16 2019 | [1] Judge (1234567890) changed penalty bar 1 to 7.
-    *Sat Jun 29 12:06:17 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
-    *Sat Jun 29 12:06:19 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        arg = client.area.name
-
-    # Obtain matching area's judgelog
-    for area in Constants.parse_area_names(client, [arg]):
-        info = area.get_judgelog()
-        client.send_host_message(info)
-
-def ooc_cmd_shoutlog(client, arg):
-    """ (STAFF ONLY)
-    List the last 20 shouts performed in the current area (Hold it, Objection, Take That, etc.).
-    If given an argument, it will return the shoutlog of the given area by ID or name.
-    Otherwise, it will obtain the one from the current area.
-    Returns an error if the given identifier does not correspond to an area.
-
-    SYNTAX
-    /shoutlog {target_area}
-
-    OPTIONAL PARAMETERS
-    {target_area}: area whose shoutlog will be returned (either ID or name)
-
-    EXAMPLE
-    If currently in the Basement (area 0)...
-    /shoutlog           :: You may get something like the next example
-    /shoutlog 0         :: You may get something like this
-
-    == Shout log of Basement (0) ==
-    *Sat Jun 29 13:15:56 2019 | [1] Phantom (1234567890) used shout 1 with the message: I consent
-    *Sat Jun 29 13:16:41 2019 | [1] Phantom (1234567890) used shout 3 with the message: u wrong m9
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        arg = client.area.name
-
-    # Obtain matching area's shoutlog
-    for area in Constants.parse_area_names(client, [arg]):
-        info = area.get_shoutlog()
-        client.send_host_message(info)
-
-def ooc_cmd_clock(client, arg):
-    """ (STAFF ONLY)
-    Set up a day cycle that will tick one hour every given number of seconds and provide a time announcement
-    to a given range of areas. Starting hour is also given. The clock ID is by default the client ID
-    of the player who started the clock.
-    Requires /clock_cancel to undo. Doing /clock while running an active clock will silently overwrite
-    the old clock with the new one.
-
-    SYNTAX
-    /clock <area_range_start> <area_range_end> <hour_length> <hour_start>
-
-    PARAMETERS
-    <area_range_start>: Send notifications from this area onwards up to...
-    <area_range_end>: Send notifications up to (and including) this area.
-    <hour_length>: Length of each ingame hour (in seconds)
-    <hour_start>: Starting hour (integer from 0 to 23)
-
-    EXAMPLES
-    /clock 16 116 900 8         :: Start a 900-second hour clock spanning areas 16 through 116, with starting hour 8 a.m.
-    /clock 0 5 10 19            :: Start a 10-second hour clock spanning areas 0 through 5, with starting hour 7 p.m.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-
-    # Perform input validation first
-    try:
-        pre_area_1, pre_area_2, pre_hour_length, pre_hour_start = arg.split(' ')
-    except ValueError:
-        raise ClientError('This command takes four arguments.')
-
-    area_1, area_2 = Constants.parse_two_area_names(client, [pre_area_1, pre_area_2],
-                                                    check_valid_range=True)
-    area_1, area_2 = area_1.id, area_2.id
-
-    try:
-        hour_length = int(pre_hour_length)
-        if hour_length <= 0:
-            raise ValueError
-    except ValueError:
-        raise ArgumentError('Invalid hour length {}.'.format(pre_hour_length))
-
-    try:
-        hour_start = int(pre_hour_start)
-        if hour_start < 0 or hour_start >= 24:
-            raise ValueError
-    except ValueError:
-        raise ArgumentError('Invalid hour start {}.'.format(pre_hour_start))
-
-    # Code after this assumes input is validated
-    try:
-        client.server.get_task(client, ['as_day_cycle'])
-    except KeyError:
-        normie_notif = True
-    else:
-        # Already existing day cycle. Will overwrite preexisting one
-        # But first, make sure normies do not get a new notification.
-        normie_notif = False
-
-    client.send_host_message('You initiated a day cycle of length {} seconds per hour in areas {} '
-                             'through {}. The cycle ID is {}.'
-                             .format(hour_length, area_1, area_2, client.id))
-    client.send_host_others('{} initiated a day cycle of length {} seconds per hour in areas {} '
-                            'through {}. The cycle ID is {} ({}).'
-                            .format(client.name, hour_length, area_1, area_2, client.id, client.area.id),
-                            is_staff=True)
-    if normie_notif:
-        client.send_host_others('{} initiated a day cycle.'
-                                .format(client.get_char_name()), is_staff=False,
-                                pred=lambda c: area_1 <= c.area.id <= area_2)
-
-    client.server.create_task(client, ['as_day_cycle', time.time(), area_1, area_2, hour_length,
-                                       hour_start, normie_notif])
-
-def ooc_cmd_clock_cancel(client, arg):
-    """ (STAFF ONLY)
-    Cancel the day cycle established by a player by client ID (or own if not given ID)
-    Returns an error if the given player has no associated active day cycle.
-
-    SYNTAX
-    /clock_cancel {client_id}
-
-    OPTIONAL PARAMETERS
-    {client_id}: Client identifier (number in brackets in /getarea)
-
-    EXAMPLE
-    /clock_cancel 0         :: Cancels the day cycle established by the player whose client ID is 0.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        arg = str(client.id)
-
-    try:
-        c = Constants.parse_id(client, arg)
-    except ClientError:
-        raise ArgumentError('Client {} is not online.'.format(arg))
-
-    try:
-        client.server.remove_task(c, ['as_day_cycle'])
-    except KeyError:
-        raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
-
-def ooc_cmd_clock_pause(client, arg):
-    """ (STAFF ONLY)
-    Pauses the day cycle established by a player by client ID (or own if not given an ID).
-    Requires /clock_unpause to undo.
-    Returns an error if the given player has no associated active day cycle, or if their day cycle
-    is already paused.
-
-    SYNTAX
-    /clock_pause {client_id}
-
-    OPTIONAL PARAMETERS
-    {client_id}: Client identifier (number in brackets in /getarea)
-
-    EXAMPLE
-    /clock_pause 0         :: Pauses the day cycle established by the player whose client ID is 0.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        arg = str(client.id)
-
-    try:
-        c = Constants.parse_id(client, arg)
-    except ClientError:
-        raise ArgumentError('Client {} is not online.'.format(arg))
-
-    try:
-        task = client.server.get_task(c, ['as_day_cycle'])
-    except KeyError:
-        raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
-
-    is_paused = client.server.get_task_attr(c, ['as_day_cycle'], 'is_paused')
-    if is_paused:
-        raise ClientError('Day cycle is already paused.')
-
-    client.server.set_task_attr(c, ['as_day_cycle'], 'is_paused', True)
-    client.server.cancel_task(task)
-
-def ooc_cmd_clock_unpause(client, arg):
-    """ (STAFF ONLY)
-    Unpauses the day cycle established by a player by client ID (or own if not given an ID).
-    Requires /clock_pause to undo.
-    Returns an error if the given player has no associated active day cycle, or if their day cycle
-    is already unpaused.
-
-    SYNTAX
-    /clock_unpause {client_id}
-
-    OPTIONAL PARAMETERS
-    {client_id}: Client identifier (number in brackets in /getarea)
-
-    EXAMPLE
-    /clock_unpause 0         :: Unpauses the day cycle established by the player whose client ID is 0.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        arg = str(client.id)
-
-    try:
-        c = Constants.parse_id(client, arg)
-    except ClientError:
-        raise ArgumentError('Client {} is not online.'.format(arg))
-
-    try:
-        client.server.get_task(c, ['as_day_cycle'])
-    except KeyError:
-        raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
-
-    is_paused = client.server.get_task_attr(c, ['as_day_cycle'], 'is_paused')
-    if not is_paused:
-        raise ClientError('Day cycle is already unpaused.')
-
-    client.server.set_task_attr(c, ['as_day_cycle'], 'is_paused', False)
-    client.server.set_task_attr(c, ['as_day_cycle'], 'just_unpaused', True)
-
-def ooc_cmd_lasterror(client, arg):
-    """ (MOD ONLY)
-    Obtain the latest uncaught error as a result of a client packet. This message emulates what is
-    output on the server console (i.e. it includes the full traceback as opposed to just the last
-    error which is what is usually sent to the offending client).
-    Note that ClientErrors, ServerErrors, AreaErrors and Argumenterrors are usually caught by the
-    client itself, and would not normally cause issues.
-    Returns a (Client)error if no errors had been raised and not been caught since server bootup.
-
-    SYNTAX
-    /lasterror
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /lasterror      :: May return something like this:
-
-     The last uncaught error message was the following:
-    TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET
-    *Server time: Mon Jul 1 14:10:26 2019
-    *Packet details: CT ['Iuvee', '/lasterror']
-    *Client status: C::0:1639795399:Iuvee:Kaede Akamatsu_HD:True:0
-    *Area status: A::0:Basement:1
-    Traceback (most recent call last):
-    File "...\server\aoprotocol.py", line 88, in data_received
-    self.net_cmd_dispatcher[cmd](self, args)
-    File "...\server\aoprotocol.py", line 500, in net_cmd_ct
-    function(self.client, arg)
-    File "...\server\commands.py", line 4210, in ooc_cmd_lasterror
-    final_trace = "".join(traceback.format_exc(etype, evalue, etraceback))
-    TypeError: format_exc() takes from 0 to 2 positional arguments but 3 were given
-
-    Note: yes, this is an error message that was created while testing this command.
-    """
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-    if not client.server.last_error:
-        raise ClientError('No error messages have been raised and not been caught since server bootup.')
-
-    pre_info, etype, evalue, etraceback = client.server.last_error
-    final_trace = "".join(traceback.format_exception(etype, evalue, etraceback))
-    info = ('The last uncaught error message was the following:\n{}\n{}'
-            .format(pre_info, final_trace))
-    client.send_host_message(info)
-
-def ooc_cmd_multiclients(client, arg):
-    """ (STAFF ONLY)
-    Lists all clients and the areas they are opened by a player by client ID or IPID.
-    Returns an error if the given identifier does not correspond to a user.
-
-    SYNTAX
-    /multiclients <client_id>
-    /multiclients <client_ipid>
-
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
-
-    EXAMPLES
-    Assuming client 1 with IPID 1234567890 is in the Basement (area 0) and has another client open,
-    whose client ID is 4...
-    /multiclients 1             :: May return something like the example below:
-    /multiclients 1234567890    :: May return something like the following:
-
-    == Clients of 1234567890 ==
-    == Area 0: Basement ==
-    [1] Spam_HD (1234567890)
-    == Area 4: Test 1 ==
-    [4] Eggs_HD (1234567890)
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-
-    target = Constants.parse_id_or_ipid(client, arg)[0]
-    info = target.prepare_area_info(client.area, -1, client.is_mod, as_mod=client.is_mod,
-                                    only_my_multiclients=True)
-    info = '== Clients of {} =={}'.format(target.ipid, info)
-    client.send_host_message(info)
-
-def ooc_cmd_whois(client, arg):
-    """ (STAFF ONLY)
-    List A LOT of a client properties. Mods additionally get access to a client's HDID.
-    The player can be filtered by either client ID, IPID, OOC username (in the same area) or
-    character name (in the same area). If multiple clients match the given identifier, only one of
-    them will be returned. For best results, use client ID (number in brackets), as this is the
-    only tag that is guaranteed to be unique.
-    Returns an error if the given identifier does not correspond to a user.
-
-    SYNTAX
-    /whois <target_id>
-
-    PARAMETER
-    <target_id>: Either client ID, IPID, OOC username or character name
-
-    EXAMPLES
-    /whois 1            :: Returns client info for the player whose client ID is 1.
-    /whois 1234567890   :: Returns client info for the player whose IPID is 1234567890.
-    /whois Phantom      :: Returns client info for the player whose OOC username is Phantom.
-    /whois Phantom_HD   :: Returns client info for the player whose character name is Phantom_HD.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError('Expected identifier.')
-
-    targets = []
-    # Pretend the identifier is a client ID
-    if arg.isdigit():
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg[0]), False)
-
-    # If still needed, pretend the identifier is a client IPID
-    if len(targets) == 0 and arg.isdigit() and len(arg) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg[0]), False)
-
-    # If still needed, pretend the identifier is an OOC username
-    if len(targets) == 0:
-        targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, True)
-
-    # If still needed, pretend the identifier is a character name
-    if len(targets) == 0:
-        targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, arg, True)
-
-    # If still not found, too bad
-    if len(targets) == 0:
-        raise ArgumentError('Target not found.')
-    # Otherwise, send information
-    info = targets[0].get_info(as_mod=client.is_mod, identifier=arg)
-    client.send_host_message(info)
 
 def ooc_cmd_exec(client, arg):
     """
