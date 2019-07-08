@@ -64,7 +64,8 @@ def ooc_cmd_allow_iniswap(client, arg):
 
 def ooc_cmd_announce(client, arg):
     """ (MOD ONLY)
-    Sends an "announcement" to all users in the server, regardless of whether they have global chat turned on or off.
+    Sends an "announcement" to all users in the server, regardless of whether they have global chat
+    turned on or off.
     Returns an error if user sends an empty message.
 
     SYNTAX
@@ -83,12 +84,14 @@ def ooc_cmd_announce(client, arg):
 
     client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
                                     '=== Announcement ===\r\n{}\r\n=================='.format(arg))
-    logger.log_server('[{}][{}][ANNOUNCEMENT]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+    logger.log_server('[{}][{}][ANNOUNCEMENT]{}.'
+                      .format(client.area.id, client.get_char_name(), arg), client)
 
 def ooc_cmd_area(client, arg):
     """
     Either lists all areas in the server or switches the user to a new given area.
-    Returns an error if user is unathorized to list all areas or unable to move to the intended new area.
+    Returns an error if user is unathorized to list all areas or unable to move to the intended new
+    area.
 
     PARAMETERS
     /area {new_area_id}
@@ -173,11 +176,11 @@ def ooc_cmd_area_kick(client, arg):
 
 def ooc_cmd_area_list(client, arg):
     """ (MOD ONLY)
-    Sets the server's current area list (what areas exist at any given time).
-    If given no arguments, it will return the area list to its original value (in areas.yaml)
-    The list of area lists can be accessed with /area_lists.
-    Clients that do not process 'SM' packets can be in servers that use this command without crashing,
-    but they will continue to only see the areas they could see when joining.
+    Sets the server's current area list (what areas exist at any given time). If given no arguments,
+    it will return the area list to its original value (in areas.yaml). The list of area lists can
+    be accessed with /area_lists. Clients that do not process 'SM' packets can be in servers that
+    use this command without crashing, but they will continue to only see the areas they could see
+    when joining.
     Returns an error if the given area list was not found.
 
     SYNTAX
@@ -195,8 +198,11 @@ def ooc_cmd_area_list(client, arg):
 
     if len(arg) == 0:
         client.server.area_manager.load_areas()
-        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
-                                        'The area list of the server has been reset to its original state.')
+        client.send_host_message('You have reset the area list of the server to its original state.')
+        client.send_host_others('The area list of the server has been reset to its original state.',
+                                is_staff=False)
+        client.send_host_others('{} has reset the area list of the server to its original state.'
+                                .format(client.name), is_staff=True)
     else:
         try:
             new_area_file = 'config/area_lists/{}.yaml'.format(arg)
@@ -206,15 +212,16 @@ def ooc_cmd_area_list(client, arg):
         except AreaError as exc:
             raise ArgumentError('The area list {} returned the following error when loading: {}'.format(new_area_file, exc))
 
-        client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
-                                        'The area list {} has been loaded.'.format(arg))
+        client.send_host_message('You have loaded the area list {}.'.format(arg))
+        client.send_host_others('The area list {} has been loaded.'.format(arg), is_staff=False)
+        client.send_host_others('{} has loaded the area list {}.'.format(client.name, arg),
+                                is_staff=True)
 
 def ooc_cmd_area_lists(client, arg):
     """ (MOD ONLY)
-    Lists all available area lists as established in config/area_lists.yaml
-    Note that, as this file is updated independently from the other area lists,
-    an area list does not need to be in this file in order to be usable, and
-    an area list in this list may no longer exist.
+    Lists all available area lists as established in config/area_lists.yaml. Note that, as this
+    file is updated independently from the other area lists, an area list does not need to be in
+    this file in order to be usable, and an area list in this list may no longer exist.
 
     SYNTAX
     /area_lists
@@ -242,8 +249,7 @@ def ooc_cmd_area_lists(client, arg):
 def ooc_cmd_autopass(client, arg):
     """
     Toggles enter/leave messages being sent automatically or not to users in the current area.
-    Will not send those messages if logged in as staff or spectator, or while sneaking.
-    Staff members will NOT receive these messages either.
+    It will not send those messages if logged in as staff or spectator, or while sneaking.
 
     SYNTAX
     /autopass
@@ -264,8 +270,8 @@ def ooc_cmd_autopass(client, arg):
 
 def ooc_cmd_ban(client, arg):
     """ (MOD ONLY)
-    Kicks given user from the server and prevents them from rejoining. The user can be identified by either their IPID or IP address.
-    Requires /unban to undo.
+    Kicks given user from the server and prevents them from rejoining. The user can be identified
+    by either their IPID or IP address. Requires /unban to undo.
     Returns an error if given identifier does not correspond to a user.
 
     SYNTAX
@@ -318,7 +324,8 @@ def ooc_cmd_ban(client, arg):
 def ooc_cmd_bg(client, arg):
     """
     Change the background of the current area.
-    Returns an error if area background is locked and user is unathorized or sought background does not exist.
+    Returns an error if area background is locked and the user is unathorized or if the sought
+    background does not exist.
 
     SYNTAX
     /bg <background_name>
@@ -338,8 +345,10 @@ def ooc_cmd_bg(client, arg):
         client.area.change_background_mod(arg)
     else:
         client.area.change_background(arg)
-    client.area.send_host_message('{} changed the background to {}.'.format(client.get_char_name(), arg))
-    logger.log_server('[{}][{}]Changed background to {}'.format(client.area.id, client.get_char_name(), arg), client)
+    client.area.send_host_message('{} changed the background to {}.'
+                                  .format(client.get_char_name(), arg))
+    logger.log_server('[{}][{}]Changed background to {}'
+                      .format(client.area.id, client.get_char_name(), arg), client)
 
 def ooc_cmd_bglock(client, arg):
     """ (MOD ONLY)
@@ -365,8 +374,10 @@ def ooc_cmd_bglock(client, arg):
 
 def ooc_cmd_blockdj(client, arg):
     """ (CM AND MOD ONLY)
-    Revokes the ability of a player by client ID (number in brackets) or IPID (number in parentheses) to change music.
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Revokes the ability of a player by client ID (number in brackets) or IPID (number in
+    parentheses) to change music.
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
+    the given client.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -392,10 +403,10 @@ def ooc_cmd_blockdj(client, arg):
 
 def ooc_cmd_bloodtrail(client, arg):
     """ (STAFF ONLY)
-    Toggles a client by IPID leaving a blood trail wherever they go or not.
-    OOC announcements are made to players joining an area regarding the existence of a blood trail
-    and where it leads to. Turning off a player leaving a blood trail does not clean the blood in
-    the area. For that, use /bloodtrail_clean.
+    Toggles a client by IPID leaving a blood trail wherever they go or not. OOC announcements are
+    made to players joining an area regarding the existence of a blood trail and where it leads to.
+    Turning off a player leaving a blood trail does not clean the blood in the area. For that,
+    use /bloodtrail_clean.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -442,8 +453,8 @@ def ooc_cmd_bloodtrail(client, arg):
 
 def ooc_cmd_bloodtrail_clean(client, arg):
     """
-    Cleans the blood trails of the current area or (STAFF ONLY) given areas by ID or name separated by commas.
-    If not given any areas, it will clean the blood trail of the current area.
+    Cleans the blood trails of the current area or (STAFF ONLY) given areas by ID or name separated
+    by commas. If not given any areas, it will clean the blood trail of the current area.
 
     SYNTAX
     /bloodtrail_clean {area_1}, {area_2}, ....
@@ -539,8 +550,9 @@ def ooc_cmd_bloodtrail_list(client, arg):
 
 def ooc_cmd_bloodtrail_set(client, arg):
     """ (STAFF ONLY)
-    Sets (and replaces!) the blood trail of the current area to link all relevant areas by ID or name separated by commas.
-    If not given any areas, it will set the blood trail to be a single unconnected pool of blood in the area.
+    Sets (and replaces!) the blood trail of the current area to link all relevant areas by ID or
+    name separated by commas. If not given any areas, it will set the blood trail to be a single
+    unconnected pool of blood in the area.
     Requires /bloodtrail_clean to undo.
 
     SYNTAX
@@ -580,7 +592,8 @@ def ooc_cmd_bloodtrail_set(client, arg):
 def ooc_cmd_charselect(client, arg):
     """
     Opens the character selection screen for the current user
-    OR (MOD ONLY) forces another user by identifier to have that screen open, freeing up their character in the process.
+    OR (MOD ONLY) forces another user by identifier to have that screen open, freeing up their
+    character in the process.
 
     SYNTAX
     /charselect
@@ -611,7 +624,8 @@ def ooc_cmd_charselect(client, arg):
 
 def ooc_cmd_char_restrict(client, arg):
     """ (STAFF ONLY)
-    Toggle a character by folder name (not showname!) being able to be used in the current area by non-staff members.
+    Toggle a character by folder name (not showname!) being able to be used in the current area
+    by non-staff members.
     Returns an error if the character name is not recognized.
 
     SYNTAX
@@ -634,7 +648,8 @@ def ooc_cmd_char_restrict(client, arg):
         raise ArgumentError('Unrecognized character folder name: {}'.format(arg))
 
     status = {True: 'enabled', False: 'disabled'}
-    client.area.send_host_message('A staff member has {} the use of character {} in this area.'.format(status[arg in client.area.restricted_chars], arg))
+    client.area.send_host_message('A staff member has {} the use of character {} in this area.'
+                                  .format(status[arg in client.area.restricted_chars], arg))
 
     # If intended character not in area's restriction, add it
     if arg not in client.area.restricted_chars:
@@ -732,11 +747,11 @@ def ooc_cmd_cleargm(client, arg):
 
 def ooc_cmd_clock(client, arg):
     """ (STAFF ONLY)
-    Set up a day cycle that will tick one hour every given number of seconds and provide a time announcement
-    to a given range of areas. Starting hour is also given. The clock ID is by default the client ID
-    of the player who started the clock.
-    Requires /clock_cancel to undo. Doing /clock while running an active clock will silently overwrite
-    the old clock with the new one.
+    Set up a day cycle that will tick one hour every given number of seconds and provide a time
+    announcement to a given range of areas. Starting hour is also given. The clock ID is by default
+    the client ID of the player who started the clock. Doing /clock while running an active clock
+    will silently overwrite the old clock with the new one.
+    Requires /clock_cancel to undo.
 
     SYNTAX
     /clock <area_range_start> <area_range_end> <hour_length> <hour_start>
@@ -925,13 +940,14 @@ def ooc_cmd_coinflip(client, arg):
 
     coin = ['heads', 'tails']
     flip = random.choice(coin)
-    client.area.send_host_message('{} flipped a coin and got {}.'.format(client.get_char_name(), flip))
-    logger.log_server(
-        '[{}][{}]Used /coinflip and got {}.'.format(client.area.id, client.get_char_name(), flip), client)
+    client.area.send_host_message('{} flipped a coin and got {}.'
+                                  .format(client.get_char_name(), flip))
+    logger.log_server('[{}][{}]Used /coinflip and got {}.'
+                      .format(client.area.id, client.get_char_name(), flip), client)
 
 def ooc_cmd_currentmusic(client, arg):
     """
-    Returns the music currently playing (and who played it), or None if no music is playing.
+    Returns the music currently playing and who played it, or None if no music is playing.
 
     SYNTAX
     /currentmusic
@@ -947,8 +963,8 @@ def ooc_cmd_currentmusic(client, arg):
 
     if client.area.current_music == '':
         raise ClientError('There is no music currently playing.')
-    client.send_host_message('The current music is {} and was played by {}.'.format(client.area.current_music,
-                                                                                    client.area.current_music_player))
+    client.send_host_message('The current music is {} and was played by {}.'
+                             .format(client.area.current_music, client.area.current_music_player))
 
 def ooc_cmd_defaultarea(client, arg):
     """ (MOD ONLY)
@@ -998,10 +1014,10 @@ def ooc_cmd_discord(client, arg):
 
 def ooc_cmd_disemconsonant(client, arg):
     """ (MOD ONLY)
-    Disemconsonants all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
-    In particular, all their messages will have all their consonants removed.
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
-    Requires /undisemconsonant to undo.
+    Disemconsonants all IC and OOC messages of a player by client ID (number in brackets) or IPID
+    (number in parentheses). In particular, all their messages will have all their consonants
+    removed. If given IPID, it will affect all clients opened by the user. Otherwise, it will just
+    affect the given client. Requires /undisemconsonant to undo.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -1027,10 +1043,10 @@ def ooc_cmd_disemconsonant(client, arg):
 
 def ooc_cmd_disemvowel(client, arg):
     """ (MOD ONLY)
-    Disemvowels all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
-    In particular, all their messages will have all their vowels removed.
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
-    Requires /undisemvowel to undo.
+    Disemvowels all IC and OOC messages of a player by client ID (number in brackets) or IPID
+    (number in parentheses). In particular, all their messages will have all their vowels removed.
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
+    the given client. Requires /undisemvowel to undo.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -1071,18 +1087,19 @@ def ooc_cmd_doc(client, arg):
     # Clear doc case
     if len(arg) == 0:
         client.send_host_message('Document: {}'.format(client.area.doc))
-        logger.log_server(
-            '[{}][{}]Requested document. Link: {}'.format(client.area.id, client.get_char_name(), client.area.doc), client)
+        logger.log_server('[{}][{}]Requested document. Link: {}'
+                          .format(client.area.id, client.get_char_name(), client.area.doc), client)
     # Set new doc case
     else:
         client.area.change_doc(arg)
         client.area.send_host_message('{} changed the doc link.'.format(client.get_char_name()))
-        logger.log_server('[{}][{}]Changed document to: {}'.format(client.area.id, client.get_char_name(), arg), client)
+        logger.log_server('[{}][{}]Changed document to: {}'
+                          .format(client.area.id, client.get_char_name(), arg), client)
 
 def ooc_cmd_follow(client, arg):
     """ (STAFF ONLY)
-    Starts following a player by their client ID. When the target area moves area, you will follow them
-    automatically except if disallowed by the new area.
+    Starts following a player by their client ID. When the target area moves area, you will follow
+    them automatically except if disallowed by the new area.
     Requires /unfollow to undo.
 
     SYNTAX
@@ -1099,12 +1116,13 @@ def ooc_cmd_follow(client, arg):
 
     c = Constants.parse_id(client, arg)
     client.follow_user(c)
-    logger.log_server('{} began following {}.'.format(client.get_char_name(), c.get_char_name()), client)
+    logger.log_server('{} began following {}.'
+                      .format(client.get_char_name(), c.get_char_name()), client)
 
 def ooc_cmd_g(client, arg):
     """
-    Sends a global message in the OOC chat (i.e. visible to all users in the server who have not disabled global chat).
-    Returns an error if the user has global chat off or sends an empty message.
+    Sends a global message in the OOC chat visible to all users in the server who have not disabled
+    global chat. Returns an error if the user has global chat off or sends an empty message.
 
     SYNTAX
     /g <message>
@@ -1121,7 +1139,8 @@ def ooc_cmd_g(client, arg):
         raise ArgumentError("You cannot send an empty message.")
 
     client.server.broadcast_global(client, arg)
-    logger.log_server('[{}][{}][GLOBAL]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+    logger.log_server('[{}][{}][GLOBAL]{}.'
+                      .format(client.area.id, client.get_char_name(), arg), client)
 
 def ooc_cmd_getarea(client, arg):
     """
@@ -1165,10 +1184,10 @@ def ooc_cmd_getareas(client, arg):
 
 def ooc_cmd_gimp(client, arg):
     """ (MOD ONLY)
-    Gimps all IC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
-    In particular, their message will be replaced by one of the messages listed in gimp_message in client_manager.py.
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
-    Requires /ungimp to undo.
+    Gimps all IC messages of a player by client ID (number in brackets) or IPID (number in
+    parentheses). In particular, their message will be replaced by one of the messages listed in
+    Constants.gimp_message in Constants.py. If given IPID, it will affect all clients opened by the
+    user. Otherwise, it will just affect the given client. Requires /ungimp to undo.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -1194,12 +1213,12 @@ def ooc_cmd_gimp(client, arg):
 
 def ooc_cmd_globalic(client, arg):
     """ (STAFF ONLY)
-    Send client's subsequent IC messages to users only in specified areas. Can take either area IDs or area names.
-    If current user is not in intended destination range, it will NOT send messages to their area.
-    Requires /unglobalic to undo.
+    Send client's subsequent IC messages to users only in specified areas. Can take either area IDs
+    or area names. If current user is not in intended destination range, it will NOT send messages
+    to their area. Requires /unglobalic to undo.
 
-    If given two areas, it will send their IC messages to all areas between the given ones inclusive.
-    If given one area, it will send their IC messages only to the given area.
+    If given two areas, it will send the IC messages to all areas between the given ones inclusive.
+    If given one area, it will send the IC messages only to the given area.
 
     SYNTAX
     /globalic <target_area>
@@ -1227,9 +1246,11 @@ def ooc_cmd_globalic(client, arg):
     client.multi_ic = areas
 
     if areas[0] == areas[1]:
-        client.send_host_message('Your IC messages will now be sent to area {}.'.format(areas[0].name))
+        client.send_host_message('Your IC messages will now be sent to area {}.'
+                                 .format(areas[0].name))
     else:
-        client.send_host_message('Your IC messages will now be sent to areas {} through {}.'.format(areas[0].name, areas[1].name))
+        client.send_host_message('Your IC messages will now be sent to areas {} through {}.'
+                                 .format(areas[0].name, areas[1].name))
 
 def ooc_cmd_gm(client, arg):
     """ (MOD ONLY)
@@ -1255,14 +1276,14 @@ def ooc_cmd_gm(client, arg):
         raise ArgumentError("You cannot send an empty message.")
 
     client.server.broadcast_global(client, arg, True)
-    logger.log_server('[{}][{}][GLOBAL-MOD]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+    logger.log_server('[{}][{}][GLOBAL-MOD]{}.'
+                      .format(client.area.id, client.get_char_name(), arg), client)
 
 def ooc_cmd_gmlock(client, arg):
     """ (STAFF ONLY)
-    Sets the current area as accessible only to staff members.
-    Players in the area at the time of the lock will be able to leave and return to the area, regardless of authorization.
+    Sets the current area as accessible only to staff members. Players in the area at the time of
+    the lock will be able to leave and return to the area, regardless of authorization.
     Requires /unlock to undo.
-
     Returns an error if the area is already gm-locked or if the area is set to be unlockable.
 
     SYNTAX
@@ -1291,15 +1312,16 @@ def ooc_cmd_gmlock(client, arg):
 
 def ooc_cmd_handicap(client, arg):
     """ (STAFF ONLY)
-    Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of time between changing areas.
+    Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of
+    time between changing areas. This will override any previous handicaps the client(s) may have
+    had, including custom ones and server ones (such as through sneak). Server handicaps will
+    override custom handicaps if the server handicap is longer. However, as soon as the server
+    handicap is over, it will recover the old custom handicap.
+    If given IPID, it will set the movement handicap on all the clients opened by the user.
+    Otherwise, it will just do it to the given client.
     Requires /unhandicap to undo.
-
-    This will override any previous handicaps the client(s) may have had, including custom ones and server ones (such as through sneak).
-    Server handicaps will override custom handicaps if the server handicap is longer.
-    However, as soon as the server handicap is over, it will recover the old custom handicap.
-
-    If given IPID, it will set the movement handicap on all the clients opened by the user. Otherwise, it will just do it to the given client.
-    Returns an error if the given identifier does not correspond to a user, or if given a non-positive length of time.
+    Returns an error if the given identifier does not correspond to a user, or if given a
+    non-positive length of time.
 
     SYNTAX
     /handicap <client_id> <length> {name} {announce_if_over}
@@ -1312,8 +1334,9 @@ def ooc_cmd_handicap(client, arg):
 
     OPTIONAL PARAMETERS
     {name}: Name of the handicap (e.g. "Injured", "Sleepy", etc.). By default it is "Handicap".
-    {announce_if_over}: If the server will send a notification once the player may move areas after waiting for their handicap timer.
-    By default it is true. For the server not to send them, put one of these keywords: False, false, 0, No, no
+    {announce_if_over}: If the server will send a notification once the player may move areas after
+    waiting for their handicap timer. By default it is true. For the server not to send them, put
+    one of these keywords: False, false, 0, No, no
 
     EXAMPLES
     /handicap 0 5                   :: Sets a 5 second movement handicap on the player whose client ID is 0.
@@ -1349,7 +1372,8 @@ def ooc_cmd_handicap(client, arg):
         announce_if_over = True
 
     for c in targets:
-        client.send_host_message('You imposed a movement handicap "{}" of length {} seconds on {}.'.format(name, length, c.get_char_name()))
+        client.send_host_message('You imposed a movement handicap "{}" of length {} seconds on {}.'
+                                 .format(name, length, c.get_char_name()))
         client.send_host_others('{} imposed a movement handicap "{}" of length {} seconds on {} in area {} ({}).'
                                 .format(client.name, name, length, c.get_char_name(), client.area.name, client.area.id),
                                 is_staff=True, pred=lambda x: x != c)
@@ -1535,9 +1559,9 @@ def ooc_cmd_kickself(client, arg):
 def ooc_cmd_knock(client, arg):
     """
     'Knock' on some area's door, sending a notification to users in said area.
-    Returns an error if the area could not be found, if the user is already in the
-    target area or if the area cannot be reached as per the DEFAULT server configuration
-    (as users may lock passages, but that does not mean the door no longer exists, usually).
+    Returns an error if the area could not be found, if the user is already in the target area or
+    if the area cannot be reached as per the DEFAULT server configuration (as users may lock
+    passages, but that does not mean the door no longer exists, usually).
 
     SYNTAX
     /knock <area_name>
@@ -1629,8 +1653,8 @@ def ooc_cmd_lasterror(client, arg):
 
 def ooc_cmd_lights(client, arg):
     """
-    Toggles lights on or off in the background. If area is background locked, it requires mod privileges.
-    If turned off, the background will change to the server's blackout background.
+    Toggles lights on or off in the background. If area is background locked, it requires mod
+    privileges. If turned off, the background will change to the server's blackout background.
     If turned on, the background will revert to the background before the blackout one.
 
     SYNTAX
@@ -1658,8 +1682,10 @@ def ooc_cmd_lights(client, arg):
 
 def ooc_cmd_lm(client, arg):
     """ (MOD ONLY)
-    Similar to /lm, but only broadcasts the message to users in the current area, regardless of their global chat status.
+    Similar to /lm, but only broadcasts the message to users in the current area, regardless of
+    their global chat status.
     Returns an error if the user sends an empty message.
+
     SYNTAX
     /lm <message>
 
@@ -1676,11 +1702,13 @@ def ooc_cmd_lm(client, arg):
 
     client.area.send_command('CT', '{}[MOD][{}]'
                              .format(client.server.config['hostname'], client.get_char_name()), arg)
-    logger.log_server('[{}][{}][LOCAL-MOD]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+    logger.log_server('[{}][{}][LOCAL-MOD]{}.'
+                      .format(client.area.id, client.get_char_name(), arg), client)
 
 def ooc_cmd_lock(client, arg):
     """
-    Locks the current area, preventing anyone not in the area (except staff) from joining. It also clears out the current invite list.
+    Locks the current area, preventing anyone not in the area (except staff) from joining. It also
+    clears out the current invite list.
     Returns an error if the area does not allow locking or is already locked.
 
     SYNTAX
@@ -1793,12 +1821,11 @@ def ooc_cmd_logout(client, arg):
 
 def ooc_cmd_look(client, arg):
     """
-    Obtain the current area's description, which is either the description in the area list configuration, or a
-    customized one defined via /look_set.
-    If the area has no set description, it will return the server's default description
-    stored in server.config['default_area_description'].
-    If the area has its lights turned off, it will send a generic 'cannot see anything' message
-    to non-staff members.
+    Obtain the current area's description, which is either the description in the area list
+    configuration, or a customized one defined via /look_set. If the area has no set description,
+    it will return the server's default description stored in the default_area_description server
+    parameter. If the area has its lights turned off, it will send a generic 'cannot see anything'
+    message to non-staff members.
 
     SYNTAX
     /look
@@ -1877,7 +1904,8 @@ def ooc_cmd_look_list(client, arg):
     None
 
     EXAMPLE
-    If area 0 called Basement is the only one with a custom description, and it happens to be "Not a courtroom"...
+    If area 0 called Basement is the only one with a custom description, and its description
+    happens to be "Not a courtroom"...
     /look_list              :: May return something like
     == Areas in this server with custom descriptions ==
     *(0) Basement: Not a courtroom
@@ -1944,7 +1972,8 @@ def ooc_cmd_look_set(client, arg):
 
 def ooc_cmd_minimap(client, arg):
     """
-    Lists all areas that can be reached from the current area according to areas.yaml and passages set in-game.
+    Lists all areas that can be reached from the current area according to areas.yaml and passages
+    set in-game.
     Returns all areas if no passages were defined or created for the current area.
 
     SYNTAX
@@ -1972,7 +2001,7 @@ def ooc_cmd_minimap(client, arg):
         else:
             for area in sorted_areas:
                 if area != client.area.name:
-                    info += '\r\n*({}) {}'.format(client.server.area_manager.get_area_by_name(area).id, area)
+                    info += '\r\n*{}-{}'.format(client.server.area_manager.get_area_by_name(area).id, area)
     except AreaError:
         # In case no passages are set, send '<ALL>' as default answer.
         info += '\r\n<ALL>'
@@ -1981,8 +2010,8 @@ def ooc_cmd_minimap(client, arg):
 
 def ooc_cmd_modlock(client, arg):
     """ (MOD ONLY)
-    Sets the current area as accessible only to mod members.
-    Players in the area at the time of the lock will be able to leave and return to the area, regardless of authorization.
+    Sets the current area as accessible only to mod members. Players in the area at the time of the
+    lock will be able to leave and return to the area, regardless of authorization.
     Requires /unlock to undo.
 
     Returns an error if the area is already mod-locked or if the area is set to be unlockable.
@@ -2065,10 +2094,10 @@ def ooc_cmd_multiclients(client, arg):
 
 def ooc_cmd_music_list(client, arg):
     """
-    Sets the client's current music list. This list is persistent between area changes and works on a client basis.
-    If given no arguments, it will return the music list to its default value (in music.yaml)
-    The list of music lists can be accessed with /music_lists.
-    Clients that do not process 'SM' packets can use this command without crashing, but it will have no visual effect.
+    Sets the client's current music list. This list is persistent between area changes and works on
+    a client basis. If given no arguments, it will return the music list to its default value
+    (in music.yaml). The list of music lists can be accessed with /music_lists. Clients that do not
+    process 'SM' packets can use this command without crashing, but it will have no visual effect.
     Returns an error if the given music list was not found.
 
     SYNTAX
@@ -2125,7 +2154,8 @@ def ooc_cmd_music_lists(client, arg):
 def ooc_cmd_mute(client, arg):
     """ (CM AND MOD ONLY)
     Mutes given user based on client ID or IPID so that they are unable to speak in IC chat.
-    If given IPID, it will mute all clients opened by the user. Otherwise, it will just mute the given client.
+    If given IPID, it will mute all clients opened by the user. Otherwise, it will just mute the
+    given client.
     Requires /unmute to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -2188,7 +2218,9 @@ def ooc_cmd_online(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
-    client.send_host_message("Online: {}/{}".format(client.server.get_player_count(), client.server.config['playerlimit']))
+    client.send_host_message("Online: {}/{}"
+                             .format(client.server.get_player_count(),
+                                     client.server.config['playerlimit']))
 
 def ooc_cmd_ooc_mute(client, arg):
     """ (MOD AND CM ONLY)
@@ -2250,9 +2282,9 @@ def ooc_cmd_ooc_unmute(client, arg):
 
 def ooc_cmd_play(client, arg):
     """ (STAFF ONLY)
-    Plays a given track, even if not explicitly in the music list. It is the way to play custom music.
-    If the area parameter 'song_switch_allowed' is set to true, anyone in the area can use this
-    command even if they are not logged in.
+    Plays a given track, even if not explicitly in the music list. It is the way to play custom
+    music. If the area parameter 'song_switch_allowed' is set to true, anyone in the area can use
+    this command even if they are not logged in.
 
     SYNTAX
     /play <track_name>
@@ -2423,11 +2455,10 @@ def ooc_cmd_reload(client, arg):
 
 def ooc_cmd_reload_commands(client, arg):
     """ (MOD ONLY)
-    Reloads the commands.py file.
-    Use only if restarting is not a viable option.
-    Note that this ONLY updates the contents of this file.
-    If anything you update relies on other files (for example, you call a method in client_manager),
-    they will still use the old contents, regardless of whatever changes you may have made to the other files.
+    Reloads the commands.py file. Use only if restarting is not a viable option.
+    Note that this ONLY updates the contents of this file. If anything you update relies on other
+    files (for example, you call a method in client_manager), they will still use the old contents,
+    regardless of whatever changes you may have made to the other files.
 
     SYNTAX
     /reload_commands
@@ -2452,8 +2483,10 @@ def ooc_cmd_reload_commands(client, arg):
 
 def ooc_cmd_remove_h(client, arg):
     """ (MOD ONLY)
-    Removes all letter H's from all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Removes all letter H's from all IC and OOC messages of a player by client ID (number in
+    brackets) or IPID (number in parentheses).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
+    the given client.
     Requires /unremove_h to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -2480,8 +2513,10 @@ def ooc_cmd_remove_h(client, arg):
 
 def ooc_cmd_reveal(client, arg):
     """ (STAFF ONLY)
-    Sets given user based on client ID or IPID to no longer be sneaking so that they are visible through /getarea(s).
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Sets given user based on client ID or IPID to no longer be sneaking so that they are visible
+    through /getarea(s).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
+    the given client.
     Requires /sneak to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -2509,7 +2544,8 @@ def ooc_cmd_reveal(client, arg):
 def ooc_cmd_roll(client, arg):
     """
     Rolls a given number of dice with given number of faces and modifiers. If certain parameters
-    are not given, command assumes preset defaults.
+    are not given, command assumes preset defaults. The result is broadcast to all players in the
+    area as well as staff members who have turned foreign roll notifications with /toggle_allrolls.
     Returns an error if parameters exceed specified constants or an invalid mathematical operation
     is put as a modifier.
 
@@ -2522,59 +2558,71 @@ def ooc_cmd_roll(client, arg):
     /roll {num_faces} {modifier}
     /roll {num_dice}d<num_faces> {modifier}
 
-    PARAMETERS
-    <num_faces>: Number of faces the dice will have (capped at NUMFACES_MAX)
-    {num_dice}: Number of dice to roll (capped at NUMDICE_MAX)
-    {modifier}: Operation to perform on rolls
+    OPTIONAL PARAMETERS
+    {num_faces}: Number of faces the dice will have (capped at NUMFACES_MAX).
+    {num_dice}: Number of dice to roll (capped at NUMDICE_MAX).
+    {modifier}: Operation to perform on rolls.
 
     EXAMPLES
-    /roll                           :: Rolls DEF_NUMDICE dice with DEF_NUMFACES faces and DEF_MODIFIER modifier
-    /roll 20                        :: Rolls a d20.
-    /roll 5d30                      :: Rolls 5 d30's.
-    /roll d20 +3                    :: Rolls a d20 and adds 3 to the result.
-    /roll 1d20 +3*2                 :: Rolls a d20 and adds 3*2=6 to the result.
-    /roll 6 -1+3*r                  :: Rolls a d6, multiplies the result by 3 and subtracts 1 to it.
-    /roll 3d6 (-1+3)*r              :: Rolls 3 d6's and mutliplies each result by 2.
+    Assuming DEF_NUMDICE = 1, DEF_NUMFACES = 6, DEF_MODIFIER = ''...
+    /roll               :: Rolls a d6.
+    /roll 20            :: Rolls a d20.
+    /roll 5d30          :: Rolls 5 d30's.
+    /roll d20 +3        :: Rolls a d20 and adds 3 to the result.
+    /roll 1d20 +3*2     :: Rolls a d20 and adds 3*2=6 to the result.
+    /roll 6 -1+3*r      :: Rolls a d6, multiplies the result by 3 and subtracts 1 to it.
+    /roll 3d6 (-1+3)*r  :: Rolls 3 d6's and multiplies each result by 2.
     """
-
     roll_result, num_faces = Constants.dice_roll(arg, 'roll')
-    client.area.send_host_message('{} rolled {} out of {}.'
-                                  .format(client.get_char_name(), roll_result, num_faces))
+    client.send_host_message('You rolled {} out of {}.'.format(roll_result, num_faces))
+    client.send_host_others('{} rolled {} out of {}.'
+                            .format(client.get_char_name(), roll_result, num_faces), in_area=True)
+    client.send_host_others('{} rolled {} out of {} in {} ({}).'
+                            .format(client.get_char_name(), roll_result, num_faces,
+                                    client.area.name, client.area.id), is_staff=True, in_area=False,
+                            pred=lambda c: c.get_foreign_rolls)
+
     logger.log_server('[{}][{}]Used /roll and got {} out of {}.'
                       .format(client.area.id, client.get_char_name(), roll_result, num_faces), client)
 
 def ooc_cmd_rollp(client, arg):
     """
-    Similar to /roll, but instead only announces roll results (and who rolled) to staff members.
+    Similar to /roll, but instead announces roll results (and who rolled) only to yourself and
+    staff members who are in the area or who have foreign roll notifications with /toggle_allrolls.
     Returns an error if current area does not authorize /rollp and user is not logged in.
 
     SYNTAX
     /rollp {num_faces} {modifier}
     /rollp {num_dice}d<num_faces> {modifier}
 
-    PARAMETERS
-    {num_faces}: Number of faces the dice will have (capped at NUMFACES_MAX)
-    {num_dice}: Number of dice to roll (capped at NUMDICE_MAX)
-    {modifier}: Operation to perform on rolls
+    OPTIONAL PARAMETERS
+    {num_faces}: Number of faces the dice will have (capped at NUMFACES_MAX).
+    {num_dice}: Number of dice to roll (capped at NUMDICE_MAX).
+    {modifier}: Operation to perform on rolls.
 
     EXAMPLES
-    /rollp                           :: Rolls DEF_NUMDICE dice with DEF_NUMFACES faces and DEF_MODIFIER modifier
-    /rollp 20                        :: Rolls a d20.
-    /rollp 5d30                      :: Rolls 5 d30's.
-    /rollp d20 +3                    :: Rolls a d20 and adds 3 to the result.
-    /rollp 1d20 +3*2                 :: Rolls a d20 and adds 3*2=6 to the result.
-    /rollp 6 -1+3*r                  :: Rolls a d6, multiplies the result by 3 and subtracts 1 to it.
-    /rollp 3d6 (-1+3)*r              :: Rolls 3 d6's and mutliplies each result by 2.
+    Assuming DEF_NUMDICE = 1, DEF_NUMFACES = 6, DEF_MODIFIER = ''...
+    /rollp               :: Rolls a d6.
+    /rollp 20            :: Rolls a d20.
+    /rollp 5d30          :: Rolls 5 d30's.
+    /rollp d20 +3        :: Rolls a d20 and adds 3 to the result.
+    /rollp 1d20 +3*2     :: Rolls a d20 and adds 3*2=6 to the result.
+    /rollp 6 -1+3*r      :: Rolls a d6, multiplies the result by 3 and subtracts 1 to it.
+    /rollp 3d6 (-1+3)*r  :: Rolls 3 d6's and multiplies each result by 2.
     """
     if not client.area.rollp_allowed and not client.is_staff():
-        raise ClientError("This command has been restricted to authorized users only in this area.")
+        raise ClientError('This command has been restricted to authorized users only in this area.')
 
     roll_result, num_faces = Constants.dice_roll(arg, 'rollp')
     client.send_host_message('You privately rolled {} out of {}.'.format(roll_result, num_faces))
     client.send_host_others('Someone rolled.', is_staff=False, in_area=True)
+    client.send_host_others('{} privately rolled {} out of {}.'
+                            .format(client.get_char_name(), roll_result, num_faces),
+                            is_staff=True, in_area=True)
     client.send_host_others('{} privately rolled {} out of {} in {} ({}).'
-                            .format(client.get_char_name(), roll_result, num_faces, client.area.name,
-                                    client.area.id), is_staff=True)
+                            .format(client.get_char_name(), roll_result, num_faces,
+                                    client.area.name, client.area.id),
+                            is_staff=True, in_area=False, pred=lambda c: c.get_foreign_rolls)
 
     SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
     logger.log_server('[{}][{}]Used /rollp and got {} out of {}.'
@@ -2609,8 +2657,8 @@ def ooc_cmd_rplay(client, arg):
 
 def ooc_cmd_rpmode(client, arg):
     """ (STAFF ONLY)
-    Toggles RP mode on/off in the server. If turned on, all non-logged in users will be subject to RP rules.
-    Some effects include: unable to use /getarea and /getareas in areas that disable it.
+    Toggles RP mode on/off in the server. If turned on, all non-logged in users will be subject to
+    RP rules. Some effects include: unable to use /getarea and /getareas in areas that disable it.
 
     SYNTAX
     /rpmode <new_status>
@@ -2641,12 +2689,12 @@ def ooc_cmd_rpmode(client, arg):
             c.send_host_message('RP mode disabled.')
             c.in_rp = False
     else:
-        client.send_host_message('Invalid argument! Valid arguments: on, off. Your argument: ' + arg)
+        client.send_host_message('Expected on or off.')
 
 def ooc_cmd_scream(client, arg):
     """
-    Sends a message in the OOC chat visible to all staff members and users that
-    are in an area reachable from the sender's area that is not soundproof.
+    Sends a message in the OOC chat visible to all staff members and users that are in an area
+    whose screams are reachable from the sender's area.
     Returns an error if the user has global chat off or sends an empty message.
 
     SYNTAX
@@ -2667,15 +2715,18 @@ def ooc_cmd_scream(client, arg):
                                     pred=lambda c: not c.muted_global and
                                     (c.is_staff() or c.area == client.area or
                                      c.area.name in client.area.scream_range))
-    logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg), client)
+    logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg),
+                      client)
 
 def ooc_cmd_scream_set_range(client, arg):
     """ (STAFF ONLY)
     Set the current area's scream range to a given list of areas by name or ID separated by commas.
     This completely overrides the old scream range, unlike /scream_set.
     Passing in no arguments sets the scream range to nothing (i.e. a soundproof room).
-    Note that scream ranges are unidirectional, so if you want two areas to hear one another, you must use this command twice.
-    Returns an error if an invalid area name or area ID is given, or if the current area is part of the selection.
+    Note that scream ranges are unidirectional, so if you want two areas to hear one another, you
+    must use this command twice.
+    Returns an error if an invalid area name or area ID is given, or if the current area is part of
+    the selection.
 
     SYNTAX
     /scream_set_range {area_1}, {area_2}, {area_3}, ...
@@ -2712,10 +2763,12 @@ def ooc_cmd_scream_set_range(client, arg):
 
 def ooc_cmd_scream_set(client, arg):
     """ (STAFF ONLY)
-    Toggles the ability of ONE given area by name or ID to hear a scream from the current area on or off.
-    This only modifies the given area's status in the current area's scream range, unlike /scream_set_range.
-    Note that scream ranges are unidirectional, so if you want two areas to hear one another, you must use this command twice.
-    Returns an error if an invalid area name or area ID is given, or if the current area is the target of the selection.
+    Toggles the ability of ONE given area by name or ID to hear a scream from the current area on
+    or off. This only modifies the given area's status in the current area's scream range, unlike
+    /scream_set_range. Note that scream ranges are unidirectional, so if you want two areas to hear
+    one another, you must use this command twice.
+    Returns an error if an invalid area name or area ID is given, or if the current area is the
+    target of the selection.
 
     SYNTAX
     /scream_set <target_area>
@@ -2766,7 +2819,8 @@ def ooc_cmd_scream_set(client, arg):
 
 def ooc_cmd_scream_range(client, arg):
     """ (STAFF ONLY)
-    Return the current area's scream range (i.e. users in which areas who would hear a /scream from the current area).
+    Return the current area's scream range (i.e. users in which areas who would hear a /scream from
+    the current area).
 
     SYNTAX
     /scream_range
@@ -2827,12 +2881,13 @@ def ooc_cmd_shoutlog(client, arg):
 
 def ooc_cmd_showname(client, arg):
     """
-    If given an argument, sets the client's showname to that.
-    Otherwise, it clears their showname to use the default setting (character showname).
-    These custom shownames override whatever showname the current character has, and is
-    persistent between between character swaps/area changes/etc.
-    Returns an error if new custom showname exceeds the server limit (server.config['showname_max_length']), is already
-    used in the current area, or if shownames have been frozen and user is not logged in.
+    If given an argument, sets the client's showname to that. Otherwise, it clears their showname
+    to use the default setting (character showname). These custom shownames override whatever client
+    showname the current character has, and is persistent between between character swaps, area
+    changes, etc.
+    Returns an error if new custom showname exceeds the server limit (server parameter
+    'showname_max_length', is already used in the current area, or if shownames have been frozen
+    and the user is not logged in.
 
     SYNTAX
     /showname <new_showname>
@@ -2895,11 +2950,13 @@ def ooc_cmd_showname_freeze(client, arg):
 
 def ooc_cmd_showname_history(client, arg):
     """ (MOD ONLY)
-    List all shownames a client by ID or IPID has had during the session.
-    Output differentiates between self-initiated showname changes (such as the ones via /showname) by using "Self"
-    and third-party-initiated ones by using "Was" (such as /showname_set, or by changing areas and having a showname conflict).
+    List all shownames a client by ID or IPID has had during the session. Output differentiates
+    between self-initiated showname changes (such as the ones via /showname) by using "Self"
+    and third-party-initiated ones by using "Was" (such as /showname_set, or by changing areas and
+    having a showname conflict).
 
-    If given IPID, it will obtain the showname history of all the clients opened by the user. Otherwise, it will just obtain the showname history of the given client.
+    If given IPID, it will obtain the showname history of all the clients opened by the user.
+    Otherwise, it will just obtain the showname history of the given client.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -2931,8 +2988,10 @@ def ooc_cmd_showname_history(client, arg):
 
 def ooc_cmd_showname_list(client, arg):
     """
-    List the characters (and associated client IDs) in each area, as well as their custom shownames if they have one in parentheses.
-    Returns an error if the user is subject to RP mode and is in an area that disables /getareas (as it is functionally identical).
+    List the characters (and associated client IDs) in each area, as well as their custom shownames
+    if they have one in parentheses.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getareas
+    (as it is functionally identical).
 
     SYNTAX
     /showname_list
@@ -2986,7 +3045,8 @@ def ooc_cmd_showname_set(client, arg):
     Otherwise, it clears their showname to use the default setting (character showname).
     These custom shownames override whatever showname the current character has, and is persistent
     between between character swaps/area changes/etc.
-    If given IPID, it will set the shownames of all the clients opened by the user. Otherwise, it will just set the showname of the given client.
+    If given IPID, it will set the shownames of all the clients opened by the user. Otherwise, it
+    will just set the showname of the given client.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -3031,8 +3091,10 @@ def ooc_cmd_showname_set(client, arg):
 
 def ooc_cmd_sneak(client, arg):
     """ (STAFF ONLY)
-    Sets given user based on client ID or IPID to be sneaking so that they are invisible through /getarea(s).
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Sets given user based on client ID or IPID to be sneaking so that they are invisible through
+    /getarea(s), /showname_list and /area.
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
+    the given client.
     Requires /reveal to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -3066,8 +3128,8 @@ def ooc_cmd_sneak(client, arg):
 
 def ooc_cmd_st(client, arg):
     """ (STAFF ONLY)
-    Send a message to the private server-wide staff chat. Only staff members can send
-    and receive messages from it (i.e. it is not a report command for normal users).
+    Send a message to the private server-wide staff chat. Only staff members can send and receive
+    messages from it (i.e. it is not a report command for normal users).
 
     SYNTAX
     /st <message>
@@ -3334,9 +3396,34 @@ def ooc_cmd_ToD(client, arg):
     logger.log_server(
         '[{}][{}]has to do a {}.'.format(client.area.id, client.get_char_name(), flip), client)
 
+def ooc_cmd_toggle_allrolls(client, arg):
+    """ (STAFF ONLY)
+    Toggles receiving /roll and /rollp notifications from areas other than the current one.
+    Notifications are turned off by default.
+
+    SYNTAX
+    /toggle_allrolls
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /toggle_allrolls
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+
+    client.get_foreign_rolls = not client.get_foreign_rolls
+    status = {False: 'no longer', True: 'now'}
+
+    client.send_host_message('You are {} receiving roll results from other areas.'
+                             .format(status[client.get_foreign_rolls]))
+
 def ooc_cmd_toggleglobal(client, arg):
     """
-    Toggles global messages being sent to the current user being allowed/disallowed
+    Toggles global messages being sent to the current user being allowed/disallowed.
 
     SYNTAX
     /toggleglobal
@@ -3436,8 +3523,8 @@ def ooc_cmd_toggle_rpgetareas(client, arg):
 
 def ooc_cmd_toggle_shownames(client, arg):
     """
-    Toggles between receiving IC messages with custom shownames or receiving them all with character names.
-    When joining, players will receive IC messages with shownames.
+    Toggles between receiving IC messages with custom shownames or receiving them all with
+    character names. When joining, players will receive IC messages with shownames.
 
     SYNTAX
     /toggle_shownames
@@ -3460,9 +3547,10 @@ def ooc_cmd_toggle_shownames(client, arg):
 
 def ooc_cmd_transient(client, arg):
     """ (STAFF ONLY)
-    Toggles a client by IP or IPID being transient or not to passage locks (i.e. can access all areas or only reachable areas)
-
-    If given IPID, it will invert the transient status of all the clients opened by the user. Otherwise, it will just do it to the given client.
+    Toggles a client by IP or IPID being transient or not to passage locks (i.e. can access all
+    areas or only reachable areas)
+    If given IPID, it will invert the transient status of all the clients opened by the user.
+    Otherwise, it will just do it to the given client.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -3517,8 +3605,10 @@ def ooc_cmd_unban(client, arg):
 
 def ooc_cmd_undisemconsonant(client, arg):
     """ (MOD ONLY)
-    Removes the disemconsonant effect on all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Removes the disemconsonant effect on all IC and OOC messages of a player by client ID
+    (number in brackets) or IPID (number in parentheses).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
+    the given client.
     Requires /disemconsonant to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -3545,8 +3635,10 @@ def ooc_cmd_undisemconsonant(client, arg):
 
 def ooc_cmd_unblockdj(client, arg):
     """ (CM AND MOD ONLY)
-    Restores the ability of a player by client ID (number in brackets) or IPID (number in parentheses) to change music.
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Restores the ability of a player by client ID (number in brackets) or IPID (number in
+    parentheses) to change music.
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
+    the given client.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -3572,8 +3664,10 @@ def ooc_cmd_unblockdj(client, arg):
 
 def ooc_cmd_undisemvowel(client, arg):
     """ (MOD ONLY)
-    Removes the disemvowel effect on all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Removes the disemvowel effect on all IC and OOC messages of a player by client ID (number in
+    brackets) or IPID (number in parentheses).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
+    the given client.
     Requires /disemvowel to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -3622,8 +3716,10 @@ def ooc_cmd_unfollow(client, arg):
 
 def ooc_cmd_ungimp(client, arg):
     """ (MOD ONLY)
-    Ungimps all IC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Ungimps all IC messages of a player by client ID (number in brackets) or IPID (number in
+    parentheses).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
+    the given client.
     Requires /gimp to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -3672,12 +3768,12 @@ def ooc_cmd_unglobalic(client, arg):
 
 def ooc_cmd_unhandicap(client, arg):
     """ (STAFF ONLY)
-    Removes movement handicaps on a client by ID or IPID so that they no longer need to wait a set amount of time between changing areas.
+    Removes movement handicaps on a client by ID or IPID so that they no longer need to wait a set
+    amount of time between changing areas. This will also remove server handicaps, if any (such as
+    automatic sneak handicaps).
+    If given IPID, it will remove the movement handicap on all the clients opened by the user.
+    Otherwise, it will just do it to the given client.
     Requires /handicap to undo.
-
-    This will also remove server handicaps, if any (such as automatic sneak handicaps).
-
-    If given IPID, it will remove the movement handicap on all the clients opened by the user. Otherwise, it will just do it to the given client.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -3715,7 +3811,8 @@ def ooc_cmd_unhandicap(client, arg):
 def ooc_cmd_uninvite(client, arg):
     """
     Removes a client based on client ID or IPID from the area's invite list.
-    If given IPID, it will uninvite all clients opened by the user. Otherwise, it will just do it to the given client.
+    If given IPID, it will uninvite all clients opened by the user. Otherwise, it will just uninvite
+    the given client.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -3741,12 +3838,14 @@ def ooc_cmd_uninvite(client, arg):
 
 def ooc_cmd_unlock(client, arg):
     """ (VARYING REQUIREMENTS)
-    If the area is locked in some manner, attempt to perform exactly one of the following area unlocks in order.
+    If the area is locked in some manner, attempt to perform exactly one of the following area
+    unlocks in order.
     1. If player is a mod and the area is mod-locked, then mod-unlock.
     2. If player is staff and the area is gm-locked, then gm-unlock.
     3. If the area is not mod-locked nor gm-locked, then unlock.
 
-    Returns an error if the area was locked but the unlock could not be performed (would happen due to insufficient permissions).
+    Returns an error if the area was locked but the unlock could not be performed (would happen due
+    to insufficient permissions).
 
     SYNTAX
     /unlock
@@ -3776,8 +3875,9 @@ def ooc_cmd_unlock(client, arg):
 def ooc_cmd_unmute(client, arg):
     """ (CM AND MOD ONLY)
     Unmutes given user based on client ID or IPID so that they are unable to speak in IC chat.
-    If given IPID, it will unmute all clients opened by the user. Otherwise, it will just mute the given client.
     This command does nothing for clients that are not actively muted.
+    If given IPID, it will unmute all clients opened by the user. Otherwise, it will just mute the
+    given client.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -3803,8 +3903,10 @@ def ooc_cmd_unmute(client, arg):
 
 def ooc_cmd_unremove_h(client, arg):
     """ (MOD ONLY)
-    Removes the 'Remove H' effect on all IC and OOC messages of a player by client ID (number in brackets) or IPID (number in parentheses).
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect the given client.
+    Removes the 'Remove H' effect on all IC and OOC messages of a player by client ID (number in
+    brackets) or IPID (number in parentheses).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
+    the given client.
     Requires /remove_h to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -3849,8 +3951,10 @@ def ooc_cmd_version(client, arg):
 
 def ooc_cmd_whereis(client, arg):
     """ (STAFF ONLY)
-    Obtain the current area of a player by client ID (number in brackets) or IPID (number in parentheses).
-    If given IPID, it will obtain the area info for all clients opened by the user. Otherwise, it will just obtain the one from the given client.
+    Obtain the current area of a player by client ID (number in brackets) or IPID (number in
+    parentheses).
+    If given IPID, it will obtain the area info for all clients opened by the user. Otherwise, it
+    will just obtain the one from the given client.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -4122,7 +4226,7 @@ def ooc_cmd_exec(client, arg):
     """
     # IF YOU WANT TO DISABLE /exec: REMOVE THE # IN FRONT OF return
     # IF YOU WANT TO ENABLE /exec: ADD A # IN FRONT OF return, LIKE SO: # return
-    return
+    return None
 
     logger.log_print("Attempting to run instruction {}".format(arg))
 

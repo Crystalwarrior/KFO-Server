@@ -210,12 +210,7 @@ class AreaManager:
                     self.background_backup = self.background
                 intended_background = self.server.config['blackout_background']
 
-            try:
-                self.change_background(intended_background)
-            except AreaError:
-                raise AreaError('Unable to turn lights {}: Background {} not found'
-                                .format(status[new_lights], intended_background))
-
+            self.change_background_mod(intended_background) # As mod to force the background change.
             self.lights = new_lights
 
             if initiator: # If a player initiated the change light sequence, send targeted messages

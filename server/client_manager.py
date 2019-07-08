@@ -67,6 +67,7 @@ class ClientManager:
             self.is_movement_handicapped = False
             self.show_shownames = True
             self.is_bleeding = False
+            self.get_foreign_rolls = False
             self.last_sent_clock = None
             self.last_ic_message = ''
             self.last_ooc_message = ''
@@ -112,6 +113,8 @@ class ClientManager:
 
             if in_area is True:
                 cond2 = lambda c: c.area == self.area
+            elif in_area is False:
+                cond2 = lambda c: c.area != self.area
             elif type(in_area) is type(self.area): # Lazy way of checking if in_area is an area obj
                 cond2 = lambda c: c.area == in_area
             elif in_area is None:
