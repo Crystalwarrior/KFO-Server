@@ -50,6 +50,7 @@ Requires Python 3.6+ and PyYAML.
   - This process will not overwrite your server configurations inside the "config" folder, your existing logs inside the "logs" folder, or the user information inside the "storage" folder. However, it will overwrite other files including the Python files inside the "server" folder. Therefore, make sure to save backups of those files before overwriting in case you have modified them and wish to keep an archive of your changes.
  
 ## Commands
+Additional notes are listed at the end of the command list.
 
 ### User Commands
 
@@ -111,7 +112,7 @@ Requires Python 3.6+ and PyYAML.
 	- Returns how many players are online.
 * **play** "song.mp3"
 	- Plays a song, provided the area you are in allows non-staff members to run this command.
-* **pm** "ID/IPID/char name/OOC name" "Message" 
+* **pm** "ID/IPID/char name/OOC name" "message" 
     - PMs the target.
 * **pos** "position" 
     - Changes your position in the court.
@@ -122,7 +123,7 @@ Requires Python 3.6+ and PyYAML.
     - Reloads your character ini file.
 * **roll** "number of dice"d"number of faces" "modifiers" 
     - Rolls as many dice as given with the given number of faces, and applies modifiers if given. If no arguments are given, rolls one d6.
-* **rollp** "max, number of dice" 
+* **rollp** "number of dice"d"number of faces" "modifiers"
     - Same as roll but other non-staff members in the area only are notified that someone rolled.
 * **scream** "message"
 	- Sends a message visible to all players in the areas that are set to be able to listen to screams from the current area.
@@ -160,7 +161,7 @@ Requires Python 3.6+ and PyYAML.
     - Gain insight from the magic 8 ball.
 	
 ### GM Commands
-* **loginrp** "Password"
+* **loginrp** "password"
     - Makes you a GM.
     - GMs can: 
       - Bypass Locks.
@@ -184,7 +185,7 @@ Requires Python 3.6+ and PyYAML.
 * **char_restrict** "character name"
 	- Changes the restricted status of a character in the current area.
 	- If a character is restricted, only GMs and above can use the character in the current area.
-* **clock** "area range Start" "area range end" "hour length "hour start"
+* **clock** "area range start" "area range end" "hour length "hour start"
 	- Sets up a day cycle that, starting from the given hour, will tick one hour every given number of seconds and provide a time announcement to a given range of areas.
 * **clock_cancel** "ID"
 	- Cancels the day cycle initiated by the target or yourself if not given a target.
@@ -290,16 +291,16 @@ Requires Python 3.6+ and PyYAML.
 	
 ### Moderator Commands
 
-* **login** "Password"
+* **login** "password"
     - Makes you a Moderator.
 * **logout**
 	- Logs you out of the Moderator role.
 * **allow_iniswap**
     - Changes the iniswap status in the current area.
     - Even if iniswap at all is forbidden you can configure all-time allowed iniswaps in *iniswaps.yaml*
-* **announce** "Message" 
+* **announce** "message" 
     - Sends a serverwide announcement
-* **area_list** "Area List"
+* **area_list** "area list"
 	- Sets the server's current area list.
 	- If not given an area list, it will restore the original area list as it was on server bootup.
 * **area_lists**
@@ -316,9 +317,9 @@ Requires Python 3.6+ and PyYAML.
     - Removes the respective letters from everything said by the target
 * **gimp** "ID/IPID"
 	- Gimps a target so that all tbeir IC messages are replaced with a selection of preset messages.
-* **gm** "Message" 
+* **gm** "message" 
     - Sends a serverwide message with mod tag.
-* **lm** "Message" 
+* **lm** "message" 
     - Sends an area OOC message with mod tag.
 * **modlock**
     - Locks your area. Prevents GMs, CMs and normal users from entering.
@@ -349,7 +350,17 @@ Requires Python 3.6+ and PyYAML.
 	- (DEBUG) Obtains the latest uncaught error as a result of a client packet. This message emulates what is output on the server console.
 * **reload_commands**
 	- (DEBUG) Reloads the commands.py file.
-	
+
+* **Note 1**: the commands may refer to the following identifiers for a player:
+	- **Character Name**: the folder name of the character the player is using, also the name that appears in /getarea.
+	- **ID**: number in brackets [] in /getarea. 
+	- **IPID**: number in parentheses () in /getarea (requires mod rank).
+	- **IP**: the IP address of the player.
+	- **OOC Name**: the username of the player in the OOC chat.
+* **Note 2**: some commands include commas (,) between the parameters. If that is the case, the command expects you to actually use the commas between the parameters. If for whatever reason your parameter also has a comma followed by a space, you can include it by using ,\↨ (so 'Hello, world' becomes 'Hello,\ world').
+* **Note 3**: additional documentation for the commands can be found in `config\commands.py` and consulting the docstrings. For example, to get additional information for /help, you would look for `ooc_cmd_help` and look for the associated text.
+
+
 ## License
 
 This server is licensed under the AGPLv3 license. In short, if you use a modified version of tsuserver3, you *must* distribute its source licensed under the AGPLv3 as well, and notify your users where the modified source may be found. The main difference between the AGPL and the GPL is that for the AGPL, network use counts as distribution. If you do not accept these terms, you should use [serverD](https://github.com/Attorney-Online-Engineering-Task-Force/serverD), which uses GPL rather than AGPL.
