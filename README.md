@@ -351,13 +351,15 @@ Additional notes are listed at the end of the command list.
 * **reload_commands**
 	- (DEBUG) Reloads the commands.py file.
 
+### Notes
+
 * **Note 1**: the commands may refer to the following identifiers for a player:
 	- **Character Name**: the folder name of the character the player is using, also the name that appears in /getarea.
 	- **ID**: number in brackets [] in /getarea. 
 	- **IPID**: number in parentheses () in /getarea (requires mod rank).
 	- **IP**: the IP address of the player.
 	- **OOC Name**: the username of the player in the OOC chat.
-* **Note 2**: some commands include commas (,) between the parameters. If that is the case, the command expects you to actually use the commas between the parameters. If for whatever reason your parameter also has a comma followed by a space, you can include it by using ,\↨ (so 'Hello, world' becomes 'Hello,\ world').
+* **Note 2**: some commands include commas (,) between the parameters. If that is the case, the command expects you to actually use the commas between the parameters. If for whatever reason your parameter also has a comma followed by a space, you can include it by using ,\ (so 'Hello, world' becomes 'Hello,\ world').
 * **Note 3**: additional documentation for the commands can be found in `config\commands.py` and consulting the docstrings. For example, to get additional information for /help, you would look for `ooc_cmd_help` and look for the associated text.
 
 
