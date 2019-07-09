@@ -249,7 +249,8 @@ def ooc_cmd_area_lists(client, arg):
 def ooc_cmd_autopass(client, arg):
     """
     Toggles enter/leave messages being sent automatically or not to users in the current area.
-    It will not send those messages if logged in as staff or spectator, or while sneaking.
+    It will not send those messages if the client is spectator or while sneaking. Altered messages
+    will be sent if the area's lights are turned off.
 
     SYNTAX
     /autopass
@@ -747,7 +748,7 @@ def ooc_cmd_cleargm(client, arg):
 
 def ooc_cmd_clock(client, arg):
     """ (STAFF ONLY)
-    Set up a day cycle that will tick one hour every given number of seconds and provide a time
+    Sets up a day cycle that will tick one hour every given number of seconds and provide a time
     announcement to a given range of areas. Starting hour is also given. The clock ID is by default
     the client ID of the player who started the clock. Doing /clock while running an active clock
     will silently overwrite the old clock with the new one.
@@ -1455,7 +1456,7 @@ def ooc_cmd_invite(client, arg):
     /invite 1                     :: Invites the player whose client ID is 1.
     /invite 1234567890            :: Invites all clients of the player whose IPID is 1234567890.
     """
-    if not client.is_mod and not client.is_cm:
+    if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
         raise ClientError('Area is not locked.')
@@ -1936,10 +1937,10 @@ def ooc_cmd_look_set(client, arg):
     Requires /look_clean to undo.
 
     SYNTAX
-    /look_set {area_1}, {area_2}, ....
+    /look_set {area_description}
 
     OPTIONAL PARAMETERS
-    {area_n}: Area ID or name
+    {area_description}: New area description
 
     EXAMPLE
     Assuming the player is in area 0, which was set to have a default description of "A courtroom"
@@ -2010,7 +2011,7 @@ def ooc_cmd_minimap(client, arg):
 
 def ooc_cmd_modlock(client, arg):
     """ (MOD ONLY)
-    Sets the current area as accessible only to mod members. Players in the area at the time of the
+    Sets the current area as accessible only to moderators. Players in the area at the time of the
     lock will be able to leave and return to the area, regardless of authorization.
     Requires /unlock to undo.
 
@@ -2718,48 +2719,35 @@ def ooc_cmd_scream(client, arg):
     logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg),
                       client)
 
-def ooc_cmd_scream_set_range(client, arg):
+def ooc_cmd_scream_range(client, arg):
     """ (STAFF ONLY)
-    Set the current area's scream range to a given list of areas by name or ID separated by commas.
-    This completely overrides the old scream range, unlike /scream_set.
-    Passing in no arguments sets the scream range to nothing (i.e. a soundproof room).
-    Note that scream ranges are unidirectional, so if you want two areas to hear one another, you
-    must use this command twice.
-    Returns an error if an invalid area name or area ID is given, or if the current area is part of
-    the selection.
+    Returns the current area's scream range (i.e. users in which areas who would hear a /scream from
+    the current area).
 
     SYNTAX
-    /scream_set_range {area_1}, {area_2}, {area_3}, ...
+    /scream_range
 
     PARAMETERS
-    {area_n}: An area to add to the current scream range. Can be either an area name or area ID.
+    None
 
-    EXAMPLES:
-    Assuming the current area is Basement...
-    /scream_set_range Class Trial Room 3                            :: Sets Basement's scream range to "Class Trial Room 3"
-    /scream_set_range Class Trial Room,\ 2, 1, Class Trial Room 3   :: Sets Basement's scream range to "Class Trial Room, 2" (note the \ escape character"), area 1 and "Class Trial Room 3".
-    /scream_set_range                                               :: Sets Basement's scream range to no areas.
+    EXAMPLES
+    /scream_range           :: Obtain the current area's scream range, for example {'Basement'}
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
 
-    if len(arg) == 0:
-        client.area.scream_range = set()
-        area_names = '{}'
+    info = '== Areas in scream range of area {} =='.format(client.area.name)
+    # If no areas in scream range, print a manual message.
+    if len(client.area.scream_range) == 0:
+        info += '\r\n*No areas.'
+    # Otherwise, build the list of all areas.
     else:
-        areas = Constants.parse_area_names(client, arg.split(', '))
-        if client.area in areas:
-            raise ArgumentError('You cannot add the current area to the scream range.')
-        area_names = {area.name for area in areas}
-        client.area.scream_range = area_names
+        for area in client.area.scream_range:
+            info += '\r\n*({}) {}'.format(client.server.area_manager.get_area_by_name(area).id, area)
 
-    client.send_host_message('Set the scream range of area {} to be: {}.'
-                             .format(client.area.name, area_names))
-    client.send_host_others('{} set the scream range of area {} to be: {} ({}).'
-                            .format(client.get_char_name(), client.area.name, area_names,
-                                    client.area.id), is_staff=True)
-    logger.log_server('[{}][{}]Set the scream range of area {} to be: {}.'
-                      .format(client.area.id, client.get_char_name(), client.area.name, area_names), client)
+    client.send_host_message(info)
 
 def ooc_cmd_scream_set(client, arg):
     """ (STAFF ONLY)
@@ -2817,35 +2805,48 @@ def ooc_cmd_scream_set(client, arg):
                           .format(client.area.id, client.get_char_name(), intended_area.name,
                                   client.area.name), client)
 
-def ooc_cmd_scream_range(client, arg):
+def ooc_cmd_scream_set_range(client, arg):
     """ (STAFF ONLY)
-    Return the current area's scream range (i.e. users in which areas who would hear a /scream from
-    the current area).
+    Sets the current area's scream range to a given list of areas by name or ID separated by commas.
+    This completely overrides the old scream range, unlike /scream_set.
+    Passing in no arguments sets the scream range to nothing (i.e. a soundproof room).
+    Note that scream ranges are unidirectional, so if you want two areas to hear one another, you
+    must use this command twice.
+    Returns an error if an invalid area name or area ID is given, or if the current area is part of
+    the selection.
 
     SYNTAX
-    /scream_range
+    /scream_set_range {area_1}, {area_2}, {area_3}, ...
 
     PARAMETERS
-    None
+    {area_n}: An area to add to the current scream range. Can be either an area name or area ID.
 
-    EXAMPLES
-    /scream_range           :: Obtain the current area's scream range, for example {'Basement'}
+    EXAMPLES:
+    Assuming the current area is Basement...
+    /scream_set_range Class Trial Room 3                            :: Sets Basement's scream range to "Class Trial Room 3"
+    /scream_set_range Class Trial Room,\ 2, 1, Class Trial Room 3   :: Sets Basement's scream range to "Class Trial Room, 2" (note the \ escape character"), area 1 and "Class Trial Room 3".
+    /scream_set_range                                               :: Sets Basement's scream range to no areas.
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
 
-    info = '== Areas in scream range of area {} =='.format(client.area.name)
-    # If no areas in scream range, print a manual message.
-    if len(client.area.scream_range) == 0:
-        info += '\r\n*No areas.'
-    # Otherwise, build the list of all areas.
+    if len(arg) == 0:
+        client.area.scream_range = set()
+        area_names = '{}'
     else:
-        for area in client.area.scream_range:
-            info += '\r\n*({}) {}'.format(client.server.area_manager.get_area_by_name(area).id, area)
+        areas = Constants.parse_area_names(client, arg.split(', '))
+        if client.area in areas:
+            raise ArgumentError('You cannot add the current area to the scream range.')
+        area_names = {area.name for area in areas}
+        client.area.scream_range = area_names
 
-    client.send_host_message(info)
+    client.send_host_message('Set the scream range of area {} to be: {}.'
+                             .format(client.area.name, area_names))
+    client.send_host_others('{} set the scream range of area {} to be: {} ({}).'
+                            .format(client.get_char_name(), client.area.name, area_names,
+                                    client.area.id), is_staff=True)
+    logger.log_server('[{}][{}]Set the scream range of area {} to be: {}.'
+                      .format(client.area.id, client.get_char_name(), client.area.name, area_names), client)
 
 def ooc_cmd_shoutlog(client, arg):
     """ (STAFF ONLY)
@@ -3376,7 +3377,7 @@ def ooc_cmd_timer_get(client, arg):
 
 def ooc_cmd_ToD(client, arg):
     """
-    Choose "Truth" or "Dare". Intended to be use for participants in Truth or Dare games.
+    Chooses "Truth" or "Dare". Intended to be use for participants in Truth or Dare games.
 
     SYNTAX
     /ToD
@@ -3933,7 +3934,7 @@ def ooc_cmd_unremove_h(client, arg):
 
 def ooc_cmd_version(client, arg):
     """
-    Obtain the current version of the server software.
+    Obtains the current version of the server software.
 
     SYNTAX
     /version
@@ -3951,7 +3952,7 @@ def ooc_cmd_version(client, arg):
 
 def ooc_cmd_whereis(client, arg):
     """ (STAFF ONLY)
-    Obtain the current area of a player by client ID (number in brackets) or IPID (number in
+    Obtains the current area of a player by client ID (number in brackets) or IPID (number in
     parentheses).
     If given IPID, it will obtain the area info for all clients opened by the user. Otherwise, it
     will just obtain the one from the given client.
@@ -4006,11 +4007,11 @@ def ooc_cmd_whois(client, arg):
     targets = []
     # Pretend the identifier is a client ID
     if arg.isdigit():
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg[0]), False)
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
 
     # If still needed, pretend the identifier is a client IPID
     if len(targets) == 0 and arg.isdigit() and len(arg) == 10:
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg[0]), False)
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
 
     # If still needed, pretend the identifier is an OOC username
     if len(targets) == 0:

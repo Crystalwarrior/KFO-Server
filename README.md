@@ -54,56 +54,108 @@ Requires Python 3.6+ and PyYAML.
 ### User Commands
 
 * **help**
-    - Links to this readme
+    - Links to this readme.
 * **area** "area number" 
-    - Displays all areas when blank, swaps to area with number
+    - Displays all areas when blank, swaps to area with number if it is reachable from your own.
+* **autopass**
+	- Toggles enter/leave messages being sent automatically or not to users in the current area, including original/target areas.
+	- Messages will not be sent if sneaking. Altered messages will be sent if the area's lights are turned off.
 * **bg** "background" 
-    - Changes the current background
+    - Changes the current background.
+* **bloodtrail_clean**
+	- Cleans the bloodtrail in the current area.
+	- If someone is bleeding in the current area, the cleaning process will fail.
 * **charselect** 
-    - Puts you back to char select screen
+    - Puts you back to the character select screen.
+* **chars_restricted**
+	- Lists all characters that are restricted in the current area.
 * **cleardoc** 
-    - Clears the doc url
+    - Clears the doc url of the current area.
 * **coinflip**
-    - Flips a coin
+    - Flips a coin.
 * **currentmusic** 
-    - Displays the current music
+    - Displays the current music and who played it.
 * **discord**
     - Displays the invite link of the server's Discord server.
 * **doc** "url" 
-    - Gives the doc url if blank, updates the doc url otherwise
+    - Gives the doc url if blank, updates the doc url otherwise.
 * **g** "message" 
-    - Sends a serverwide message
+    - Sends a serverwide message.
 * **getarea** 
-    - Shows the current characters in your area
+    - Shows the current characters in your area.
 * **getareas** 
-    - Shows all characters in all areas
+    - Shows all characters in all  areas reachable from your own.
 * **kickself**
     - Removes all of of the user's clients except the one that used the command.
+* **knock** "area"
+	- Knocks on a reachable area's door, sending an OOC notification to that area. Can be either area ID or name.
+* **lights** "on/off"
+	- Changes the light status in the area to on or off.
+	- Areas with lights off will have a dark background, and they disable /getarea(s) and alter /autopass, bleeding, /look and sneaking notifications.
 * **lock**
-    - Locks your area.
-* **pm** "target" "Message" 
-    - PMs the target, can either be character name or OOC name
-* **pmmute**
-    - Disables all incoming PMs
+    - Locks your area. Prevents normal users from entering.
+	- People in the area, including yourself, at the time the area is locked are free to come and go regardless of their status.
+* **look**
+	- Obtains the description of the current area.
+* **minimap**
+	- Lists all areas reachable from the current one.
+* **motd**
+	- Returns the server's Message of the Day.
+* **music_list** "music list name"
+	- Sets your music list to the given one, or restores the original one if not given any.
+* **music_lists**
+	- Lists all available music lists as established in config/music_lists.yaml.
+* **mutepm**
+	- Changes your status of being able to receive PMs.
+* **online**
+	- Returns how many players are online.
+* **play** "song.mp3"
+	- Plays a song, provided the area you are in allows non-staff members to run this command.
+* **pm** "ID/IPID/char name/OOC name" "Message" 
+    - PMs the target.
 * **pos** "position" 
-    - Changes your position in the court
+    - Changes your position in the court.
     - Positions: 'def', 'pro', 'hld', 'hlp', 'jud', 'wit'
 * **randomchar** 
-    - Randomly chooses a character
+    - Changes your character to a randomly chosen one.
 * **reload** 
-    - Reloads your character ini
-* **roll** "max, number of dice" 
-    - Rolls a 1D6 if blank
-* **roll** "max, number of dice" 
-    - Same as above but unseen by other clients
-* **switch** "character" 
-    - Quick switch to a character
+    - Reloads your character ini file.
+* **roll** "number of dice"d"number of faces" "modifiers" 
+    - Rolls as many dice as given with the given number of faces, and applies modifiers if given. If no arguments are given, rolls one d6.
+* **rollp** "max, number of dice" 
+    - Same as roll but other non-staff members in the area only are notified that someone rolled.
+* **scream** "message"
+	- Sends a message visible to all players in the areas that are set to be able to listen to screams from the current area.
+* **showname** "showname"
+	- Sets your showname to be the given one, or clears it if not given one.
+* **showname_list**
+	- Similar to /getareas, but lists shownames along with character names.
+* **switch** "character name" 
+    - Switches you to the given character.
 * **time**
-    - Displays the time according to the local timezone of whoever is running the server.
+    - Displays the server's local time.
+* **time12**
+	- Displays the server's local time in 12 hour format.
+* **timer** "length" "timer name" "public"
+	- Starts a timer of the given length in seconds, which will send a notification to people in the area once it expires.
+	- If given a timer name, it will override the default timer name (OOCNameTimer).
+	- If public is set to any of the following: "False, false, 0, No, no", the timer details will be hidden from non-staff players.
+* **timer_cancel** "timer name"
+	- Cancels the timer by name, provided it is yours.
+* **timer_get** "timer name"
+	- Obtain the remaining time of the given timer by name, provided it is public, or list all remaining times in all public timers if not given a name.
+* **ToD**
+	- Chooses "Truth" or "Dare" for Truth or Dare minigames.
 * **toggleglobal** 
-    - Toggles global on and off
+    - Changes your setting to receive global messages. By default it is on.
+* **toggle_shownames**
+	- Changes your setting to have the IC messages you receive to include the sender's custom showname. By default it is on.
+* **uninvite** "ID/IPID"
+	- Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**
-    - Unlocks your area.
+    - Unlocks your area, provided the lock came as a result of /lock.
+* **version**
+	- Obtains the current version of the server software.
 * **8ball**
     - Gain insight from the magic 8 ball.
 	
@@ -114,68 +166,190 @@ Requires Python 3.6+ and PyYAML.
       - Bypass Locks.
       - See all areas even in RP mode.
       - Use GM commands.
-* **area_kick** "ID"
-    - Kicks target and all his(same for all genders) multi-accs from your area and remove him from invite-list.
+* **logout**
+	- Logs you out of the GM role.
+* **area_kick** "ID/IPID" "area number"
+    - Kicks target from your area to the intended area and remove them from its invite-list.
+	- If not given a target area, it will use the server's default area (usually area 0).
+* **bloodtrail** "ID"
+	- Changes the bleeding status of a target. 
+	- If bleeding, they will leave 'blood' in all areas they pass through, and send OOC notifications to players in the area and those who join indicating their status. Sneaking and bleeding players send altered notifications.
+* **bloodtrail_clean** "area 1", "area 2", ...
+	- Cleans the blood trails in the given areas (or the current one if not given any areas).
+	- If someone is bleeding in any of the given areas, the cleaning process will fail.
+* **bloodtrail_list**
+	- Lists all areas that have bloodtrails in them, and where they lead to if appropiate.
+* **bloodtrail_set** "area 1", "area 2", ...
+	- Sets the current area to have bloodtrails leading to the listed areas. If no areas are given, the area is set to have an unconnected pool of blood.
+* **char_restrict** "character name"
+	- Changes the restricted status of a character in the current area.
+	- If a character is restricted, only GMs and above can use the character in the current area.
+* **clock** "area range Start" "area range end" "hour length "hour start"
+	- Sets up a day cycle that, starting from the given hour, will tick one hour every given number of seconds and provide a time announcement to a given range of areas.
+* **clock_cancel** "ID"
+	- Cancels the day cycle initiated by the target or yourself if not given a target.
+* **clock_pause** "ID"
+	- Pauses the day cycle initiated by the target or yourself if not given a target.
+* **clock_unpause** "ID"
+	- Unpauses the day cycle initiated by the target or yourself if not given a target.
 * **follow** "ID"
-    - Moves user clients to target client's area.
+    - Starts following a target. If the target changes areas, you will automatically follow them there.
+* **globalic** "area range start", "area range end"
+	- Sends subsequence IC messages to the area range described above. Can take either area IDs or area names.
 * **gmlock**
-    - Locks your area. Prevents other GMs from entering.
-* **invite** "ID"
+    - Locks your area. Prevents CMs and normal users from entering.
+* **handicap** "ID/IPID" "length" "name" "announce if over"
+	- Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of
+    time in seconds between changing areas.
+	- If name is given, the handicap announcement will use it as the name of the handicap.
+	- If announce if over is set to any of "False, false, 0, No, no", no announcements will be sent to the player indicating that they may now move areas.
+* **iclock**
+	- Changes the IC lock status of the current area.
+	- If the area has an IC lock, only GMs and above will be able to send IC messages.
+* **invite** "ID/IPID"
     - Adds target in invite list of your area.
+* **judgelog** "area"
+	- Lists the last 20 judge actions performed in the given area (or current area if not given).
+	- Each entry includes the time of execution, client ID, character name, client IPID and the judge action performed.
+* **look_clean** "area 1", "area 2", ...
+	- Restores the default area descriptions of the given areas by ID or name, or the current area if not given any.
+* **look_list**
+	- Lists all areas that have custom descriptions.
+* **look_set** "description"
+	- Sets the area's description to the given one, or restores the default one if not given.
+* **multiclients** "ID/IPID"
+	- Lists all the clients opened by a target and the areas they are in.
 * **play** "song.mp3" 
-    - Plays a song
-* **rpmode** "on, off"
+    - Plays a song, even if not in the server music list.
+* **reveal** "ID/IPID"
+	- Reveals a target if they were previously sneaking.
+	- Also restores their formerly assigned handicap if they had one that was shorter than the server's automatic sneaking handicap.
+* **rplay** "song.mp3"
+	- Plays a song in all areas reachable from the current one.
+* **rpmode** "on/off"
     - Toggles RP mode.
-* **unfollow** "ID"
-    - Undo previous command.
-
+* **scream_range**
+	- Returns the areas that can listen to screams sent from the current area.
+* **scream_set** "area"
+	- Changes the reachable status from screams sent from the current area to the given area.
+* **scream_set_range** "area 1", "area 2", ...
+	- Sets the current area's scream range to be the areas listed.
+* **shoutlog** "area"
+	- Lists the last 20 shouts sent in the given area (or current area if not given).
+	- Each entry includes the time of execution, client ID, character name, client IPID, the shout ID and the IC message sent alongside.
+* **sneak** "ID/IPID"
+	- Sets a target to be sneaking if they were visible.
+	- If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
+* **st** "message"
+	- Sends a message to all active staff members.
+* **toggle_allrolls**
+	- Changes your ability to receive /roll and /rollp results from other areas. By default it is off.
+* **toggle_rollp**
+	- Changes the current area's setting to allow non-staff members to do /rollp. By default area setting is indicated in the server's area list.
+* **toggle_rpgetarea**
+	- Changes the current area's setting to allow RP users to use /getarea. By default area setting is indicated in the server's area list.
+* **toggle_rpgetareas**
+	- Changes the current area's setting to allow RP users to use /getareas. By default area setting is indicated in the server's area list.
+* **transient** "ID/IPID"
+	- Changes a player's ability to ignore passage locks and thus access all areas from any given area. By default it is off.
+* **unfollow**
+    - Stops following whoever you were following.
+* **unglobalic**
+	- Stops sending subsequent IC messages to the area range specified in a previous /globalic command.
+* **unhandicap** "ID/IPID"
+	- Removes movement handicaps on a target.
+* **unlock**
+	- Unlocks an area, provided the lock came as a result of /gmlock or /lock.
+* **whereis** "ID/IPID"
+	- Obtains the area a target is.
+* **whois** "ID/IPID"
+	- Obtains a lot of properties of the target.
+	
 ### Community Manager Commands
 
 * **logincm**
     - Makes you a Community Manager.
-* **blockdj** "target"
+* **logout**
+	- Logs you out of the Community Manager role.
+* **blockdj** "ID/IPID"
     - Mutes the target from changing music. 
-* **kick** "IPID" 
-    - Kicks the targets with this IPID.
-* **mute** "Target" 
-    - Mutes the target from all IC actions, can be IP or Character name
+* **cleargm**
+	- logs out all GMs in the server and puts them in RP mode if needed.
+* **kick** "ID/IPID" 
+    - Kicks the target from the server.
+* **mute** "ID/IPID" 
+    - Mutes the target from all IC actions.
+* **ooc_mute** "OOC name" 
+    - Mutes the target from all OOC actions.
+* **ooc_unmute** "OOC name" 
+    - Unmutes the target.
 * **unblockdj** "target"
     - Allows the target to change music again.
-* **ooc_mute** "Target" 
-    - Mutes the target from all OOC actions via OOC-name.
-* **ooc_unmute** "Target" 
-    - Unmutes the target.
-* **unmute** "Target","all" 
-    - Unmutes the target, "all" will unmute all muted clients
-
+* **unmute** "ID/IPID" 
+    - Unmutes the target from the IC chat.
+	
 ### Moderator Commands
 
 * **login** "Password"
     - Makes you a Moderator.
+* **logout**
+	- Logs you out of the Moderator role.
 * **allow_iniswap**
-    - Toggle allow_iniswap var in this area. 
+    - Changes the iniswap status in the current area.
     - Even if iniswap at all is forbidden you can configure all-time allowed iniswaps in *iniswaps.yaml*
 * **announce** "Message" 
     - Sends a serverwide announcement
+* **area_list** "Area List"
+	- Sets the server's current area list.
+	- If not given an area list, it will restore the original area list as it was on server bootup.
+* **area_lists**
+	- Lists all available area lists as established in config/area_lists.yaml.
 * **ban** "IPID"/"IP" 
-    - Bans the IPID/IP (hdid is linked to ipid so all bans happens in a same time).
+    - Bans the IPID/IP (hdid is linked to ipid so all bans happen at the same time).
 * **bglock** 
-    - Toggles the background lock in the current area
+    - Toggles the background lock in the current area.
 * **charselect** "ID"
     - Kicks a player back to the character select screen. If no ID was entered then target yourself.
-* **disemvowel/disemconsonant/remove_h** "Target"
+* **defaultarea** "area number"
+	- Sets the given area to be the area all future players join when they connect to the server.
+* **disemvowel/disemconsonant/remove_h** "ID/IPID"
     - Removes the respective letters from everything said by the target
+* **gimp** "ID/IPID"
+	- Gimps a target so that all tbeir IC messages are replaced with a selection of preset messages.
 * **gm** "Message" 
-    - Sends a serverwide message with mod tag
+    - Sends a serverwide message with mod tag.
 * **lm** "Message" 
-    - Sends an area OOC message with mod tag
+    - Sends an area OOC message with mod tag.
 * **modlock**
-    - Locks your area. Prevents other mods from entering.
+    - Locks your area. Prevents GMs, CMs and normal users from entering.
+* **refresh**
+	- Reloads the server's default character, music and background lists.
+* **showname_freeze**
+	- Changes the ability of non-staff members of being able to change or remove their own shownames.
+* **showname_history** "ID/IPID"
+	- Lists all shownames a target has gone through since connecting, including the time they were changed.
+* **showname_nuke**
+	- Clears all shownames from non-staff members.
+* **showname_set** "ID/IPID" "showname"
+	- Sets a target's showname to be the given one, or clears it if not given one.
 * **unban** "IPID" 
-    - Unbans the specified IPID .
-* **undisemvowel/undisemconsonant/unremove_h** "Target"
+    - Unbans the specified IPID.
+* **undisemvowel/undisemconsonant/ungimp/unremove_h** "ID/IPID"
     - Undo correlating command.
+* **unlock**
+	- Unlocks an area, provided the lock came as a result of /gmlock, /lock or /modlock.
+* **whois** "ID/IPID"
+	- Obtains a lot of properties of the target, including HDID and IPID.
+	
+### Debug commands
 
+* **exec** "command"
+	- (DEBUG) Executes the given command as a Python instruction. Requires turning on in commands.py before using.
+* **lasterror**
+	- (DEBUG) Obtains the latest uncaught error as a result of a client packet. This message emulates what is output on the server console.
+* **reload_commands**
+	- (DEBUG) Reloads the commands.py file.
+	
 ## License
 
 This server is licensed under the AGPLv3 license. In short, if you use a modified version of tsuserver3, you *must* distribute its source licensed under the AGPLv3 as well, and notify your users where the modified source may be found. The main difference between the AGPL and the GPL is that for the AGPL, network use counts as distribution. If you do not accept these terms, you should use [serverD](https://github.com/Attorney-Online-Engineering-Task-Force/serverD), which uses GPL rather than AGPL.

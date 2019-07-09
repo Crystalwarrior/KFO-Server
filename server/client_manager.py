@@ -154,7 +154,7 @@ class ClientManager:
                 target_area = self.area
 
             if not self.server.is_valid_char_id(char_id):
-                raise ClientError('Invalid Character ID.')
+                raise ClientError('Invalid character ID.')
             if not target_area.is_char_available(char_id, allow_restricted=self.is_staff()):
                 if force:
                     for client in self.area.clients:
@@ -214,6 +214,260 @@ class ClientManager:
             # that crashes all clients that dare attempt join this area.
             self.send_command('FM', *self.server.music_list_ao2)
 
+        def check_change_area(self, area, override_passages=False, override_effects=False):
+            """
+            Perform all checks that would prevent an area change.
+            Right now there is, (in this order)
+            * In target area already.
+            * If existing handicap has not expired.
+            * If moving while sneaking to lobby/private area.
+            * If target area has some lock player has no perms for.
+            * If target area is unreachable from the current one.
+            * If no available characters in the new area.
+            ** In this check the character is changed if there is a character conflict too.
+
+            No send_host_messages commands are meant to be put here, so as to avoid unnecessary
+            notifications. Append any intended messages to the captured_messages list and then
+            manually send them out outside this function.
+            """
+            captured_messages = list()
+
+            # Obvious check first
+            if self.area == area:
+                raise ClientError('User is already in target area.')
+
+            # Check if player has waited a non-zero movement delay
+            if not self.is_staff() and self.is_movement_handicapped and not override_effects:
+                start, length, name, _ = self.server.get_task_args(self, ['as_handicap'])
+                _, remain_text = Constants.time_remaining(start, length)
+                raise ClientError("You are still under the effects of movement handicap '{}'. "
+                                  "Please wait {} before changing areas.".format(name, remain_text))
+
+            # Check if trying to move to a lobby/private area while sneaking
+            if area.lobby_area and not self.is_visible and not self.is_mod and not self.is_cm:
+                raise ClientError('Lobby areas do not let non-authorized users remain sneaking. '
+                                  'Please change music, speak IC or ask a staff member to reveal you.')
+            if area.private_area and not self.is_visible:
+                raise ClientError('Private areas do not let sneaked users in. Please change the '
+                                  'music, speak IC or ask a staff member to reveal you.')
+
+            # Check if area has some sort of lock
+            if not self.ipid in area.invite_list:
+                if area.is_locked and not self.is_staff():
+                    raise ClientError('That area is locked.')
+                if area.is_gmlocked and not self.is_mod and not self.is_gm:
+                    raise ClientError('That area is gm-locked.')
+                if area.is_modlocked and not self.is_mod:
+                    raise ClientError('That area is mod-locked.')
+
+            # Check if trying to reach an unreachable area
+            if not (area.name in self.area.reachable_areas or '<ALL>' in self.area.reachable_areas or
+                    self.is_transient or self.is_staff() or override_passages):
+                info = ('Selected area cannot be reached from the current one without authorization. '
+                        'Try one of the following areas instead: ')
+                if self.area.reachable_areas == {self.area.name}:
+                    info += '\r\n*No areas available.'
+                else:
+                    try:
+                        sorted_areas = sorted(self.area.reachable_areas, key=lambda area_name: self.server.area_manager.get_area_by_name(area_name).id)
+                        for reachable_area in sorted_areas:
+                            if reachable_area != self.area.name:
+                                info += '\r\n*({}) {}'.format(self.server.area_manager.get_area_by_name(reachable_area).id, reachable_area)
+                    except AreaError: #When would you ever execute this piece of code is beyond me, but meh
+                        info += '\r\n<ALL>'
+                raise ClientError(info)
+
+            # Check if current character is taken in the new area
+            new_char_id = self.char_id
+            if not area.is_char_available(self.char_id, allow_restricted=self.is_staff()):
+                try:
+                    new_char_id = area.get_rand_avail_char_id(allow_restricted=self.is_staff())
+                except AreaError:
+                    raise ClientError('No available characters in that area.')
+
+            return new_char_id, captured_messages
+
+        def notify_change_area(self, area, old_char, ignore_bleeding=False):
+            """
+            Send all OOC notifications that come from switching areas.
+            Right now there is, (in this order)
+            * Showname conflict if there is one, sent to player who's moving.
+            * Lights off notification if no lights in new area, sent to player who's moving.
+            * Traveling notifications:
+            ** Autopass if turned on and lights on, sent to everyone else in the new area.
+            ** Footsteps in if lights off in new area, sent to everyone else in the new area.
+            ** Footsteps out if lights off in old area, sent to everyone else in the old area.
+            * Blood notifications (accounting for lights and sneaking):
+            ** Bleeding status of people in the area, sent to player who's moving
+            ** Bleeding status of the person who's moved, sent to everyone else in the area
+            ** Blood in area status, sent to player who's moving.
+            """
+            # Code here assumes successful area change, so it will be sending client notifications
+            old_area = self.area
+
+            # Check if someone in the new area has the same showname
+            try: # Verify that showname is still valid
+                self.change_showname(self.showname, target_area=area)
+            except ValueError:
+                self.send_host_message('Your showname {} was already used in this area so it has '
+                                       'been cleared.'.format(self.showname))
+                self.change_showname('', target_area=area)
+                logger.log_server('{} had their showname removed due it being used in the new area.'
+                                  .format(self.ipid), self)
+
+            # Check if the lights were turned off, and if so, let the client know
+            if not area.lights:
+                self.send_host_message('You enter a pitch dark room.')
+
+            # If autopassing, send OOC messages, provided the lights are on
+            if self.autopass and not self.char_id < 0:
+                self.send_host_others('{} has left to the {}.'.format(old_char, area.name), in_area=old_area,
+                                      pred=lambda c: (c.is_staff() or (old_area.lights and self.is_visible)))
+                self.send_host_others('{} has entered from the {}.'
+                                      .format(self.get_char_name(), old_area.name), in_area=area,
+                                      pred=lambda c: (c.is_staff() or (area.lights and self.is_visible)))
+
+            # If former or new area's lights are turned off, send special messages to non-staff
+            # announcing your presence
+            if not old_area.lights and not self.char_id < 0 and self.is_visible:
+                self.send_host_others('You hear footsteps going out of the room.',
+                                      in_area=old_area, is_staff=False)
+
+            if not area.lights and not self.char_id < 0 and self.is_visible:
+                self.send_host_others('You hear footsteps coming into the room.',
+                                      in_area=area, is_staff=False)
+
+            # If bleeding, send reminder, and notify everyone in the new area if not sneaking
+            # (otherwise, just send vague message).
+            if self.is_bleeding:
+                old_area.bleeds_to.add(old_area.name)
+                area.bleeds_to.add(area.name)
+            if not ignore_bleeding and self.is_bleeding:
+                # As these are sets, repetitions are automatically filtered out
+                old_area.bleeds_to.add(area.name)
+                area.bleeds_to.add(old_area.name)
+                self.send_host_message('You are bleeding.')
+
+                # Send notification to people in new area
+                area_had_bleeding = (len([c for c in area.clients if c.is_bleeding]) > 0)
+                if self.is_visible and area.lights:
+                    normal_mes = 'You see {} arrive and bleeding.'.format(self.get_char_name())
+                    staff_mes = normal_mes
+                elif not self.is_visible and area.lights:
+                    s = {True: 'more', False: 'faint'}
+                    normal_mes = ('You start hearing {} drops of blood.'
+                                  .format(s[area_had_bleeding]))
+                    staff_mes = ('{} arrived to the area while bleeding and sneaking.'
+                                 .format(self.get_char_name()))
+                elif self.is_visible and not area.lights:
+                    s = {True: 'more ', False: ''}
+                    normal_mes = ('You start hearing and smelling {}drips of blood.'
+                                  .format(s[area_had_bleeding]))
+                    staff_mes = ('{} arrived to the darkened area while bleeding.'
+                                 .format(self.get_char_name()))
+                elif not self.is_visible and not area.lights:
+                    s = {True: 'more ', False: ''}
+                    normal_mes = ('You start hearing and smelling {}drips of blood.'
+                                  .format(self.get_char_name()))
+                    staff_mes = ('{} arrived to the darkened area while bleeding and sneaking.'
+                                 .format(self.get_char_name()))
+
+                self.send_host_others(normal_mes, is_staff=False, in_area=area)
+                self.send_host_others(staff_mes, is_staff=True, in_area=area)
+
+            # If bleeding and either you were sneaking or your former area had its lights turned
+            # off, notify everyone in the new area to the less intense sounds and smells of
+            # blood. Do nothing if lights on and not sneaking.
+            if not ignore_bleeding and self.is_bleeding:
+                area_sole_bleeding = (len([c for c in old_area.clients if c.is_bleeding]) == 1)
+                if self.is_visible and old_area.lights:
+                    normal_mes = ''
+                    staff_mes = ''
+                elif not self.is_visible and old_area.lights:
+                    s = {True: 'stop hearing', False: 'start hearing less'}
+                    normal_mes = 'You {} drops of blood.'.format(s[area_sole_bleeding])
+                    staff_mes = ('{} left the area while bleeding and sneaking.'
+                                 .format(self.get_char_name()))
+                elif self.is_visible and not old_area.lights:
+                    s = {True: 'stop hearing and smelling',
+                         False: 'start hearing and smelling less'}
+                    normal_mes = 'You {} drops of blood.'.format(s[area_sole_bleeding])
+                    staff_mes = ('{} left the darkened area while bleeding.'
+                                 .format(self.get_char_name()))
+                elif not self.is_visible and not old_area.lights:
+                    s = {True: 'stop hearing and smelling',
+                         False: 'start hearing and smelling less'}
+                    normal_mes = 'You {} drops of blood.'.format(s[area_sole_bleeding])
+                    staff_mes = ('{} left the darkened area while bleeding and sneaking.'
+                                 .format(self.get_char_name()))
+
+                if normal_mes and staff_mes:
+                    self.send_host_others(normal_mes, is_staff=False, in_area=old_area)
+                    self.send_host_others(staff_mes, is_staff=True, in_area=old_area)
+
+            # If someone else is bleeding in the new area, notify the person moving
+            # Special consideration is given if that someone else is sneaking or the area's
+            # lights are turned off, or the client is a staff member
+            bleeding_visible = [c for c in area.clients if c.is_visible and c.is_bleeding]
+            bleeding_sneaking = [c for c in area.clients if not c.is_visible and c.is_bleeding]
+            info = ''
+            sneak_info = ''
+
+            # If lights are out and someone is bleeding, send generic drops of blood message
+            # to non-staff members
+            if not area.lights and not self.is_staff() and len(bleeding_visible + bleeding_sneaking) > 0:
+                info = 'You hear faint drops of blood'
+            # Otherwise, send who is bleeding if not sneaking and alert to the sound of drops of
+            # blood if someone is bleeding while sneaking. Staff members get notified of the
+            # names of the people who are bleeding and sneaking.
+            else:
+                if len(bleeding_visible) == 1:
+                    info = 'You see {} is bleeding'.format(bleeding_visible[0].get_char_name())
+                elif len(bleeding_visible) > 1:
+                    info = 'You see {}'.format(bleeding_visible[0].get_char_name())
+                    for i in range(1, len(bleeding_visible)-1):
+                        info += ', {}'.format(bleeding_visible[i].get_char_name())
+                    info += ' and {} are bleeding'.format(bleeding_visible[-1].get_char_name())
+
+                if len(bleeding_sneaking) > 0:
+                    if not self.is_staff():
+                        sneak_info = 'You hear faint drops of blood'
+                    elif len(bleeding_sneaking) == 1:
+                        sneak_info = ('You see {} is bleeding while sneaking'
+                                      .format(bleeding_sneaking[0].get_char_name()))
+                    else:
+                        sneak_info = 'You see {}'.format(bleeding_sneaking[0].get_char_name())
+                        for i in range(1, len(bleeding_sneaking)-1):
+                            sneak_info += ', {}'.format(bleeding_sneaking[i].get_char_name())
+                        sneak_info += (' and {} are bleeding while sneaking'
+                                       .format(bleeding_sneaking[-1].get_char_name()))
+
+            if info != '':
+                if sneak_info != '':
+                    sneak_info = sneak_info[:1].lower() + sneak_info[1:]
+                    info = '{}, and {}'.format(info, sneak_info)
+            else:
+                info = sneak_info
+
+            if info != '':
+                self.send_host_message(info + '.')
+
+            # If there is blood in the area, send notification
+            if area.bleeds_to == set([area.name]):
+                self.send_host_message('You spot some blood in the area.')
+            elif len(area.bleeds_to) > 1:
+                bleed_to_areas = list(area.bleeds_to - set([area.name]))
+                # Lose potential order bias, yes, even with what originally was a set
+                random.shuffle(bleed_to_areas)
+                info = 'You spot a blood trail leading to the {}'.format(bleed_to_areas[0])
+                if len(bleed_to_areas) > 1:
+                    for i in range(1, len(bleed_to_areas)-1):
+                        info += ', the {}'.format(bleed_to_areas[i])
+                    info += ' and the {}.'.format(bleed_to_areas[-1])
+                else:
+                    info += '.'
+                self.send_host_message(info)
+
         def change_area(self, area, override_all=False, override_passages=False,
                         override_effects=False, ignore_bleeding=False, ignore_followers=False):
             """
@@ -223,235 +477,44 @@ class ClientManager:
             *ignore_bleeding: not add blood to the area if the character is moving,
              such as from /area_kick or AFK kicks
             *ignore_followers: avoid sending the follow command to followers (e.g. using /follow)
-            *override_all: perform the area change regardless of anything (only useful for complete area reload)
-             In particular, override_all being False performs all the checks and announces the area change in OOC
+            *override_all: perform the area change regardless of anything
+            (only useful for complete area reload). In particular, override_all being False
+            performs all the checks and announces the area change in OOC.
             """
             if not override_all:
-                # Check if player has waited a non-zero movement delay
-                if not self.is_staff() and self.is_movement_handicapped and not override_effects:
-                    start, length, name, _ = self.server.get_task_args(self, ['as_handicap'])
-                    _, remain_text = Constants.time_remaining(start, length)
-                    raise ClientError("You are still under the effects of movement handicap '{}'. Please wait {} before changing areas.".format(name, remain_text))
-
-                # Check if trying to move to a lobby/private area while sneaking
-                if area.lobby_area and not self.is_visible and not self.is_mod and not self.is_cm:
-                    raise ClientError('Lobby areas do not let non-authorized users remain sneaking. Please change the music, speak IC or ask a staff member to reveal you.')
-                if area.private_area and not self.is_visible:
-                    raise ClientError('Private areas do not let sneaked users in. Please change the music, speak IC or ask a staff member to reveal you.')
-
-                # Check if area has some sort of lock
-                if self.area == area:
-                    raise ClientError('User is already in target area.')
-                if area.is_locked and not self.is_mod and not self.is_gm and not self.ipid in area.invite_list:
-                    raise ClientError('That area is locked.')
-                if area.is_gmlocked and not self.is_mod and not self.is_gm and not self.ipid in area.invite_list:
-                    raise ClientError('That area is gm-locked.')
-                if area.is_modlocked and not self.is_mod and not self.ipid in area.invite_list:
-                    raise ClientError('That area is mod-locked.')
-
-                # Check if trying to reach an unreachable area
-                if not (area.name in self.area.reachable_areas or '<ALL>' in self.area.reachable_areas or \
-                self.is_transient or self.is_staff() or override_passages):
-                    info = 'Selected area cannot be reached from the current one without authorization. Try one of the following instead: '
-                    if self.area.reachable_areas == {self.area.name}:
-                        info += '\r\n*No areas available.'
-                    else:
-                        try:
-                            sorted_areas = sorted(self.area.reachable_areas, key=lambda area_name: self.server.area_manager.get_area_by_name(area_name).id)
-                            for reachable_area in sorted_areas:
-                                if reachable_area != self.area.name:
-                                    info += '\r\n*({}) {}'.format(self.server.area_manager.get_area_by_name(reachable_area).id, reachable_area)
-                        except AreaError: #When would you ever execute this piece of code is beyond me, but meh
-                            info += '\r\n<ALL>'
-                    raise ClientError(info)
-
-                # Check if current character is taken in the new area
-                old_char = self.get_char_name()
-                if not area.is_char_available(self.char_id, allow_restricted=self.is_staff()):
-                    try:
-                        new_char_id = area.get_rand_avail_char_id(allow_restricted=self.is_staff())
-                    except AreaError:
-                        raise ClientError('No available characters in that area.')
-
-                    self.change_character(new_char_id, target_area=area)
-                    if old_char in area.restricted_chars:
-                        self.send_host_message('Your character was restricted in your new area, switched to {}.'.format(self.get_char_name()))
-                    else:
-                        self.send_host_message('Your character was taken in your new area, switched to {}.'.format(self.get_char_name()))
+                # All the code that could raise errors goes here
+                # It also returns the character name that the player ended up, if it changed.
+                new_char_id, mes = self.check_change_area(area, override_passages=override_passages,
+                                                          override_effects=override_effects)
 
                 # Code after this line assumes that the area change will be successful
                 # (but has not yet been performed)
 
-                old_area = self.area
-                self.send_host_message('Changed area to {}.[{}]'.format(area.name, area.status))
+                # Send client messages that could have been generated during the change area check
+                for message in mes:
+                    self.send_host_message(message)
 
-                # Check if someone in the new area has the same showname
-                try:
-                    self.change_showname(self.showname, target_area=area) # Verify that showname is still valid
-                except ValueError:
-                    self.send_host_message("Your showname {} was already used in this area. Resetting it to none.".format(self.showname))
-                    self.change_showname('', target_area=area)
-                    logger.log_server('{} had their showname removed due it being used in the new area.'.format(self.ipid), self)
-
-                # Check if the lights were turned off, and if so, let the client know
-                if not area.lights:
-                    self.send_host_message('You enter a pitch dark room.')
-
-                # If autopassing, send OOC messages, provided the lights are on
-                if self.autopass and not self.char_id < 0:
-                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                  '{} has left to the {}.'.format(old_char, area.name),
-                                                  pred=lambda c: (c != self and c.area == old_area
-                                                                  and (c.is_staff() or (old_area.lights and self.is_visible))))
-                    self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                                  '{} has entered from the {}.'.format(self.get_char_name(), old_area.name),
-                                                  pred=lambda c: (c != self and c.area == area
-                                                                  and (c.is_staff() or (area.lights and self.is_visible))))
-
-                # If former or new area's lights are turned off, send special messages to non-staff
-                # announcing your presence
-                if not old_area.lights and not self.char_id < 0 and self.is_visible:
-                    for c in [x for x in old_area.clients if not x.is_staff() and x != self]:
-                        c.send_host_message('You hear footsteps going out of the room.')
-
-                if not area.lights and not self.char_id < 0 and self.is_visible:
-                    for c in [x for x in area.clients if not x.is_staff() and x != self]:
-                        c.send_host_message('You hear footsteps coming into the room.')
-
-                # If bleeding, send reminder, and notify everyone in the new area if not sneaking
-                # (otherwise, just send vague message).
-                if self.is_bleeding:
-                    old_area.bleeds_to.add(old_area.name)
-                    area.bleeds_to.add(area.name)
-                if not ignore_bleeding and self.is_bleeding:
-                    # As these are sets, repetitions are automatically filtered out
-                    old_area.bleeds_to.add(area.name)
-                    area.bleeds_to.add(old_area.name)
-                    self.send_host_message('You are bleeding.')
-
-                    # Send notification to people in new area
-                    area_had_bleeding = (len([c for c in area.clients if c.is_bleeding]) > 0)
-                    if self.is_visible and area.lights:
-                        normal_mes = 'You see {} arrive and bleeding.'.format(self.get_char_name())
-                        staff_mes = normal_mes
-                    elif not self.is_visible and area.lights:
-                        s = {True: 'more', False: 'faint'}
-                        normal_mes = ('You start hearing {} drops of blood.'
-                                      .format(s[area_had_bleeding]))
-                        staff_mes = ('{} arrived to the area while bleeding and sneaking.'
-                                     .format(self.get_char_name()))
-                    elif self.is_visible and not area.lights:
-                        s = {True: 'more ', False: ''}
-                        normal_mes = ('You start hearing and smelling {}drips of blood.'
-                                      .format(s[area_had_bleeding]))
-                        staff_mes = ('{} arrived to the darkened area while bleeding.'
-                                     .format(self.get_char_name()))
-                    elif not self.is_visible and not area.lights:
-                        s = {True: 'more ', False: ''}
-                        normal_mes = ('You start hearing and smelling {}drips of blood.'
-                                      .format(self.get_char_name()))
-                        staff_mes = ('{} arrived to the darkened area while bleeding and sneaking.'
-                                     .format(self.get_char_name()))
-
-                    self.send_host_others(normal_mes, is_staff=False, in_area=area)
-                    self.send_host_others(staff_mes, is_staff=True, in_area=area)
-
-                # If bleeding and either you were sneaking or your former area had its lights turned
-                # off, notify everyone in the new area to the less intense sounds and smells of
-                # blood. Do nothing if lights on and not sneaking.
-                if not ignore_bleeding and self.is_bleeding:
-                    area_sole_bleeding = (len([c for c in old_area.clients if c.is_bleeding]) == 1)
-                    if self.is_visible and old_area.lights:
-                        normal_mes = ''
-                        staff_mes = ''
-                    elif not self.is_visible and old_area.lights:
-                        s = {True: 'stop hearing', False: 'start hearing less'}
-                        normal_mes = 'You {} drops of blood.'.format(s[area_sole_bleeding])
-                        staff_mes = ('{} left the area while bleeding and sneaking.'
-                                     .format(self.get_char_name()))
-                    elif self.is_visible and not old_area.lights:
-                        s = {True: 'stop hearing and smelling',
-                             False: 'start hearing and smelling less'}
-                        normal_mes = 'You {} drops of blood.'.format(s[area_sole_bleeding])
-                        staff_mes = ('{} left the darkened area while bleeding.'
-                                     .format(self.get_char_name()))
-                    elif not self.is_visible and not old_area.lights:
-                        s = {True: 'stop hearing and smelling',
-                             False: 'start hearing and smelling less'}
-                        normal_mes = 'You {} drops of blood.'.format(s[area_sole_bleeding])
-                        staff_mes = ('{} left the darkened area while bleeding and sneaking.'
-                                     .format(self.get_char_name()))
-
-                    if normal_mes and staff_mes:
-                        self.send_host_others(normal_mes, is_staff=False, in_area=old_area)
-                        self.send_host_others(staff_mes, is_staff=True, in_area=old_area)
-
-                # If someone else is bleeding in the new area, notify the person moving
-                # Special consideration is given if that someone else is sneaking or the area's
-                # lights are turned off, or the client is a staff member
-                bleeding_visible = [c for c in area.clients if c.is_visible and c.is_bleeding]
-                bleeding_sneaking = [c for c in area.clients if not c.is_visible and c.is_bleeding]
-                info = ''
-                sneak_info = ''
-
-                # If lights are out and someone is bleeding, send generic drops of blood message
-                # to non-staff members
-                if not area.lights and not self.is_staff() and len(bleeding_visible + bleeding_sneaking) > 0:
-                    info = 'You hear faint drops of blood'
-                # Otherwise, send who is bleeding if not sneaking and alert to the sound of drops of
-                # blood if someone is bleeding while sneaking. Staff members get notified of the
-                # names of the people who are bleeding and sneaking.
-                else:
-                    if len(bleeding_visible) == 1:
-                        info = 'You see {} is bleeding'.format(bleeding_visible[0].get_char_name())
-                    elif len(bleeding_visible) > 1:
-                        info = 'You see {}'.format(bleeding_visible[0].get_char_name())
-                        for i in range(1, len(bleeding_visible)-1):
-                            info += ', {}'.format(bleeding_visible[i].get_char_name())
-                        info += ' and {} are bleeding'.format(bleeding_visible[-1].get_char_name())
-
-                    if len(bleeding_sneaking) > 0:
-                        if not self.is_staff():
-                            sneak_info = 'You hear faint drops of blood'
-                        elif len(bleeding_sneaking) == 1:
-                            sneak_info = 'You see {} is bleeding while sneaking'.format(bleeding_sneaking[0].get_char_name())
-                        else:
-                            sneak_info = 'You see {}'.format(bleeding_sneaking[0].get_char_name())
-                            for i in range(1, len(bleeding_sneaking)-1):
-                                sneak_info += ', {}'.format(bleeding_sneaking[i].get_char_name())
-                            sneak_info += (' and {} are bleeding while sneaking'
-                                           .format(bleeding_sneaking[-1].get_char_name()))
-
-                if info != '':
-                    if sneak_info != '':
-                        sneak_info = sneak_info[:1].lower() + sneak_info[1:]
-                        info = '{}, and {}'.format(info, sneak_info)
-                else:
-                    info = sneak_info
-
-                if info != '':
-                    self.send_host_message(info + '.')
-
-                # If there is blood in the area, send notification
-                if area.bleeds_to == set([area.name]):
-                    self.send_host_message('You spot some blood in the area.')
-                elif len(area.bleeds_to) > 1:
-                    bleed_to_areas = list(area.bleeds_to - set([area.name]))
-                    random.shuffle(bleed_to_areas) # Lose potential order bias, yes, even with what originally was a set
-                    info = 'You spot a blood trail leading to the {}'.format(bleed_to_areas[0])
-                    if len(bleed_to_areas) > 1:
-                        for i in range(1, len(bleed_to_areas)-1):
-                            info += ', the {}'.format(bleed_to_areas[i])
-                        info += ' and the {}.'.format(bleed_to_areas[-1])
+                # Perform the character switch if new area has a player with the current char
+                # or the char is restricted there.
+                old_char = self.get_char_name()
+                if new_char_id != self.char_id:
+                    self.change_character(new_char_id, target_area=area)
+                    if old_char in area.restricted_chars:
+                        self.send_host_message('Your character was restricted in your new area, '
+                                               'switched to {}.'.format(self.get_char_name()))
                     else:
-                        info += '.'
-                    self.send_host_message(info)
+                        self.send_host_message('Your character was taken in your new area, '
+                                               'switched to {}.'.format(self.get_char_name()))
 
+                self.send_host_message('Changed area to {}.[{}]'.format(area.name, area.status))
                 logger.log_server('[{}]Changed area from {} ({}) to {} ({}).'
-                                  .format(self.get_char_name(), old_area.name, old_area.id, area.name, area.id), self)
-                #logger.log_rp(
-                #    '[{}]Changed area from {} ({}) to {} ({}).'.format(self.get_char_name(), old_area.name, old_area.id,
-                #                                                       self.area.name, self.area.id), self)
+                                  .format(self.get_char_name(), self.area.name, self.area.id,
+                                          area.name, area.id), self)
+                #logger.log_rp('[{}]Changed area from {} ({}) to {} ({}).'
+                #              .format(self.get_char_name(), old_area.name, old_area.id,
+                #                      self.area.name, self.area.id), self)
+
+                self.notify_change_area(area, old_char, ignore_bleeding=ignore_bleeding)
 
             self.area.remove_client(self)
             self.area = area
