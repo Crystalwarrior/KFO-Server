@@ -35,33 +35,6 @@ from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 {parameter_name}: optional parameter
 """
 
-def ooc_cmd_allow_iniswap(client, arg):
-    """ (MOD ONLY)
-    Toggles iniswapping by non-staff in the current area being allowed/disallowed.
-
-    SYNTAX
-    /allow_iniswap
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /allow_iniswap
-    """
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command takes no arguments.')
-
-    status = {True: 'now', False: 'no longer'}
-    client.area.iniswap_allowed = not client.area.iniswap_allowed
-
-    client.area.send_host_message('Iniswapping is {} allowed.'
-                                  .format(status[client.area.iniswap_allowed]))
-    logger.log_server('[{}][{}]Set iniswapping as {} allowed'
-                      .format(client.area.id, client.get_char_name(),
-                              status[client.area.iniswap_allowed]), client)
-
 def ooc_cmd_announce(client, arg):
     """ (MOD ONLY)
     Sends an "announcement" to all users in the server, regardless of whether they have global chat
@@ -373,6 +346,68 @@ def ooc_cmd_bglock(client, arg):
     client.area.send_host_message('A mod has set the background lock to {}.'.format(client.area.bg_lock))
     logger.log_server('[{}][{}]Changed bglock to {}'.format(client.area.id, client.get_char_name(), client.area.bg_lock), client)
 
+def ooc_cmd_bilock(client, arg):
+    """ (VARYING REQUIREMENTS)
+    Changes the passage status between given areas by name or ID. Passages are unidirectional, so
+    to change a passage in just one direction, use /unilock instead.
+    If given one area, it will change the passage status between the current area and the given one.
+    If given two areas instead, it  will change the passage status between them (but requires
+    staff role to use).
+    Returns an error if the user is unauthorized to create new passages or change existing ones in
+    any of the relevant areas. In particular, non-staff members are not allowed to create passages
+    that did not exist when the areas were loaded or that a staff member did not create before.
+
+    SYNTAX
+    /bilock <target_area>
+    /bilock <target_area_1>, <target_area_2>
+
+    PARAMETERS
+    <target_area>: Area whose passage status with the current area will be changed.
+    <target_area_1>: Area whose passage status with <target_area_2> will be changed.
+    <target_area_2>: Area whose passage status with <target_area_1> will be changed.
+
+    EXAMPLES
+    Assuming the player is in area 0 when executing these commands and originally the only existing
+    passage lock is from area 1 'Class Trial Room' to area 2 'Class Trial Room, 2'...
+    /bilock Class Trial Room            :: Locks the passage between area 0 and Class Trial Room.
+    /bilock 1, 2                        :: Unlocks the passage from Class Trial Room to Class Trial
+                                           Room, 2; and locks it from Class Trial Room, 2 to Class
+                                           Trial Room.
+    /bilock Class Trial Room,\ 2, 0     :: Locks the passage in both directions between areas 0
+                                           and Class Trial Room, 2 (note the ,\ in the command.
+    """
+    areas = arg.split(', ')
+    if len(areas) > 2 or arg == '':
+        raise ArgumentError('This command takes one or two arguments.')
+    if len(areas) == 2 and not client.is_staff():
+        raise ClientError('You must be authorized to use the two-parameter version of this command.')
+
+    areas = Constants.parse_two_area_names(client, areas, area_duplicate=False,
+                                           check_valid_range=False)
+    now_reachable = Constants.parse_passage_lock(client, areas, bilock=True)
+
+    status = {True: 'unlocked', False: 'locked'}
+    cname = client.name if client.is_staff() else client.get_char_name()
+    now0, now1 = status[now_reachable[0]], status[now_reachable[1]]
+    name0, name1 = areas[0].name, areas[1].name
+
+    if now_reachable[0] == now_reachable[1]:
+        client.send_host_message('You have {} the passage between {} and {}.'
+                                 .format(now0, name0, name1))
+        client.send_host_others('{} has {} the passage between {} and {} ({}).'
+                                .format(cname, now0, name0, name1, client.area.id), is_staff=True)
+        logger.log_server('[{}][{}]Has {} the passage between {} and {}.'
+                          .format(client.area.id, client.get_char_name(), now0, name0, name1))
+
+    else:
+        client.send_host_message('You have {} the passage from {} to {} and {} it the other way '
+                                 'around.'.format(now0, name0, name1, now1))
+        client.send_host_others('{} has {} the passage from {} and {} and {} it the other way '
+                                'around ({}).'.format(cname, now0, name0, name1, now1,
+                                                      client.area.id), is_staff=True)
+        logger.log_server('[{}][{}]Has {} the passage from {} to {} and {} it the other way around.'
+                          .format(client.area.id, client.get_char_name(), now0, name0, name1, now1))
+
 def ooc_cmd_blockdj(client, arg):
     """ (CM AND MOD ONLY)
     Revokes the ability of a player by client ID (number in brackets) or IPID (number in
@@ -589,6 +624,142 @@ def ooc_cmd_bloodtrail_set(client, arg):
     client.send_host_others('{} set the blood trail in area {} to {}.'
                             .format(client.name, client.area.name, message), is_staff=True)
     client.area.bleeds_to = {area.name for area in areas_to_link}
+
+def ooc_cmd_can_iniswap(client, arg):
+    """ (MOD ONLY)
+    Toggles iniswapping by non-staff in the current area being allowed/disallowed.
+
+    SYNTAX
+    /can_iniswap
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /can_iniswap
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command takes no arguments.')
+
+    status = {True: 'now', False: 'no longer'}
+    client.area.iniswap_allowed = not client.area.iniswap_allowed
+
+    client.area.send_host_message('Iniswapping is {} allowed in this area.'
+                                  .format(status[client.area.iniswap_allowed]))
+    logger.log_server('[{}][{}]Set iniswapping as {} allowed in the area.'
+                      .format(client.area.id, client.get_char_name(),
+                              status[client.area.iniswap_allowed]), client)
+
+def ooc_cmd_can_passagelock(client, arg):
+    """ (STAFF ONLY)
+    Toggles the ability of using /unilock and /bilock for non-staff members in the current area.
+    In particular, the area cannot be used as an argument either implicitly or explicitly in
+    /bilock, or implicitly in /unilock if ability is turned off (but can be used explicitly).
+
+    SYNTAX
+    /toggle_passagelock
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    Assuming the current area started allowing the use of both commands...
+    /can_passagelock         :: Non-staff members can no longer use /bilock or /unilock.
+    /can_passagelock         :: Non-staff members can now use /bilock and /unilock again.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+
+    client.area.change_reachability_allowed = not client.area.change_reachability_allowed
+    status = {True: 'enabled', False: 'disabled'}
+
+    client.area.send_host_message('A staff member has {} the use of /unilock or /bilock that '
+                                  'affect this area.'.format(status[client.area.change_reachability_allowed]))
+
+def ooc_cmd_can_rollp(client, arg):
+    """ (STAFF ONLY)
+    Toggles private rolls by non-staff in the current area being allowed/disallowed.
+
+    SYNTAX
+    /can_rollp
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /can_rollp
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+
+    client.area.rollp_allowed = not client.area.rollp_allowed
+    status = {False: 'disabled', True: 'enabled'}
+
+    client.area.send_host_message('A staff member has {} the use of private roll commands in this '
+                                  'area.'.format(status[client.area.rollp_allowed]))
+    logger.log_server('[{}][{}]{} private roll commands in this area.'
+                      .format(client.area.id, client.get_char_name(),
+                              status[client.area.rollp_allowed].capitalize()), client)
+
+def ooc_cmd_can_rpgetarea(client, arg):
+    """ (STAFF ONLY)
+    Toggles users subject to RP mode being able/unable to use /getarea in the current area.
+
+    SYNTAX
+    /can_rpgetarea
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /can_rpgetarea
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+
+    client.area.rp_getarea_allowed = not client.area.rp_getarea_allowed
+    status = {False: 'disabled', True: 'enabled'}
+
+    client.area.send_host_message('A staff member has {} the use of /getarea in this area.'
+                                  .format(status[client.area.rp_getarea_allowed]))
+    logger.log_server('[{}][{}]{} /getarea in this area.'
+                      .format(client.area.id, client.get_char_name(),
+                              status[client.area.rp_getarea_allowed].capitalize()), client)
+
+def ooc_cmd_can_rpgetareas(client, arg):
+    """ (STAFF ONLY)
+    Toggles users subject to RP mode being able/unable to use /getareas in the current area.
+
+    SYNTAX
+    /can_rpgetareas
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /can_rpgetareas
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+
+    client.area.rp_getareas_allowed = not client.area.rp_getareas_allowed
+    status = {False: 'disabled', True: 'enabled'}
+
+    client.area.send_host_message('A staff member has {} the use of /getareas in this area.'
+                                  .format(status[client.area.rp_getareas_allowed]))
+    logger.log_server('[{}][{}]{} /getareas in this area.'
+                      .format(client.area.id, client.get_char_name(),
+                              status[client.area.rp_getareas_allowed].capitalize()), client)
 
 def ooc_cmd_charselect(client, arg):
     """
@@ -1435,8 +1606,8 @@ def ooc_cmd_iclock(client, arg):
                             .format(client.name, status[client.area.ic_lock], client.area.name,
                                     client.area.id), is_staff=True)
 
-    logger.log_server('[{}][{}]Changed IC lock to {}'.format(client.area.id, client.get_char_name(),
-                      client.area.ic_lock), client)
+    logger.log_server('[{}][{}]Changed IC lock to {}'
+                      .format(client.area.id, client.get_char_name(), client.area.ic_lock), client)
 
 def ooc_cmd_invite(client, arg):
     """ (STAFF ONLY)
@@ -2280,6 +2451,85 @@ def ooc_cmd_ooc_unmute(client, arg):
         c.is_ooc_muted = False
         logger.log_server('OOC-unmuted {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was OOC-unmuted.".format(c.name))
+
+def ooc_cmd_passage_clear(client, arg):
+    """ (STAFF ONLY)
+    Clears all the passage locks that start in the areas between two given ones by name or ID, or
+    does that only to the given area if not given any. In particular, players in any of the affected
+    areas will be able to freely move to any other from the area they were in.
+    Note that, as passages are unidirectional, passages from areas outside the given range that end
+    in an area that is in the range will be conserved.
+
+    SYNTAX
+    /passage_clear
+    /passage_clear <area_range_start>, <area_range_end>
+
+    /passage_restore <area_range_start>, <area_range_end>
+
+    PARAMETERS
+    <area_range_start>: Start of area range (inclusive)
+    <area_range_end>: End of area range (inclusive)
+
+    EXAMPLES
+    Assuming the player is in area 0...
+    /passage_clear                :: Clears the passages starting in area 0.
+    /passage_clear 16, 116        :: Restores the passages starting in areas 16 through 116.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    areas = arg.split(', ')
+    if len(areas) > 2:
+        raise ClientError('This command takes at most two arguments.')
+
+    areas = Constants.parse_two_area_names(client, areas)
+
+    for i in range(areas[0].id, areas[1].id+1):
+        area = client.server.area_manager.get_area_by_id(i)
+        area.reachable_areas = '<ALL>'
+
+    if areas[0] == areas[1]:
+        client.send_host_message('Area passage locks have been removed in {}.'.format(areas[0].name))
+    else:
+        client.send_host_message('Area passage locks have been removed in areas {} through {}'.format(areas[0].name, areas[1].name))
+
+def ooc_cmd_passage_restore(client, arg):
+    """ (STAFF ONLY)
+    Restores the passages in the areas between two given ones by name or ID to their original state
+    when the areas were loaded, or does that to the current area if not given any.
+    Note that, as passages are unidirectional, passages from areas outside the given range that end
+    in an area that is in the range will be conserved.
+
+    SYNTAX
+    /passage_restore
+    /passage_restore <area_range_start>, <area_range_end>
+
+    PARAMETERS
+    <area_range_start>: Start of area range (inclusive)
+    <area_range_end>: End of area range (inclusive)
+
+    EXAMPLES
+    Assuming the player is in area 0...
+    /passage_restore                :: Restores the passages starting in area 0 to default.
+    /passage_restore 16, 116        :: Restores the passages starting in areas 16 through 116.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+    areas = arg.split(', ')
+    if len(areas) > 2:
+        raise ClientError('This command takes at most two arguments.')
+
+    areas = Constants.parse_two_area_names(client, areas)
+
+    for i in range(areas[0].id, areas[1].id+1):
+        area = client.server.area_manager.get_area_by_id(i)
+        area.reachable_areas = set(list(area.default_reachable_areas)[:])
+        area.change_reachability_allowed = area.default_change_reachability_allowed
+
+    if areas[0] == areas[1]:
+        client.send_host_message('Passages in this area have been restored to their original statue.')
+    else:
+        client.send_host_message('Passages in areas {} through {} have been restored to their '
+                                 'original state.'.format(areas[0].name, areas[1].name))
 
 def ooc_cmd_play(client, arg):
     """ (STAFF ONLY)
@@ -3422,18 +3672,18 @@ def ooc_cmd_toggle_allrolls(client, arg):
     client.send_host_message('You are {} receiving roll results from other areas.'
                              .format(status[client.get_foreign_rolls]))
 
-def ooc_cmd_toggleglobal(client, arg):
+def ooc_cmd_toggle_global(client, arg):
     """
     Toggles global messages being sent to the current user being allowed/disallowed.
 
     SYNTAX
-    /toggleglobal
+    /toggle_global
 
     PARAMETERS
     None
 
     EXAMPLE
-    /toggleglobal
+    /toggle_global
     """
     if len(arg) != 0:
         raise ArgumentError("This command has no arguments.")
@@ -3442,85 +3692,6 @@ def ooc_cmd_toggleglobal(client, arg):
     status = {False: 'on', True: 'off'}
 
     client.send_host_message('Global chat turned {}.'.format(status[client.muted_global]))
-
-def ooc_cmd_toggle_rollp(client, arg):
-    """ (STAFF ONLY)
-    Toggles private rolls by non-staff in the current area being allowed/disallowed.
-
-    SYNTAX
-    /toggle_rollp
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /toggle_rollp
-    """
-
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-
-    client.area.rollp_allowed = not client.area.rollp_allowed
-    status = {False: 'disabled', True: 'enabled'}
-
-    client.area.send_host_message('A staff member has {} the use of private roll commands in this area.'.format(status[client.area.rollp_allowed]))
-    logger.log_server('[{}][{}]{} private roll commands in this area.'
-                      .format(client.area.id, client.get_char_name(),
-                              status[client.area.rollp_allowed].capitalize()), client)
-
-def ooc_cmd_toggle_rpgetarea(client, arg):
-    """ (STAFF ONLY)
-    Toggles users subject to RP mode being able/unable to use /getarea in the current area.
-
-    SYNTAX
-    /toggle_rpgetarea
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /toggle_rpgetarea
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-
-    client.area.rp_getarea_allowed = not client.area.rp_getarea_allowed
-    status = {False: 'disabled', True: 'enabled'}
-
-    client.area.send_host_message('A staff member has {} the use of /getarea in this area.'.format(status[client.area.rp_getarea_allowed]))
-    logger.log_server('[{}][{}]{} /getarea in this area.'
-                      .format(client.area.id, client.get_char_name(),
-                              status[client.area.rp_getarea_allowed].capitalize()), client)
-
-def ooc_cmd_toggle_rpgetareas(client, arg):
-    """ (STAFF ONLY)
-    Toggles users subject to RP mode being able/unable to use /getareas in the current area.
-
-    SYNTAX
-    /toggle_rpgetareas
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /toggle_rpgetareas
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-
-    client.area.rp_getareas_allowed = not client.area.rp_getareas_allowed
-    status = {False: 'disabled', True: 'enabled'}
-
-    client.area.send_host_message('A staff member has {} the use of /getareas in this area.'.format(status[client.area.rp_getareas_allowed]))
-    logger.log_server('[{}][{}]{} /getareas in this area.'
-                      .format(client.area.id, client.get_char_name(),
-                              status[client.area.rp_getareas_allowed].capitalize()), client)
 
 def ooc_cmd_toggle_shownames(client, arg):
     """
@@ -3809,6 +3980,57 @@ def ooc_cmd_unhandicap(client, arg):
             c.handicap_backup = None
             client.server.remove_task(c, ['as_handicap'])
 
+def ooc_cmd_unilock(client, arg):
+    """ (VARYING REQUIREMENTS)
+    Changes the passage status from a given area to another by name or ID. Passages are
+    unidirectional, so to change a passage in both directions simultaneously, use /bilock instead.
+    If given one area, it will change the passage status FROM the current area TO the given one.
+    If given two areas instead, it  will change the passage status FROM the first given area TO
+    the second give one (but requires staff role to use).
+    Returns an error if the user is unauthorized to create new passages or change existing ones in
+    the originating area. In particular, non-staff members are not allowed to create passages
+    that did not exist when the areas were loaded or that a staff member did not create before.
+
+    SYNTAX
+    /unilock <target_area>
+    /unilock <target_area_1>, <target_area_2>
+
+    PARAMETERS
+    <target_area>: Area whose passage status that starts in the current area will be changed.
+    <target_area_1>: Area whose passage status that ends in <target_area_2> will be changed.
+    <target_area_2>: Area whose passage status that starts in <target_area_1> will be changed.
+
+    EXAMPLES
+    Assuming the player is in area 0 when executing these commands and originally the only existing
+    passage lock is from area 1 'Class Trial Room' to area 2 'Class Trial Room, 2'...
+    /unilock Class Trial Room            :: Locks the passage from area 0 to Class Trial Room.
+    /unilock 1, 2                        :: Unlocks the passage from Class Trial Room to Class Trial
+                                            Room, 2 (keeps it unlocked the other way).
+    /unilock Class Trial Room,\ 2, 0     :: Locks the passage in from Class Trial Room, 2 to area 0
+                                            (note the ,\ in the command).
+    """
+    areas = arg.split(', ')
+    if len(areas) > 2 or arg == '':
+        raise ArgumentError('This command takes one or two arguments.')
+    if len(areas) == 2 and not client.is_staff():
+        raise ClientError('You must be authorized to use the two-parameter version of this command.')
+
+    areas = Constants.parse_two_area_names(client, areas, area_duplicate=False,
+                                           check_valid_range=False)
+    now_reachable = Constants.parse_passage_lock(client, areas, bilock=False)
+
+    status = {True: 'unlocked', False: 'locked'}
+    cname = client.name if client.is_staff() else client.get_char_name()
+    now0 = status[now_reachable[0]]
+    name0, name1 = areas[0].name, areas[1].name
+
+    client.send_host_message('You have {} the passage from {} to {}.'
+                             .format(now0, name0, name1))
+    client.send_host_others('{} has {} the passage from {} to {} ({}).'
+                            .format(cname, now0, name0, name1, client.area.id), is_staff=True)
+    logger.log_server('[{}][{}]Has {} the passage from {} to {}.'
+                      .format(client.area.id, client.get_char_name(), now0, name0, name1))
+
 def ooc_cmd_uninvite(client, arg):
     """
     Removes a client based on client ID or IPID from the area's invite list.
@@ -4049,153 +4271,53 @@ def ooc_cmd_8ball(client, arg):
     client.area.send_host_message('The magic 8 ball says {}.'.format(flip))
     logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'.format(client.area.id, client.get_char_name(), flip), client)
 
-def ooc_cmd_bilock(client, arg):
-    areas = arg.split(', ')
-    if len(areas) > 2 or arg == '':
-        raise ArgumentError('This command takes one or two arguments.')
-    if len(areas) == 2 and not client.is_staff():
-        raise ClientError('You must be authorized to use the two-parameter version of this command.')
-
-    areas = Constants.parse_two_area_names(client, areas, area_duplicate=False,
-                                           check_valid_range=False)
-
-    for i in range(2):
-        if not areas[i].change_reachability_allowed and not client.is_staff():
-            raise ClientError('Changing area reachability without authorization is disabled in area {}.'.format(areas[i].name))
-
-    now_reachable = []
-    formerly_reachable = [areas[i].reachable_areas for i in range(2)] #Just in case something goes wrong, revert back
-    for i in range(2):
-        reachable = areas[i].reachable_areas
-        now_reachable.append(False)
-        if reachable == {'<ALL>'}:
-            reachable = client.server.area_manager.area_names - {areas[1-i].name}
-        else:
-            if areas[1-i].name in reachable:
-                reachable = reachable - {areas[1-i].name}
-            else:
-                if not client.is_staff() and not (areas[1-i].name in areas[i].staffset_reachable_areas or
-                                                  areas[i].staffset_reachable_areas == {'<ALL>'}):
-                    client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[i].name, areas[1-i].name))
-                    areas[0].reachable_areas = formerly_reachable[0]
-                    areas[1].reachable_areas = formerly_reachable[1]
-                    return
-                reachable.add(areas[1-i].name)
-                now_reachable[i] = True
-        areas[i].reachable_areas = reachable
-        if client.is_staff():
-            areas[i].staffset_reachable_areas = reachable
-
-    if now_reachable[0] == now_reachable[1]:
-        client.send_host_message('Set area reachability between {} and {} to {}'.format(areas[0].name, areas[1].name, now_reachable[0]))
-
-        client.send_host_others('{} used /bilock to {} area reachability between {} and {} in {} ({}).'
-                                .format(client.get_char_name(), 'unlock' if now_reachable[0] else 'lock',
-                                        areas[0].name, areas[1].name, client.area.name, client.area.id),
-                                is_staff=True)
-        logger.log_server('[{}][{}]Used /bilock to {} area reachability between {} and {}.'
-                          .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name), client)
-
-    else:
-        client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name, areas[1].name, now_reachable[0]))
-        client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[1].name, areas[0].name, now_reachable[1]))
-
-        client.send_host_others('{} used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {} in {} ({}).'
-                                .format(client.get_char_name(), 'unlock' if now_reachable[0] else 'lock',
-                                        areas[0].name, areas[1].name, 'unlock' if now_reachable[1] else 'lock',
-                                        areas[1].name, areas[0].name, client.area.name, client.area.id),
-                                is_staff=True)
-        logger.log_server('[{}][{}]Used /bilock to {} area reachability from {} to {} and to {} area reachability from {} to {}.'
-                          .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable[0] else 'lock', areas[0].name, areas[1].name,
-                                  'unlock' if now_reachable[1] else 'lock', areas[1].name, areas[0].name), client)
-
-def ooc_cmd_unilock(client, arg):
-    areas = arg.split(', ')
-    if len(areas) > 2 or arg == '':
-        raise ArgumentError('This command takes one or two arguments.')
-    if len(areas) == 2 and not client.is_staff():
-        raise ClientError('You must be authorized to use the two-parameter version of this command.')
-
-    areas = Constants.parse_two_area_names(client, areas, area_duplicate=False,
-                                           check_valid_range=False)
-
-    if not areas[0].change_reachability_allowed and not client.is_staff():
-        raise ClientError('Changing area reachability without authorization is disabled in area {}.'.format(areas[0].name))
-
-    now_reachable = False
-    reachable = areas[0].reachable_areas
-    if reachable == {'<ALL>'}:
-        reachable = client.server.area_manager.area_names - {areas[1].name}
-    else:
-        if areas[1].name in reachable:
-            reachable = reachable - {areas[1].name}
-        else:
-            if not client.is_staff() and not (areas[1].name in areas[0].staffset_reachable_areas or
-                                              areas[0].staffset_reachable_areas == {'<ALL>'}):
-                client.send_host_message('You must be authorized to create a new area link from {} to {}.'.format(areas[0].name, areas[1].name))
-                return
-            reachable.add(areas[1].name)
-            now_reachable = True
-    areas[0].reachable_areas = reachable
-    if client.is_staff():
-        areas[0].staffset_reachable_areas = reachable
-    client.send_host_message('Set area reachability from {} to {} to {}'.format(areas[0].name, areas[1].name, now_reachable))
-    client.send_host_others('{} used /unilock to {} area reachability from {} to {} in {} ({}).'
-                            .format(client.get_char_name(), 'unlock' if now_reachable else 'lock',
-                                    areas[0].name, areas[1].name, client.area.name, client.area.id),
-                            is_staff=True)
-    logger.log_server('[{}][{}]Used /unilock to {} area reachability from {} to {}.'
-                      .format(client.area.id, client.get_char_name(), 'unlock' if now_reachable else 'lock', areas[0].name, areas[1].name), client)
-
-def ooc_cmd_restore_areareachlock(client, arg):
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    areas = arg.split(', ')
-    if len(areas) > 2:
-        raise ClientError('This command takes at most two arguments.')
-
-    areas = Constants.parse_two_area_names(client, areas)
-
-    for i in range(areas[0].id, areas[1].id+1):
-        area = client.server.area_manager.get_area_by_id(i)
-        area.reachable_areas = set(list(area.default_reachable_areas)[:])
-        area.change_reachability_allowed = area.default_change_reachability_allowed
-
-    if areas[0] == areas[1]:
-        client.send_host_message('Area passage locks have been set to standard in {}.'.format(areas[0].name))
-    else:
-        client.send_host_message('Area passage locks have been set to standard in {} through {}'.format(areas[0].name, areas[1].name))
+def ooc_cmd_allow_iniswap(client, arg):
+    """
+    Deprecated for /can_iniswap.
+    """
+    ooc_cmd_can_iniswap(client, arg)
 
 def ooc_cmd_delete_areareachlock(client, arg):
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    areas = arg.split(', ')
-    if len(areas) > 2:
-        raise ClientError('This command takes at most two arguments.')
+    """
+    Deprecated for /passage_clear.
+    """
+    ooc_cmd_passage_clear(client, arg)
 
-    areas = Constants.parse_two_area_names(client, areas)
-
-    for i in range(areas[0].id, areas[1].id+1):
-        area = client.server.area_manager.get_area_by_id(i)
-        area.reachable_areas = '<ALL>'
-
-    if areas[0] == areas[1]:
-        client.send_host_message('Area passage locks have been removed in {}.'.format(areas[0].name))
-    else:
-        client.send_host_message('Area passage locks have been removed in areas {} through {}'.format(areas[0].name, areas[1].name))
+def ooc_cmd_restore_areareachlock(client, arg):
+    """
+    Deprecated for /passage_restore.
+    """
+    ooc_cmd_passage_restore(client, arg)
 
 def ooc_cmd_toggle_areareachlock(client, arg):
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+    """
+    Deprecated for /can_passagelock.
+    """
+    ooc_cmd_can_passagelock(client, arg)
 
-    if client.area.change_reachability_allowed:
-        client.area.change_reachability_allowed = False
-        client.area.send_host_message('The use of the /unilock and /bilock commands affecting this area has been restricted to authorized users only.')
-    else:
-        client.area.change_reachability_allowed = True
-        client.area.send_host_message('The use of the /unilock and /bilock commands affecting this area commands in this area has been enabled to all users.')
+def ooc_cmd_toggleglobal(client, arg):
+    """
+    Deprecated for /toggle_global.
+    """
+    ooc_cmd_toggle_global(client, arg)
+
+def ooc_cmd_toggle_rollp(client, arg):
+    """
+    Deprecated for /can_rollp.
+    """
+    ooc_cmd_can_rollp(client, arg)
+
+def ooc_cmd_toggle_rpgetarea(client, arg):
+    """
+    Deprecated for /can_rpgetarea.
+    """
+    ooc_cmd_can_rpgetarea(client, arg)
+
+def ooc_cmd_toggle_rpgetareas(client, arg):
+    """
+    Deprecated for /can_rpgetareas.
+    """
+    ooc_cmd_can_rpgetareas(client, arg)
 
 def ooc_cmd_exec(client, arg):
     """
@@ -4225,9 +4347,11 @@ def ooc_cmd_exec(client, arg):
     /exec 1+1                                           :: Returns 2
     /exec while True: client.send_host_message("Hi")    :: Commit sudoku
     """
-    # IF YOU WANT TO DISABLE /exec: REMOVE THE # IN FRONT OF return
-    # IF YOU WANT TO ENABLE /exec: ADD A # IN FRONT OF return, LIKE SO: # return
-    return None
+    # IF YOU WANT TO DISABLE /exec: SET debug TO 0 (debug = 0)
+    # IF YOU WANT TO ENABLE /exec: SET debug TO 1 (debug = 1)
+    debug = 0
+    if not debug:
+        return None
 
     logger.log_print("Attempting to run instruction {}".format(arg))
 

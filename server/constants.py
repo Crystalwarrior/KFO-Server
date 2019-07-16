@@ -296,11 +296,11 @@ class Constants():
         now_reachable = []
         num_areas = 2 if bilock else 1
 
-        # First check if it is the case a non-authorized use is trying to change passages to areas that
-        # do not allow their passages to be modified
+        # First check if it is the case a non-authorized use is trying to change passages to areas
+        # that do not allow their passages to be modified
         for i in range(num_areas):
             if not areas[i].change_reachability_allowed and not client.is_staff():
-                raise ClientError('Changing area passages without authorization is disabled in area {}.'
+                raise ClientError('You must be authorized to change passages in area {}.'
                                   .format(areas[i].name))
 
         # Just in case something goes wrong, have a backup to revert back
@@ -310,19 +310,21 @@ class Constants():
             reachable = areas[i].reachable_areas
             now_reachable.append(False)
 
-            if reachable == {'<ALL>'}: # Case removing a passage from an area with passages to all areas
+            if reachable == {'<ALL>'}: # Case removing a passage from an area connected to all areas
                 reachable = client.server.area_manager.area_names - {areas[1-i].name}
             elif areas[1-i].name in reachable: # Case removing a passage
                 reachable = reachable - {areas[1-i].name}
             else: # Case creating a passage
-                # Make sure that non-authorized users cannot create passages that were not already there
+                # Make sure that non-authorized users cannot create passages did not exist before
                 if not (client.is_staff() or areas[1-i].name in areas[i].staffset_reachable_areas or
                         areas[i].staffset_reachable_areas == {'<ALL>'}):
-                    # And if they do, restore formerly reachable areas
-                    areas[0].reachable_areas = formerly_reachable[0]
-                    areas[1].reachable_areas = formerly_reachable[1]
-                    raise ClientError('You must be authorized to create a new area passage from {} to {}.'
+                    # And if they try and do, undo changes and restore formerly reachable areas
+                    for j in range(num_areas):
+                        areas[j].reachable_areas = formerly_reachable[j]
+                    raise ClientError('You must be authorized to create a new passage from {} to {}.'
                                       .format(areas[i].name, areas[1-i].name))
+
+                # Otherise, create new passages
                 reachable.add(areas[1-i].name)
                 now_reachable[i] = True
 

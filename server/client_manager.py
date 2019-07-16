@@ -29,6 +29,7 @@ class ClientManager:
         def __init__(self, server, transport, user_id, ipid):
             self.transport = transport
             self.hdid = ''
+            self.version = ('Undefined', 'Undefined') # AO version used, established through ID pack
             self.pm_mute = False
             self.id = user_id
             self.char_id = None
@@ -58,7 +59,7 @@ class ClientManager:
             self.multi_ic = None
             self.showname = ''
             self.following = None
-            self.followedby = None
+            self.followedby = set()
             self.music_list = None
             self.autopass = False
             self.showname_history = list()
@@ -525,8 +526,9 @@ class ClientManager:
             self.send_command('BN', self.area.background)
             self.send_command('LE', *self.area.get_evidence_list(self))
 
-            if self.followedby is not None and not ignore_followers and not override_all:
-                self.followedby.follow_area(area)
+            if self.followedby and not ignore_followers and not override_all:
+                for c in self.followedby:
+                    c.follow_area(area)
 
             self.reload_music_list() # Update music list to include new area's reachable areas
             self.server.create_task(self, ['as_afk_kick', area.afk_delay, area.afk_sendto])
@@ -624,13 +626,15 @@ class ClientManager:
             if target == self.following:
                 raise ClientError('You are already following that player.')
 
-            if target.followedby: # Only one person can follow someone else
-                target.followedby.send_host_message('{} started following your target, so you are no longer following them.'.format(self.name))
-                target.followedby.unfollow_user()
+            self.send_host_message('Began following client {} at {}'
+                                   .format(target.id, Constants.get_time()))
 
-            self.send_host_message('Began following client {} at {}'.format(target.id, time.asctime(time.localtime(time.time()))))
+            # Notify the player you were following before that you are no longer following them
+            # and with notify I mean internally.
+            if self.following:
+                self.following.followedby.remove(self)
             self.following = target
-            target.followedby = self
+            target.followedby.add(self)
 
             if self.area != target.area:
                 self.follow_area(target.area, just_moved=False)
@@ -639,15 +643,17 @@ class ClientManager:
             if not self.following:
                 raise ClientError('You are not following anyone.')
 
-            self.send_host_message("Stopped following client {} at {}.".format(self.following.id, time.asctime(time.localtime(time.time()))))
-            self.following.followedby = None
+            self.send_host_message("Stopped following client {} at {}."
+                                   .format(self.following.id, Constants.get_time()))
+            self.following.followedby.remove(self)
             self.following = None
 
         def follow_area(self, area, just_moved=True):
             # just_moved if True assumes the case where the followed user just moved
             # It being false is the case where, when the following started, the followed user was in another area, and thus the followee is moved automtically
             if just_moved:
-                self.send_host_message('Followed user moved to {} at {}'.format(area.name, time.asctime(time.localtime(time.time()))))
+                self.send_host_message('Followed user moved to {} at {}'
+                                       .format(area.name, Constants.get_time()))
             else:
                 self.send_host_message('Followed user was at {}'.format(area.name))
 
@@ -948,7 +954,8 @@ class ClientManager:
                      .format(self.is_transient, self.autopass, len(self.get_multiclients())))
             info += '\n*Is muted? {}. Is OOC Muted? {}'.format(self.is_muted, self.is_ooc_muted)
             info += '\n*Following: {}'.format(self.following.id if self.following else "-")
-            info += '\n*Followed by: {}'.format(self.followedby.id if self.followedby else "-")
+            info += '\n*Followed by: {}'.format(", ".join([str(c.id) for c in self.followedby])
+                                                if self.followedby else "-")
             info += ('\n*Online for: {}. Last active: {}'
                      .format(Constants.time_elapsed(self.joined), self.last_active))
             return info
@@ -978,11 +985,14 @@ class ClientManager:
     def remove_client(self, client):
         # Clients who are following the now leaving client should no longer follow them
         if client.followedby:
-            client.followedby.unfollow_user()
+            followedby_copy = client.followedby.copy()
+            for c in followedby_copy:
+                c.unfollow_user()
+
         # Clients who were being followed by the now leaving client should no longer have a pointer
         # indicating they are being followed by them
         if client.following:
-            client.following.followedby = None
+            client.following.followedby.remove(client)
 
         self.cur_id[client.id] = False
         for task_id in self.server.client_tasks[client.id].keys(): # Cancel client's pending tasks

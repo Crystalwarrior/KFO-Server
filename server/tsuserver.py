@@ -35,7 +35,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190708a'
+        self.minor_version = '190715a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -503,6 +503,7 @@ class TsuServer3:
         time_start, area_1, area_2, hour_length, hour_start, send_first_hour = args
         hour = hour_start
         minute_at_interruption = 0
+        hour_paused_at = time.time() # Does not need initialization, but PyLint complains otherwise
         self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False) # True after /clock_pause, False after 1 second
         self.set_task_attr(client, ['as_day_cycle'], 'just_unpaused', False) # True after /clock_unpause, False after current hour elapses
         self.set_task_attr(client, ['as_day_cycle'], 'is_paused', False) # True after /clock_pause, false after /clock_unpause

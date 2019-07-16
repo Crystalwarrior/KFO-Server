@@ -63,6 +63,8 @@ Additional notes are listed at the end of the command list.
 	- Messages will not be sent if sneaking. Altered messages will be sent if the area's lights are turned off.
 * **bg** "background" 
     - Changes the current background.
+* **bilock** "area number/name"
+    - Changes the passage status (locked/unlocked) between the current area and the given area.
 * **bloodtrail_clean**
 	- Cleans the bloodtrail in the current area.
 	- If someone is bleeding in the current area, the cleaning process will fail.
@@ -151,6 +153,8 @@ Additional notes are listed at the end of the command list.
     - Changes your setting to receive global messages. By default it is on.
 * **toggle_shownames**
 	- Changes your setting to have the IC messages you receive to include the sender's custom showname. By default it is on.
+* **unilock** "area number/name"
+    - Changes the passage status (locked/unlocked) from the current area to the given one.
 * **uninvite** "ID/IPID"
 	- Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**
@@ -172,6 +176,8 @@ Additional notes are listed at the end of the command list.
 * **area_kick** "ID/IPID" "area number"
     - Kicks target from your area to the intended area and remove them from its invite-list.
 	- If not given a target area, it will use the server's default area (usually area 0).
+* **bilock** "area 1", "area 2"
+    - Changes the passage status (locked/unlocked) between two areas.
 * **bloodtrail** "ID"
 	- Changes the bleeding status of a target. 
 	- If bleeding, they will leave 'blood' in all areas they pass through, and send OOC notifications to players in the area and those who join indicating their status. Sneaking and bleeding players send altered notifications.
@@ -182,6 +188,14 @@ Additional notes are listed at the end of the command list.
 	- Lists all areas that have bloodtrails in them, and where they lead to if appropiate.
 * **bloodtrail_set** "area 1", "area 2", ...
 	- Sets the current area to have bloodtrails leading to the listed areas. If no areas are given, the area is set to have an unconnected pool of blood.
+* **can_passagelock**
+    - Changes the current area's setting to allow non-staff members to change passages starting in the area with /bilock or /unilock. By default area setting is indicated in the server's area list.
+* **can_rollp**
+	- Changes the current area's setting to allow non-staff members to do /rollp. By default area setting is indicated in the server's area list.
+* **can_rpgetarea**
+	- Changes the current area's setting to allow RP users to use /getarea. By default area setting is indicated in the server's area list.
+* **can_rpgetareas**
+	- Changes the current area's setting to allow RP users to use /getareas. By default area setting is indicated in the server's area list.
 * **char_restrict** "character name"
 	- Changes the restricted status of a character in the current area.
 	- If a character is restricted, only GMs and above can use the character in the current area.
@@ -220,6 +234,10 @@ Additional notes are listed at the end of the command list.
 	- Sets the area's description to the given one, or restores the default one if not given.
 * **multiclients** "ID/IPID"
 	- Lists all the clients opened by a target and the areas they are in.
+* **passage_clear** "area range start", "area range end"
+    - Clears passage locks that start in the areas in the given area range, or just the ones in the current area if not given a range.
+* **passage_restore** "area range start", "area range end"
+    - Restores passage locks that start in the areas in the given area range to their original status, or just the ones in the current area if not given a range.
 * **play** "song.mp3" 
     - Plays a song, even if not in the server music list.
 * **reveal** "ID/IPID"
@@ -236,7 +254,7 @@ Additional notes are listed at the end of the command list.
 * **scream_set_range** "area 1", "area 2", ...
 	- Sets the current area's scream range to be the areas listed.
 * **shoutlog** "area"
-	- Lists the last 20 shouts sent in the given area (or current area if not given).
+	- Lists the last 20 shouts sent in the given area, or from the current area if not given.
 	- Each entry includes the time of execution, client ID, character name, client IPID, the shout ID and the IC message sent alongside.
 * **sneak** "ID/IPID"
 	- Sets a target to be sneaking if they were visible.
@@ -245,12 +263,6 @@ Additional notes are listed at the end of the command list.
 	- Sends a message to all active staff members.
 * **toggle_allrolls**
 	- Changes your ability to receive /roll and /rollp results from other areas. By default it is off.
-* **toggle_rollp**
-	- Changes the current area's setting to allow non-staff members to do /rollp. By default area setting is indicated in the server's area list.
-* **toggle_rpgetarea**
-	- Changes the current area's setting to allow RP users to use /getarea. By default area setting is indicated in the server's area list.
-* **toggle_rpgetareas**
-	- Changes the current area's setting to allow RP users to use /getareas. By default area setting is indicated in the server's area list.
 * **transient** "ID/IPID"
 	- Changes a player's ability to ignore passage locks and thus access all areas from any given area. By default it is off.
 * **unfollow**
@@ -259,6 +271,8 @@ Additional notes are listed at the end of the command list.
 	- Stops sending subsequent IC messages to the area range specified in a previous /globalic command.
 * **unhandicap** "ID/IPID"
 	- Removes movement handicaps on a target.
+* **unilock** "area 1", "area 2"
+    - Changes the passage status (locked/unlocked) from area 1 to area 2.
 * **unlock**
 	- Unlocks an area, provided the lock came as a result of /gmlock or /lock.
 * **whereis** "ID/IPID"
@@ -268,14 +282,14 @@ Additional notes are listed at the end of the command list.
 	
 ### Community Manager Commands
 
-* **logincm**
+* **logincm** "password"
     - Makes you a Community Manager.
 * **logout**
 	- Logs you out of the Community Manager role.
 * **blockdj** "ID/IPID"
     - Mutes the target from changing music. 
 * **cleargm**
-	- logs out all GMs in the server and puts them in RP mode if needed.
+	- Logs out all GMs in the server and puts them in RP mode if needed.
 * **kick** "ID/IPID" 
     - Kicks the target from the server.
 * **mute** "ID/IPID" 
@@ -295,9 +309,6 @@ Additional notes are listed at the end of the command list.
     - Makes you a Moderator.
 * **logout**
 	- Logs you out of the Moderator role.
-* **allow_iniswap**
-    - Changes the iniswap status in the current area.
-    - Even if iniswap at all is forbidden you can configure all-time allowed iniswaps in *iniswaps.yaml*
 * **announce** "message" 
     - Sends a serverwide announcement
 * **area_list** "area list"
@@ -309,6 +320,9 @@ Additional notes are listed at the end of the command list.
     - Bans the IPID/IP (hdid is linked to ipid so all bans happen at the same time).
 * **bglock** 
     - Toggles the background lock in the current area.
+* **can_iniswap**
+    - Changes the iniswap status in the current area.
+    - Even if iniswap at all is forbidden you can configure all-time allowed iniswaps in *iniswaps.yaml*
 * **charselect** "ID"
     - Kicks a player back to the character select screen. If no ID was entered then target yourself.
 * **defaultarea** "area number"
@@ -316,7 +330,7 @@ Additional notes are listed at the end of the command list.
 * **disemvowel/disemconsonant/remove_h** "ID/IPID"
     - Removes the respective letters from everything said by the target
 * **gimp** "ID/IPID"
-	- Gimps a target so that all tbeir IC messages are replaced with a selection of preset messages.
+	- Gimps a target so that all their IC messages are replaced with a selection of preset messages.
 * **gm** "message" 
     - Sends a serverwide message with mod tag.
 * **lm** "message" 
@@ -350,6 +364,25 @@ Additional notes are listed at the end of the command list.
 	- (DEBUG) Obtains the latest uncaught error as a result of a client packet. This message emulates what is output on the server console.
 * **reload_commands**
 	- (DEBUG) Reloads the commands.py file.
+
+### Deprecated commands and aliases
+Commands marked with (D) are marked as deprecated. They will continue to serve their original purpose as usual for three months after the stated date. If an alternative command name is given to a deprecated command, please use that command instead. 
+
+Commands without (D) are aliases to commands and can be freely used (subject to the parent command's conditions).
+
+#### Everyone
+* **toggleglobal** (D: Jul.15.19): Same as /toggle_global.
+
+#### GM+
+* **delete_areareachlock** (D: Jul.15.19): Same as /passage_clear.
+* **restore_areareachlock** (D: Jul.15.19): Same as /passage_restore.
+* **toggle_areareachlock** (D: Jul.15.19): Same as /can_passagelock.
+* **toggle_rollp** (D: Jul.15.19): Same as /can_rollp.
+* **toggle_rpgetarea** (D: Jul.15.19): Same as /can_rpgetarea.
+* **toggle_rpgetareas** (D: Jul.15.19): Same as /can_rpgetareas.
+
+#### Mod+
+* **allow_iniswap** (D: Jul.15.19): Same as /can_iniswap.
 
 ### Notes
 

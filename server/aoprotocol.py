@@ -89,7 +89,8 @@ class AOProtocol(asyncio.Protocol):
                 self.net_cmd_dispatcher[cmd](self, args)
             except Exception as ex:
                 # Send basic logging information to user
-                info = '=========\nThe server ran into a Python issue. Please contact the server owner and send them the following logging information:'
+                info = ('=========\nThe server ran into a Python issue. Please contact the server '
+                        'owner and send them the following logging information:')
                 etype, evalue, etraceback = sys.exc_info()
                 tb = traceback.extract_tb(tb=etraceback)
                 current_time = asctime(localtime(time()))
@@ -107,6 +108,9 @@ class AOProtocol(asyncio.Protocol):
                 info += '\r\nYour help would be much appreciated.'
                 info += '\r\n========='
                 self.client.send_host_message(info)
+                self.client.send_host_others('Client {} triggered a Python error through a client '
+                                             'packet. Do /lasterror to take a look.',
+                                             pred=lambda c: c.is_mod)
 
                 # Print complete traceback to console
                 info = 'TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET'
@@ -201,8 +205,8 @@ class AOProtocol(asyncio.Protocol):
         ID#<pv:int>#<software:string>#<version:string>#%
 
         """
-
         self.client.is_ao2 = False
+        self.client.version = (args[0], args[1])
 
         if len(args) < 2:
             return
@@ -230,7 +234,8 @@ class AOProtocol(asyncio.Protocol):
                     return
 
         self.client.is_ao2 = True
-        self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping', 'fastloading', 'noencryption', 'deskmod', 'evidence')
+        self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping', 'fastloading',
+                                 'noencryption', 'deskmod', 'evidence')
 
     def net_cmd_ch(self, _):
         """ Periodically checks the connection.
@@ -665,6 +670,11 @@ class AOProtocol(asyncio.Protocol):
         self.client.set_mod_call_delay()
         logger.log_server('[{}][{}]{} called a moderator.'.format(self.client.get_ip(), self.client.area.id, self.client.get_char_name()))
 
+    def net_cmd_re(self, args):
+        # Unsupported
+        raise KeyError('Client using {} {} sent an unsupported RE packet.'
+                       .format(self.client.version[0], self.client.version[1]))
+
     def net_cmd_opKICK(self, args):
         self.net_cmd_ct(['opkick', '/kick {}'.format(args[0])])
 
@@ -693,6 +703,7 @@ class AOProtocol(asyncio.Protocol):
         'DE': net_cmd_de,  # delete evidence
         'EE': net_cmd_ee,  # edit evidence
         'ZZ': net_cmd_zz,  # call mod button
+        'RE': net_cmd_re,  # ??? (Unsupported)
         'opKICK': net_cmd_opKICK,  # /kick with guard on
         'opBAN': net_cmd_opBAN,  # /ban with guard on
     }
