@@ -66,15 +66,15 @@ def ooc_cmd_area(client, arg):
     Returns an error if user is unathorized to list all areas or unable to move to the intended new
     area.
 
-    PARAMETERS
+    SYNTAX
     /area {new_area_id}
 
-    SYNTAX
+    OPTIONAL PARAMETERS
     {new_area_id}: ID of the area
 
     EXAMPLES
-    /area                   :: Lists all areas in the server along with their user count.
-    /area {new_area_id}     :: Moves
+    /area       :: Lists all areas in the server along with their user count.
+    /area 1     :: Moves you to area 1
     """
     args = arg.split()
     # List all areas
@@ -4318,6 +4318,30 @@ def ooc_cmd_toggle_rpgetareas(client, arg):
     Deprecated for /can_rpgetareas.
     """
     ooc_cmd_can_rpgetareas(client, arg)
+
+def ooc_cmd_toggle_fp(client, arg):
+    """
+    Toggles first person mode on or off. If on, you will not receive your character sprites when you
+    send messages yourself, but instead will keep whatever the last sprite used was onscreen.
+
+    SYNTAX
+    /toggle_fp
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    Assuming you start in normal mode...
+    /toggle_fp          :: Toggles first person mode on.
+    /toggle_fp          :: Toggles first person mode off.
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+
+    client.first_person = not client.first_person
+    status = {True: 'now', False: 'no longer'}
+
+    client.send_host_message('You are {} in first person mode.'.format(status[client.first_person]))
 
 def ooc_cmd_exec(client, arg):
     """

@@ -19,6 +19,8 @@ import asyncio
 import importlib
 import json
 import random
+import sys
+import traceback
 import time
 import yaml
 
@@ -26,6 +28,7 @@ from server import logger
 from server.aoprotocol import AOProtocol
 from server.area_manager import AreaManager
 from server.ban_manager import BanManager
+from server.constants import Constants
 from server.client_manager import ClientManager
 from server.districtclient import DistrictClient
 from server.exceptions import ServerError
@@ -35,7 +38,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190715a'
+        self.minor_version = '190716a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -49,6 +52,8 @@ class TsuServer3:
         self.last_error = None
 
         self.allowed_iniswaps = None
+        self.area_list = None
+        self.old_area_list = None
         self.default_area = 0
         self.load_config()
         self.load_iniswaps()
@@ -77,6 +82,7 @@ class TsuServer3:
         self.showname_freeze = False
         self.commands = importlib.import_module('server.commands')
         logger.setup_logger(debug=self.config['debug'])
+        logger.log_print('Server configurations loaded successfully!')
 
     def start(self):
         self.loop = asyncio.get_event_loop()
@@ -173,6 +179,10 @@ class TsuServer3:
         # Ignore players in the server selection screen.
         return len([client for client in self.client_manager.clients if client.char_id is not None])
 
+    def load_backgrounds(self):
+        with open('config/backgrounds.yaml', 'r', encoding='utf-8') as bgs:
+            self.backgrounds = yaml.safe_load(bgs)
+
     def load_config(self):
         with open('config/config.yaml', 'r', encoding='utf-8') as cfg:
             self.config = yaml.safe_load(cfg)
@@ -219,20 +229,6 @@ class TsuServer3:
             self.char_list = yaml.safe_load(chars)
         self.build_char_pages_ao1()
 
-    def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
-        try:
-            with open(music_list_file, 'r', encoding='utf-8') as music:
-                music_list = yaml.safe_load(music)
-        except FileNotFoundError:
-            raise ServerError('Could not find music list file {}'.format(music_list_file))
-
-        if server_music_list:
-            self.music_list = music_list
-            self.build_music_pages_ao1()
-            self.build_music_list_ao2(music_list=music_list)
-
-        return music_list
-
     def load_ids(self):
         self.ipid_list = {}
         self.hdid_list = {}
@@ -248,6 +244,27 @@ class TsuServer3:
                 self.hdid_list = json.loads(whole_list.read())
         except:
             logger.log_debug('Failed to load hd_ids.json from ./storage. If hd_ids.json exists, then remove it.')
+
+    def load_iniswaps(self):
+        try:
+            with open('config/iniswaps.yaml', 'r', encoding='utf-8') as iniswaps:
+                self.allowed_iniswaps = yaml.safe_load(iniswaps)
+        except:
+            logger.log_debug('cannot find iniswaps.yaml')
+
+    def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
+        try:
+            with open(music_list_file, 'r', encoding='utf-8') as music:
+                music_list = yaml.safe_load(music)
+        except FileNotFoundError:
+            raise ServerError('Could not find music list file {}'.format(music_list_file))
+
+        if server_music_list:
+            self.music_list = music_list
+            self.build_music_pages_ao1()
+            self.build_music_list_ao2(music_list=music_list)
+
+        return music_list
 
     def dump_ipids(self):
         with open('storage/ip_ids.json', 'w') as whole_list:
@@ -266,17 +283,6 @@ class TsuServer3:
             self.ipid_list[ip] = ipid
             self.dump_ipids()
         return self.ipid_list[ip]
-
-    def load_backgrounds(self):
-        with open('config/backgrounds.yaml', 'r', encoding='utf-8') as bgs:
-            self.backgrounds = yaml.safe_load(bgs)
-
-    def load_iniswaps(self):
-        try:
-            with open('config/iniswaps.yaml', 'r', encoding='utf-8') as iniswaps:
-                self.allowed_iniswaps = yaml.safe_load(iniswaps)
-        except:
-            logger.log_debug('cannot find iniswaps.yaml')
 
     def build_char_pages_ao1(self):
         self.char_pages_ao1 = [self.char_list[x:x + 10] for x in range(0, len(self.char_list), 10)]
@@ -358,6 +364,49 @@ class TsuServer3:
         for client in self.client_manager.clients:
             if pred(client):
                 client.send_command(cmd, *args)
+
+    def send_error_report(self, client, cmd, args, ex):
+        """
+        In case of an error caused by a client packet, send error report to user, notify moderators
+        and have full traceback available on console and through /lasterror
+        """
+
+        # Send basic logging information to user
+        info = ('=========\nThe server ran into a Python issue. Please contact the server owner '
+                'and send them the following logging information:')
+        etype, evalue, etraceback = sys.exc_info()
+        tb = traceback.extract_tb(tb=etraceback)
+        current_time = Constants.get_time()
+        file, line_num, module, func = tb[-1]
+        file = file[file.rfind('\\')+1:] # Remove unnecessary directories
+        info += '\r\n*Server time: {}'.format(current_time)
+        info += '\r\n*Packet details: {} {}'.format(cmd, args)
+        info += '\r\n*Client status: {}'.format(client)
+        info += '\r\n*Area status: {}'.format(client.area)
+        info += '\r\n*File: {}'.format(file)
+        info += '\r\n*Line number: {}'.format(line_num)
+        info += '\r\n*Module: {}'.format(module)
+        info += '\r\n*Function: {}'.format(func)
+        info += '\r\n*Error: {}: {}'.format(type(ex).__name__, ex)
+        info += '\r\nYour help would be much appreciated.'
+        info += '\r\n========='
+        client.send_host_message(info)
+        client.send_host_others('Client {} triggered a Python error through a client packet. '
+                                'Do /lasterror to take a look.'.format(client.id),
+                                pred=lambda c: c.is_mod)
+
+        # Print complete traceback to console
+        info = 'TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET'
+        info += '\r\n*Server time: {}'.format(current_time)
+        info += '\r\n*Packet details: {} {}'.format(cmd, args)
+        info += '\r\n*Client status: {}'.format(client)
+        info += '\r\n*Area status: {}'.format(client.area)
+        info += '\r\n\r\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
+        logger.log_print(info)
+        self.last_error = [info, etype, evalue, etraceback]
+
+        # Log error to file
+        logger.log_error(info, server=self, errortype='C')
 
     def broadcast_global(self, client, msg, as_mod=False,
                          mtype="<dollar>G", condition=lambda x: not x.muted_global):

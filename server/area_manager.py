@@ -52,6 +52,7 @@ class AreaManager:
             self.is_modlocked = False
             self.bleeds_to = set()
             self.lights = True
+            self.last_ic_messages = list()
 
             self.name = parameters['area']
             self.background = parameters['background']
@@ -449,6 +450,10 @@ class AreaManager:
             except AreaError:
                 client.change_area(self.default_area(), override_all=True)
                 client.send_host_message('Your previous area no longer exists. Moving you to default area {}'.format(client.area.name))
+
+        # Update the server's area list only once everything is successful
+        self.server.old_area_list = self.server.area_list
+        self.server.area_list = area_list_file
 
     def default_area(self):
         return self.areas[self.server.default_area]

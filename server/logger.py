@@ -16,7 +16,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
+import sys
 import time
+import traceback
 
 from server.constants import Constants
 
@@ -52,9 +54,59 @@ def setup_logger(debug):
 #    rp_handler.setFormatter(rp_formatter)
 #    rp_log.addHandler(rp_handler)
 
+    error_log = logging.getLogger('error')
+    error_log.setLevel(logging.ERROR)
+
 def log_debug(msg, client=None):
     msg = parse_client_info(client) + msg
     logging.getLogger('debug').debug(msg)
+
+def log_error(msg, server, errortype='P'):
+    # errortype "C" if server raised an error as a result of a client packet.
+    # errortype "P" if server raised an error for any other reason
+    error_log = logging.getLogger('error')
+
+    moment = 'logs/{}{}.log'.format(Constants.get_time_iso(), errortype)
+    moment = moment.replace(':', '')
+    error_handler = logging.FileHandler(moment, encoding='utf-8')
+
+    error_handler.setLevel(logging.ERROR)
+    error_handler.setFormatter(logging.Formatter('[%(asctime)s UTC]%(message)s'))
+    error_log.addHandler(error_handler)
+
+    # Add list of clients to error log
+    try:
+        msg += '\r\n\r\n\r\n= Client dump ='
+        msg += '\r\n*Number of clients: {}'.format(len(server.client_manager.clients))
+        msg += '\r\n*Current clients'
+        for c in server.client_manager.clients:
+            msg += '\r\n{}'.format(c.get_info(as_mod=True))
+    except:
+        etype, evalue, etraceback = sys.exc_info()
+        msg += '\r\nError generating client dump'
+        msg += '\r\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
+
+    # Add list of areas to error log
+    try:
+        msg += '\r\n\r\n\r\n= Area dump ='
+        msg += '\r\n*Current area list: {}'.format(server.area_list)
+        msg += '\r\n*Old area list: {}'.format(server.old_area_list)
+        msg += '\r\n*Current areas:'
+
+        for area in server.area_manager.areas:
+            msg += '\r\n**{}'.format(area)
+            for c in area.clients:
+                msg += '\r\n***{}'.format(c)
+    except:
+        etype, evalue, etraceback = sys.exc_info()
+        msg += '\r\nError generating area dump'
+        msg += '\r\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
+
+    # Write and log
+    error_log.error(msg)
+    error_log.removeHandler(error_handler)
+
+    log_pserver('Successfully created error log file {}'.format(moment))
 
 def log_server(msg, client=None):
     msg = parse_client_info(client) + msg

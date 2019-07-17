@@ -17,10 +17,8 @@
 
 import asyncio
 import re
-import sys
-import traceback
 
-from time import localtime, strftime, time, asctime
+from time import localtime, strftime
 from enum import Enum
 
 from server import logger
@@ -88,39 +86,7 @@ class AOProtocol(asyncio.Protocol):
                 cmd, *args = msg.split('#')
                 self.net_cmd_dispatcher[cmd](self, args)
             except Exception as ex:
-                # Send basic logging information to user
-                info = ('=========\nThe server ran into a Python issue. Please contact the server '
-                        'owner and send them the following logging information:')
-                etype, evalue, etraceback = sys.exc_info()
-                tb = traceback.extract_tb(tb=etraceback)
-                current_time = asctime(localtime(time()))
-                file, line_num, module, func = tb[-1]
-                file = file[file.rfind('\\')+1:] # Remove unnecessary directories
-                info += '\r\n*Server time: {}'.format(current_time)
-                info += '\r\n*Packet details: {} {}'.format(cmd, args)
-                info += '\r\n*Client status: {}'.format(self.client)
-                info += '\r\n*Area status: {}'.format(self.client.area)
-                info += '\r\n*File: {}'.format(file)
-                info += '\r\n*Line number: {}'.format(line_num)
-                info += '\r\n*Module: {}'.format(module)
-                info += '\r\n*Function: {}'.format(func)
-                info += '\r\n*Error: {}: {}'.format(type(ex).__name__, ex)
-                info += '\r\nYour help would be much appreciated.'
-                info += '\r\n========='
-                self.client.send_host_message(info)
-                self.client.send_host_others('Client {} triggered a Python error through a client '
-                                             'packet. Do /lasterror to take a look.',
-                                             pred=lambda c: c.is_mod)
-
-                # Print complete traceback to console
-                info = 'TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET'
-                info += '\r\n*Server time: {}'.format(current_time)
-                info += '\r\n*Packet details: {} {}'.format(cmd, args)
-                info += '\r\n*Client status: {}'.format(self.client)
-                info += '\r\n*Area status: {}'.format(self.client.area)
-                logger.log_print(info)
-                traceback.print_exception(etype, evalue, etraceback)
-                self.server.last_error = [info, etype, evalue, etraceback]
+                self.server.send_error_report(self.client, cmd, args, ex)
 
     def connection_made(self, transport):
         """ Called upon a new client connecting
@@ -437,13 +403,46 @@ class AOProtocol(asyncio.Protocol):
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
             for c in target_area.clients:
-                if c.show_shownames:
-                    showname = self.client.showname
-                else:
-                    showname = ''
+                # 0 = msg_type
+                # 1 = pre
+                # 2 = folder
+                # 3 = anim
+                # 4 = msg
+                # 5 = pos
+                # 6 = sfx
+                # 7 = anim_type
+                # 8 = cid
+                # 9 = sfx_delay
+                # 10 = button
+                # 11 = self.client.evi_list[evidence]
+                # 12 = flip
+                # 13 = ding
+                # 14 = color
+                # 15 = showname
 
-                c.send_command('MS', msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid,
-                               sfx_delay, button, self.client.evi_list[evidence], flip, ding, color, showname)
+                to_send = [msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid, sfx_delay,
+                           button, self.client.evi_list[evidence], flip, ding, color, '']
+
+                if c == self.client and c.first_person:
+                    last_area, last_args = c.last_ic_notme
+                    # Check that the last received message exists and comes from the current area
+                    if area_id == last_area and last_args:
+                        to_send[2] = last_args[2]
+                        to_send[3] = last_args[3]
+                        to_send[5] = last_args[5]
+                        to_send[7] = last_args[7]
+                        to_send[12] = last_args[12]
+                    # Otherwise, send blank
+                    else:
+                        to_send[3] = '../../misc/blank'
+
+                if c.show_shownames:
+                    to_send[15] = self.client.showname
+
+                c.send_command('MS', *to_send)
+                if c != self:
+                    c.last_ic_notme = area_id, to_send
+
             target_area.set_next_msg_delay(len(msg))
 
             # Deal with shoutlog

@@ -74,6 +74,8 @@ class ClientManager:
             self.last_ooc_message = ''
             self.joined = time.time()
             self.last_active = Constants.get_time()
+            self.first_person = False
+            self.last_ic_notme = None, None
 
             #music flood-guard stuff
             self.mus_counter = 0

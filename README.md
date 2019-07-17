@@ -10,9 +10,10 @@ Requires Python 3.6+ and PyYAML.
 
 * Install the latest version of Python. **Python 2 will not work**, as tsuserver3 depends on async/await, which can only be found on Python 3.5 and newer.
   - If your system supports it, it is recommended that you use a separate virtual environment, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python).
+  - If prompted during the installation to add `python` as a PATH environment variable, accept this option.
 * Open Command Prompt or your terminal, and change to the directory where you downloaded tsuserver3 to. You can do this in two ways:
   - Go up one folder above the tsuserver3 folder, Shift + right click the tsuserver3 folder, and click `Open command window here`. This is the easiest method.
-  - Copy the path of the tsuserver3 folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackes, but including the quotation marks if the path contains spaces.
+  - Copy the path of the tsuserver3 folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackets, but including the quotation marks if the path contains spaces.
 * To install PyYAML and dependencies, type in the following:
   ```bash
   python -m pip install --user -r requirements.txt
@@ -22,26 +23,27 @@ Requires Python 3.6+ and PyYAML.
   py -3 -m pip install --user -r requirements.txt
   ```
   This operation should not require administrator privileges, unless you decide to remove the `--user` option.
-* Rename `config_sample` to `config` and edit the values to your liking. Be sure to check your YAML file for syntax errors. *Use spaces only; do not use tabs.*
+* Rename `config_sample` to `config` and edit the values in the provided YAML files to your liking. Be sure to check the YAML files for syntax errors after you are done. *Use spaces only; do not use tabs.*
 
 ### Running
 
 * Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:  
-[2019-07-02T17:33:30]: Starting...  
-[2019-07-02T17:33:30]: Launching tsuserver3.DR.190702b...  
-[2019-07-02T17:33:30]: Loading server configurations...  
-[2019-07-02T17:33:31]: Server started successfully!
+[2019-07-16T21:45:47]: Starting...
+[2019-07-16T21:45:47]: Launching tsuserver3.DR.190716a...
+[2019-07-16T21:45:47]: Loading server configurations...
+[2019-07-16T21:45:47]: Server configurations loaded successfully!
+[2019-07-16T21:45:47]: Server started successfully!
 
-* To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown process and notify you when it is done.  
-[2019-07-03T14:23:04]: You have initiated a server shut down.  
-[2019-07-03T14:23:04]: Kicking 12 remaining clients.  
-[2019-07-03T14:23:04]: Server has successfully shut down.
+* To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done.  
+[2019-07-16T22:23:04]: You have initiated a server shut down.
+[2019-07-16T22:23:04]: Kicking 12 remaining clients.
+[2019-07-16T22:23:04]: Server has successfully shut down.
 
   - If you do not see said messages after a few seconds, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
 * To restart a server, you can follow the steps outlined above to shut down and then start the server again.
   
-* In the unlikely event that there is an error during runtime, the server will do its best to print out to your terminal a complete traceback of the error with some additional information to help with debugging. Depending on the nature of the error, the server may or may not be able to continue execution normally.
+* In the unlikely event that there is an error during runtime, the server will do its best to print out to your terminal a complete traceback of the error with some additional information, as well as a more complete log file in the `logs` folder with the error timestamp, to help with debugging. Depending on the nature of the error, the server may or may not be able to continue execution normally after such an error happens.
  
 ### Updating
 
@@ -149,7 +151,9 @@ Additional notes are listed at the end of the command list.
 	- Obtain the remaining time of the given timer by name, provided it is public, or list all remaining times in all public timers if not given a name.
 * **ToD**
 	- Chooses "Truth" or "Dare" for Truth or Dare minigames.
-* **toggleglobal** 
+* **toggle_fp**
+    - Changes your setting to be in first person mode (your character does not appear to you when you send IC messages) or normal mode (your character does appear). By default it is in normal mode.
+* **toggle_global** 
     - Changes your setting to receive global messages. By default it is on.
 * **toggle_shownames**
 	- Changes your setting to have the IC messages you receive to include the sender's custom showname. By default it is on.
@@ -366,7 +370,7 @@ Additional notes are listed at the end of the command list.
 	- (DEBUG) Reloads the commands.py file.
 
 ### Deprecated commands and aliases
-Commands marked with (D) are marked as deprecated. They will continue to serve their original purpose as usual for three months after the stated date. If an alternative command name is given to a deprecated command, please use that command instead. 
+Commands marked with (D) are marked as deprecated. They will continue to serve their original purpose as usual for three months after the stated date. If an alternative command name is given to a deprecated command, please try and use that command instead. 
 
 Commands without (D) are aliases to commands and can be freely used (subject to the parent command's conditions).
 

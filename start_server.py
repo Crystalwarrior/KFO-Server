@@ -22,26 +22,24 @@ import traceback
 import server.logger
 
 from server.tsuserver import TsuServer3
-from server.constants import Constants
 
 def main():
-    my_server = TsuServer3()
-    my_server.start()
-
-if __name__ == '__main__':
+    server.logger.log_print('Starting...')
+    my_server = None
     try:
-        server.logger.log_print('Starting...')
-        main()
+        my_server = TsuServer3()
+        my_server.start()
     except KeyboardInterrupt:
         raise
     except Exception:
         # Print complete traceback to console
         etype, evalue, etraceback = sys.exc_info()
-        tb = traceback.extract_tb(tb=etraceback)
-        current_time = Constants.get_time_iso()
-        file, line_num, module, func = tb[-1]
-        file = file[file.rfind('\\')+1:] # Remove unnecessary directories
-
-        server.logger.log_print('TSUSERVER HAS ENCOUNTERED A PYTHON ERROR.')
-        traceback.print_exception(etype, evalue, etraceback)
+        info = 'TSUSERVER HAS ENCOUNTERED A PYTHON ERROR.'
+        info += "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
+        server.logger.log_print(info)
+        if my_server: # If the server at the very least could initialize correctly...
+            server.logger.log_error(info, server=my_server, errortype='P')
         server.logger.log_print('Server is shutting down.')
+
+if __name__ == '__main__':
+    main()
