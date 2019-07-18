@@ -267,9 +267,9 @@ class ClientManager:
                     raise ClientError('That area is mod-locked.')
 
             # Check if trying to reach an unreachable area
-            if not (area.name in self.area.reachable_areas or '<ALL>' in self.area.reachable_areas or
-                    self.is_transient or self.is_staff() or override_passages):
-                info = ('Selected area cannot be reached from the current one without authorization. '
+            if not (self.is_staff() or self.is_transient or override_passages or
+                    area.name in self.area.reachable_areas or '<ALL>' in self.area.reachable_areas):
+                info = ('Selected area cannot be reached from your area without authorization. '
                         'Try one of the following areas instead: ')
                 if self.area.reachable_areas == {self.area.name}:
                     info += '\r\n*No areas available.'
@@ -279,7 +279,8 @@ class ClientManager:
                         for reachable_area in sorted_areas:
                             if reachable_area != self.area.name:
                                 info += '\r\n*({}) {}'.format(self.server.area_manager.get_area_by_name(reachable_area).id, reachable_area)
-                    except AreaError: #When would you ever execute this piece of code is beyond me, but meh
+                    except AreaError:
+                        #When would you ever execute this piece of code is beyond me, but meh
                         info += '\r\n<ALL>'
                 raise ClientError(info)
 
@@ -871,28 +872,18 @@ class ClientManager:
         def auth_gm(self, password):
             if self.is_gm:
                 raise ClientError('Already logged in.')
-            if password == self.server.config['gmpass']:
-                self.is_gm = True
-                self.in_rp = False
-            elif password == self.server.config['gmpass1'] and ((datetime.datetime.today().weekday() == 6 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 0 and datetime.datetime.now().hour < 15)):
-                self.is_gm = True
-                self.in_rp = False
-            elif password == self.server.config['gmpass2'] and ((datetime.datetime.today().weekday() == 0 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour < 15)):
-                self.is_gm = True
-                self.in_rp = False
-            elif password == self.server.config['gmpass3'] and ((datetime.datetime.today().weekday() == 1 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour < 15)):
-                self.is_gm = True
-                self.in_rp = False
-            elif password == self.server.config['gmpass4'] and ((datetime.datetime.today().weekday() == 2 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour < 15)):
-                self.is_gm = True
-                self.in_rp = False
-            elif password == self.server.config['gmpass5'] and ((datetime.datetime.today().weekday() == 3 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour < 15)):
-                self.is_gm = True
-                self.in_rp = False
-            elif password == self.server.config['gmpass6'] and ((datetime.datetime.today().weekday() == 4 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 5 and datetime.datetime.now().hour < 15)):
-                self.is_gm = True
-                self.in_rp = False
-            elif password == self.server.config['gmpass7'] and ((datetime.datetime.today().weekday() == 5 and datetime.datetime.now().hour > 15) or (datetime.datetime.today().weekday() == 6 and datetime.datetime.now().hour < 15)):
+
+            # Obtain the daily gm pass (changes at 3 pm server time)
+            current_day = datetime.datetime.today().weekday()
+            if datetime.datetime.now().hour < 15:
+                current_day += 1
+            daily_gmpass = self.server.config['gmpass{}'.format((current_day % 7) + 1)]
+
+            valid_passwords = [self.server.config['gmpass']]
+            if daily_gmpass is not None:
+                valid_passwords.append(daily_gmpass)
+
+            if password in valid_passwords:
                 self.is_gm = True
                 self.in_rp = False
             else:

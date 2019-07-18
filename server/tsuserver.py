@@ -38,7 +38,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190717a'
+        self.minor_version = '190718a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -187,6 +187,12 @@ class TsuServer3:
         with open('config/config.yaml', 'r', encoding='utf-8') as cfg:
             self.config = yaml.safe_load(cfg)
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
+
+        for i in range(1, 8):
+            daily_gmpass = 'gmpass{}'.format(i)
+            if daily_gmpass not in self.config or not self.config[daily_gmpass]:
+                self.config[daily_gmpass] = None
+
         if 'music_change_floodguard' not in self.config:
             self.config['music_change_floodguard'] = {'times_per_interval': 1, 'interval_length': 0, 'mute_length': 0}
         # Backwards compatibility checks
@@ -203,7 +209,7 @@ class TsuServer3:
         if 'default_area_description' not in self.config:
             self.config['default_area_description'] = 'No description.'
 
-        # Check for uniqueness of all passwords
+        # Check that all passwords were generated and that they are unique
         passwords = ['guardpass',
                      'modpass',
                      'cmpass',
@@ -215,12 +221,17 @@ class TsuServer3:
                      'gmpass5',
                      'gmpass6',
                      'gmpass7']
+        for password_type in passwords:
+            if password_type not in self.config:
+                info = ('Password "{}" not defined in server/config.yaml. Please make sure it is '
+                        'set and try again.'.format(password_type))
+                raise ServerError(info)
 
         for (i, password1) in enumerate(passwords):
             for (j, password2) in enumerate(passwords):
-                if i != j and self.config[password1] == self.config[password2]:
+                if i != j and self.config[password1] == self.config[password2] != None:
                     info = ('Passwords "{}" and "{}" in server/config.yaml match. '
-                            'Please change them so they are different.'
+                            'Please change them so they are different and try again.'
                             .format(password1, password2))
                     raise ServerError(info)
 
