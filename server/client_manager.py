@@ -29,7 +29,10 @@ class ClientManager:
         def __init__(self, server, transport, user_id, ipid):
             self.transport = transport
             self.hdid = ''
+            self.can_join = 0 # Needs to be 2 to actually connect
+            self.can_askchaa = True # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined') # AO version used, established through ID pack
+
             self.pm_mute = False
             self.id = user_id
             self.char_id = None
@@ -563,9 +566,11 @@ class ClientManager:
                 status = {True: 'Was', False: 'Self'}
 
                 if showname != '':
-                    self.showname_history.append("{} | {} set to {}".format(time.asctime(time.localtime(time.time())), status[forced], showname))
+                    self.showname_history.append("{} | {} set to {}"
+                                                 .format(Constants.get_time(), status[forced], showname))
                 else:
-                    self.showname_history.append("{} | {} cleared".format(time.asctime(time.localtime(time.time())), status[forced]))
+                    self.showname_history.append("{} | {} cleared"
+                                                 .format(Constants.get_time(), status[forced]))
             self.showname = showname
 
         def change_visibility(self, new_status):

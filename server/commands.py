@@ -3436,7 +3436,7 @@ def ooc_cmd_time(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
-    client.send_host_message(time.asctime(time.localtime(time.time())))
+    client.send_host_message(Constants.get_time())
 
 def ooc_cmd_time12(client, arg):
     """
@@ -3692,6 +3692,30 @@ def ooc_cmd_toggle_global(client, arg):
     status = {False: 'on', True: 'off'}
 
     client.send_host_message('Global chat turned {}.'.format(status[client.muted_global]))
+
+def ooc_cmd_toggle_fp(client, arg):
+    """
+    Toggles first person mode on or off. If on, you will not receive your character sprites when you
+    send messages yourself, but instead will keep whatever the last sprite used was onscreen.
+
+    SYNTAX
+    /toggle_fp
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    Assuming you start in normal mode...
+    /toggle_fp          :: Toggles first person mode on.
+    /toggle_fp          :: Toggles first person mode off.
+    """
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
+
+    client.first_person = not client.first_person
+    status = {True: 'now', False: 'no longer'}
+
+    client.send_host_message('You are {} in first person mode.'.format(status[client.first_person]))
 
 def ooc_cmd_toggle_shownames(client, arg):
     """
@@ -4318,30 +4342,6 @@ def ooc_cmd_toggle_rpgetareas(client, arg):
     Deprecated for /can_rpgetareas.
     """
     ooc_cmd_can_rpgetareas(client, arg)
-
-def ooc_cmd_toggle_fp(client, arg):
-    """
-    Toggles first person mode on or off. If on, you will not receive your character sprites when you
-    send messages yourself, but instead will keep whatever the last sprite used was onscreen.
-
-    SYNTAX
-    /toggle_fp
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    Assuming you start in normal mode...
-    /toggle_fp          :: Toggles first person mode on.
-    /toggle_fp          :: Toggles first person mode off.
-    """
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-
-    client.first_person = not client.first_person
-    status = {True: 'now', False: 'no longer'}
-
-    client.send_host_message('You are {} in first person mode.'.format(status[client.first_person]))
 
 def ooc_cmd_exec(client, arg):
     """

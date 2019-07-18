@@ -55,7 +55,7 @@ class AOProtocol(asyncio.Protocol):
                   UNLESS YOU ABSOLUTELY MEANT IT AND KNOW WHAT YOU ARE DOING,
                   PLEASE STOP YOUR SERVER RIGHT NOW AND DEACTIVATE IT BY GOING TO THE
                   commands.py FILE AND FOLLOWING THE INSTRUCTIONS UNDER ooc_cmd_exec.\n
-                  BAD THINGS CAN AND WILL HAPPEN OTHERWISE
+                  BAD THINGS CAN AND WILL HAPPEN OTHERWISE.
 
                   """)
 
@@ -164,6 +164,7 @@ class AOProtocol(asyncio.Protocol):
         logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
         self.client.send_command('ID', self.client.id, self.server.software, self.server.get_version_string())
         self.client.send_command('PN', self.server.get_player_count(), self.server.config['playerlimit'])
+        self.client.can_join += 1 # One of two conditions to allow joining
 
     def net_cmd_id(self, args):
         """ Client version and PV
@@ -171,6 +172,7 @@ class AOProtocol(asyncio.Protocol):
         ID#<pv:int>#<software:string>#<version:string>#%
 
         """
+        self.client.can_join += 1 # One of two conditions to allow joining
         self.client.is_ao2 = False
         self.client.version = (args[0], args[1])
 
@@ -219,6 +221,15 @@ class AOProtocol(asyncio.Protocol):
         askchaa#%
 
         """
+        # Check if client is ready to actually join, and did not do weird packet shenanigans before
+        if self.client.can_join != 2:
+            return
+        # Check if client asked for this before but did not finish processing it
+        if not self.client.can_askchaa:
+            return
+
+        self.client.can_askchaa = False # Enforce the joining process happening atomically
+
         char_cnt = len(self.server.char_list)
         evi_cnt = 0
         music_cnt = sum([len(x) for x in self.server.music_pages_ao1])
@@ -267,6 +278,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_done()
             self.client.send_area_list()
             self.client.send_motd()
+            self.client.can_askchaa = True # Allow rejoining if left to lobby but did not dc.
 
     def net_cmd_rc(self, _):
         """ Asks for the whole character list(AO2)
@@ -305,6 +317,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.send_motd()
         self.client.reload_music_list() # Reload the default area's music list
         # so that it only includes areas reachable from that default area.
+        self.client.can_askchaa = True # Allow rejoining if left to lobby but did not dc.
 
     def net_cmd_cc(self, args):
         """ Character selection.
@@ -518,9 +531,9 @@ class AOProtocol(asyncio.Protocol):
 
             self.client.area.send_command('CT', self.client.name, args[1])
             self.client.last_ooc_message = args[1]
-            logger.log_server(
-                '[OOC][{}][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), self.client.name,
-                                             args[1]), self.client)
+            logger.log_server('[OOC][{}][{}][{}]{}'
+                              .format(self.client.area.id, self.client.get_char_name(),
+                                      self.client.name, args[1]), self.client)
         self.client.last_active = Constants.get_time()
 
     def net_cmd_mc(self, args):

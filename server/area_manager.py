@@ -259,9 +259,8 @@ class AreaManager:
             if len(self.judgelog) >= 20:
                 self.judgelog = self.judgelog[1:]
 
-            info = '{} | [{}] {} ({}) {}'.format(time.asctime(time.localtime(time.time())),
-                                                 client.id, client.get_char_name(), client.get_ip(),
-                                                 msg)
+            info = '{} | [{}] {} ({}) {}'.format(Constants.get_time(), client.id,
+                                                 client.get_char_name(), client.get_ip(), msg)
             self.judgelog.append(info)
 
         def get_judgelog(self):
@@ -278,9 +277,8 @@ class AreaManager:
             if len(self.shoutlog) >= 20:
                 self.shoutlog = self.shoutlog[1:]
 
-            info = '{} | [{}] {} ({}) {}'.format(time.asctime(time.localtime(time.time())),
-                                                 client.id, client.get_char_name(), client.get_ip(),
-                                                 msg)
+            info = '{} | [{}] {} ({}) {}'.format(Constants.get_time(), client.id,
+                                                 client.get_char_name(), client.get_ip(), msg)
             self.shoutlog.append(info)
 
         def get_shoutlog(self):
