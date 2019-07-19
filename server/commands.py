@@ -315,10 +315,7 @@ def ooc_cmd_bg(client, arg):
     if not client.is_mod and client.area.bg_lock:
         raise AreaError("This area's background is locked.")
 
-    if client.is_staff() or client.area.cbg_allowed:
-        client.area.change_background_mod(arg)
-    else:
-        client.area.change_background(arg)
+    client.area.change_background(arg, validate=not (client.is_staff() or client.area.cbg_allowed))
     client.area.send_host_message('{} changed the background to {}.'
                                   .format(client.get_char_name(), arg))
     logger.log_server('[{}][{}]Changed background to {}'
@@ -467,8 +464,8 @@ def ooc_cmd_bloodtrail(client, arg):
 
     target.send_host_message('You are {} bleeding.'.format(status[target.is_bleeding]))
     target.send_host_others('{} is {} bleeding ({}).'
-                            .format(target.get_char_name(), status[target.is_bleeding], target.area.id),
-                            is_staff=True)
+                            .format(target.get_char_name(), status[target.is_bleeding],
+                                    target.area.id), is_staff=True)
 
     if not target.area.lights or not target.is_visible:
         # Multiple cases to account for different situations
@@ -1756,7 +1753,7 @@ def ooc_cmd_knock(client, arg):
     except AreaError:
         try:
             target_area = client.server.area_manager.get_area_by_id(int(arg))
-        except:
+        except Exception:
             raise ArgumentError('Could not parse area name {}.'.format(arg))
 
     # Filter out edge cases
@@ -2606,7 +2603,7 @@ def ooc_cmd_pm(client, arg):
                 msg = arg[len(targets[0].get_char_name()) + 1:]
             if key == TargetType.OOC_NAME:
                 msg = arg[len(targets[0].name) + 1:]
-    except:
+    except Exception:
         raise ArgumentError('Not enough arguments. Use /pm <target> <message>.')
 
     # Attempt to send the message to the target, provided they do not have PMs disabled.
@@ -3793,7 +3790,7 @@ def ooc_cmd_unban(client, arg):
     # Assumes that any error is caused by putting something other than an IPID.
     try:
         client.server.ban_manager.remove_ban(int(arg.strip()))
-    except:
+    except Exception:
         raise ClientError('You must specify \'hdid\'')
 
     logger.log_server('Unbanned {}.'.format(arg), client)
@@ -4343,6 +4340,35 @@ def ooc_cmd_toggle_rpgetareas(client, arg):
     """
     ooc_cmd_can_rpgetareas(client, arg)
 
+def ooc_cmd_globalic_pre(client, arg):
+    """ (STAFF ONLY)
+    If given an argument, it sets the client's message prefix that must be included in their IC
+    messages in order for them to be globally sent as part of a /globalic command. Messages that
+    do not start with this prefix will only be sent to their current area as usual. This prefix
+    will also be filtered out from their message.
+    If given nothing, it removes the prefix requirement and all messages will be sent globally if
+    /globalic is on.
+
+    SYNTAX
+    /globalic_pre {prefix}
+
+    OPTIONAL PARAMETERS
+    {prefix}: Message prefix
+
+    EXAMPLES
+    Assuming /globalic is on...
+    /globalic_pre >>>       :: Only IC messages that start with >>> will be sent globally-
+    /globalic_pre           :: All IC messages will be sent globally.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+
+    client.multi_ic_pre = arg
+    if arg:
+        client.send_host_message('You have set your global IC prefix to {}'.format(arg))
+    else:
+        client.send_host_message('You have removed your global IC prefix.')
+
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
@@ -4384,7 +4410,7 @@ def ooc_cmd_exec(client, arg):
         result = eval(arg)
         if result is not None:
             client.server.send_all_cmd_pred('CT', '', result, pred=lambda c: c == client)
-    except:
+    except Exception:
         try:
             # Temporarily add "client" as a global variable, to allow using
             # expressions such as client.send_host_message("Hi")
@@ -4396,7 +4422,7 @@ def ooc_cmd_exec(client, arg):
                 client.server.send_all_cmd_pred('CT', '',
                                                 'Python error: {}: {}'.format(type(e).__name__, e),
                                                 pred=lambda c: c == client)
-            except:
+            except Exception:
                 pass
     globals().pop('client', None) # Don't really want "client" to be a global variable
     return 1    # Indication that /exec is live

@@ -38,7 +38,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190718a'
+        self.minor_version = '190719a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -247,20 +247,20 @@ class TsuServer3:
         try:
             with open('storage/ip_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.ipid_list = json.loads(whole_list.read())
-        except:
+        except Exception:
             logger.log_debug('Failed to load ip_ids.json from ./storage. If ip_ids.json exists, then remove it.')
         #load hdids
         try:
             with open('storage/hd_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.hdid_list = json.loads(whole_list.read())
-        except:
+        except Exception:
             logger.log_debug('Failed to load hd_ids.json from ./storage. If hd_ids.json exists, then remove it.')
 
     def load_iniswaps(self):
         try:
             with open('config/iniswaps.yaml', 'r', encoding='utf-8') as iniswaps:
                 self.allowed_iniswaps = yaml.safe_load(iniswaps)
-        except:
+        except Exception:
             logger.log_debug('cannot find iniswaps.yaml')
 
     def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
@@ -491,7 +491,9 @@ class TsuServer3:
         try:
             delay = int(afk_delay)*60 # afk_delay is in minutes, so convert to seconds
         except (TypeError, ValueError):
-            raise ServerError('The area file contains an invalid AFK kick delay for area {}: {}'.format(client.area.id, afk_delay))
+            info = ('The area file contains an invalid AFK kick delay for area {}: {}'.
+                    format(client.area.id, afk_delay))
+            raise ServerError(info)
 
         if delay <= 0: # Assumes 0-minute delay means that AFK kicking is disabled
             return
@@ -503,9 +505,10 @@ class TsuServer3:
         else:
             try:
                 area = client.server.area_manager.get_area_by_id(int(afk_sendto))
-            except:
-                raise ServerError('The area file contains an invalid AFK kick destination area for area {}: {}'.format(client.area.id, afk_sendto))
-
+            except Exception:
+                info = ('The area file contains an invalid AFK kick destination area for area {}: '
+                        '{}'.format(client.area.id, afk_sendto))
+                raise ServerError(info)
             if client.area.id == afk_sendto: # Don't try and kick back to same area
                 return
             if client.char_id < 0: # Assumes spectators are exempted from AFK kicks
@@ -516,7 +519,7 @@ class TsuServer3:
             try:
                 original_area = client.area
                 client.change_area(area, override_passages=True, override_effects=True, ignore_bleeding=True)
-            except:
+            except Exception:
                 pass # Server raised an error trying to perform the AFK kick, ignore AFK kick
             else:
                 client.send_host_message("You were kicked from area {} to area {} for being inactive for {} minutes.".format(original_area.id, afk_sendto, afk_delay))

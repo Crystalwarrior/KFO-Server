@@ -81,7 +81,7 @@ def log_error(msg, server, errortype='P'):
         msg += '\r\n*Current clients'
         for c in server.client_manager.clients:
             msg += '\r\n{}'.format(c.get_info(as_mod=True))
-    except:
+    except Exception:
         etype, evalue, etraceback = sys.exc_info()
         msg += '\r\nError generating client dump'
         msg += '\r\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
@@ -97,7 +97,7 @@ def log_error(msg, server, errortype='P'):
             msg += '\r\n**{}'.format(area)
             for c in area.clients:
                 msg += '\r\n***{}'.format(c)
-    except:
+    except Exception:
         etype, evalue, etraceback = sys.exc_info()
         msg += '\r\nError generating area dump'
         msg += '\r\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))

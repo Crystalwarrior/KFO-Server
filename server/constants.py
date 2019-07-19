@@ -246,7 +246,7 @@ class Constants():
                 except AreaError:
                     try:
                         area_list.append(client.server.area_manager.get_area_by_id(int(areas[i])))
-                    except:
+                    except Exception:
                         raise ArgumentError('Could not parse area {}'.format(areas[i]))
         return area_list
 

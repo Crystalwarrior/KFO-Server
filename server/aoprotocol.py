@@ -162,8 +162,10 @@ class AOProtocol(asyncio.Protocol):
                 self.client.disconnect()
                 return
         logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
-        self.client.send_command('ID', self.client.id, self.server.software, self.server.get_version_string())
-        self.client.send_command('PN', self.server.get_player_count(), self.server.config['playerlimit'])
+        self.client.send_command('ID', self.client.id, self.server.software,
+                                 self.server.get_version_string())
+        self.client.send_command('PN', self.server.get_player_count(),
+                                 self.server.config['playerlimit'])
         self.client.can_join += 1 # One of two conditions to allow joining
 
     def net_cmd_id(self, args):
@@ -349,16 +351,21 @@ class AOProtocol(asyncio.Protocol):
             return
         if not self.client.area.can_send_message():
             return
-        if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR_OR_EMPTY, self.ArgType.STR,
-                                     self.ArgType.STR,
-                                     self.ArgType.STR, self.ArgType.STR, self.ArgType.STR, self.ArgType.INT,
-                                     self.ArgType.INT, self.ArgType.INT, self.ArgType.INT, self.ArgType.INT,
-                                     self.ArgType.INT, self.ArgType.INT, self.ArgType.INT):
+
+        # Assert that all parameters are valid
+        if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR_OR_EMPTY,
+                                     self.ArgType.STR, self.ArgType.STR, self.ArgType.STR,
+                                     self.ArgType.STR, self.ArgType.STR, self.ArgType.INT,
+                                     self.ArgType.INT, self.ArgType.INT, self.ArgType.INT,
+                                     self.ArgType.INT, self.ArgType.INT, self.ArgType.INT,
+                                     self.ArgType.INT):
             return
         msg_type, pre, folder, anim, text, pos, sfx, anim_type, cid, sfx_delay, button, evidence, flip, ding, color = args
-        if self.client.area.is_iniswap(self.client, pre, anim, folder) and folder != self.client.get_char_name():
-            self.client.send_host_message("Iniswap is blocked in this area.")
-            return
+
+        if not self.client.area.iniswap_allowed:
+            if self.client.area.is_iniswap(self.client, pre, anim, folder):
+                self.client.send_host_message("Iniswap is blocked in this area.")
+                return
         if folder in self.client.area.restricted_chars and not self.client.is_staff():
             self.client.send_host_message('Your character is restricted in the current area.')
             return
@@ -381,7 +388,8 @@ class AOProtocol(asyncio.Protocol):
         if color == 5 and not self.client.is_mod and not self.client.is_cm:
             color = 0
         if color == 6:
-            text = re.sub(r'[^\x00-\x7F]+', ' ', text) #remove all unicode to prevent now yellow text abuse
+            # Remove all unicode to prevent now yellow text abuse
+            text = re.sub(r'[^\x00-\x7F]+', ' ', text)
             if len(text.strip(' ')) == 1:
                 color = 0
             else:
@@ -392,6 +400,9 @@ class AOProtocol(asyncio.Protocol):
         else:
             if pos not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
+        self.client.pos = pos
+
+        # Truncate and alter message if message effect is in place
         msg = text[:256]
         if self.client.gimp: #If you are gimped, gimp message.
             msg = Constants.gimp_message()
@@ -401,17 +412,23 @@ class AOProtocol(asyncio.Protocol):
             msg = Constants.disemconsonant_message(msg)
         if self.client.remove_h: #If h is removed, replace string.
             msg = Constants.remove_h_message(msg)
-        self.client.pos = pos
+
         if evidence:
             if self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos != 'all':
                 self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos = 'all'
                 self.client.area.broadcast_evidence_list()
 
-        # If client has multi-ic enable, set area range target to intended range
-        if self.client.multi_ic is None:
+        # If client has GlobalIC enabled, set area range target to intended range and remove
+        # GlobalIC prefix if needed.
+        if self.client.multi_ic is None or not msg.startswith(self.client.multi_ic_pre):
             area_range = range(self.client.area.id, self.client.area.id + 1)
         else:
-            area_range = range(self.client.multi_ic[0].id, self.client.multi_ic[1].id + 1)
+            # As msg.startswith('') is True, this also accounts for having no required prefix.
+            start, end = self.client.multi_ic[0].id, self.client.multi_ic[1].id + 1
+            area_range = range(start, end)
+            msg = msg.replace(self.client.multi_ic_pre, '', 1)
+            self.client.send_host_message('Sent global IC message {} to areas {} through {}.'
+                                          .format(msg, start, end))
 
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)

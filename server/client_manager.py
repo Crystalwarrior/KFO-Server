@@ -60,6 +60,7 @@ class ClientManager:
             self.ipid = ipid
             self.is_visible = True
             self.multi_ic = None
+            self.multi_ic_pre = ''
             self.showname = ''
             self.following = None
             self.followedby = set()
