@@ -722,9 +722,12 @@ class ClientManager:
                 # If only_my_multiclients is set to True, only the clients opened by the current
                 # user will be listed. Useful for /multiclients.
                 if c.char_id is not None:
-                    if ((c == self or self.is_staff() or c.is_visible or (mods and c.is_mod))
-                        and not (only_my_multiclients and c.ipid != self.ipid)):
+                    cond = (c == self or self.is_staff() or c.is_visible or (mods and c.is_mod))
+                    multiclient_cond = (not (only_my_multiclients and c.ipid != self.ipid))
+
+                    if cond and multiclient_cond:
                         sorted_clients.append(c)
+
             sorted_clients = sorted(sorted_clients, key=lambda x: x.get_char_name())
 
             for c in sorted_clients:
@@ -754,9 +757,11 @@ class ClientManager:
             #If only_my_multiclients is True, then include only clients opened by the current player
             # Verify that it should send the area info first
             if not self.is_staff():
-                if ((area_id == -1 and not self.area.rp_getareas_allowed) or
-                    (area_id != -1 and not self.area.rp_getarea_allowed)):
-                    raise ClientError('This command has been restricted to authorized users only in this area while in RP mode.')
+                getareas_restricted = (area_id == -1 and not self.area.rp_getareas_allowed)
+                getarea_restricted = (area_id != -1 and not self.area.rp_getarea_allowed)
+                if getareas_restricted or getarea_restricted:
+                    raise ClientError('This command has been restricted to authorized users only '
+                                      'in this area while in RP mode.')
                 if not self.area.lights:
                     raise ClientError('The lights are off. You cannot see anything.')
 

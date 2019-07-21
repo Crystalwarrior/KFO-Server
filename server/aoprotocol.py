@@ -23,7 +23,7 @@ from enum import Enum
 
 from server import logger
 from server.constants import Constants
-from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
+from server.exceptions import ClientError, AreaError, ArgumentError, ServerError, PartyError
 from server.fantacrypt import fanta_decrypt
 from server.evidence import EvidenceList
 
@@ -151,16 +151,26 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.validate_net_cmd(args, self.ArgType.STR, needs_auth=False):
             return
+
+        # Record new HDID and IPID if needed
         self.client.hdid = args[0]
         if self.client.hdid not in self.client.server.hdid_list:
             self.client.server.hdid_list[self.client.hdid] = []
         if self.client.ipid not in self.client.server.hdid_list[self.client.hdid]:
             self.client.server.hdid_list[self.client.hdid].append(self.client.ipid)
             self.client.server.dump_hdids()
+
+        # Check if the client is banned
         for ipid in self.client.server.hdid_list[self.client.hdid]:
             if self.server.ban_manager.is_banned(ipid):
+                self.client.send_host_others('Banned client with HDID {} and IPID {} attempted to '
+                                             'join the server but was refused entrance.'
+                                             .format(self.client.hdid, self.client.ipid),
+                                             pred=lambda c: c.is_mod)
+                #self.client.send_command('BD')
                 self.client.disconnect()
                 return
+
         logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
         self.client.send_command('ID', self.client.id, self.server.software,
                                  self.server.get_version_string())
@@ -536,7 +546,7 @@ class AOProtocol(asyncio.Protocol):
             else:
                 try:
                     function(self.client, arg)
-                except (ClientError, AreaError, ArgumentError, ServerError) as ex:
+                except (ClientError, AreaError, ArgumentError, ServerError, PartyError) as ex:
                     self.client.send_host_message(ex)
         else:
             if self.client.disemvowel: #If you are disemvoweled, replace string.

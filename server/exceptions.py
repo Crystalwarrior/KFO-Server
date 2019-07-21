@@ -30,3 +30,7 @@ class ArgumentError(Exception):
 
 class ServerError(Exception):
     pass
+
+
+class PartyError(Exception):
+    pass
