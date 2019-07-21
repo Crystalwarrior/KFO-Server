@@ -19,6 +19,7 @@
 This module holds all the commands that are either deprecated or are meant to
 act as aliases for existing commands in commands.py
 """
+
 def do_command(command, client, arg):
     """
     Wrapper function for alt/deprecated commands.

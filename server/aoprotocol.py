@@ -503,6 +503,7 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.last_ic_message = msg
         self.client.last_active = Constants.get_time()
+        self.client.char_folder = folder
 
     def net_cmd_ct(self, args):
         """ OOC Message

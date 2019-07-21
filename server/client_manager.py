@@ -27,24 +27,27 @@ from server.constants import TargetType, Constants
 class ClientManager:
     class Client:
         def __init__(self, server, transport, user_id, ipid):
+            self.server = server
             self.transport = transport
-            self.hdid = ''
             self.can_join = 0 # Needs to be 2 to actually connect
             self.can_askchaa = True # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined') # AO version used, established through ID pack
 
-            self.pm_mute = False
+            self.hdid = ''
+            self.ipid = ipid
             self.id = user_id
             self.char_id = None
-            self.area = server.area_manager.default_area()
-            self.server = server
             self.name = ''
             self.fake_name = ''
+            self.char_folder = ''
+            self.pos = ''
+
+            self.area = server.area_manager.default_area()
             self.is_mod = False
             self.is_gm = False
             self.is_dj = True
-            self.pos = ''
             self.is_cm = False
+            self.pm_mute = False
             self.evi_list = []
             self.disemvowel = False
             self.remove_h = False
@@ -57,7 +60,6 @@ class ClientManager:
             self.pm_mute = False
             self.mod_call_time = 0
             self.in_rp = False
-            self.ipid = ipid
             self.is_visible = True
             self.multi_ic = None
             self.multi_ic_pre = ''
@@ -178,6 +180,7 @@ class ClientManager:
 
             old_char = self.get_char_name()
             self.char_id = char_id
+            self.char_folder = self.get_char_name() # Assumes players are not iniswapped initially
             self.pos = ''
             self.send_command('PV', self.id, 'CID', self.char_id)
             logger.log_server('[{}]Changed character from {} to {}.'
@@ -945,8 +948,11 @@ class ClientManager:
             info = '== Client information of {} =='.format(identifier)
             info += ('\n*CID: {}. IPID: {}. HDID: {}'
                      .format(self.id, self.ipid if as_mod else "-", self.hdid if as_mod else "-"))
+            char_info = self.get_char_name()
+            if self.char_folder and self.char_folder != char_info: # Indicate iniswap if needed
+                char_info = '{} ({})'.format(char_info, self.char_folder)
             info += ('\n*Character name: {}. Showname: {}. OOC username: {}'
-                     .format(self.get_char_name(), self.showname, self.name))
+                     .format(char_info, self.showname, self.name))
             info += '\n*In area: {}-{}'.format(self.area.id, self.area.name)
             info += '\n*Last IC message: {}'.format(self.last_ic_message)
             info += '\n*Last OOC message: {}'.format(self.last_ooc_message)
