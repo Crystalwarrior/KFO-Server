@@ -539,11 +539,16 @@ class AOProtocol(asyncio.Protocol):
                 arg = spl[1][:256]
             try:
                 called_function = 'ooc_cmd_{}'.format(cmd)
+                function = None # Double assignment to check if it matched to a function later
                 function = getattr(self.server.commands, called_function)
             except AttributeError:
-                logger.log_print('Attribute error with ' + called_function)
-                self.client.send_host_message('Invalid command.')
-            else:
+                try:
+                    function = getattr(self.server.commands_alt, called_function)
+                except AttributeError:
+                    logger.log_print('Attribute error with ' + called_function)
+                    self.client.send_host_message('Invalid command.')
+
+            if function:
                 try:
                     function(self.client, arg)
                 except (ClientError, AreaError, ArgumentError, ServerError, PartyError) as ex:
@@ -578,7 +583,7 @@ class AOProtocol(asyncio.Protocol):
         # Otherwise, attempt to play music.
         except (AreaError, ValueError):
             if self.client.is_muted:  # Checks to see if the client has been muted by a mod
-                self.client.send_host_message("You have been muted by a moderator")
+                self.client.send_host_message("You have been muted by a moderator.")
                 return
             if not self.client.is_dj:
                 self.client.send_host_message('You were blockdj\'d by a moderator.')
@@ -588,7 +593,9 @@ class AOProtocol(asyncio.Protocol):
             if args[1] != self.client.char_id:
                 return
             if self.client.change_music_cd():
-                self.client.send_host_message('You changed song too many times recently. Please try again after {} seconds.'.format(int(self.client.change_music_cd())))
+                self.client.send_host_message('You changed song too many times recently. Please '
+                                              'try again after {} seconds.'
+                                              .format(int(self.client.change_music_cd())))
                 return
 
             try:

@@ -109,7 +109,7 @@ class PartyManager:
 
     def disband_party(self, party):
         pid = self.get_party_id(party)
-        self.parties.remove(pid)
+        self.parties.pop(pid)
         for member in party.members:
             member.party = None
         return pid, party.members.copy()
@@ -123,7 +123,7 @@ class PartyManager:
             if party.pid not in self.parties:
                 raise PartyError('This party does not exist.')
             return party.pid
-        elif isinstance(party, int):
+        if isinstance(party, int):
             if party not in self.parties:
                 raise PartyError('This party does not exist.')
             return party
@@ -139,7 +139,7 @@ class PartyManager:
         orphaned = party.members - (members1.union(members2))
         if orphaned:
             raise PartyError('Invalid party split: {} would be left out of the parties.'
-                               .format(', '.join([c.id for c in orphaned])))
+                             .format(', '.join([c.id for c in orphaned])))
 
         _, old_pl, old_leader = party.get_details()
         if old_leader and not party.is_member(old_leader):
@@ -161,4 +161,3 @@ class PartyManager:
             party1.add_member(member)
         for member in members2:
             party2.add_member(member)
-

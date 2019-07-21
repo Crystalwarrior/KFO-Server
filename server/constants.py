@@ -187,8 +187,8 @@ class Constants():
     @staticmethod
     def fix_and_setify(csv_values):
         """
-        For the area parameters that include lists of comma-separated values, parse them appropiately
-        before turning them into sets.
+        For the area parameters that include lists of comma-separated values, parse them
+        appropiately before turning them into sets.
         """
         l = csv_values.split(', ')
         for i in range(len(l)): #Ah, escape characters... again...

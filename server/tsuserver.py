@@ -38,7 +38,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190721a'
+        self.minor_version = '190721b'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -81,6 +81,7 @@ class TsuServer3:
         self.active_timers = dict()
         self.showname_freeze = False
         self.commands = importlib.import_module('server.commands')
+        self.commands_alt = importlib.import_module('server.commands_alt')
         logger.setup_logger(debug=self.config['debug'])
         logger.log_print('Server configurations loaded successfully!')
 
@@ -159,6 +160,7 @@ class TsuServer3:
     def reload_commands(self):
         try:
             self.commands = importlib.reload(self.commands)
+            self.commands_alt = importlib.reload(self.commands_alt)
         except Exception as error:
             return error
 

@@ -215,6 +215,8 @@ Additional notes are listed at the end of the command list.
     - Starts following a target. If the target changes areas, you will automatically follow them there.
 * **globalic** "area range start", "area range end"
 	- Sends subsequence IC messages to the area range described above. Can take either area IDs or area names.
+* **globalic_pre** "prefix"
+    - Ensures only IC messages that start with the prefix are sent to the preestablished area range through /globalic (otherwise, just to the current area), or removes the need for a prefix if not given one.
 * **gmlock**
     - Locks your area. Prevents CMs and normal users from entering.
 * **handicap** "ID/IPID" "length" "name" "announce if over"

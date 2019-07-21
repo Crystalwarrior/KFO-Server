@@ -1421,6 +1421,35 @@ def ooc_cmd_globalic(client, arg):
         client.send_host_message('Your IC messages will now be sent to areas {} through {}.'
                                  .format(areas[0].name, areas[1].name))
 
+def ooc_cmd_globalic_pre(client, arg):
+    """ (STAFF ONLY)
+    If given an argument, it sets the client's message prefix that must be included in their IC
+    messages in order for them to be globally sent as part of a /globalic command. Messages that
+    do not start with this prefix will only be sent to their current area as usual. This prefix
+    will also be filtered out from their message.
+    If given nothing, it removes the prefix requirement and all messages will be sent globally if
+    /globalic is on.
+
+    SYNTAX
+    /globalic_pre {prefix}
+
+    OPTIONAL PARAMETERS
+    {prefix}: Message prefix
+
+    EXAMPLES
+    Assuming /globalic is on...
+    /globalic_pre >>>       :: Only IC messages that start with >>> will be sent globally-
+    /globalic_pre           :: All IC messages will be sent globally.
+    """
+    if not client.is_staff():
+        raise ClientError('You must be authorized to do that.')
+
+    client.multi_ic_pre = arg
+    if arg:
+        client.send_host_message('You have set your global IC prefix to {}'.format(arg))
+    else:
+        client.send_host_message('You have removed your global IC prefix.')
+
 def ooc_cmd_gm(client, arg):
     """ (MOD ONLY)
     Similar to /g, but with the following changes:
@@ -4291,83 +4320,6 @@ def ooc_cmd_8ball(client, arg):
     flip = random.choice(coin)
     client.area.send_host_message('The magic 8 ball says {}.'.format(flip))
     logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'.format(client.area.id, client.get_char_name(), flip), client)
-
-def ooc_cmd_allow_iniswap(client, arg):
-    """
-    Deprecated for /can_iniswap.
-    """
-    ooc_cmd_can_iniswap(client, arg)
-
-def ooc_cmd_delete_areareachlock(client, arg):
-    """
-    Deprecated for /passage_clear.
-    """
-    ooc_cmd_passage_clear(client, arg)
-
-def ooc_cmd_restore_areareachlock(client, arg):
-    """
-    Deprecated for /passage_restore.
-    """
-    ooc_cmd_passage_restore(client, arg)
-
-def ooc_cmd_toggle_areareachlock(client, arg):
-    """
-    Deprecated for /can_passagelock.
-    """
-    ooc_cmd_can_passagelock(client, arg)
-
-def ooc_cmd_toggleglobal(client, arg):
-    """
-    Deprecated for /toggle_global.
-    """
-    ooc_cmd_toggle_global(client, arg)
-
-def ooc_cmd_toggle_rollp(client, arg):
-    """
-    Deprecated for /can_rollp.
-    """
-    ooc_cmd_can_rollp(client, arg)
-
-def ooc_cmd_toggle_rpgetarea(client, arg):
-    """
-    Deprecated for /can_rpgetarea.
-    """
-    ooc_cmd_can_rpgetarea(client, arg)
-
-def ooc_cmd_toggle_rpgetareas(client, arg):
-    """
-    Deprecated for /can_rpgetareas.
-    """
-    ooc_cmd_can_rpgetareas(client, arg)
-
-def ooc_cmd_globalic_pre(client, arg):
-    """ (STAFF ONLY)
-    If given an argument, it sets the client's message prefix that must be included in their IC
-    messages in order for them to be globally sent as part of a /globalic command. Messages that
-    do not start with this prefix will only be sent to their current area as usual. This prefix
-    will also be filtered out from their message.
-    If given nothing, it removes the prefix requirement and all messages will be sent globally if
-    /globalic is on.
-
-    SYNTAX
-    /globalic_pre {prefix}
-
-    OPTIONAL PARAMETERS
-    {prefix}: Message prefix
-
-    EXAMPLES
-    Assuming /globalic is on...
-    /globalic_pre >>>       :: Only IC messages that start with >>> will be sent globally-
-    /globalic_pre           :: All IC messages will be sent globally.
-    """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-
-    client.multi_ic_pre = arg
-    if arg:
-        client.send_host_message('You have set your global IC prefix to {}'.format(arg))
-    else:
-        client.send_host_message('You have removed your global IC prefix.')
 
 def ooc_cmd_exec(client, arg):
     """
