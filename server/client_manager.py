@@ -21,7 +21,7 @@ import random
 
 from server import fantacrypt
 from server import logger
-from server.exceptions import ClientError, AreaError
+from server.exceptions import ClientError, AreaError, PartyError
 from server.constants import TargetType, Constants
 
 class ClientManager:
@@ -839,6 +839,11 @@ class ClientManager:
         def char_select(self):
             self.char_id = -1
             self.send_done()
+
+        def get_party(self):
+            if not self.party:
+                raise PartyError('You are not part of a party.')
+            return self.party
 
         def is_staff(self):
             """

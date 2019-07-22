@@ -33,12 +33,13 @@ from server.client_manager import ClientManager
 from server.districtclient import DistrictClient
 from server.exceptions import ServerError
 from server.masterserverclient import MasterServerClient
+from server.party_manager import PartyManager
 
 class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190721c'
+        self.minor_version = '190722a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -63,6 +64,7 @@ class TsuServer3:
         self.client_manager = ClientManager(self)
         self.area_manager = AreaManager(self)
         self.ban_manager = BanManager(self)
+        self.party_manager = PartyManager(self)
 
         self.ipid_list = {}
         self.hdid_list = {}

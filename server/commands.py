@@ -4316,10 +4316,12 @@ def ooc_cmd_8ball(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
-    coin = ['yes', 'no', 'maybe', "I don't know", 'perhaps', 'please do not', 'try again', "you shouldn't ask that"]
+    coin = ['yes', 'no', 'maybe', "I don't know", 'perhaps', 'please do not', 'try again',
+            "you shouldn't ask that"]
     flip = random.choice(coin)
     client.area.send_host_message('The magic 8 ball says {}.'.format(flip))
-    logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'.format(client.area.id, client.get_char_name(), flip), client)
+    logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'
+                      .format(client.area.id, client.get_char_name(), flip), client)
 
 def ooc_cmd_exec(client, arg):
     """

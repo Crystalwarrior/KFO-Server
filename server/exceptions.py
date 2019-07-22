@@ -33,4 +33,11 @@ class ServerError(Exception):
 
 
 class PartyError(Exception):
-    pass
+    def __init__(self, message, **kwargs):
+        try:
+            target_called = kwargs['tc']
+            if target_called:
+                message.replace('The player is', 'You are')
+        except:
+            pass
+        self.message = message

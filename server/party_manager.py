@@ -21,32 +21,36 @@ from server.exceptions import PartyError
 
 class PartyManager:
     class Party:
-        def __init__(self, server, pid, area, playerlimit, leader):
+        #tc=True means the target called the party function to do something on themselves
+        def __init__(self, server, pid, area, player_limit, leader):
             self.server = server
             self.pid = pid
             self.area = area
-            self.playerlimit = playerlimit
+            self.player_limit = player_limit
             self.leader = leader
-
             self.members = set()
+            self.invite_list = set()
 
-        def is_member(self, member):
+        def is_member(self, member, tc=False):
             return member in self.members
 
-        def add_member(self, member):
+        def add_member(self, member, tc=False):
             if self.is_member(member):
-                raise PartyError('The player is already part of this party.')
-            if self.playerlimit and len(self.members) == self.playerlimit:
-                raise PartyError('The party is full.')
+                raise PartyError('The player is already part of this party.', tc=tc)
+            if self.player_limit and len(self.members) == self.player_limit:
+                raise PartyError('The party is full.', tc=tc)
             if member.party:
-                raise PartyError('The player is part of another party.')
+                raise PartyError('The player is part of another party.', tc=tc)
+            if not self.is_invited(member):
+                raise PartyError('The player is not part of the party invite list.', tc=tc)
 
             self.members.add(member)
+            self.invite_list.pop(member)
             member.party = self
 
-        def remove_member(self, member):
+        def remove_member(self, member, tc=False):
             if not self.is_member(member):
-                raise PartyError('The player is not part of this party.')
+                raise PartyError('The player is not part of this party.', tc=tc)
 
             self.members.remove(member)
             member.party = None
@@ -59,7 +63,7 @@ class PartyManager:
                 new_leader = self.get_random_member()
                 self.set_leader(new_leader)
 
-        def get_members(self):
+        def get_members(self, tc=False):
             if self.leader:
                 return self.members.copy()-self.leader, self.leader
             return self.members.copy(), None
@@ -67,28 +71,52 @@ class PartyManager:
         def get_random_member(self):
             return random.choice(tuple(self.members))
 
-        def set_leader(self, new_leader):
+        def get_id(self, tc=False):
+            return self.pid
+
+        def add_invite(self, member, tc=False):
+            if member in self.invite_list:
+                raise PartyError('This player is already in the party invite list.')
+            self.invite_list.add(member)
+
+        def remove_invite(self, member, tc=False):
+            if member not in self.invite_list:
+                raise PartyError('This player is not in the party invite list.')
+            self.invite_list.remove(member)
+
+        def is_invited(self, member, tc=False):
+            return member in self.invite_list
+
+        def add_leader(self, new_leader, tc=False):
             if not self.is_member(new_leader):
-                raise PartyError('The player is not part of this party.')
-            self.leader = new_leader
+                raise PartyError('The player is not part of the party.')
+            if new_leader in self.leaders:
+                raise PartyError('The player is already a leader of the party.')
 
-        def remove_leader(self):
-            self.leader = None
+            self.leader.add(new_leader)
 
-        def get_details(self):
-            return self.area, self.playerlimit, self.leader
+        def remove_leader(self, leader, tc=False):
+            if not self.is_member(leader):
+                raise PartyError('The player is not part of the party.')
+            if leader not in self.leaders:
+                raise PartyError('The player is not leader of the party.')
+
+            self.leader.remove(leader)
+
+        def get_details(self, tc=False):
+            return self.area, self.player_limit, self.leader
 
     def __init__(self, server):
         self.server = server
         self.parties = dict()
         self.pid_length = 5
 
-    def new_party(self, creator, playerlimit=None, has_leader=True, add_creator=True):
+    def new_party(self, creator, player_limit=None, has_leader=True, add_creator=True):
         if creator.party:
             raise PartyError('The player is part of another party.')
 
         area = creator.area
-        leader = creator if has_leader else None
+        leader = {creator} if has_leader else set()
         # Check if there are any party slots remaining
         if len(self.parties) == 10**self.pid_length - 10**(self.pid_length-1) + 1:
             raise PartyError('The server has reached its party limit.')
@@ -99,17 +127,18 @@ class PartyManager:
             if pid not in self.parties:
                 break
 
-        party = self.Party(self.server, pid, area, playerlimit, leader)
+        party = self.Party(self.server, pid, area, player_limit, leader)
         self.parties[pid] = party
 
         if add_creator:
+            party.add_invite(creator)
             party.add_member(creator)
 
         return party
 
     def disband_party(self, party):
         pid = self.get_party_id(party)
-        self.parties.pop(pid)
+        party = self.parties.pop(pid)
         for member in party.members:
             member.party = None
         return pid, party.members.copy()
@@ -152,12 +181,14 @@ class PartyManager:
         creator1 = old_leader if old_leader else random.choice(tuple(members1))
         creator2 = random.choice(tuple(members2))
 
-        party1 = self.new_party(creator1, playerlimit=old_pl, has_leader=(old_leader is not None),
+        party1 = self.new_party(creator1, player_limit=old_pl, has_leader=(old_leader is not None),
                                 add_creator=False)
-        party2 = self.new_party(creator2, playerlimit=old_pl, has_leader=(old_leader is not None),
+        party2 = self.new_party(creator2, player_limit=old_pl, has_leader=(old_leader is not None),
                                 add_creator=False)
 
         for member in members1:
+            party1.add_invite(member)
             party1.add_member(member)
         for member in members2:
+            party2.add_invite(member)
             party2.add_member(member)
