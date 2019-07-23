@@ -67,8 +67,12 @@ class AOProtocol(asyncio.Protocol):
 
         :param data: bytes of data
         """
+        buf = data.replace(b'\0', b'')
+        if buf is None:
+            buf = b''
+
         # try to decode as utf-8, ignore any erroneous characters
-        self.buffer += data.decode('utf-8', 'ignore')
+        self.buffer += buf.decode('utf-8', 'ignore')
         if len(self.buffer) > 8192:
             self.client.disconnect()
         for msg in self.get_messages():
