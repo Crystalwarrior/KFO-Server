@@ -330,7 +330,7 @@ class PartyManager:
             if initiator.is_visible:
                 attempt_move = member.is_visible
             else:
-                attempt_move = not initiator.is_visible
+                attempt_move = not member.is_visible
 
             if attempt_move:
                 try:
@@ -386,7 +386,7 @@ class PartyManager:
 
         leave_party = self.new_party(leave_creator, player_limit=old_pl,
                                      has_leader=(old_leaders is not None), add_creator=False)
-        print(leavers)
+
         for member in leavers:
             party.remove_member(member)
             leave_party.add_invite(member)
