@@ -2,18 +2,18 @@
 
 With your copy of this software you should have received the following files stored in `\config_sample\`:
 
-*`config.yaml`
-*`area_lists.yaml`
-*`area_templates.yaml`
-*`areas.yaml`
-*`backgrounds.yaml`
-*`iniswaps.yaml`
-*`music.yaml`
-*`music_lists.yaml`
+*`config.yaml`  
+*`area_lists.yaml`  
+*`area_templates.yaml`  
+*`areas.yaml`  
+*`backgrounds.yaml`  
+*`iniswaps.yaml`  
+*`music.yaml`  
+*`music_lists.yaml`  
 
 As well as two folders:
 
-*`area_lists`
+*`area_lists`  
 *`music_lists`
 
 Make sure you have all of the above inside this folder (otherwise, the server may hang while starting).

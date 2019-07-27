@@ -43,6 +43,7 @@ class ClientManager:
             self.pos = ''
 
             self.area = server.area_manager.default_area()
+            self.party = None
             self.is_mod = False
             self.is_gm = False
             self.is_dj = True
@@ -224,7 +225,8 @@ class ClientManager:
             # that crashes all clients that dare attempt join this area.
             self.send_command('FM', *self.server.music_list_ao2)
 
-        def check_change_area(self, area, override_passages=False, override_effects=False):
+        def check_change_area(self, area, override_passages=False, override_effects=False,
+                              more_unavail_chars=None):
             """
             Perform all checks that would prevent an area change.
             Right now there is, (in this order)
@@ -234,7 +236,8 @@ class ClientManager:
             * If target area has some lock player has no perms for.
             * If target area is unreachable from the current one.
             * If no available characters in the new area.
-            ** In this check the character is changed if there is a character conflict too.
+            ** In this check a new character is selected if there is a character conflict too.
+               However, the change is not performed in this portion of code.
 
             No send_host_messages commands are meant to be put here, so as to avoid unnecessary
             notifications. Append any intended messages to the captured_messages list and then
@@ -244,31 +247,34 @@ class ClientManager:
 
             # Obvious check first
             if self.area == area:
-                raise ClientError('User is already in target area.')
+                raise ClientError('User is already in target area.', code='ChArInArea')
 
             # Check if player has waited a non-zero movement delay
             if not self.is_staff() and self.is_movement_handicapped and not override_effects:
                 start, length, name, _ = self.server.get_task_args(self, ['as_handicap'])
                 _, remain_text = Constants.time_remaining(start, length)
                 raise ClientError("You are still under the effects of movement handicap '{}'. "
-                                  "Please wait {} before changing areas.".format(name, remain_text))
+                                  "Please wait {} before changing areas."
+                                  .format(name, remain_text), code='ChArHandicap')
 
             # Check if trying to move to a lobby/private area while sneaking
             if area.lobby_area and not self.is_visible and not self.is_mod and not self.is_cm:
                 raise ClientError('Lobby areas do not let non-authorized users remain sneaking. '
-                                  'Please change music, speak IC or ask a staff member to reveal you.')
+                                  'Please change music, speak IC or ask a staff member to reveal '
+                                  'you.', code='ChArSneakLobby')
             if area.private_area and not self.is_visible:
                 raise ClientError('Private areas do not let sneaked users in. Please change the '
-                                  'music, speak IC or ask a staff member to reveal you.')
+                                  'music, speak IC or ask a staff member to reveal you.',
+                                  code='ChArSneakPrivate')
 
             # Check if area has some sort of lock
             if not self.ipid in area.invite_list:
                 if area.is_locked and not self.is_staff():
-                    raise ClientError('That area is locked.')
+                    raise ClientError('That area is locked.', code='ChArLocked')
                 if area.is_gmlocked and not self.is_mod and not self.is_gm:
-                    raise ClientError('That area is gm-locked.')
+                    raise ClientError('That area is gm-locked.', code='ChArGMLocked')
                 if area.is_modlocked and not self.is_mod:
-                    raise ClientError('That area is mod-locked.')
+                    raise ClientError('That area is mod-locked.', code='ChArModLocked')
 
             # Check if trying to reach an unreachable area
             if not (self.is_staff() or self.is_transient or override_passages or
@@ -286,15 +292,18 @@ class ClientManager:
                     except AreaError:
                         #When would you ever execute this piece of code is beyond me, but meh
                         info += '\r\n<ALL>'
-                raise ClientError(info)
+                raise ClientError(info, code='ChArUnreachable')
 
             # Check if current character is taken in the new area
             new_char_id = self.char_id
-            if not area.is_char_available(self.char_id, allow_restricted=self.is_staff()):
+            if not area.is_char_available(self.char_id, allow_restricted=self.is_staff(),
+                                          more_unavail_chars=more_unavail_chars):
                 try:
-                    new_char_id = area.get_rand_avail_char_id(allow_restricted=self.is_staff())
+                    new_char_id = area.get_rand_avail_char_id(allow_restricted=self.is_staff(),
+                                                              more_unavail_chars=more_unavail_chars)
                 except AreaError:
-                    raise ClientError('No available characters in that area.')
+                    raise ClientError('No available characters in that area.',
+                                      code='ChArNoCharacters')
 
             return new_char_id, captured_messages
 
@@ -313,6 +322,7 @@ class ClientManager:
             ** Bleeding status of the person who's moved, sent to everyone else in the area
             ** Blood in area status, sent to player who's moving.
             """
+
             # Code here assumes successful area change, so it will be sending client notifications
             old_area = self.area
 
@@ -480,7 +490,9 @@ class ClientManager:
                 self.send_host_message(info)
 
         def change_area(self, area, override_all=False, override_passages=False,
-                        override_effects=False, ignore_bleeding=False, ignore_followers=False):
+                        override_effects=False, ignore_bleeding=False, ignore_followers=False,
+                        ignore_checks=False, more_unavail_chars=None, change_to=None,
+                        from_party=False):
             """
             PARAMETERS:
             *override_passages: ignore passages existing from the source area to the target area
@@ -488,15 +500,34 @@ class ClientManager:
             *ignore_bleeding: not add blood to the area if the character is moving,
              such as from /area_kick or AFK kicks
             *ignore_followers: avoid sending the follow command to followers (e.g. using /follow)
-            *override_all: perform the area change regardless of anything
-            (only useful for complete area reload). In particular, override_all being False
-            performs all the checks and announces the area change in OOC.
+            *restrict_characters: additional characters to mark as restricted, others than the one
+             used in the area or area restricted.
+            *override_all: perform the area change regarldess of area restrictions and send no
+             RP related notifications (only useful for complete area reload). In particular,
+             override_all being False performs all the checks and announces the area change in OOC.
+            *ignore_checks: ignore the change area checks.
+            *more_unavail_chars: additional characters in the target area to mark as taken.
+            *change_to: character to manually change to in the target area (requires ignore_checks
+             to be True).
+            *from_party: if the change area order is made assuming the character is in a party (in
+             reality, it is just to serve as a base case because change_area is called recursively).
             """
             if not override_all:
                 # All the code that could raise errors goes here
+                if from_party:
+                    self.server.party_manager.move_party(self.party, self, area)
+                    return
+
                 # It also returns the character name that the player ended up, if it changed.
-                new_char_id, mes = self.check_change_area(area, override_passages=override_passages,
-                                                          override_effects=override_effects)
+                if not ignore_checks:
+                    new_cid, mes = self.check_change_area(area, override_passages=override_passages,
+                                                          override_effects=override_effects,
+                                                          more_unavail_chars=more_unavail_chars)
+                else:
+                    if change_to:
+                        new_cid, mes = change_to, list()
+                    else:
+                        new_cid, mes = self.char_id, list()
 
                 # Code after this line assumes that the area change will be successful
                 # (but has not yet been performed)
@@ -508,8 +539,8 @@ class ClientManager:
                 # Perform the character switch if new area has a player with the current char
                 # or the char is restricted there.
                 old_char = self.get_char_name()
-                if new_char_id != self.char_id:
-                    self.change_character(new_char_id, target_area=area)
+                if new_cid != self.char_id:
+                    self.change_character(new_cid, target_area=area)
                     if old_char in area.restricted_chars:
                         self.send_host_message('Your character was restricted in your new area, '
                                                'switched to {}.'.format(self.get_char_name()))
@@ -840,7 +871,7 @@ class ClientManager:
             self.char_id = -1
             self.send_done()
 
-        def get_party(self):
+        def get_party(self, tc=False):
             if not self.party:
                 raise PartyError('You are not part of a party.')
             return self.party
@@ -1012,6 +1043,10 @@ class ClientManager:
         self.cur_id[client.id] = False
         for task_id in self.server.client_tasks[client.id].keys(): # Cancel client's pending tasks
             self.server.get_task(client, [task_id]).cancel()
+
+        if client.party:
+            client.party.remove_member(client)
+
         self.clients.remove(client)
 
     def get_targets(self, client, key, value, local=False):

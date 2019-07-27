@@ -24,7 +24,7 @@ import traceback
 
 from server import logger
 from server.constants import Constants, TargetType
-from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
+from server.exceptions import ClientError, ServerError, ArgumentError, AreaError, PartyError
 
 """ SUGGESTED IDEAS
 *Add a global callword system
@@ -50,9 +50,9 @@ def ooc_cmd_announce(client, arg):
     EXAMPLE
     /announce Hello World       :: Sends Hello World to all users in the server.
     """
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
+    try:
+        Constants.command_assert(client, arg, is_mod=True, num_parameters='>0')
+    except ArgumentError:
         raise ArgumentError('You cannot send an empty announcement.')
 
     client.server.send_all_cmd_pred('CT', '{}'.format(client.server.config['hostname']),
@@ -88,7 +88,7 @@ def ooc_cmd_area(client, arg):
     elif len(args) == 1:
         try:
             area = client.server.area_manager.get_area_by_id(int(args[0]))
-            client.change_area(area)
+            client.change_area(area, from_party=True if client.party else False)
         except ValueError:
             raise ArgumentError('Area ID must be a number.')
     else:
@@ -180,8 +180,11 @@ def ooc_cmd_area_list(client, arg):
         try:
             new_area_file = 'config/area_lists/{}.yaml'.format(arg)
             client.server.area_manager.load_areas(area_list_file=new_area_file)
-        except FileNotFoundError:
-            raise ArgumentError('Could not find the area list file {}'.format(new_area_file))
+        except ServerError as exc:
+            if exc.code == 'FileNotFound':
+                raise ArgumentError('Could not find the area list file {}'.format(new_area_file))
+            else:
+                raise
         except AreaError as exc:
             raise ArgumentError('The area list {} returned the following error when loading: {}'.format(new_area_file, exc))
 
@@ -211,13 +214,14 @@ def ooc_cmd_area_lists(client, arg):
         raise ArgumentError('This command has no arguments.')
 
     try:
-        with open('config/area_lists.yaml', 'r') as f:
+        with Constants.fopen('config/area_lists.yaml', 'r') as f:
             output = 'Available area lists:\n'
             for line in f:
                 output += '*{}'.format(line)
             client.send_host_message(output)
-    except FileNotFoundError:
-        raise ClientError('Server file area_lists.yaml not found.')
+    except ServerError as exc:
+        if exc.code == 'FileNotFound':
+            raise ClientError('Server file area_lists.yaml not found.')
 
 def ooc_cmd_autopass(client, arg):
     """
@@ -2341,13 +2345,16 @@ def ooc_cmd_music_lists(client, arg):
         raise ArgumentError('This command has no arguments.')
 
     try:
-        with open('config/music_lists.yaml', 'r') as f:
+        with Constants.fopen('config/music_lists.yaml', 'r') as f:
             output = 'Available music lists:\n'
             for line in f:
                 output += '*{}'.format(line)
             client.send_host_message(output)
-    except FileNotFoundError:
-        raise ClientError('Server file music_lists.yaml not found.')
+    except ServerError as exc:
+        if exc.code == 'FileNotFound':
+            raise ClientError('Server file music_lists.yaml not found.')
+        else:
+            raise
 
 def ooc_cmd_mute(client, arg):
     """ (CM AND MOD ONLY)
@@ -2511,7 +2518,7 @@ def ooc_cmd_passage_clear(client, arg):
 
     for i in range(areas[0].id, areas[1].id+1):
         area = client.server.area_manager.get_area_by_id(i)
-        area.reachable_areas = '<ALL>'
+        area.reachable_areas = {'<ALL>'}
 
     if areas[0] == areas[1]:
         client.send_host_message('Area passage locks have been removed in {}.'.format(areas[0].name))
@@ -4322,6 +4329,110 @@ def ooc_cmd_8ball(client, arg):
     client.area.send_host_message('The magic 8 ball says {}.'.format(flip))
     logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'
                       .format(client.area.id, client.get_char_name(), flip), client)
+
+def ooc_nocmd_party(client, arg):
+    Constants.command_assert(client, arg, num_parameters='=0')
+
+    party = client.server.party_manager.new_party(client, tc=True)
+    client.send_host_message('You have created party {}.'.format(party.get_id()))
+
+def ooc_nocmd_party_lead(client, arg):
+    Constants.command_assert(client, arg, num_parameters='=0')
+
+    party = client.get_party()
+    party.add_leader(client, tc=True)
+    client.send_host_message('You are now a leader of your party.')
+    for x in party.get_leaders(uninclude={client}):
+        x.send_host_message('{} is now a leader of your party.'.format(client.get_char_name()))
+
+def ooc_nocmd_party_unlead(client, arg):
+    Constants.command_assert(client, arg, num_parameters='=0')
+
+    party = client.get_party()
+    party.remove_leader(client, tc=True)
+    client.send_host_message('You are no longer a leader of your party.')
+    for x in party.get_leaders(uninclude={client}):
+        x.send_host_message('{} is no longer a leader of your party.'
+                            .format(client.get_char_name()))
+
+def ooc_nocmd_party_invite(client, arg):
+    Constants.command_assert(client, arg, split_spaces=True, num_parameters='=1')
+
+    party = client.get_party(tc=True)
+    if not party.is_leader(client):
+        raise PartyError('You are not a leader of your party.')
+
+    c = Constants.parse_id(client, arg)
+    party.add_invite(c, tc=True)
+
+    client.send_host_message('You have invited {} to join your party.'
+                             .format(c.get_char_name()))
+    for x in party.get_leaders(uninclude={client}):
+        x.send_host_message('{} has invited {} to join your party.'
+                            .format(client.get_char_name(), c.get_char_name()))
+    c.send_host_message('{} has invited you to join their party {}.'
+                        .format(client.get_char_name(), party.get_id()))
+
+def ooc_nocmd_party_uninvite(client, arg):
+    Constants.command_assert(client, arg, split_spaces=True, num_parameters='=1')
+
+    party = client.get_party(tc=True)
+    if not party.is_leader(client):
+        raise PartyError('You are not a leader of your party.')
+
+    c = Constants.parse_id(client, arg)
+    party.remove_invite(c, tc=True)
+
+    client.send_host_message('You have uninvited {} to join your party.'
+                             .format(c.get_char_name()))
+    for x in party.get_leaders(uninclude={client}):
+        x.send_host_message('{} has uninvited {} to join your party.'
+                            .format(client.get_char_name(), c.get_char_name()))
+    c.send_host_message('{} has withdrawn your invitation to join their party {}.'
+                        .format(client.get_char_name(), party.get_id()))
+
+def ooc_nocmd_party_join(client, arg):
+    Constants.command_assert(client, arg, split_spaces=True, num_parameters='=1')
+
+    party = client.server.party_manager.get_party(arg)
+    party.add_member(client, tc=True)
+
+    client.send_host_message('You have joined party {}.'.format(party.get_id()))
+
+    if client.is_visible:
+        for c in party.get_members(uninclude={client}):
+            c.send_host_message('{} has joined your party.'.format(client.get_char_name()))
+
+def ooc_nocmd_party_leave(client, arg):
+    Constants.command_assert(client, arg, num_parameters='=0')
+
+    party = client.get_party(tc=True)
+    party.remove_member(client)
+
+    client.send_host_message('You have left party {}.'.format(party.get_id()))
+
+    if client.is_visible:
+        for c in party.get_members(uninclude={client}):
+            c.send_host_message('{} has left your party.'.format(client.get_char_name()))
+
+def ooc_nocmd_party_id(client, arg):
+    Constants.command_assert(client, arg, num_parameters='=0')
+
+    party = client.get_party(tc=True)
+    client.send_host_message('Your party ID is: {}'.format(party.get_id()))
+
+def ooc_nocmd_party_members(client, arg):
+    Constants.command_assert(client, arg, num_parameters='=0')
+
+    party = client.get_party(tc=True)
+    regulars, leaders = party.get_members_leaders()
+
+    info = '== Members of party {} =='.format(party.get_id())
+    if leaders:
+        info += '\r\nLeaders: {}'.format(' '.join([str(c.get_char_name()) for c in leaders]))
+    if regulars:
+        info += '\r\nMembers: {}'.format(' '.join([str(c.get_char_name()) for c in regulars]))
+    client.send_host_message(info)
 
 def ooc_cmd_exec(client, arg):
     """

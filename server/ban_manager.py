@@ -18,8 +18,8 @@
 import json
 import ipaddress
 
+from server.constants import Constants
 from server.exceptions import ServerError
-
 
 class BanManager:
     def __init__(self, server):
@@ -29,10 +29,12 @@ class BanManager:
 
     def load_banlist(self):
         try:
-            with open('storage/banlist.json', 'r') as banlist_file:
+            with Constants.fopen('storage/banlist.json', 'r') as banlist_file:
                 self.bans = json.load(banlist_file)
-        except FileNotFoundError:
-            return
+        except ServerError as ex:
+            if ex.code == 'FileNotFound':
+                return
+            raise
 
     def write_banlist(self):
         with open('storage/banlist.json', 'w') as banlist_file:

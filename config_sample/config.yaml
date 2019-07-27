@@ -1,7 +1,7 @@
 hostname: <dollar>H
 playerlimit: 100
 port: 50000
-local: false
+use_masterserver: true
 
 guardpass: Guard
 modpass: Mod
@@ -24,7 +24,8 @@ district_ip: 127.0.0.1
 district_port: 11037
 district_password: enter_password
 
-use_masterserver: true
+local: false
+
 masterserver_ip: master.aceattorneyonline.com
 masterserver_port: 27016
 masterserver_name: My First Server

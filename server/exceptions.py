@@ -15,29 +15,23 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-class ClientError(Exception):
-    pass
-
-
-class AreaError(Exception):
-    pass
-
-
-class ArgumentError(Exception):
-    pass
-
-
-class ServerError(Exception):
-    pass
-
-
-class PartyError(Exception):
-    def __init__(self, message, **kwargs):
-        try:
-            target_called = kwargs['tc']
-            if target_called:
-                message.replace('The player is', 'You are')
-        except:
-            pass
+class TsuserverException(Exception):
+    def __init__(self, message, code=None):
         self.message = message
+        if code:
+            self.code = code
+
+class ClientError(TsuserverException):
+    pass
+
+class AreaError(TsuserverException):
+    pass
+
+class ArgumentError(TsuserverException):
+    pass
+
+class ServerError(TsuserverException):
+    pass
+
+class PartyError(TsuserverException):
+    pass

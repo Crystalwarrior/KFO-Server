@@ -217,7 +217,7 @@ class AreaManager:
             self.background = bg
             self.send_command('BN', self.background)
 
-        def get_chars_unusable(self, allow_restricted=False):
+        def get_chars_unusable(self, allow_restricted=False, more_unavail_chars=None):
             """
             Obtain all characters that a player in the current area may NOT change to.
 
@@ -226,6 +226,9 @@ class AreaManager:
             allow_restricted : bool, optional
                 Whether to include characters whose usage has been manually restricted in the area.
                 Defaults to False.
+            more_unavail_chars : set, optional
+                Additional characters to mark as taken (and thus unusuable) in the area. Defaults
+                to None.
 
             Returns
             -------
@@ -233,7 +236,11 @@ class AreaManager:
                 Character IDs of all unavailable characters in the area.
             """
 
+            if more_unavail_chars is None:
+                more_unavail_chars = set()
+
             unavailable = {x.char_id for x in self.clients if x.char_id is not None}
+            unavailable |= more_unavail_chars
             restricted = {self.server.char_list.index(name) for name in self.restricted_chars}
 
             if not allow_restricted:
@@ -241,7 +248,8 @@ class AreaManager:
 
             return unavailable
 
-        def get_rand_avail_char_id(self, allow_restricted=False):
+        def get_rand_avail_char_id(self, allow_restricted=False,
+                                   more_unavail_chars=None):
             """
             Obtain a random available character in the area.
 
@@ -250,6 +258,9 @@ class AreaManager:
             allow_restricted : bool, optional
                 Whether to include characters whose usage has been manually restricted in the area.
                 Defaults to false.
+            more_unavail_chars : set, optional
+                Additional characters to mark as taken (and thus unsuable) in the area. Defaults to
+                None.
 
             Returns
             -------
@@ -262,7 +273,8 @@ class AreaManager:
                 If there are no available characters in the area.
             """
 
-            unusable = self.get_chars_unusable(allow_restricted=allow_restricted)
+            unusable = self.get_chars_unusable(allow_restricted=allow_restricted,
+                                               more_unavail_chars=more_unavail_chars)
             available = {i for i in range(len(self.server.char_list)) if i not in unusable}
 
             if not available:
@@ -270,7 +282,7 @@ class AreaManager:
 
             return random.choice(tuple(available))
 
-        def is_char_available(self, char_id, allow_restricted=False):
+        def is_char_available(self, char_id, allow_restricted=False, more_unavail_chars=None):
             """
             Decide whether a character can be selected in the current area.
 
@@ -281,6 +293,8 @@ class AreaManager:
             allow_restricted : bool, optional
                 Whether to include characters whose usage has been manually restricted in the area.
                 Defaults to False.
+            more_unavail_chars : set, optional
+                Additional characters to mark as taken in the area. Defaults to None.
 
             Returns
             -------
@@ -289,8 +303,9 @@ class AreaManager:
                 is not found to be among the area's unusable characters.
             """
 
-            not_unused = char_id not in self.get_chars_unusable(allow_restricted=allow_restricted)
-            return char_id == -1 or not_unused
+            unused = char_id in self.get_chars_unusable(allow_restricted=allow_restricted,
+                                                        more_unavail_chars=more_unavail_chars)
+            return char_id == -1 or not unused
 
         def change_doc(self, doc='No document.'):
             """
@@ -667,8 +682,8 @@ class AreaManager:
             * An area parameter was left deliberately blank as opposed to fully erased.
             * An area has a passage to an undefined area.
 
-        FileNotFoundError
-            If the area list location does not exist.
+        FileNotFound
+            If the area list could not be found.
         """
 
         self.area_names = set()
@@ -678,63 +693,48 @@ class AreaManager:
         temp_reachable_area_names = set()
 
         # Check if valid area list file
-        try:
-            with open(area_list_file, 'r') as chars:
-                areas = yaml.safe_load(chars)
-        except FileNotFoundError:
-            info = 'Could not find area list file {}'.format(area_list_file)
-            raise FileNotFoundError(info)
+        with Constants.fopen(area_list_file, 'r') as chars:
+            areas = yaml.safe_load(chars)
+
+        def_param = {
+            'bglock': False,
+            'evidence_mod': 'FFA',
+            'locking_allowed': False,
+            'iniswap_allowed': False,
+            'rp_getarea_allowed': True,
+            'rp_getareas_allowed': True,
+            'rollp_allowed': True,
+            'reachable_areas': '<ALL>',
+            'change_reachability_allowed': True,
+            'gm_iclock_allowed': True,
+            'afk_delay': 0,
+            'afk_sendto': 0,
+            'lobby_area': False,
+            'private_area': False,
+            'scream_range': '',
+            'restricted_chars': '',
+            'default_description': self.server.config['default_area_description'],
+            'has_lights': True,
+            'cbg_allowed': False,
+            'song_switch_allowed': False
+            }
 
         # Create the areas
         for item in areas:
+            # Check required parameters
             if 'area' not in item:
                 info = 'Area {} has no name.'.format(current_area_id)
                 raise AreaError(info)
             if 'background' not in item:
                 info = 'Area {} has no background.'.format(item['area'])
                 raise AreaError(info)
-            if 'bglock' not in item:
-                item['bglock'] = False
-            if 'evidence_mod' not in item:
-                item['evidence_mod'] = 'FFA'
-            if 'locking_allowed' not in item:
-                item['locking_allowed'] = False
-            if 'iniswap_allowed' not in item:
-                item['iniswap_allowed'] = True
-            if 'rp_getarea_allowed' not in item:
-                item['rp_getarea_allowed'] = True
-            if 'rp_getareas_allowed' not in item:
-                item['rp_getareas_allowed'] = True
-            if 'rollp_allowed' not in item:
-                item['rollp_allowed'] = True
-            if 'reachable_areas' not in item:
-                item['reachable_areas'] = '<ALL>'
-            if 'change_reachability_allowed' not in item:
-                item['change_reachability_allowed'] = True
-            if 'gm_iclock_allowed' not in item:
-                item['gm_iclock_allowed'] = True
-            if 'afk_delay' not in item:
-                item['afk_delay'] = 0
-            if 'afk_sendto' not in item:
-                item['afk_sendto'] = 0
-            if 'lobby_area' not in item:
-                item['lobby_area'] = False
-            if 'private_area' not in item:
-                item['private_area'] = False
-            if 'scream_range' not in item:
-                item['scream_range'] = ''
-            if 'restricted_chars' not in item:
-                item['restricted_chars'] = ''
-            if 'default_description' not in item:
-                item['default_description'] = self.server.config['default_area_description']
-            if 'has_lights' not in item:
-                item['has_lights'] = True
-            if 'cbg_allowed' not in item:
-                item['cbg_allowed'] = False
-            if 'song_switch_allowed' not in item:
-                item['song_switch_allowed'] = False
 
-            # Backwards compatibility notice
+            # Check unset optional parameters
+            for param in def_param:
+                if param not in item:
+                    item[param] = def_param[param]
+
+            # Check use of backwards incompatible parameters
             if 'sound_proof' in item:
                 info = ('The sound_proof property was defined for area {}. '
                         'Support for sound_proof was removed in favor of scream_range. '
@@ -744,7 +744,7 @@ class AreaManager:
 
             # Avoid having areas with the same name
             if item['area'] in temp_area_names:
-                info = ('Unexpected duplicated area names in area list: {}. '
+                info = ('Two areas have the same name in area list: {}. '
                         'Please rename the duplicated areas and try again.'.format(item['area']))
                 raise AreaError(info)
 

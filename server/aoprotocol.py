@@ -67,14 +67,17 @@ class AOProtocol(asyncio.Protocol):
 
         :param data: bytes of data
         """
-        buf = data.replace(b'\0', b'')
+        buf = data
         if buf is None:
             buf = b''
 
         # try to decode as utf-8, ignore any erroneous characters
         self.buffer += buf.decode('utf-8', 'ignore')
+        self.buffer = self.buffer.translate({ord(c): None for c in '\0'})
+
         if len(self.buffer) > 8192:
             self.client.disconnect()
+
         for msg in self.get_messages():
             if len(msg) < 2:
                 self.client.disconnect()
@@ -583,7 +586,7 @@ class AOProtocol(asyncio.Protocol):
         try:
             delimiter = args[0].find('-')
             area = self.server.area_manager.get_area_by_name(args[0][delimiter+1:])
-            self.client.change_area(area)
+            self.client.change_area(area, from_party=True if self.client.party else False)
 
         # Otherwise, attempt to play music.
         except (AreaError, ValueError):
@@ -617,7 +620,7 @@ class AOProtocol(asyncio.Protocol):
 
             except ServerError:
                 return
-        except ClientError as ex:
+        except (ClientError, PartyError) as ex:
             self.client.send_host_message(ex)
 
         self.client.last_active = Constants.get_time()

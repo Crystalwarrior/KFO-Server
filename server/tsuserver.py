@@ -19,6 +19,7 @@ import asyncio
 import importlib
 import json
 import random
+import socket
 import sys
 import traceback
 import time
@@ -39,15 +40,17 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190723a'
+        self.minor_version = '190727a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
         logger.log_print('Launching {}...'.format(self.software))
-
         logger.log_print('Loading server configurations...')
+
         self.config = None
-        self.global_connection = None
+        self.local_connection = None
+        self.district_connection = None
+        self.masterserver_connection = None
         self.shutting_down = False
         self.loop = None
         self.last_error = None
@@ -85,6 +88,7 @@ class TsuServer3:
         self.commands = importlib.import_module('server.commands')
         self.commands_alt = importlib.import_module('server.commands_alt')
         logger.setup_logger(debug=self.config['debug'])
+
         logger.log_print('Server configurations loaded successfully!')
 
     def start(self):
@@ -93,21 +97,39 @@ class TsuServer3:
         bound_ip = '0.0.0.0'
         if self.config['local']:
             bound_ip = '127.0.0.1'
-            logger.log_print('Starting a local server. Ignore outbound connection attempts.')
+            server_name = 'localhost'
+            logger.log_print('Starting a local server...')
+        else:
+            server_name = self.config['masterserver_name'] if self.config['use_masterserver'] else ''
+            logger.log_print('Starting a nonlocal server...')
 
         ao_server_crt = self.loop.create_server(lambda: AOProtocol(self), bound_ip, self.config['port'])
         ao_server = self.loop.run_until_complete(ao_server_crt)
 
-        logger.log_pdebug('Server started successfully!\n')
+        logger.log_pdebug('Server started successfully!')
+
+        if self.config['local']:
+            host_ip = '127.0.0.1'
+        else:
+            host_name = socket.gethostname()
+            host_ip = socket.gethostbyname(host_name)
+
+        logger.log_pdebug('Server should be now accessible from {}:{}:{}'
+                          .format(host_ip, self.config['port'], server_name))
+
+        if self.config['local']:
+            self.local_connection = asyncio.ensure_future(self.do_nothing(), loop=self.loop)
 
         if self.config['use_district']:
             self.district_client = DistrictClient(self)
-            self.global_connection = asyncio.ensure_future(self.district_client.connect(), loop=self.loop)
+            self.district_connection = asyncio.ensure_future(self.district_client.connect(), loop=self.loop)
+            print(' ')
             logger.log_print('Attempting to connect to district at {}:{}.'.format(self.config['district_ip'], self.config['district_port']))
 
         if self.config['use_masterserver']:
             self.ms_client = MasterServerClient(self)
-            self.global_connection = asyncio.ensure_future(self.ms_client.connect(), loop=self.loop)
+            self.masterserver_connection = asyncio.ensure_future(self.ms_client.connect(), loop=self.loop)
+            print(' ')
             logger.log_print('Attempting to connect to the master server at {}:{} with the following details:'.format(self.config['masterserver_ip'], self.config['masterserver_port']))
             logger.log_print('*Server name: {}'.format(self.config['masterserver_name']))
             logger.log_print('*Server description: {}'.format(self.config['masterserver_description']))
@@ -131,9 +153,17 @@ class TsuServer3:
         self.shutting_down = True
 
         # Cancel further polling for district/master server
-        if self.global_connection:
-            self.global_connection.cancel()
-            self.loop.run_until_complete(self.await_cancellation(self.global_connection))
+        if self.local_connection:
+            self.local_connection.cancel()
+            self.loop.run_until_complete(self.await_cancellation(self.local_connection))
+
+        if self.district_connection:
+            self.district_connection.cancel()
+            self.loop.run_until_complete(self.await_cancellation(self.district_connection))
+
+        if self.masterserver_connection:
+            self.masterserver_connection.cancel()
+            self.loop.run_until_complete(self.await_cancellation(self.masterserver_connection))
 
         # Cancel pending client tasks and cleanly remove them from the areas
         logger.log_print('Kicking {} remaining clients.'.format(self.get_player_count()))
@@ -150,13 +180,13 @@ class TsuServer3:
         return str(self.release) + '.' + str(self.major_version) + '.' + str(self.minor_version)
 
     def reload(self):
-        with open('config/characters.yaml', 'r') as chars:
+        with Constants.fopen('config/characters.yaml', 'r') as chars:
             self.char_list = yaml.safe_load(chars)
-        with open('config/music.yaml', 'r') as music:
+        with Constants.fopen('config/music.yaml', 'r') as music:
             self.music_list = yaml.safe_load(music)
         self.build_music_pages_ao1()
         self.build_music_list_ao2()
-        with open('config/backgrounds.yaml', 'r') as bgs:
+        with Constants.fopen('config/backgrounds.yaml', 'r') as bgs:
             self.backgrounds = yaml.safe_load(bgs)
 
     def reload_commands(self):
@@ -184,11 +214,11 @@ class TsuServer3:
         return len([client for client in self.client_manager.clients if client.char_id is not None])
 
     def load_backgrounds(self):
-        with open('config/backgrounds.yaml', 'r', encoding='utf-8') as bgs:
+        with Constants.fopen('config/backgrounds.yaml', 'r', encoding='utf-8') as bgs:
             self.backgrounds = yaml.safe_load(bgs)
 
     def load_config(self):
-        with open('config/config.yaml', 'r', encoding='utf-8') as cfg:
+        with Constants.fopen('config/config.yaml', 'r', encoding='utf-8') as cfg:
             self.config = yaml.safe_load(cfg)
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
 
@@ -240,39 +270,47 @@ class TsuServer3:
                     raise ServerError(info)
 
     def load_characters(self):
-        with open('config/characters.yaml', 'r', encoding='utf-8') as chars:
+        with Constants.fopen('config/characters.yaml', 'r', encoding='utf-8') as chars:
             self.char_list = yaml.safe_load(chars)
         self.build_char_pages_ao1()
 
     def load_ids(self):
         self.ipid_list = {}
         self.hdid_list = {}
+
         #load ipids
         try:
-            with open('storage/ip_ids.json', 'r', encoding='utf-8') as whole_list:
+            with Constants.fopen('storage/ip_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.ipid_list = json.loads(whole_list.read())
-        except Exception:
-            logger.log_debug('Failed to load ip_ids.json from ./storage. If ip_ids.json exists, then remove it.')
+        except Exception as ex:
+            message = 'WARNING: Error loading storage/ip_ids.json. Will assume empty values.\n'
+            message += '{}: {}'.format(type(ex).__name__, ex)
+
+            logger.log_pdebug(message)
+
         #load hdids
         try:
-            with open('storage/hd_ids.json', 'r', encoding='utf-8') as whole_list:
+            with Constants.fopen('storage/hd_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.hdid_list = json.loads(whole_list.read())
-        except Exception:
-            logger.log_debug('Failed to load hd_ids.json from ./storage. If hd_ids.json exists, then remove it.')
+        except Exception as ex:
+            message = 'WARNING: Error loading storage/hd_ids.json. Will assume empty values.\n'
+            message += '{}: {}'.format(type(ex).__name__, ex)
+
+            logger.log_pdebug(message)
 
     def load_iniswaps(self):
         try:
-            with open('config/iniswaps.yaml', 'r', encoding='utf-8') as iniswaps:
+            with Constants.fopen('config/iniswaps.yaml', 'r', encoding='utf-8') as iniswaps:
                 self.allowed_iniswaps = yaml.safe_load(iniswaps)
-        except Exception:
-            logger.log_debug('cannot find iniswaps.yaml')
+        except Exception as ex:
+            message = 'WARNING: Error loading config/iniswaps.yaml. Will assume empty values.\n'
+            message += '{}: {}'.format(type(ex).__name__, ex)
+
+            logger.log_pdebug(message)
 
     def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
-        try:
-            with open(music_list_file, 'r', encoding='utf-8') as music:
-                music_list = yaml.safe_load(music)
-        except FileNotFoundError:
-            raise ServerError('Could not find music list file {}'.format(music_list_file))
+        with Constants.fopen(music_list_file, 'r', encoding='utf-8') as music:
+            music_list = yaml.safe_load(music)
 
         if server_music_list:
             self.music_list = music_list
@@ -282,11 +320,11 @@ class TsuServer3:
         return music_list
 
     def dump_ipids(self):
-        with open('storage/ip_ids.json', 'w') as whole_list:
+        with Constants.fopen('storage/ip_ids.json', 'w') as whole_list:
             json.dump(self.ipid_list, whole_list)
 
     def dump_hdids(self):
-        with open('storage/hd_ids.json', 'w') as whole_list:
+        with Constants.fopen('storage/hd_ids.json', 'w') as whole_list:
             json.dump(self.hdid_list, whole_list)
 
     def get_ipid(self, ip):
@@ -522,14 +560,26 @@ class TsuServer3:
 
             try:
                 original_area = client.area
-                client.change_area(area, override_passages=True, override_effects=True, ignore_bleeding=True)
+                original_name = client.get_char_name()
+                client.change_area(area, override_passages=True, override_effects=True,
+                                   ignore_bleeding=True)
             except Exception:
                 pass # Server raised an error trying to perform the AFK kick, ignore AFK kick
             else:
-                client.send_host_message("You were kicked from area {} to area {} for being inactive for {} minutes.".format(original_area.id, afk_sendto, afk_delay))
+                client.send_host_message('You were kicked from area {} to area {} for being '
+                                         'inactive for {} minutes.'
+                                         .format(original_area.id, afk_sendto, afk_delay))
 
                 if client.area.is_locked or client.area.is_modlocked:
                     client.area.invite_list.pop(client.ipid)
+
+                if client.party:
+                    x = client.party
+                    client.party.remove_member(self)
+                    client.send_host_message('You were also kicked off from your party.')
+                    for member in x.get_members():
+                        x.send_host_message('{} was AFK kicked from your party.'
+                                            .format(original_name))
 
     async def as_timer(self, client, args):
         _, length, name, is_public = args # Length in seconds, already converted
@@ -654,3 +704,10 @@ class TsuServer3:
                     hour = (hour + 1) % 24
             finally:
                 send_first_hour = True
+
+    async def do_nothing(self):
+        while True:
+            try:
+                await asyncio.sleep(1)
+            except KeyboardInterrupt:
+                raise
