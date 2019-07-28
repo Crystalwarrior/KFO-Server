@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
 import random
 
 from server.exceptions import AreaError, ClientError, PartyError
@@ -30,6 +31,9 @@ class PartyManager:
             self.leaders = leaders
             self.members = set()
             self.invite_list = set()
+            self.lights_timeout = None
+
+            area.add_party(self)
 
         def is_member(self, member, tc=False):
             return member in self.members
@@ -43,6 +47,8 @@ class PartyManager:
                 raise PartyError(self._f('The player is part of another party.', tc=tc))
             if not self.is_invited(member):
                 raise PartyError(self._f('The player is not part of the party invite list.', tc=tc))
+            if member.area != self.area:
+                raise PartyError(self._f('The player is not in the same area as the party.', tc=tc))
 
             self.members.add(member)
             self.invite_list.remove(member)
@@ -90,14 +96,14 @@ class PartyManager:
 
         def add_invite(self, member, tc=False):
             if member in self.invite_list:
-                raise PartyError('This player is already in the party invite list.')
+                raise PartyError(self._f('This player is already in the party invite list.'))
             if member in self.members:
-                raise PartyError('This player is already a member of this party.')
+                raise PartyError(self._f('This player is already a member of this party.'))
             self.invite_list.add(member)
 
         def remove_invite(self, member, tc=False):
             if member not in self.invite_list:
-                raise PartyError('This player is not in the party invite list.')
+                raise PartyError(self._f('This player is not in the party invite list.'))
             self.invite_list.remove(member)
 
         def is_invited(self, member, tc=False):
@@ -130,6 +136,26 @@ class PartyManager:
 
         def get_details(self, tc=False):
             return self.area, self.player_limit, self.leaders
+
+        def check_lights(self):
+            # Only call this when you are sure you want to cancel potential light timeout timers.
+
+            loop = asyncio.get_event_loop()
+            # Restart light timer
+            if self.lights_timeout is not None:
+                self.server.cancel_task(self.lights_timeout)
+            self.lights_timeout = None
+
+            if not self.area.lights:
+                self.lights_timeout = loop.call_later(self.server.config['party_lights_timeout'],
+                                                      self.check_lights_timeout)
+
+        def check_lights_timeout(self):
+            if not self.area.lights:
+                for member in self.members:
+                    member.send_host_message('Your party has been disbanded for being in a dark '
+                                             'room for too long.')
+                self.server.party_manager.disband_party(self)
 
         @staticmethod
         def _f(text, tc=False):
@@ -172,6 +198,7 @@ class PartyManager:
         party = self.parties.pop(pid)
         for member in party.members:
             member.party = None
+        party.area.remove_party(party)
         return pid, party.members.copy()
 
     def get_party(self, party):
@@ -210,6 +237,11 @@ class PartyManager:
                     mes = '{} started moving your party.'.format(ini_name)
                 member.send_host_message(mes)
                 member.change_area(new_area, ignore_checks=True, change_to=new_char)
+
+            party.area.remove_party(party)
+            new_area.add_party(party)
+            party.area = new_area
+            party.check_lights()
         else:
             # Some people move, some stay behind case
             """
@@ -227,21 +259,28 @@ class PartyManager:
             split = list()
             s = lambda x: set(split[x].keys())
 
+            parties = [None, None, None] # Store party divisions, assumes only parties[0] moves
             if initiator.is_visible:
                 split.append({c: i for c, i in moving.items()}) # Guaranteed non-empty
                 split.append({c: i for c, i in staying.items() if c.is_visible})
                 split.append({c: i for c, i in staying.items() if not c.is_visible})
 
-                og_party_id = 1 if initiator in staying else 0
+                # Assumes parties[og_party_id] contains the initiator
+                og_party_id = 0 if initiator in moving else 1
+                parties[og_party_id] = party # Convenient hack for parties[0] requirement!
 
                 # Note that split[og_party_id] is guaranteed to be non-empty
                 # and so is split[1-og_party_id].union(split[2])
                 # Just think about the cases og_party_id = 0 and og_party_id = 1 and
                 # it will all make sense
 
-                non_og_party = self.fork_party(party, s(og_party_id), s(1-og_party_id).union(s(2)))
+                party_2 = self.fork_party(party, s(og_party_id), s(1-og_party_id).union(s(2)))
+                parties[1-og_party_id] = party_2
+
                 if split[1-og_party_id] and split[2]:
-                    self.fork_party(non_og_party, s(1-og_party_id), s(2))
+                    parties[2] = self.fork_party(party_2, s(1-og_party_id), s(2))
+                else:
+                    parties[2] = None
 
                 for (member, new_char) in split[0].items():
                     if initiator == member:
@@ -262,13 +301,13 @@ class PartyManager:
                     msg += (' The ones who were left behind formed a new party {}.'
                             .format(member.get_party().get_id()))
                     member.send_host_message(msg)
-
             else:
                 # Case initiator is sneaking
                 split.append({c: i for c, i in moving.items()}) # Guaranteed non-empty
                 split.append({c: i for c, i in staying.items() if not c.is_visible})
                 split.append({c: i for c, i in staying.items() if c.is_visible})
 
+                # Assumes the original party ID stays for one of the resultant parties that stays
                 og_party_id = 2 if split[2] else 1
 
                 # Note that split[og_party_id] is guaranteed to be non-empty
@@ -276,9 +315,17 @@ class PartyManager:
                 # Just think about the cases og_party_id = 0 and og_party_id = 1 and
                 # it will all make sense
 
-                non_og_party = self.fork_party(party, s(og_party_id), s(3-og_party_id).union(s(0)))
+                party_2 = self.fork_party(party, s(og_party_id), s(3-og_party_id).union(s(0)))
                 if split[3-og_party_id] and split[0]:
-                    self.fork_party(non_og_party, s(3-og_party_id), s(0))
+                    party_3 = self.fork_party(party_2, s(0), s(3-og_party_id))
+                else:
+                    party_3 = None
+
+                # With this logic, party_2 conveniently only holds s(0), so party_2 is the party
+                # that moves. Then, satisfying that parties[0] moves is easy
+                parties[0] = party_2
+                parties[1] = party
+                parties[2] = party_3
 
                 for (member, new_char) in split[0].items():
                     if initiator == member:
@@ -298,6 +345,14 @@ class PartyManager:
                 for (member, _) in split[2].items():
                     # Deliberately empty, do not announce anything to these people
                     pass
+
+            # parties[0] is the party that moved, so update its area status
+            parties[0].area.remove_party(parties[0])
+            new_area.add_party(parties[0])
+            parties[0].area = new_area
+            # For parties[0] (the party that moves), check light status
+            # parties[1] and parties[2] did not move, so do not check their lights.
+            parties[0].check_lights()
 
     def check_move_party(self, party, initiator, new_area):
         """
@@ -337,11 +392,13 @@ class PartyManager:
                     is_restricted = (member.get_char_name() in new_area.restricted_chars)
                     if is_restricted and not member.is_staff():
                         error = AreaError('', code='ChArRestrictedChar')
+                        raise error
 
                     new_char_id, _ = member.check_change_area(new_area, more_unavail_chars=new_chars)
                     new_chars.add(new_char_id)
                 except (ClientError, AreaError) as ex:
                     error = ex
+                    new_char_id = member.char_id
             else:
                 new_char_id = member.char_id
 

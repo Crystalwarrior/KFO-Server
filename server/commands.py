@@ -147,6 +147,14 @@ def ooc_cmd_area_kick(client, arg):
             if client.area.is_locked or client.area.is_modlocked:
                 client.area.invite_list.pop(c.ipid)
 
+            if client.party:
+                x = client.party
+                client.party.remove_member(client)
+                client.send_host_message('You were also kicked off from your party.')
+                for member in x.get_members():
+                    x.send_host_message('{} was area kicked from your party.'
+                                        .format(current_char))
+
 def ooc_cmd_area_list(client, arg):
     """ (MOD ONLY)
     Sets the server's current area list (what areas exist at any given time). If given no arguments,
@@ -4330,13 +4338,15 @@ def ooc_cmd_8ball(client, arg):
     logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'
                       .format(client.area.id, client.get_char_name(), flip), client)
 
-def ooc_nocmd_party(client, arg):
+def ooc_cmd_party(client, arg):
     Constants.command_assert(client, arg, num_parameters='=0')
+    if not client.area.lights:
+        raise AreaError('You cannot create a party while the lights are off.')
 
     party = client.server.party_manager.new_party(client, tc=True)
     client.send_host_message('You have created party {}.'.format(party.get_id()))
 
-def ooc_nocmd_party_lead(client, arg):
+def ooc_cmd_party_lead(client, arg):
     Constants.command_assert(client, arg, num_parameters='=0')
 
     party = client.get_party()
@@ -4345,7 +4355,7 @@ def ooc_nocmd_party_lead(client, arg):
     for x in party.get_leaders(uninclude={client}):
         x.send_host_message('{} is now a leader of your party.'.format(client.get_char_name()))
 
-def ooc_nocmd_party_unlead(client, arg):
+def ooc_cmd_party_unlead(client, arg):
     Constants.command_assert(client, arg, num_parameters='=0')
 
     party = client.get_party()
@@ -4355,7 +4365,7 @@ def ooc_nocmd_party_unlead(client, arg):
         x.send_host_message('{} is no longer a leader of your party.'
                             .format(client.get_char_name()))
 
-def ooc_nocmd_party_invite(client, arg):
+def ooc_cmd_party_invite(client, arg):
     Constants.command_assert(client, arg, split_spaces=True, num_parameters='=1')
 
     party = client.get_party(tc=True)
@@ -4363,7 +4373,15 @@ def ooc_nocmd_party_invite(client, arg):
         raise PartyError('You are not a leader of your party.')
 
     c = Constants.parse_id(client, arg)
-    party.add_invite(c, tc=True)
+    # Check if invitee is in the same area
+    if c.area != party.area:
+        if c.area.name in client.area.scream_range:
+            msg = ('You hear screeching of someone asking you to join their party but they seem '
+                   'too far away to even care all that much.')
+            c.send_host_message(msg)
+        raise PartyError('The player is not in your area.')
+
+    party.add_invite(c, tc=False)
 
     client.send_host_message('You have invited {} to join your party.'
                              .format(c.get_char_name()))
@@ -4373,7 +4391,7 @@ def ooc_nocmd_party_invite(client, arg):
     c.send_host_message('{} has invited you to join their party {}.'
                         .format(client.get_char_name(), party.get_id()))
 
-def ooc_nocmd_party_uninvite(client, arg):
+def ooc_cmd_party_uninvite(client, arg):
     Constants.command_assert(client, arg, split_spaces=True, num_parameters='=1')
 
     party = client.get_party(tc=True)
@@ -4381,7 +4399,7 @@ def ooc_nocmd_party_uninvite(client, arg):
         raise PartyError('You are not a leader of your party.')
 
     c = Constants.parse_id(client, arg)
-    party.remove_invite(c, tc=True)
+    party.remove_invite(c, tc=False)
 
     client.send_host_message('You have uninvited {} to join your party.'
                              .format(c.get_char_name()))
@@ -4391,7 +4409,7 @@ def ooc_nocmd_party_uninvite(client, arg):
     c.send_host_message('{} has withdrawn your invitation to join their party {}.'
                         .format(client.get_char_name(), party.get_id()))
 
-def ooc_nocmd_party_join(client, arg):
+def ooc_cmd_party_join(client, arg):
     Constants.command_assert(client, arg, split_spaces=True, num_parameters='=1')
 
     party = client.server.party_manager.get_party(arg)
@@ -4403,7 +4421,7 @@ def ooc_nocmd_party_join(client, arg):
         for c in party.get_members(uninclude={client}):
             c.send_host_message('{} has joined your party.'.format(client.get_char_name()))
 
-def ooc_nocmd_party_leave(client, arg):
+def ooc_cmd_party_leave(client, arg):
     Constants.command_assert(client, arg, num_parameters='=0')
 
     party = client.get_party(tc=True)
@@ -4415,13 +4433,13 @@ def ooc_nocmd_party_leave(client, arg):
         for c in party.get_members(uninclude={client}):
             c.send_host_message('{} has left your party.'.format(client.get_char_name()))
 
-def ooc_nocmd_party_id(client, arg):
+def ooc_cmd_party_id(client, arg):
     Constants.command_assert(client, arg, num_parameters='=0')
 
     party = client.get_party(tc=True)
     client.send_host_message('Your party ID is: {}'.format(party.get_id()))
 
-def ooc_nocmd_party_members(client, arg):
+def ooc_cmd_party_members(client, arg):
     Constants.command_assert(client, arg, num_parameters='=0')
 
     party = client.get_party(tc=True)

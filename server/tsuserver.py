@@ -40,7 +40,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190727b'
+        self.minor_version = '190727c'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -241,6 +241,8 @@ class TsuServer3:
             self.config['discord_link'] = 'None'
         if 'default_area_description' not in self.config:
             self.config['default_area_description'] = 'No description.'
+        if 'party_lights_timeout' not in self.config:
+            self.config['party_lights_timeout'] = 10
 
         # Check that all passwords were generated and that they are unique
         passwords = ['guardpass',
@@ -574,7 +576,7 @@ class TsuServer3:
 
                 if client.party:
                     x = client.party
-                    client.party.remove_member(self)
+                    client.party.remove_member(client)
                     client.send_host_message('You were also kicked off from your party.')
                     for member in x.get_members():
                         x.send_host_message('{} was AFK kicked from your party.'

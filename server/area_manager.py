@@ -79,6 +79,7 @@ class AreaManager:
             self.bleeds_to = set()
             self.lights = True
             self.last_ic_messages = list()
+            self.parties = set()
 
             self.name = parameters['area']
             self.background = parameters['background']
@@ -441,14 +442,24 @@ class AreaManager:
             """
             Change the light status of the area and send related announcements.
 
+            This also updates the light status for parties.
+
             Parameters
             ----------
             new_lights : bool
                 New light status
             initiator : server.ClientManager.Client, optional
                 Client who triggered the light status change.
+
+            Raises
+            ------
+            AreaError
+                If the new light status matches the current one.
             """
+
             status = {True: 'on', False: 'off'}
+            if self.lights == new_lights:
+                raise AreaError('The lights are already turned {}.'.format(status[new_lights]))
 
             # Change background to match new status
             if new_lights:
@@ -474,6 +485,10 @@ class AreaManager:
                                            is_staff=True, in_area=True)
             else: # Otherwise, send generic message
                 self.send_host_message('The lights were turned {}.'.format(status[new_lights]))
+
+            # Notify the parties in the area that the lights have changed
+            for party in self.parties:
+                party.check_lights()
 
             # Reveal people bleeding and not sneaking if lights were turned on
             if self.lights:
@@ -574,6 +589,46 @@ class AreaManager:
             info = '{} | [{}] {} ({}) {}'.format(Constants.get_time(), client.id,
                                                  client.get_char_name(), client.get_ip(), msg)
             self.shoutlog.append(info)
+
+        def add_party(self, party):
+            """
+            Adds a party to the area's party list.
+
+            Parameters
+            ----------
+            party : server.PartyManager.Party
+                Party to record.
+
+            Raises
+            ------
+            AreaError:
+                If the party is already a part of the party list.
+            """
+
+            if party in self.parties:
+                raise AreaError('Party {} is already part of the party list of this area.'
+                                .format(party.get_id()))
+            self.parties.add(party)
+
+        def remove_party(self, party):
+            """
+            Removes a party from the area's party list.
+
+            Parameters
+            ----------
+            party : server.PartyManager.Party
+                Party to record.
+
+            Raises
+            ------
+            AreaError:
+                If the party is not part of the party list.
+            """
+
+            if party not in self.parties:
+                raise AreaError('Party {} is not part of the party list of this area.'
+                                .format(party.get_id()))
+            self.parties.remove(party)
 
         def get_shoutlog(self):
             """
