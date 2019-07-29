@@ -43,6 +43,7 @@ sneak_handicap: 5
 blackout_background: Blackout_HD
 discord_link: None
 default_area_description: No description.
+party_lights_timeout: 10
 
 music_change_floodguard:
   times_per_interval: 3

@@ -40,7 +40,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190727c'
+        self.minor_version = '190729a'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -111,7 +111,7 @@ class TsuServer3:
         if self.config['local']:
             host_ip = '127.0.0.1'
         else:
-            host_ip = urllib.request.urlopen('https://ident.me').read().decode('utf8')
+            host_ip = urllib.request.urlopen('https://api.ipify.org').read().decode('utf8')
 
         logger.log_pdebug('Server should be now accessible from {}:{}:{}'
                           .format(host_ip, self.config['port'], server_name))

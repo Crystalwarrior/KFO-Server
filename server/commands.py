@@ -88,7 +88,7 @@ def ooc_cmd_area(client, arg):
     elif len(args) == 1:
         try:
             area = client.server.area_manager.get_area_by_id(int(args[0]))
-            client.change_area(area, from_party=True if client.party else False)
+            client.change_area(area, from_party=(client.party is not None))
         except ValueError:
             raise ArgumentError('Area ID must be a number.')
     else:
@@ -191,8 +191,7 @@ def ooc_cmd_area_list(client, arg):
         except ServerError as exc:
             if exc.code == 'FileNotFound':
                 raise ArgumentError('Could not find the area list file {}'.format(new_area_file))
-            else:
-                raise
+            raise # Weird exception, reraise it
         except AreaError as exc:
             raise ArgumentError('The area list {} returned the following error when loading: {}'.format(new_area_file, exc))
 
@@ -2361,8 +2360,7 @@ def ooc_cmd_music_lists(client, arg):
     except ServerError as exc:
         if exc.code == 'FileNotFound':
             raise ClientError('Server file music_lists.yaml not found.')
-        else:
-            raise
+        raise # Weird exception, reraise
 
 def ooc_cmd_mute(client, arg):
     """ (CM AND MOD ONLY)
@@ -3835,7 +3833,7 @@ def ooc_cmd_unban(client, arg):
     try:
         client.server.ban_manager.remove_ban(int(arg.strip()))
     except Exception:
-        raise ClientError('You must specify \'hdid\'')
+        raise ClientError('You must specify \'IPID\'')
 
     logger.log_server('Unbanned {}.'.format(arg), client)
     client.send_host_message('Unbanned {}'.format(arg))
@@ -4451,6 +4449,88 @@ def ooc_cmd_party_members(client, arg):
     if regulars:
         info += '\r\nMembers: {}'.format(' '.join([str(c.get_char_name()) for c in regulars]))
     client.send_host_message(info)
+
+def ooc_cmd_banhdid(client, arg):
+    """ (MOD ONLY)
+    Similar to /ban (kicks given user from the server if they are there and prevents them from
+    rejoining), but the identifier must be an HDID. It does not require the player to be online.
+    Requires /unbanhdid to undo.
+    Returns an error if given identifier does not correspond to a user, or if the user is already
+    banned.
+
+    SYNTAX
+    /banhdid <client_hdid>
+
+    PARAMETERS
+    <client_hdid>: User HDID (available in server logs and through a mod /whois)
+
+    EXAMPLES
+    /banhdid abcd1234             :: Bans the user whose HDID is abcd1234
+    """
+    Constants.command_assert(client, arg, num_parameters='=1', is_mod=True)
+
+    if not arg in client.server.hdid_list:
+        raise ClientError('Unrecognized HDID {}.'.format(arg))
+
+    # This works by banning one of the IPIDs the player is associated with. The way ban handling
+    # works is that the server keeps track of all the IPIDs a player has logged in with their HDID
+    # and checks on joining if any of those IPIDs was banned in the past. If that is the case,
+    # then the server assumes that player is banned, even if they have changed IPIDs in the meantime
+
+    # Thus, banning one IPID is sufficient, so check if any associated IPID is already banned.
+    for ipid in client.server.hdid_list[arg]:
+        if client.server.ban_manager.is_banned(ipid):
+            raise ClientError('Player is already banned.')
+
+    identifier = random.choice(client.server.hdid_list[arg])
+    # Try and add the user to the ban list based on the given identifier
+    client.server.ban_manager.add_ban(identifier)
+
+    # Try and kick the user from the server, as well as announce their ban.
+    targets = client.server.client_manager.get_targets(client, TargetType.HDID, arg, False)
+
+    # Kick+ban all clients opened by the targeted user.
+    if targets:
+        for c in targets:
+            client.area.send_host_message('{} was banned.'.format(c.get_char_name()))
+            c.disconnect()
+
+    client.send_host_message('Banned player with HDID {}.'.format(arg))
+    logger.log_server('HDID-banned {}.'.format(identifier), client)
+
+def ooc_cmd_unbanhdid(client, arg):
+    """ (MOD ONLY)
+    Removes given user by HDID from the server banlist, allowing them to rejoin the server.
+    Returns an error if given HDID does not correspond to a banned user.
+
+    SYNTAX
+    /unbanhdid <client_hdid>
+
+    PARAMETERS
+    <client_hdid>: User HDID (available in server logs and through a mod /whois)
+
+    EXAMPLES
+    /unbanhdid abcd1234         :: Unbans user whose HDID is abcd1234
+    """
+    Constants.command_assert(client, arg, num_parameters='=1', is_mod=True)
+
+    if not arg in client.server.hdid_list:
+        raise ClientError('Unrecognized HDID {}.'.format(arg))
+
+    # The server checks for any associated banned IPID for a player, so in order to unban by HDID
+    # all the associated IPIDs must be unbanned.
+
+    found_banned = False
+    for ipid in client.server.hdid_list[arg]:
+        if client.server.ban_manager.is_banned(ipid):
+            client.server.ban_manager.remove_ban(arg)
+            found_banned = True
+
+    if not found_banned:
+        raise ClientError('Player was not banned.')
+
+    logger.log_server('Unbanned {}.'.format(arg), client)
+    client.send_host_message('Unbanned {}'.format(arg))
 
 def ooc_cmd_exec(client, arg):
     """

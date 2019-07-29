@@ -1077,6 +1077,9 @@ class ClientManager:
                 elif key == TargetType.IPID:
                     if c.ipid == value:
                         targets.append(c)
+                elif key == TargetType.HDID:
+                    if c.hdid == value:
+                        targets.append(c)
         return targets
 
     def get_muted_clients(self):

@@ -174,7 +174,7 @@ class AOProtocol(asyncio.Protocol):
                                              'join the server but was refused entrance.'
                                              .format(self.client.hdid, self.client.ipid),
                                              pred=lambda c: c.is_mod)
-                #self.client.send_command('BD')
+                self.client.send_command('BD')
                 self.client.disconnect()
                 return
 
