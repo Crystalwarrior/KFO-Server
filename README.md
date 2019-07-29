@@ -324,6 +324,8 @@ Additional notes are listed at the end of the command list.
 	- Lists all available area lists as established in config/area_lists.yaml.
 * **ban** "IPID"/"IP" 
     - Bans the IPID/IP (hdid is linked to ipid so all bans happen at the same time).
+* **banhdid** "HDID"
+    - Bans the HDID (hdid is linked to ipid so all bans happen at the same time).
 * **bglock** 
     - Toggles the background lock in the current area.
 * **can_iniswap**
@@ -355,6 +357,8 @@ Additional notes are listed at the end of the command list.
 	- Sets a target's showname to be the given one, or clears it if not given one.
 * **unban** "IPID" 
     - Unbans the specified IPID.
+* **unbanhdid** "HDID"
+    - Unbans the specified HDID.
 * **undisemvowel/undisemconsonant/ungimp/unremove_h** "ID/IPID"
     - Undo correlating command.
 * **unlock**

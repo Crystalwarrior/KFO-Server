@@ -306,6 +306,54 @@ def ooc_cmd_ban(client, arg):
         client.send_host_message('{} clients were banned.'.format(len(targets)))
         logger.log_server('Banned {}.'.format(identifier), client)
 
+def ooc_cmd_banhdid(client, arg):
+    """ (MOD ONLY)
+    Similar to /ban (kicks given user from the server if they are there and prevents them from
+    rejoining), but the identifier must be an HDID. It does not require the player to be online.
+    Requires /unbanhdid to undo.
+    Returns an error if given identifier does not correspond to a user, or if the user is already
+    banned.
+
+    SYNTAX
+    /banhdid <client_hdid>
+
+    PARAMETERS
+    <client_hdid>: User HDID (available in server logs and through a mod /whois)
+
+    EXAMPLES
+    /banhdid abcd1234             :: Bans the user whose HDID is abcd1234
+    """
+    Constants.command_assert(client, arg, num_parameters='=1', is_mod=True)
+
+    if not arg in client.server.hdid_list:
+        raise ClientError('Unrecognized HDID {}.'.format(arg))
+
+    # This works by banning one of the IPIDs the player is associated with. The way ban handling
+    # works is that the server keeps track of all the IPIDs a player has logged in with their HDID
+    # and checks on joining if any of those IPIDs was banned in the past. If that is the case,
+    # then the server assumes that player is banned, even if they have changed IPIDs in the meantime
+
+    # Thus, banning one IPID is sufficient, so check if any associated IPID is already banned.
+    for ipid in client.server.hdid_list[arg]:
+        if client.server.ban_manager.is_banned(ipid):
+            raise ClientError('Player is already banned.')
+
+    identifier = random.choice(client.server.hdid_list[arg])
+    # Try and add the user to the ban list based on the given identifier
+    client.server.ban_manager.add_ban(identifier)
+
+    # Try and kick the user from the server, as well as announce their ban.
+    targets = client.server.client_manager.get_targets(client, TargetType.HDID, arg, False)
+
+    # Kick+ban all clients opened by the targeted user.
+    if targets:
+        for c in targets:
+            client.area.send_host_message('{} was banned.'.format(c.get_char_name()))
+            c.disconnect()
+
+    client.send_host_message('Banned player with HDID {}.'.format(arg))
+    logger.log_server('HDID-banned {}.'.format(identifier), client)
+
 def ooc_cmd_bg(client, arg):
     """
     Change the background of the current area.
@@ -3838,35 +3886,39 @@ def ooc_cmd_unban(client, arg):
     logger.log_server('Unbanned {}.'.format(arg), client)
     client.send_host_message('Unbanned {}'.format(arg))
 
-def ooc_cmd_undisemconsonant(client, arg):
+def ooc_cmd_unbanhdid(client, arg):
     """ (MOD ONLY)
-    Removes the disemconsonant effect on all IC and OOC messages of a player by client ID
-    (number in brackets) or IPID (number in parentheses).
-    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
-    the given client.
-    Requires /disemconsonant to undo.
-    Returns an error if the given identifier does not correspond to a user.
+    Removes given user by HDID from the server banlist, allowing them to rejoin the server.
+    Returns an error if given HDID does not correspond to a banned user.
 
     SYNTAX
-    /undisemconsonant <client_id>
-    /undisemconsonant <client_ipid>
+    /unbanhdid <client_hdid>
 
     PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_hdid>: User HDID (available in server logs and through a mod /whois)
 
     EXAMPLES
-    /undisemconsonant 1           :: Undisemconsonants the player whose client ID is 1.
-    /undisemconsonant 1234567890  :: Undisemconsonants all clients opened by the user whose IPID is 1234567890.
+    /unbanhdid abcd1234         :: Unbans user whose HDID is abcd1234
     """
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
+    Constants.command_assert(client, arg, num_parameters='=1', is_mod=True)
 
-    # Undisemconsonant matching targets
-    for c in Constants.parse_id_or_ipid(client, arg):
-        c.disemconsonant = False
-        logger.log_server('Undisemconsonanted {}.'.format(c.ipid), client)
-        client.area.send_host_message("{} was undisemconsonanted.".format(c.get_char_name()))
+    if not arg in client.server.hdid_list:
+        raise ClientError('Unrecognized HDID {}.'.format(arg))
+
+    # The server checks for any associated banned IPID for a player, so in order to unban by HDID
+    # all the associated IPIDs must be unbanned.
+
+    found_banned = False
+    for ipid in client.server.hdid_list[arg]:
+        if client.server.ban_manager.is_banned(ipid):
+            client.server.ban_manager.remove_ban(ipid)
+            found_banned = True
+
+    if not found_banned:
+        raise ClientError('Player was not banned.')
+
+    logger.log_server('Unbanned {}.'.format(arg), client)
+    client.send_host_message('Unbanned {}.'.format(arg))
 
 def ooc_cmd_unblockdj(client, arg):
     """ (CM AND MOD ONLY)
@@ -3896,6 +3948,36 @@ def ooc_cmd_unblockdj(client, arg):
         c.is_dj = True
         logger.log_server('Restored DJ permissions to {}.'.format(c.ipid), client)
         client.area.send_host_message("{} was restored DJ permissions.".format(c.get_char_name()))
+
+def ooc_cmd_undisemconsonant(client, arg):
+    """ (MOD ONLY)
+    Removes the disemconsonant effect on all IC and OOC messages of a player by client ID
+    (number in brackets) or IPID (number in parentheses).
+    If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
+    the given client.
+    Requires /disemconsonant to undo.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /undisemconsonant <client_id>
+    /undisemconsonant <client_ipid>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+
+    EXAMPLES
+    /undisemconsonant 1           :: Undisemconsonants the player whose client ID is 1.
+    /undisemconsonant 1234567890  :: Undisemconsonants all clients opened by the user whose IPID is 1234567890.
+    """
+    if not client.is_mod:
+        raise ClientError('You must be authorized to do that.')
+
+    # Undisemconsonant matching targets
+    for c in Constants.parse_id_or_ipid(client, arg):
+        c.disemconsonant = False
+        logger.log_server('Undisemconsonanted {}.'.format(c.ipid), client)
+        client.area.send_host_message("{} was undisemconsonanted.".format(c.get_char_name()))
 
 def ooc_cmd_undisemvowel(client, arg):
     """ (MOD ONLY)
@@ -4449,88 +4531,6 @@ def ooc_cmd_party_members(client, arg):
     if regulars:
         info += '\r\nMembers: {}'.format(' '.join([str(c.get_char_name()) for c in regulars]))
     client.send_host_message(info)
-
-def ooc_cmd_banhdid(client, arg):
-    """ (MOD ONLY)
-    Similar to /ban (kicks given user from the server if they are there and prevents them from
-    rejoining), but the identifier must be an HDID. It does not require the player to be online.
-    Requires /unbanhdid to undo.
-    Returns an error if given identifier does not correspond to a user, or if the user is already
-    banned.
-
-    SYNTAX
-    /banhdid <client_hdid>
-
-    PARAMETERS
-    <client_hdid>: User HDID (available in server logs and through a mod /whois)
-
-    EXAMPLES
-    /banhdid abcd1234             :: Bans the user whose HDID is abcd1234
-    """
-    Constants.command_assert(client, arg, num_parameters='=1', is_mod=True)
-
-    if not arg in client.server.hdid_list:
-        raise ClientError('Unrecognized HDID {}.'.format(arg))
-
-    # This works by banning one of the IPIDs the player is associated with. The way ban handling
-    # works is that the server keeps track of all the IPIDs a player has logged in with their HDID
-    # and checks on joining if any of those IPIDs was banned in the past. If that is the case,
-    # then the server assumes that player is banned, even if they have changed IPIDs in the meantime
-
-    # Thus, banning one IPID is sufficient, so check if any associated IPID is already banned.
-    for ipid in client.server.hdid_list[arg]:
-        if client.server.ban_manager.is_banned(ipid):
-            raise ClientError('Player is already banned.')
-
-    identifier = random.choice(client.server.hdid_list[arg])
-    # Try and add the user to the ban list based on the given identifier
-    client.server.ban_manager.add_ban(identifier)
-
-    # Try and kick the user from the server, as well as announce their ban.
-    targets = client.server.client_manager.get_targets(client, TargetType.HDID, arg, False)
-
-    # Kick+ban all clients opened by the targeted user.
-    if targets:
-        for c in targets:
-            client.area.send_host_message('{} was banned.'.format(c.get_char_name()))
-            c.disconnect()
-
-    client.send_host_message('Banned player with HDID {}.'.format(arg))
-    logger.log_server('HDID-banned {}.'.format(identifier), client)
-
-def ooc_cmd_unbanhdid(client, arg):
-    """ (MOD ONLY)
-    Removes given user by HDID from the server banlist, allowing them to rejoin the server.
-    Returns an error if given HDID does not correspond to a banned user.
-
-    SYNTAX
-    /unbanhdid <client_hdid>
-
-    PARAMETERS
-    <client_hdid>: User HDID (available in server logs and through a mod /whois)
-
-    EXAMPLES
-    /unbanhdid abcd1234         :: Unbans user whose HDID is abcd1234
-    """
-    Constants.command_assert(client, arg, num_parameters='=1', is_mod=True)
-
-    if not arg in client.server.hdid_list:
-        raise ClientError('Unrecognized HDID {}.'.format(arg))
-
-    # The server checks for any associated banned IPID for a player, so in order to unban by HDID
-    # all the associated IPIDs must be unbanned.
-
-    found_banned = False
-    for ipid in client.server.hdid_list[arg]:
-        if client.server.ban_manager.is_banned(ipid):
-            client.server.ban_manager.remove_ban(arg)
-            found_banned = True
-
-    if not found_banned:
-        raise ClientError('Player was not banned.')
-
-    logger.log_server('Unbanned {}.'.format(arg), client)
-    client.send_host_message('Unbanned {}'.format(arg))
 
 def ooc_cmd_exec(client, arg):
     """
