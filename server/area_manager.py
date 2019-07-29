@@ -182,7 +182,7 @@ class AreaManager:
             for c in self.clients:
                 c.send_command(cmd, *args)
 
-        def send_host_message(self, msg):
+        def broadcast_ooc(self, msg):
             """
             Send an OOC server message to this client.
 
@@ -477,14 +477,14 @@ class AreaManager:
 
             # Announce light status change
             if initiator: # If a player initiated the change light sequence, send targeted messages
-                initiator.send_host_message('You turned the lights {}.'.format(status[new_lights]))
-                initiator.send_host_others('The lights were turned {}.'.format(status[new_lights]),
-                                           is_staff=False, in_area=True)
-                initiator.send_host_others('{} turned the lights {}.'
-                                           .format(initiator.get_char_name(), status[new_lights]),
-                                           is_staff=True, in_area=True)
+                initiator.send_ooc('You turned the lights {}.'.format(status[new_lights]))
+                initiator.send_ooc_others('The lights were turned {}.'.format(status[new_lights]),
+                                          is_staff=False, in_area=True)
+                initiator.send_ooc_others('{} turned the lights {}.'
+                                          .format(initiator.get_char_name(), status[new_lights]),
+                                          is_staff=True, in_area=True)
             else: # Otherwise, send generic message
-                self.send_host_message('The lights were turned {}.'.format(status[new_lights]))
+                self.broadcast_ooc('The lights were turned {}.'.format(status[new_lights]))
 
             # Notify the parties in the area that the lights have changed
             for party in self.parties:
@@ -507,7 +507,7 @@ class AreaManager:
                         info += ' and {} are bleeding.'.format(bleeding_visible[-1].get_char_name())
 
                     if info:
-                        c.send_host_message(info)
+                        c.send_ooc(info)
 
         def set_next_msg_delay(self, msg_length):
             """
@@ -841,11 +841,11 @@ class AreaManager:
             try:
                 new_area = self.get_area_by_name(client.area.name)
                 client.change_area(new_area, override_all=True)
-                client.send_host_message('Moving you to new area {}'.format(new_area.name))
+                client.send_ooc('Moving you to new area {}'.format(new_area.name))
             except AreaError:
                 client.change_area(self.default_area(), override_all=True)
-                client.send_host_message('Your previous area no longer exists. Moving you to the '
-                                         'server default area {}'.format(client.area.name))
+                client.send_ooc('Your previous area no longer exists. Moving you to the server '
+                                'default area {}'.format(client.area.name))
 
         # Update the server's area list only once everything is successful
         self.server.old_area_list = self.server.area_list

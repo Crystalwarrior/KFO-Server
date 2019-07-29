@@ -170,10 +170,10 @@ class AOProtocol(asyncio.Protocol):
         # Check if the client is banned
         for ipid in self.client.server.hdid_list[self.client.hdid]:
             if self.server.ban_manager.is_banned(ipid):
-                self.client.send_host_others('Banned client with HDID {} and IPID {} attempted to '
-                                             'join the server but was refused entrance.'
-                                             .format(self.client.hdid, self.client.ipid),
-                                             pred=lambda c: c.is_mod)
+                self.client.send_ooc_others('Banned client with HDID {} and IPID {} attempted to '
+                                            'join the server but was refused entrance.'
+                                            .format(self.client.hdid, self.client.ipid),
+                                            pred=lambda c: c.is_mod)
                 self.client.send_command('BD')
                 self.client.disconnect()
                 return
@@ -361,10 +361,10 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
-            self.client.send_host_message("You have been muted by a moderator.")
+            self.client.send_ooc("You have been muted by a moderator.")
             return
         if self.client.area.ic_lock and not self.client.is_staff():
-            self.client.send_host_message("IC chat in this area has been locked by a moderator.")
+            self.client.send_ooc("IC chat in this area has been locked by a moderator.")
             return
         if not self.client.area.can_send_message():
             return
@@ -381,10 +381,10 @@ class AOProtocol(asyncio.Protocol):
 
         if not self.client.area.iniswap_allowed:
             if self.client.area.is_iniswap(self.client, pre, anim, folder):
-                self.client.send_host_message("Iniswap is blocked in this area.")
+                self.client.send_ooc("Iniswap is blocked in this area.")
                 return
         if folder in self.client.area.restricted_chars and not self.client.is_staff():
-            self.client.send_host_message('Your character is restricted in the current area.')
+            self.client.send_ooc('Your character is restricted in the current area.')
             return
         if msg_type not in ('chat', '0', '1'):
             return
@@ -444,8 +444,8 @@ class AOProtocol(asyncio.Protocol):
             start, end = self.client.multi_ic[0].id, self.client.multi_ic[1].id + 1
             area_range = range(start, end)
             msg = msg.replace(self.client.multi_ic_pre, '', 1)
-            self.client.send_host_message('Sent global IC message {} to areas {} through {}.'
-                                          .format(msg, start, end))
+            self.client.send_ooc('Sent global IC message {} to areas {} through {}.'
+                                 .format(msg, start, end))
 
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
@@ -519,7 +519,7 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if self.client.is_ooc_muted:  # Checks to see if the client has been muted by a mod
-            self.client.send_host_message("You have been muted by a moderator.")
+            self.client.send_ooc("You have been muted by a moderator.")
             return
         if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR, needs_auth=False):
             return
@@ -531,13 +531,13 @@ class AOProtocol(asyncio.Protocol):
                 self.client.fake_name = args[0]
                 self.client.name = ''
         if self.client.name == '':
-            self.client.send_host_message('You must insert a name with at least one letter.')
+            self.client.send_ooc('You must insert a name with at least one letter.')
             return
         if self.client.name.startswith(' '):
-            self.client.send_host_message('You must insert a name that starts with a letter.')
+            self.client.send_ooc('You must insert a name that starts with a letter.')
             return
         if self.server.config['hostname'] in self.client.name or '<dollar>G' in self.client.name:
-            self.client.send_host_message('That name is reserved!')
+            self.client.send_ooc('That name is reserved!')
             return
         if args[1].startswith('/'):
             spl = args[1][1:].split(' ', 1)
@@ -554,13 +554,13 @@ class AOProtocol(asyncio.Protocol):
                     function = getattr(self.server.commands_alt, called_function)
                 except AttributeError:
                     logger.log_print('Attribute error with ' + called_function)
-                    self.client.send_host_message('Invalid command.')
+                    self.client.send_ooc('Invalid command.')
 
             if function:
                 try:
                     function(self.client, arg)
                 except (ClientError, AreaError, ArgumentError, ServerError, PartyError) as ex:
-                    self.client.send_host_message(ex)
+                    self.client.send_ooc(ex)
         else:
             if self.client.disemvowel: #If you are disemvoweled, replace string.
                 args[1] = Constants.disemvowel_message(args[1])
@@ -591,19 +591,18 @@ class AOProtocol(asyncio.Protocol):
         # Otherwise, attempt to play music.
         except (AreaError, ValueError):
             if self.client.is_muted:  # Checks to see if the client has been muted by a mod
-                self.client.send_host_message("You have been muted by a moderator.")
+                self.client.send_ooc("You have been muted by a moderator.")
                 return
             if not self.client.is_dj:
-                self.client.send_host_message('You were blockdj\'d by a moderator.')
+                self.client.send_ooc('You were blockdj\'d by a moderator.')
                 return
             if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.INT):
                 return
             if args[1] != self.client.char_id:
                 return
             if self.client.change_music_cd():
-                self.client.send_host_message('You changed song too many times recently. Please '
-                                              'try again after {} seconds.'
-                                              .format(int(self.client.change_music_cd())))
+                self.client.send_ooc('You changed song too many times recently. Please try again '
+                                     'after {} seconds.'.format(int(self.client.change_music_cd())))
                 return
 
             try:
@@ -621,7 +620,7 @@ class AOProtocol(asyncio.Protocol):
             except ServerError:
                 return
         except (ClientError, PartyError) as ex:
-            self.client.send_host_message(ex)
+            self.client.send_ooc(ex)
 
         self.client.last_active = Constants.get_time()
 
@@ -632,7 +631,7 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
-            self.client.send_host_message("You have been muted by a moderator")
+            self.client.send_ooc("You have been muted by a moderator")
             return
         if not self.validate_net_cmd(args, self.ArgType.STR):
             return
@@ -650,7 +649,7 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
-            self.client.send_host_message("You have been muted by a moderator")
+            self.client.send_ooc("You have been muted by a moderator")
             return
         if not self.validate_net_cmd(args, self.ArgType.INT, self.ArgType.INT):
             return
@@ -709,11 +708,11 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
-            self.client.send_host_message("You have been muted by a moderator")
+            self.client.send_ooc("You have been muted by a moderator")
             return
 
         if not self.client.can_call_mod():
-            self.client.send_host_message("You must wait 30 seconds between mod calls.")
+            self.client.send_ooc("You must wait 30 seconds between mod calls.")
             return
 
         current_time = strftime("%H:%M", localtime())

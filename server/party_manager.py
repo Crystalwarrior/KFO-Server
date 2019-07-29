@@ -121,7 +121,7 @@ class PartyManager:
             if not self.is_member(leader):
                 raise PartyError(self._f('The player is not part of the party.', tc=tc))
             if leader not in self.leaders:
-                raise PartyError(self._f('The player is not leader of the party.', tc=tc))
+                raise PartyError(self._f('The player is not a leader of the party.', tc=tc))
 
             self.leaders.remove(leader)
 
@@ -153,8 +153,8 @@ class PartyManager:
         def check_lights_timeout(self):
             if not self.area.lights:
                 for member in self.members:
-                    member.send_host_message('Your party has been disbanded for being in a dark '
-                                             'room for too long.')
+                    member.send_ooc('Your party has been disbanded for being in a dark room for '
+                                    'too long.')
                 self.server.party_manager.disband_party(self)
 
         @staticmethod
@@ -235,7 +235,7 @@ class PartyManager:
                     mes = 'You started moving your party.'
                 else:
                     mes = '{} started moving your party.'.format(ini_name)
-                member.send_host_message(mes)
+                member.send_ooc(mes)
                 member.change_area(new_area, ignore_checks=True, change_to=new_char)
 
             party.area.remove_party(party)
@@ -287,7 +287,7 @@ class PartyManager:
                         msg = 'You started moving your party.'
                     else:
                         msg = '{} started moving your party.'.format(ini_name)
-                    member.send_host_message(msg)
+                    member.send_ooc(msg)
                     member.change_area(new_area, ignore_checks=True, change_to=new_char)
                 for (member, _) in split[1].items():
                     if initiator == member:
@@ -295,12 +295,12 @@ class PartyManager:
                     else:
                         msg = ('{} started moving your party but you were unable to move.'
                                .format(ini_name))
-                    member.send_host_message(msg)
+                    member.send_ooc(msg)
                 for (member, _) in split[2].items():
                     msg = 'Your party started moving so you decided to break away from them.'
                     msg += (' The ones who were left behind formed a new party {}.'
                             .format(member.get_party().get_id()))
-                    member.send_host_message(msg)
+                    member.send_ooc(msg)
             else:
                 # Case initiator is sneaking
                 split.append({c: i for c, i in moving.items()}) # Guaranteed non-empty
@@ -332,7 +332,7 @@ class PartyManager:
                         msg = 'You started moving the sneaked members of your party.'
                     else:
                         msg = '{} started moving the sneaked members of your party.'.format(ini_name)
-                    member.send_host_message(msg)
+                    member.send_ooc(msg)
                     member.change_area(new_area, ignore_checks=True, change_to=new_char)
                 for (member, _) in split[1].items():
                     if initiator == member:
@@ -341,7 +341,7 @@ class PartyManager:
                     else:
                         msg = ('{} started moving the sneaked members of your party but you were '
                                'unable to move.'.format(ini_name))
-                    member.send_host_message(msg)
+                    member.send_ooc(msg)
                 for (member, _) in split[2].items():
                     # Deliberately empty, do not announce anything to these people
                     pass
@@ -405,7 +405,7 @@ class PartyManager:
             if error:
                 if error.code in ['ChArHandicap', 'ChArSneakLobby', 'ChArSneakPrivate',
                                   'ChArUnreachable', 'ChrNoAvailableCharacters']:
-                    member.send_host_message(error.message)
+                    member.send_ooc(error.message)
                     culprit = member.get_char_name() if member != initiator else 'yourself'
                     raise ClientError('Unable to move the party due to {}.'.format(culprit))
 

@@ -40,7 +40,7 @@ class TsuServer3:
     def __init__(self):
         self.release = 3
         self.major_version = 'DR'
-        self.minor_version = '190729a'
+        self.minor_version = '190729b'
         self.software = 'tsuserver{}'.format(self.get_version_string())
         self.version = 'tsuserver{}dev'.format(self.get_version_string())
 
@@ -444,10 +444,10 @@ class TsuServer3:
         info += '\r\n*Error: {}: {}'.format(type(ex).__name__, ex)
         info += '\r\nYour help would be much appreciated.'
         info += '\r\n========='
-        client.send_host_message(info)
-        client.send_host_others('Client {} triggered a Python error through a client packet. '
-                                'Do /lasterror to take a look.'.format(client.id),
-                                pred=lambda c: c.is_mod)
+        client.send_ooc(info)
+        client.send_ooc_others('Client {} triggered a Python error through a client packet. '
+                               'Do /lasterror to take a look.'.format(client.id),
+                               pred=lambda c: c.is_mod)
 
         # Print complete traceback to console
         info = 'TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET'
@@ -567,9 +567,8 @@ class TsuServer3:
             except Exception:
                 pass # Server raised an error trying to perform the AFK kick, ignore AFK kick
             else:
-                client.send_host_message('You were kicked from area {} to area {} for being '
-                                         'inactive for {} minutes.'
-                                         .format(original_area.id, afk_sendto, afk_delay))
+                client.send_ooc('You were kicked from area {} to area {} for being inactive for '
+                                '{} minutes.'.format(original_area.id, afk_sendto, afk_delay))
 
                 if client.area.is_locked or client.area.is_modlocked:
                     client.area.invite_list.pop(client.ipid)
@@ -577,10 +576,9 @@ class TsuServer3:
                 if client.party:
                     x = client.party
                     client.party.remove_member(client)
-                    client.send_host_message('You were also kicked off from your party.')
+                    client.send_ooc('You were also kicked off from your party.')
                     for member in x.get_members():
-                        x.send_host_message('{} was AFK kicked from your party.'
-                                            .format(original_name))
+                        x.send_ooc('{} was AFK kicked from your party.'.format(original_name))
 
     async def as_timer(self, client, args):
         _, length, name, is_public = args # Length in seconds, already converted
@@ -610,10 +608,10 @@ class TsuServer3:
         try:
             await asyncio.sleep(length)
         except asyncio.CancelledError:
-            pass # Cancellation messages via send_host_messages must be sent manually
+            pass # Cancellation messages via send_oocs must be sent manually
         else:
             if announce_if_over and not client.is_staff():
-                client.send_host_message('Your movement handicap has expired. You may now move to a new area.')
+                client.send_ooc('Your movement handicap has expired. You may move to a new area.')
         finally:
             client.is_movement_handicapped = False
 
@@ -634,7 +632,7 @@ class TsuServer3:
                     targets = [c for c in self.client_manager.clients if c == client or
                                ((c.is_staff() or send_first_hour) and area_1 <= c.area.id <= area_2)]
                     for c in targets:
-                        c.send_host_message('It is now {}:00.'.format('{0:02d}'.format(hour)))
+                        c.send_ooc('It is now {}:00.'.format('{0:02d}'.format(hour)))
                         c.send_command('CL', client.id, hour)
 
                     hour_started_at = time.time()
@@ -645,10 +643,10 @@ class TsuServer3:
                 # If the clock was just unpaused, send out notif and restart the current hour
                 elif (not self.get_task_attr(client, ['as_day_cycle'], 'is_paused') and
                       self.get_task_attr(client, ['as_day_cycle'], 'just_unpaused')):
-                    client.send_host_message('Your day cycle in areas {} through {} has been unpaused.'
-                                             .format(area_1, area_2))
-                    client.send_host_others('The day cycle initiated by {} in areas {} through {} has been unpaused.'
-                                            .format(client.name, area_1, area_2), is_staff=True)
+                    client.send_ooc('Your day cycle in areas {} through {} has been unpaused.'
+                                    .format(area_1, area_2))
+                    client.send_ooc_others('The day cycle initiated by {} in areas {} through {} has been unpaused.'
+                                           .format(client.name, area_1, area_2), is_staff=True)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_unpaused', False)
 
@@ -678,10 +676,10 @@ class TsuServer3:
                     is_paused = False
 
                 if not is_paused:
-                    client.send_host_message('Your day cycle in areas {} through {} has been canceled.'
-                                             .format(area_1, area_2))
-                    client.send_host_others('The day cycle initiated by {} in areas {} through {} has been canceled.'
-                                            .format(client.name, area_1, area_2), is_staff=True)
+                    client.send_ooc('Your day cycle in areas {} through {} has been canceled.'
+                                    .format(area_1, area_2))
+                    client.send_ooc_others('The day cycle initiated by {} in areas {} through {} has been canceled.'
+                                           .format(client.name, area_1, area_2), is_staff=True)
                     targets = [c for c in self.client_manager.clients if c == client or
                                area_1 <= c.area.id <= area_2]
                     for c in targets:
@@ -693,11 +691,11 @@ class TsuServer3:
                     minute = minute_at_interruption + (hour_paused_at - hour_started_at)/hour_length*60
                     time_at_pause = '{}:{}'.format('{0:02d}'.format(hour),
                                                    '{0:02d}'.format(int(minute)))
-                    client.send_host_message('Your day cycle in areas {} through {} has been paused at {}.'
-                                             .format(area_1, area_2, time_at_pause))
-                    client.send_host_others('The day cycle initiated by {} in areas {} through {} has been paused at {}.'
-                                            .format(client.name, area_1, area_2, time_at_pause),
-                                            is_staff=True)
+                    client.send_ooc('Your day cycle in areas {} through {} has been paused at {}.'
+                                    .format(area_1, area_2, time_at_pause))
+                    client.send_ooc_others('The day cycle initiated by {} in areas {} through {} has been paused at {}.'
+                                           .format(client.name, area_1, area_2, time_at_pause),
+                                           is_staff=True)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_paused', True)
             else:
                 if (not self.get_task_attr(client, ['as_day_cycle'], 'is_paused') and

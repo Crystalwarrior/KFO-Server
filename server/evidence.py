@@ -19,11 +19,11 @@ class EvidenceList:
         def to_string(self):
             sequence = (self.name, self.desc, self.image)
             return '&'.join(sequence)
-            
+
     def __init__(self):
         self.evidences = []
         self.poses = {'def':['def', 'hld'], 'pro':['pro', 'hlp'], 'wit':['wit'], 'hlp':['hlp', 'pro'], 'hld':['hld', 'def'], 'jud':['jud'], 'all':['hlp', 'hld', 'wit', 'jud', 'pro', 'def', ''], 'pos':[]}
-        
+
     def login(self, client):
         if client.area.evidence_mod == 'FFA':
             pass
@@ -46,18 +46,18 @@ class EvidenceList:
             if desc[:9] == '<owner = ' and desc[9:12] in self.poses and desc[12:14] == '>\n':
                 return True
             return False
-            
-        
+
+
     def add_evidence(self, client, name, description, image, pos = 'all'):
         if self.login(client):
             if client.area.evidence_mod == 'HiddenCM':
                 pos = 'pos'
             self.evidences.append(self.Evidence(name, description, image, pos))
-        
+
     def evidence_swap(self, client, id1, id2):
         if self.login(client):
             self.evidences[id1], self.evidences[id2] = self.evidences[id2], self.evidences[id1]
-            
+
     def create_evi_list(self, client):
         evi_list = []
         nums_list = [0]
@@ -70,17 +70,17 @@ class EvidenceList:
                 nums_list.append(i + 1)
                 evi_list.append(self.evidences[i].to_string())
         return nums_list, evi_list
-    
+
     def del_evidence(self, client, id):
         if self.login(client):
             self.evidences.pop(id)
-        
+
     def edit_evidence(self, client, id, arg):
         if self.login(client):
             if client.area.evidence_mod == 'HiddenCM' and self.correct_format(client, arg[1]):
                 self.evidences[id] = self.Evidence(arg[0], arg[1][14:], arg[2], arg[1][9:12])
                 return
             if client.area.evidence_mod == 'HiddenCM':
-                client.send_host_message('You entered a wrong pos.')
+                client.send_ooc('You entered a wrong pos.')
                 return
             self.evidences[id] = self.Evidence(arg[0], arg[1], arg[2], arg[3])

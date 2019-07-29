@@ -108,10 +108,10 @@ class ClientManager:
             else:
                 self.send_raw_message('{}#%'.format(command))
 
-        def send_host_message(self, msg):
+        def send_ooc(self, msg):
             self.send_command('CT', self.server.config['hostname'], msg)
 
-        def send_host_others(self, msg, is_staff=None, in_area=None, pred=None):
+        def send_ooc_others(self, msg, is_staff=None, in_area=None, pred=None):
             if is_staff is True:
                 cond1 = lambda c: c.is_staff()
             elif is_staff is False:
@@ -119,7 +119,7 @@ class ClientManager:
             elif is_staff is None:
                 cond1 = lambda c: True
             else:
-                raise KeyError('Invalid argument for send_host_others is_staff: {}'.format(is_staff))
+                raise KeyError('Invalid argument for send_ooc_others is_staff: {}'.format(is_staff))
 
             if in_area is True:
                 cond2 = lambda c: c.area == self.area
@@ -130,7 +130,7 @@ class ClientManager:
             elif in_area is None:
                 cond2 = lambda c: True
             else:
-                raise KeyError('Invalid argument for send_host_others in_area: {}'.format(in_area))
+                raise KeyError('Invalid argument for send_ooc_others in_area: {}'.format(in_area))
 
             if pred is None:
                 pred = lambda c: True
@@ -140,8 +140,7 @@ class ClientManager:
             self.server.send_all_cmd_pred('CT', self.server.config['hostname'], msg, pred=cond)
 
         def send_motd(self):
-            self.send_host_message('=== MOTD ===\r\n{}\r\n============='
-                                   .format(self.server.config['motd']))
+            self.send_ooc('=== MOTD ===\r\n{}\r\n============='.format(self.server.config['motd']))
 
         def is_valid_name(self, name):
             name_ws = name.replace(' ', '')
@@ -239,7 +238,7 @@ class ClientManager:
             ** In this check a new character is selected if there is a character conflict too.
                However, the change is not performed in this portion of code.
 
-            No send_host_messages commands are meant to be put here, so as to avoid unnecessary
+            No send_oocs commands are meant to be put here, so as to avoid unnecessary
             notifications. Append any intended messages to the captured_messages list and then
             manually send them out outside this function.
             """
@@ -330,32 +329,32 @@ class ClientManager:
             try: # Verify that showname is still valid
                 self.change_showname(self.showname, target_area=area)
             except ValueError:
-                self.send_host_message('Your showname {} was already used in this area so it has '
-                                       'been cleared.'.format(self.showname))
+                self.send_ooc('Your showname {} was already used in this area so it has been '
+                              'cleared.'.format(self.showname))
                 self.change_showname('', target_area=area)
                 logger.log_server('{} had their showname removed due it being used in the new area.'
                                   .format(self.ipid), self)
 
             # Check if the lights were turned off, and if so, let the client know
             if not area.lights:
-                self.send_host_message('You enter a pitch dark room.')
+                self.send_ooc('You enter a pitch dark room.')
 
             # If autopassing, send OOC messages, provided the lights are on
             if self.autopass and not self.char_id < 0:
-                self.send_host_others('{} has left to the {}.'.format(old_char, area.name), in_area=old_area,
+                self.send_ooc_others('{} has left to the {}.'.format(old_char, area.name), in_area=old_area,
                                       pred=lambda c: (c.is_staff() or (old_area.lights and self.is_visible)))
-                self.send_host_others('{} has entered from the {}.'
+                self.send_ooc_others('{} has entered from the {}.'
                                       .format(self.get_char_name(), old_area.name), in_area=area,
                                       pred=lambda c: (c.is_staff() or (area.lights and self.is_visible)))
 
             # If former or new area's lights are turned off, send special messages to non-staff
             # announcing your presence
             if not old_area.lights and not self.char_id < 0 and self.is_visible:
-                self.send_host_others('You hear footsteps going out of the room.',
+                self.send_ooc_others('You hear footsteps going out of the room.',
                                       in_area=old_area, is_staff=False)
 
             if not area.lights and not self.char_id < 0 and self.is_visible:
-                self.send_host_others('You hear footsteps coming into the room.',
+                self.send_ooc_others('You hear footsteps coming into the room.',
                                       in_area=area, is_staff=False)
 
             # If bleeding, send reminder, and notify everyone in the new area if not sneaking
@@ -367,7 +366,7 @@ class ClientManager:
                 # As these are sets, repetitions are automatically filtered out
                 old_area.bleeds_to.add(area.name)
                 area.bleeds_to.add(old_area.name)
-                self.send_host_message('You are bleeding.')
+                self.send_ooc('You are bleeding.')
 
                 # Send notification to people in new area
                 area_had_bleeding = (len([c for c in area.clients if c.is_bleeding]) > 0)
@@ -393,8 +392,8 @@ class ClientManager:
                     staff_mes = ('{} arrived to the darkened area while bleeding and sneaking.'
                                  .format(self.get_char_name()))
 
-                self.send_host_others(normal_mes, is_staff=False, in_area=area)
-                self.send_host_others(staff_mes, is_staff=True, in_area=area)
+                self.send_ooc_others(normal_mes, is_staff=False, in_area=area)
+                self.send_ooc_others(staff_mes, is_staff=True, in_area=area)
 
             # If bleeding and either you were sneaking or your former area had its lights turned
             # off, notify everyone in the new area to the less intense sounds and smells of
@@ -423,8 +422,8 @@ class ClientManager:
                                  .format(self.get_char_name()))
 
                 if normal_mes and staff_mes:
-                    self.send_host_others(normal_mes, is_staff=False, in_area=old_area)
-                    self.send_host_others(staff_mes, is_staff=True, in_area=old_area)
+                    self.send_ooc_others(normal_mes, is_staff=False, in_area=old_area)
+                    self.send_ooc_others(staff_mes, is_staff=True, in_area=old_area)
 
             # If someone else is bleeding in the new area, notify the person moving
             # Special consideration is given if that someone else is sneaking or the area's
@@ -471,11 +470,11 @@ class ClientManager:
                 info = sneak_info
 
             if info != '':
-                self.send_host_message(info + '.')
+                self.send_ooc(info + '.')
 
             # If there is blood in the area, send notification
             if area.bleeds_to == set([area.name]):
-                self.send_host_message('You spot some blood in the area.')
+                self.send_ooc('You spot some blood in the area.')
             elif len(area.bleeds_to) > 1:
                 bleed_to_areas = list(area.bleeds_to - set([area.name]))
                 # Lose potential order bias, yes, even with what originally was a set
@@ -487,7 +486,7 @@ class ClientManager:
                     info += ' and the {}.'.format(bleed_to_areas[-1])
                 else:
                     info += '.'
-                self.send_host_message(info)
+                self.send_ooc(info)
 
         def change_area(self, area, override_all=False, override_passages=False,
                         override_effects=False, ignore_bleeding=False, ignore_followers=False,
@@ -534,7 +533,7 @@ class ClientManager:
 
                 # Send client messages that could have been generated during the change area check
                 for message in mes:
-                    self.send_host_message(message)
+                    self.send_ooc(message)
 
                 # Perform the character switch if new area has a player with the current char
                 # or the char is restricted there.
@@ -542,13 +541,13 @@ class ClientManager:
                 if new_cid != self.char_id:
                     self.change_character(new_cid, target_area=area)
                     if old_char in area.restricted_chars:
-                        self.send_host_message('Your character was restricted in your new area, '
-                                               'switched to {}.'.format(self.get_char_name()))
+                        self.send_ooc('Your character was restricted in your new area, switched '
+                                      'to {}.'.format(self.get_char_name()))
                     else:
-                        self.send_host_message('Your character was taken in your new area, '
-                                               'switched to {}.'.format(self.get_char_name()))
+                        self.send_ooc('Your character was taken in your new area, switched to {}.'
+                                      .format(self.get_char_name()))
 
-                self.send_host_message('Changed area to {}.[{}]'.format(area.name, area.status))
+                self.send_ooc('Changed area to {}.[{}]'.format(area.name, area.status))
                 logger.log_server('[{}]Changed area from {} ({}) to {} ({}).'
                                   .format(self.get_char_name(), self.area.name, self.area.id,
                                           area.name, area.id), self)
@@ -589,13 +588,15 @@ class ClientManager:
 
             # Check length
             if len(showname) > self.server.config['showname_max_length']:
-                raise ClientError("Given showname {} exceeds the server's character limit of {}.".format(showname, self.server.config['showname_max_length']))
+                raise ClientError("Given showname {} exceeds the server's character limit of {}."
+                                  .format(showname, self.server.config['showname_max_length']))
 
             # Check if non-empty showname is already used within area
             if showname != '':
                 for c in target_area.clients:
                     if c.showname == showname and c != self:
-                        raise ValueError("Given showname {} is already in use in this area.".format(showname))
+                        raise ValueError("Given showname {} is already in use in this area."
+                                         .format(showname))
                         # This ValueError must be recaught, otherwise the client will crash.
 
             if self.showname != showname:
@@ -611,7 +612,7 @@ class ClientManager:
 
         def change_visibility(self, new_status):
             if new_status: # Changed to visible (e.g. through /reveal)
-                self.send_host_message("You are no longer sneaking.")
+                self.send_ooc("You are no longer sneaking.")
                 self.is_visible = True
 
                 # Player should also no longer be under the effect of the server's sneaked handicap.
@@ -631,18 +632,20 @@ class ClientManager:
                             # From this, we can recover the old handicap backup
                             _, old_length, old_name, old_announce_if_over = self.handicap_backup[1]
 
-                            self.send_host_others('{} was automatically imposed their former movement handicap "{}" of length {} seconds after being revealed in area {} ({}).'
-                                                  .format(self.get_char_name(), old_name, old_length, self.area.name, self.area.id),
+                            msg = ('{} was automatically imposed their old movement handicap "{}" '
+                                   'of length {} seconds after being revealed in area {} ({}).')
+                            self.send_ooc_others(msg.format(self.get_char_name(), old_name, old_length, self.area.name, self.area.id),
                                                   is_staff=True)
-                            self.send_host_message('You were automatically imposed your former movement handicap "{}" of length {} seconds when changing areas.'
-                                                   .format(old_name, old_length))
+                            self.send_ooc('You were automatically imposed your former movement '
+                                          'handicap "{}" of length {} seconds when changing areas.'
+                                          .format(old_name, old_length))
                             self.server.create_task(self, ['as_handicap', time.time(), old_length, old_name, old_announce_if_over])
                         else:
                             self.server.remove_task(self, ['as_handicap'])
 
                 logger.log_server('{} is no longer sneaking.'.format(self.ipid), self)
             else: # Changed to invisible (e.g. through /sneak)
-                self.send_host_message("You are now sneaking.")
+                self.send_ooc("You are now sneaking.")
                 self.is_visible = False
 
                 # Check to see if should impose the server's sneak handicap on the player
@@ -653,12 +656,14 @@ class ClientManager:
                     try:
                         _, length, _, _ = self.server.get_task_args(self, ['as_handicap'])
                         if length < self.server.config['sneak_handicap']:
-                            self.send_host_others('{} was automatically imposed the longer movement handicap "Sneaking" of length {} seconds in area {} ({}).'
-                                                  .format(self.get_char_name(), self.server.config['sneak_handicap'], self.area.name, self.area.id),
-                                                  is_staff=True)
+                            self.send_ooc_others('{} was automatically imposed the longer movement handicap "Sneaking" of length {} seconds in area {} ({}).'
+                                                 .format(self.get_char_name(), self.server.config['sneak_handicap'], self.area.name, self.area.id),
+                                                 is_staff=True)
                             raise KeyError # Lazy way to get there, but it works
                     except KeyError:
-                        self.send_host_message('You were automatically imposed a movement handicap "Sneaking" of length {} seconds when changing areas.'.format(self.server.config['sneak_handicap']))
+                        self.send_ooc('You were automatically imposed a movement handicap '
+                                      '"Sneaking" of length {} seconds when changing areas.'
+                                      .format(self.server.config['sneak_handicap']))
                         self.server.create_task(self, ['as_handicap', time.time(), self.server.config['sneak_handicap'], "Sneaking", True])
 
                 logger.log_server('{} is now sneaking.'.format(self.ipid), self)
@@ -669,8 +674,7 @@ class ClientManager:
             if target == self.following:
                 raise ClientError('You are already following that player.')
 
-            self.send_host_message('Began following client {} at {}'
-                                   .format(target.id, Constants.get_time()))
+            self.send_ooc('Began following client {} at {}'.format(target.id, Constants.get_time()))
 
             # Notify the player you were following before that you are no longer following them
             # and with notify I mean internally.
@@ -686,8 +690,8 @@ class ClientManager:
             if not self.following:
                 raise ClientError('You are not following anyone.')
 
-            self.send_host_message("Stopped following client {} at {}."
-                                   .format(self.following.id, Constants.get_time()))
+            self.send_ooc("Stopped following client {} at {}."
+                          .format(self.following.id, Constants.get_time()))
             self.following.followedby.remove(self)
             self.following = None
 
@@ -695,15 +699,15 @@ class ClientManager:
             # just_moved if True assumes the case where the followed user just moved
             # It being false is the case where, when the following started, the followed user was in another area, and thus the followee is moved automtically
             if just_moved:
-                self.send_host_message('Followed user moved to {} at {}'
-                                       .format(area.name, Constants.get_time()))
+                self.send_ooc('Followed user moved to {} at {}'
+                              .format(area.name, Constants.get_time()))
             else:
-                self.send_host_message('Followed user was at {}'.format(area.name))
+                self.send_ooc('Followed user was at {}'.format(area.name))
 
             try:
                 self.change_area(area, ignore_followers=True)
             except ClientError as error:
-                self.send_host_message('Unable to follow to {}: {}'.format(area.name, error))
+                self.send_ooc('Unable to follow to {}: {}'.format(area.name, error))
 
         def send_area_list(self):
             msg = '=== Areas ==='
@@ -724,7 +728,7 @@ class ClientManager:
                 msg += '\r\nArea {}: {} (users: {}) {}'.format(i, area.name, num_clients, lock[locked])
                 if self.area == area:
                     msg += ' [*]'
-            self.send_host_message(msg)
+            self.send_ooc(msg)
 
         def send_limited_area_list(self):
             msg = '=== Areas ==='
@@ -732,7 +736,7 @@ class ClientManager:
                 msg += '\r\nArea {}: {}'.format(i, area.name)
                 if self.area == area:
                     msg += ' [*]'
-            self.send_host_message(msg)
+            self.send_ooc(msg)
 
         def get_area_info(self, area_id, mods, as_mod=None, include_shownames=False,
                           only_my_multiclients=False):
@@ -781,7 +785,7 @@ class ClientManager:
                                           only_my_multiclients=only_my_multiclients)
             if area_id == -1:
                 info = '== Area List ==' + info
-            self.send_host_message(info)
+            self.send_ooc(info)
 
         def prepare_area_info(self, current_area, area_id, mods, as_mod=None,
                               include_shownames=False, only_my_multiclients=False):
@@ -824,7 +828,7 @@ class ClientManager:
 
         def send_area_hdid(self, area_id):
             info = self.get_area_hdid(area_id)
-            self.send_host_message(info)
+            self.send_ooc(info)
 
         def get_area_hdid(self, area_id):
             raise NotImplementedError
@@ -834,14 +838,14 @@ class ClientManager:
             for i in range(len(self.server.area_manager.areas)):
                 if len(self.server.area_manager.areas[i].clients) > 0:
                     info += '\r\n{}'.format(self.get_area_hdid(i))
-            self.send_host_message(info)
+            self.send_ooc(info)
 
         def send_all_area_ip(self):
             info = '== IP List =='
             for i in range(len(self.server.area_manager.areas)):
                 if len(self.server.area_manager.areas[i].clients) > 0:
                     info += '\r\n{}'.format(self.get_area_ip(i))
-            self.send_host_message(info)
+            self.send_ooc(info)
 
         def get_area_ip(self, ip):
             raise NotImplementedError
@@ -893,7 +897,7 @@ class ClientManager:
             if self.area.evidence_mod == 'HiddenCM':
                 self.area.broadcast_evidence_list()
             self.reload_music_list() # Update music list to show all areas
-            self.send_host_message('Logged in as a {}.'.format(role))
+            self.send_ooc('Logged in as a {}.'.format(role))
             logger.log_server('Logged in as a {}.'.format(role), self)
 
         def auth_mod(self, password):

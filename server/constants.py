@@ -60,7 +60,7 @@ class Constants():
         return text
 
     @staticmethod
-    def command_assert(client, arg, is_staff=None, is_mod=None, num_parameters=None,
+    def command_assert(client, arg, is_staff=None, is_mod=None, parameters=None,
                        split_spaces=None, split_commas=False):
         if is_staff is not None:
             if is_staff is True and not client.is_staff():
@@ -74,8 +74,8 @@ class Constants():
             if is_mod is False and client.is_mod():
                 raise ClientError('You have too high a rank to do that.')
 
-        if num_parameters is not None:
-            symbol, num = num_parameters[0], [int(i) for i in num_parameters[1:].split('-')]
+        if parameters is not None:
+            symbol, num = parameters[0], [int(i) for i in parameters[1:].split('-')]
             # Set up default values
             if (num[0] > 0 or symbol == '&') and split_spaces is None and split_commas is False:
                 split_spaces = True
