@@ -45,13 +45,13 @@ class PartyManager:
                 raise PartyError(self._f('The party is full.', tc=tc))
             if member.party:
                 raise PartyError(self._f('The player is part of another party.', tc=tc))
-            if not self.is_invited(member):
+            if not self.is_invited(member) and not member.is_staff():
                 raise PartyError(self._f('The player is not part of the party invite list.', tc=tc))
             if member.area != self.area:
                 raise PartyError(self._f('The player is not in the same area as the party.', tc=tc))
 
             self.members.add(member)
-            self.invite_list.remove(member)
+            self.invite_list.discard(member)
             member.party = self
 
         def remove_member(self, member, tc=False):
@@ -64,7 +64,7 @@ class PartyManager:
             # Check if empty party and if so, disband it
             if not self.members:
                 self.server.party_manager.disband_party(self)
-            # Otherwise, check if the manager left, and if so, choose a new one
+            # Otherwise, check if there are no more leaders left, and if so, choose a new one
             elif not self.leaders:
                 new_leader = self.get_random_member()
                 self.add_leader(new_leader)
@@ -96,15 +96,15 @@ class PartyManager:
 
         def add_invite(self, member, tc=False):
             if member in self.invite_list:
-                raise PartyError(self._f('This player is already in the party invite list.'))
+                raise PartyError(self._f('The player is already in the party invite list.'))
             if member in self.members:
-                raise PartyError(self._f('This player is already a member of this party.'))
+                raise PartyError(self._f('The player is already a member of this party.'))
             self.invite_list.add(member)
 
         def remove_invite(self, member, tc=False):
             if member not in self.invite_list:
-                raise PartyError(self._f('This player is not in the party invite list.'))
-            self.invite_list.remove(member)
+                raise PartyError(self._f('The player is not in the party invite list.'))
+            self.invite_list.discard(member)
 
         def is_invited(self, member, tc=False):
             return member in self.invite_list
@@ -128,10 +128,13 @@ class PartyManager:
         def is_leader(self, member, tc=False):
             return member in self.leaders
 
-        def get_leaders(self, tc=False, uninclude=None):
+        def get_leaders(self, tc=False, uninclude=None, include_staff=True):
             if uninclude is None:
                 uninclude = set()
 
+            leader = self.leaders
+            if include_staff:
+                leader |= {c for c in self.members if c.is_staff()}
             return self.leaders-uninclude
 
         def get_details(self, tc=False):
@@ -155,6 +158,12 @@ class PartyManager:
                 for member in self.members:
                     member.send_ooc('Your party has been disbanded for being in a dark room for '
                                     'too long.')
+
+                rando = self.get_random_member() # Just need a client for this next part
+                rando.send_ooc_others('Party {} was disbanded for being in a dark room for too '
+                                      'long ({}).'.format(self.get_id(), self.area.id),
+                                      is_staff=True)
+
                 self.server.party_manager.disband_party(self)
 
         @staticmethod
@@ -234,6 +243,7 @@ class PartyManager:
 
         if not moving and staying:
             raise PartyError('No one was able to move.')
+
         if moving and not staying:
             # Everyone moves case
             for (member, new_char) in moving.items():
@@ -248,117 +258,139 @@ class PartyManager:
             new_area.add_party(party)
             party.area = new_area
             party.check_lights()
-        else:
-            # Some people move, some stay behind case
-            """
-            If initiator is not sneaking
-            1. Visible who moved
-            2. Visible who stayed as they were not allowed
-            3. Sneaked who stayed
-            Party ID is assigned to the formed party that contains initiator
+            return
 
-            If initiator is sneaking
-            1. Sneaked who moved
-            2. Sneaked who stayed as they were not allowed
-            3. Visible who stayed (keeps party ID)
-            """
-            split = list()
-            s = lambda x: set(split[x].keys())
+        # Some people move, some stay behind case
+        """
+        If initiator is not sneaking
+        1. Visible who moved
+        2. Visible who stayed as they were not allowed
+        3. Sneaked who stayed
+        Party ID is assigned to the formed party that contains initiator
 
-            parties = [None, None, None] # Store party divisions, assumes only parties[0] moves
-            if initiator.is_visible:
-                split.append({c: i for c, i in moving.items()}) # Guaranteed non-empty
-                split.append({c: i for c, i in staying.items() if c.is_visible})
-                split.append({c: i for c, i in staying.items() if not c.is_visible})
+        If initiator is sneaking
+        1. Sneaked who moved
+        2. Sneaked who stayed as they were not allowed
+        3. Visible who stayed (keeps party ID)
+        """
+        split = list()
+        split.append({c: i for c, i in moving.items()}) # Guaranteed non-empty
+        split.append({c: i for c, i in staying.items() if c.is_visible})
+        split.append({c: i for c, i in staying.items() if not c.is_visible})
+        s = lambda x: set(split[x].keys())
+        parties = [None, None, None] # Store party divisions, assumes only parties[0] moves
 
-                # Assumes parties[og_party_id] contains the initiator
-                og_party_id = 0 if initiator in moving else 1
-                parties[og_party_id] = party # Convenient hack for parties[0] requirement!
+        if initiator.is_visible:
+            # Assumes parties[og_party_id] contains the initiator
+            og_party_id = 0 if initiator in moving else 1
 
-                # Note that split[og_party_id] is guaranteed to be non-empty
-                # and so is split[1-og_party_id].union(split[2])
-                # Just think about the cases og_party_id = 0 and og_party_id = 1 and
-                # it will all make sense
+            # Note that split[og_party_id] is guaranteed to be non-empty
+            # and so is split[1-og_party_id].union(split[2])
+            # Just think about the cases og_party_id = 0 and og_party_id = 1 and
+            # it will all make sense
+            party_2 = self.fork_party(party, s(og_party_id), s(1-og_party_id).union(s(2)))
 
-                party_2 = self.fork_party(party, s(og_party_id), s(1-og_party_id).union(s(2)))
-                parties[1-og_party_id] = party_2
-
-                if split[1-og_party_id] and split[2]:
-                    parties[2] = self.fork_party(party_2, s(1-og_party_id), s(2))
-                else:
-                    parties[2] = None
-
-                for (member, new_char) in split[0].items():
-                    if initiator == member:
-                        msg = 'You started moving your party.'
-                    else:
-                        msg = '{} started moving your party.'.format(ini_name)
-                    member.send_ooc(msg)
-                    member.change_area(new_area, ignore_checks=True, change_to=new_char)
-                for (member, _) in split[1].items():
-                    if initiator == member:
-                        msg = 'You started moving your party but you were unable to move.'
-                    else:
-                        msg = ('{} started moving your party but you were unable to move.'
-                               .format(ini_name))
-                    member.send_ooc(msg)
-                for (member, _) in split[2].items():
-                    msg = 'Your party started moving so you decided to break away from them.'
-                    msg += (' The ones who were left behind formed a new party {}.'
-                            .format(member.get_party().get_id()))
-                    member.send_ooc(msg)
+            if split[1-og_party_id] and split[2]:
+                party_3 = self.fork_party(party_2, s(1-og_party_id), s(2))
             else:
-                # Case initiator is sneaking
-                split.append({c: i for c, i in moving.items()}) # Guaranteed non-empty
-                split.append({c: i for c, i in staying.items() if not c.is_visible})
-                split.append({c: i for c, i in staying.items() if c.is_visible})
+                party_3 = None
 
-                # Assumes the original party ID stays for one of the resultant parties that stays
-                og_party_id = 2 if split[2] else 1
+            parties[og_party_id] = party # Convenient hack for parties[0] requirement!
+            parties[1-og_party_id] = party_2
+            parties[2] = party_3
 
-                # Note that split[og_party_id] is guaranteed to be non-empty
-                # and so is split[2-og_party_id].union(split[2])
-                # Just think about the cases og_party_id = 0 and og_party_id = 1 and
-                # it will all make sense
+            # With this logic
+            # *party holds s(og_party_id)
+            # *party_2 holds s(1-og_party_id)
+            # *party_3 holds s(2), which is members that are staying but not visible.
 
-                party_2 = self.fork_party(party, s(og_party_id), s(3-og_party_id).union(s(0)))
-                if split[3-og_party_id] and split[0]:
-                    party_3 = self.fork_party(party_2, s(0), s(3-og_party_id))
+            for (member, new_char) in split[0].items():
+                if initiator == member:
+                    msg = 'You started moving your party.'
                 else:
-                    party_3 = None
+                    msg = '{} started moving your party.'.format(ini_name)
+                member.send_ooc(msg)
+                member.change_area(new_area, ignore_checks=True, change_to=new_char)
+                if split[1]: # Announce split only if visible people were left behind.
+                    member.send_ooc('Your party was split.')
 
-                # With this logic, party_2 conveniently only holds s(0), so party_2 is the party
-                # that moves. Then, satisfying that parties[0] moves is easy
-                parties[0] = party_2
-                parties[1] = party
-                parties[2] = party_3
+            for (member, _) in split[1].items():
+                if initiator == member:
+                    msg = 'You started moving your party but you were unable to move.'
+                else:
+                    msg = ('{} started moving your party but you were unable to move.'
+                           .format(ini_name))
+                member.send_ooc(msg)
+                member.send_ooc('Your party was split.')
 
-                for (member, new_char) in split[0].items():
-                    if initiator == member:
-                        msg = 'You started moving the sneaked members of your party.'
-                    else:
-                        msg = '{} started moving the sneaked members of your party.'.format(ini_name)
-                    member.send_ooc(msg)
-                    member.change_area(new_area, ignore_checks=True, change_to=new_char)
-                for (member, _) in split[1].items():
-                    if initiator == member:
-                        msg = ('You started moving the sneaked members of your party but you were '
-                               'unable to move.')
-                    else:
-                        msg = ('{} started moving the sneaked members of your party but you were '
-                               'unable to move.'.format(ini_name))
-                    member.send_ooc(msg)
-                for (member, _) in split[2].items():
-                    # Deliberately empty, do not announce anything to these people
-                    pass
+            for (member, _) in split[2].items():
+                msg = 'Your party started moving so you decided to break away from them.'
+                msg += (' The ones who were left behind formed a new party {}.'
+                        .format(member.get_party().get_id()))
+                member.send_ooc(msg)
 
-            # parties[0] is the party that moved, so update its area status
-            parties[0].area.remove_party(parties[0])
-            new_area.add_party(parties[0])
-            parties[0].area = new_area
-            # For parties[0] (the party that moves), check light status
-            # parties[1] and parties[2] did not move, so do not check their lights.
-            parties[0].check_lights()
+        else:
+            # Case initiator is sneaking
+            # Assumes the original party ID stays for one of the resultant parties that stays
+            og_party_id = 1 if split[1] else 2
+
+            # Note that split[og_party_id] is guaranteed to be non-empty
+            # and so is split[2-og_party_id].union(split[2])
+            # Just think about the cases og_party_id = 0 and og_party_id = 1 and
+            # it will all make sense
+
+            party_2 = self.fork_party(party, s(og_party_id), s(3-og_party_id).union(s(0)))
+            if split[3-og_party_id] and split[0]:
+                party_3 = self.fork_party(party_2, s(0), s(3-og_party_id))
+            else:
+                party_3 = None
+
+            # With this logic
+            # *party holds s(og_party_id)
+            # *party_2 conveniently only holds s(0)
+            # *party_3 holds s(3-og_party_id) if needed
+            # Then party_2 is the party that moves, so satisfying that parties[0] moves is easy
+            parties[0] = party_2
+            parties[1] = party
+            parties[2] = party_3
+
+            for (member, new_char) in split[0].items():
+                if initiator == member:
+                    msg = 'You started moving the sneaked members of your party.'
+                else:
+                    msg = '{} started moving the sneaked members of your party.'.format(ini_name)
+                member.send_ooc(msg)
+                member.change_area(new_area, ignore_checks=True, change_to=new_char)
+                if split[2]:
+                    member.send_ooc('Your sneaked party was split.')
+
+            for (member, _) in split[1].items():
+                # Deliberately empty, do not announce anything to these people
+                pass
+
+            for (member, _) in split[2].items():
+                if initiator == member:
+                    msg = ('You started moving the sneaked members of your party but you were '
+                           'unable to move.')
+                else:
+                    msg = ('{} started moving the sneaked members of your party but you were '
+                           'unable to move.'.format(ini_name))
+                member.send_ooc(msg)
+                member.send_ooc('Your sneaked party was split.')
+
+        # parties[0] is the party that moved, so update its area status
+        parties[0].area.remove_party(parties[0])
+        new_area.add_party(parties[0])
+        parties[0].area = new_area
+        # For parties[0] (the party that moves), check light status
+        # parties[1] and parties[2] did not move, so do not check their lights.
+        parties[0].check_lights()
+
+        # Announce staff members of the split
+        end_parties = ", ".join([str(p.get_id()) for p in parties if p is not None])
+        initiator.send_ooc_others("{}'s party {} was split into these parties: {}".
+                                  format(ini_name, party[og_party_id].get_id(), end_parties),
+                                  is_staff=True)
 
     def check_move_party(self, party, initiator, new_area):
         """

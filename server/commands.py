@@ -14,7 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#possible keys: ip, OOC, id, cname, ipid, hdid
+
+# possible keys: ip, OOC, id, cname, ipid, hdid
 
 import random
 import hashlib
@@ -4447,6 +4448,52 @@ def ooc_cmd_party(client, arg):
 
     party = client.server.party_manager.new_party(client, tc=True)
     client.send_ooc('You have created party {}.'.format(party.get_id()))
+    client.send_ooc_others('{} has created party {} ({}).'
+                           .format(client.get_char_name(), party.get_id(), client.area.id),
+                           is_staff=True)
+
+def ooc_cmd_party_disband(client, arg):
+    """ (VARYING REQUIREMENTS)
+    Disbands your party if not given arguments, or (STAFF ONLY) disbands a party by party ID.
+    Also sends notifications to the former members if you were visible.
+    Returns an error for non-authorized users if they try to disband other parties or they are not
+    a leader of their own party.
+
+    SYNTAX
+    /party_disband {party_id}
+
+    OPTIONAL PARAMETERS
+    {party_id}: Party to disband
+
+    EXAMPLES
+    If you were part of party 11037...
+    /party_disband          :: Disbands party 11037
+    /party_disband 11037    :: Disbands party 11037
+    /party_disband 73011    :: Disbands party 73011
+    """
+    if client.is_staff():
+        Constants.command_assert(client, arg, parameters='<2')
+    else:
+        Constants.command_assert(client, arg, parameters='=0')
+
+    if not arg:
+        party = client.get_party()
+    else:
+        party = client.server.party_manager.get_party(arg)
+
+    if not party.is_leader(client) and not client.is_staff():
+        raise PartyError('You are not a leader of your party.')
+
+    client.server.party_manager.disband_party(party)
+    if arg:
+        client.send_ooc('You have disbanded party {}.'.format(party.get_id()))
+    else:
+        client.send_ooc('You have disbanded your party.')
+
+    culprit = client.get_char_name() if not arg else 'A staff member'
+    for x in party.get_members(uninclude={client}):
+        if x.is_staff() or client.is_visible:
+            x.send_ooc('{} has disbanded your party.'.format(culprit))
 
 def ooc_cmd_party_id(client, arg):
     """
@@ -4475,8 +4522,8 @@ def ooc_cmd_party_invite(client, arg):
     The invitee must be in the same area as the player. If that is not the case, but the invitee
     is in an area that can be reached by screams, they will receive a notification of the party
     invitation attempt (but will not be invited).
-    Returns an error if you are not part of a party, you are not a party leader, if the player
-    is not in the same area as you, or if the player is already invited.
+    Returns an error if you are not part of a party, you are not a party leader or staff member,
+    if the player is not in the same area as you, or if the player is already invited.
 
     SYNTAX
     /party_invite <client_id>
@@ -4490,7 +4537,7 @@ def ooc_cmd_party_invite(client, arg):
     Constants.command_assert(client, arg, parameters='=1')
 
     party = client.get_party(tc=True)
-    if not party.is_leader(client):
+    if not party.is_leader(client) and not client.is_staff():
         raise PartyError('You are not a leader of your party.')
 
     c = Constants.parse_id(client, arg)
@@ -4533,9 +4580,43 @@ def ooc_cmd_party_join(client, arg):
 
     client.send_ooc('You have joined party {}.'.format(party.get_id()))
 
-    if client.is_visible:
-        for c in party.get_members(uninclude={client}):
+    for c in party.get_members(uninclude={client}):
+        if c.is_staff() or client.is_visible:
             c.send_ooc('{} has joined your party.'.format(client.get_char_name()))
+
+def ooc_cmd_party_kick(client, arg):
+    """
+    Kicks a player by client ID off your party. Also sends a notification to party leaders and the
+    target if you were visible.
+    Returns an error if you are not a leader of your party or the target is not a member.
+
+    SYNTAX
+    /party_kick <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /party_kick 2       :: Kicks the player with client ID 2 off your party.
+    """
+    Constants.command_assert(client, arg, parameters='=1')
+
+    party = client.get_party()
+    if not party.is_leader(client):
+        raise PartyError('You are not a leader of your party.')
+
+    c = Constants.parse_id(client, arg)
+    if c == client:
+        raise PartyError('You cannot kick yourself off your party.')
+
+    party.remove_member(c)
+    client.send_ooc('You have kicked {} off your party.'.format(c.get_char_name()))
+    if c.is_staff() or client.is_visible:
+        c.send_ooc('{} has kicked you off your party.'.format(client.get_char_name()))
+    for x in party.get_leaders(uninclude={client}):
+        if x.is_staff() or client.is_visible:
+            x.send_ooc('{} has kicked {} off your party.'
+                       .format(client.get_char_name(), c.get_char_name()))
 
 def ooc_cmd_party_lead(client, arg):
     """
@@ -4557,8 +4638,9 @@ def ooc_cmd_party_lead(client, arg):
     party = client.get_party()
     party.add_leader(client, tc=True)
     client.send_ooc('You are now a leader of your party.')
-    for x in party.get_leaders(uninclude={client}):
-        x.send_ooc('{} is now a leader of your party.'.format(client.get_char_name()))
+    for c in party.get_leaders(uninclude={client}):
+        if c.is_staff() or client.is_visible:
+            c.send_ooc('{} is now a leader of your party.'.format(client.get_char_name()))
 
 def ooc_cmd_party_leave(client, arg):
     """
@@ -4582,9 +4664,39 @@ def ooc_cmd_party_leave(client, arg):
 
     client.send_ooc('You have left party {}.'.format(party.get_id()))
 
-    if client.is_visible:
-        for c in party.get_members(uninclude={client}):
+    for c in party.get_members(uninclude={client}):
+        if c.is_staff() or client.is_visible:
             c.send_ooc('{} has left your party.'.format(client.get_char_name()))
+
+def ooc_cmd_party_list(client, arg):
+    """ (STAFF ONLY)
+    Lists all active parties in the server. Includes details such as: party ID, the number of
+    members it has and its member limit, the area the party is at, and who are its leaders and
+    regular members.
+    Returns an error if there are no active parties.
+
+    SYNTAX
+    /party_list
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /party_list         :: May return something like this:
+    == Active parties ==
+    *Party 11037 [2/7] (3). Leaders: Phantom_HD. Regular members: Spam_HD
+    """
+    Constants.command_assert(client, arg, parameters='=0', is_staff=True)
+
+    info = '== Active parties =='
+    for party in client.server.party_manager.get_parties():
+        pid, area, player_limit, raw_leaders, raw_regulars = party.get_details()
+        num_members = len(raw_leaders.union(raw_regulars))
+        leaders = ', '.join([c.get_char_name() for c in raw_leaders]) if raw_leaders else 'None'
+        regulars = ', '.join([c.get_char_name() for c in raw_regulars]) if raw_regulars else 'None'
+        info += ('\r\n*Party {} [{}/{}] ({}). Leaders: {}. Regular members: {}.'
+                 .format(pid, num_members, player_limit, area.id, leaders, regulars))
+    client.send_ooc(info)
 
 def ooc_cmd_party_members(client, arg):
     """
@@ -4620,8 +4732,8 @@ def ooc_cmd_party_uninvite(client, arg):
     """
     Revokes an invitation for a player by client ID to join your party. They will no longer be able
     to join your party until they are invited again.
-    Returns an error if you are not part of a party, you are not a party leader, or if the player
-    is not invited.
+    Returns an error if you are not part of a party, you are not a party leader or staff member,
+    or if the player is not invited.
 
     SYNTAX
     /party_uninvite <client_id>
@@ -4635,7 +4747,7 @@ def ooc_cmd_party_uninvite(client, arg):
     Constants.command_assert(client, arg, split_spaces=True, parameters='=1')
 
     party = client.get_party(tc=True)
-    if not party.is_leader(client):
+    if not party.is_leader(client) and not client.is_staff():
         raise PartyError('You are not a leader of your party.')
 
     c = Constants.parse_id(client, arg)
@@ -4669,113 +4781,8 @@ def ooc_cmd_party_unlead(client, arg):
     party.remove_leader(client, tc=True)
     client.send_ooc('You are no longer a leader of your party.')
     for x in party.get_leaders(uninclude={client}):
-        x.send_ooc('{} is no longer a leader of your party.'.format(client.get_char_name()))
-
-def ooc_cmd_party_list(client, arg):
-    """ (STAFF ONLY)
-    Lists all active parties in the server. Includes details such as: party ID, the number of
-    members it has and its member limit, the area the party is at, and who are its leaders and
-    regular members.
-    Returns an error if there are no active parties.
-
-    SYNTAX
-    /party_list
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /party_list         :: May return something like this:
-    == Active parties ==
-    *Party 11037 [2/7] (3). Leaders: Phantom_HD. Regular members: Spam_HD
-    """
-    Constants.command_assert(client, arg, parameters='=0', is_staff=True)
-
-    info = '== Active parties =='
-    for party in client.server.party_manager.get_parties():
-        pid, area, player_limit, raw_leaders, raw_regulars = party.get_details()
-        num_members = len(raw_leaders.union(raw_regulars))
-        leaders = ', '.join([c.get_char_name() for c in raw_leaders]) if raw_leaders else 'None'
-        regulars = ', '.join([c.get_char_name() for c in raw_regulars]) if raw_regulars else 'None'
-        info += ('\r\n*Party {} [{}/{}] ({}). Leaders: {}. Regular members: {}.'
-                 .format(pid, num_members, player_limit, area.id, leaders, regulars))
-    client.send_ooc(info)
-
-def ooc_cmd_party_kick(client, arg):
-    """
-    Kicks a player by client ID off your party. Also sends a notification to party leaders and the
-    target if you were visible.
-    Returns an error if you are not a leader of your party or the target is not a member.
-
-    SYNTAX
-    /party_kick <client_id>
-
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-
-    EXAMPLES
-    /party_kick 2       :: Kicks the player with client ID 2 off your party.
-    """
-    Constants.command_assert(client, arg, parameters='=1')
-
-    party = client.get_party()
-    if not party.is_leader(client):
-        raise PartyError('You are not a leader of your party.')
-
-    c = Constants.parse_id(client, arg)
-    if c == client:
-        raise PartyError('You cannot kick yourself off your party.')
-
-    party.remove_member(c)
-    client.send_ooc('You have kicked {} off your party.'.format(c.get_char_name()))
-    if client.is_visible:
-        c.send_ooc('{} has kicked you off your party.'.format(client.get_char_name()))
-        for x in party.get_leaders(uninclude={client}):
-            x.send_ooc('{} has kicked {} off your party.'
-                       .format(client.get_char_name(), c.get_char_name()))
-
-def ooc_cmd_party_disband(client, arg):
-    """ (VARYING REQUIREMENTS)
-    Disbands your party if not given arguments, or (STAFF ONLY) disbands a party by party ID.
-    Also sends notifications to the former members if you were visible.
-    Returns an error for non-authorized users if they try to disband other parties or they are not
-    a leader of their own party.
-
-    SYNTAX
-    /party_disband {party_id}
-
-    OPTIONAL PARAMETERS
-    {party_id}: Party to disband
-
-    EXAMPLES
-    If you were part of party 11037...
-    /party_disband          :: Disbands party 11037
-    /party_disband 11037    :: Disbands party 11037
-    /party_disband 73011    :: Disbands party 73011
-    """
-    if client.is_staff():
-        Constants.command_assert(client, arg, parameters='<2')
-    else:
-        Constants.command_assert(client, arg, parameters='=0')
-
-    if not arg:
-        party = client.get_party()
-    else:
-        party = client.server.party_manager.get_party(arg)
-
-    if not party.is_leader(client) and not client.is_staff():
-        raise PartyError('You are not a leader of your party.')
-
-    client.server.party_manager.disband_party(party)
-    if arg:
-        client.send_ooc('You have disbanded party {}.'.format(party.get_id()))
-    else:
-        client.send_ooc('You have disbanded your party.')
-
-    if client.is_visible:
-        culprit = client.get_char_name() if not arg else 'A staff member'
-        for x in party.get_members(uninclude={client}):
-            x.send_ooc('{} has disbanded your party.'.format(culprit))
+        if x.is_staff() or client.is_visible:
+            x.send_ooc('{} is no longer a leader of your party.'.format(client.get_char_name()))
 
 def ooc_cmd_exec(client, arg):
     """
