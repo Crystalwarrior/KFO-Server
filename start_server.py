@@ -21,13 +21,13 @@ import sys
 import traceback
 import server.logger
 
-from server.tsuserver import TsuServer3
+from server.tsuserver import TsuserverDR
 
 def main():
     server.logger.log_print('Starting...')
     my_server = None
     try:
-        my_server = TsuServer3()
+        my_server = TsuserverDR()
         my_server.start()
     except KeyboardInterrupt:
         raise

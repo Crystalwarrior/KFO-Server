@@ -36,13 +36,15 @@ from server.exceptions import ServerError
 from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
 
-class TsuServer3:
+class TsuserverDR:
     def __init__(self):
-        self.release = 3
-        self.major_version = 'DR'
-        self.minor_version = '190729b'
-        self.software = 'tsuserver{}'.format(self.get_version_string())
-        self.version = 'tsuserver{}dev'.format(self.get_version_string())
+        self.release = 4
+        self.major_version = 0
+        self.minor_version = 0
+        self.segment_version = 'b1'
+        self.internal_version = '190730a'
+        self.software = 'TsuserverDR {}'.format(self.get_version_string())
+        self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
 
         logger.log_print('Launching {}...'.format(self.software))
         logger.log_print('Loading server configurations...')
@@ -176,7 +178,8 @@ class TsuServer3:
                     self.loop.run_until_complete(self.await_cancellation(task))
 
     def get_version_string(self):
-        return str(self.release) + '.' + str(self.major_version) + '.' + str(self.minor_version)
+        return ('{}.{}.{}{}'
+                .format(self.release, self.major_version, self.minor_version, self.segment_version))
 
     def reload(self):
         with Constants.fopen('config/characters.yaml', 'r') as chars:

@@ -135,7 +135,7 @@ class PartyManager:
             return self.leaders-uninclude
 
         def get_details(self, tc=False):
-            return self.area, self.player_limit, self.leaders
+            return self.pid, self.area, self.player_limit, self.leaders, self.members-self.leaders
 
         def check_lights(self):
             # Only call this when you are sure you want to cancel potential light timeout timers.
@@ -171,7 +171,8 @@ class PartyManager:
     def new_party(self, creator, player_limit=None, has_leader=True, add_creator=True, tc=False):
         if creator.party and add_creator:
             raise PartyError(self._f('The player is part of another party.', tc=tc))
-
+        if player_limit is None:
+            player_limit = self.server.config['playerlimit']
         area = creator.area
         leader = {creator} if has_leader and add_creator else set()
         # Check if there are any party slots remaining
@@ -220,6 +221,11 @@ class PartyManager:
                 raise PartyError('This party does not exist.')
             return party
         raise PartyError('Invalid party ID.')
+
+    def get_parties(self):
+        if not self.parties:
+            raise PartyError('No parties exist.')
+        return self.parties.values()
 
     def move_party(self, party, initiator, new_area):
         ini_name = initiator.get_char_name() # Backup in case initiator's char changes.
@@ -435,7 +441,7 @@ class PartyManager:
             raise PartyError('Invalid party split: {} would be left out of the parties.'
                              .format(', '.join([c.id for c in orphaned])))
 
-        _, old_pl, old_leaders = party.get_details()
+        _, _, old_pl, old_leaders, _ = party.get_details()
         if not remainers or not leavers:
             raise PartyError('Invalid party split: One of the new parties would be empty.')
 
@@ -464,7 +470,7 @@ class PartyManager:
             raise PartyError('Invalid party split: {} would be left out of the parties.'
                              .format(', '.join([c.id for c in orphaned])))
 
-        _, old_pl, old_leaders = party.get_details()
+        _, _, old_pl, old_leaders, _ = party.get_details()
         if not members1 or not members2:
             raise PartyError('Invalid party split: One of the new parties would be empty.')
 
