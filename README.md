@@ -1,6 +1,6 @@
-# tsuserver3.DR
+# TsuserverDR
 
-A Python-based server for Danganronpa Online. It is a direct branch from tsuserver3, which is targeted towards Attorney Online.
+A Python-based server for Danganronpa Online. It is a direct branch from [tsuserver3](https://github.com/AttorneyOnline/tsuserver3) which is targeted towards Attorney Online.
 
 Requires Python 3.6+ and PyYAML.
 
@@ -28,16 +28,29 @@ Requires Python 3.6+ and PyYAML.
 ### Running
 
 * Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:  
-[2019-07-16T21:45:47]: Starting...
-[2019-07-16T21:45:47]: Launching tsuserver3.DR.190716a...
-[2019-07-16T21:45:47]: Loading server configurations...
-[2019-07-16T21:45:47]: Server configurations loaded successfully!
-[2019-07-16T21:45:47]: Server started successfully!
+
+[2019-08-01T10:20:20]: Starting...  
+[2019-08-01T10:20:20]: Launching Tsuserver 4.0.0 (190801a)...  
+[2019-08-01T10:20:20]: Loading server configurations...  
+[2019-08-01T10:20:20]: Server configurations loaded successfully!  
+[2019-08-01T10:20:20]: Starting a nonlocal server...  
+[2019-08-01T10:20:20]: Server started successfully!  
+[2019-08-01T10:20:21]: Server should be now accessible from 192.0.2.0:50000:My First Server  
+
+* If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:  
+
+[2019-08-01T10:20:21]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
+[2019-08-01T10:20:21]: *Server name: My First Server  
+[2019-08-01T10:20:21]: *Server description: This is my flashy new server  
+[2019-08-01T10:20:22]: Connected to the master server.  
+
+  - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If during launch you get  `urllib.error.URLError` or `socket.gaierror`, there is probably something wrong with your internet connection.
+  - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done.  
-[2019-07-16T22:23:04]: You have initiated a server shut down.
-[2019-07-16T22:23:04]: Kicking 12 remaining clients.
-[2019-07-16T22:23:04]: Server has successfully shut down.
+[2019-08-01T22:23:04]: You have initiated a server shut down.  
+[2019-08-01T22:23:04]: Kicking 12 remaining clients.  
+[2019-08-01T22:23:04]: Server has successfully shut down.  
 
   - If you do not see said messages after a few seconds, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
@@ -49,7 +62,7 @@ Requires Python 3.6+ and PyYAML.
 
 * If you already have a version of tsuserver installed and wish to update to a new version, you can download the new version and then overwrite your previously existing files. Do note that you do not need to shut down your server before overwriting the files, but you must restart it from console in order for changes to take effect.
 
-  - This process will not overwrite your server configurations inside the "config" folder, your existing logs inside the "logs" folder, or the user information inside the "storage" folder. However, it will overwrite other files including the Python files inside the "server" folder. Therefore, make sure to save backups of those files before overwriting in case you have modified them and wish to keep an archive of your changes.
+  - This process will not overwrite your server configurations inside the `config` folder, your existing logs inside the `logs` folder, or the user information inside the `storage` folder. However, it will overwrite other files including the Python files inside the `server` folder. Therefore, make sure to save backups of those files before overwriting in case you have modified them and wish to keep an archive of your changes.
  
 ## Commands
 Additional notes are listed at the end of the command list.
@@ -408,6 +421,6 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 
 ## License
 
-This server is licensed under the AGPLv3 license. In short, if you use a modified version of tsuserver3, you *must* distribute its source licensed under the AGPLv3 as well, and notify your users where the modified source may be found. The main difference between the AGPL and the GPL is that for the AGPL, network use counts as distribution. If you do not accept these terms, you should use [serverD](https://github.com/Attorney-Online-Engineering-Task-Force/serverD), which uses GPL rather than AGPL.
+This server is licensed under the AGPLv3 license. In short, if you use a modified version of TsuserverDR, you *must* distribute its source licensed under the AGPLv3 as well, and notify your users where the modified source may be found. The main difference between the AGPL and the GPL is that for the AGPL, network use counts as distribution. If you do not accept these terms, you should use [serverD](https://github.com/Attorney-Online-Engineering-Task-Force/serverD), which uses GPL rather than AGPL.
 
 See the [LICENSE](LICENSE.md) file for more information.

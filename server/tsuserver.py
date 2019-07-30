@@ -1,6 +1,7 @@
-# tsuserver3, an Attorney Online server
+# TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
-# Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
+# Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
+# Current project leader: 2018-19 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,16 +14,16 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
 import importlib
 import json
 import random
 import sys
-import urllib.request
-import traceback
 import time
+import traceback
+import urllib.request
 import yaml
 
 from server import logger
@@ -41,12 +42,12 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 0
         self.minor_version = 0
-        self.segment_version = 'b2'
-        self.internal_version = '190730b'
+        self.segment_version = 'b3'
+        self.internal_version = '190730c'
         self.software = 'TsuserverDR {}'.format(self.get_version_string())
         self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
 
-        logger.log_print('Launching {}...'.format(self.software))
+        logger.log_print('Launching {}...'.format(self.version))
         logger.log_print('Loading server configurations...')
 
         self.config = None

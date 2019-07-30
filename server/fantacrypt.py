@@ -1,6 +1,7 @@
-# tsuserver3, an Attorney Online server
+# TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
-# Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
+# Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
+# Current project leader: 2018-19 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +14,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # fantacrypt was a mistake, just hardcoding some numbers is good enough
 

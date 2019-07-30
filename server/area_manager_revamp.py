@@ -1,6 +1,7 @@
-# tsuserver3, an Attorney Online server
+# TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
-# Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
+# Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
+# Current project leader: 2018-19 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +14,8 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 import asyncio
 import random
 
@@ -26,7 +28,7 @@ from server.evidence import EvidenceList
 
 class AreaManager:
     class Area:
-        def __init__(self, area_id, server, name, background, bg_lock, evidence_mod = 'FFA', 
+        def __init__(self, area_id, server, name, background, bg_lock, evidence_mod = 'FFA',
                      locking_allowed = False, iniswap_allowed = True, rp_getarea_allowed = True, rp_getareas_allowed = True):
             self.iniswap_allowed = iniswap_allowed
             self.clients = set()
@@ -61,7 +63,7 @@ class AreaManager:
             self.evidence_list.append(Evidence("wewz", "desc2", "2.png"))
             self.evidence_list.append(Evidence("weeeeeew", "desc3", "3.png"))
             """
-            
+
             self.is_locked = False
             self.is_gmlocked = False
             self.is_modlocked = False
@@ -78,7 +80,7 @@ class AreaManager:
                 self.owned = False
                 if self.is_locked:
                     self.unlock()
-        
+
         def unlock(self):
             self.is_locked = False
             if not self.is_gmlocked and not self.is_modlocked:
@@ -95,7 +97,7 @@ class AreaManager:
             self.is_gmlocked = False
             self.is_locked = False
             self.invite_list = {}
-        
+
         def is_char_available(self, char_id):
             return char_id not in [x.char_id for x in self.clients]
 
@@ -115,7 +117,7 @@ class AreaManager:
         def set_next_msg_delay(self, msg_length):
             delay = min(3000, 100 + 60 * msg_length)
             self.next_message_time = round(time.time() * 1000.0 + delay)
-        
+
         def is_iniswap(self, client, anim1, anim2, char):
             if self.iniswap_allowed:
                 return False
@@ -125,7 +127,7 @@ class AreaManager:
                 if client.get_char_name() in char_link and char in char_link:
                     return False
             return True
-        
+
         def play_music(self, name, cid, length=-1):
             self.send_command('MC', name, cid)
             if self.music_looper:
@@ -183,7 +185,7 @@ class AreaManager:
         def broadcast_evidence_list(self):
             """
                 LE#<name>&<desc>&<img>#<name>
-                
+
             """
             for client in self.clients:
                 client.send_command('LE', *self.get_evidence_list(client))
@@ -196,11 +198,11 @@ class AreaManager:
 
     def load_areas(self):
         AREA_LIMIT = 1000 #This only affects the use of template ranges, not the number of areas you may have at any given time
-        area_parameters = {'area', 'background', 'bglock', 'evidence_mod', 'locking_allowed', 
+        area_parameters = {'area', 'background', 'bglock', 'evidence_mod', 'locking_allowed',
                            'iniswap_allowed', 'rp_getarea_allowed', 'rp_getareas_allowed'}
-        default_parameters = {'area': 'Area <AN>', 'background': 'gs4', 'bglock': False, #why was this set as a string 
-                                  'evidence_mod': 'FFA', 'locking_allowed': False, 'iniswap_allowed': True, 
-                                  'rp_getarea_allowed': True, 'rp_getareas_allowed': True} 
+        default_parameters = {'area': 'Area <AN>', 'background': 'gs4', 'bglock': False, #why was this set as a string
+                                  'evidence_mod': 'FFA', 'locking_allowed': False, 'iniswap_allowed': True,
+                                  'rp_getarea_allowed': True, 'rp_getareas_allowed': True}
         area_templates = dict()
         area_template_ranges = dict()
         area_template_ranges_ordered = list() # This is done to force multiple apparitions of the same area in different ranges
@@ -226,7 +228,7 @@ class AreaManager:
                         continue #We don't want to check the template_application line, it has nothing useful
                     raw_areas = str(item[template]).split(", ")
                     affected_areas = set()
-                    
+
                     for entry in raw_areas:
                         limits = entry.split("/")
                         if len(limits) > 2 or limits[0] == '' or limits[-1] == '': #Allows ez testing of length 1 and 2 lists
@@ -243,31 +245,31 @@ class AreaManager:
                     area_template_ranges[template] = affected_areas
                     area_template_ranges_ordered.append(template)
                 continue
-            
-            # The rest of this method deals with actually loading the templates in memory            
+
+            # The rest of this method deals with actually loading the templates in memory
             area_templates[item['template_name']] = item
-            
+
              #This is so that the area template does not include 'template_name' as an actual parameter
              #while also doubling down as a way to determine if this is a 'default' template
-            template_name = area_templates[item['template_name']].pop('template_name') 
+            template_name = area_templates[item['template_name']].pop('template_name')
             # Be careful, the 'pop' instruction also removes the template_name parameter from 'item' (yay mutability)
             # If you want to refer to the template name in this routine, you must use template_name or you will get a key error
             if template_name == 'default':
                 for parameter in area_templates[template_name]:
-                    default_parameters[parameter] = area_templates[template_name][parameter] 
+                    default_parameters[parameter] = area_templates[template_name][parameter]
             # The idea here is that if there is an actual 'default' template, DRO will use whatever values this default
             # template has as a backup, and if for whatever reason this default template does not have whatever parameters
             # we may need, it will fall back to some hard-coded values in order to prevent crashes
-                    
+
         with open('config/areas.yaml', 'r') as chars:
             areas = yaml.load(chars)
-   
+
         # Here's the established priority for determining area parameters
         # 1. It will first look for manually defined parameters in areas.yaml
         # 2. If some parameter is not manually set, it will look for the default value in the associated template
         # 3. If it does not have an explicitly associated template, it will determine if the area belongs to a template area range
         # 4. If none of the above, it will load hard-coded parameter values
-        
+
         for item in areas:
             for parameter in area_parameters:
                 if parameter not in item:
@@ -281,14 +283,14 @@ class AreaManager:
                             if self.cur_id in area_template_ranges[template] and parameter in area_templates[template]:
                                 item[parameter] = area_templates[template][parameter]
                                 flag = True
-                        if not flag: 
+                        if not flag:
                             item[parameter] = default_parameters[parameter]
-                                    
+
             item['area'] = item['area'].replace('<AN>',str(self.cur_id))
 
             self.areas.append(
-                self.Area(self.cur_id, self.server, item['area'], item['background'], 
-                          item['bglock'], item['evidence_mod'], item['locking_allowed'], 
+                self.Area(self.cur_id, self.server, item['area'], item['background'],
+                          item['bglock'], item['evidence_mod'], item['locking_allowed'],
                           item['iniswap_allowed'], item['rp_getarea_allowed'], item['rp_getareas_allowed']))
             self.cur_id += 1
 
