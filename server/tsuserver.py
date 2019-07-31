@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 0
         self.minor_version = 0
-        self.segment_version = 'b3'
-        self.internal_version = '190730c'
+        self.segment_version = 'b4'
+        self.internal_version = '190731a'
         self.software = 'TsuserverDR {}'.format(self.get_version_string())
         self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
 
@@ -578,11 +578,11 @@ class TsuserverDR:
                     client.area.invite_list.pop(client.ipid)
 
                 if client.party:
-                    x = client.party
+                    p = client.party
                     client.party.remove_member(client)
                     client.send_ooc('You were also kicked off from your party.')
-                    for member in x.get_members():
-                        x.send_ooc('{} was AFK kicked from your party.'.format(original_name))
+                    for c in p.get_members():
+                        c.send_ooc('{} was AFK kicked from your party.'.format(original_name))
 
     async def as_timer(self, client, args):
         _, length, name, is_public = args # Length in seconds, already converted

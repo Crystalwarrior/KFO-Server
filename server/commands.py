@@ -4603,7 +4603,7 @@ def ooc_cmd_party_kick(client, arg):
     Constants.command_assert(client, arg, parameters='=1')
 
     party = client.get_party()
-    if not party.is_leader(client):
+    if not party.is_leader(client) and not client.is_staff():
         raise PartyError('You are not a leader of your party.')
 
     c = Constants.parse_id(client, arg)

@@ -61,6 +61,7 @@ class PartyManager:
                 raise PartyError(self._f('The player is not part of this party.', tc=tc))
 
             self.members.remove(member)
+            self.leaders.discard(member)
             member.party = None
 
             # Check if empty party and if so, disband it
@@ -128,7 +129,7 @@ class PartyManager:
             self.leaders.remove(leader)
 
         def is_leader(self, member, tc=False):
-            return member in self.leaders
+            return member in self.leaders or (not self.leaders)
 
         def get_leaders(self, tc=False, uninclude=None, include_staff=True):
             if uninclude is None:
@@ -391,7 +392,7 @@ class PartyManager:
         # Announce staff members of the split
         end_parties = ", ".join([str(p.get_id()) for p in parties if p is not None])
         initiator.send_ooc_others("{}'s party {} was split into these parties: {}".
-                                  format(ini_name, party[og_party_id].get_id(), end_parties),
+                                  format(ini_name, parties[og_party_id].get_id(), end_parties),
                                   is_staff=True)
 
     def check_move_party(self, party, initiator, new_area):

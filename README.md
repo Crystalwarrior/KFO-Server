@@ -29,20 +29,20 @@ Requires Python 3.6+ and PyYAML.
 
 * Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:  
 
-[2019-08-01T10:20:20]: Starting...  
-[2019-08-01T10:20:20]: Launching Tsuserver 4.0.0 (190801a)...  
-[2019-08-01T10:20:20]: Loading server configurations...  
-[2019-08-01T10:20:20]: Server configurations loaded successfully!  
-[2019-08-01T10:20:20]: Starting a nonlocal server...  
-[2019-08-01T10:20:20]: Server started successfully!  
-[2019-08-01T10:20:21]: Server should be now accessible from 192.0.2.0:50000:My First Server  
+\[2019-08-01T10:20:20\]: Starting...  
+\[2019-08-01T10:20:20\]: Launching Tsuserver 4.0.0 (190801a)...  
+\[2019-08-01T10:20:20\]: Loading server configurations...  
+\[2019-08-01T10:20:20\]: Server configurations loaded successfully!  
+\[2019-08-01T10:20:20\]: Starting a nonlocal server...  
+\[2019-08-01T10:20:20\]: Server started successfully!  
+\[2019-08-01T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First Server  
 
 * If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:  
 
-[2019-08-01T10:20:21]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
-[2019-08-01T10:20:21]: *Server name: My First Server  
-[2019-08-01T10:20:21]: *Server description: This is my flashy new server  
-[2019-08-01T10:20:22]: Connected to the master server.  
+\[2019-08-01T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
+\[2019-08-01T10:20:21\]: *Server name: My First Server  
+\[2019-08-01T10:20:21\]: *Server description: This is my flashy new server  
+\[2019-08-01T10:20:22\]: Connected to the master server.  
 
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If during launch you get  `urllib.error.URLError` or `socket.gaierror`, there is probably something wrong with your internet connection.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
@@ -127,6 +127,26 @@ Additional notes are listed at the end of the command list.
 	- Changes your status of being able to receive PMs.
 * **online**
 	- Returns how many players are online.
+* **party**
+    - Creates a party and makes you its leader.
+* **party_disband**
+    - Disbands your party.
+* **party_id**
+    - Returns your party ID.
+* **party_invite** "ID"
+    - Invites a player in the same area to your party.
+* **party_join** "party ID"
+    - Joins a party you were invited to.
+* **party_kick** "ID"
+    - Kicks a player off your party.
+* **party_lead**
+    - Makes you a leader of your party.
+* **party_members**
+    - Lists the leaders and regular members of your party.
+* **party_uninvite** "ID"
+    - Revokes an invitation sent to a player to join your player.
+* **party_unlead**
+    - Removes your party leader role.
 * **play** "song.mp3"
 	- Plays a song, provided the area you are in allows non-staff members to run this command.
 * **pm** "ID/IPID/char name/OOC name" "message" 
@@ -417,7 +437,6 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 	- **OOC Name**: the username of the player in the OOC chat.
 * **Note 2**: some commands include commas (,) between the parameters. If that is the case, the command expects you to actually use the commas between the parameters. If for whatever reason your parameter also has a comma followed by a space, you can include it by using ,\ (so 'Hello, world' becomes 'Hello,\ world').
 * **Note 3**: additional documentation for the commands can be found in `config\commands.py` and consulting the docstrings. For example, to get additional information for /help, you would look for `ooc_cmd_help` and look for the associated text.
-
 
 ## License
 
