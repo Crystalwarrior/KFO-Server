@@ -147,7 +147,10 @@ def ooc_cmd_area_kick(client, arg):
             client.send_ooc("Kicked {} to area {}.".format(current_char, output))
             c.send_ooc("You were kicked from the area to area {}.".format(output))
             if client.area.is_locked or client.area.is_modlocked:
-                client.area.invite_list.pop(c.ipid)
+                try: # Try and remove the IPID from the area's invite list
+                    client.area.invite_list.pop(c.ipid)
+                except KeyError:
+                    pass # Would only happen if client joins through mod powers to the locked area
 
             if client.party:
                 x = client.party
@@ -4401,7 +4404,7 @@ def ooc_cmd_whois(client, arg):
     if len(targets) == 0:
         raise ArgumentError('Target not found.')
     # Otherwise, send information
-    info = targets[0].get_info(as_mod=client.is_mod, identifier=arg)
+    info = targets[0].get_info(as_mod=client.is_mod, as_cm=client.is_cm, identifier=arg)
     client.send_ooc(info)
 
 def ooc_cmd_8ball(client, arg):

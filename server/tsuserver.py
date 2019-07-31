@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 0
         self.minor_version = 0
-        self.segment_version = 'b5'
-        self.internal_version = '190731b'
+        self.segment_version = 'RC1'
+        self.internal_version = '190731c'
         self.software = 'TsuserverDR {}'.format(self.get_version_string())
         self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
 
@@ -575,7 +575,10 @@ class TsuserverDR:
                                 '{} minutes.'.format(original_area.id, afk_sendto, afk_delay))
 
                 if client.area.is_locked or client.area.is_modlocked:
-                    client.area.invite_list.pop(client.ipid)
+                    try: # Try and remove the IPID from the area's invite list
+                        client.area.invite_list.pop(client.ipid)
+                    except KeyError:
+                        pass # Would only happen if they joined the locked area through mod powers
 
                 if client.party:
                     p = client.party

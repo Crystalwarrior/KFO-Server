@@ -744,7 +744,7 @@ class ClientManager:
         def get_area_info(self, area_id, mods, as_mod=None, include_shownames=False,
                           only_my_multiclients=False):
             if as_mod is None:
-                as_mod = self.is_mod
+                as_mod = self.is_mod or self.is_cm # Cheap, but decent
 
             area = self.server.area_manager.get_area_by_id(area_id)
             info = '== Area {}: {} =='.format(area.id, area.name)
@@ -779,7 +779,7 @@ class ClientManager:
                     info += ' (S)'
                 if as_mod:
                     info += ' ({})'.format(c.ipid)
-            return info
+            return len(sorted_clients), info
 
         def send_area_info(self, current_area, area_id, mods, as_mod=None, include_shownames=False,
                            only_my_multiclients=False):
@@ -811,21 +811,22 @@ class ClientManager:
             if area_id == -1:
                 # all areas info
                 unrestricted_access_area = '<ALL>' in current_area.reachable_areas
-                for i in range(len(self.server.area_manager.areas)):
+                for (i, area) in enumerate(self.server.area_manager.areas):
                     # Get area i details...
                     # If staff and there are clients in the area OR
                     # If not staff, there are visible clients in the area, and the area is reachable from the current one
-                    not_staff_check = len([c for c in self.server.area_manager.areas[i].clients if c.is_visible or c == self]) > 0 and \
-                                      (unrestricted_access_area or self.server.area_manager.areas[i].name in current_area.reachable_areas or self.is_transient)
+                    not_staff_check = len([c for c in area.clients if c.is_visible or c == self]) > 0 and \
+                                      (unrestricted_access_area or area.name in current_area.reachable_areas or self.is_transient)
 
-                    if (self.is_staff() and len(self.server.area_manager.areas[i].clients) > 0) or \
+                    if (self.is_staff() and len(area.clients) > 0) or \
                     (not self.is_staff() and not_staff_check):
-                        area_info = self.get_area_info(i, mods, as_mod=as_mod,
-                                                       include_shownames=include_shownames,
-                                                       only_my_multiclients=only_my_multiclients)
-                        info += '\r\n{}'.format(area_info)
+                        num, ainfo = self.get_area_info(i, mods, as_mod=as_mod,
+                                                        include_shownames=include_shownames,
+                                                        only_my_multiclients=only_my_multiclients)
+                        if num:
+                            info += '\r\n{}'.format(ainfo)
             else:
-                info = self.get_area_info(area_id, mods, include_shownames=include_shownames)
+                _, info = self.get_area_info(area_id, mods, include_shownames=include_shownames)
 
             return info
 
@@ -984,13 +985,14 @@ class ClientManager:
         def get_multiclients(self):
             return self.server.client_manager.get_targets(self, TargetType.IPID, self.ipid, False)
 
-        def get_info(self, as_mod=False, identifier=None):
+        def get_info(self, as_mod=False, as_cm=False, identifier=None):
             if identifier is None:
                 identifier = self.id
 
             info = '== Client information of {} =='.format(identifier)
-            info += ('\n*CID: {}. IPID: {}. HDID: {}'
-                     .format(self.id, self.ipid if as_mod else "-", self.hdid if as_mod else "-"))
+            ipid = self.ipid if as_mod or as_cm else "-"
+            hdid = self.hdid if as_mod else "-"
+            info += '\n*CID: {}. IPID: {}. HDID: {}'.format(self.id, ipid, hdid)
             char_info = self.get_char_name()
             if self.char_folder and self.char_folder != char_info: # Indicate iniswap if needed
                 char_info = '{} ({})'.format(char_info, self.char_folder)
