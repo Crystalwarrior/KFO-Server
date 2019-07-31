@@ -491,8 +491,8 @@ class ClientManager:
 
         def change_area(self, area, override_all=False, override_passages=False,
                         override_effects=False, ignore_bleeding=False, ignore_followers=False,
-                        ignore_checks=False, more_unavail_chars=None, change_to=None,
-                        from_party=False):
+                        ignore_checks=False, ignore_notifications=False, more_unavail_chars=None,
+                        change_to=None, from_party=False):
             """
             PARAMETERS:
             *override_passages: ignore passages existing from the source area to the target area
@@ -506,6 +506,7 @@ class ClientManager:
              RP related notifications (only useful for complete area reload). In particular,
              override_all being False performs all the checks and announces the area change in OOC.
             *ignore_checks: ignore the change area checks.
+            *ignore_notifications: ignore the area notifications except character change.
             *more_unavail_chars: additional characters in the target area to mark as taken.
             *change_to: character to manually change to in the target area (requires ignore_checks
              to be True).
@@ -548,15 +549,16 @@ class ClientManager:
                         self.send_ooc('Your character was taken in your new area, switched to {}.'
                                       .format(self.get_char_name()))
 
-                self.send_ooc('Changed area to {}.[{}]'.format(area.name, area.status))
-                logger.log_server('[{}]Changed area from {} ({}) to {} ({}).'
-                                  .format(self.get_char_name(), self.area.name, self.area.id,
-                                          area.name, area.id), self)
-                #logger.log_rp('[{}]Changed area from {} ({}) to {} ({}).'
-                #              .format(self.get_char_name(), old_area.name, old_area.id,
-                #                      self.area.name, self.area.id), self)
+                if not ignore_notifications:
+                    self.send_ooc('Changed area to {}.[{}]'.format(area.name, area.status))
+                    logger.log_server('[{}]Changed area from {} ({}) to {} ({}).'
+                                      .format(self.get_char_name(), self.area.name, self.area.id,
+                                              area.name, area.id), self)
+                    #logger.log_rp('[{}]Changed area from {} ({}) to {} ({}).'
+                    #              .format(self.get_char_name(), old_area.name, old_area.id,
+                    #                      self.area.name, self.area.id), self)
 
-                self.notify_change_area(area, old_char, ignore_bleeding=ignore_bleeding)
+                    self.notify_change_area(area, old_char, ignore_bleeding=ignore_bleeding)
 
             self.area.remove_client(self)
             self.area = area

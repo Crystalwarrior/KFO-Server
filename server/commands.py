@@ -180,10 +180,10 @@ def ooc_cmd_area_list(client, arg):
 
     if len(arg) == 0:
         client.server.area_manager.load_areas()
-        client.send_ooc('You have reset the area list of the server to its original state.')
-        client.send_ooc_others('The area list of the server has been reset to its original state.',
+        client.send_ooc('You have restored the original area list of the server.')
+        client.send_ooc_others('The original area list of the server has been restored.',
                                is_staff=False)
-        client.send_ooc_others('{} has reset the area list of the server to its original state.'
+        client.send_ooc_others('{} has restored the original area list of the server.'
                                .format(client.name), is_staff=True)
     else:
         try:

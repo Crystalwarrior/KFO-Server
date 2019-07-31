@@ -136,7 +136,7 @@ Additional notes are listed at the end of the command list.
 * **party_invite** "ID"
     - Invites a player in the same area to your party.
 * **party_join** "party ID"
-    - Joins a party you were invited to.
+    - Makes you join a party you were invited to.
 * **party_kick** "ID"
     - Kicks a player off your party.
 * **party_lead**
@@ -273,6 +273,12 @@ Additional notes are listed at the end of the command list.
 	- Sets the area's description to the given one, or restores the default one if not given.
 * **multiclients** "ID/IPID"
 	- Lists all the clients opened by a target and the areas they are in.
+* **party_disband** "party ID"
+    - Disbands a party.
+* **party_join** "party ID"
+    - Makes you join a party, even if you were not invited to it.
+* **party_list**
+    - Lists all active parties in the server, as well as some of its details.
 * **passage_clear** "area range start", "area range end"
     - Clears passage locks that start in the areas in the given area range, or just the ones in the current area if not given a range.
 * **passage_restore** "area range start", "area range end"

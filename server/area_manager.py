@@ -726,7 +726,7 @@ class AreaManager:
         Parameters
         ----------
         area_list_file: str, optional
-            Location of the area list to load. Defaults to 'config/areas.yaml
+            Location of the area list to load. Defaults to 'config/areas.yaml'.
 
         Raises
         ------
@@ -829,6 +829,7 @@ class AreaManager:
 
         # Only once all areas have been created, actually set the corresponding values
         # Helps avoiding junk area lists if there was an error
+        old_areas = self.areas
         self.areas = temp_areas
         self.area_names = temp_area_names
 
@@ -836,17 +837,41 @@ class AreaManager:
         if self.server.default_area >= len(self.areas):
             self.server.default_area = 0
 
-        # Move existing clients to new corresponding area (or to default area if their previous
-        # area no longer exists).
-        for client in self.server.client_manager.clients:
+        for area in old_areas:
+            # Decide whether the area still exists or not
             try:
-                new_area = self.get_area_by_name(client.area.name)
-                client.change_area(new_area, override_all=True)
-                client.send_ooc('Moving you to new area {}'.format(new_area.name))
+                new_area = self.get_area_by_name(area.name)
+                remains = True
             except AreaError:
-                client.change_area(self.default_area(), override_all=True)
-                client.send_ooc('Your previous area no longer exists. Moving you to the server '
-                                'default area {}'.format(client.area.name))
+                new_area = self.default_area()
+                remains = False
+
+            # Move existing clients to new corresponding area (or to default area if their previous
+            # area no longer exists).
+            for client in area.clients.copy():
+                # Check if current char is available
+                if new_area.is_char_available(client.char_id):
+                    new_char_id = client.char_id
+                else:
+                    try:
+                        new_char_id = new_area.get_rand_avail_char_id()
+                    except AreaError:
+                        new_char_id = -1
+
+                if remains:
+                    message = 'Area list reload. Moving you to the new {}.'
+                else:
+                    message = ('Area list reload. Your previous area no longer exists. Moving you '
+                               'to the server default area {}.')
+
+                client.send_ooc(message.format(new_area.name))
+                client.change_area(new_area, ignore_checks=True, change_to=new_char_id,
+                                   ignore_notifications=True)
+
+            # Move parties (independently)
+            for party in area.parties.copy():
+                party.area = new_area
+                new_area.add_party(party)
 
         # Update the server's area list only once everything is successful
         self.server.old_area_list = self.server.area_list
