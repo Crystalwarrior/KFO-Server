@@ -103,7 +103,7 @@ Additional notes are listed at the end of the command list.
 * **getarea** 
     - Shows the current characters in your area.
 * **getareas** 
-    - Shows all characters in all  areas reachable from your own.
+    - Shows all characters in all areas reachable from your own.
 * **kickself**
     - Removes all of of the user's clients except the one that used the command.
 * **knock** "area"
@@ -336,6 +336,10 @@ Additional notes are listed at the end of the command list.
     - Mutes the target from changing music. 
 * **cleargm**
 	- Logs out all GMs in the server and puts them in RP mode if needed.
+* **getarea** 
+    - Shows the current characters in your area as well as their IPIDs.
+* **getareas** 
+    - Shows all characters in all areas of the server as well as their IPIDs.
 * **kick** "ID/IPID" 
     - Kicks the target from the server.
 * **mute** "ID/IPID" 
@@ -344,6 +348,8 @@ Additional notes are listed at the end of the command list.
     - Mutes the target from all OOC actions.
 * **ooc_unmute** "OOC name" 
     - Unmutes the target.
+* **showname_list**
+	- Similar to /getareas, but lists shownames along with character names as well as their IPIDs.
 * **unblockdj** "target"
     - Allows the target to change music again.
 * **unmute** "ID/IPID" 
