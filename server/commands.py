@@ -1337,6 +1337,7 @@ def ooc_cmd_follow(client, arg):
     Starts following a player by their client ID. When the target area moves area, you will follow
     them automatically except if disallowed by the new area.
     Requires /unfollow to undo.
+    Returns an error if the client is part of a party.
 
     SYNTAX
     /follow <client_id>
@@ -1349,6 +1350,8 @@ def ooc_cmd_follow(client, arg):
     """
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
+    if client.party:
+        raise PartyError('You cannot follow someone while in a party.')
 
     c = Constants.parse_id(client, arg)
     client.follow_user(c)
@@ -2549,8 +2552,8 @@ def ooc_cmd_party(client, arg):
     """
     Creates a party and makes you the leader of it. Party members will all move in groups
     automatically. It also returns a party ID players can use to join the party.
-    Returns an error if the player is in area where the lights are off, or if the server has
-    reached its party limit.
+    Returns an error if the player is in area where the lights are off, if the server has
+    reached its party limit, or if they are following someone.
 
     SYNTAX
     /party
@@ -2564,6 +2567,8 @@ def ooc_cmd_party(client, arg):
     Constants.command_assert(client, arg, parameters='=0')
     if not client.area.lights:
         raise AreaError('You cannot create a party while the lights are off.')
+    if client.following:
+        raise PartyError('You cannot create a party while following someone.')
 
     party = client.server.party_manager.new_party(client, tc=True)
     client.send_ooc('You have created party {}.'.format(party.get_id()))
@@ -2680,8 +2685,8 @@ def ooc_cmd_party_invite(client, arg):
 def ooc_cmd_party_join(client, arg):
     """
     Enrolls you into a party by party ID provided you were previously invited to it.
-    Returns an error if you are already part of a party or if the party reached its maximum number
-    of members.
+    Returns an error if you are already part of a party, if the party reached its maximum number
+    of members, or if you are following someone.
 
     SYNTAX
     /party_join <party_id>
@@ -2693,6 +2698,8 @@ def ooc_cmd_party_join(client, arg):
     /party_join 11037       :: If previously invited, you will join party 11037.
     """
     Constants.command_assert(client, arg, split_spaces=True, parameters='=1')
+    if client.following:
+        raise PartyError('You cannot join a party while following someone.')
 
     party = client.server.party_manager.get_party(arg)
     party.add_member(client, tc=True)
