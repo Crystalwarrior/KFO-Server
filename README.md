@@ -48,9 +48,10 @@ Requires Python 3.6+ and PyYAML.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done.  
-[2019-08-01T22:23:04]: You have initiated a server shut down.  
-[2019-08-01T22:23:04]: Kicking 12 remaining clients.  
-[2019-08-01T22:23:04]: Server has successfully shut down.  
+
+\[2019-08-01T22:23:04\]: You have initiated a server shut down.  
+\[2019-08-01T22:23:04\]: Kicking 12 remaining clients.  
+\[2019-08-01T22:23:04\]: Server has successfully shut down.  
 
   - If you do not see said messages after a few seconds, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
