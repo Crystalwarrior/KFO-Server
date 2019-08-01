@@ -991,7 +991,7 @@ class ClientManager:
 
             info = '== Client information of {} =='.format(identifier)
             ipid = self.ipid if as_mod or as_cm else "-"
-            hdid = self.hdid if as_mod else "-"
+            hdid = self.hdid if as_mod or as_cm else "-"
             info += '\n*CID: {}. IPID: {}. HDID: {}'.format(self.id, ipid, hdid)
             char_info = self.get_char_name()
             if self.char_folder and self.char_folder != char_info: # Indicate iniswap if needed

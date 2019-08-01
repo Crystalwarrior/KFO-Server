@@ -8,12 +8,12 @@ Requires Python 3.6+ and PyYAML.
 
 ### Installing
 
-* Install the latest version of Python. **Python 2 will not work**, as tsuserver3 depends on async/await, which can only be found on Python 3.5 and newer.
+* Install the latest version of Python. **Python 2 will not work**, as TsuserverDR depends on async/await, which can only be found on Python 3.5 and newer.
   - If your system supports it, it is recommended that you use a separate virtual environment, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python).
   - If prompted during the installation to add `python` as a PATH environment variable, accept this option.
-* Open Command Prompt or your terminal, and change to the directory where you downloaded tsuserver3 to. You can do this in two ways:
-  - Go up one folder above the tsuserver3 folder, Shift + right click the tsuserver3 folder, and click `Open command window here`. This is the easiest method.
-  - Copy the path of the tsuserver3 folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackets, but including the quotation marks if the path contains spaces.
+* Open Command Prompt or your terminal, and change to the directory where you downloaded TsuserverDR to. You can do this in two ways:
+  - Go up one folder above the TsuserverDR folder, Shift + right click the TsuserverDR folder, and click `Open command window here`. This is the easiest method.
+  - Copy the path of the TsuserverDR folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackets, but including the quotation marks if the path contains spaces.
 * To install PyYAML and dependencies, type in the following:
   ```bash
   python -m pip install --user -r requirements.txt
@@ -30,7 +30,7 @@ Requires Python 3.6+ and PyYAML.
 * Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:  
 
 \[2019-08-01T10:20:20\]: Starting...  
-\[2019-08-01T10:20:20\]: Launching Tsuserver 4.0.0 (190801a)...  
+\[2019-08-01T10:20:20\]: Launching TsuserverDR 4.0.0 (190801a)...  
 \[2019-08-01T10:20:20\]: Loading server configurations...  
 \[2019-08-01T10:20:20\]: Server configurations loaded successfully!  
 \[2019-08-01T10:20:20\]: Starting a nonlocal server...  
@@ -47,12 +47,13 @@ Requires Python 3.6+ and PyYAML.
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If during launch you get  `urllib.error.URLError` or `socket.gaierror`, there is probably something wrong with your internet connection.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
-* To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done.  
-[2019-08-01T22:23:04]: You have initiated a server shut down.  
-[2019-08-01T22:23:04]: Kicking 12 remaining clients.  
-[2019-08-01T22:23:04]: Server has successfully shut down.  
+* To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
-  - If you do not see said messages after a few seconds, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
+\[2019-08-01T22:23:04\]: You have initiated a server shut down.  
+\[2019-08-01T22:23:04\]: Kicking 12 remaining clients.  
+\[2019-08-01T22:23:04\]: Server has successfully shut down.  
+
+* If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
 * To restart a server, you can follow the steps outlined above to shut down and then start the server again.
   
@@ -60,7 +61,7 @@ Requires Python 3.6+ and PyYAML.
  
 ### Updating
 
-* If you already have a version of tsuserver installed and wish to update to a new version, you can download the new version and then overwrite your previously existing files. Do note that you do not need to shut down your server before overwriting the files, but you must restart it from console in order for changes to take effect.
+* If you already have a version of TsuserverDR or tsuserver installed and wish to update to a new version, you can download the new version and then overwrite your previously existing files. Do note that you do not need to shut down your server before overwriting the files, but you must restart it from console in order for changes to take effect.
 
   - This process will not overwrite your server configurations inside the `config` folder, your existing logs inside the `logs` folder, or the user information inside the `storage` folder. However, it will overwrite other files including the Python files inside the `server` folder. Therefore, make sure to save backups of those files before overwriting in case you have modified them and wish to keep an archive of your changes.
  
@@ -347,6 +348,8 @@ Additional notes are listed at the end of the command list.
     - Allows the target to change music again.
 * **unmute** "ID/IPID" 
     - Unmutes the target from the IC chat.
+* **whois** "ID/IPID"
+	- Obtains a lot of properties of the target, including HDID and IPID.
 	
 ### Moderator Commands
 
@@ -402,8 +405,6 @@ Additional notes are listed at the end of the command list.
     - Undo correlating command.
 * **unlock**
 	- Unlocks an area, provided the lock came as a result of /gmlock, /lock or /modlock.
-* **whois** "ID/IPID"
-	- Obtains a lot of properties of the target, including HDID and IPID.
 	
 ### Debug commands
 
@@ -437,8 +438,9 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 
 * **Note 1**: the commands may refer to the following identifiers for a player:
 	- **Character Name**: the folder name of the character the player is using, also the name that appears in /getarea.
+	- **HDID**: the hard drive ID of the player, accessible through /whois (requires community manager rank)
 	- **ID**: number in brackets [] in /getarea. 
-	- **IPID**: number in parentheses () in /getarea (requires mod rank).
+	- **IPID**: number in parentheses () in /getarea (requires community manager rank).
 	- **IP**: the IP address of the player.
 	- **OOC Name**: the username of the player in the OOC chat.
 * **Note 2**: some commands include commas (,) between the parameters. If that is the case, the command expects you to actually use the commas between the parameters. If for whatever reason your parameter also has a comma followed by a space, you can include it by using ,\ (so 'Hello, world' becomes 'Hello,\ world').
