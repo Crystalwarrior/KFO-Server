@@ -96,12 +96,12 @@ class AOProtocol(asyncio.Protocol):
             except Exception as ex:
                 self.server.send_error_report(self.client, cmd, args, ex)
 
-    def connection_made(self, transport):
+    def connection_made(self, transport, my_protocol=None):
         """ Called upon a new client connecting
 
         :param transport: the transport object
         """
-        self.client = self.server.new_client(transport)
+        self.client = self.server.new_client(transport, my_protocol=my_protocol)
         self.ping_timeout = asyncio.get_event_loop().call_later(self.server.config['timeout'], self.client.disconnect)
         self.client.send_command('decryptor', 34)  # just fantacrypt things
 
@@ -250,6 +250,7 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.can_askchaa = False # Enforce the joining process happening atomically
 
+        # Make sure there is enough room for the client
         char_cnt = len(self.server.char_list)
         evi_cnt = 0
         music_cnt = sum([len(x) for x in self.server.music_pages_ao1])

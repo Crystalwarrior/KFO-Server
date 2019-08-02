@@ -41,9 +41,9 @@ class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None):
         self.release = 4
         self.major_version = 0
-        self.minor_version = 2
+        self.minor_version = 3
         self.segment_version = ''
-        self.internal_version = '190802a'
+        self.internal_version = '190802b'
         self.software = 'TsuserverDR {}'.format(self.get_version_string())
         self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
         if protocol is None:
@@ -209,7 +209,7 @@ class TsuserverDR:
         except Exception as error:
             return error
 
-    def new_client(self, transport):
+    def new_client(self, transport, my_protocol=None):
         c = self.client_manager.new_client(transport)
         if self.rp_mode:
             c.in_rp = True

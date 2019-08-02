@@ -1,19 +1,38 @@
 import asyncio
+import unittest
 
 from server.aoprotocol import AOProtocol
 from server.client_manager import ClientManager
 from server.tsuserver import TsuserverDR
 
+class _Unittest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        print('Testing {}...'.format(__file__))
+        cls.server = _TestTsuserverDR()
+        cls.clients = cls.server.client_list
+
+    def tearDown(self):
+        """
+        Check if any packets were unaccounted for.
+        """
+
+        for c in self.clients:
+            if c:
+                c.assert_no_packets()
+                c.assert_no_ooc()
+        self.clients = None
+
 class _TestClientManager(ClientManager):
     class _TestClient(ClientManager.Client):
-        def __init__(self, *args):
+        def __init__(self, *args, my_protocol=None):
             super().__init__(*args)
             self.received_commands = list()
             self.received_ooc = list()
-            self.my_protocol = None
+            self.my_protocol = my_protocol
 
         def disconnect(self):
-            self.my_protocol.connection_lost(None)
+            self.my_protocol.connection_lost(None, client=self)
 
         def send_command(self, command_type, *args):
             self.send_command_stc(command_type, *args)
@@ -107,16 +126,14 @@ class _TestClientManager(ClientManager):
             if buffer:
                 self.send_command_cts(buffer)
 
-    def new_client(self, transport):
-        cur_id = 0
-        for i in range(self.server.config['playerlimit']):
-            if not self.cur_id[i]:
-                cur_id = i
-                break
-        c = self._TestClient(self.server, transport, cur_id, self.server.get_ipid("127.0.0.1"))
-        self.clients.add(c)
-        self.cur_id[cur_id] = True
-        self.server.client_tasks[cur_id] = dict()
+    def __init__(self, server):
+        super().__init__(server, client_obj=self._TestClient)
+
+    def new_client(self, transport, ip=None, my_protocol=None):
+        if ip is None:
+            ip = self.server.get_ipid("127.0.0.1")
+        c = super().new_client(transport, client_obj=self._TestClient, ip=ip,
+                               my_protocol=my_protocol)
         return c
 
 class _TestAOProtocol(AOProtocol):
@@ -125,23 +142,36 @@ class _TestAOProtocol(AOProtocol):
 
         :param transport: the transport object
         """
-        self.client = self.server.new_client(transport)
-        self.client.my_protocol = my_protocol
-        self.ping_timeout = asyncio.get_event_loop().call_later(self.server.config['timeout'], self.client.disconnect)
-        self.client.send_command_stc('decryptor', 34)  # just fantacrypt things
+        self.client = None
+        self.ping_timeout = None
+
+        super().connection_made(transport, my_protocol=my_protocol)
+
+    def connection_lost(self, exc, client=None):
+        """ User disconnected
+
+        :param exc: reason
+        """
+        if not self.client:
+            self.client = client
+        self.server.remove_client(self.client)
+
+        if self.ping_timeout:
+            self.ping_timeout.cancel()
 
 class _TestTsuserverDR(TsuserverDR):
     def __init__(self):
         super().__init__(client_manager=_TestClientManager)
         self.ao_protocol = _TestAOProtocol
+        self.client_list = [None] * self.config['playerlimit']
 
     def create_client(self):
         new_ao_protocol = self.ao_protocol(self)
         new_ao_protocol.connection_made(None, my_protocol=new_ao_protocol)
         return new_ao_protocol.client
 
-    def new_client(self, transport=None):
-        c = self.client_manager.new_client(transport)
+    def new_client(self, transport=None, my_protocol=None):
+        c = self.client_manager.new_client(transport, my_protocol=my_protocol)
         if self.rp_mode:
             c.in_rp = True
         c.server = self
@@ -156,11 +186,43 @@ class _TestTsuserverDR(TsuserverDR):
         c.send_command_cts("RM#%")
         c.send_command_cts("RD#%")
 
-        c.send_command_cts("CC#{}#{}#{}#%"
-                           .format(c.id, char_id, hdid))
-        exp = self.char_list[char_id]
+        c.send_command_cts("CC#{}#{}#{}#%".format(c.id, char_id, hdid))
+        exp = self.char_list[char_id] if char_id >= 0 else self.config['spectator_name']
         res = c.get_char_name()
         assert exp == res, (char_id, exp, res)
         c.discard_all()
 
         return c
+
+    def make_clients(self, number, hdid_list=None):
+        if hdid_list is None:
+            hdid_list = ['FAKEHDID'] * number
+        else:
+            assert len(hdid_list) == number
+
+        for i in range(number):
+            area = self.area_manager.default_area()
+            for j in range(len(self.char_list)):
+                if area.is_char_available(j):
+                    char_id = j
+                    break
+            else:
+                char_id = -1
+
+            client = self.make_client(char_id, hdid=hdid_list[i])
+            for j, existing_client in enumerate(self.client_list):
+                if existing_client is None:
+                    self.client_list[j] = client
+                    break
+            else:
+                j = -1
+            assert j == client.id, (j, client.id)
+
+    def disconnect_all(self, assert_no_outstanding=False):
+        for (i, client) in enumerate(self.client_list):
+            if client:
+                client.disconnect()
+                if assert_no_outstanding:
+                    client.assert_no_packets()
+                    client.assert_no_ooc()
+                self.client_list[i] = None

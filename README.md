@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/Chrezm/Danganronpa-Online.svg?branch=master)](https://travis-ci.org/Chrezm/Danganronpa-Online)
 # TsuserverDR
 
 A Python-based server for Danganronpa Online. It is a direct branch from [tsuserver3](https://github.com/AttorneyOnline/tsuserver3) which is targeted towards Attorney Online.

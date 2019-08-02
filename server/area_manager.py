@@ -162,8 +162,9 @@ class AreaManager:
             try:
                 self.clients.remove(client)
             except KeyError:
-                info = 'Area {} does not contain client {}'.format(self, client)
-                raise KeyError(info)
+                if not client.id == -1: # Ignore pre-clients (before getting playercount)
+                    info = 'Area {} does not contain client {}'.format(self, client)
+                    raise KeyError(info)
 
             if not self.clients:
                 self.unlock()

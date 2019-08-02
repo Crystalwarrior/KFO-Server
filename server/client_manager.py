@@ -27,7 +27,7 @@ from server.constants import TargetType, Constants
 
 class ClientManager:
     class Client:
-        def __init__(self, server, transport, user_id, ipid):
+        def __init__(self, server, transport, user_id, ipid, my_protocol=None, ip=None):
             self.server = server
             self.transport = transport
             self.can_join = 0 # Needs to be 2 to actually connect
@@ -1020,19 +1020,37 @@ class ClientManager:
                     .format(self.id, self.ipid, self.name, self.get_char_name(), self.showname,
                             self.is_staff(), self.area.id))
 
-    def __init__(self, server):
+    def __init__(self, server, client_obj=None):
+        if client_obj is None:
+            self.client_obj = self.Client
+
         self.clients = set()
         self.server = server
         self.cur_id = [False] * self.server.config['playerlimit']
+        self.client_obj = client_obj
 
-    def new_client(self, transport):
-        cur_id = 0
+    def new_client(self, transport, client_obj=None, my_protocol=None, ip=None):
+        if ip is None:
+            ip = transport.get_extra_info('peername')[0]
+        ipid = self.server.get_ipid(ip)
+
+        if client_obj is None:
+            client_obj = self.Client
+
+        cur_id = -1
         for i in range(self.server.config['playerlimit']):
             if not self.cur_id[i]:
                 cur_id = i
                 break
-        c = self.Client(self.server, transport, cur_id, self.server.get_ipid(transport.get_extra_info('peername')[0]))
+        c = client_obj(self.server, transport, cur_id, ipid, my_protocol=my_protocol)
         self.clients.add(c)
+
+        # Check if server is full, and if so, send number of players and disconnect
+        if cur_id == -1:
+            c.send_command('PN', self.server.get_player_count(),
+                           self.server.config['playerlimit'])
+            c.disconnect()
+            return c
         self.cur_id[cur_id] = True
         self.server.client_tasks[cur_id] = dict()
         return c
@@ -1049,9 +1067,11 @@ class ClientManager:
         if client.following:
             client.following.followedby.remove(client)
 
-        self.cur_id[client.id] = False
-        for task_id in self.server.client_tasks[client.id].keys(): # Cancel client's pending tasks
-            self.server.get_task(client, [task_id]).cancel()
+        if client.id >= 0: # Avoid having pre-clients do this (before they are granted a cID)
+            self.cur_id[client.id] = False
+            # Cancel client's pending tasks
+            for task_id in self.server.client_tasks[client.id].keys():
+                self.server.get_task(client, [task_id]).cancel()
 
         if client.party:
             client.party.remove_member(client)

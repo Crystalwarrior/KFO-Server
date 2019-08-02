@@ -1,14 +1,6 @@
-import unittest
+from .structures import _Unittest
 
-from .structures import _TestTsuserverDR
-
-class TestClientConnection(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        print('Testing {}...'.format(__file__))
-        cls.server = _TestTsuserverDR()
-        cls.clients = [None, None, None, None]
-
+class TestClientConnection(_Unittest):
     def test_01_client0_connect(self):
         """
         Situation: Client selects the server on the lobby screen.
@@ -64,7 +56,8 @@ class TestClientConnection(unittest.TestCase):
         chard_clients = self.server.get_player_count()
         self.assertEqual(chard_clients, 0) # Should be zero as both clients on server select
 
-        self.clients = [None, None, None, None]
+        self.clients[0] = None
+        self.clients[1] = None
 
     def test_04_client0_joinserver(self):
         """
@@ -307,13 +300,54 @@ class TestClientConnection(unittest.TestCase):
         self.assertEqual(len(self.server.client_manager.clients), 4)
         self.assertEqual(self.server.get_player_count(), 4)
 
-    def tearDown(self):
+    def test_11_allreconnect(self):
         """
-        Check if any packets were unaccounted for.
+        Situation: All clients disconnect and reconnect (automated).
         """
 
-        for c in self.clients:
-            if c:
-                c.assert_no_packets()
-                c.assert_no_ooc()
-        self.clients = None
+        self.server.disconnect_all()
+        self.assertEqual(len(self.server.client_manager.clients), 0)
+        self.assertEqual(self.server.get_player_count(), 0)
+
+        self.server.make_clients(4)
+        self.assertEqual(len(self.server.client_manager.clients), 4)
+        self.assertEqual(self.server.get_player_count(), 4)
+
+    def test_12_defaultareafull(self):
+        """
+        Situation: A client joins the server and the default area has all characters taken, so they
+        are forced to choose Spectator.
+        """
+
+        self.server.make_clients(1)
+        self.assertEqual(len(self.server.client_manager.clients), 5)
+        self.assertEqual(self.server.get_player_count(), 5)
+
+    def test_13_serverfull(self):
+        """
+        Situation: Server is filled up, then more clients try to join.
+        """
+
+        self.server.make_clients(95) # Nothing should happen
+        self.assertEqual(len(self.server.client_manager.clients), 100)
+        self.assertEqual(self.server.get_player_count(), 100)
+
+        self.server.make_clients(1) # Would overlap
+        self.assertEqual(len(self.server.client_manager.clients), 100)
+        self.assertEqual(self.server.get_player_count(), 100)
+
+        self.server.make_clients(1) # Tries again, should still be denied
+        self.assertEqual(len(self.server.client_manager.clients), 100)
+        self.assertEqual(self.server.get_player_count(), 100)
+
+        self.server.disconnect_all()
+        self.assertEqual(len(self.server.client_manager.clients), 0)
+        self.assertEqual(self.server.get_player_count(), 0)
+
+    def test_14_toomanyathesametime(self):
+        """
+        Situation: Tester of test function, filling up beyond server capacity.
+        """
+        self.server.make_clients(105)
+        self.assertEqual(len(self.server.client_manager.clients), 100)
+        self.assertEqual(self.server.get_player_count(), 100)
