@@ -207,7 +207,6 @@ class TestClientConnection(unittest.TestCase):
         c.send_command_cts("CC#2#1#FAKEHDID#%") # Attempt to pick char 1
         c.assert_received_packet('PV', (2, 'CID', 1), over=True) # 2 because third client online
         assert(c.get_char_name() == self.server.char_list[1])
-
     def test_07_client0_pickchar(self):
         """
         Situation: Player that joined first picks character after previous two players did. First
@@ -220,7 +219,6 @@ class TestClientConnection(unittest.TestCase):
         c.assert_no_packets() # Should not happen as client 2 has char 1
         c.send_command_cts("CC#0#4#FAKEHDID#%") # Attempt to pick char 4
         c.assert_no_packets() # Should not happen as there is no char 4
-
         c.send_command_cts("CC#0#3#FAKEHDID#%") # Attempt to pick char 3
         c.assert_received_packet('PV', (0, 'CID', 3), over=True) # 0 because first client online
         assert(c.get_char_name() == self.server.char_list[3])

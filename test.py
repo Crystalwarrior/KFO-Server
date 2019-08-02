@@ -8,4 +8,11 @@ import unittest
 
 if __name__ == '__main__':
     TEST_SUITE = unittest.TestLoader().discover('.')
-    unittest.TextTestRunner(verbosity=1).run(TEST_SUITE)
+    #unittest.TestResult(verbosity=1).run(TEST_SUITE)
+    tester = unittest.TextTestRunner(verbosity=1)
+    results = tester.run(TEST_SUITE)
+
+    wrong = results.errors + results.failures
+    if wrong:
+        notification = 'TEST.PY FAILED'
+        raise AssertionError(notification)
