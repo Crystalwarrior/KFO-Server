@@ -3,3 +3,5 @@
 /logs/*.log
 /server/__pycache__/*.pyc
 /.spyproject/
+/__pycache__/
+/tests/__pycache__/

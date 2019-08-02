@@ -38,14 +38,21 @@ from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
 
 class TsuserverDR:
-    def __init__(self):
+    def __init__(self, protocol=None, client_manager=None):
         self.release = 4
         self.major_version = 0
-        self.minor_version = 0
+        self.minor_version = 1
         self.segment_version = ''
-        self.internal_version = '190801a'
+        self.internal_version = '190801b'
         self.software = 'TsuserverDR {}'.format(self.get_version_string())
         self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
+        if protocol is None:
+            self.protocol = AOProtocol
+        else:
+            self.protocol = protocol
+
+        if client_manager is None:
+            client_manager = ClientManager
 
         logger.log_print('Launching {}...'.format(self.version))
         logger.log_print('Loading server configurations...')
@@ -67,7 +74,7 @@ class TsuserverDR:
         self.char_list = list()
         self.char_pages_ao1 = None
         self.load_characters()
-        self.client_manager = ClientManager(self)
+        self.client_manager = client_manager(self)
         self.area_manager = AreaManager(self)
         self.ban_manager = BanManager(self)
         self.party_manager = PartyManager(self)
@@ -95,7 +102,10 @@ class TsuserverDR:
         logger.log_print('Server configurations loaded successfully!')
 
     def start(self):
-        self.loop = asyncio.get_event_loop()
+        try:
+            self.loop = asyncio.get_event_loop()
+        except RuntimeError:
+            self.loop = asyncio.new_event_loop()
 
         bound_ip = '0.0.0.0'
         if self.config['local']:
@@ -106,7 +116,7 @@ class TsuserverDR:
             server_name = self.config['masterserver_name'] if self.config['use_masterserver'] else ''
             logger.log_print('Starting a nonlocal server...')
 
-        ao_server_crt = self.loop.create_server(lambda: AOProtocol(self), bound_ip, self.config['port'])
+        ao_server_crt = self.loop.create_server(lambda: self.protocol(self), bound_ip, self.config['port'])
         ao_server = self.loop.run_until_complete(ao_server_crt)
 
         logger.log_pdebug('Server started successfully!')
