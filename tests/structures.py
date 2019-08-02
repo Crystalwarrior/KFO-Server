@@ -28,16 +28,16 @@ class _TestClientManager(ClientManager):
         def assert_no_packets(self):
             assert(len(self.received_commands) == 0)
 
-        def assert_received_packet(self, command_type, *args, over=False):
+        def assert_received_packet(self, command_type, args, over=False):
             assert(len(self.received_commands) > 0)
             exp_command_type, exp_args = self.received_commands.pop(0)
             assert(command_type == exp_command_type)
-            if isinstance(args, tuple()):
+            if isinstance(args, tuple):
                 assert(len(args) == len(exp_args))
-                for i, arg in args:
-                    if not arg:
+                for i, arg in enumerate(args):
+                    if arg is None:
                         continue
-                    assert arg == exp_args[i]
+                    assert arg == exp_args[i], (command_type, i, arg, exp_args[i])
 
             if over:
                 assert(len(self.received_commands) == 0)
@@ -60,12 +60,17 @@ class _TestClientManager(ClientManager):
             else:
                 assert(len(self.received_ooc) != 0)
 
+        def discard_all(self):
+            self.received_commands = list()
+            self.received_ooc = list()
+
         def receive_command_stc(self, command_type, *args):
             buffer = ''
             if command_type == 'decryptor': # Hi
                 buffer = 'HI#FAKEHDID#%'
             elif command_type == 'ID': # Server ID
                 buffer = "ID#AO2#2.4.8#%"
+                assert(args[0] == self.id)
             elif command_type == 'FL': # AO 2.2.5 configs
                 pass
             elif command_type == 'PN': # Player count
@@ -142,4 +147,20 @@ class _TestTsuserverDR(TsuserverDR):
         c.server = self
         c.area = self.area_manager.default_area()
         c.area.new_client(c)
+        return c
+
+    def make_client(self, char_id, hdid='FAKEHDID'):
+        c = self.create_client()
+        c.send_command_cts("askchaa#%")
+        c.send_command_cts("RC#%")
+        c.send_command_cts("RM#%")
+        c.send_command_cts("RD#%")
+
+        c.send_command_cts("CC#{}#{}#{}#%"
+                           .format(c.id, char_id, hdid))
+        exp = self.char_list[char_id]
+        res = c.get_char_name()
+        assert exp == res, (char_id, exp, res)
+        c.discard_all()
+
         return c

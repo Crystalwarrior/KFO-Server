@@ -9,7 +9,7 @@ import unittest
 if __name__ == '__main__':
     TEST_SUITE = unittest.TestLoader().discover('.')
     #unittest.TestResult(verbosity=1).run(TEST_SUITE)
-    tester = unittest.TextTestRunner(verbosity=1)
+    tester = unittest.TextTestRunner(verbosity=1, failfast=True)
     results = tester.run(TEST_SUITE)
 
     wrong = results.errors + results.failures
