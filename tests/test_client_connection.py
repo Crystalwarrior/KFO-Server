@@ -96,8 +96,8 @@ class TestClientConnection(_Unittest):
         c.assert_received_packet('FM', None, over=True) # Music list, again
 
         host = self.server.config['hostname']
-        c.assert_received_ooc(host, None)
-        c.assert_received_ooc(host, None, over=True)
+        c.assert_received_ooc(host, None, check_CT_packet=False)
+        c.assert_received_ooc(host, None, check_CT_packet=False, over=True)
 
         # Since no char yet...
         assert(c.get_char_name() == self.server.config['spectator_name'])
@@ -145,8 +145,8 @@ class TestClientConnection(_Unittest):
         c.assert_received_packet('FM', None, over=True) # Music list, again
 
         host = self.server.config['hostname']
-        c.assert_received_ooc(host, None)
-        c.assert_received_ooc(host, None, over=True)
+        c.assert_received_ooc(host, None, check_CT_packet=False)
+        c.assert_received_ooc(host, None, check_CT_packet=False, over=True)
 
         # Since no char yet...
         assert(c.get_char_name() == self.server.config['spectator_name'])
@@ -200,8 +200,8 @@ class TestClientConnection(_Unittest):
         c.assert_received_packet('FM', None, over=True) # Music list, again
 
         host = self.server.config['hostname']
-        c.assert_received_ooc(host, None)
-        c.assert_received_ooc(host, None, over=True)
+        c.assert_received_ooc(host, None, check_CT_packet=False)
+        c.assert_received_ooc(host, None, check_CT_packet=False, over=True)
 
         # Since no char yet...
         assert(c.get_char_name() == self.server.config['spectator_name'])

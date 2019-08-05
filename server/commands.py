@@ -1406,18 +1406,16 @@ def ooc_cmd_getareas(client, arg):
     Returns an error if the user is subject to RP mode and is in an area that disables /getareas.
 
     SYNTAX
-    /getarea
+    /getareas
 
     PARAMETERS
     None
 
     EXAMPLE
-    /getarea
+    /getareas
     """
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
-    if client.in_rp and not client.area.rp_getareas_allowed:
-        raise ClientError("This command has been restricted to authorized users only in this area while in RP mode.")
 
     client.send_area_info(client.area, -1, False)
 

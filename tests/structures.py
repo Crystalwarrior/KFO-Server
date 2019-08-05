@@ -1,14 +1,14 @@
-import asyncio
 import unittest
 
 from server.aoprotocol import AOProtocol
 from server.client_manager import ClientManager
+from server.exceptions import TsuserverException
 from server.tsuserver import TsuserverDR
 
 class _Unittest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print('Testing {}...'.format(__file__))
+        print('\nTesting {}...'.format(cls.__name__))
         cls.server = _TestTsuserverDR()
         cls.clients = cls.server.client_list
 
@@ -38,11 +38,36 @@ class _TestClientManager(ClientManager):
             self.send_command_stc(command_type, *args)
 
         def send_command_stc(self, command_type, *args):
+            if len(args) > 1 and isinstance(args[1], TsuserverException):
+                new_args = [args[0], args[1].message]
+                args = tuple(new_args)
             self.received_commands.append([command_type, args])
             self.receive_command_stc(command_type, *args)
 
         def send_command_cts(self, buffer):
             self.my_protocol.data_received(buffer.encode('utf-8'))
+
+        def ooc(self, message):
+            user = self.convert_symbol_to_word(self.name)
+            message = self.convert_symbol_to_word(message)
+            buffer = "CT#{}#{}#%".format(user, message)
+            self.send_command_cts(buffer)
+
+        @staticmethod
+        def convert_symbol_to_word(mes):
+            if mes is None:
+                return None
+            mes = mes.replace('#', '<num>')
+            mes = mes.replace('$', '<dollar>')
+            return mes
+
+        @staticmethod
+        def convert_word_to_symbol(mes):
+            if mes is None:
+                return None
+            mes = mes.replace('<num>', '#')
+            mes = mes.replace('<dollar>', '$')
+            return mes
 
         def assert_no_packets(self):
             assert(len(self.received_commands) == 0)
@@ -50,7 +75,7 @@ class _TestClientManager(ClientManager):
         def assert_received_packet(self, command_type, args, over=False):
             assert(len(self.received_commands) > 0)
             exp_command_type, exp_args = self.received_commands.pop(0)
-            assert(command_type == exp_command_type)
+            assert command_type == exp_command_type, (command_type, exp_command_type)
             if isinstance(args, tuple):
                 assert(len(args) == len(exp_args))
                 for i, arg in enumerate(args):
@@ -64,17 +89,24 @@ class _TestClientManager(ClientManager):
                 assert(len(self.received_commands) != 0)
 
         def assert_no_ooc(self):
-            assert(len(self.received_ooc) == 0)
+            assert len(self.received_ooc) == 0, self.received_ooc[0][1]
 
-        def assert_received_ooc(self, username, message, over=False):
+        def assert_received_ooc(self, username, message, over=False, ooc_over=False,
+                                check_CT_packet=True):
+            user = self.convert_symbol_to_word(username)
+            message = self.convert_symbol_to_word(message)
+            buffer = "CT#{}#{}#%".format(user, message)
+            if check_CT_packet:
+                self.assert_received_packet('CT', buffer, over=over)
+
             assert(len(self.received_ooc) > 0)
             exp_username, exp_message = self.received_ooc.pop(0)
             if username:
                 assert(exp_username == username)
             if message:
-                assert(exp_message == message)
+                assert exp_message == message, (exp_message, message)
 
-            if over:
+            if over or ooc_over:
                 assert(len(self.received_ooc) == 0)
             else:
                 assert(len(self.received_ooc) != 0)
@@ -194,11 +226,16 @@ class _TestTsuserverDR(TsuserverDR):
 
         return c
 
-    def make_clients(self, number, hdid_list=None):
+    def make_clients(self, number, hdid_list=None, user_list=None):
         if hdid_list is None:
             hdid_list = ['FAKEHDID'] * number
         else:
             assert len(hdid_list) == number
+
+        if user_list is None:
+            user_list = ['user{}'.format(i) for i in range(number)]
+        else:
+            assert len(user_list) == number
 
         for i in range(number):
             area = self.area_manager.default_area()
@@ -210,6 +247,8 @@ class _TestTsuserverDR(TsuserverDR):
                 char_id = -1
 
             client = self.make_client(char_id, hdid=hdid_list[i])
+            client.name = user_list[i]
+
             for j, existing_client in enumerate(self.client_list):
                 if existing_client is None:
                     self.client_list[j] = client

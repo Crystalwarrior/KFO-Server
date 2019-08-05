@@ -42,6 +42,8 @@ class Constants():
         except FileNotFoundError:
             info = 'File not found: {}'.format(file)
             raise ServerError(info, code="FileNotFound")
+        except OSError as ex:
+            raise ServerError(str(ex))
 
     @staticmethod
     def get_time():

@@ -22,6 +22,13 @@ class TsuserverException(Exception):
         if code:
             self.code = code
 
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            return False
+        if self.message != other.message:
+            return False
+        return True
+
 class ClientError(TsuserverException):
     pass
 
