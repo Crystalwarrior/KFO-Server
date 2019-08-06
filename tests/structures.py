@@ -8,20 +8,24 @@ from server.tsuserver import TsuserverDR
 class _Unittest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print('\nTesting {}...'.format(cls.__name__))
+        print('\nTesting {}: '.format(cls.__name__), end=' ')
+        if cls.__name__[0] == '_':
+            cls.skipTest('', reason='')
         cls.server = _TestTsuserverDR()
         cls.clients = cls.server.client_list
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(cls):
         """
         Check if any packets were unaccounted for.
         """
 
-        for c in self.clients:
+        for c in cls.clients:
             if c:
                 c.assert_no_packets()
                 c.assert_no_ooc()
-        self.clients = None
+
+        cls.server.disconnect_all()
 
 class _TestClientManager(ClientManager):
     class _TestClient(ClientManager.Client):
@@ -68,6 +72,40 @@ class _TestClientManager(ClientManager):
             mes = mes.replace('<num>', '#')
             mes = mes.replace('<dollar>', '$')
             return mes
+
+        def make_mod(self):
+            if self.is_mod:
+                return
+            self.ooc('/login {}'.format(self.server.config['modpass']))
+            self.assert_received_packet('FM', None)
+            self.assert_received_ooc(self.server.config['hostname'],
+                                     'Logged in as a moderator.', over=True)
+            assert self.is_mod
+
+        def make_cm(self):
+            if self.is_cm:
+                return
+            self.ooc('/logincm {}'.format(self.server.config['cmpass']))
+            self.assert_received_packet('FM', None)
+            self.assert_received_ooc(self.server.config['hostname'],
+                                     'Logged in as a community manager.', over=True)
+            assert self.is_cm
+
+        def make_gm(self):
+            if self.is_gm:
+                return
+            self.ooc('/loginrp {}'.format(self.server.config['gmpass']))
+            self.assert_received_packet('FM', None)
+            self.assert_received_ooc(self.server.config['hostname'],
+                                     'Logged in as a game master.', over=True)
+            assert self.is_gm
+
+        def make_normie(self):
+            self.ooc('/logout')
+            self.assert_received_ooc(self.server.config['hostname'],
+                                     'You are no longer logged in.', ooc_over=True)
+            self.assert_received_packet('FM', None, over=True)
+            assert not (self.is_mod and self.is_cm and self.is_gm)
 
         def assert_no_packets(self):
             assert(len(self.received_commands) == 0)
@@ -193,7 +231,7 @@ class _TestAOProtocol(AOProtocol):
 
 class _TestTsuserverDR(TsuserverDR):
     def __init__(self):
-        super().__init__(client_manager=_TestClientManager)
+        super().__init__(client_manager=_TestClientManager, in_test=True)
         self.ao_protocol = _TestAOProtocol
         self.client_list = [None] * self.config['playerlimit']
 
@@ -256,6 +294,17 @@ class _TestTsuserverDR(TsuserverDR):
             else:
                 j = -1
             assert j == client.id, (j, client.id)
+
+    def disconnect_client(self, client_id, assert_no_outstanding=False):
+        client = self.client_list[client_id]
+        if not client:
+            raise KeyError(client_id)
+
+        client.disconnect()
+        if assert_no_outstanding:
+            client.assert_no_packets()
+            client.assert_no_ooc()
+        self.client_list[client_id] = None
 
     def disconnect_all(self, assert_no_outstanding=False):
         for (i, client) in enumerate(self.client_list):

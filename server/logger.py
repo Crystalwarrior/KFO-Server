@@ -118,6 +118,9 @@ def log_print(msg, client=None):
     current_time = Constants.get_time_iso()
     print('{}: {}'.format(current_time, msg))
 
+def log_print2(msg, client=None):
+    pass
+
 def log_pdebug(msg, client=None):
     log_debug(msg, client=client)
     log_print(msg, client=client)

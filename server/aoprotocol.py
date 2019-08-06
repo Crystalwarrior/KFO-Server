@@ -44,6 +44,7 @@ class AOProtocol(asyncio.Protocol):
         self.client = None
         self.buffer = ''
         self.ping_timeout = None
+        logger.log_print = logger.log_print2 if self.server.in_test else logger.log_print
 
         # Determine whether /exec is active or not and warn server owner if so.
         if getattr(self.server.commands, "ooc_cmd_exec")(self.client, "is_exec_active") == 1:

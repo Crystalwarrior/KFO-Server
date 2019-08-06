@@ -38,21 +38,19 @@ from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
 
 class TsuserverDR:
-    def __init__(self, protocol=None, client_manager=None):
+    def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.release = 4
         self.major_version = 0
-        self.minor_version = 4
+        self.minor_version = 5
         self.segment_version = ''
-        self.internal_version = '190805a'
+        self.internal_version = '190806a'
         self.software = 'TsuserverDR {}'.format(self.get_version_string())
         self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
-        if protocol is None:
-            self.protocol = AOProtocol
-        else:
-            self.protocol = protocol
+        self.in_test = in_test
 
-        if client_manager is None:
-            client_manager = ClientManager
+        self.protocol = AOProtocol if protocol is None else protocol
+        client_manager = ClientManager if client_manager is None else client_manager
+        logger.log_print = logger.log_print2 if self.in_test else logger.log_print
 
         logger.log_print('Launching {}...'.format(self.version))
         logger.log_print('Loading server configurations...')

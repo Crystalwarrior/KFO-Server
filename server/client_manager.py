@@ -909,6 +909,8 @@ class ClientManager:
                 raise ClientError('Already logged in.')
             if password == self.server.config['modpass']:
                 self.is_mod = True
+                self.is_cm = False
+                self.is_gm = False
                 self.in_rp = False
             else:
                 raise ClientError('Invalid password.')
@@ -918,6 +920,8 @@ class ClientManager:
                 raise ClientError('Already logged in.')
             if password == self.server.config['cmpass']:
                 self.is_cm = True
+                self.is_mod = False
+                self.is_gm = False
                 self.in_rp = False
             else:
                 raise ClientError('Invalid password.')
@@ -938,6 +942,8 @@ class ClientManager:
 
             if password in valid_passwords:
                 self.is_gm = True
+                self.is_mod = False
+                self.is_cm = False
                 self.in_rp = False
             else:
                 raise ClientError('Invalid password.')
