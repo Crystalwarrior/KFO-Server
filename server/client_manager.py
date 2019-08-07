@@ -84,6 +84,9 @@ class ClientManager:
             self.last_active = Constants.get_time()
             self.first_person = False
             self.last_ic_notme = None, None
+            self.is_blind = False
+            self.is_deaf = False
+            self.is_gagged = False
 
             #music flood-guard stuff
             self.mus_counter = 0
@@ -307,7 +310,7 @@ class ClientManager:
 
             return new_char_id, captured_messages
 
-        def notify_change_area(self, area, old_char, ignore_bleeding=False):
+        def notify_change_area(self, area, old_char, ignore_bleeding=False, just_me=False):
             """
             Send all OOC notifications that come from switching areas.
             Right now there is, (in this order)
@@ -321,6 +324,8 @@ class ClientManager:
             ** Bleeding status of people in the area, sent to player who's moving
             ** Bleeding status of the person who's moved, sent to everyone else in the area
             ** Blood in area status, sent to player who's moving.
+
+            If just_me is True, no notifications are sent to other players in the area.
             """
 
             # Code here assumes successful area change, so it will be sending client notifications
@@ -341,7 +346,7 @@ class ClientManager:
                 self.send_ooc('You enter a pitch dark room.')
 
             # If autopassing, send OOC messages, provided the lights are on
-            if self.autopass and not self.char_id < 0:
+            if self.autopass and not self.char_id < 0 and not just_me:
                 self.send_ooc_others('{} has left to the {}.'.format(old_char, area.name), in_area=old_area,
                                       pred=lambda c: (c.is_staff() or (old_area.lights and self.is_visible)))
                 self.send_ooc_others('{} has entered from the {}.'
@@ -350,11 +355,11 @@ class ClientManager:
 
             # If former or new area's lights are turned off, send special messages to non-staff
             # announcing your presence
-            if not old_area.lights and not self.char_id < 0 and self.is_visible:
+            if not old_area.lights and not self.char_id < 0 and self.is_visible and not just_me:
                 self.send_ooc_others('You hear footsteps going out of the room.',
                                       in_area=old_area, is_staff=False)
 
-            if not area.lights and not self.char_id < 0 and self.is_visible:
+            if not area.lights and not self.char_id < 0 and self.is_visible and not just_me:
                 self.send_ooc_others('You hear footsteps coming into the room.',
                                       in_area=area, is_staff=False)
 
@@ -363,7 +368,8 @@ class ClientManager:
             if self.is_bleeding:
                 old_area.bleeds_to.add(old_area.name)
                 area.bleeds_to.add(area.name)
-            if not ignore_bleeding and self.is_bleeding:
+
+            if not ignore_bleeding and self.is_bleeding and not just_me:
                 # As these are sets, repetitions are automatically filtered out
                 old_area.bleeds_to.add(area.name)
                 area.bleeds_to.add(old_area.name)
@@ -399,7 +405,7 @@ class ClientManager:
             # If bleeding and either you were sneaking or your former area had its lights turned
             # off, notify everyone in the new area to the less intense sounds and smells of
             # blood. Do nothing if lights on and not sneaking.
-            if not ignore_bleeding and self.is_bleeding:
+            if not ignore_bleeding and self.is_bleeding and not just_me:
                 area_sole_bleeding = (len([c for c in old_area.clients if c.is_bleeding]) == 1)
                 if self.is_visible and old_area.lights:
                     normal_mes = ''

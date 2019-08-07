@@ -40,10 +40,10 @@ from server.party_manager import PartyManager
 class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.release = 4
-        self.major_version = 0
-        self.minor_version = 5
-        self.segment_version = ''
-        self.internal_version = '190806a'
+        self.major_version = 1
+        self.minor_version = 0
+        self.segment_version = 'a1'
+        self.internal_version = '190807a'
         self.software = 'TsuserverDR {}'.format(self.get_version_string())
         self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
         self.in_test = in_test

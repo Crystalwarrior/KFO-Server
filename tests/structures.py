@@ -1,3 +1,4 @@
+import random
 import unittest
 
 from server.aoprotocol import AOProtocol
@@ -26,6 +27,32 @@ class _Unittest(unittest.TestCase):
                 c.assert_no_ooc()
 
         cls.server.disconnect_all()
+
+class _TestSituation3(_Unittest):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.server.make_clients(3)
+        cls.c0 = cls.clients[0]
+        cls.c1 = cls.clients[1]
+        cls.c2 = cls.clients[2]
+
+class _TestSituation4(_Unittest):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.server.make_clients(4)
+        cls.c0 = cls.clients[0]
+        cls.c1 = cls.clients[1]
+        cls.c2 = cls.clients[2]
+        cls.c3 = cls.clients[3]
+
+class _TestSituation4Mc12(_TestSituation4):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.c1.make_mod()
+        cls.c2.make_mod()
 
 class _TestClientManager(ClientManager):
     class _TestClient(ClientManager.Client):
@@ -78,8 +105,7 @@ class _TestClientManager(ClientManager):
                 return
             self.ooc('/login {}'.format(self.server.config['modpass']))
             self.assert_received_packet('FM', None)
-            self.assert_received_ooc(self.server.config['hostname'],
-                                     'Logged in as a moderator.', over=True)
+            self.assert_received_ooc('Logged in as a moderator.', over=True)
             assert self.is_mod
 
         def make_cm(self):
@@ -87,8 +113,7 @@ class _TestClientManager(ClientManager):
                 return
             self.ooc('/logincm {}'.format(self.server.config['cmpass']))
             self.assert_received_packet('FM', None)
-            self.assert_received_ooc(self.server.config['hostname'],
-                                     'Logged in as a community manager.', over=True)
+            self.assert_received_ooc('Logged in as a community manager.', over=True)
             assert self.is_cm
 
         def make_gm(self):
@@ -96,19 +121,33 @@ class _TestClientManager(ClientManager):
                 return
             self.ooc('/loginrp {}'.format(self.server.config['gmpass']))
             self.assert_received_packet('FM', None)
-            self.assert_received_ooc(self.server.config['hostname'],
-                                     'Logged in as a game master.', over=True)
+            self.assert_received_ooc('Logged in as a game master.', over=True)
             assert self.is_gm
 
         def make_normie(self):
             self.ooc('/logout')
-            self.assert_received_ooc(self.server.config['hostname'],
-                                     'You are no longer logged in.', ooc_over=True)
+            self.assert_received_ooc('You are no longer logged in.', ooc_over=True)
             self.assert_received_packet('FM', None, over=True)
             assert not (self.is_mod and self.is_cm and self.is_gm)
 
+        def move_area(self, area_id, discard_packets=True):
+            as_command = random.randint(0, 1)
+            area = self.server.area_manager.get_area_by_id(area_id)
+            if as_command:
+                self.ooc('/area {}'.format(area_id))
+            else:
+                name = area.name
+                buffer = 'MC#{}-{}#0#%'.format(area_id, name)
+                self.send_command_cts(buffer)
+            assert self.area.id == area_id, (self.area.id, area_id, as_command)
+
+            if discard_packets:
+                self.discard_all()
+
         def assert_no_packets(self):
-            assert(len(self.received_commands) == 0)
+            err = ('{} expected no outstanding packets, found {}.'
+                   .format(self, self.received_commands))
+            assert len(self.received_commands) == 0, err
 
         def assert_received_packet(self, command_type, args, over=False):
             assert(len(self.received_commands) > 0)
@@ -122,15 +161,24 @@ class _TestClientManager(ClientManager):
                     assert arg == exp_args[i], (command_type, i, arg, exp_args[i])
 
             if over:
-                assert(len(self.received_commands) == 0)
+                err = ('{} expected no more packets (did you accidentally put over=True?)'
+                       .format(self))
+                assert(len(self.received_commands) == 0), err
             else:
-                assert(len(self.received_commands) != 0)
+                err = ('{} expected more packets (did you forget to put over=True?)'
+                       .format(self))
+                assert len(self.received_commands) != 0, err
 
         def assert_no_ooc(self):
-            assert len(self.received_ooc) == 0, self.received_ooc[0][1]
+            err = ('{} expected no more OOC messages, found {}'
+                   .format(self, self.received_ooc))
+            assert len(self.received_ooc) == 0, err
 
-        def assert_received_ooc(self, username, message, over=False, ooc_over=False,
+        def assert_received_ooc(self, message, username=None, over=False, ooc_over=False,
                                 check_CT_packet=True):
+            if username is None:
+                username = self.server.config['hostname']
+
             user = self.convert_symbol_to_word(username)
             message = self.convert_symbol_to_word(message)
             buffer = "CT#{}#{}#%".format(user, message)
@@ -138,11 +186,14 @@ class _TestClientManager(ClientManager):
                 self.assert_received_packet('CT', buffer, over=over)
 
             assert(len(self.received_ooc) > 0)
-            exp_username, exp_message = self.received_ooc.pop(0)
+            act_username, act_message = self.received_ooc.pop(0)
             if username:
-                assert(exp_username == username)
+                err = ('Wrong OOC message sender. Expected "{}", got "{}".'
+                       .format(username, act_username))
+                assert username == act_username, err
             if message:
-                assert exp_message == message, (exp_message, message)
+                err = 'Wrong OOC message. Expected "{}", got "{}".'.format(message, act_message)
+                assert message == act_message, err
 
             if over or ooc_over:
                 assert(len(self.received_ooc) == 0)

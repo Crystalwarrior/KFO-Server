@@ -4793,6 +4793,100 @@ def ooc_cmd_8ball(client, arg):
     logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'
                       .format(client.area.id, client.get_char_name(), flip), client)
 
+def ooc_cmd_blind(client, arg):
+    """ (STAFF ONLY)
+    Blind
+    """
+    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
+    c = Constants.parse_id(client, arg)
+    if c.is_blind:
+        raise ClientError('{} is already blinded.'.format(c.get_char_name()))
+
+    c.is_blind = True
+    client.send_ooc('Blinded {}.'.format(c.get_char_name()))
+    c.send_ooc('You have been blinded.')
+    client.send_ooc_others('{} has blinded {} ({}).'
+                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
+
+def ooc_cmd_unblind(client, arg):
+    """ (STAFF ONLY)
+    Unblind
+    """
+    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
+    c = Constants.parse_id(client, arg)
+    if not c.is_blind:
+        raise ClientError('{} is already unblinded.'.format(c.get_char_name()))
+
+    c.is_blind = False
+    client.send_ooc('Unblinded {}.'.format(c.get_char_name()))
+    c.send_ooc('You have been unblinded.')
+    client.send_ooc_others('{} has unblinded {} ({}).'
+                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
+
+def ooc_cmd_deafen(client, arg):
+    """ (STAFF ONLY)
+    Deafen
+    """
+    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
+    c = Constants.parse_id(client, arg)
+
+    if c.is_deaf:
+        raise ClientError('{} is already deafened.'.format(c.get_char_name()))
+
+    c.is_deaf = True
+    client.send_ooc('Deafened {}.'.format(c.get_char_name()))
+    c.send_ooc('You have been deafened.')
+    client.send_ooc_others('{} has deafened {} ({}).'
+                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
+
+def ooc_cmd_undeafen(client, arg):
+    """ (STAFF ONLY)
+    Undeafen
+    """
+    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
+    c = Constants.parse_id(client, arg)
+
+    if not c.is_deaf:
+        raise ClientError('{} is already undeafened.'.format(c.get_char_name()))
+
+    c.is_deaf = False
+    client.send_ooc('Undeafened {}.'.format(c.get_char_name()))
+    c.send_ooc('You have been undeafened.')
+    client.send_ooc_others('{} has undeafened {} ({}).'
+                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
+
+def ooc_cmd_gag(client, arg):
+    """ (STAFF ONLY)
+    Gag
+    """
+    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
+    c = Constants.parse_id(client, arg)
+
+    if c.is_gagged:
+        raise ClientError('{} is already gagged.'.format(c.get_char_name()))
+
+    c.is_gagged = True
+    client.send_ooc('Gagged {}.'.format(c.get_char_name()))
+    c.send_ooc('You have been gagged.')
+    client.send_ooc_others('{} has gagged {} ({}).'
+                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
+
+def ooc_cmd_ungag(client, arg):
+    """ (STAFF ONLY)
+    Ungag
+    """
+    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
+    c = Constants.parse_id(client, arg)
+
+    if not c.is_gagged:
+        raise ClientError('{} is already ungagged.'.format(c.get_char_name()))
+
+    c.is_gagged = False
+    client.send_ooc('Ungagged {}.'.format(c.get_char_name()))
+    c.send_ooc('You have been ungagged.')
+    client.send_ooc_others('{} has ungagged {} ({}).'
+                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
+
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

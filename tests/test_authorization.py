@@ -1,12 +1,11 @@
 import datetime
 
-from .structures import _Unittest
+from .structures import _TestSituation3
 
-class _TestAuthorization(_Unittest):
+class _TestAuthorization(_TestSituation3):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.server.make_clients(3)
         cls.guardpass = cls.server.config['guardpass']
         cls.modpass = cls.server.config['modpass']
         cls.cmpass = cls.server.config['cmpass']
@@ -19,18 +18,14 @@ class _TestAuthorization(_Unittest):
         cls.gmpasses[5] = cls.server.config['gmpass5']
         cls.gmpasses[6] = cls.server.config['gmpass6']
         cls.gmpasses[7] = cls.server.config['gmpass7']
-        cls.c0 = cls.clients[0]
-        cls.c1 = cls.clients[1]
-        cls.c2 = cls.clients[2]
-        cls.host = cls.server.config['hostname']
         cls.wrong = "AAAABBBB" # Please do not make this any of your staff passwords
 
         current_day = datetime.datetime.today().weekday()
         if datetime.datetime.now().hour < 15:
             current_day += 1
         cls.daily_gmpass = cls.server.config['gmpass{}'.format((current_day % 7) + 1)]
-        cls.not_daily_gmpasses = {cls.server.config['gmpass{}'.format(((current_day + x)% 7) + 1)]
-                                  for x in range(1, 7)}
+        cls.not_daily_gmpasses = {cls.server.config['gmpass{}'.format((x % 7) + 1)]
+                                  for x in range(1, 7) if x != current_day}
 
         cls.all_passwords = {cls.wrong,
                              cls.wrong,
@@ -61,7 +56,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
         # Try and log in with incorrect passwords
         for password in self.wrong_passwords:
             self.c0.ooc('/{} {}'.format(self.ooc_command, password))
-            self.c0.assert_received_ooc(self.host, 'Invalid password.', over=True)
+            self.c0.assert_received_ooc('Invalid password.', over=True)
             self.assertFalse(self.good_rank(self.c0))
 
         # Make sure no one is randomly logged in either
@@ -79,11 +74,11 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
 
         self.c0.ooc('/{} {}'.format(self.ooc_command, self.correct_pass1))
         self.c0.assert_received_packet('FM', None)
-        self.c0.assert_received_ooc(self.host, self.ooc_successful_login, over=True)
+        self.c0.assert_received_ooc(self.ooc_successful_login, over=True)
         self.assertTrue(self.good_rank(self.c0))
 
         self.c0.ooc('/{} {}'.format(self.ooc_command, self.correct_pass1))
-        self.c0.assert_received_ooc(self.host, 'Already logged in.', over=True)
+        self.c0.assert_received_ooc('Already logged in.', over=True)
         self.assertTrue(self.good_rank(self.c0))
 
         # Make sure no one is randomly logged in either
@@ -98,16 +93,16 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
         """
 
         self.c0.ooc('/logout {}'.format(self.correct_pass1)) # Some argument
-        self.c0.assert_received_ooc(self.host, 'This command has no arguments.', over=True)
+        self.c0.assert_received_ooc('This command has no arguments.', over=True)
         self.assertTrue(self.good_rank(self.c0))
 
         self.c0.ooc('/logout')
-        self.c0.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+        self.c0.assert_received_ooc('You are no longer logged in.', ooc_over=True)
         self.c0.assert_received_packet('FM', None, over=True)
         self.assertFalse(self.good_rank(self.c0))
 
         self.c0.ooc('/logout')
-        self.c0.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+        self.c0.assert_received_ooc('You are no longer logged in.', ooc_over=True)
         self.c0.assert_received_packet('FM', None, over=True)
         self.assertFalse(self.good_rank(self.c0))
 
@@ -124,21 +119,21 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
 
         self.c0.ooc('/{} {}'.format(self.ooc_command, self.correct_pass1))
         self.c0.assert_received_packet('FM', None)
-        self.c0.assert_received_ooc(self.host, self.ooc_successful_login, over=True)
+        self.c0.assert_received_ooc(self.ooc_successful_login, over=True)
         self.assertTrue(self.good_rank(self.c0))
 
         self.c0.ooc('/logout')
-        self.c0.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+        self.c0.assert_received_ooc('You are no longer logged in.', ooc_over=True)
         self.c0.assert_received_packet('FM', None, over=True)
         self.assertFalse(self.good_rank(self.c0))
 
         self.c0.ooc('/{} {}'.format(self.ooc_command, self.correct_pass2))
         self.c0.assert_received_packet('FM', None)
-        self.c0.assert_received_ooc(self.host, self.ooc_successful_login, over=True)
+        self.c0.assert_received_ooc(self.ooc_successful_login, over=True)
         self.assertTrue(self.good_rank(self.c0))
 
         self.c0.ooc('/logout')
-        self.c0.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+        self.c0.assert_received_ooc('You are no longer logged in.', ooc_over=True)
         self.c0.assert_received_packet('FM', None, over=True)
         self.assertFalse(self.good_rank(self.c0))
 
@@ -165,12 +160,12 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
             for (a1, a2, b1, b2) in client_pos:
                 a1.ooc('/{} {}'.format(self.ooc_command, pass1))
                 a1.assert_received_packet('FM', None)
-                a1.assert_received_ooc(self.host, self.ooc_successful_login, over=True)
+                a1.assert_received_ooc(self.ooc_successful_login, over=True)
                 self.assertTrue(self.good_rank(a1))
                 self.assertFalse(self.good_rank(a2))
                 a2.ooc('/{} {}'.format(self.ooc_command, pass2))
                 a2.assert_received_packet('FM', None)
-                a2.assert_received_ooc(self.host, self.ooc_successful_login, over=True)
+                a2.assert_received_ooc(self.ooc_successful_login, over=True)
                 self.assertTrue(self.good_rank(a1))
                 self.assertTrue(self.good_rank(a2))
 
@@ -181,12 +176,12 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
                     self.assertFalse(self.bad_rank2(c))
 
                 b1.ooc('/logout')
-                b1.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+                b1.assert_received_ooc('You are no longer logged in.', ooc_over=True)
                 b1.assert_received_packet('FM', None, over=True)
                 self.assertFalse(self.good_rank(b1))
                 self.assertTrue(self.good_rank(b2))
                 b2.ooc('/logout')
-                b2.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+                b2.assert_received_ooc('You are no longer logged in.', ooc_over=True)
                 b2.assert_received_packet('FM', None, over=True)
                 self.assertFalse(self.good_rank(b1))
                 self.assertFalse(self.good_rank(b2))
@@ -212,11 +207,11 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
             for (a1, a2, b1, b2) in client_pos:
                 a1.ooc('/{} {}'.format(self.ooc_command, pass1))
                 a1.assert_received_packet('FM', None)
-                a1.assert_received_ooc(self.host, self.ooc_successful_login, over=True)
+                a1.assert_received_ooc(self.ooc_successful_login, over=True)
                 self.assertTrue(self.good_rank(a1))
                 self.assertFalse(self.good_rank(a2))
                 a2.ooc('/{} {}'.format(self.ooc_command, pass2))
-                a2.assert_received_ooc(self.host, 'Invalid password.', over=True)
+                a2.assert_received_ooc('Invalid password.', over=True)
                 self.assertTrue(self.good_rank(a1))
                 self.assertFalse(self.good_rank(a2))
 
@@ -227,7 +222,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
                     self.assertFalse(self.bad_rank2(c))
 
                 b1.ooc('/logout')
-                b1.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+                b1.assert_received_ooc('You are no longer logged in.', ooc_over=True)
                 b1.assert_received_packet('FM', None, over=True)
                 if a1 == b1:
                     self.assertFalse(self.good_rank(a1))
@@ -235,7 +230,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
                     self.assertTrue(self.good_rank(a1))
                 self.assertFalse(self.good_rank(a2))
                 b2.ooc('/logout')
-                b2.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+                b2.assert_received_ooc('You are no longer logged in.', ooc_over=True)
                 b2.assert_received_packet('FM', None, over=True)
                 self.assertFalse(self.good_rank(b1))
                 self.assertFalse(self.good_rank(b2))
@@ -246,7 +241,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
                     self.assertFalse(self.bad_rank1(c))
                     self.assertFalse(self.bad_rank2(c))
 
-class Test01_AuthorizationGM(_TestAuthorizationSingleRank):
+class TestAuthorization_01_GMBasic(_TestAuthorizationSingleRank):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -259,7 +254,7 @@ class Test01_AuthorizationGM(_TestAuthorizationSingleRank):
         cls.bad_rank1 = lambda x, c: c.is_mod
         cls.bad_rank2 = lambda x, c: c.is_cm
 
-class Test02_AuthorizationCM(_TestAuthorizationSingleRank):
+class TestAuthorization_02_CMBasic(_TestAuthorizationSingleRank):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -272,7 +267,7 @@ class Test02_AuthorizationCM(_TestAuthorizationSingleRank):
         cls.bad_rank1 = lambda x, c: c.is_mod
         cls.bad_rank2 = lambda x, c: c.is_gm
 
-class Test03_AuthorizationMod(_TestAuthorizationSingleRank):
+class TestAuthorization_03_ModBasic(_TestAuthorizationSingleRank):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -285,7 +280,7 @@ class Test03_AuthorizationMod(_TestAuthorizationSingleRank):
         cls.bad_rank1 = lambda x, c: c.is_cm
         cls.bad_rank2 = lambda x, c: c.is_gm
 
-class Test04_AuthorizationIntegration(_TestAuthorization):
+class TestAuthorization_04_Integration(_TestAuthorization):
     def test_02_WrongLogins(self):
         """
         Situation: C0-2 attempt to log in to different ranks with wrong passwords.
@@ -293,39 +288,39 @@ class Test04_AuthorizationIntegration(_TestAuthorization):
 
         # Try and log in with incorrect passwords
         self.c0.ooc('/logincm {}'.format(self.wrong))
-        self.c0.assert_received_ooc(self.host, 'Invalid password.', over=True)
+        self.c0.assert_received_ooc('Invalid password.', over=True)
         self.assertFalse(self.c0.is_cm)
 
         self.c1.ooc('/loginrp {}'.format(self.wrong))
-        self.c1.assert_received_ooc(self.host, 'Invalid password.', over=True)
+        self.c1.assert_received_ooc('Invalid password.', over=True)
         self.assertFalse(self.c1.is_gm)
 
         self.c0.ooc('/login {}'.format(self.wrong))
-        self.c0.assert_received_ooc(self.host, 'Invalid password.', over=True)
+        self.c0.assert_received_ooc('Invalid password.', over=True)
         self.assertFalse(self.c0.is_mod)
 
         self.c1.ooc('/login {}'.format(self.wrong))
-        self.c1.assert_received_ooc(self.host, 'Invalid password.', over=True)
+        self.c1.assert_received_ooc('Invalid password.', over=True)
         self.assertFalse(self.c1.is_mod)
 
         self.c2.ooc('/loginrp {}'.format(self.wrong))
-        self.c2.assert_received_ooc(self.host, 'Invalid password.', over=True)
+        self.c2.assert_received_ooc('Invalid password.', over=True)
         self.assertFalse(self.c2.is_gm)
 
         self.c1.ooc('/logincm {}'.format(self.wrong))
-        self.c1.assert_received_ooc(self.host, 'Invalid password.', over=True)
+        self.c1.assert_received_ooc('Invalid password.', over=True)
         self.assertFalse(self.c1.is_cm)
 
         self.c0.ooc('/login {}'.format(self.wrong))
-        self.c0.assert_received_ooc(self.host, 'Invalid password.', over=True)
+        self.c0.assert_received_ooc('Invalid password.', over=True)
         self.assertFalse(self.c0.is_gm)
 
         self.c2.ooc('/loginrp {}'.format(self.wrong))
-        self.c2.assert_received_ooc(self.host, 'Invalid password.', over=True)
+        self.c2.assert_received_ooc('Invalid password.', over=True)
         self.assertFalse(self.c2.is_gm)
 
         self.c2.ooc('/logincm {}'.format(self.wrong))
-        self.c2.assert_received_ooc(self.host, 'Invalid password.', over=True)
+        self.c2.assert_received_ooc('Invalid password.', over=True)
         self.assertFalse(self.c2.is_cm)
 
         # Make sure no one is randomly logged in either
@@ -341,29 +336,29 @@ class Test04_AuthorizationIntegration(_TestAuthorization):
 
         self.c1.ooc('/logincm {}'.format(self.cmpass))
         self.c1.assert_received_packet('FM', None)
-        self.c1.assert_received_ooc(self.host, 'Logged in as a community manager.', over=True)
+        self.c1.assert_received_ooc('Logged in as a community manager.', over=True)
         self.assertTrue(self.c1.is_cm)
 
         self.c0.ooc('/loginrp {}'.format(self.gmpass))
         self.c0.assert_received_packet('FM', None)
-        self.c0.assert_received_ooc(self.host, 'Logged in as a game master.', over=True)
+        self.c0.assert_received_ooc('Logged in as a game master.', over=True)
         self.assertTrue(self.c0.is_gm)
 
         self.c0.ooc('/loginrp {}'.format(self.gmpass))
-        self.c0.assert_received_ooc(self.host, 'Already logged in.', over=True)
+        self.c0.assert_received_ooc('Already logged in.', over=True)
         self.assertTrue(self.c0.is_gm)
 
         self.c2.ooc('/login {}'.format(self.modpass))
         self.c2.assert_received_packet('FM', None)
-        self.c2.assert_received_ooc(self.host, 'Logged in as a moderator.', over=True)
+        self.c2.assert_received_ooc('Logged in as a moderator.', over=True)
         self.assertTrue(self.c2.is_mod)
 
         self.c2.ooc('/login {}'.format(self.modpass))
-        self.c2.assert_received_ooc(self.host, 'Already logged in.', over=True)
+        self.c2.assert_received_ooc('Already logged in.', over=True)
         self.assertTrue(self.c2.is_mod)
 
         self.c1.ooc('/logincm {}'.format(self.cmpass))
-        self.c1.assert_received_ooc(self.host, 'Already logged in.', over=True)
+        self.c1.assert_received_ooc('Already logged in.', over=True)
         self.assertTrue(self.c1.is_cm)
 
     def test_04_LogoutAndRelogout(self):
@@ -372,45 +367,45 @@ class Test04_AuthorizationIntegration(_TestAuthorization):
         """
 
         self.c0.ooc('/logout {}'.format(self.gmpass)) # Some argument
-        self.c0.assert_received_ooc(self.host, 'This command has no arguments.', over=True)
+        self.c0.assert_received_ooc('This command has no arguments.', over=True)
         self.assertTrue(self.c0.is_gm)
 
         self.c0.ooc('/logout')
-        self.c0.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+        self.c0.assert_received_ooc('You are no longer logged in.', ooc_over=True)
         self.c0.assert_received_packet('FM', None, over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertTrue(self.c1.is_cm)
         self.assertTrue(self.c2.is_mod)
 
         self.c0.ooc('/logout')
-        self.c0.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+        self.c0.assert_received_ooc('You are no longer logged in.', ooc_over=True)
         self.c0.assert_received_packet('FM', None, over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertTrue(self.c1.is_cm)
         self.assertTrue(self.c2.is_mod)
 
         self.c2.ooc('/logout {}'.format(self.wrong)) # Some argument
-        self.c2.assert_received_ooc(self.host, 'This command has no arguments.', over=True)
+        self.c2.assert_received_ooc('This command has no arguments.', over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertTrue(self.c1.is_cm)
         self.assertTrue(self.c2.is_mod)
 
         self.c1.ooc('/logout')
-        self.c1.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+        self.c1.assert_received_ooc('You are no longer logged in.', ooc_over=True)
         self.c1.assert_received_packet('FM', None, over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertFalse(self.c1.is_cm)
         self.assertTrue(self.c2.is_mod)
 
         self.c2.ooc('/logout')
-        self.c2.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+        self.c2.assert_received_ooc('You are no longer logged in.', ooc_over=True)
         self.c2.assert_received_packet('FM', None, over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertFalse(self.c1.is_cm)
         self.assertFalse(self.c2.is_mod)
 
         self.c1.ooc('/logout {}'.format(self.wrong)) # Some argument
-        self.c1.assert_received_ooc(self.host, 'This command has no arguments.', over=True)
+        self.c1.assert_received_ooc('This command has no arguments.', over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertFalse(self.c1.is_cm)
         self.assertFalse(self.c2.is_mod)
@@ -429,21 +424,21 @@ class Test04_AuthorizationIntegration(_TestAuthorization):
         def login(c1, c2, ooc_rank1, ooc_rank2, pass1, pass2, rank1, rank2, success1, success2):
             c1.ooc('/{} {}'.format(ooc_rank1, pass1))
             c1.assert_received_packet('FM', None)
-            c1.assert_received_ooc(self.host, success1, over=True)
+            c1.assert_received_ooc(success1, over=True)
             self.assertTrue(rank1(c1))
 
             c1.ooc('/logout')
-            c1.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+            c1.assert_received_ooc('You are no longer logged in.', ooc_over=True)
             c1.assert_received_packet('FM', None, over=True)
             self.assertFalse(rank1(c1))
 
             c2.ooc('/{} {}'.format(ooc_rank2, pass2))
             c2.assert_received_packet('FM', None)
-            c2.assert_received_ooc(self.host, success2, over=True)
+            c2.assert_received_ooc(success2, over=True)
             self.assertTrue(rank2(c2))
 
             c2.ooc('/logout')
-            c2.assert_received_ooc(self.host, 'You are no longer logged in.', ooc_over=True)
+            c2.assert_received_ooc('You are no longer logged in.', ooc_over=True)
             c2.assert_received_packet('FM', None, over=True)
             self.assertFalse(rank2(c2))
 
@@ -478,28 +473,28 @@ class Test04_AuthorizationIntegration(_TestAuthorization):
 
         self.c0.ooc('/loginrp {}'.format(self.gmpass))
         self.c0.assert_received_packet('FM', None)
-        self.c0.assert_received_ooc(self.host, 'Logged in as a game master.', over=True)
+        self.c0.assert_received_ooc('Logged in as a game master.', over=True)
         self.assertFalse(self.c0.is_mod)
         self.assertFalse(self.c0.is_cm)
         self.assertTrue(self.c0.is_gm)
 
         self.c0.ooc('/logincm {}'.format(self.cmpass))
         self.c0.assert_received_packet('FM', None)
-        self.c0.assert_received_ooc(self.host, 'Logged in as a community manager.', over=True)
+        self.c0.assert_received_ooc('Logged in as a community manager.', over=True)
         self.assertFalse(self.c0.is_mod)
         self.assertTrue(self.c0.is_cm)
         self.assertFalse(self.c0.is_gm)
 
         self.c0.ooc('/login {}'.format(self.modpass))
         self.c0.assert_received_packet('FM', None)
-        self.c0.assert_received_ooc(self.host, 'Logged in as a moderator.', over=True)
+        self.c0.assert_received_ooc('Logged in as a moderator.', over=True)
         self.assertTrue(self.c0.is_mod)
         self.assertFalse(self.c0.is_cm)
         self.assertFalse(self.c0.is_gm)
 
         self.c0.ooc('/loginrp {}'.format(self.daily_gmpass))
         self.c0.assert_received_packet('FM', None)
-        self.c0.assert_received_ooc(self.host, 'Logged in as a game master.', over=True)
+        self.c0.assert_received_ooc('Logged in as a game master.', over=True)
         self.assertFalse(self.c0.is_mod)
         self.assertFalse(self.c0.is_cm)
         self.assertTrue(self.c0.is_gm)
@@ -517,7 +512,7 @@ class Test04_AuthorizationIntegration(_TestAuthorization):
             self.assertFalse(c.is_cm)
             self.assertFalse(c.is_gm)
 
-class Test05_AuthorizationShortcuts(_TestAuthorization):
+class TestAuthorization_05_Shortcuts(_TestAuthorization):
     """
     Tester of authorization shortcuts.
     """
