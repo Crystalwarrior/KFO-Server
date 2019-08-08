@@ -540,7 +540,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc('You must insert a name that starts with a letter.')
             return
         if self.server.config['hostname'] in self.client.name or '<dollar>G' in self.client.name:
-            self.client.send_ooc('That name is reserved!')
+            self.client.send_ooc('That name is reserved.')
             return
         if args[1].startswith('/'):
             spl = args[1][1:].split(' ', 1)

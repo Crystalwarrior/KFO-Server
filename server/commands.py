@@ -2461,11 +2461,10 @@ def ooc_cmd_mutepm(client, arg):
     EXAMPLE
     /mutepm
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
+    Constants.command_assert(client, arg, parameters='=0')
 
     client.pm_mute = not client.pm_mute
-    status = {True: 'You stopped receiving PMs.', False: 'You are now receiving PMs.'}
+    status = {True: 'You will no longer receive PMs.', False: 'You will now receive PMs.'}
     client.send_ooc(status[client.pm_mute])
 
 def ooc_cmd_online(client, arg):
@@ -3016,7 +3015,7 @@ def ooc_cmd_play(client, arg):
 def ooc_cmd_pm(client, arg):
     """
     Sends a personal message to a specified user.
-    Returns an error if the user could not be found.
+    Returns an error if the user could not be found, or if the user or target muted PMs.
 
     SYNTAX
     /pm <user_id> <message>
@@ -3030,50 +3029,49 @@ def ooc_cmd_pm(client, arg):
     /pm 0 Nothing                               :: Sends that message to the user whose client ID is 0.
     /pm Santa_HD Sad                            :: Sends that message to the user whose character name is Santa_HD.
     """
+    if client.pm_mute:
+        raise ClientError('You have muted all PM conversations.')
     args = arg.split()
-    key = ''
-    msg = None
     if len(args) < 2:
-        raise ArgumentError('Not enough arguments. Use /pm <target> <message>. Target should be ID, OOC-name or char-name. Use /getarea for getting info like "[ID] char-name".')
+        raise ArgumentError('Not enough arguments. Use /pm <target> <message>. Target should be '
+                            'ID, OOC-name or char-name. Use /getarea for getting info like "[ID] '
+                            'char-name".')
+
+    cm = client.server.client_manager
 
     # Pretend the identifier is a character name
-    targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, arg, True)
-    key = TargetType.CHAR_NAME
+    targets = cm.get_targets(client, TargetType.CHAR_NAME, arg, True)
+    if targets:
+        target_length = len(targets[0].get_char_name().split(' '))
 
     # If still needed, pretend the identifier is a client ID
-    if len(targets) == 0 and args[0].isdigit():
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
-        key = TargetType.ID
+    if not targets and args[0].isdigit():
+        targets = cm.get_targets(client, TargetType.ID, int(args[0]), False)
+        if targets:
+            target_length = 1
 
     # If still needed, pretend the identifier is an OOC username
-    if len(targets) == 0:
-        targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, True)
-        key = TargetType.OOC_NAME
+    if not targets:
+        targets = cm.get_targets(client, TargetType.OOC_NAME, arg, True)
+        if targets:
+            target_length = len(targets[0].name.split(' '))
 
     # If no matching targets found, be sad.
-    if len(targets) == 0:
+    if not targets:
         raise ArgumentError('No targets found.')
 
     # Obtain the message from the given arguments
-    try:
-        if key == TargetType.ID:
-            msg = ' '.join(args[1:])
-        else:
-            if key == TargetType.CHAR_NAME:
-                msg = arg[len(targets[0].get_char_name()) + 1:]
-            if key == TargetType.OOC_NAME:
-                msg = arg[len(targets[0].name) + 1:]
-    except Exception:
-        raise ArgumentError('Not enough arguments. Use /pm <target> <message>.')
+    msg = ' '.join(args[target_length:])
+    recipient = ' '.join(args[:target_length])
 
     # Attempt to send the message to the target, provided they do not have PMs disabled.
     c = targets[0]
     if c.pm_mute:
-        raise ClientError('This user muted all pm conversation.')
+        raise ClientError('This user muted all PM conversations.')
 
+    client.send_ooc('PM sent to {}. Message: {}'.format(recipient, msg))
     c.send_ooc('PM from {} in {} ({}): {}'
                .format(client.name, client.area.name, client.get_char_name(), msg))
-    client.send_ooc('PM sent to {}. Message: {}'.format(args[0], msg))
 
 def ooc_cmd_pos(client, arg):
     """
@@ -4793,99 +4791,60 @@ def ooc_cmd_8ball(client, arg):
     logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'
                       .format(client.area.id, client.get_char_name(), flip), client)
 
+def ooc_cmd_ping(client, arg):
+    """
+    Pong
+    """
+    Constants.command_assert(client, arg, parameters='=0')
+    client.send_ooc('Pong.')
+
 def ooc_cmd_blind(client, arg):
     """ (STAFF ONLY)
-    Blind
+    Blind/unblind
     """
     Constants.command_assert(client, arg, parameters='=1', is_staff=True)
-    c = Constants.parse_id(client, arg)
-    if c.is_blind:
-        raise ClientError('{} is already blinded.'.format(c.get_char_name()))
+    target = Constants.parse_id(client, arg)
 
-    c.is_blind = True
-    client.send_ooc('Blinded {}.'.format(c.get_char_name()))
-    c.send_ooc('You have been blinded.')
-    client.send_ooc_others('{} has blinded {} ({}).'
-                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
+    status = {False: 'unblinded', True: 'blinded'}
+    target.is_blind = not target.is_blind
 
-def ooc_cmd_unblind(client, arg):
-    """ (STAFF ONLY)
-    Unblind
-    """
-    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
-    c = Constants.parse_id(client, arg)
-    if not c.is_blind:
-        raise ClientError('{} is already unblinded.'.format(c.get_char_name()))
-
-    c.is_blind = False
-    client.send_ooc('Unblinded {}.'.format(c.get_char_name()))
-    c.send_ooc('You have been unblinded.')
-    client.send_ooc_others('{} has unblinded {} ({}).'
-                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
+    client.send_ooc('You have {} {}.'.format(status[target.is_blind], target.get_char_name()))
+    target.send_ooc('You have been {}.'.format(status[target.is_blind]))
+    target.send_ooc_others('{} has {} {} ({}).'
+                           .format(client.name, status[target.is_blind], target.get_char_name(),
+                                   target.area.id), is_staff=True, not_to=[client])
 
 def ooc_cmd_deafen(client, arg):
     """ (STAFF ONLY)
-    Deafen
+    Deafen/undeafen
     """
     Constants.command_assert(client, arg, parameters='=1', is_staff=True)
-    c = Constants.parse_id(client, arg)
+    target = Constants.parse_id(client, arg)
 
-    if c.is_deaf:
-        raise ClientError('{} is already deafened.'.format(c.get_char_name()))
+    status = {False: 'undeafened', True: 'deafened'}
+    target.is_deaf = not target.is_deaf
 
-    c.is_deaf = True
-    client.send_ooc('Deafened {}.'.format(c.get_char_name()))
-    c.send_ooc('You have been deafened.')
-    client.send_ooc_others('{} has deafened {} ({}).'
-                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
-
-def ooc_cmd_undeafen(client, arg):
-    """ (STAFF ONLY)
-    Undeafen
-    """
-    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
-    c = Constants.parse_id(client, arg)
-
-    if not c.is_deaf:
-        raise ClientError('{} is already undeafened.'.format(c.get_char_name()))
-
-    c.is_deaf = False
-    client.send_ooc('Undeafened {}.'.format(c.get_char_name()))
-    c.send_ooc('You have been undeafened.')
-    client.send_ooc_others('{} has undeafened {} ({}).'
-                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
+    client.send_ooc('You have {} {}.'.format(status[target.is_deaf], target.get_char_name()))
+    target.send_ooc('You have been {}.'.format(status[target.is_deaf]))
+    target.send_ooc_others('{} has {} {} ({}).'
+                           .format(client.name, status[target.is_deaf], target.get_char_name(),
+                                   target.area.id), is_staff=True, not_to=[client])
 
 def ooc_cmd_gag(client, arg):
     """ (STAFF ONLY)
-    Gag
+    Gag/ungag
     """
     Constants.command_assert(client, arg, parameters='=1', is_staff=True)
-    c = Constants.parse_id(client, arg)
+    target = Constants.parse_id(client, arg)
 
-    if c.is_gagged:
-        raise ClientError('{} is already gagged.'.format(c.get_char_name()))
+    status = {False: 'ungagged', True: 'gagged'}
+    target.is_gagged = not target.is_gagged
 
-    c.is_gagged = True
-    client.send_ooc('Gagged {}.'.format(c.get_char_name()))
-    c.send_ooc('You have been gagged.')
-    client.send_ooc_others('{} has gagged {} ({}).'
-                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
-
-def ooc_cmd_ungag(client, arg):
-    """ (STAFF ONLY)
-    Ungag
-    """
-    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
-    c = Constants.parse_id(client, arg)
-
-    if not c.is_gagged:
-        raise ClientError('{} is already ungagged.'.format(c.get_char_name()))
-
-    c.is_gagged = False
-    client.send_ooc('Ungagged {}.'.format(c.get_char_name()))
-    c.send_ooc('You have been ungagged.')
-    client.send_ooc_others('{} has ungagged {} ({}).'
-                           .format(client.name, c.get_char_name(), c.area.id), is_staff=True)
+    client.send_ooc('You have {} {}.'.format(status[target.is_gagged], target.get_char_name()))
+    target.send_ooc('You have been {}.'.format(status[target.is_gagged]))
+    target.send_ooc_others('{} has {} {} ({}).'
+                           .format(client.name, status[target.is_gagged], target.get_char_name(),
+                                   target.area.id), is_staff=True, not_to=[client])
 
 def ooc_cmd_exec(client, arg):
     """

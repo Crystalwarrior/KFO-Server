@@ -115,7 +115,7 @@ class ClientManager:
         def send_ooc(self, msg):
             self.send_command('CT', self.server.config['hostname'], msg)
 
-        def send_ooc_others(self, msg, is_staff=None, in_area=None, pred=None):
+        def send_ooc_others(self, msg, is_staff=None, in_area=None, pred=None, not_to=None):
             if is_staff is True:
                 cond1 = lambda c: c.is_staff()
             elif is_staff is False:
@@ -139,7 +139,10 @@ class ClientManager:
             if pred is None:
                 pred = lambda c: True
 
-            cond = lambda c: c != self and cond1(c) and cond2(c) and pred(c)
+            if not_to is None:
+                not_to = list()
+
+            cond = lambda c: c != self and cond1(c) and cond2(c) and pred(c) and c not in not_to
 
             self.server.send_all_cmd_pred('CT', self.server.config['hostname'], msg, pred=cond)
 

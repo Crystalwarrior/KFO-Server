@@ -15,17 +15,18 @@ class _Unittest(unittest.TestCase):
         cls.server = _TestTsuserverDR()
         cls.clients = cls.server.client_list
 
-    @classmethod
-    def tearDownClass(cls):
+    def tearDown(self):
         """
         Check if any packets were unaccounted for.
         """
 
-        for c in cls.clients:
+        for c in self.clients:
             if c:
                 c.assert_no_packets()
                 c.assert_no_ooc()
 
+    @classmethod
+    def tearDownClass(cls):
         cls.server.disconnect_all()
 
 class _TestSituation3(_Unittest):
@@ -54,6 +55,13 @@ class _TestSituation4Mc12(_TestSituation4):
         cls.c1.make_mod()
         cls.c2.make_mod()
 
+class _TestSituation4Mc1Gc2(_TestSituation4):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.c1.make_mod()
+        cls.c2.make_gm()
+
 class _TestClientManager(ClientManager):
     class _TestClient(ClientManager.Client):
         def __init__(self, *args, my_protocol=None):
@@ -78,8 +86,11 @@ class _TestClientManager(ClientManager):
         def send_command_cts(self, buffer):
             self.my_protocol.data_received(buffer.encode('utf-8'))
 
-        def ooc(self, message):
-            user = self.convert_symbol_to_word(self.name)
+        def ooc(self, message, username=None):
+            if username is None:
+                username = self.name
+
+            user = self.convert_symbol_to_word(username)
             message = self.convert_symbol_to_word(message)
             buffer = "CT#{}#{}#%".format(user, message)
             self.send_command_cts(buffer)
@@ -187,11 +198,11 @@ class _TestClientManager(ClientManager):
 
             assert(len(self.received_ooc) > 0)
             act_username, act_message = self.received_ooc.pop(0)
-            if username:
+            if username is not None:
                 err = ('Wrong OOC message sender. Expected "{}", got "{}".'
                        .format(username, act_username))
                 assert username == act_username, err
-            if message:
+            if message is not None:
                 err = 'Wrong OOC message. Expected "{}", got "{}".'.format(message, act_message)
                 assert message == act_message, err
 
