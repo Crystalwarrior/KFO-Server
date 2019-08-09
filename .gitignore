@@ -5,3 +5,4 @@
 /.spyproject/
 /__pycache__/
 /tests/__pycache__/
+/server/ideas.py

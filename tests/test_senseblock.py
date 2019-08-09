@@ -59,7 +59,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert not self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
-    def test_04_canaffectstaff(self):
+    def test_03_canaffectstaff(self):
         """
         Situation: Authorized user attempts to sense block a staff member and succeeds.
         """
@@ -76,7 +76,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert not self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
-    def test_05_canaffectself(self):
+    def test_04_canaffectself(self):
         """
         Situation: Authorized user attempts to sense block themselves and succeeds.
         TODO: Figure out repetition.
@@ -97,7 +97,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
-    def test_06_unwrongarguments(self):
+    def test_05_unwrongarguments(self):
         """
         Situation: Unauthorized user attempts to sense unblock, or wrong arguments are passed.
         """
@@ -131,7 +131,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
-    def test_07_canunaffect(self):
+    def test_06_canunaffect(self):
         """
         Situation: Authorized user attempts to sense unblock C0 and succeeds.
         """
@@ -150,7 +150,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
-    def test_09_canunaffectstaff(self):
+    def test_07_canunaffectstaff(self):
         """
         Situation: Authorized user attempts to sense unblock a staff member and succeeds.
         TODO: Figure out repetition.
@@ -168,7 +168,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
-    def test_10_canunaffectself(self):
+    def test_08_canunaffectself(self):
         """
         Situation: Authorized user attempts to sense block themselves and succeeds.
         TODO: Figure out repetition.
@@ -189,7 +189,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert not self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
-    def test_11_affectunaffect(self):
+    def test_09_affectunaffect(self):
         """
         Situation: Another authorized user attempts to sense block and unblock, and succeeds.
         """
@@ -222,7 +222,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert not self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
-    def test_12_persistsonareachange(self):
+    def test_10_persistsonareachange(self):
         """
         Situation: Sense blocked client changes area, and their sense block persists.
         """
@@ -249,7 +249,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
 
         self.c3.discard_all()
 
-    def test_13_doesntpersistonreconnect(self):
+    def test_11_doesntpersistonreconnect(self):
         """
         Situation: Sense blocked client disconnects and on reconnection are no longer sense blocked.
         """

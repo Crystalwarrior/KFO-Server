@@ -124,9 +124,7 @@ Additional notes are listed at the end of the command list.
 * **music_list** "music list name"
 	- Sets your music list to the given one, or restores the original one if not given any.
 * **music_lists**
-	- Lists all available music lists as established in config/music_lists.yaml.
-* **mutepm**
-	- Changes your status of being able to receive PMs.
+	- Lists all available music lists as established in `config/music_lists.yaml`.
 * **online**
 	- Returns how many players are online.
 * **party**
@@ -190,6 +188,8 @@ Additional notes are listed at the end of the command list.
     - Changes your setting to be in first person mode (your character does not appear to you when you send IC messages) or normal mode (your character does appear). By default it is in normal mode.
 * **toggle_global** 
     - Changes your setting to receive global messages. By default it is on.
+* **toggle_pm**
+	- Changes your setting to receive PMs. By default it is on.
 * **toggle_shownames**
 	- Changes your setting to have the IC messages you receive to include the sender's custom showname. By default it is on.
 * **unilock** "area number/name"
@@ -370,7 +370,7 @@ Additional notes are listed at the end of the command list.
 	- Sets the server's current area list.
 	- If not given an area list, it will restore the original area list as it was on server bootup.
 * **area_lists**
-	- Lists all available area lists as established in config/area_lists.yaml.
+	- Lists all available area lists as established in `config/area_lists.yaml`.
 * **ban** "IPID"/"IP" 
     - Bans the IPID/IP (hdid is linked to ipid so all bans happen at the same time).
 * **banhdid** "HDID"
@@ -416,7 +416,7 @@ Additional notes are listed at the end of the command list.
 ### Debug commands
 
 * **exec** "command"
-	- (DEBUG) Executes the given command as a Python instruction. Requires turning on in commands.py before using.
+	- (DEBUG) Executes the given command as a Python instruction. Requires turning on in `server/commands.py` before using.
 * **lasterror**
 	- (DEBUG) Obtains the latest uncaught error as a result of a client packet. This message emulates what is output on the server console.
 * **reload_commands**
@@ -428,6 +428,7 @@ Commands marked with (D) are marked as deprecated. They will continue to serve t
 Commands without (D) are aliases to commands and can be freely used (subject to the parent command's conditions).
 
 #### Everyone
+* **mutepm** (D: Aug.9.19): Same as /toggle_pm
 * **toggleglobal** (D: Jul.15.19): Same as /toggle_global.
 
 #### GM+

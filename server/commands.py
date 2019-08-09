@@ -28,11 +28,6 @@ from server import logger
 from server.constants import Constants, TargetType
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError, PartyError
 
-""" SUGGESTED IDEAS
-*Add a global callword system
-*Add /slippery for slippery traps
-"""
-
 """ <parameter_name>: required parameter
 {parameter_name}: optional parameter
 """
@@ -2448,25 +2443,6 @@ def ooc_cmd_mute(client, arg):
         client.area.broadcast_ooc("{} was muted.".format(c.get_char_name()))
         c.is_muted = True
 
-def ooc_cmd_mutepm(client, arg):
-    """
-    Toggles between being able to receive PMs or not.
-
-    SYNTAX
-    /mutepm
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /mutepm
-    """
-    Constants.command_assert(client, arg, parameters='=0')
-
-    client.pm_mute = not client.pm_mute
-    status = {True: 'You will no longer receive PMs.', False: 'You will now receive PMs.'}
-    client.send_ooc(status[client.pm_mute])
-
 def ooc_cmd_online(client, arg):
     """
     Returns how many players are online.
@@ -4148,9 +4124,9 @@ def ooc_cmd_toggle_global(client, arg):
         raise ArgumentError("This command has no arguments.")
 
     client.muted_global = not client.muted_global
-    status = {False: 'on', True: 'off'}
+    status = {True: 'no longer', False: 'now'}
 
-    client.send_ooc('Global chat turned {}.'.format(status[client.muted_global]))
+    client.send_ooc('You will {} receive global messages.'.format(status[client.muted_global]))
 
 def ooc_cmd_toggle_fp(client, arg):
     """
@@ -4175,6 +4151,26 @@ def ooc_cmd_toggle_fp(client, arg):
     status = {True: 'now', False: 'no longer'}
 
     client.send_ooc('You are {} in first person mode.'.format(status[client.first_person]))
+
+def ooc_cmd_toggle_pm(client, arg):
+    """
+    Toggles between being able to receive PMs or not.
+
+    SYNTAX
+    /toggle_pm
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /toggle_pm
+    """
+    Constants.command_assert(client, arg, parameters='=0')
+
+    client.pm_mute = not client.pm_mute
+    status = {True: 'You will no longer receive PMs.', False: 'You will now receive PMs.'}
+
+    client.send_ooc(status[client.pm_mute])
 
 def ooc_cmd_toggle_shownames(client, arg):
     """

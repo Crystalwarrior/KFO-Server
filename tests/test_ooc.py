@@ -270,20 +270,20 @@ class TestOOC_02_PM(_TestOOC):
         Situation: C0 mutes PMs.
         """
 
-        self.c0.ooc('/mutepm e')
+        self.c0.ooc('/toggle_pm e')
         self.c0.assert_received_ooc('This command has no arguments.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
-        self.c0.ooc('/mutepm')
+        self.c0.ooc('/toggle_pm')
         self.c0.assert_received_ooc('You will no longer receive PMs.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
         self.assertTrue(self.c0.pm_mute)
 
-        self.c0.ooc('/mutepm')
+        self.c0.ooc('/toggle_pm')
         self.c0.assert_received_ooc('You will now receive PMs.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
@@ -294,7 +294,8 @@ class TestOOC_02_PM(_TestOOC):
         """
         Situation: C1 and C0 attempt to PM one another, but fail as C0 has PMs muted.
         """
-        self.c0.ooc('/mutepm')
+
+        self.c0.ooc('/toggle_pm')
         self.c0.assert_received_ooc('You will no longer receive PMs.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
@@ -317,6 +318,16 @@ class TestOOC_02_PM(_TestOOC):
 
 class TestOOC_03_Global(_TestOOC):
     def test_01_sendglobal(self):
+        """
+        Situation: C0 attempts to send an empty global, then C0-4 send correct globals. They all
+        receive one another's globals, even if they are in different areas.
+        """
+        self.c0.ooc('/g')
+        self.c0.assert_received_ooc('You cannot send an empty message.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
         for (i, c) in enumerate(self.clients[:4]):
             c.ooc('/g Hello.')
             name = c.name
@@ -324,3 +335,53 @@ class TestOOC_03_Global(_TestOOC):
             for x in self.clients[:4]:
                 x.assert_received_ooc('Hello.', username='<dollar>G[{}][{}]'.format(area, name),
                                       over=True)
+
+    def test_02_muteglobal(self):
+        """
+        Situation: C0 mutes global messages.
+        """
+
+        self.c0.ooc('/toggle_global e')
+        self.c0.assert_received_ooc('This command has no arguments.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c0.ooc('/toggle_global')
+        self.c0.assert_received_ooc('You will no longer receive global messages.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c0.ooc('/toggle_global')
+        self.c0.assert_received_ooc('You will now receive global messages.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+    def test_03_globalwhilemutedglobal(self):
+        """
+        Situation: C0 and C2 attempt to communicate through globals, but fail as C0 has muted them.
+        """
+        self.c0.ooc('/toggle_global')
+        self.c0.assert_received_ooc('You will no longer receive global messages.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c0.ooc('/g Hello C2.')
+        self.c0.assert_received_ooc('You have the global chat muted.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c2.ooc('/g Hello C0.')
+        name = self.c2.name
+        area = self.c2.area.id
+        self.c0.assert_no_ooc()
+        self.c1.assert_received_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name),
+                                    over=True)
+        self.c2.assert_received_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name),
+                                    over=True)
+        self.c3.assert_received_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name),
+                                    over=True)
