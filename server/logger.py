@@ -58,6 +58,8 @@ def setup_logger(debug):
     error_log = logging.getLogger('error')
     error_log.setLevel(logging.ERROR)
 
+    return (debug_log, debug_handler), (server_log, server_handler)
+
 def log_debug(msg, client=None):
     msg = parse_client_info(client) + msg
     logging.getLogger('debug').debug(msg)
@@ -112,6 +114,9 @@ def log_error(msg, server, errortype='P'):
 def log_server(msg, client=None):
     msg = parse_client_info(client) + msg
     logging.getLogger('server').info(msg)
+
+def log_server2(msg, client=None):
+    pass
 
 def log_print(msg, client=None):
     msg = parse_client_info(client) + msg

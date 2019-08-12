@@ -363,6 +363,7 @@ class TestOOC_03_Global(_TestOOC):
         """
         Situation: C0 and C2 attempt to communicate through globals, but fail as C0 has muted them.
         """
+
         self.c0.ooc('/toggle_global')
         self.c0.assert_received_ooc('You will no longer receive global messages.', over=True)
         self.c1.assert_no_ooc()

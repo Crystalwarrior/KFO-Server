@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 1
         self.minor_version = 0
-        self.segment_version = 'a3'
-        self.internal_version = '190809a'
+        self.segment_version = 'a4'
+        self.internal_version = '190812a'
         self.software = 'TsuserverDR {}'.format(self.get_version_string())
         self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
         self.in_test = in_test
@@ -51,6 +51,7 @@ class TsuserverDR:
         self.protocol = AOProtocol if protocol is None else protocol
         client_manager = ClientManager if client_manager is None else client_manager
         logger.log_print = logger.log_print2 if self.in_test else logger.log_print
+        logger.log_server = logger.log_server2 if self.in_test else logger.log_server
 
         logger.log_print('Launching {}...'.format(self.version))
         logger.log_print('Loading server configurations...')
@@ -95,7 +96,7 @@ class TsuserverDR:
         self.showname_freeze = False
         self.commands = importlib.import_module('server.commands')
         self.commands_alt = importlib.import_module('server.commands_alt')
-        logger.setup_logger(debug=self.config['debug'])
+        self.logger_handlers = logger.setup_logger(debug=self.config['debug'])
 
         logger.log_print('Server configurations loaded successfully!')
 
@@ -207,7 +208,7 @@ class TsuserverDR:
         except Exception as error:
             return error
 
-    def new_client(self, transport, my_protocol=None):
+    def new_client(self, transport, ip=None, my_protocol=None):
         c = self.client_manager.new_client(transport)
         if self.rp_mode:
             c.in_rp = True

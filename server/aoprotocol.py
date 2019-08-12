@@ -72,14 +72,12 @@ class AOProtocol(asyncio.Protocol):
         buf = data
         if buf is None:
             buf = b''
-
         # try to decode as utf-8, ignore any erroneous characters
         self.buffer += buf.decode('utf-8', 'ignore')
         self.buffer = self.buffer.translate({ord(c): None for c in '\0'})
 
         if len(self.buffer) > 8192:
             self.client.disconnect()
-
         for msg in self.get_messages():
             if len(msg) < 2:
                 self.client.disconnect()
@@ -106,7 +104,7 @@ class AOProtocol(asyncio.Protocol):
         self.ping_timeout = asyncio.get_event_loop().call_later(self.server.config['timeout'], self.client.disconnect)
         self.client.send_command('decryptor', 34)  # just fantacrypt things
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc, client=None):
         """ User disconnected
 
         :param exc: reason
@@ -371,7 +369,6 @@ class AOProtocol(asyncio.Protocol):
             return
         if not self.client.area.can_send_message():
             return
-
         # Assert that all parameters are valid
         if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR_OR_EMPTY,
                                      self.ArgType.STR, self.ArgType.STR, self.ArgType.STR,
@@ -423,7 +420,8 @@ class AOProtocol(asyncio.Protocol):
         self.client.pos = pos
 
         # Truncate and alter message if message effect is in place
-        msg = text[:256]
+        raw_msg = text[:256]
+        msg = raw_msg
         if self.client.gimp: #If you are gimped, gimp message.
             msg = Constants.gimp_message()
         if self.client.disemvowel: #If you are disemvoweled, replace string.
@@ -432,6 +430,14 @@ class AOProtocol(asyncio.Protocol):
             msg = Constants.disemconsonant_message(msg)
         if self.client.remove_h: #If h is removed, replace string.
             msg = Constants.remove_h_message(msg)
+        if self.client.is_gagged:
+            allowed_starters = ('(', '*', '[')
+            if not msg or not msg.startswith(allowed_starters):
+                msg = '(Gagged noises)'
+            if msg != raw_msg:
+                self.client.send_ooc_others('{} tried to say "{}" but is currently gagged.'
+                                            .format(self.client.get_char_name(), raw_msg),
+                                            is_staff=True, in_area=True)
 
         if evidence:
             if self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos != 'all':
@@ -470,10 +476,17 @@ class AOProtocol(asyncio.Protocol):
                 # 14 = color
                 # 15 = showname
 
+                # self.client is the client who sent the IC message
+                # c is who is receiving the IC message at this particular moment
+
                 to_send = [msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid, sfx_delay,
                            button, self.client.evi_list[evidence], flip, ding, color, '']
 
-                if c == self.client and c.first_person:
+                # Change "character" parts of IC port
+                if c.is_blind:
+                    to_send[3] = '../../misc/blank'
+                    c.send_command('BN', self.server.config['blackout_background'])
+                elif c == self.client and c.first_person:
                     last_area, last_args = c.last_ic_notme
                     # Check that the last received message exists and comes from the current area
                     if area_id == last_area and last_args:
@@ -486,11 +499,21 @@ class AOProtocol(asyncio.Protocol):
                     else:
                         to_send[3] = '../../misc/blank'
 
-                if c.show_shownames:
+                # Change "message" parts of IC port
+                if c.is_deaf:
+                    allowed_starters = ('(', '*', '[')
+                    if not msg or not msg.startswith(allowed_starters):
+                        to_send[4] = '(Your ears are ringing)'
+
+                if c.is_blind and c.is_deaf:
+                    to_send[15] = '???'
+                elif c.show_shownames:
                     to_send[15] = self.client.showname
 
+                # Done modifying IC message for c
                 c.send_command('MS', *to_send)
-                if c != self:
+
+                if c != self.client:
                     c.last_ic_notme = area_id, to_send
 
             target_area.set_next_msg_delay(len(msg))

@@ -24,9 +24,13 @@ class _Unittest(unittest.TestCase):
             if c:
                 c.assert_no_packets()
                 c.assert_no_ooc()
+                c.assert_no_ic()
 
     @classmethod
     def tearDownClass(cls):
+        for (logger, handler) in cls.server.logger_handlers:
+            handler.close()
+            logger.removeHandler(handler)
         cls.server.disconnect_all()
 
 class _TestSituation3(_Unittest):
@@ -68,13 +72,14 @@ class _TestClientManager(ClientManager):
             super().__init__(*args)
             self.received_commands = list()
             self.received_ooc = list()
+            self.received_ic = list()
             self.my_protocol = my_protocol
 
         def disconnect(self):
             self.my_protocol.connection_lost(None, client=self)
 
-        def send_command(self, command_type, *args):
-            self.send_command_stc(command_type, *args)
+        def send_command(self, command, *args):
+            self.send_command_stc(command, *args)
 
         def send_command_stc(self, command_type, *args):
             if len(args) > 1 and isinstance(args[1], TsuserverException):
@@ -160,7 +165,8 @@ class _TestClientManager(ClientManager):
                    .format(self, self.received_commands))
             assert len(self.received_commands) == 0, err
 
-        def assert_received_packet(self, command_type, args, over=False):
+        def assert_received_packet(self, command_type, args, over=False, ooc_over=False,
+                                   ic_over=False):
             assert(len(self.received_commands) > 0)
             exp_command_type, exp_args = self.received_commands.pop(0)
             assert command_type == exp_command_type, (command_type, exp_command_type)
@@ -175,6 +181,9 @@ class _TestClientManager(ClientManager):
                 err = ('{} expected no more packets (did you accidentally put over=True?)'
                        .format(self))
                 assert(len(self.received_commands) == 0), err
+            elif ooc_over or ic_over:
+                # Assumes actual over checks are done manually
+                pass
             else:
                 err = ('{} expected more packets (did you forget to put over=True?)'
                        .format(self))
@@ -194,7 +203,7 @@ class _TestClientManager(ClientManager):
             message = self.convert_symbol_to_word(message)
             buffer = "CT#{}#{}#%".format(user, message)
             if check_CT_packet:
-                self.assert_received_packet('CT', buffer, over=over)
+                self.assert_received_packet('CT', buffer, over=over, ooc_over=ooc_over)
 
             assert(len(self.received_ooc) > 0)
             act_username, act_message = self.received_ooc.pop(0)
@@ -211,9 +220,92 @@ class _TestClientManager(ClientManager):
             else:
                 assert(len(self.received_ooc) != 0)
 
+        def sic(self, message, msg_type=0, pre='-', folder=None, anim=None, pos=None, sfx=0,
+                anim_type=0, cid=None, sfx_delay=0, button=0, evi=None, flip=0, ding=0, color=0,
+                ignore_timelimit=True):
+            if folder is None:
+                folder = self.get_char_name()
+            if anim is None:
+                anim = 'happy'
+            if pos is None:
+                pos = self.pos if self.pos else 'def'
+            if cid is None:
+                cid = self.char_id
+            if evi is None:
+                evi = 0
+
+            # 0 = msg_type
+            # 1 = pre
+            # 2 = folder
+            # 3 = anim
+            # 4 = msg
+            # 5 = pos
+            # 6 = sfx
+            # 7 = anim_type
+            # 8 = cid
+            # 9 = sfx_delay
+            # 10 = button
+            # 11 = self.client.evi_list[evidence]
+            # 12 = flip
+            # 13 = ding
+            # 14 = color
+
+            buffer = ('MS#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#%'
+                      .format(msg_type, pre, folder, anim, message, pos, sfx, anim_type, cid,
+                              sfx_delay, button, evi, flip, ding, color))
+            if ignore_timelimit: # Time wasted here = 4 hours 8/10/19
+                self.area.can_send_message = lambda: True
+            self.send_command_cts(buffer)
+
+        def assert_no_ic(self):
+            err = ('{} expected no more IC messages, found {}'
+                   .format(self, self.received_ic))
+            assert len(self.received_ic) == 0, err
+
+        def assert_received_ic(self, message, over=False, ic_over=False,
+                               check_MS_packet=True, **kwargs):
+            if check_MS_packet:
+                self.assert_received_packet('MS', None, over=over, ic_over=ic_over)
+
+            assert(len(self.received_ic) > 0)
+            params = self.received_ic.pop(0)
+
+            message = self.convert_word_to_symbol(message)
+
+            param_ids = {'msg_type': 0,
+                         'pre': 1,
+                         'folder': 2,
+                         'anim': 3,
+                         'msg': 4,
+                         'pos': 5,
+                         'sfx': 6,
+                         'anim_type': 7,
+                         'cid': 8,
+                         'sfx_delay': 9,
+                         'button': 10,
+                         'evi': 11,
+                         'flip': 12,
+                         'ding': 13,
+                         'color': 14,
+                         'showname': 15}
+
+            if 'msg' not in kwargs:
+                kwargs['msg'] = message
+
+            for (item, val) in kwargs.items():
+                err = ('Wrong IC parameter {}. Expected "{}", got "{}".'
+                       .format(item, params[param_ids[item]], val))
+                assert params[param_ids[item]] == val, err
+
+            if over or ic_over:
+                assert(len(self.received_ic) == 0)
+            else:
+                assert(len(self.received_ic) != 0)
+
         def discard_all(self):
             self.received_commands = list()
             self.received_ooc = list()
+            self.received_ic = list()
 
         def receive_command_stc(self, command_type, *args):
             buffer = ''
@@ -252,8 +344,10 @@ class _TestClientManager(ClientManager):
                 pass
             elif command_type == 'PV': # Current character
                 pass
+            elif command_type == 'MS': # IC message
+                self.received_ic.append(args)
             else:
-                raise KeyError('Unrecognized server argument {} {}'.format(command_type, args))
+                raise KeyError('Unrecognized STC argument {} {}'.format(command_type, args))
 
             if buffer:
                 self.send_command_cts(buffer)
@@ -290,6 +384,9 @@ class _TestAOProtocol(AOProtocol):
 
         if self.ping_timeout:
             self.ping_timeout.cancel()
+
+    def data_received(self, data):
+        super().data_received(data)
 
 class _TestTsuserverDR(TsuserverDR):
     def __init__(self):

@@ -1,6 +1,8 @@
+import time
+
 from .structures import _TestSituation4Mc12
 
-class _UnittestSenseBlock(_TestSituation4Mc12):
+class _TestSenseBlock(_TestSituation4Mc12):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -11,6 +13,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         cls.c2_charname = cls.c2.get_char_name() #'Maki Harukawa_HD'
         cls.c3_charname = cls.c3.get_char_name() #'Monokuma_HD'
 
+class _UnittestSenseBlock(_TestSenseBlock):
     def test_01_wrongarguments(self):
         """
         Situation: Unauthorized user attempts to sense block, or wrong arguments are passed.
@@ -48,7 +51,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         self.c1.ooc('/{} {}'.format(self.sense, 0))
         self.c1.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c0_charname),
                                     over=True)
-        self.c0.assert_received_ooc('You have been {}.'.format(self.sense_pp), over=True)
+        self.c0.assert_received_ooc('You have been {}.'.format(self.sense_pp), ooc_over=True)
         self.c2.assert_received_ooc('{} has {} {} ({}).'
                                     .format(self.c1.name, self.sense_pp, self.c0_charname, 0),
                                     over=True)
@@ -59,6 +62,8 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert not self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
+        self.sense_affect(self.c0)
+
     def test_03_canaffectstaff(self):
         """
         Situation: Authorized user attempts to sense block a staff member and succeeds.
@@ -67,7 +72,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         self.c2.ooc('/{} {}'.format(self.sense, 1))
         self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c1_charname),
                                     over=True)
-        self.c1.assert_received_ooc('You have been {}.'.format(self.sense_pp), over=True)
+        self.c1.assert_received_ooc('You have been {}.'.format(self.sense_pp), ooc_over=True)
         self.c0.assert_no_ooc()
         self.c3.assert_no_ooc()
 
@@ -75,6 +80,8 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert self.sense_attribute(self.c1)
         assert not self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
+
+        self.sense_affect(self.c1)
 
     def test_04_canaffectself(self):
         """
@@ -84,7 +91,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
 
         self.c2.ooc('/{} {}'.format(self.sense, 2))
         self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c2_charname))
-        self.c2.assert_received_ooc('You have been {}.'.format(self.sense_pp), over=True)
+        self.c2.assert_received_ooc('You have been {}.'.format(self.sense_pp), ooc_over=True)
         self.c1.assert_received_ooc('{} has {} {} ({}).'
                                     .format(self.c2.name, self.sense_pp, self.c2_charname, 4),
                                     over=True)
@@ -96,6 +103,8 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert self.sense_attribute(self.c1)
         assert self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
+
+        self.sense_affect(self.c2)
 
     def test_05_unwrongarguments(self):
         """
@@ -139,7 +148,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         self.c1.ooc('/{} {}'.format(self.sense, 0))
         self.c1.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c0_charname),
                                     over=True)
-        self.c0.assert_received_ooc('You have been un{}.'.format(self.sense_pp), over=True)
+        self.c0.assert_received_ooc('You have been un{}.'.format(self.sense_pp), ooc_over=True)
         self.c2.assert_received_ooc('{} has un{} {} ({}).'
                                     .format(self.c1.name, self.sense_pp, self.c0_charname, 0),
                                     over=True)
@@ -150,6 +159,8 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
+        self.sense_unaffect(self.c0)
+
     def test_07_canunaffectstaff(self):
         """
         Situation: Authorized user attempts to sense unblock a staff member and succeeds.
@@ -159,7 +170,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         self.c2.ooc('/{} {}'.format(self.sense, 1))
         self.c2.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c1_charname),
                                     over=True)
-        self.c1.assert_received_ooc('You have been un{}.'.format(self.sense_pp), over=True)
+        self.c1.assert_received_ooc('You have been un{}.'.format(self.sense_pp), ooc_over=True)
         self.c0.assert_no_ooc()
         self.c3.assert_no_ooc()
 
@@ -167,6 +178,8 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert not self.sense_attribute(self.c1)
         assert self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
+
+        self.sense_unaffect(self.c1)
 
     def test_08_canunaffectself(self):
         """
@@ -176,7 +189,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
 
         self.c2.ooc('/{} {}'.format(self.sense, 2))
         self.c2.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c2_charname))
-        self.c2.assert_received_ooc('You have been un{}.'.format(self.sense_pp), over=True)
+        self.c2.assert_received_ooc('You have been un{}.'.format(self.sense_pp), ooc_over=True)
         self.c1.assert_received_ooc('{} has un{} {} ({}).'
                                     .format(self.c2.name, self.sense_pp, self.c2_charname, 4),
                                     over=True)
@@ -189,6 +202,8 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert not self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
+        self.sense_unaffect(self.c2)
+
     def test_09_affectunaffect(self):
         """
         Situation: Another authorized user attempts to sense block and unblock, and succeeds.
@@ -197,7 +212,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         self.c2.ooc('/{} {}'.format(self.sense, 3))
         self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c3_charname),
                                     over=True)
-        self.c3.assert_received_ooc('You have been {}.'.format(self.sense_pp), over=True)
+        self.c3.assert_received_ooc('You have been {}.'.format(self.sense_pp), ooc_over=True)
         self.c1.assert_received_ooc('{} has {} {} ({}).'
                                     .format(self.c2.name, self.sense_pp, self.c3_charname, 4),
                                     over=True)
@@ -208,10 +223,12 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert not self.sense_attribute(self.c2)
         assert self.sense_attribute(self.c3)
 
+        self.sense_affect(self.c3)
+
         self.c2.ooc('/{} {}'.format(self.sense, 3))
         self.c2.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c3_charname),
                                     over=True)
-        self.c3.assert_received_ooc('You have been un{}.'.format(self.sense_pp), over=True)
+        self.c3.assert_received_ooc('You have been un{}.'.format(self.sense_pp), ooc_over=True)
         self.c1.assert_received_ooc('{} has un{} {} ({}).'
                                     .format(self.c2.name, self.sense_pp, self.c3_charname, 4),
                                     over=True)
@@ -222,6 +239,8 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert not self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
+        self.sense_unaffect(self.c3)
+
     def test_10_persistsonareachange(self):
         """
         Situation: Sense blocked client changes area, and their sense block persists.
@@ -230,7 +249,7 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         self.c2.ooc('/{} {}'.format(self.sense, 3))
         self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c3_charname),
                                     over=True)
-        self.c3.assert_received_ooc('You have been {}.'.format(self.sense_pp), over=True)
+        self.c3.assert_received_ooc('You have been {}.'.format(self.sense_pp), ooc_over=True)
         self.c1.assert_received_ooc('{} has {} {} ({}).'
                                     .format(self.c2.name, self.sense_pp, self.c3_charname, 4),
                                     over=True)
@@ -240,6 +259,8 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert not self.sense_attribute(self.c1)
         assert not self.sense_attribute(self.c2)
         assert self.sense_attribute(self.c3)
+
+        self.sense_affect(self.c3)
 
         self.c3.move_area(5)
         assert not self.sense_attribute(self.c0)
@@ -266,26 +287,8 @@ class _UnittestSenseBlock(_TestSituation4Mc12):
         assert not self.sense_attribute(self.c2)
         assert not self.sense_attribute(self.c3)
 
-class TestSenseBlock_01_BlindBasic(_UnittestSenseBlock):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.sense = 'blind'
-        cls.sense_pp = 'blinded'
-        cls.sense_attribute = lambda x, c: c.is_blind
+    def sense_affect(self, client):
+        pass
 
-class TestSenseBlock_02_DeafBasic(_UnittestSenseBlock):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.sense = 'deafen'
-        cls.sense_pp = 'deafened'
-        cls.sense_attribute = lambda x, c: c.is_deaf
-
-class TestSenseBlock_03_GagBasic(_UnittestSenseBlock):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.sense = 'gag'
-        cls.sense_pp = 'gagged'
-        cls.sense_attribute = lambda x, c: c.is_gagged
+    def sense_unaffect(self, client):
+        pass

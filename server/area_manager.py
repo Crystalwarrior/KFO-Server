@@ -196,7 +196,7 @@ class AreaManager:
 
             self.send_command('CT', self.server.config['hostname'], msg)
 
-        def change_background(self, bg, validate=True):
+        def change_background(self, bg, validate=True, override_blind=False):
             """
             Change the background of the current area.
 
@@ -207,6 +207,9 @@ class AreaManager:
             validate : bool, optional
                 Whether to first determine if background name is listed as a server background
                 before changing. Defaults to True.
+            override_blind : bool, optional
+                Whether to send the intended background to blind people as opposed to the server
+                blackout one. Defaults to False (send blackout).
 
             Raises
             ------
@@ -218,7 +221,11 @@ class AreaManager:
                 raise AreaError('Invalid background name.')
 
             self.background = bg
-            self.send_command('BN', self.background)
+            for c in self.clients:
+                if c.is_blind and not override_blind:
+                    c.send_command('BN', self.server.config['blackout_background'])
+                else:
+                    c.send_command('BN', bg)
 
         def get_chars_unusable(self, allow_restricted=False, more_unavail_chars=None):
             """

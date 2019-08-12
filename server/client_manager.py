@@ -1020,6 +1020,8 @@ class ClientManager:
                      .format(self.is_gm, self.is_cm, self.is_mod))
             info += ('\n*Is sneaking? {}. Is bleeding? {}. Is handicapped? {}'
                      .format(not self.is_visible, self.is_bleeding, self.is_movement_handicapped))
+            info += ('\n*Is blinded? {}. Is deafened? {}. Is gagged? {}'
+                     .format(self.is_blind, self.is_deaf, self.is_gagged))
             info += ('\n*Is transient? {}. Has autopass? {}. Clients open: {}'
                      .format(self.is_transient, self.autopass, len(self.get_multiclients())))
             info += '\n*Is muted? {}. Is OOC Muted? {}'.format(self.is_muted, self.is_ooc_muted)

@@ -4810,6 +4810,11 @@ def ooc_cmd_blind(client, arg):
                            .format(client.name, status[target.is_blind], target.get_char_name(),
                                    target.area.id), is_staff=True, not_to=[client])
 
+    if target.is_blind:
+        target.send_command('BN', client.server.config['blackout_background'])
+    else:
+        target.send_command('BN', client.area.background)
+
 def ooc_cmd_deafen(client, arg):
     """ (STAFF ONLY)
     Deafen/undeafen
@@ -4841,6 +4846,12 @@ def ooc_cmd_gag(client, arg):
     target.send_ooc_others('{} has {} {} ({}).'
                            .format(client.name, status[target.is_gagged], target.get_char_name(),
                                    target.area.id), is_staff=True, not_to=[client])
+
+def ooc_cmd_narrate(client, arg):
+    to_send = [0, '-', '<NOCHAR>', '../../misc/blank', arg, 'jud', 0, 0, ++0, 0, 0, 0, 0, 0, 0, ' ']
+
+    for c in client.area.clients:
+        c.send_command('MS', *to_send)
 
 def ooc_cmd_exec(client, arg):
     """
