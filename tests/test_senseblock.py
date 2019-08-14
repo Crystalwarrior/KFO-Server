@@ -1,5 +1,3 @@
-import time
-
 from .structures import _TestSituation4Mc12
 
 class _TestSenseBlock(_TestSituation4Mc12):
@@ -8,10 +6,6 @@ class _TestSenseBlock(_TestSituation4Mc12):
         super().setUpClass()
         cls.c2.move_area(4)
         cls.c3.move_area(4)
-        cls.c0_charname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
-        cls.c1_charname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
-        cls.c2_charname = cls.c2.get_char_name() #'Maki Harukawa_HD'
-        cls.c3_charname = cls.c3.get_char_name() #'Monokuma_HD'
 
 class _UnittestSenseBlock(_TestSenseBlock):
     def test_01_wrongarguments(self):
@@ -49,11 +43,11 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
 
         self.c1.ooc('/{} {}'.format(self.sense, 0))
-        self.c1.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c0_charname),
+        self.c1.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c0_cname),
                                     over=True)
         self.c0.assert_received_ooc('You have been {}.'.format(self.sense_pp), ooc_over=True)
         self.c2.assert_received_ooc('{} has {} {} ({}).'
-                                    .format(self.c1.name, self.sense_pp, self.c0_charname, 0),
+                                    .format(self.c1.name, self.sense_pp, self.c0_cname, 0),
                                     over=True)
         self.c3.assert_no_ooc()
 
@@ -70,7 +64,7 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
 
         self.c2.ooc('/{} {}'.format(self.sense, 1))
-        self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c1_charname),
+        self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c1_cname),
                                     over=True)
         self.c1.assert_received_ooc('You have been {}.'.format(self.sense_pp), ooc_over=True)
         self.c0.assert_no_ooc()
@@ -90,10 +84,10 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
 
         self.c2.ooc('/{} {}'.format(self.sense, 2))
-        self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c2_charname))
+        self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c2_cname))
         self.c2.assert_received_ooc('You have been {}.'.format(self.sense_pp), ooc_over=True)
         self.c1.assert_received_ooc('{} has {} {} ({}).'
-                                    .format(self.c2.name, self.sense_pp, self.c2_charname, 4),
+                                    .format(self.c2.name, self.sense_pp, self.c2_cname, 4),
                                     over=True)
 
         self.c0.assert_no_ooc()
@@ -146,11 +140,11 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
 
         self.c1.ooc('/{} {}'.format(self.sense, 0))
-        self.c1.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c0_charname),
+        self.c1.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c0_cname),
                                     over=True)
         self.c0.assert_received_ooc('You have been un{}.'.format(self.sense_pp), ooc_over=True)
         self.c2.assert_received_ooc('{} has un{} {} ({}).'
-                                    .format(self.c1.name, self.sense_pp, self.c0_charname, 0),
+                                    .format(self.c1.name, self.sense_pp, self.c0_cname, 0),
                                     over=True)
         self.c3.assert_no_ooc()
 
@@ -168,7 +162,7 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
 
         self.c2.ooc('/{} {}'.format(self.sense, 1))
-        self.c2.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c1_charname),
+        self.c2.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c1_cname),
                                     over=True)
         self.c1.assert_received_ooc('You have been un{}.'.format(self.sense_pp), ooc_over=True)
         self.c0.assert_no_ooc()
@@ -188,10 +182,10 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
 
         self.c2.ooc('/{} {}'.format(self.sense, 2))
-        self.c2.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c2_charname))
+        self.c2.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c2_cname))
         self.c2.assert_received_ooc('You have been un{}.'.format(self.sense_pp), ooc_over=True)
         self.c1.assert_received_ooc('{} has un{} {} ({}).'
-                                    .format(self.c2.name, self.sense_pp, self.c2_charname, 4),
+                                    .format(self.c2.name, self.sense_pp, self.c2_cname, 4),
                                     over=True)
 
         self.c0.assert_no_ooc()
@@ -210,11 +204,11 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
 
         self.c2.ooc('/{} {}'.format(self.sense, 3))
-        self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c3_charname),
+        self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c3_cname),
                                     over=True)
         self.c3.assert_received_ooc('You have been {}.'.format(self.sense_pp), ooc_over=True)
         self.c1.assert_received_ooc('{} has {} {} ({}).'
-                                    .format(self.c2.name, self.sense_pp, self.c3_charname, 4),
+                                    .format(self.c2.name, self.sense_pp, self.c3_cname, 4),
                                     over=True)
         self.c0.assert_no_ooc()
 
@@ -226,11 +220,11 @@ class _UnittestSenseBlock(_TestSenseBlock):
         self.sense_affect(self.c3)
 
         self.c2.ooc('/{} {}'.format(self.sense, 3))
-        self.c2.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c3_charname),
+        self.c2.assert_received_ooc('You have un{} {}.'.format(self.sense_pp, self.c3_cname),
                                     over=True)
         self.c3.assert_received_ooc('You have been un{}.'.format(self.sense_pp), ooc_over=True)
         self.c1.assert_received_ooc('{} has un{} {} ({}).'
-                                    .format(self.c2.name, self.sense_pp, self.c3_charname, 4),
+                                    .format(self.c2.name, self.sense_pp, self.c3_cname, 4),
                                     over=True)
         self.c0.assert_no_ooc()
 
@@ -247,11 +241,11 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
 
         self.c2.ooc('/{} {}'.format(self.sense, 3))
-        self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c3_charname),
+        self.c2.assert_received_ooc('You have {} {}.'.format(self.sense_pp, self.c3_cname),
                                     over=True)
         self.c3.assert_received_ooc('You have been {}.'.format(self.sense_pp), ooc_over=True)
         self.c1.assert_received_ooc('{} has {} {} ({}).'
-                                    .format(self.c2.name, self.sense_pp, self.c3_charname, 4),
+                                    .format(self.c2.name, self.sense_pp, self.c3_cname, 4),
                                     over=True)
         self.c0.assert_no_ooc()
 

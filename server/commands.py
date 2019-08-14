@@ -1930,12 +1930,12 @@ def ooc_cmd_lights(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify either on or off.')
+    if arg not in ['off', 'on']:
+        raise ClientError('Expected on or off.')
     if not client.is_staff() and not client.area.has_lights:
         raise AreaError('This area has no lights to turn off or on.')
     if not client.is_mod and client.area.bg_lock:
         raise AreaError("Unable to turn lights off or on: This area's background is locked.")
-    if arg not in ['off', 'on']:
-        raise ClientError('Invalid argument. Expected: on, off. Your argument: {}'.format(arg))
 
     new_lights = (arg == 'on')
     client.area.change_lights(new_lights, initiator=client)
@@ -4808,7 +4808,7 @@ def ooc_cmd_blind(client, arg):
     target.send_ooc('You have been {}.'.format(status[target.is_blind]))
     target.send_ooc_others('{} has {} {} ({}).'
                            .format(client.name, status[target.is_blind], target.get_char_name(),
-                                   target.area.id), is_staff=True, not_to=[client])
+                                   target.area.id), is_staff=True, not_to={client})
 
     if target.is_blind:
         target.send_command('BN', client.server.config['blackout_background'])
@@ -4829,7 +4829,7 @@ def ooc_cmd_deafen(client, arg):
     target.send_ooc('You have been {}.'.format(status[target.is_deaf]))
     target.send_ooc_others('{} has {} {} ({}).'
                            .format(client.name, status[target.is_deaf], target.get_char_name(),
-                                   target.area.id), is_staff=True, not_to=[client])
+                                   target.area.id), is_staff=True, not_to={client})
 
 def ooc_cmd_gag(client, arg):
     """ (STAFF ONLY)
@@ -4845,10 +4845,10 @@ def ooc_cmd_gag(client, arg):
     target.send_ooc('You have been {}.'.format(status[target.is_gagged]))
     target.send_ooc_others('{} has {} {} ({}).'
                            .format(client.name, status[target.is_gagged], target.get_char_name(),
-                                   target.area.id), is_staff=True, not_to=[client])
+                                   target.area.id), is_staff=True, not_to={client})
 
 def ooc_cmd_narrate(client, arg):
-    to_send = [0, '-', '<NOCHAR>', '../../misc/blank', arg, 'jud', 0, 0, ++0, 0, 0, 0, 0, 0, 0, ' ']
+    to_send = [0, '-', '<NOCHAR>', '../../misc/blank', arg, 'jud', 0, 0, +0, 0, 0, 0, 0, 0, 0, ' ']
 
     for c in client.area.clients:
         c.send_command('MS', *to_send)

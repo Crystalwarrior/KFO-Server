@@ -14,6 +14,14 @@ class _Unittest(unittest.TestCase):
             cls.skipTest('', reason='')
         cls.server = _TestTsuserverDR()
         cls.clients = cls.server.client_list
+        cls.area0 = cls.server.area_manager.get_area_by_id(0)
+        cls.area1 = cls.server.area_manager.get_area_by_id(1)
+        cls.area2 = cls.server.area_manager.get_area_by_id(2)
+        cls.area3 = cls.server.area_manager.get_area_by_id(3)
+        cls.area4 = cls.server.area_manager.get_area_by_id(4)
+        cls.area5 = cls.server.area_manager.get_area_by_id(5)
+        cls.area6 = cls.server.area_manager.get_area_by_id(6)
+        cls.area7 = cls.server.area_manager.get_area_by_id(7)
 
     def tearDown(self):
         """
@@ -41,6 +49,9 @@ class _TestSituation3(_Unittest):
         cls.c0 = cls.clients[0]
         cls.c1 = cls.clients[1]
         cls.c2 = cls.clients[2]
+        cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
+        cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
+        cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
 
 class _TestSituation4(_Unittest):
     @classmethod
@@ -51,6 +62,26 @@ class _TestSituation4(_Unittest):
         cls.c1 = cls.clients[1]
         cls.c2 = cls.clients[2]
         cls.c3 = cls.clients[3]
+        cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
+        cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
+        cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
+        cls.c3_cname = cls.c3.get_char_name() #'Monokuma_HD'
+
+class _TestSituation5(_Unittest):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.server.make_clients(5)
+        cls.c0 = cls.clients[0]
+        cls.c1 = cls.clients[1]
+        cls.c2 = cls.clients[2]
+        cls.c3 = cls.clients[3]
+        cls.c4 = cls.clients[4]
+        cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
+        cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
+        cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
+        cls.c3_cname = cls.c3.get_char_name() #'Monokuma_HD'
+        cls.c4_cname = cls.c4.get_char_name() #'SPECTATOR'
 
 class _TestSituation4Mc12(_TestSituation4):
     @classmethod
@@ -60,6 +91,13 @@ class _TestSituation4Mc12(_TestSituation4):
         cls.c2.make_mod()
 
 class _TestSituation4Mc1Gc2(_TestSituation4):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.c1.make_mod()
+        cls.c2.make_gm()
+
+class _TestSituation5Mc1Gc2(_TestSituation5):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -155,6 +193,7 @@ class _TestClientManager(ClientManager):
                 name = area.name
                 buffer = 'MC#{}-{}#0#%'.format(area_id, name)
                 self.send_command_cts(buffer)
+
             assert self.area.id == area_id, (self.area.id, area_id, as_command)
 
             if discard_packets:
@@ -165,17 +204,49 @@ class _TestClientManager(ClientManager):
                    .format(self, self.received_commands))
             assert len(self.received_commands) == 0, err
 
+        def check_match(self, exp_args, act_args):
+            assert len(exp_args) == len(act_args), (len(exp_args), len(act_args))
+
+            for exp_arg, act_arg in zip(exp_args, act_args):
+                if exp_arg is None:
+                    continue
+
+                if isinstance(exp_arg, tuple):
+                    assert len(exp_arg) == len(act_arg)
+
+                    for i, param in enumerate(exp_arg):
+                        if param is None:
+                            continue
+                        assert param == act_arg[i], (i, param, act_arg[i])
+                elif isinstance(act_arg, tuple):
+                    assert exp_arg == act_arg[0], (exp_arg, act_arg[0])
+                else:
+                    assert exp_arg == act_arg, (exp_arg, act_arg)
+
+        def search_match(self, exp_args, structure, somewhere=False, remove_match=True):
+            if not somewhere:
+                to_look = structure[:1]
+            else:
+                to_look = structure
+
+            for i, act_args in enumerate(to_look):
+                try:
+                    self.check_match(exp_args, act_args)
+                except AssertionError:
+                    continue
+                else:
+                    if remove_match:
+                        structure.pop(i)
+                    return i
+            else:
+                err = '{} could not find {} in {}.'.format(self, exp_args, structure)
+                raise AssertionError(err)
+
         def assert_received_packet(self, command_type, args, over=False, ooc_over=False,
-                                   ic_over=False):
-            assert(len(self.received_commands) > 0)
-            exp_command_type, exp_args = self.received_commands.pop(0)
-            assert command_type == exp_command_type, (command_type, exp_command_type)
-            if isinstance(args, tuple):
-                assert(len(args) == len(exp_args))
-                for i, arg in enumerate(args):
-                    if arg is None:
-                        continue
-                    assert arg == exp_args[i], (command_type, i, arg, exp_args[i])
+                                   ic_over=False, somewhere=False):
+            err = '{} expected packets, found none'.format(self)
+            assert len(self.received_commands) > 0, err
+            self.search_match([command_type, args], self.received_commands, somewhere=somewhere)
 
             if over:
                 err = ('{} expected no more packets (did you accidentally put over=True?)'
@@ -189,36 +260,49 @@ class _TestClientManager(ClientManager):
                        .format(self))
                 assert len(self.received_commands) != 0, err
 
+        def assert_not_received_packet(self, command_type, args, somewhere=True):
+            try:
+                self.search_match([command_type, args], self.received_commands,
+                                  somewhere=somewhere, remove_match=False)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError('Found packet {} {} when expecting not to find it.'
+                                     .format(command_type, args))
+
         def assert_no_ooc(self):
             err = ('{} expected no more OOC messages, found {}'
                    .format(self, self.received_ooc))
             assert len(self.received_ooc) == 0, err
 
         def assert_received_ooc(self, message, username=None, over=False, ooc_over=False,
-                                check_CT_packet=True):
+                                check_CT_packet=True, somewhere=False):
             if username is None:
                 username = self.server.config['hostname']
 
             user = self.convert_symbol_to_word(username)
             message = self.convert_symbol_to_word(message)
-            buffer = "CT#{}#{}#%".format(user, message)
+
             if check_CT_packet:
-                self.assert_received_packet('CT', buffer, over=over, ooc_over=ooc_over)
+                self.assert_received_packet('CT', (user, message), over=over, ooc_over=ooc_over,
+                                            somewhere=somewhere)
 
             assert(len(self.received_ooc) > 0)
-            act_username, act_message = self.received_ooc.pop(0)
-            if username is not None:
-                err = ('Wrong OOC message sender. Expected "{}", got "{}".'
-                       .format(username, act_username))
-                assert username == act_username, err
-            if message is not None:
-                err = 'Wrong OOC message. Expected "{}", got "{}".'.format(message, act_message)
-                assert message == act_message, err
+            self.search_match([user, message], self.received_ooc, somewhere=somewhere)
 
             if over or ooc_over:
                 assert(len(self.received_ooc) == 0)
             else:
                 assert(len(self.received_ooc) != 0)
+
+        def assert_not_received_ooc(self, message, username=None, somewhere=True):
+            if username is None:
+                username = self.server.config['hostname']
+
+            user = self.convert_symbol_to_word(username)
+            message = self.convert_symbol_to_word(message)
+
+            self.assert_not_received_packet('CT', (user, message), somewhere=somewhere)
 
         def sic(self, message, msg_type=0, pre='-', folder=None, anim=None, pos=None, sfx=0,
                 anim_type=0, cid=None, sfx_delay=0, button=0, evi=None, flip=0, ding=0, color=0,

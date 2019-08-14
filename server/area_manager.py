@@ -488,7 +488,7 @@ class AreaManager:
             if initiator: # If a player initiated the change light sequence, send targeted messages
                 initiator.send_ooc('You turned the lights {}.'.format(status[new_lights]))
                 initiator.send_ooc_others('The lights were turned {}.'.format(status[new_lights]),
-                                          is_staff=False, in_area=True)
+                                          is_staff=False, in_area=True, to_blind=False)
                 initiator.send_ooc_others('{} turned the lights {}.'
                                           .format(initiator.get_char_name(), status[new_lights]),
                                           is_staff=True, in_area=True)
