@@ -20,26 +20,26 @@ class TestOOC_01_Basic(_TestOOC):
 
         # No letters case
         self.c0.ooc('Hello world.', username=' ')
-        self.c0.assert_received_ooc('You must insert a name with at least one letter.', over=True)
+        self.c0.assert_ooc('You must insert a name with at least one letter.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         self.c1.ooc('/ping', username=' 1234 5678')
-        self.c1.assert_received_ooc('You must insert a name with at least one letter.', over=True)
+        self.c1.assert_ooc('You must insert a name with at least one letter.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         # Username that starts with a space
         self.c0.ooc('Hello world.', username=' user0')
-        self.c0.assert_received_ooc('You must insert a name that starts with a letter.', over=True)
+        self.c0.assert_ooc('You must insert a name that starts with a letter.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         self.c1.ooc('Hello world.', username=' 1easfasf')
-        self.c1.assert_received_ooc('You must insert a name that starts with a letter.', over=True)
+        self.c1.assert_ooc('You must insert a name that starts with a letter.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -51,14 +51,14 @@ class TestOOC_01_Basic(_TestOOC):
 
         for name in names0:
             self.c0.ooc('Hello world.', username=name)
-            self.c0.assert_received_ooc('That name is reserved.', over=True)
+            self.c0.assert_ooc('That name is reserved.', over=True)
             self.c1.assert_no_ooc()
             self.c2.assert_no_ooc()
             self.c3.assert_no_ooc()
 
         for name in names1:
             self.c1.ooc('/pong.', username=name)
-            self.c1.assert_received_ooc('That name is reserved.', over=True)
+            self.c1.assert_ooc('That name is reserved.', over=True)
             self.c0.assert_no_ooc()
             self.c2.assert_no_ooc()
             self.c3.assert_no_ooc()
@@ -72,28 +72,28 @@ class TestOOC_01_Basic(_TestOOC):
         """
 
         self.c0.ooc('Hello world.')
-        self.c0.assert_received_ooc('Hello world.', username=self.c0.name, over=True)
-        self.c1.assert_received_ooc('Hello world.', username=self.c0.name, over=True)
+        self.c0.assert_ooc('Hello world.', username=self.c0.name, over=True)
+        self.c1.assert_ooc('Hello world.', username=self.c0.name, over=True)
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         self.c1.ooc('Hello world.')
-        self.c0.assert_received_ooc('Hello world.', username=self.c1.name, over=True)
-        self.c1.assert_received_ooc('Hello world.', username=self.c1.name, over=True)
+        self.c0.assert_ooc('Hello world.', username=self.c1.name, over=True)
+        self.c1.assert_ooc('Hello world.', username=self.c1.name, over=True)
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         self.c2.ooc('Hello world?')
         self.c0.assert_no_ooc()
         self.c1.assert_no_ooc()
-        self.c2.assert_received_ooc('Hello world?', username=self.c2.name, over=True)
+        self.c2.assert_ooc('Hello world?', username=self.c2.name, over=True)
         self.c3.assert_no_ooc()
 
         self.c3.ooc('Hello world!')
         self.c0.assert_no_ooc()
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
-        self.c3.assert_received_ooc('Hello world!', username=self.c3.name, over=True)
+        self.c3.assert_ooc('Hello world!', username=self.c3.name, over=True)
 
     def test_03_samesends(self):
         """
@@ -103,29 +103,29 @@ class TestOOC_01_Basic(_TestOOC):
         for i in range(5):
             message = 'Hello world {}.'.format(i)
             self.c0.ooc(message)
-            self.c0.assert_received_ooc(message, username=self.c0.name, over=True)
-            self.c1.assert_received_ooc(message, username=self.c0.name, over=True)
+            self.c0.assert_ooc(message, username=self.c0.name, over=True)
+            self.c1.assert_ooc(message, username=self.c0.name, over=True)
             self.c2.assert_no_ooc()
             self.c3.assert_no_ooc()
 
             self.c1.ooc(message)
-            self.c0.assert_received_ooc(message, username=self.c1.name, over=True)
-            self.c1.assert_received_ooc(message, username=self.c1.name, over=True)
+            self.c0.assert_ooc(message, username=self.c1.name, over=True)
+            self.c1.assert_ooc(message, username=self.c1.name, over=True)
             self.c2.assert_no_ooc()
             self.c3.assert_no_ooc()
 
         message = 'Hello world.'
         for i in range(5):
             self.c0.ooc(message)
-            self.c0.assert_received_ooc(message, username=self.c0.name, over=True)
-            self.c1.assert_received_ooc(message, username=self.c0.name, over=True)
+            self.c0.assert_ooc(message, username=self.c0.name, over=True)
+            self.c1.assert_ooc(message, username=self.c0.name, over=True)
             self.c2.assert_no_ooc()
             self.c3.assert_no_ooc()
 
             self.c2.ooc(message)
             self.c0.assert_no_ooc()
             self.c1.assert_no_ooc()
-            self.c2.assert_received_ooc(message, username=self.c2.name, over=True)
+            self.c2.assert_ooc(message, username=self.c2.name, over=True)
             self.c3.assert_no_ooc()
 
     def test_04_ping(self):
@@ -134,7 +134,7 @@ class TestOOC_01_Basic(_TestOOC):
         """
 
         self.c0.ooc('/ping a')
-        self.c0.assert_received_ooc('This command has no arguments.', over=True)
+        self.c0.assert_ooc('This command has no arguments.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -144,7 +144,7 @@ class TestOOC_01_Basic(_TestOOC):
 
             for i in range(4):
                 if n == i:
-                    self.clients[i].assert_received_ooc('Pong.', over=True)
+                    self.clients[i].assert_ooc('Pong.', over=True)
                 else:
                     self.clients[i].assert_no_ooc()
 
@@ -156,17 +156,15 @@ class TestOOC_01_Basic(_TestOOC):
         og_name = 'user0'
 
         self.c0.ooc('Hello world.')
-        self.c0.assert_received_ooc('Hello world.', username=og_name, over=True)
-        self.c1.assert_received_ooc('Hello world.', username=og_name, over=True)
+        self.c0.assert_ooc('Hello world.', username=og_name, over=True)
+        self.c1.assert_ooc('Hello world.', username=og_name, over=True)
         self.assertEqual(self.c0.name, og_name)
 
         new_name = 'user4'
 
         self.c0.ooc('Changed to {}.'.format(new_name), username=new_name)
-        self.c0.assert_received_ooc('Changed to {}.'.format(new_name), username=new_name,
-                                    over=True)
-        self.c1.assert_received_ooc('Changed to {}.'.format(new_name), username=new_name,
-                                    over=True)
+        self.c0.assert_ooc('Changed to {}.'.format(new_name), username=new_name, over=True)
+        self.c1.assert_ooc('Changed to {}.'.format(new_name), username=new_name, over=True)
         self.assertEqual(self.c0.name, new_name)
 
     def test_06_sameoocname(self):
@@ -178,13 +176,13 @@ class TestOOC_01_Basic(_TestOOC):
         new_name = self.c1.name
 
         self.c0.ooc('AAA', username=new_name)
-        self.c0.assert_received_ooc('AAA', username=new_name, over=True)
-        self.c1.assert_received_ooc('AAA', username=new_name, over=True)
+        self.c0.assert_ooc('AAA', username=new_name, over=True)
+        self.c1.assert_ooc('AAA', username=new_name, over=True)
         self.assertEqual(self.c0.name, new_name)
 
         self.c1.ooc('AAA')
-        self.c0.assert_received_ooc('AAA', username=new_name, over=True)
-        self.c1.assert_received_ooc('AAA', username=new_name, over=True)
+        self.c0.assert_ooc('AAA', username=new_name, over=True)
+        self.c1.assert_ooc('AAA', username=new_name, over=True)
         self.assertEqual(self.c0.name, new_name)
 
 class TestOOC_02_PM(_TestOOC):
@@ -198,21 +196,21 @@ class TestOOC_02_PM(_TestOOC):
 
         # No target
         self.c0.ooc('/pm')
-        self.c0.assert_received_ooc(mes, over=True)
+        self.c0.assert_ooc(mes, over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         # No message
         self.c0.ooc('/pm 1')
-        self.c0.assert_received_ooc(mes, over=True)
+        self.c0.assert_ooc(mes, over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         # No target
         self.c0.ooc('/pm 100 Test')
-        self.c0.assert_received_ooc('No targets found.', over=True)
+        self.c0.assert_ooc('No targets found.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -233,8 +231,8 @@ class TestOOC_02_PM(_TestOOC):
                 sent = 'PM sent to {}. Message: '.format(target)
                 message = '{}-->{}'.format(c_a.name, c_b.name)
                 c_a.ooc('/pm {} {}'.format(target, message))
-                c_a.assert_received_ooc(sent + message, over=(c_a!=c_b))
-                c_b.assert_received_ooc(receipt + message, over=True)
+                c_a.assert_ooc(sent + message, over=(c_a!=c_b))
+                c_b.assert_ooc(receipt + message, over=True)
 
     def test_03_otherareapm(self):
         """
@@ -246,21 +244,21 @@ class TestOOC_02_PM(_TestOOC):
 
         message = 'Works with cID.'
         self.c0.ooc('/pm 2 {}'.format(message))
-        self.c0.assert_received_ooc('PM sent to 2. Message: {}'.format(message), over=True)
-        self.c2.assert_received_ooc(receipt + message, over=True)
+        self.c0.assert_ooc('PM sent to 2. Message: {}'.format(message), over=True)
+        self.c2.assert_ooc(receipt + message, over=True)
         self.c1.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         message = 'Does not work with charname.'
         self.c0.ooc('/pm {} {}'.format(self.c2.get_char_name(), message))
-        self.c0.assert_received_ooc('No targets found.', over=True)
+        self.c0.assert_ooc('No targets found.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         message = 'Does not work with OOC name.'
         self.c0.ooc('/pm {} {}'.format(self.c2.name, message))
-        self.c0.assert_received_ooc('No targets found.', over=True)
+        self.c0.assert_ooc('No targets found.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -271,20 +269,20 @@ class TestOOC_02_PM(_TestOOC):
         """
 
         self.c0.ooc('/toggle_pm e')
-        self.c0.assert_received_ooc('This command has no arguments.', over=True)
+        self.c0.assert_ooc('This command has no arguments.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         self.c0.ooc('/toggle_pm')
-        self.c0.assert_received_ooc('You will no longer receive PMs.', over=True)
+        self.c0.assert_ooc('You will no longer receive PMs.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
         self.assertTrue(self.c0.pm_mute)
 
         self.c0.ooc('/toggle_pm')
-        self.c0.assert_received_ooc('You will now receive PMs.', over=True)
+        self.c0.assert_ooc('You will now receive PMs.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -296,21 +294,21 @@ class TestOOC_02_PM(_TestOOC):
         """
 
         self.c0.ooc('/toggle_pm')
-        self.c0.assert_received_ooc('You will no longer receive PMs.', over=True)
+        self.c0.assert_ooc('You will no longer receive PMs.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
         self.assertTrue(self.c0.pm_mute)
 
         self.c1.ooc('/pm 0 Hi')
-        self.c1.assert_received_ooc('This user muted all PM conversations.', over=True)
+        self.c1.assert_ooc('This user muted all PM conversations.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
         self.assertTrue(self.c0.pm_mute)
 
         self.c0.ooc('/pm 1 Hi')
-        self.c0.assert_received_ooc('You have muted all PM conversations.', over=True)
+        self.c0.assert_ooc('You have muted all PM conversations.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -323,7 +321,7 @@ class TestOOC_03_Global(_TestOOC):
         receive one another's globals, even if they are in different areas.
         """
         self.c0.ooc('/g')
-        self.c0.assert_received_ooc('You cannot send an empty message.', over=True)
+        self.c0.assert_ooc('You cannot send an empty message.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -333,8 +331,7 @@ class TestOOC_03_Global(_TestOOC):
             name = c.name
             area = c.area.id
             for x in self.clients[:4]:
-                x.assert_received_ooc('Hello.', username='<dollar>G[{}][{}]'.format(area, name),
-                                      over=True)
+                x.assert_ooc('Hello.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
 
     def test_02_muteglobal(self):
         """
@@ -342,19 +339,19 @@ class TestOOC_03_Global(_TestOOC):
         """
 
         self.c0.ooc('/toggle_global e')
-        self.c0.assert_received_ooc('This command has no arguments.', over=True)
+        self.c0.assert_ooc('This command has no arguments.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         self.c0.ooc('/toggle_global')
-        self.c0.assert_received_ooc('You will no longer receive global messages.', over=True)
+        self.c0.assert_ooc('You will no longer receive global messages.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         self.c0.ooc('/toggle_global')
-        self.c0.assert_received_ooc('You will now receive global messages.', over=True)
+        self.c0.assert_ooc('You will now receive global messages.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -365,13 +362,13 @@ class TestOOC_03_Global(_TestOOC):
         """
 
         self.c0.ooc('/toggle_global')
-        self.c0.assert_received_ooc('You will no longer receive global messages.', over=True)
+        self.c0.assert_ooc('You will no longer receive global messages.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         self.c0.ooc('/g Hello C2.')
-        self.c0.assert_received_ooc('You have the global chat muted.', over=True)
+        self.c0.assert_ooc('You have the global chat muted.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -380,9 +377,6 @@ class TestOOC_03_Global(_TestOOC):
         name = self.c2.name
         area = self.c2.area.id
         self.c0.assert_no_ooc()
-        self.c1.assert_received_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name),
-                                    over=True)
-        self.c2.assert_received_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name),
-                                    over=True)
-        self.c3.assert_received_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name),
-                                    over=True)
+        self.c1.assert_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
+        self.c2.assert_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
+        self.c3.assert_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name), over=True)

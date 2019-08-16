@@ -8,11 +8,11 @@ class TestClientConnection(_Unittest):
 
         self.clients[0] = self.server.create_client()
         c = self.clients[0]
-        c.assert_received_packet('decryptor', 34)
-        c.assert_received_packet('ID', (0, None, None))
-        c.assert_received_packet('FL', ('yellowtext', 'customobjections', 'flipping',
-                                        'fastloading', 'noencryption', 'deskmod', 'evidence'))
-        c.assert_received_packet('PN', (0, self.server.config['playerlimit']), over=True)
+        c.assert_packet('decryptor', 34)
+        c.assert_packet('ID', (0, None, None))
+        c.assert_packet('FL', ('yellowtext', 'customobjections', 'flipping', 'fastloading',
+                               'noencryption', 'deskmod', 'evidence'))
+        c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
     def test_02_client1_connect(self):
@@ -22,11 +22,11 @@ class TestClientConnection(_Unittest):
 
         self.clients[1] = self.server.create_client()
         c = self.clients[1]
-        c.assert_received_packet('decryptor', 34)
-        c.assert_received_packet('ID', (1, None, None))
-        c.assert_received_packet('FL', ('yellowtext', 'customobjections', 'flipping',
-                                        'fastloading', 'noencryption', 'deskmod', 'evidence'))
-        c.assert_received_packet('PN', (0, self.server.config['playerlimit']), over=True)
+        c.assert_packet('decryptor', 34)
+        c.assert_packet('ID', (1, None, None))
+        c.assert_packet('FL', ('yellowtext', 'customobjections', 'flipping', 'fastloading',
+                               'noencryption', 'deskmod', 'evidence'))
+        c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
     def test_03_clients0and1_disconnect(self):
@@ -67,36 +67,36 @@ class TestClientConnection(_Unittest):
         # Starts off as normal
         self.clients[0] = self.server.create_client()
         c = self.clients[0]
-        c.assert_received_packet('decryptor', 34)
-        c.assert_received_packet('ID', (0, None, None))
-        c.assert_received_packet('FL', ('yellowtext', 'customobjections', 'flipping',
-                                        'fastloading', 'noencryption', 'deskmod', 'evidence'))
-        c.assert_received_packet('PN', (0, self.server.config['playerlimit']), over=True)
+        c.assert_packet('decryptor', 34)
+        c.assert_packet('ID', (0, None, None))
+        c.assert_packet('FL', ('yellowtext', 'customobjections', 'flipping', 'fastloading',
+                               'noencryption', 'deskmod', 'evidence'))
+        c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
         # But then it carries on
         c.send_command_cts("askchaa#%")
-        c.assert_received_packet('SI', (len(self.server.char_list), None, None), over=True)
+        c.assert_packet('SI', (len(self.server.char_list), None, None), over=True)
         c.send_command_cts("RC#%")
-        c.assert_received_packet('SC', None, over=True)
+        c.assert_packet('SC', None, over=True)
         c.send_command_cts("RM#%")
-        c.assert_received_packet('SM', None, over=True)
+        c.assert_packet('SM', None, over=True)
         c.assert_no_ooc()
         c.send_command_cts("RD#%")
-        c.assert_received_packet('CharsCheck', None)
-        c.assert_received_packet('HP', (1, 10))
-        c.assert_received_packet('HP', (2, 10))
-        c.assert_received_packet('BN', None)
-        c.assert_received_packet('LE', tuple())
-        c.assert_received_packet('MM', 1) # ?????
-        c.assert_received_packet('OPPASS', None)
-        c.assert_received_packet('DONE', tuple())
-        c.assert_received_packet('CT', (None, None)) # Area list
-        c.assert_received_packet('CT', (None, None)) # MOTD
-        c.assert_received_packet('FM', None, over=True) # Music list, again
+        c.assert_packet('CharsCheck', None)
+        c.assert_packet('HP', (1, 10))
+        c.assert_packet('HP', (2, 10))
+        c.assert_packet('BN', None)
+        c.assert_packet('LE', tuple())
+        c.assert_packet('MM', 1) # ?????
+        c.assert_packet('OPPASS', None)
+        c.assert_packet('DONE', tuple())
+        c.assert_packet('CT', (None, None)) # Area list
+        c.assert_packet('CT', (None, None)) # MOTD
+        c.assert_packet('FM', None, over=True) # Music list, again
 
-        c.assert_received_ooc(None, check_CT_packet=False)
-        c.assert_received_ooc(None, check_CT_packet=False, over=True)
+        c.assert_ooc(None, check_CT_packet=False)
+        c.assert_ooc(None, check_CT_packet=False, over=True)
 
         # Since no char yet...
         assert(c.get_char_name() == self.server.config['spectator_name'])
@@ -115,43 +115,43 @@ class TestClientConnection(_Unittest):
         # Starts off as normal
         self.clients[1] = self.server.create_client()
         c = self.clients[1]
-        c.assert_received_packet('decryptor', 34)
-        c.assert_received_packet('ID', (1, None, None))
-        c.assert_received_packet('FL', ('yellowtext', 'customobjections', 'flipping',
-                                        'fastloading', 'noencryption', 'deskmod', 'evidence'))
-        c.assert_received_packet('PN', (1, self.server.config['playerlimit']), over=True)
+        c.assert_packet('decryptor', 34)
+        c.assert_packet('ID', (1, None, None))
+        c.assert_packet('FL', ('yellowtext', 'customobjections', 'flipping', 'fastloading',
+                               'noencryption', 'deskmod', 'evidence'))
+        c.assert_packet('PN', (1, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
         # Join server
         c.send_command_cts("askchaa#%")
-        c.assert_received_packet('SI', (len(self.server.char_list), None, None), over=True)
+        c.assert_packet('SI', (len(self.server.char_list), None, None), over=True)
         c.send_command_cts("RC#%")
-        c.assert_received_packet('SC', None, over=True)
+        c.assert_packet('SC', None, over=True)
         c.send_command_cts("RM#%")
-        c.assert_received_packet('SM', None, over=True)
+        c.assert_packet('SM', None, over=True)
         c.assert_no_ooc()
         c.send_command_cts("RD#%")
-        c.assert_received_packet('CharsCheck', None)
-        c.assert_received_packet('HP', (1, 10))
-        c.assert_received_packet('HP', (2, 10))
-        c.assert_received_packet('BN', None)
-        c.assert_received_packet('LE', tuple())
-        c.assert_received_packet('MM', 1) # ?????
-        c.assert_received_packet('OPPASS', None)
-        c.assert_received_packet('DONE', tuple())
-        c.assert_received_packet('CT', (None, None)) # Area list
-        c.assert_received_packet('CT', (None, None)) # MOTD
-        c.assert_received_packet('FM', None, over=True) # Music list, again
+        c.assert_packet('CharsCheck', None)
+        c.assert_packet('HP', (1, 10))
+        c.assert_packet('HP', (2, 10))
+        c.assert_packet('BN', None)
+        c.assert_packet('LE', tuple())
+        c.assert_packet('MM', 1) # ?????
+        c.assert_packet('OPPASS', None)
+        c.assert_packet('DONE', tuple())
+        c.assert_packet('CT', (None, None)) # Area list
+        c.assert_packet('CT', (None, None)) # MOTD
+        c.assert_packet('FM', None, over=True) # Music list, again
 
-        c.assert_received_ooc(None, check_CT_packet=False)
-        c.assert_received_ooc(None, check_CT_packet=False, over=True)
+        c.assert_ooc(None, check_CT_packet=False)
+        c.assert_ooc(None, check_CT_packet=False, over=True)
 
         # Since no char yet...
         assert(c.get_char_name() == self.server.config['spectator_name'])
 
         # Only now pick char
         c.send_command_cts("CC#1#0#FAKEHDID#%") # Pick char 0
-        c.assert_received_packet('PV', (1, 'CID', 0), over=True) # 1 because second client online
+        c.assert_packet('PV', (1, 'CID', 0), over=True) # 1 because second client online
         assert(c.get_char_name() == self.server.char_list[0])
 
         # Check number of clients
@@ -169,36 +169,36 @@ class TestClientConnection(_Unittest):
         # Starts off as normal
         self.clients[2] = self.server.create_client()
         c = self.clients[2]
-        c.assert_received_packet('decryptor', 34)
-        c.assert_received_packet('ID', (2, None, None))
-        c.assert_received_packet('FL', ('yellowtext', 'customobjections', 'flipping',
-                                        'fastloading', 'noencryption', 'deskmod', 'evidence'))
-        c.assert_received_packet('PN', (2, self.server.config['playerlimit']), over=True)
+        c.assert_packet('decryptor', 34)
+        c.assert_packet('ID', (2, None, None))
+        c.assert_packet('FL', ('yellowtext', 'customobjections', 'flipping', 'fastloading',
+                               'noencryption', 'deskmod', 'evidence'))
+        c.assert_packet('PN', (2, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
         # Join server
         c.send_command_cts("askchaa#%")
-        c.assert_received_packet('SI', (len(self.server.char_list), None, None), over=True)
+        c.assert_packet('SI', (len(self.server.char_list), None, None), over=True)
         c.send_command_cts("RC#%")
-        c.assert_received_packet('SC', None, over=True)
+        c.assert_packet('SC', None, over=True)
         c.send_command_cts("RM#%")
-        c.assert_received_packet('SM', None, over=True)
+        c.assert_packet('SM', None, over=True)
         c.assert_no_ooc()
         c.send_command_cts("RD#%")
-        c.assert_received_packet('CharsCheck', None)
-        c.assert_received_packet('HP', (1, 10))
-        c.assert_received_packet('HP', (2, 10))
-        c.assert_received_packet('BN', None)
-        c.assert_received_packet('LE', tuple())
-        c.assert_received_packet('MM', 1) # ?????
-        c.assert_received_packet('OPPASS', None)
-        c.assert_received_packet('DONE', tuple())
-        c.assert_received_packet('CT', (None, None)) # Area list
-        c.assert_received_packet('CT', (None, None)) # MOTD
-        c.assert_received_packet('FM', None, over=True) # Music list, again
+        c.assert_packet('CharsCheck', None)
+        c.assert_packet('HP', (1, 10))
+        c.assert_packet('HP', (2, 10))
+        c.assert_packet('BN', None)
+        c.assert_packet('LE', tuple())
+        c.assert_packet('MM', 1) # ?????
+        c.assert_packet('OPPASS', None)
+        c.assert_packet('DONE', tuple())
+        c.assert_packet('CT', (None, None)) # Area list
+        c.assert_packet('CT', (None, None)) # MOTD
+        c.assert_packet('FM', None, over=True) # Music list, again
 
-        c.assert_received_ooc(None, check_CT_packet=False)
-        c.assert_received_ooc(None, check_CT_packet=False, over=True)
+        c.assert_ooc(None, check_CT_packet=False)
+        c.assert_ooc(None, check_CT_packet=False, over=True)
 
         # Since no char yet...
         assert(c.get_char_name() == self.server.config['spectator_name'])
@@ -207,7 +207,7 @@ class TestClientConnection(_Unittest):
         c.send_command_cts("CC#2#0#FAKEHDID#%") # Attempt to pick char 0
         c.assert_no_packets() # Should not happen as client 1 has char 0
         c.send_command_cts("CC#2#1#FAKEHDID#%") # Attempt to pick char 1
-        c.assert_received_packet('PV', (2, 'CID', 1), over=True) # 2 because third client online
+        c.assert_packet('PV', (2, 'CID', 1), over=True) # 2 because third client online
         assert(c.get_char_name() == self.server.char_list[1])
 
         # Check number of clients
@@ -230,7 +230,7 @@ class TestClientConnection(_Unittest):
         c.send_command_cts("CC#0#4#FAKEHDID#%") # Attempt to pick char 4
         c.assert_no_packets() # Should not happen as there is no char 4
         c.send_command_cts("CC#0#3#FAKEHDID#%") # Attempt to pick char 3
-        c.assert_received_packet('PV', (0, 'CID', 3), over=True) # 0 because first client online
+        c.assert_packet('PV', (0, 'CID', 3), over=True) # 0 because first client online
         assert(c.get_char_name() == self.server.char_list[3])
 
         self.assertEqual(len(self.server.client_manager.clients), 3)

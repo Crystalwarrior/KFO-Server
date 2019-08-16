@@ -17,7 +17,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import time
-import random
 
 from server import logger
 from server.exceptions import ClientError, AreaError
@@ -225,21 +224,28 @@ class ClientChangeArea:
             clnt.send_ooc(info + '.')
 
         ###########
-        # If there is blood in the area, send notification, as long as one of the following is true
-        # 1. You are staff
-        # 2. Lights are on and you are not blind.
+        # If there are blood trails in the area, send notification if one of the following is true
+        ## 1. You are staff
+        ## 2. Lights are on and you are not blind.
+        ## If the blood in the area is smeared, just indicate there is smeared blood for non-staff
+        ## and the regular blood trail message with extra text for staff.
         # If neither is true, send 'smell' notification as long as the following is true:
         # 1. Lights turned off or you are blind
         # 2. 'You smell blood' was not sent as a result of someone bleeding (see previous part)
 
-        if not clnt.is_staff() or (area.lights and not clnt.is_blind):
-            if area.bleeds_to == set([area.name]):
-                clnt.send_ooc('You spot some blood in the area.')
+        if clnt.is_staff() or (area.lights and not clnt.is_blind):
+            smeared_connector = 'smeared ' if clnt.is_staff() and area.blood_smeared else ''
+
+            if not clnt.is_staff() and area.blood_smeared:
+                clnt.send_ooc('You spot some smeared blood in the area.')
+            elif area.bleeds_to == set([area.name]):
+                clnt.send_ooc('You spot some {}blood in the area.'.format(smeared_connector))
             elif len(area.bleeds_to) > 1:
                 bleed_to_areas = list(area.bleeds_to - set([area.name]))
                 # Lose potential order bias, yes, even with what originally was a set
-                random.shuffle(bleed_to_areas)
-                info = 'You spot a blood trail leading to the {}'.format(bleed_to_areas[0])
+                bleed_to_areas.sort()
+                info = ('You spot a {}blood trail leading to the {}'
+                        .format(smeared_connector, bleed_to_areas[0]))
                 if len(bleed_to_areas) > 1:
                     for i in range(1, len(bleed_to_areas)-1):
                         info += ', the {}'.format(bleed_to_areas[i])
@@ -263,50 +269,54 @@ class ClientChangeArea:
         # If autopassing, send OOC messages, provided the lights are on. If lights are off,
         # send nerfed announcements regardless. Keep track of who is blind and/or deaf as well.
 
-        def moving_message(autopass_mes, blind_mes, target_area):
-            staff = nbnd = ybnd = nbyd = '' # nbnd = notblindnotdeaf ybnd=yesblindnotdeaf
-
-            # Autopass: at most footsteps if no lights
-            # No autopass: at most footsteps if no lights
-            # Blind: at most footsteps
-            # Deaf: can hear autopass but not footsteps
-            # No lights: at most footsteps
-
-            if clnt.autopass:
-                staff = autopass_mes
-                nbnd = autopass_mes
-                ybnd = blind_mes
-                nbyd = autopass_mes
-            if not target_area.lights:
-                staff = blind_mes if not staff else autopass_mes # Staff get autopass message
-                nbnd = blind_mes
-                ybnd = blind_mes
-                nbyd = ''
-
-            clnt.send_ooc_others(staff, in_area=target_area, is_staff=True)
-            clnt.send_ooc_others(nbnd, in_area=target_area, is_staff=False,
-                                 to_blind=False, to_deaf=False)
-            clnt.send_ooc_others(ybnd, in_area=target_area, is_staff=False,
-                                 to_blind=True, to_deaf=False)
-            clnt.send_ooc_others(nbyd, in_area=target_area, is_staff=False,
-                                 to_blind=False, to_deaf=True)
-            # Blind and deaf get nothing
-
         if not clnt.char_id < 0 and clnt.is_visible:
-            moving_message('{} has left to the {}'.format(old_char, area.name),
-                           'You hear footsteps going out of the room.', old_area)
-            moving_message('{} has entered from the {}'.format(new_char, old_area.name),
-                           'You hear footsteps coming into the room.', area)
+            self.notify_others_moving(clnt, old_area,
+                                      '{} has left to the {}'.format(old_char, area.name),
+                                      'You hear footsteps going out of the room.')
+            self.notify_others_moving(clnt, area,
+                                      '{} has entered from the {}'.format(new_char, old_area.name),
+                                      'You hear footsteps coming into the room.')
 
-        ###########
-        # If bleeding, send reminder, and notify everyone in the new area if not sneaking
-        # (otherwise, just send vague message).
         if clnt.is_bleeding:
             old_area.bleeds_to.add(old_area.name)
             area.bleeds_to.add(area.name)
 
         if not ignore_bleeding and clnt.is_bleeding:
-            # Send notification to people in new area
+            self.notify_others_blood(clnt, area, new_char, status='arrived')
+            self.notify_others_blood(clnt, old_area, old_char, status='left')
+
+    def notify_others_moving(self, clnt, area, autopass_mes, blind_mes):
+        staff = nbnd = ybnd = nbyd = '' # nbnd = notblindnotdeaf ybnd=yesblindnotdeaf
+
+        # Autopass: at most footsteps if no lights
+        # No autopass: at most footsteps if no lights
+        # Blind: at most footsteps
+        # Deaf: can hear autopass but not footsteps
+        # No lights: at most footsteps
+
+        if clnt.autopass:
+            staff = autopass_mes
+            nbnd = autopass_mes
+            ybnd = blind_mes
+            nbyd = autopass_mes
+        if not area.lights:
+            staff = blind_mes if not staff else autopass_mes # Staff get autopass message
+            nbnd = blind_mes
+            ybnd = blind_mes
+            nbyd = ''
+
+        clnt.send_ooc_others(staff, in_area=area, is_staff=True)
+        clnt.send_ooc_others(nbnd, in_area=area, is_staff=False, to_blind=False, to_deaf=False)
+        clnt.send_ooc_others(ybnd, in_area=area, is_staff=False, to_blind=True, to_deaf=False)
+        clnt.send_ooc_others(nbyd, in_area=area, is_staff=False, to_blind=False, to_deaf=True)
+        # Blind and deaf get nothing
+
+    def notify_others_blood(self, clnt, area, char, status='stay', send_to_staff=True):
+        # Assume clnt's bleeding status is worth announcing (for example, it changed, or lights on)
+        # If bleeding, send reminder, and notify everyone in the area if not sneaking
+        # (otherwise, just send vague message).
+
+        if clnt.is_bleeding:
             area_had_bleeding = (len([c for c in area.clients if c.is_bleeding]) > 0)
 
             dsh = {True: 'You start hearing more drops of blood.',
@@ -319,47 +329,9 @@ class ClientChangeArea:
             h_mes = dsh[area_had_bleeding] # hearing message
             s_mes = dss[area_had_bleeding] # smelling message
             hs_mes = dshs[area_had_bleeding] # hearing and smelling message
-
-            ybyd_mes = hs_mes
-
-            if clnt.is_visible and area.lights:
-                normal_mes = 'You see {} arrive and bleeding.'.format(new_char)
-                ybnd_mes = h_mes
-                nbyd_mes = normal_mes
-                staff_mes = normal_mes
-            elif not clnt.is_visible and area.lights:
-                normal_mes = h_mes
-                ybnd_mes = hs_mes
-                nbyd_mes = s_mes
-                staff_mes = '{} arrived to the area while bleeding and sneaking.'.format(new_char)
-            elif clnt.is_visible and not area.lights:
-                normal_mes = hs_mes
-                ybnd_mes = hs_mes
-                nbyd_mes = s_mes
-                staff_mes = '{} arrived to the darkened area while bleeding.'.format(new_char)
-            elif not clnt.is_visible and not area.lights:
-                normal_mes = hs_mes
-                ybnd_mes = hs_mes
-                nbyd_mes = s_mes
-                staff_mes = ('{} arrived to the darkened area while bleeding and sneaking.'
-                             .format(new_char))
-
-            clnt.send_ooc_others(normal_mes, is_staff=False, in_area=area,
-                                 to_blind=False, to_deaf=False)
-            clnt.send_ooc_others(ybnd_mes, is_staff=False, in_area=area,
-                                 to_blind=True, to_deaf=False)
-            clnt.send_ooc_others(nbyd_mes, is_staff=False, in_area=area,
-                                 to_blind=False, to_deaf=True)
-            clnt.send_ooc_others(ybyd_mes, is_staff=False, in_area=area,
-                                 to_blind=True, to_deaf=True)
-            clnt.send_ooc_others(staff_mes, is_staff=True, in_area=area)
-
-        ###########
-        # If bleeding and either you were sneaking or your former area had its lights turned
-        # off, notify everyone in the old area to the less intense sounds and smells of
-        # blood. Do nothing if lights on and not sneaking.
-        if not ignore_bleeding and clnt.is_bleeding:
-            area_sole_bleeding = (len([c for c in old_area.clients if c.is_bleeding]) == 1)
+            vis_status = 'now'
+        else:
+            area_sole_bleeding = (len([c for c in area.clients if c.is_bleeding]) == 1)
             dsh = {True: 'You stop hearing drops of blood.',
                    False: 'You start hearing less drops of blood.'}
             dshs = {True: 'You stop hearing and smelling drops of blood.',
@@ -370,44 +342,50 @@ class ClientChangeArea:
             h_mes = dsh[area_sole_bleeding] # hearing message
             s_mes = dss[area_sole_bleeding] # smelling message
             hs_mes = dshs[area_sole_bleeding] # hearing and smelling message
+            vis_status = 'no longer'
 
-            if clnt.is_visible and old_area.lights:
-                normal_mes = ('You see {} leave the area while still bleeding.'
-                              .format(clnt.get_char_name()))
-                ybnd_mes = hs_mes
-                nbyd_mes = normal_mes
-                ybyd_mes = s_mes
-                staff_mes = normal_mes
-            elif not clnt.is_visible and old_area.lights:
-                normal_mes = h_mes
-                ybnd_mes = hs_mes
-                nbyd_mes = s_mes
-                ybyd_mes = s_mes
-                staff_mes = ('{} left the area while bleeding and sneaking.'
-                             .format(clnt.get_char_name()))
-            elif clnt.is_visible and not old_area.lights:
-                normal_mes = hs_mes
-                ybnd_mes = hs_mes
-                nbyd_mes = s_mes
-                ybyd_mes = s_mes
-                staff_mes = ('{} left the darkened area while bleeding.'
-                             .format(clnt.get_char_name()))
-            elif not clnt.is_visible and not old_area.lights:
-                normal_mes = hs_mes
-                ybnd_mes = hs_mes
-                nbyd_mes = s_mes
-                ybyd_mes = s_mes
-                staff_mes = ('{} left the darkened area while bleeding and sneaking.'
-                             .format(clnt.get_char_name()))
+        ybyd_mes = hs_mes
+        darkened = 'darkened ' if not area.lights else ''
 
-            clnt.send_ooc_others(normal_mes, is_staff=False, in_area=old_area,
-                                 to_blind=False, to_deaf=False)
-            clnt.send_ooc_others(ybnd_mes, is_staff=False, in_area=old_area,
-                                 to_blind=True, to_deaf=False)
-            clnt.send_ooc_others(nbyd_mes, is_staff=False, in_area=old_area,
-                                 to_blind=False, to_deaf=True)
-            clnt.send_ooc_others(ybyd_mes, is_staff=False, in_area=old_area,
-                                 to_blind=True, to_deaf=True)
+        if status == 'stay':
+            connector = 'is {}'.format(vis_status)
+            pconnector = 'was {}'.format(vis_status)
+        elif status == 'left':
+            connector = 'leave the {}area while still'.format(darkened)
+            pconnector = 'left the {}area while still'.format(darkened)
+        elif status == 'arrived':
+            connector = 'arrive to the {}area while'.format(darkened)
+            pconnector = 'arrived to the {}area while'.format(darkened)
+
+        if clnt.is_visible and area.lights:
+            def_mes = 'You see {} {} bleeding.'.format(char, connector)
+            ybnd_mes = h_mes
+            nbyd_mes = def_mes
+            staff_mes = def_mes
+        elif not clnt.is_visible and area.lights:
+            def_mes = h_mes
+            ybnd_mes = hs_mes
+            nbyd_mes = s_mes
+            staff_mes = '{} {} bleeding and sneaking.'.format(char, pconnector)
+        elif clnt.is_visible and not area.lights:
+            def_mes = hs_mes
+            ybnd_mes = hs_mes
+            nbyd_mes = s_mes
+            staff_mes = '{} {} bleeding.'.format(char, pconnector)
+        elif not clnt.is_visible and not area.lights:
+            def_mes = hs_mes
+            ybnd_mes = hs_mes
+            nbyd_mes = s_mes
+            staff_mes = ('{} {} bleeding and sneaking.'.format(char, pconnector))
+
+        staff_mes = staff_mes.replace('no longer bleeding and sneaking.',
+                                      'no longer bleeding, but is still sneaking.') # Ugly
+
+        clnt.send_ooc_others(def_mes, is_staff=False, in_area=area, to_blind=False, to_deaf=False)
+        clnt.send_ooc_others(ybnd_mes, is_staff=False, in_area=area, to_blind=True, to_deaf=False)
+        clnt.send_ooc_others(nbyd_mes, is_staff=False, in_area=area, to_blind=False, to_deaf=True)
+        clnt.send_ooc_others(ybyd_mes, is_staff=False, in_area=area, to_blind=True, to_deaf=True)
+        if send_to_staff:
             clnt.send_ooc_others(staff_mes, is_staff=True, in_area=area)
 
     def change_area(self, area, override_all=False, override_passages=False,

@@ -180,3 +180,8 @@
 -/gag
 *Renamed /mutepm -> /toggle_pm
 *Fixed /pm not sending complete character names to recipient
+*Minor changes to messages sent on area change
+-Staff now receive autopass messages if lights are off instead of regular lights off messages
+-Reworded messages sent if someone arrives/leaves while bleeding/lights off and sneaking
+-Players now receive special notification if there is blood in the area and lights are off
+*Fixed blood cleaning sending notification with lights on

@@ -512,42 +512,25 @@ def ooc_cmd_bloodtrail(client, arg):
     Assuming a player with client ID 0 and IPID 1234567890 starts as not being leaving a blood trail
     /bloodtrail 0            :: This player will now leave a blood trail wherever they go.
     """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-
-    status = {False: 'no longer', True: 'now'}
+    Constants.command_assert(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
-    num_bleeding_before = len([c for c in target.area.clients if c.is_bleeding])
+    status = {False: 'no longer', True: 'now'}
     target.is_bleeding = not target.is_bleeding
-    num_bleeding_after = len([c for c in target.area.clients if c.is_bleeding])
 
     target.send_ooc('You are {} bleeding.'.format(status[target.is_bleeding]))
     target.send_ooc_others('{} is {} bleeding ({}).'
                            .format(target.get_char_name(), status[target.is_bleeding],
                                    target.area.id), is_staff=True)
-
-    if not target.area.lights or not target.is_visible:
-        # Multiple cases to account for different situations
-        if num_bleeding_before == 0 and num_bleeding_after == 1:
-            message = 'You start hearing faint drops of blood.'
-        elif num_bleeding_before == 1 and num_bleeding_after == 0:
-            message = 'You no longer hear drops of blood.'
-        elif num_bleeding_before < num_bleeding_after:
-            message = 'You start hearing more drops of blood.'
-        elif num_bleeding_before > num_bleeding_after:
-            message = 'You start hearing less drops of blood.'
-        else: # Default case, should not be reachable but put just in case
-            message = 'You hear faint drops of blood.'
-    else:
-        message = '{} is {} bleeding.'.format(target.get_char_name(), status[target.is_bleeding])
-
-    target.send_ooc_others(message, is_staff=False, in_area=True)
+    target.area_changer.notify_others_blood(target, target.area, target.get_char_name(),
+                                            status='stay', send_to_staff=False)
 
 def ooc_cmd_bloodtrail_clean(client, arg):
     """
     Cleans the blood trails of the current area or (STAFF ONLY) given areas by ID or name separated
     by commas. If not given any areas, it will clean the blood trail of the current area.
+    Blind non-staff members who attempt to run this command will only smear the blood in the area.
+    Attempting to clean blood in a clean area or an area where there is someone bleeding will fail.
 
     SYNTAX
     /bloodtrail_clean {area_1}, {area_2}, ....
@@ -571,41 +554,60 @@ def ooc_cmd_bloodtrail_clean(client, arg):
 
     successful_cleans = set()
     for area in areas_to_clean:
-        # Check if someone is currently bleeding in the area, which would prevent it from being cleaned.
+        if not area.bleeds_to and not area.blood_smeared:
+            client.send_ooc('There is no blood in area {}.'.format(area.name))
+            continue
+
+        # Check if someone is currently bleeding in the area,
+        # which would prevent it from being cleaned.
         # Yes, you can use for/else in Python, it works exactly like regular flags.
         for c in area.clients:
             if c.is_bleeding:
                 if not client.is_staff():
-                    client.send_ooc("You tried to clean the place up but the blood just keeps coming.")
+                    mes = 'You tried to clean the place up, but the blood just keeps coming.'
                 else:
-                    client.send_ooc("{} in area {} is still bleeding, so the area cannot be cleaned."
-                                    .format(c.get_char_name(), area.name))
+                    mes = ('{} in area {} is still bleeding, so the area cannot be cleaned.'
+                           .format(c.get_char_name(), area.name))
+                client.send_ooc(mes)
                 break
         else:
-            client.send_ooc_others('The blood trail in this area was cleaned.', is_staff=False,
-                                   in_area=area)
-            area.bleeds_to = set()
+            if not client.is_staff() and client.is_blind:
+                client.send_ooc_others('{} tried to clean the blood in the area, but only managed '
+                                       'to smear it all over the place.'
+                                       .format(client.get_char_name()), is_staff=False,
+                                       in_area=area, to_blind=False)
+                area.blood_smeared = True
+            else:
+                client.send_ooc_others('The blood trail in the area was cleaned.',
+                                       is_staff=False, in_area=area, to_blind=False)
+                area.bleeds_to = set()
+                area.blood_smeared = False
             successful_cleans.add(area.name)
 
     if len(successful_cleans) > 0:
         if len(arg) == 0:
             message = client.area.name
-            client.send_ooc("Cleaned the blood trail in the current area.")
+            client.send_ooc("You cleaned the blood trail in the current area.")
             if client.is_staff():
                 client.send_ooc_others('{} cleaned the blood trail in area {}.'
                                        .format(client.name, client.area.name), is_staff=True)
             else:
-                client.send_ooc_others('{} cleaned the blood trail in area {}.'
-                                       .format(client.get_char_name(), client.area.name),
+                if client.is_blind:
+                    mes = ('{} attempted to clean the blood trail in area {}, but as they are '
+                           'blind, they only managed to smear it all over the place.')
+                else:
+                    mes = '{} cleaned the blood trail in area {}.'
+
+                client.send_ooc_others(mes.format(client.get_char_name(), client.area.name),
                                        is_staff=True)
         elif len(successful_cleans) == 1:
             message = str(successful_cleans.pop())
-            client.send_ooc("Cleaned blood trail in area {}".format(message))
+            client.send_ooc("You cleaned the blood trail in area {}".format(message))
             client.send_ooc_others('{} cleaned the blood trail in area {}.'
                                    .format(client.name, message), is_staff=True)
         elif len(successful_cleans) > 1:
             message = ", ".join(successful_cleans)
-            client.send_ooc("Cleaned blood trails in areas {}".format(message))
+            client.send_ooc("You cleaned the blood trails in areas {}".format(message))
             client.send_ooc_others('{} cleaned the blood trails in areas {}.'
                                    .format(client.name, message), is_staff=True)
         logger.log_server('[{}][{}]Cleaned the blood trail in {}.'
@@ -624,22 +626,28 @@ def ooc_cmd_bloodtrail_list(client, arg):
     EXAMPLE
     /bloodtrail_list
     """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+    Constants.command_assert(client, arg, is_staff=True, parameters='=0')
 
-    info = '== Blood trails in this server =='
     # Get all areas with blood in them
-    areas = [area for area in client.server.area_manager.areas if len(area.bleeds_to) > 0]
+    areas = [area for area in client.server.area_manager.areas if len(area.bleeds_to) > 0 or
+             area.blood_smeared]
 
     # No areas found means there are no blood trails
     if len(areas) == 0:
-        info += '\r\n*No areas have blood.'
+        raise ClientError('No areas have blood.')
+
     # Otherwise, build the list of all areas with blood
-    else:
-        for area in areas:
-            info += '\r\n*({}) {}: {}'.format(area.id, area.name, ", ".join(area.bleeds_to))
+    info = '== Blood trails in this server =='
+    for area in areas:
+        if area.bleeds_to:
+            pre_info = ", ".join(area.bleeds_to)
+        else:
+            pre_info = "-"
+
+        if area.blood_smeared:
+            pre_info += ' (SMEARED)'
+
+        info += '\r\n*({}) {}: {}'.format(area.id, area.name, pre_info)
 
     client.send_ooc(info)
 
@@ -679,10 +687,76 @@ def ooc_cmd_bloodtrail_set(client, arg):
 
     client.send_ooc('Set the blood trail in this area to {}.'.format(message))
     client.send_ooc_others('The blood trail in this area was set to {}.'.format(message),
-                           is_staff=False, in_area=True)
+                           is_staff=False, in_area=True, to_blind=False)
     client.send_ooc_others('{} set the blood trail in area {} to {}.'
                            .format(client.name, client.area.name, message), is_staff=True)
     client.area.bleeds_to = {area.name for area in areas_to_link}
+
+def ooc_cmd_bloodtrail_smear(client, arg):
+    """
+    Smears the blood trails of the current area or (STAFF ONLY) given areas by ID or name separated
+    by commas. If not given any areas, it will smear the blood trail of the current area.
+    As long as the area has smeared blood, no new blood trails will be recorded and any visual
+    indication of preexisting blood trails will be replaced with a 'Smeared' indication for
+    non-staff members.
+    Returns an error if the area has no blood or its blood is already smeared.
+
+    SYNTAX
+    /bloodtrail_smear {area_1}, {area_2}, ....
+
+    OPTIONAL PARAMETERS
+    {area_n}: Area ID or name
+
+    EXAMPLE
+    Assuming the player is in area 0
+    /bloodtrail_smear                           :: Smears the blood trail in area 0
+    /bloodtrail_smear 3, Class Trial Room,\ 2   :: Smears the blood trail in area 3 and Class Trial Room, 2 (note the ,\)
+    """
+    if len(arg) == 0:
+        areas_to_smear = [client.area]
+    else:
+        if not client.is_staff():
+            raise ClientError('You must be authorized to do that.')
+        # Make sure the input is valid before starting
+        raw_areas_to_smear = arg.split(", ")
+        areas_to_smear = set(Constants.parse_area_names(client, raw_areas_to_smear))
+
+    successful_smears = set()
+    for area in areas_to_smear:
+        if not area.bleeds_to and not client.is_staff():
+            client.send_ooc('There is no blood in area {}.'.format(area.name))
+        elif area.blood_smeared:
+            client.send_ooc('Area {} already has its blood trails smeared.'.format(area.name))
+        else:
+            for c in area.clients:
+                client.send_ooc_others('The blood trail in this area was smeared.', is_staff=False,
+                                       in_area=area, to_blind=False)
+            area.blood_smeared = True
+            successful_smears.add(area.name)
+
+    if len(successful_smears) > 0:
+        if len(arg) == 0:
+            message = client.area.name
+            client.send_ooc("You smeared the blood trail in the current area.")
+            if client.is_staff():
+                client.send_ooc_others('{} smeared the blood trail in area {}.'
+                                       .format(client.name, client.area.name), is_staff=True)
+            else:
+                client.send_ooc_others('{} smeared the blood trail in area {}.'
+                                       .format(client.get_char_name(), client.area.name),
+                                       is_staff=True)
+        elif len(successful_smears) == 1:
+            message = str(successful_smears.pop())
+            client.send_ooc("You smeared the blood trail in area {}".format(message))
+            client.send_ooc_others('{} smeared the blood trail in area {}.'
+                                   .format(client.name, message), is_staff=True)
+        elif len(successful_smears) > 1:
+            message = ", ".join(successful_smears)
+            client.send_ooc("You smeared the blood trails in areas {}".format(message))
+            client.send_ooc_others('{} smeared the blood trails in areas {}.'
+                                   .format(client.name, message), is_staff=True)
+        logger.log_server('[{}][{}]Smeared the blood trail in {}.'
+                          .format(client.area.id, client.get_char_name(), message), client)
 
 def ooc_cmd_can_iniswap(client, arg):
     """ (MOD ONLY)
@@ -1379,7 +1453,8 @@ def ooc_cmd_g(client, arg):
 def ooc_cmd_getarea(client, arg):
     """
     List the characters (and associated client IDs) in the current area.
-    Returns an error if the user is subject to RP mode and is in an area that disables /getarea.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getarea, or
+    if they are blind and not staff.
 
     SYNTAX
     /getarea
@@ -1392,13 +1467,16 @@ def ooc_cmd_getarea(client, arg):
     """
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
+    if not client.is_staff() and client.is_blind:
+        raise ClientError('You are blind, so you cannot see anything.')
 
     client.send_area_info(client.area, client.area.id, False)
 
 def ooc_cmd_getareas(client, arg):
     """
     List the characters (and associated client IDs) in each area.
-    Returns an error if the user is subject to RP mode and is in an area that disables /getareas.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getareas,
+    or if they are blind and not staff.
 
     SYNTAX
     /getareas
@@ -1411,6 +1489,8 @@ def ooc_cmd_getareas(client, arg):
     """
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
+    if not client.is_staff() and client.is_blind:
+        raise ClientError('You are blind, so you cannot see anything.')
 
     client.send_area_info(client.area, -1, False)
 
@@ -1858,7 +1938,7 @@ def ooc_cmd_knock(client, arg):
 
     client.send_ooc('You knocked on the door to area {}.'.format(target_area.name))
     client.send_ooc_others('Someone knocked on your door from area {}.'.format(client.area.name),
-                           is_staff=False, in_area=target_area)
+                           is_staff=False, in_area=target_area, to_deaf=False)
     client.send_ooc_others('{} knocked on the door to area {} in area {} ({}).'
                            .format(client.get_char_name(), target_area.name, client.area.name,
                                    client.area.id), is_staff=True)
@@ -1935,7 +2015,7 @@ def ooc_cmd_lights(client, arg):
     if not client.is_staff() and not client.area.has_lights:
         raise AreaError('This area has no lights to turn off or on.')
     if not client.is_mod and client.area.bg_lock:
-        raise AreaError("Unable to turn lights off or on: This area's background is locked.")
+        raise AreaError('The background of this area is locked.')
 
     new_lights = (arg == 'on')
     client.area.change_lights(new_lights, initiator=client)
@@ -2099,8 +2179,10 @@ def ooc_cmd_look(client, arg):
     """
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
+    if not client.is_staff() and client.is_blind:
+        raise ClientError('You are blind, so you cannot see anything.')
     if not client.is_staff() and not client.area.lights:
-        raise ClientError('The lights are off. You cannot see anything.')
+        raise ClientError('The lights are off, so you cannot see anything.')
 
     client.send_ooc(client.area.description)
 
@@ -2538,6 +2620,9 @@ def ooc_cmd_party(client, arg):
     /party      :: May return something like "You have created party 11037."
     """
     Constants.command_assert(client, arg, parameters='=0')
+
+    if not client.is_staff() and client.is_blind:
+        raise ClientError('You cannot create a party as you are blind.')
     if not client.area.lights:
         raise AreaError('You cannot create a party while the lights are off.')
     if client.following:
@@ -2617,8 +2702,8 @@ def ooc_cmd_party_invite(client, arg):
     Sends an invite to another player by client ID to join the party. The invitee will receive an
     OOC message with your name and party ID so they can join.
     The invitee must be in the same area as the player. If that is not the case, but the invitee
-    is in an area that can be reached by screams, they will receive a notification of the party
-    invitation attempt (but will not be invited).
+    is in an area that can be reached by screams and is not deaf, they will receive a notification
+    of the party invitation attempt (but will not be invited).
     Returns an error if you are not part of a party, you are not a party leader or staff member,
     if the player is not in the same area as you, or if the player is already invited.
 
@@ -2640,7 +2725,7 @@ def ooc_cmd_party_invite(client, arg):
     c = Constants.parse_id(client, arg)
     # Check if invitee is in the same area
     if c.area != party.area:
-        if c.area.name in client.area.scream_range:
+        if c.area.name in client.area.scream_range and not c.is_deaf:
             msg = ('You hear screeching of someone asking you to join their party but they seem '
                    'too far away to even care all that much.')
             c.send_ooc(msg)
@@ -3376,8 +3461,9 @@ def ooc_cmd_rpmode(client, arg):
 
 def ooc_cmd_scream(client, arg):
     """
-    Sends a message in the OOC chat visible to all staff members and users that are in an area
-    whose screams are reachable from the sender's area.
+    Sends a message in the OOC chat visible to all staff members and non-deaf users that are in an
+    area whose screams are reachable from the sender's area. If the user is gagged, a special
+    message is instead sent to non-deaf players in the same area. Staff always get normal messages.
     Returns an error if the user has global chat off or sends an empty message.
 
     SYNTAX
@@ -3387,17 +3473,34 @@ def ooc_cmd_scream(client, arg):
     <message>: Message to be sent
 
     EXAMPLE
-    /scream Hello World      :: Sends Hello World to users in reachable areas+staff.
+    /scream Hello World      :: Sends Hello World to users in scream reachable areas+staff.
     """
     if client.muted_global:
         raise ClientError('You have the global chat muted.')
     if len(arg) == 0:
         raise ArgumentError("You cannot send an empty message.")
 
-    client.server.send_all_cmd_pred('CT', "<dollar>SCREAM[{}]".format(client.get_char_name()), arg,
-                                    pred=lambda c: not c.muted_global and
-                                    (c.is_staff() or c.area == client.area or
-                                     c.area.name in client.area.scream_range))
+    if not client.is_gagged:
+        client.send_ooc('You screamed "{}"'.format(arg))
+        client.send_ooc_others(arg, username="<dollar>SCREAM[{}]".format(client.get_char_name()),
+                               is_staff=False, to_deaf=False,
+                               pred=lambda c: not c.muted_global and (c.area == client.area or
+                                               c.area.name in client.area.scream_range))
+        client.send_ooc_others('Your ears are ringing.', is_staff=False, to_deaf=True,
+                               pred=lambda c: not c.muted_global and (c.area == client.area or
+                                               c.area.name in client.area.scream_range))
+        client.send_ooc_others('{} screamed "{}" ({}).'
+                               .format(client.get_char_name(), arg, client.area.id),
+                               is_staff=True, pred=lambda c: not c.muted_global)
+    else:
+        client.send_ooc('You attempted to scream but you have no mouth.')
+        client.send_ooc_others('{} is trying to scream but has no mouth.'
+                               .format(client.get_char_name()), is_staff=False, to_deaf=False,
+                               in_area=True, pred=lambda c: not c.muted_global)
+        client.send_ooc_others('{} attempted to scream "{}" while gagged ({}).'
+                               .format(client.get_char_name(), arg, client.area.id),
+                               is_staff=True, pred=lambda c: not c.muted_global)
+
     logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg),
                       client)
 
@@ -4798,7 +4901,7 @@ def ooc_cmd_blind(client, arg):
     """ (STAFF ONLY)
     Blind/unblind
     """
-    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
+    Constants.command_assert(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
     status = {False: 'unblinded', True: 'blinded'}
@@ -4819,7 +4922,7 @@ def ooc_cmd_deafen(client, arg):
     """ (STAFF ONLY)
     Deafen/undeafen
     """
-    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
+    Constants.command_assert(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
     status = {False: 'undeafened', True: 'deafened'}
@@ -4835,7 +4938,7 @@ def ooc_cmd_gag(client, arg):
     """ (STAFF ONLY)
     Gag/ungag
     """
-    Constants.command_assert(client, arg, parameters='=1', is_staff=True)
+    Constants.command_assert(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
     status = {False: 'ungagged', True: 'gagged'}

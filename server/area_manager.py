@@ -78,6 +78,7 @@ class AreaManager:
             self.is_gmlocked = False
             self.is_modlocked = False
             self.bleeds_to = set()
+            self.blood_smeared = False
             self.lights = True
             self.last_ic_messages = list()
             self.parties = set()
@@ -486,9 +487,17 @@ class AreaManager:
 
             # Announce light status change
             if initiator: # If a player initiated the change light sequence, send targeted messages
-                initiator.send_ooc('You turned the lights {}.'.format(status[new_lights]))
+                if not initiator.is_blind:
+                    initiator.send_ooc('You turned the lights {}.'.format(status[new_lights]))
+                elif not initiator.is_deaf:
+                    initiator.send_ooc('You hear a flicker.')
+                else:
+                    initiator.send_ooc('You feel a light switch was flipped.')
+
                 initiator.send_ooc_others('The lights were turned {}.'.format(status[new_lights]),
                                           is_staff=False, in_area=True, to_blind=False)
+                initiator.send_ooc_others('You hear a flicker.', is_staff=False, in_area=True,
+                                          to_blind=True, to_deaf=False)
                 initiator.send_ooc_others('{} turned the lights {}.'
                                           .format(initiator.get_char_name(), status[new_lights]),
                                           is_staff=True, in_area=True)

@@ -104,6 +104,8 @@ class Constants():
 
             if split_spaces:
                 arg = arg.split(' ')
+            if arg == ['']:
+                arg = list()
 
             error = None
             if symbol == '=':

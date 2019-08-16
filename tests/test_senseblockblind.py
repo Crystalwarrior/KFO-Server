@@ -5,14 +5,13 @@ class _TestSenseBlockBlind(_TestSenseBlock):
     def setUpClass(cls):
         super().setUpClass()
         cls.c3.move_area(5)
+        cls.blank = '../../misc/blank'
 
     def convo1(self):
         self.c2.sic('Oi m8.')
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c0.assert_received_ic('Oi m8.', folder=self.c2_cname,
-                                   anim='../../misc/blank', over=True)
-        self.c2.assert_received_ic('Oi m8.', folder=self.c2_cname,
-                                   anim='happy', over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ic('Oi m8.', folder=self.c2_cname, anim=self.blank, over=True)
+        self.c2.assert_ic('Oi m8.', folder=self.c2_cname, anim='happy', over=True)
 
         others = [self.c1, self.c3]
         if self.server.client_list[4]:
@@ -20,22 +19,18 @@ class _TestSenseBlockBlind(_TestSenseBlock):
 
         for c in others:
             if c.area == self.c0.area:
-                c.assert_received_ic('Oi m8.', folder=self.c2_cname,
-                                           anim='happy', over=True)
+                c.assert_ic('Oi m8.', folder=self.c2_cname, anim='happy', over=True)
             else:
                 c.assert_no_ic()
 
         self.c0.sic('Cant see you.', anim='sad')
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c0.assert_received_ic('Cant see you.', folder=self.c0_cname,
-                                   anim='../../misc/blank', over=True)
-        self.c2.assert_received_ic('Cant see you.', folder=self.c0_cname,
-                                   anim='sad', over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ic('Cant see you.', folder=self.c0_cname, anim=self.blank, over=True)
+        self.c2.assert_ic('Cant see you.', folder=self.c0_cname, anim='sad', over=True)
 
         for c in others:
             if c.area == self.c0.area:
-                c.assert_received_ic('Cant see you.', folder=self.c0_cname,
-                                     anim='sad', over=True)
+                c.assert_ic('Cant see you.', folder=self.c0_cname, anim='sad', over=True)
             else:
                 c.assert_no_ic()
 
@@ -50,14 +45,14 @@ class TestSenseBlockBlind_01_Common(_UnittestSenseBlock):
 
     def sense_affect(self, client):
         if client.is_blind:
-            client.assert_received_packet('BN', self.server.config['blackout_background'],
+            client.assert_packet('BN', self.server.config['blackout_background'],
                                           over=True)
         else:
             raise TypeError
 
     def sense_unaffect(self, client):
         if not client.is_blind:
-            client.assert_received_packet('BN', client.area.background, over=True)
+            client.assert_packet('BN', client.area.background, over=True)
         else:
             raise TypeError
 
@@ -68,10 +63,10 @@ class TestSenseBlockBlind_02_Effect(_TestSenseBlockBlind):
         """
 
         self.c1.ooc('/blind {}'.format(0))
-        self.c1.assert_received_ooc('You have blinded {}.'.format(self.c0_cname), over=True)
-        self.c0.assert_received_ooc('You have been blinded.', ooc_over=True)
-        self.c2.assert_received_ooc('{} has blinded {} ({}).'
-                                    .format(self.c1.name, self.c0_cname, 0), over=True)
+        self.c1.assert_ooc('You have blinded {}.'.format(self.c0_cname), over=True)
+        self.c0.assert_ooc('You have been blinded.', ooc_over=True)
+        self.c2.assert_ooc('{} has blinded {} ({}).'
+                           .format(self.c1.name, self.c0_cname, 0), over=True)
         self.c3.assert_no_ooc()
 
         assert self.c0.is_blind
@@ -79,7 +74,7 @@ class TestSenseBlockBlind_02_Effect(_TestSenseBlockBlind):
         assert not self.c2.is_blind
         assert not self.c3.is_blind
 
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'], over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'], over=True)
 
     def test_02_blindseesnothing(self):
         """
@@ -87,35 +82,28 @@ class TestSenseBlockBlind_02_Effect(_TestSenseBlockBlind):
         """
 
         self.c0.sic('Hello?')
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c0.assert_received_ic('Hello?', folder=self.c0_cname,
-                                   anim='../../misc/blank', over=True)
-        self.c1.assert_received_ic('Hello?', folder=self.c0_cname,
-                                   anim='happy', over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ic('Hello?', folder=self.c0_cname, anim=self.blank, over=True)
+        self.c1.assert_ic('Hello?', folder=self.c0_cname, anim='happy', over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
 
         self.c1.sic('Yes I can hear you.')
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c0.assert_received_ic('Yes I can hear you.', folder=self.c1_cname,
-                                   anim='../../misc/blank', over=True)
-        self.c1.assert_received_ic('Yes I can hear you.', folder=self.c1_cname,
-                                   anim='happy', over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ic('Yes I can hear you.', folder=self.c1_cname, anim=self.blank, over=True)
+        self.c1.assert_ic('Yes I can hear you.', folder=self.c1_cname, anim='happy', over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
 
         self.c0.sic('I cant see you :(')
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c0.assert_received_ic('I cant see you :(', folder=self.c0_cname,
-                                   anim='../../misc/blank', over=True)
-        self.c1.assert_received_ic('I cant see you :(', folder=self.c0_cname,
-                                   anim='happy', over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ic('I cant see you :(', folder=self.c0_cname, anim=self.blank, over=True)
+        self.c1.assert_ic('I cant see you :(', folder=self.c0_cname, anim='happy', over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
 
         self.c2.sic('I still see myself.')
-        self.c2.assert_received_ic('I still see myself.', folder=self.c2_cname,
-                                   anim='happy', over=True)
+        self.c2.assert_ic('I still see myself.', folder=self.c2_cname, anim='happy', over=True)
         self.c0.assert_no_ic()
         self.c1.assert_no_ic()
         self.c3.assert_no_ic()
@@ -136,33 +124,24 @@ class TestSenseBlockBlind_02_Effect(_TestSenseBlockBlind):
         self.c1.move_area(4)
 
         self.c1.sic('Hallo mates.')
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c0.assert_received_ic('Hallo mates.', folder=self.c1_cname,
-                                   anim='../../misc/blank', over=True)
-        self.c1.assert_received_ic('Hallo mates.', folder=self.c1_cname,
-                                   anim='happy', over=True)
-        self.c2.assert_received_ic('Hallo mates.', folder=self.c1_cname,
-                                   anim='happy', over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ic('Hallo mates.', folder=self.c1_cname, anim=self.blank, over=True)
+        self.c1.assert_ic('Hallo mates.', folder=self.c1_cname, anim='happy', over=True)
+        self.c2.assert_ic('Hallo mates.', folder=self.c1_cname, anim='happy', over=True)
         self.c3.assert_no_ic()
 
         self.c1.sic('Yo.')
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c0.assert_received_ic('Yo.', folder=self.c1_cname,
-                                   anim='../../misc/blank', over=True)
-        self.c1.assert_received_ic('Yo.', folder=self.c1_cname,
-                                   anim='happy', over=True)
-        self.c2.assert_received_ic('Yo.', folder=self.c1_cname,
-                                   anim='happy', over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ic('Yo.', folder=self.c1_cname, anim=self.blank, over=True)
+        self.c1.assert_ic('Yo.', folder=self.c1_cname, anim='happy', over=True)
+        self.c2.assert_ic('Yo.', folder=self.c1_cname, anim='happy', over=True)
         self.c3.assert_no_ic()
 
-        self.c0.sic('Cant see you either :(.', anim='sad')
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c0.assert_received_ic('Cant see you either :(.', folder=self.c0_cname,
-                                   anim='../../misc/blank', over=True)
-        self.c1.assert_received_ic('Cant see you either :(.', folder=self.c0_cname,
-                                   anim='sad', over=True)
-        self.c2.assert_received_ic('Cant see you either :(.', folder=self.c0_cname,
-                                   anim='sad', over=True)
+        self.c0.sic('Cant see you either', anim='sad')
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ic('Cant see you either', folder=self.c0_cname, anim=self.blank, over=True)
+        self.c1.assert_ic('Cant see you either', folder=self.c0_cname, anim='sad', over=True)
+        self.c2.assert_ic('Cant see you either', folder=self.c0_cname, anim='sad', over=True)
         self.c3.assert_no_ic()
 
 class TestSenseBlockBlind_03_Advanced(_TestSenseBlockBlind):
@@ -184,60 +163,57 @@ class TestSenseBlockBlind_03_Advanced(_TestSenseBlockBlind):
     def test_01_blindandlights(self):
         """
         Situation:
-        1. C2 turns lights off. C0 notices nothing.
+        1. C2 turns lights off. C0 only notices a flicker sound.
         2. C0 leaves room while lights are off and gets no notif of light sttus when they return.
-        3. C3 comes to the room and gets notif of lights out
-        4. C2 turns lights on. C0 notices nothing, C3 does.
+        3. C3 comes to the room and gets notif of lights out.
+        4. C2 turns lights on. C0 notices a flicker sound, C3 does notice light change.
 
         TODO: Unload this test case as soon as lights test case is up.
         """
 
         self.c2.ooc('/lights off')
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'], over=True)
-        self.c0.assert_not_received_ooc('The lights were turned off.')
-        self.c1.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c1.assert_received_ooc('{} turned the lights off.'
-                                    .format(self.c2_cname), over=True)
-        self.c2.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c2.assert_received_ooc('You turned the lights off.', over=True)
-        self.c4.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c4.assert_received_ooc('The lights were turned off.', over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ooc('You hear a flicker.', over=True)
+        self.c1.assert_packet('BN', self.server.config['blackout_background'])
+        self.c1.assert_ooc('{} turned the lights off.'.format(self.c2_cname), over=True)
+        self.c2.assert_packet('BN', self.server.config['blackout_background'])
+        self.c2.assert_ooc('You turned the lights off.', over=True)
+        self.c4.assert_packet('BN', self.server.config['blackout_background'])
+        self.c4.assert_ooc('The lights were turned off.', over=True)
         self.convo1()
 
-        self.c0.ooc('/area 5')
-        self.c0.discard_all()
-        self.c1.assert_received_ooc('You hear footsteps going out of the room.', over=True)
-        self.c2.assert_received_ooc('You hear footsteps going out of the room.', over=True)
-        self.c4.assert_received_ooc('You hear footsteps going out of the room.', over=True)
-        self.c0.ooc('/area 4')
-        self.c0.assert_not_received_ooc('You enter a pitch dark room.')
-        self.c0.assert_not_received_ooc('You hear footsteps coming into the room.')
-        self.c0.discard_all()
-        self.c1.assert_received_ooc('You hear footsteps coming into the room.', over=True)
-        self.c2.assert_received_ooc('You hear footsteps coming into the room.', over=True)
+        self.c0.move_area(5, discard_trivial=True)
+        self.c0.assert_no_ooc()
+        self.c1.assert_ooc('You hear footsteps going out of the room.', over=True)
+        self.c2.assert_ooc('You hear footsteps going out of the room.', over=True)
         self.c3.assert_no_ooc()
-        self.c4.assert_received_ooc('You hear footsteps coming into the room.', over=True)
+        self.c4.assert_ooc('You hear footsteps going out of the room.', over=True)
 
-        self.c3.ooc('/area 4')
-        self.c0.assert_received_ooc('You hear footsteps coming into the room.', over=True)
-        self.c1.assert_received_ooc('You hear footsteps coming into the room.', over=True)
-        self.c2.assert_received_ooc('You hear footsteps coming into the room.', over=True)
-        self.c3.assert_received_ooc('You enter a pitch dark room.', somewhere=True)
-        self.c3.discard_all()
-        self.c4.assert_received_ooc('You hear footsteps coming into the room.', over=True)
+        self.c0.move_area(4, discard_trivial=True)
+        self.c0.assert_no_ooc()
+        self.c1.assert_ooc('You hear footsteps coming into the room.', over=True)
+        self.c2.assert_ooc('You hear footsteps coming into the room.', over=True)
+        self.c3.assert_no_ooc()
+        self.c4.assert_ooc('You hear footsteps coming into the room.', over=True)
+
+        self.c3.move_area(4, discard_trivial=True)
+        self.c0.assert_ooc('You hear footsteps coming into the room.', over=True)
+        self.c1.assert_ooc('You hear footsteps coming into the room.', over=True)
+        self.c2.assert_ooc('You hear footsteps coming into the room.', over=True)
+        self.c3.assert_ooc('You enter a pitch dark room.', over=True)
+        self.c4.assert_ooc('You hear footsteps coming into the room.', over=True)
 
         self.c2.ooc('/lights on')
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'], over=True)
-        self.c0.assert_not_received_ooc('The lights were turned on.')
-        self.c1.assert_received_packet('BN', self.c0.area.background)
-        self.c1.assert_received_ooc('{} turned the lights on.'
-                                    .format(self.c2_cname), over=True)
-        self.c2.assert_received_packet('BN', self.c0.area.background)
-        self.c2.assert_received_ooc('You turned the lights on.', over=True)
-        self.c3.assert_received_packet('BN', self.c0.area.background)
-        self.c3.assert_received_ooc('The lights were turned on.', over=True)
-        self.c4.assert_received_packet('BN', self.c0.area.background)
-        self.c4.assert_received_ooc('The lights were turned on.', over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ooc('You hear a flicker.', over=True)
+        self.c1.assert_packet('BN', self.c0.area.background)
+        self.c1.assert_ooc('{} turned the lights on.'.format(self.c2_cname), over=True)
+        self.c2.assert_packet('BN', self.c0.area.background)
+        self.c2.assert_ooc('You turned the lights on.', over=True)
+        self.c3.assert_packet('BN', self.c0.area.background)
+        self.c3.assert_ooc('The lights were turned on.', over=True)
+        self.c4.assert_packet('BN', self.c0.area.background)
+        self.c4.assert_ooc('The lights were turned on.', over=True)
         self.convo1()
 
     def test_02_blindandautopass(self):
@@ -247,49 +223,48 @@ class TestSenseBlockBlind_03_Advanced(_TestSenseBlockBlind):
 
         self.c3.ooc('/autopass')
         self.c3.move_area(5)
-        self.c0.assert_received_ooc('You hear footsteps going out of the room.', over=True)
-        self.c2.assert_received_ooc('{} has left to the {}'
-                                    .format(self.c3_cname, self.area5.name), over=True)
+        self.c0.assert_ooc('You hear footsteps going out of the room.', over=True)
+        self.c2.assert_ooc('{} has left to the {}'
+                           .format(self.c3_cname, self.area5.name), over=True)
         self.c1.discard_all()
         self.c3.discard_all()
         self.c4.discard_all()
 
         self.c3.move_area(4)
-        self.c0.assert_received_ooc('You hear footsteps coming into the room.', over=True)
-        self.c2.assert_received_ooc('{} has entered from the {}'
-                                    .format(self.c3_cname, self.area5.name), over=True)
+        self.c0.assert_ooc('You hear footsteps coming into the room.', over=True)
+        self.c2.assert_ooc('{} has entered from the {}'
+                           .format(self.c3_cname, self.area5.name), over=True)
         self.c1.discard_all()
         self.c3.discard_all()
         self.c4.discard_all()
 
     def test_03_blindandautopassnolight(self):
         """
-        Situation: Autopass and lights off. C0 still only gets footstep notifs.
+        Situation: Autopass and lights off. C0 still only gets flicker and footstep notifs.
         """
 
         self.c3.ooc('/lights off')
-        self.c0.assert_received_packet('BN', self.server.config['blackout_background'], over=True)
-        self.c0.assert_not_received_ooc('The lights were turned off.')
-        self.c2.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c2.assert_received_ooc('{} turned the lights off.'
-                                    .format(self.c3_cname), over=True)
-        self.c3.assert_received_packet('BN', self.server.config['blackout_background'])
-        self.c3.assert_received_ooc('You turned the lights off.', over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ooc('You hear a flicker.', over=True)
+        self.c2.assert_packet('BN', self.server.config['blackout_background'])
+        self.c2.assert_ooc('{} turned the lights off.'.format(self.c3_cname), over=True)
+        self.c3.assert_packet('BN', self.server.config['blackout_background'])
+        self.c3.assert_ooc('You turned the lights off.', over=True)
         self.c1.discard_all()
         self.c4.discard_all()
 
         self.c3.move_area(5)
-        self.c0.assert_received_ooc('You hear footsteps going out of the room.', over=True)
-        self.c2.assert_received_ooc('{} has left to the {}'
-                                    .format(self.c3_cname, self.area5.name), over=True)
-        self.c4.assert_received_ooc('You hear footsteps going out of the room.', over=True)
+        self.c0.assert_ooc('You hear footsteps going out of the room.', over=True)
+        self.c2.assert_ooc('{} has left to the {}'
+                           .format(self.c3_cname, self.area5.name), over=True)
+        self.c4.assert_ooc('You hear footsteps going out of the room.', over=True)
         self.c1.discard_all()
         self.c3.discard_all()
 
         self.c3.move_area(4)
-        self.c0.assert_received_ooc('You hear footsteps coming into the room.', over=True)
-        self.c2.assert_received_ooc('{} has entered from the {}'
-                                    .format(self.c3_cname, self.area5.name), over=True)
-        self.c4.assert_received_ooc('You hear footsteps coming into the room.', over=True)
+        self.c0.assert_ooc('You hear footsteps coming into the room.', over=True)
+        self.c2.assert_ooc('{} has entered from the {}'
+                           .format(self.c3_cname, self.area5.name), over=True)
+        self.c4.assert_ooc('You hear footsteps coming into the room.', over=True)
         self.c1.discard_all()
         self.c3.discard_all()

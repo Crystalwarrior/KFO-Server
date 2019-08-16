@@ -23,10 +23,24 @@ class _Unittest(unittest.TestCase):
         cls.area6 = cls.server.area_manager.get_area_by_id(6)
         cls.area7 = cls.server.area_manager.get_area_by_id(7)
 
+    def list2reason(self, exc_list):
+        if exc_list and exc_list[-1][0] is self:
+            return exc_list[-1][1]
+
     def tearDown(self):
         """
-        Check if any packets were unaccounted for.
+        Check if any packets were unaccounted for. Only do so if test passed.
         """
+
+        # Test checker by hynekcer (2016): https://stackoverflow.com/a/39606065
+
+        result = self.defaultTestResult()  # these 2 methods have no side effects
+        self._feedErrorsToResult(result, self._outcome.errors)
+        error = self.list2reason(result.errors)
+        failure = self.list2reason(result.failures)
+
+        if error or failure:
+            return
 
         for c in self.clients:
             if c:
@@ -108,7 +122,7 @@ class _TestClientManager(ClientManager):
     class _TestClient(ClientManager.Client):
         def __init__(self, *args, my_protocol=None):
             super().__init__(*args)
-            self.received_commands = list()
+            self.received_packets = list()
             self.received_ooc = list()
             self.received_ic = list()
             self.my_protocol = my_protocol
@@ -123,7 +137,7 @@ class _TestClientManager(ClientManager):
             if len(args) > 1 and isinstance(args[1], TsuserverException):
                 new_args = [args[0], args[1].message]
                 args = tuple(new_args)
-            self.received_commands.append([command_type, args])
+            self.received_packets.append([command_type, args])
             self.receive_command_stc(command_type, *args)
 
         def send_command_cts(self, buffer):
@@ -158,33 +172,33 @@ class _TestClientManager(ClientManager):
             if self.is_mod:
                 return
             self.ooc('/login {}'.format(self.server.config['modpass']))
-            self.assert_received_packet('FM', None)
-            self.assert_received_ooc('Logged in as a moderator.', over=True)
+            self.assert_packet('FM', None)
+            self.assert_ooc('Logged in as a moderator.', over=True)
             assert self.is_mod
 
         def make_cm(self):
             if self.is_cm:
                 return
             self.ooc('/logincm {}'.format(self.server.config['cmpass']))
-            self.assert_received_packet('FM', None)
-            self.assert_received_ooc('Logged in as a community manager.', over=True)
+            self.assert_packet('FM', None)
+            self.assert_ooc('Logged in as a community manager.', over=True)
             assert self.is_cm
 
         def make_gm(self):
             if self.is_gm:
                 return
             self.ooc('/loginrp {}'.format(self.server.config['gmpass']))
-            self.assert_received_packet('FM', None)
-            self.assert_received_ooc('Logged in as a game master.', over=True)
+            self.assert_packet('FM', None)
+            self.assert_ooc('Logged in as a game master.', over=True)
             assert self.is_gm
 
         def make_normie(self):
             self.ooc('/logout')
-            self.assert_received_ooc('You are no longer logged in.', ooc_over=True)
-            self.assert_received_packet('FM', None, over=True)
+            self.assert_ooc('You are no longer logged in.', ooc_over=True)
+            self.assert_packet('FM', None, over=True)
             assert not (self.is_mod and self.is_cm and self.is_gm)
 
-        def move_area(self, area_id, discard_packets=True):
+        def move_area(self, area_id, discard_packets=True, discard_trivial=False):
             as_command = random.randint(0, 1)
             area = self.server.area_manager.get_area_by_id(area_id)
             if as_command:
@@ -196,15 +210,27 @@ class _TestClientManager(ClientManager):
 
             assert self.area.id == area_id, (self.area.id, area_id, as_command)
 
-            if discard_packets:
+            if discard_trivial:
+                packets_to_discard = (
+                                    ['HP', None],
+                                    ['HP', None],
+                                    ['BN', None],
+                                    ['LE', None],
+                                    ['FM', None]
+                                    )
+                for packet in packets_to_discard:
+                    self.discard_packet(packet)
+
+                _, x = self.search_match(['CT', ('<dollar>H', 'Changed area to')],
+                                          self.received_packets, somewhere=True, remove_match=True,
+                                          allow_partial_match=True)
+                self.discard_ooc(x[1])
+
+            elif discard_packets:
                 self.discard_all()
 
-        def assert_no_packets(self):
-            err = ('{} expected no outstanding packets, found {}.'
-                   .format(self, self.received_commands))
-            assert len(self.received_commands) == 0, err
 
-        def check_match(self, exp_args, act_args):
+        def check_match(self, exp_args, act_args, allow_partial_match=False):
             assert len(exp_args) == len(act_args), (len(exp_args), len(act_args))
 
             for exp_arg, act_arg in zip(exp_args, act_args):
@@ -217,13 +243,18 @@ class _TestClientManager(ClientManager):
                     for i, param in enumerate(exp_arg):
                         if param is None:
                             continue
-                        assert param == act_arg[i], (i, param, act_arg[i])
+                        if allow_partial_match:
+                            condition = act_arg[i].startswith(param)
+                        else:
+                            condition = param == act_arg[i]
+                        assert condition, (i, param, act_arg[i])
                 elif isinstance(act_arg, tuple):
                     assert exp_arg == act_arg[0], (exp_arg, act_arg[0])
                 else:
                     assert exp_arg == act_arg, (exp_arg, act_arg)
 
-        def search_match(self, exp_args, structure, somewhere=False, remove_match=True):
+        def search_match(self, exp_args, structure, somewhere=False, remove_match=True,
+                         allow_partial_match=False):
             if not somewhere:
                 to_look = structure[:1]
             else:
@@ -231,38 +262,49 @@ class _TestClientManager(ClientManager):
 
             for i, act_args in enumerate(to_look):
                 try:
-                    self.check_match(exp_args, act_args)
+                    self.check_match(exp_args, act_args, allow_partial_match=allow_partial_match)
                 except AssertionError:
                     continue
                 else:
                     if remove_match:
                         structure.pop(i)
-                    return i
+                    return i, act_args
             else:
-                err = '{} could not find {} in {}.'.format(self, exp_args, structure)
+                if somewhere:
+                    connector = 'somewhere among'
+                else:
+                    connector = 'at the start of'
+                err = 'Cannot find {} {} the packets of {}'.format(exp_args, connector, self)
+                err += ('\r\nCurrent packets: {}'
+                        .format('\r\n*'.join([str(x) for x in structure])))
                 raise AssertionError(err)
 
-        def assert_received_packet(self, command_type, args, over=False, ooc_over=False,
-                                   ic_over=False, somewhere=False):
+        def assert_packet(self, command_type, args, over=False, ooc_over=False, ic_over=False,
+                          somewhere=False):
             err = '{} expected packets, found none'.format(self)
-            assert len(self.received_commands) > 0, err
-            self.search_match([command_type, args], self.received_commands, somewhere=somewhere)
+            assert len(self.received_packets) > 0, err
+            self.search_match([command_type, args], self.received_packets, somewhere=somewhere)
 
             if over:
                 err = ('{} expected no more packets (did you accidentally put over=True?)'
                        .format(self))
-                assert(len(self.received_commands) == 0), err
+                assert(len(self.received_packets) == 0), err
             elif ooc_over or ic_over:
                 # Assumes actual over checks are done manually
                 pass
             else:
                 err = ('{} expected more packets (did you forget to put over=True?)'
                        .format(self))
-                assert len(self.received_commands) != 0, err
+                assert len(self.received_packets) != 0, err
 
-        def assert_not_received_packet(self, command_type, args, somewhere=True):
+        def assert_no_packets(self):
+            err = ('{} expected no outstanding packets, found {}.'
+                   .format(self, self.received_packets))
+            assert len(self.received_packets) == 0, err
+
+        def assert_not_packet(self, command_type, args, somewhere=True):
             try:
-                self.search_match([command_type, args], self.received_commands,
+                self.search_match([command_type, args], self.received_packets,
                                   somewhere=somewhere, remove_match=False)
             except AssertionError:
                 pass
@@ -270,13 +312,8 @@ class _TestClientManager(ClientManager):
                 raise AssertionError('Found packet {} {} when expecting not to find it.'
                                      .format(command_type, args))
 
-        def assert_no_ooc(self):
-            err = ('{} expected no more OOC messages, found {}'
-                   .format(self, self.received_ooc))
-            assert len(self.received_ooc) == 0, err
-
-        def assert_received_ooc(self, message, username=None, over=False, ooc_over=False,
-                                check_CT_packet=True, somewhere=False):
+        def assert_ooc(self, message, username=None, over=False, ooc_over=False,
+                       check_CT_packet=True, somewhere=False):
             if username is None:
                 username = self.server.config['hostname']
 
@@ -284,7 +321,7 @@ class _TestClientManager(ClientManager):
             message = self.convert_symbol_to_word(message)
 
             if check_CT_packet:
-                self.assert_received_packet('CT', (user, message), over=over, ooc_over=ooc_over,
+                self.assert_packet('CT', (user, message), over=over, ooc_over=ooc_over,
                                             somewhere=somewhere)
 
             assert(len(self.received_ooc) > 0)
@@ -295,14 +332,19 @@ class _TestClientManager(ClientManager):
             else:
                 assert(len(self.received_ooc) != 0)
 
-        def assert_not_received_ooc(self, message, username=None, somewhere=True):
+        def assert_no_ooc(self):
+            err = ('{} expected no more OOC messages, found {}'
+                   .format(self, self.received_ooc))
+            assert len(self.received_ooc) == 0, err
+
+        def assert_not_ooc(self, message, username=None, somewhere=True):
             if username is None:
                 username = self.server.config['hostname']
 
             user = self.convert_symbol_to_word(username)
             message = self.convert_symbol_to_word(message)
 
-            self.assert_not_received_packet('CT', (user, message), somewhere=somewhere)
+            self.assert_not_packet('CT', (user, message), somewhere=somewhere)
 
         def sic(self, message, msg_type=0, pre='-', folder=None, anim=None, pos=None, sfx=0,
                 anim_type=0, cid=None, sfx_delay=0, button=0, evi=None, flip=0, ding=0, color=0,
@@ -341,15 +383,9 @@ class _TestClientManager(ClientManager):
                 self.area.can_send_message = lambda: True
             self.send_command_cts(buffer)
 
-        def assert_no_ic(self):
-            err = ('{} expected no more IC messages, found {}'
-                   .format(self, self.received_ic))
-            assert len(self.received_ic) == 0, err
-
-        def assert_received_ic(self, message, over=False, ic_over=False,
-                               check_MS_packet=True, **kwargs):
+        def assert_ic(self, message, over=False, ic_over=False, check_MS_packet=True, **kwargs):
             if check_MS_packet:
-                self.assert_received_packet('MS', None, over=over, ic_over=ic_over)
+                self.assert_packet('MS', None, over=over, ic_over=ic_over)
 
             assert(len(self.received_ic) > 0)
             params = self.received_ic.pop(0)
@@ -386,8 +422,25 @@ class _TestClientManager(ClientManager):
             else:
                 assert(len(self.received_ic) != 0)
 
+        def assert_no_ic(self):
+            err = ('{} expected no more IC messages, found {}'
+                   .format(self, self.received_ic))
+            assert len(self.received_ic) == 0, err
+
+        def discard_packet(self, packet):
+            try:
+                self.search_match(packet, self.received_packets, somewhere=True, remove_match=True)
+            except AssertionError:
+                pass
+
+        def discard_ooc(self, ooc):
+            try:
+                self.search_match(ooc, self.received_ooc, somewhere=True, remove_match=True)
+            except AssertionError:
+                pass
+
         def discard_all(self):
-            self.received_commands = list()
+            self.received_packets = list()
             self.received_ooc = list()
             self.received_ic = list()
 

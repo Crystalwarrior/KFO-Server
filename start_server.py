@@ -35,7 +35,7 @@ def main():
     except Exception:
         # Print complete traceback to console
         etype, evalue, etraceback = sys.exc_info()
-        info = 'TSUSERVER HAS ENCOUNTERED A PYTHON ERROR.'
+        info = 'TSUSERVERDR HAS ENCOUNTERED A PYTHON ERROR.'
         info += "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
         server.logger.log_print(info)
         if my_server: # If the server at the very least could initialize correctly...

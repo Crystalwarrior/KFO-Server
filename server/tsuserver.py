@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 1
         self.minor_version = 0
-        self.segment_version = 'a5'
-        self.internal_version = '190814a'
+        self.segment_version = 'b1'
+        self.internal_version = '190816a'
         self.software = 'TsuserverDR {}'.format(self.get_version_string())
         self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
         self.in_test = in_test
@@ -463,7 +463,7 @@ class TsuserverDR:
                                pred=lambda c: c.is_mod)
 
         # Print complete traceback to console
-        info = 'TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET'
+        info = 'TSUSERVERDR HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET'
         info += '\r\n*Server time: {}'.format(current_time)
         info += '\r\n*Packet details: {} {}'.format(cmd, args)
         info += '\r\n*Client status: {}'.format(client)

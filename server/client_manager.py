@@ -125,17 +125,19 @@ class ClientManager:
                 self.send_command('CT', self.server.config['hostname'], msg)
 
         def send_ooc_others(self, msg, allow_empty=False, is_staff=None, in_area=None, pred=None,
-                            not_to=None, to_blind=None, to_deaf=None):
+                            not_to=None, to_blind=None, to_deaf=None, username=None):
             if not allow_empty and not msg:
                 return
 
             if not_to is None:
                 not_to = set()
+            if username is None:
+                username = self.server.config['hostname']
 
             cond = self._build_cond(is_staff=is_staff, in_area=in_area, pred=pred,
                                     not_to=not_to.union({self}), to_blind=to_blind,
                                     to_deaf=to_deaf)
-            self.server.send_all_cmd_pred('CT', self.server.config['hostname'], msg, pred=cond)
+            self.server.send_all_cmd_pred('CT', username, msg, pred=cond)
 
         def _build_cond(self, is_staff=None, in_area=None, pred=None, not_to=None, to_blind=None,
                         to_deaf=None):
@@ -156,6 +158,8 @@ class ClientManager:
                 conditions.append(lambda c: c.area != self.area)
             elif type(in_area) is type(self.area): # Lazy way of checking if in_area is an area obj
                 conditions.append(lambda c: c.area == in_area)
+            elif type(in_area) is set:
+                conditions.append(lambda c: c.area in in_area)
             elif in_area is None:
                 pass
             else:
