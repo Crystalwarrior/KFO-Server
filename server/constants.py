@@ -353,24 +353,27 @@ class Constants():
         """
         Given either a client ID or IPID, returns all clients that match this identifier.
 
-        Assumes that all 10 digit numbers are IPIDs and any smaller numbers are client IDs.
-        This places the assumption that there are no more than 10 billion clients connected simultaneously
-        but if that is the case, you probably have a much larger issue at hand.
+        First tries to match by ID, then by IPID. IPID can be of the same length as client ID and
+        thus be mismatched, but it is extremely unlikely (1 in 100,000,000 chance).
         """
         if identifier == '':
             raise ArgumentError('Expected client ID or IPID.')
         if not identifier.isdigit() or len(identifier) > 10:
-            raise ArgumentError('{} does not look like a valid client ID or IPID.'.format(identifier))
+            raise ArgumentError('{} does not look like a valid client ID or IPID.'
+                                .format(identifier))
 
-        if len(identifier) == 10:
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(identifier), False)
-        else:
-            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(identifier), False)
+        idnt = int(identifier)
+        # First try and match by ID
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, idnt, False)
+        if targets:
+            return targets
 
-        if not targets:
-            raise ArgumentError('No targets found.')
+        # Otherwise, try and match by IPID
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, idnt, False)
+        if targets:
+            return targets
 
-        return targets
+        raise ArgumentError('No targets found.')
 
     @staticmethod
     def parse_passage_lock(client, areas, bilock=False):

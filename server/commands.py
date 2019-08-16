@@ -106,7 +106,7 @@ def ooc_cmd_area_kick(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     OPTIONAL PARAMETERS
     {target_area}: Intended area to kick the player, by ID or name
@@ -264,47 +264,38 @@ def ooc_cmd_ban(client, arg):
     /ban <client_ip>
 
     PARAMETERS
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
     <client_ip>: user IP
 
     EXAMPLES
     /ban 1234567890             :: Bans the user whose IPID is 1234567890
     /ban 127.0.0.1              :: Bans the user whose IP is 127.0.0.1
     """
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
+    arg = arg.strip()
+    Constants.command_assert(client, arg, parameters='>0', is_mod=True)
 
-    # Guesses that any number of length 10 is an IPID
+    # Guesses that any number is an IPID
     # and that any non-numerical entry is an IP address.
-    try:
+    if arg.isdigit():
         # IPID
-        identifier = int(arg.strip())
-        if len(str(identifier)) != 10:
-            raise ClientError('Argument must be an IP address or 10-digit number.')
-        is_ipid = True
-    except ValueError:
+        idnt = int(arg)
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, idnt, False)
+    else:
         # IP Address
-        identifier = arg.strip()
-        is_ipid = False
+        idnt = arg
+        targets = client.server.client_manager.get_targets(client, TargetType.IP, idnt, False)
 
     # Try and add the user to the ban list based on the given identifier
-    client.server.ban_manager.add_ban(identifier)
+    client.server.ban_manager.add_ban(idnt)
 
-    # Try and kick the user from the server, as well as announce their ban.
-    if identifier:
-        if is_ipid:
-            targets = client.server.client_manager.get_targets(client, TargetType.IPID, identifier, False)
-        else:
-            targets = client.server.client_manager.get_targets(client, TargetType.IP, identifier, False)
+    # Kick+ban all clients opened by the targeted user.
+    if targets:
+        for c in targets:
+            client.area.broadcast_ooc('{} was banned.'.format(c.get_char_name()))
+            c.disconnect()
 
-        # Kick+ban all clients opened by the targeted user.
-        if targets:
-            for c in targets:
-                client.area.broadcast_ooc('{} was banned.'.format(c.get_char_name()))
-                c.disconnect()
-
-        client.send_ooc('{} clients were banned.'.format(len(targets)))
-        logger.log_server('Banned {}.'.format(identifier), client)
+    client.send_ooc('{} clients were banned.'.format(len(targets)))
+    logger.log_server('Banned {}.'.format(idnt), client)
 
 def ooc_cmd_banhdid(client, arg):
     """ (MOD ONLY)
@@ -479,7 +470,7 @@ def ooc_cmd_blockdj(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /blockdj 1                     :: Revokes DJ permissions to the client whose ID is 1.
@@ -908,7 +899,7 @@ def ooc_cmd_charselect(client, arg):
 
     PARAMETERS
     {client_id}: Client identifier (number in brackets in /getarea).
-    {client_ipid}: 10-digit user identifier (number in parentheses in /getarea).
+    {client_ipid}: IPID for the client (number in parentheses in /getarea).
 
     EXAMPLES
     /charselect                    :: Open character selection screen for the current user.
@@ -1331,7 +1322,7 @@ def ooc_cmd_disemconsonant(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /disemconsonant 1           :: Disemconsonants the player whose client ID is 1.
@@ -1360,7 +1351,7 @@ def ooc_cmd_disemvowel(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /disemvowel 1                     :: Disemvowels the player whose client ID is 1.
@@ -1508,7 +1499,7 @@ def ooc_cmd_gimp(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /gimp 1                     :: Gimps the player whose client ID is 1.
@@ -1669,7 +1660,7 @@ def ooc_cmd_handicap(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
     <length>: Handicap length (in seconds)
 
     OPTIONAL PARAMETERS
@@ -1789,7 +1780,7 @@ def ooc_cmd_invite(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /invite 1                     :: Invites the player whose client ID is 1.
@@ -1858,7 +1849,7 @@ def ooc_cmd_kick(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /kick 1                     :: Kicks client whose ID is 1.
@@ -2411,7 +2402,7 @@ def ooc_cmd_multiclients(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     Assuming client 1 with IPID 1234567890 is in the Basement (area 0) and has another client open,
@@ -2509,7 +2500,7 @@ def ooc_cmd_mute(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /mute 1                     :: Mutes client whose ID is 1.
@@ -3264,7 +3255,7 @@ def ooc_cmd_remove_h(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /remove_h 1           :: Has all messages sent by the player whose client ID is 1 have their H's removed.
@@ -3294,7 +3285,7 @@ def ooc_cmd_reveal(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /reveal 1                     :: Set client whose ID is 1 to no longer be sneaking.
@@ -3752,7 +3743,7 @@ def ooc_cmd_showname_history(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLE
     /showname_history 1         :: For the client whose ID is 1, you may get something like this
@@ -3842,7 +3833,7 @@ def ooc_cmd_showname_set(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
     {new_showname}: New desired showname.
 
     EXAMPLES
@@ -3891,7 +3882,7 @@ def ooc_cmd_sneak(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /sneak 1                     :: Set client whose ID is 1 to be sneaking.
@@ -4313,7 +4304,7 @@ def ooc_cmd_transient(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLE
     Assuming a player with client ID 0 and IPID 1234567890 starts as not being transient to passage locks
@@ -4341,7 +4332,7 @@ def ooc_cmd_unban(client, arg):
     /unban <client_ipid>
 
     PARAMETERS
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /unban 1234567890           :: Unbans user whose IPID is 1234567890
@@ -4406,7 +4397,7 @@ def ooc_cmd_unblockdj(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /unblockdj 1                     :: Restores DJ permissions to the client whose ID is 1.
@@ -4436,7 +4427,7 @@ def ooc_cmd_undisemconsonant(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /undisemconsonant 1           :: Undisemconsonants the player whose client ID is 1.
@@ -4466,7 +4457,7 @@ def ooc_cmd_undisemvowel(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /undisemvowel 1           :: Undisemvowel the player whose client ID is 1.
@@ -4518,7 +4509,7 @@ def ooc_cmd_ungimp(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /ungimp 1                     :: Gimps the player whose client ID is 1.
@@ -4571,7 +4562,7 @@ def ooc_cmd_unhandicap(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /unhandicap 0           :: Removes all movement handicaps on the player whose client ID is 0
@@ -4661,7 +4652,7 @@ def ooc_cmd_uninvite(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /uninvite 1                   :: Uninvites the player whose client ID is 1.
@@ -4726,7 +4717,7 @@ def ooc_cmd_unmute(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /unmute 1                     :: Unmutes client whose ID is 1.
@@ -4756,7 +4747,7 @@ def ooc_cmd_unremove_h(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     /unremove_h 1           :: Removes the 'Remove H' effect on the player whose client ID is 1.
@@ -4803,7 +4794,7 @@ def ooc_cmd_whereis(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: 10-digit user identifier (number in parentheses in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
 
     EXAMPLES
     Assuming client 1 with IPID 1234567890 is in the Basement (area 0)...
@@ -4849,7 +4840,7 @@ def ooc_cmd_whois(client, arg):
         targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
 
     # If still needed, pretend the identifier is a client IPID
-    if len(targets) == 0 and arg.isdigit() and len(arg) == 10:
+    if len(targets) == 0 and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
 
     # If still needed, pretend the identifier is an OOC username

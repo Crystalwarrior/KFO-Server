@@ -1,5 +1,5 @@
 180801 (3.0.1)
-*Added /time12
+* Added /time12
 
 180812 (3.1)
 *Added /ddroll, /ddrollp for rolls with modifiers
@@ -178,6 +178,7 @@
 -/blind
 -/deaf
 -/gag
+*Added /bloodtrail_smear to smear blood trails in the area
 *Renamed /mutepm -> /toggle_pm
 *Fixed /pm not sending complete character names to recipient
 *Minor changes to messages sent on area change

@@ -28,8 +28,8 @@ local: false
 
 masterserver_ip: master.aceattorneyonline.com
 masterserver_port: 27016
-masterserver_name: My First Server
-masterserver_description: This is my flashy new server
+masterserver_name: My First DR Server
+masterserver_description: This is my flashy new DR server
 
 timeout: 250
 debug: false

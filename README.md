@@ -85,6 +85,8 @@ Additional notes are listed at the end of the command list.
 * **bloodtrail_clean**
 	- Cleans the bloodtrail in the current area.
 	- If someone is bleeding in the current area, the cleaning process will fail.
+* **bloodtrail_smear**
+	- Smears the bloodtrail in the current area.
 * **charselect** 
     - Puts you back to the character select screen.
 * **chars_restricted**
@@ -227,6 +229,8 @@ Additional notes are listed at the end of the command list.
 	- Lists all areas that have bloodtrails in them, and where they lead to if appropiate.
 * **bloodtrail_set** "area 1", "area 2", ...
 	- Sets the current area to have bloodtrails leading to the listed areas. If no areas are given, the area is set to have an unconnected pool of blood.
+* **bloodtrail_smear** "area 1", "area 2", ...
+	- Smears the blood trails in the given areas (or the current one if not given any areas).
 * **can_passagelock**
     - Changes the current area's setting to allow non-staff members to change passages starting in the area with /bilock or /unilock. By default area setting is indicated in the server's area list.
 * **can_rollp**
