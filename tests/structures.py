@@ -483,6 +483,8 @@ class _TestClientManager(ClientManager):
                 pass
             elif command_type == 'MS': # IC message
                 self.received_ic.append(args)
+            elif command_type == 'ZZ': # Mod call
+                pass
             else:
                 raise KeyError('Unrecognized STC argument {} {}'.format(command_type, args))
 

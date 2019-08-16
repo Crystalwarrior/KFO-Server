@@ -1,6 +1,7 @@
 import datetime
+import time
 
-from .structures import _TestSituation3
+from .structures import _TestSituation3, _TestSituation5
 
 class _TestAuthorization(_TestSituation3):
     @classmethod
@@ -580,3 +581,54 @@ class TestAuthorization_05_Shortcuts(_TestAuthorization):
         self.assertTrue(self.c0.is_cm and not self.c0.is_gm and not self.c0.is_mod)
         self.assertTrue(self.c1.is_gm and not self.c1.is_cm and not self.c1.is_mod)
         self.assertTrue(self.c2.is_mod and not self.c2.is_cm and not self.c2.is_gm)
+
+class TestAuthorization_06_Effect(_TestSituation5):
+    @classmethod
+    def setUpClass(self):
+        super().setUpClass()
+        self.c0.make_mod()
+        self.c1.make_cm()
+        self.c2.make_gm()
+        self.c0.move_area(5)
+        self.c1.move_area(6)
+        self.c2.move_area(6)
+        self.c3.move_area(7)
+        self.c4.move_area(5)
+
+    def do_modcall(self, client, recipients, cname, cipid, aname, aid):
+        client.send_command_cts('ZZ#%')
+        current_time = time.strftime("%H:%M", time.localtime())
+
+        for c in self.server.client_manager.clients:
+            if c not in recipients:
+                c.assert_no_packets()
+                continue
+            c.assert_packet('ZZ', ('[{}] {} ({}) called for a moderator in {} ({}).'
+                                     .format(current_time, cname, cipid, aname, aid)), over=True)
+
+    def test_01_modcall(self):
+        """
+        Situation: Various players call for mod. Only mods and CMs receive notifications.
+        """
+
+        self.do_modcall(self.c3, {self.c0, self.c1}, self.c3_cname, self.c3.ipid, self.area7.name,
+                        self.area7.id)
+        self.do_modcall(self.c4, {self.c0, self.c1}, self.c4_cname, self.c4.ipid, self.area5.name,
+                        self.area5.id)
+        self.do_modcall(self.c0, {self.c0, self.c1}, self.c0_cname, self.c0.ipid, self.area5.name,
+                        self.area5.id)
+
+        self.c2.make_mod()
+        self.do_modcall(self.c2, {self.c0, self.c1, self.c2}, self.c2_cname, self.c2.ipid,
+                        self.area6.name, self.area6.id)
+
+        self.c1.make_normie()
+        self.do_modcall(self.c1, {self.c0, self.c2}, self.c1_cname, self.c1.ipid, self.area6.name,
+                        self.area6.id)
+
+        self.c1.send_command_cts('ZZ#%')
+        self.c0.assert_no_ooc()
+        self.c1.assert_ooc('You must wait 30 seconds between mod calls.', over=True)
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+        self.c4.assert_no_ooc()
