@@ -8,23 +8,8 @@ class _TestLights(_TestSituation4Mc12):
         cls.c3.move_area(4)
         cls.blackout_background = cls.server.config['blackout_background']
 
-    def assert_lights(self, areas_with_on, areas_with_off):
-        if areas_with_on == 0:
-            areas_with_on = set()
-        if areas_with_off == 0:
-            areas_with_off = set()
-
-        if areas_with_on == 1:
-            areas_with_on = {area for area in self.server.area_manager.areas
-                             if area not in areas_with_off}
-        if areas_with_off == 1:
-            areas_with_off = {area for area in self.server.area_manage.areas
-                              if area not in areas_with_on}
-
-        for area in areas_with_on:
-            self.assertTrue(area.lights)
-        for area in areas_with_off:
-            self.assertFalse(area.lights)
+    def assert_lights(self, yes, no):
+        self.assert_property(yes, no, 'A', lambda a: a.lights)
 
 class TestLights_01_Basic(_TestLights):
     def test_01_wrongarguments(self):

@@ -149,6 +149,8 @@ Additional notes are listed at the end of the command list.
     - Revokes an invitation sent to a player to join your player.
 * **party_unlead**
     - Removes your party leader role.
+* **ping**
+    - Returns "Pong", used to check for server connection.
 * **play** "song.mp3"
 	- Plays a song, provided the area you are in allows non-staff members to run this command.
 * **pm** "ID/IPID/char name/OOC name" "message" 
@@ -221,6 +223,9 @@ Additional notes are listed at the end of the command list.
 	- If not given a target area, it will use the server's default area (usually area 0).
 * **bilock** "area 1", "area 2"
     - Changes the passage status (locked/unlocked) between two areas.
+* **blind** "ID"
+    - Changes the blind status of a target.
+    - Blind players will receive no character sprites nor background with IC messages and cannot use "visual" commands such as /look, /getarea, etc.
 * **bloodtrail** "ID"
 	- Changes the bleeding status of a target. 
 	- If bleeding, they will leave 'blood' in all areas they pass through, and send OOC notifications to players in the area and those who join indicating their status. Sneaking and bleeding players send altered notifications.
@@ -252,8 +257,14 @@ Additional notes are listed at the end of the command list.
 	- Pauses the day cycle initiated by the target or yourself if not given a target.
 * **clock_unpause** "ID"
 	- Unpauses the day cycle initiated by the target or yourself if not given a target.
+* **deafen** "ID"
+    - Changes the deaf status of a target.
+    - Deaf players will be unable to read IC messages properly or receive other audio cues from commands such as /knock, /scream, etc.
 * **follow** "ID"
     - Starts following a target. If the target changes areas, you will automatically follow them there.
+* **gag** "ID"
+    - Changes the gagged status of a target.
+    - Gagged players will be unable to talk IC properly or use other talking features such as /scream.
 * **globalic** "area range start", "area range end"
 	- Sends subsequence IC messages to the area range described above. Can take either area IDs or area names.
 * **globalic_pre** "prefix"

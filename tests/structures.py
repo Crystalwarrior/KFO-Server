@@ -36,6 +36,27 @@ class _Unittest(unittest.TestCase):
         if exc_list and exc_list[-1][0] is self:
             return exc_list[-1][1]
 
+    def assert_property(self, yes, no, group, pred):
+        if yes == 0:
+            yes = set()
+        if no == 0:
+            no = set()
+
+        if group == 'C':
+            structure = self.server.client_manager.clients
+        elif group == 'A':
+            structure = self.server.area_manager.areas
+
+        if yes == 1:
+            yes = {x for x in structure if x not in no}
+        if no == 1:
+            no = {x for x in structure if x not in yes}
+
+        for x in yes:
+            self.assertTrue(pred(x), x)
+        for x in no:
+            self.assertFalse(pred(x), x)
+
     def tearDown(self):
         """
         Check if any packets were unaccounted for. Only do so if test passed.

@@ -456,6 +456,45 @@ def ooc_cmd_bilock(client, arg):
         logger.log_server('[{}][{}]Has {} the passage from {} to {} and {} it the other way around.'
                           .format(client.area.id, client.get_char_name(), now0, name0, name1, now1))
 
+def ooc_cmd_blind(client, arg):
+    """ (STAFF ONLY)
+    Changes the blind status of a player by client ID.
+    Blind players will receive no character sprites nor background with IC messages and cannot
+    use "visual" commands such as /look, /getarea, etc.
+    Immediately after blinding/unblinding, the target will receive sense-appropiate blood
+    notifications in the area if needed (e.g. players bleeding, blood trails, etc.).
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /blind <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    Assuming client 1 starts sighted...
+    /blind 1            :: Blinds client 1
+    /blind 1            :: Unblinds client 1
+    """
+    Constants.command_assert(client, arg, is_staff=True)
+    target = Constants.parse_id(client, arg)
+
+    status = {False: 'unblinded', True: 'blinded'}
+    target.is_blind = not target.is_blind
+
+    client.send_ooc('You have {} {}.'.format(status[target.is_blind], target.get_char_name()))
+    target.send_ooc('You have been {}.'.format(status[target.is_blind]))
+    target.send_ooc_others('{} has {} {} ({}).'
+                           .format(client.name, status[target.is_blind], target.get_char_name(),
+                                   target.area.id), is_staff=True, not_to={client})
+
+    if target.is_blind:
+        target.send_command('BN', client.server.config['blackout_background'])
+    else:
+        target.send_command('BN', client.area.background)
+
+    target.area_changer.notify_me_blood(target.area, changed_visibility=True, changed_hearing=False)
+
 def ooc_cmd_blockdj(client, arg):
     """ (CM AND MOD ONLY)
     Revokes the ability of a player by client ID (number in brackets) or IPID (number in
@@ -581,7 +620,7 @@ def ooc_cmd_bloodtrail_clean(client, arg):
     if len(successful_cleans) > 0:
         if len(arg) == 0:
             message = client.area.name
-            client.send_ooc("You cleaned the blood trail in the current area.")
+            client.send_ooc("You cleaned the blood trail in your area.")
             if client.is_staff():
                 client.send_ooc_others('{} cleaned the blood trail in area {}.'
                                        .format(client.name, client.area.name), is_staff=True)
@@ -600,7 +639,7 @@ def ooc_cmd_bloodtrail_clean(client, arg):
             client.send_ooc_others('{} cleaned the blood trail in area {}.'
                                    .format(client.name, message), is_staff=True)
         elif len(successful_cleans) > 1:
-            message = ", ".join(sorted(successful_cleans))
+            message = Constants.cjoin(successful_cleans)
             client.send_ooc("You cleaned the blood trails in areas {}.".format(message))
             client.send_ooc_others('{} cleaned the blood trails in areas {}.'
                                    .format(client.name, message), is_staff=True)
@@ -727,16 +766,15 @@ def ooc_cmd_bloodtrail_smear(client, arg):
         elif area.blood_smeared:
             client.send_ooc('Area {} already has its blood trails smeared.'.format(area.name))
         else:
-            for c in area.clients:
-                client.send_ooc_others('The blood trail in this area was smeared.', is_staff=False,
-                                       in_area=area, to_blind=False)
+            client.send_ooc_others('The blood trail in your area was smeared.', is_staff=False,
+                                   in_area=area, to_blind=False)
             area.blood_smeared = True
             successful_smears.add(area.name)
 
     if len(successful_smears) > 0:
         if len(arg) == 0:
             message = client.area.name
-            client.send_ooc("You smeared the blood trail in the current area.")
+            client.send_ooc("You smeared the blood trail in your area.")
             if client.is_staff():
                 client.send_ooc_others('{} smeared the blood trail in area {}.'
                                        .format(client.name, client.area.name), is_staff=True)
@@ -746,12 +784,12 @@ def ooc_cmd_bloodtrail_smear(client, arg):
                                        is_staff=True)
         elif len(successful_smears) == 1:
             message = str(successful_smears.pop())
-            client.send_ooc("You smeared the blood trail in area {}".format(message))
+            client.send_ooc("You smeared the blood trail in area {}.".format(message))
             client.send_ooc_others('{} smeared the blood trail in area {}.'
                                    .format(client.name, message), is_staff=True)
         elif len(successful_smears) > 1:
-            message = ", ".join(successful_smears)
-            client.send_ooc("You smeared the blood trails in areas {}".format(message))
+            message = Constants.cjoin(successful_smears)
+            client.send_ooc("You smeared the blood trails in areas {}.".format(message))
             client.send_ooc_others('{} smeared the blood trails in areas {}.'
                                    .format(client.name, message), is_staff=True)
         logger.log_server('[{}][{}]Smeared the blood trail in {}.'
@@ -1270,6 +1308,40 @@ def ooc_cmd_currentmusic(client, arg):
     client.send_ooc('The current music is {} and was played by {}.'
                     .format(client.area.current_music, client.area.current_music_player))
 
+def ooc_cmd_deafen(client, arg):
+    """ (STAFF ONLY)
+    Changes the deafened status of a player by client ID.
+    Deaf players will be unable to read IC messages properly or receive other audio cues from
+    commands such as /knock, /scream, etc.
+    Immediately after deafening/undeafening, the target will receive sense-appropiate blood
+    notifications in the area if needed (e.g. players bleeding while sneaking).
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /deafen <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    Assuming client 1 starts hearing...
+    /deafen 1            :: Deafens client 1
+    /deafen 1            :: Undeafens client 1
+    """
+    Constants.command_assert(client, arg, is_staff=True)
+    target = Constants.parse_id(client, arg)
+
+    status = {False: 'undeafened', True: 'deafened'}
+    target.is_deaf = not target.is_deaf
+
+    client.send_ooc('You have {} {}.'.format(status[target.is_deaf], target.get_char_name()))
+    target.send_ooc('You have been {}.'.format(status[target.is_deaf]))
+    target.send_ooc_others('{} has {} {} ({}).'
+                           .format(client.name, status[target.is_deaf], target.get_char_name(),
+                                   target.area.id), is_staff=True, not_to={client})
+
+    target.area_changer.notify_me_blood(target.area, changed_visibility=False, changed_hearing=True)
+
 def ooc_cmd_defaultarea(client, arg):
     """ (MOD ONLY)
     Set the default area by area ID for all future clients to join when connecting to the server.
@@ -1448,6 +1520,35 @@ def ooc_cmd_g(client, arg):
     client.server.broadcast_global(client, arg)
     logger.log_server('[{}][{}][GLOBAL]{}.'
                       .format(client.area.id, client.get_char_name(), arg), client)
+
+def ooc_cmd_gag(client, arg):
+    """ (STAFF ONLY)
+    Changes the gagged status of a player by client ID.
+    Gagged players will be unable to talk IC properly or use other talking features such as /scream.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /gag <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    Assuming client 1 starts hearing...
+    /gag 1            :: Gags client 1
+    /gag 1            :: Ungags client 1
+    """
+    Constants.command_assert(client, arg, is_staff=True)
+    target = Constants.parse_id(client, arg)
+
+    status = {False: 'ungagged', True: 'gagged'}
+    target.is_gagged = not target.is_gagged
+
+    client.send_ooc('You have {} {}.'.format(status[target.is_gagged], target.get_char_name()))
+    target.send_ooc('You have been {}.'.format(status[target.is_gagged]))
+    target.send_ooc_others('{} has {} {} ({}).'
+                           .format(client.name, status[target.is_gagged], target.get_char_name(),
+                                   target.area.id), is_staff=True, not_to={client})
 
 def ooc_cmd_getarea(client, arg):
     """
@@ -2225,7 +2326,7 @@ def ooc_cmd_look_clean(client, arg):
         client.send_ooc_others('{} restored the original area description of area {}.'
                                .format(client.name, message), is_staff=True)
     elif len(successful_cleans) > 1:
-        message = ", ".join(successful_cleans)
+        message = Constants.cjoin(successful_cleans)
         client.send_ooc('Restored the original area descriptions of areas {}.'
                         .format(message))
         client.send_ooc_others('{} restored the original area descriptions of areas {}.'
@@ -3046,6 +3147,22 @@ def ooc_cmd_passage_restore(client, arg):
     else:
         client.send_ooc('Passages in areas {} through {} have been restored to their original '
                         'state.'.format(areas[0].name, areas[1].name))
+
+def ooc_cmd_ping(client, arg):
+    """
+    Returns "Pong" and nothing else. Useful to check if the player has lost connection.
+
+    SYNTAX
+    /ping
+
+    PARAMETERS
+
+    EXAMPLES
+    /ping               :: Returns "Pong"
+    """
+    Constants.command_assert(client, arg, parameters='=0')
+
+    client.send_ooc('Pong.')
 
 def ooc_cmd_play(client, arg):
     """ (STAFF ONLY)
@@ -4917,66 +5034,6 @@ def ooc_cmd_8ball(client, arg):
     client.area.broadcast_ooc('The magic 8 ball says {}.'.format(flip))
     logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'
                       .format(client.area.id, client.get_char_name(), flip), client)
-
-def ooc_cmd_ping(client, arg):
-    """
-    Pong
-    """
-    Constants.command_assert(client, arg, parameters='=0')
-    client.send_ooc('Pong.')
-
-def ooc_cmd_blind(client, arg):
-    """ (STAFF ONLY)
-    Blind/unblind
-    """
-    Constants.command_assert(client, arg, is_staff=True)
-    target = Constants.parse_id(client, arg)
-
-    status = {False: 'unblinded', True: 'blinded'}
-    target.is_blind = not target.is_blind
-
-    client.send_ooc('You have {} {}.'.format(status[target.is_blind], target.get_char_name()))
-    target.send_ooc('You have been {}.'.format(status[target.is_blind]))
-    target.send_ooc_others('{} has {} {} ({}).'
-                           .format(client.name, status[target.is_blind], target.get_char_name(),
-                                   target.area.id), is_staff=True, not_to={client})
-
-    if target.is_blind:
-        target.send_command('BN', client.server.config['blackout_background'])
-    else:
-        target.send_command('BN', client.area.background)
-
-def ooc_cmd_deafen(client, arg):
-    """ (STAFF ONLY)
-    Deafen/undeafen
-    """
-    Constants.command_assert(client, arg, is_staff=True)
-    target = Constants.parse_id(client, arg)
-
-    status = {False: 'undeafened', True: 'deafened'}
-    target.is_deaf = not target.is_deaf
-
-    client.send_ooc('You have {} {}.'.format(status[target.is_deaf], target.get_char_name()))
-    target.send_ooc('You have been {}.'.format(status[target.is_deaf]))
-    target.send_ooc_others('{} has {} {} ({}).'
-                           .format(client.name, status[target.is_deaf], target.get_char_name(),
-                                   target.area.id), is_staff=True, not_to={client})
-
-def ooc_cmd_gag(client, arg):
-    """ (STAFF ONLY)
-    Gag/ungag
-    """
-    Constants.command_assert(client, arg, is_staff=True)
-    target = Constants.parse_id(client, arg)
-
-    status = {False: 'ungagged', True: 'gagged'}
-    target.is_gagged = not target.is_gagged
-
-    client.send_ooc('You have {} {}.'.format(status[target.is_gagged], target.get_char_name()))
-    target.send_ooc('You have been {}.'.format(status[target.is_gagged]))
-    target.send_ooc_others('{} has {} {} ({}).'
-                           .format(client.name, status[target.is_gagged], target.get_char_name(),
-                                   target.area.id), is_staff=True, not_to={client})
 
 def ooc_cmd_narrate(client, arg):
     to_send = [0, '-', '<NOCHAR>', '../../misc/blank', arg, 'jud', 0, 0, +0, 0, 0, 0, 0, 0, 0, ' ']

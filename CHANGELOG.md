@@ -179,6 +179,7 @@
  - /deaf
  - /gag
 * Added /bloodtrail_smear to smear blood trails in the area
+* Added /ping to check for lost connection
 * Added /showname_area to list shownames just in the current area
 * CMs now receive Call Mod notifications
 * Renamed /mutepm -> /toggle_pm, /showname_list -> /showname_areas

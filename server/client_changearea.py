@@ -161,6 +161,14 @@ class ClientChangeArea:
             clnt.send_ooc('You are bleeding.')
 
         ###########
+        # Check bleeding status
+        self.notify_me_blood(area)
+
+    def notify_me_blood(self, area, changed_visibility=True, changed_hearing=True):
+        clnt = self.client
+        changed_area = (clnt.area != area)
+
+        ###########
         # If someone else is bleeding in the new area, notify the person moving
         bleeding_visible = [c for c in area.clients if c.is_visible and c.is_bleeding]
         bleeding_sneaking = [c for c in area.clients if not c.is_visible and c.is_bleeding]
@@ -175,13 +183,13 @@ class ClientChangeArea:
         # Otherwise, just prepare 'smell' if lights turned off or you are blind
 
         if bleeding_visible:
-            if clnt.is_staff() or (area.lights and not clnt.is_blind):
+            if clnt.is_staff() or (changed_visibility and area.lights and not clnt.is_blind):
                 vis_info = ('You see {} {} bleeding'
                             .format(Constants.cjoin([c.get_char_name() for c in bleeding_visible]),
                                     'is' if len(bleeding_visible) == 1 else 'are'))
-            elif not clnt.is_deaf:
+            elif not clnt.is_deaf and changed_hearing:
                 vis_info = 'You hear faint drops of blood'
-            elif not area.lights or clnt.is_blind:
+            elif clnt.is_blind and clnt.is_deaf and changed_area:
                 vis_info = 'You smell blood'
 
         # To prepare message with sneaked bleeding, you must be staff.
@@ -193,9 +201,9 @@ class ClientChangeArea:
                 sne_info = ('You see {} {} bleeding while sneaking'
                             .format(Constants.cjoin([c.get_char_name() for c in bleeding_sneaking]),
                                     'is' if len(bleeding_visible) == 1 else 'are'))
-            elif not clnt.is_deaf:
-                sne_info = 'You hear faint drops of blood'
-            elif not area.lights or clnt.is_blind:
+            elif not clnt.is_deaf and changed_hearing:
+                    sne_info = 'You hear faint drops of blood'
+            elif not area.lights or clnt.is_blind and changed_area:
                 sne_info = 'You smell blood'
 
         # If there is visible info, merge it with sneak info if the following is true
@@ -223,7 +231,7 @@ class ClientChangeArea:
         # 1. Lights turned off or you are blind
         # 2. 'You smell blood' was not sent as a result of someone bleeding (see previous part)
 
-        if clnt.is_staff() or (area.lights and not clnt.is_blind):
+        if clnt.is_staff() or (changed_visibility and area.lights and not clnt.is_blind):
             smeared_connector = 'smeared ' if clnt.is_staff() and area.blood_smeared else ''
 
             if not clnt.is_staff() and area.blood_smeared:
@@ -235,7 +243,7 @@ class ClientChangeArea:
                 info = ('You spot a {}blood trail leading to {}.'
                         .format(smeared_connector, Constants.cjoin(bleed_to_areas, the=True)))
                 clnt.send_ooc(info)
-        elif (not area.lights or clnt.is_blind) and area.bleeds_to:
+        elif not clnt.is_staff() and area.bleeds_to and changed_area:
             if 'You smell blood' not in [vis_info, sne_info]:
                 clnt.send_ooc('You smell blood.')
 

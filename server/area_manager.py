@@ -508,24 +508,8 @@ class AreaManager:
             for party in self.parties:
                 party.check_lights()
 
-            # Reveal people bleeding and not sneaking if lights were turned on
-            if self.lights:
-                for c in self.clients:
-                    bleeding_visible = [x for x in self.clients if x.is_visible and x.is_bleeding
-                                        and x != c]
-                    info = ''
-
-                    if len(bleeding_visible) == 1:
-                        info = ('You now see {} is bleeding.'
-                                .format(bleeding_visible[0].get_char_name()))
-                    elif len(bleeding_visible) > 1:
-                        info = 'You now see {}'.format(bleeding_visible[0].get_char_name())
-                        for i in range(1, len(bleeding_visible)-1):
-                            info += ', {}'.format(bleeding_visible[i].get_char_name())
-                        info += ' and {} are bleeding.'.format(bleeding_visible[-1].get_char_name())
-
-                    if info:
-                        c.send_ooc(info)
+            for c in self.clients:
+                c.area_changer.notify_me_blood(self, changed_visibility=True, changed_hearing=False)
 
         def set_next_msg_delay(self, msg_length):
             """
