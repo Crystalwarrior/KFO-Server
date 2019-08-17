@@ -23,6 +23,15 @@ class _Unittest(unittest.TestCase):
         cls.area6 = cls.server.area_manager.get_area_by_id(6)
         cls.area7 = cls.server.area_manager.get_area_by_id(7)
 
+        cls.a0_name = cls.area0.name
+        cls.a1_name = cls.area1.name
+        cls.a2_name = cls.area2.name
+        cls.a3_name = cls.area3.name
+        cls.a4_name = cls.area4.name
+        cls.a5_name = cls.area5.name
+        cls.a6_name = cls.area6.name
+        cls.a7_name = cls.area7.name
+
     def list2reason(self, exc_list):
         if exc_list and exc_list[-1][0] is self:
             return exc_list[-1][1]
@@ -328,7 +337,10 @@ class _TestClientManager(ClientManager):
             self.search_match([user, message], self.received_ooc, somewhere=somewhere)
 
             if over or ooc_over:
-                assert(len(self.received_ooc) == 0)
+                err = 'Unhandled OOC messages for {}'.format(self)
+                err += ('\r\nCurrent OOC: {}'
+                        .format('\r\n*'.join([str(x) for x in self.received_ooc])))
+                assert len(self.received_ooc) == 0, err
             else:
                 assert(len(self.received_ooc) != 0)
 

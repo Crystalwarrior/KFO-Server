@@ -164,7 +164,7 @@ class TestSenseBlockBlind_03_Advanced(_TestSenseBlockBlind):
         """
         Situation:
         1. C2 turns lights off. C0 only notices a flicker sound.
-        2. C0 leaves room while lights are off and gets no notif of light sttus when they return.
+        2. C0 leaves room while lights are off and gets no notif of light status when they return.
         3. C3 comes to the room and gets notif of lights out.
         4. C2 turns lights on. C0 notices a flicker sound, C3 does notice light change.
 
@@ -174,46 +174,39 @@ class TestSenseBlockBlind_03_Advanced(_TestSenseBlockBlind):
         self.c2.ooc('/lights off')
         self.c0.assert_packet('BN', self.server.config['blackout_background'])
         self.c0.assert_ooc('You hear a flicker.', over=True)
-        self.c1.assert_packet('BN', self.server.config['blackout_background'])
-        self.c1.assert_ooc('{} turned the lights off.'.format(self.c2_cname), over=True)
-        self.c2.assert_packet('BN', self.server.config['blackout_background'])
-        self.c2.assert_ooc('You turned the lights off.', over=True)
-        self.c4.assert_packet('BN', self.server.config['blackout_background'])
-        self.c4.assert_ooc('The lights were turned off.', over=True)
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c4.discard_all()
         self.convo1()
 
         self.c0.move_area(5, discard_trivial=True)
         self.c0.assert_no_ooc()
-        self.c1.assert_ooc('You hear footsteps going out of the room.', over=True)
-        self.c2.assert_ooc('You hear footsteps going out of the room.', over=True)
-        self.c3.assert_no_ooc()
-        self.c4.assert_ooc('You hear footsteps going out of the room.', over=True)
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
 
         self.c0.move_area(4, discard_trivial=True)
         self.c0.assert_no_ooc()
-        self.c1.assert_ooc('You hear footsteps coming into the room.', over=True)
-        self.c2.assert_ooc('You hear footsteps coming into the room.', over=True)
-        self.c3.assert_no_ooc()
-        self.c4.assert_ooc('You hear footsteps coming into the room.', over=True)
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
 
-        self.c3.move_area(4, discard_trivial=True)
+        self.c3.move_area(4)
         self.c0.assert_ooc('You hear footsteps coming into the room.', over=True)
-        self.c1.assert_ooc('You hear footsteps coming into the room.', over=True)
-        self.c2.assert_ooc('You hear footsteps coming into the room.', over=True)
-        self.c3.assert_ooc('You enter a pitch dark room.', over=True)
-        self.c4.assert_ooc('You hear footsteps coming into the room.', over=True)
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
 
         self.c2.ooc('/lights on')
         self.c0.assert_packet('BN', self.server.config['blackout_background'])
         self.c0.assert_ooc('You hear a flicker.', over=True)
-        self.c1.assert_packet('BN', self.c0.area.background)
-        self.c1.assert_ooc('{} turned the lights on.'.format(self.c2_cname), over=True)
-        self.c2.assert_packet('BN', self.c0.area.background)
-        self.c2.assert_ooc('You turned the lights on.', over=True)
-        self.c3.assert_packet('BN', self.c0.area.background)
-        self.c3.assert_ooc('The lights were turned on.', over=True)
-        self.c4.assert_packet('BN', self.c0.area.background)
-        self.c4.assert_ooc('The lights were turned on.', over=True)
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
         self.convo1()
 
     def test_02_blindandautopass(self):
@@ -224,17 +217,15 @@ class TestSenseBlockBlind_03_Advanced(_TestSenseBlockBlind):
         self.c3.ooc('/autopass')
         self.c3.move_area(5)
         self.c0.assert_ooc('You hear footsteps going out of the room.', over=True)
-        self.c2.assert_ooc('{} has left to the {}'
-                           .format(self.c3_cname, self.area5.name), over=True)
         self.c1.discard_all()
+        self.c2.discard_all()
         self.c3.discard_all()
         self.c4.discard_all()
 
         self.c3.move_area(4)
         self.c0.assert_ooc('You hear footsteps coming into the room.', over=True)
-        self.c2.assert_ooc('{} has entered from the {}'
-                           .format(self.c3_cname, self.area5.name), over=True)
         self.c1.discard_all()
+        self.c2.discard_all()
         self.c3.discard_all()
         self.c4.discard_all()
 
@@ -246,25 +237,21 @@ class TestSenseBlockBlind_03_Advanced(_TestSenseBlockBlind):
         self.c3.ooc('/lights off')
         self.c0.assert_packet('BN', self.server.config['blackout_background'])
         self.c0.assert_ooc('You hear a flicker.', over=True)
-        self.c2.assert_packet('BN', self.server.config['blackout_background'])
-        self.c2.assert_ooc('{} turned the lights off.'.format(self.c3_cname), over=True)
-        self.c3.assert_packet('BN', self.server.config['blackout_background'])
-        self.c3.assert_ooc('You turned the lights off.', over=True)
         self.c1.discard_all()
+        self.c2.discard_all()
+        self.c3.discard_all()
         self.c4.discard_all()
 
         self.c3.move_area(5)
         self.c0.assert_ooc('You hear footsteps going out of the room.', over=True)
-        self.c2.assert_ooc('{} has left to the {}'
-                           .format(self.c3_cname, self.area5.name), over=True)
-        self.c4.assert_ooc('You hear footsteps going out of the room.', over=True)
         self.c1.discard_all()
+        self.c2.discard_all()
         self.c3.discard_all()
+        self.c4.discard_all()
 
         self.c3.move_area(4)
         self.c0.assert_ooc('You hear footsteps coming into the room.', over=True)
-        self.c2.assert_ooc('{} has entered from the {}'
-                           .format(self.c3_cname, self.area5.name), over=True)
-        self.c4.assert_ooc('You hear footsteps coming into the room.', over=True)
         self.c1.discard_all()
+        self.c2.discard_all()
         self.c3.discard_all()
+        self.c4.discard_all()

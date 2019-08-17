@@ -54,6 +54,12 @@ def ooc_cmd_restore_areareachlock(client, arg):
     """
     do_command('passage_restore', client, arg)
 
+def ooc_cmd_showname_list(client, arg):
+    """
+    Deprecated for /showname_areas.
+    """
+    do_command('showname_areas', client, arg)
+
 def ooc_cmd_toggle_areareachlock(client, arg):
     """
     Deprecated for /can_passagelock.

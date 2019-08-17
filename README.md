@@ -168,7 +168,9 @@ Additional notes are listed at the end of the command list.
 	- Sends a message visible to all players in the areas that are set to be able to listen to screams from the current area.
 * **showname** "showname"
 	- Sets your showname to be the given one, or clears it if not given one.
-* **showname_list**
+* **showname_area**
+	- Similar to /getarea, but lists shownames along with character names.
+* **showname_areas**
 	- Similar to /getareas, but lists shownames along with character names.
 * **switch** "character name" 
     - Switches you to the given character.
@@ -434,6 +436,7 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 #### Everyone
 * **mutepm** (D: Aug.9.19): Same as /toggle_pm
 * **toggleglobal** (D: Jul.15.19): Same as /toggle_global.
+* **showname_list** (D: Aug.16.19): Same as /showname_areas.
 
 #### GM+
 * **delete_areareachlock** (D: Jul.15.19): Same as /passage_clear.

@@ -309,6 +309,18 @@ class Constants():
         return random.choice(message)
 
     @staticmethod
+    def cjoin(structure, the=False, sort=True):
+        connector = 'the ' if the else ''
+        new_structure = sorted(structure) if sort else list(structure)
+
+        info = '{}{}'.format(connector, new_structure[0])
+        if len(new_structure) > 1:
+            for i in range(1, len(new_structure)-1):
+                info += ', {}{}'.format(connector, new_structure[i])
+            info += ' and {}{}'.format(connector, new_structure[-1])
+        return info
+
+    @staticmethod
     def parse_area_names(client, areas):
         """
         Convert a list of area names or IDs into area objects.

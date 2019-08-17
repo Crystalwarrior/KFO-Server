@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 1
         self.minor_version = 0
-        self.segment_version = 'b3'
-        self.internal_version = '190816c'
+        self.segment_version = 'b4'
+        self.internal_version = '190816d'
         self.software = 'TsuserverDR {}'.format(self.get_version_string())
         self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
         self.in_test = in_test
@@ -474,6 +474,9 @@ class TsuserverDR:
 
         # Log error to file
         logger.log_error(info, server=self, errortype='C')
+
+        if self.in_test:
+            raise
 
     def broadcast_global(self, client, msg, as_mod=False,
                          mtype="<dollar>G", condition=lambda x: not x.muted_global):

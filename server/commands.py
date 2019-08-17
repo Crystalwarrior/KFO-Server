@@ -509,6 +509,9 @@ def ooc_cmd_bloodtrail(client, arg):
     status = {False: 'no longer', True: 'now'}
     target.is_bleeding = not target.is_bleeding
 
+    if target.is_bleeding:
+        target.area.bleeds_to.add(target.area.name)
+
     target.send_ooc('You are {} bleeding.'.format(status[target.is_bleeding]))
     target.send_ooc_others('{} is {} bleeding ({}).'
                            .format(target.get_char_name(), status[target.is_bleeding],
@@ -569,7 +572,7 @@ def ooc_cmd_bloodtrail_clean(client, arg):
                                        in_area=area, to_blind=False)
                 area.blood_smeared = True
             else:
-                client.send_ooc_others('The blood trail in the area was cleaned.',
+                client.send_ooc_others('The blood trail in your area was cleaned.',
                                        is_staff=False, in_area=area, to_blind=False)
                 area.bleeds_to = set()
                 area.blood_smeared = False
@@ -593,12 +596,12 @@ def ooc_cmd_bloodtrail_clean(client, arg):
                                        is_staff=True)
         elif len(successful_cleans) == 1:
             message = str(successful_cleans.pop())
-            client.send_ooc("You cleaned the blood trail in area {}".format(message))
+            client.send_ooc("You cleaned the blood trail in area {}.".format(message))
             client.send_ooc_others('{} cleaned the blood trail in area {}.'
                                    .format(client.name, message), is_staff=True)
         elif len(successful_cleans) > 1:
-            message = ", ".join(successful_cleans)
-            client.send_ooc("You cleaned the blood trails in areas {}".format(message))
+            message = ", ".join(sorted(successful_cleans))
+            client.send_ooc("You cleaned the blood trails in areas {}.".format(message))
             client.send_ooc_others('{} cleaned the blood trails in areas {}.'
                                    .format(client.name, message), is_staff=True)
         logger.log_server('[{}][{}]Cleaned the blood trail in {}.'
@@ -620,8 +623,8 @@ def ooc_cmd_bloodtrail_list(client, arg):
     Constants.command_assert(client, arg, is_staff=True, parameters='=0')
 
     # Get all areas with blood in them
-    areas = [area for area in client.server.area_manager.areas if len(area.bleeds_to) > 0 or
-             area.blood_smeared]
+    areas = sorted([area for area in client.server.area_manager.areas if len(area.bleeds_to) > 0 or
+                    area.blood_smeared], key=lambda x: x.name)
 
     # No areas found means there are no blood trails
     if len(areas) == 0:
@@ -630,8 +633,13 @@ def ooc_cmd_bloodtrail_list(client, arg):
     # Otherwise, build the list of all areas with blood
     info = '== Blood trails in this server =='
     for area in areas:
-        if area.bleeds_to:
-            pre_info = ", ".join(area.bleeds_to)
+        area_bleeds_to = sorted(area.bleeds_to)
+        if area_bleeds_to:
+            if area_bleeds_to == [area.name]:
+                pre_info = area.name
+            else:
+                area_bleeds_to.remove(area.name)
+                pre_info = ", ".join(area_bleeds_to)
         else:
             pre_info = "-"
 
@@ -674,7 +682,7 @@ def ooc_cmd_bloodtrail_set(client, arg):
         # Make sure the input is valid before starting
         raw_areas_to_link = arg.split(", ")
         areas_to_link = set(Constants.parse_area_names(client, raw_areas_to_link) + [client.area])
-        message = 'go to {}'.format(", ".join([area.name for area in areas_to_link]))
+        message = 'go to {}'.format(Constants.cjoin([a.name for a in areas_to_link], the=True))
 
     client.send_ooc('Set the blood trail in this area to {}.'.format(message))
     client.send_ooc_others('The blood trail in this area was set to {}.'.format(message),
@@ -3692,6 +3700,61 @@ def ooc_cmd_showname(client, arg):
         client.send_ooc('You have removed your custom showname.')
         logger.log_server('{} removed their showname.'.format(client.ipid), client)
 
+def ooc_cmd_showname_area(client, arg):
+    """
+    List the characters (and associated client IDs) in the current area, as well as their custom
+    shownames if they have one in parentheses.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getarea or
+    if they are blind.
+
+    SYNTAX
+    /showname_area
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /showname_area          :: May list something like this
+
+    == Area 0: Basement ==
+    [0] Phantom_HD
+    [1] Spam_HD (Spam, Spam, Spam...)
+    """
+    Constants.command_assert(client, arg, parameters='=0')
+    if not client.is_staff() and client.is_blind:
+        raise ClientError('You are blind, so you cannot see anything.')
+
+    client.send_area_info(client.area, client.area.id, False, include_shownames=True)
+
+def ooc_cmd_showname_areas(client, arg):
+    """
+    List the characters (and associated client IDs) in each area, as well as their custom shownames
+    if they have one in parentheses.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getareas
+    or if they are blind.
+
+    SYNTAX
+    /showname_areas
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /showname_areas          :: May list something like this
+
+    == Area List ==
+    == Area 0: Basement ==
+    [0] Phantom_HD
+    [1] Spam_HD (Spam, Spam, Spam...)
+    == Area 1: Class Trial Room 1 ==
+    [2] Eggs_HD (Not Spam?)
+    """
+    Constants.command_assert(client, arg, parameters='=0')
+    if not client.is_staff() and client.is_blind:
+        raise ClientError('You are blind, so you cannot see anything.')
+
+    client.send_area_info(client.area, -1, False, include_shownames=True)
+
 def ooc_cmd_showname_freeze(client, arg):
     """ (MOD ONLY)
     Toggles non-staff members being able to use /showname or not.
@@ -3763,32 +3826,6 @@ def ooc_cmd_showname_history(client, arg):
     for c in Constants.parse_id_or_ipid(client, arg):
         info = c.get_showname_history()
         client.send_ooc(info)
-
-def ooc_cmd_showname_list(client, arg):
-    """
-    List the characters (and associated client IDs) in each area, as well as their custom shownames
-    if they have one in parentheses.
-    Returns an error if the user is subject to RP mode and is in an area that disables /getareas
-    (as it is functionally identical).
-
-    SYNTAX
-    /showname_list
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /showname_list          :: May list something like this
-
-    == Area List ==
-    = Area 0: Basement ==
-    [0] Kaede Akamatsu_HD
-    [1] Shuichi Saihara_HD (Just Suichi)
-    """
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-
-    client.send_area_info(client.area, -1, False, include_shownames=True)
 
 def ooc_cmd_showname_nuke(client, arg):
     """ (MOD ONLY)

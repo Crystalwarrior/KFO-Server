@@ -176,13 +176,9 @@ class ClientChangeArea:
 
         if bleeding_visible:
             if clnt.is_staff() or (area.lights and not clnt.is_blind):
-                if len(bleeding_visible) == 1:
-                    vis_info = 'You see {} is bleeding'.format(bleeding_visible[0].get_char_name())
-                else:
-                    vis_info = 'You see {}'.format(bleeding_visible[0].get_char_name())
-                    for i in range(1, len(bleeding_visible)-1):
-                        vis_info += ', {}'.format(bleeding_visible[i].get_char_name())
-                    vis_info += ' and {} are bleeding'.format(bleeding_visible[-1].get_char_name())
+                vis_info = ('You see {} {} bleeding'
+                            .format(Constants.cjoin([c.get_char_name() for c in bleeding_visible]),
+                                    'is' if len(bleeding_visible) == 1 else 'are'))
             elif not clnt.is_deaf:
                 vis_info = 'You hear faint drops of blood'
             elif not area.lights or clnt.is_blind:
@@ -194,15 +190,9 @@ class ClientChangeArea:
 
         if bleeding_sneaking:
             if clnt.is_staff():
-                if len(bleeding_sneaking) == 1:
-                    sne_info = ('You see {} is bleeding while sneaking'
-                                .format(bleeding_sneaking[0].get_char_name()))
-                else:
-                    sne_info = 'You see {}'.format(bleeding_sneaking[0].get_char_name())
-                    for i in range(1, len(bleeding_sneaking)-1):
-                        sne_info += ', {}'.format(bleeding_sneaking[i].get_char_name())
-                    sne_info += (' and {} are bleeding while sneaking'
-                                 .format(bleeding_sneaking[-1].get_char_name()))
+                sne_info = ('You see {} {} bleeding while sneaking'
+                            .format(Constants.cjoin([c.get_char_name() for c in bleeding_sneaking]),
+                                    'is' if len(bleeding_visible) == 1 else 'are'))
             elif not clnt.is_deaf:
                 sne_info = 'You hear faint drops of blood'
             elif not area.lights or clnt.is_blind:
@@ -242,16 +232,8 @@ class ClientChangeArea:
                 clnt.send_ooc('You spot some {}blood in the area.'.format(smeared_connector))
             elif len(area.bleeds_to) > 1:
                 bleed_to_areas = list(area.bleeds_to - set([area.name]))
-                # Lose potential order bias, yes, even with what originally was a set
-                bleed_to_areas.sort()
-                info = ('You spot a {}blood trail leading to the {}'
-                        .format(smeared_connector, bleed_to_areas[0]))
-                if len(bleed_to_areas) > 1:
-                    for i in range(1, len(bleed_to_areas)-1):
-                        info += ', the {}'.format(bleed_to_areas[i])
-                    info += ' and the {}.'.format(bleed_to_areas[-1])
-                else:
-                    info += '.'
+                info = ('You spot a {}blood trail leading to {}.'
+                        .format(smeared_connector, Constants.cjoin(bleed_to_areas, the=True)))
                 clnt.send_ooc(info)
         elif (not area.lights or clnt.is_blind) and area.bleeds_to:
             if 'You smell blood' not in [vis_info, sne_info]:

@@ -522,7 +522,7 @@ class ClientManager:
                     raise ClientError('This command has been restricted to authorized users only '
                                       'in this area while in RP mode.')
                 if not self.area.lights:
-                    raise ClientError('The lights are off. You cannot see anything.')
+                    raise ClientError('The lights are off, so you cannot see anything.')
 
             # All code from here on assumes the area info will be sent successfully
             info = ''
