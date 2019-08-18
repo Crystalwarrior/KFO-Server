@@ -432,10 +432,10 @@ class AOProtocol(asyncio.Protocol):
             msg = Constants.remove_h_message(msg)
         if self.client.is_gagged:
             allowed_starters = ('(', '*', '[')
-            if not msg or not msg.startswith(allowed_starters):
+            if msg and not msg.startswith(allowed_starters):
                 msg = '(Gagged noises)'
             if msg != raw_msg:
-                self.client.send_ooc_others('{} tried to say "{}" but is currently gagged.'
+                self.client.send_ooc_others('(X) {} tried to say "{}" but is currently gagged.'
                                             .format(self.client.get_char_name(), raw_msg),
                                             is_staff=True, in_area=True)
 
@@ -500,10 +500,24 @@ class AOProtocol(asyncio.Protocol):
                         to_send[3] = '../../misc/blank'
 
                 # Change "message" parts of IC port
-                if c.is_deaf:
-                    allowed_starters = ('(', '*', '[')
-                    if not msg or not msg.startswith(allowed_starters):
+                # Add space to "gagged" message if needed
+                allowed_starters = ('(', '*', '[')
+                pre_space = to_send[4]
+
+                if self.client.is_gagged and to_send[4] == '(Gagged noises)':
+                    if c.send_gagged_space:
+                        to_send[4] = to_send[4] + ' '
+                    c.send_gagged_space = not c.send_gagged_space
+
+                # Nerf message for deaf
+                if c.is_deaf and to_send[4]:
+                    if (not to_send[4].startswith(allowed_starters) or
+                        self.client.is_gagged and pre_space == '(Gagged noises)'):
                         to_send[4] = '(Your ears are ringing)'
+                        if c.send_deaf_space:
+                            to_send[4] = to_send[4] + ' '
+                        c.send_deaf_space = not c.send_deaf_space
+                        c.send_gagged_space = False # doesn't matter at this point
 
                 if c.is_blind and c.is_deaf:
                     to_send[15] = '???'

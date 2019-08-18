@@ -88,6 +88,8 @@ class ClientManager:
             self.is_blind = False
             self.is_deaf = False
             self.is_gagged = False
+            self.send_deaf_space = False
+            self.send_gagged_space = False
 
             #music flood-guard stuff
             self.mus_counter = 0

@@ -449,7 +449,7 @@ class _TestClientManager(ClientManager):
 
             for (item, val) in kwargs.items():
                 err = ('Wrong IC parameter {}. Expected "{}", got "{}".'
-                       .format(item, params[param_ids[item]], val))
+                       .format(item, val, params[param_ids[item]]))
                 assert params[param_ids[item]] == val, err
 
             if over or ic_over:

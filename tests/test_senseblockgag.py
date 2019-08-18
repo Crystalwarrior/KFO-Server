@@ -38,7 +38,7 @@ class TestSenseBlockGag_02_Effect(_TestSenseBlock):
 
         self.c0.sic('Hello?')
         self.c0.assert_ic('(Gagged noises)', folder=self.c0_cname, anim='happy', over=True)
-        self.c1.assert_ooc('{} tried to say "{}" but is currently gagged.'
+        self.c1.assert_ooc('(X) {} tried to say "{}" but is currently gagged.'
                            .format(self.c0_cname, 'Hello?'), ooc_over=True)
         self.c1.assert_ic('(Gagged noises)', folder=self.c0_cname, anim='happy', over=True)
         self.c2.assert_no_ic()
@@ -51,10 +51,10 @@ class TestSenseBlockGag_02_Effect(_TestSenseBlock):
         self.c3.assert_no_ic()
 
         self.c0.sic('Mood', anim='mood')
-        self.c0.assert_ic('(Gagged noises)', folder=self.c0_cname, anim='mood', over=True)
-        self.c1.assert_ooc('{} tried to say "{}" but is currently gagged.'
+        self.c0.assert_ic('(Gagged noises) ', folder=self.c0_cname, anim='mood', over=True)
+        self.c1.assert_ooc('(X) {} tried to say "{}" but is currently gagged.'
                            .format(self.c0_cname, 'Mood'), ooc_over=True)
-        self.c1.assert_ic('(Gagged noises)', folder=self.c0_cname, anim='mood', over=True)
+        self.c1.assert_ic('(Gagged noises) ', folder=self.c0_cname, anim='mood', over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
 
@@ -80,7 +80,7 @@ class TestSenseBlockGag_02_Effect(_TestSenseBlock):
 
         self.c0.sic('Im gagged.', anim='sad')
         self.c0.assert_ic('(Gagged noises)', folder=self.c0_cname, anim='sad', over=True)
-        self.c2.assert_ooc('{} tried to say "{}" but is currently gagged.'
+        self.c2.assert_ooc('(X) {} tried to say "{}" but is currently gagged.'
                            .format(self.c0_cname, 'Im gagged.'), ooc_over=True)
         self.c2.assert_ic('(Gagged noises)', folder=self.c0_cname,
                           anim='sad', over=True)

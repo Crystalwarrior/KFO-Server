@@ -22,7 +22,7 @@ class _TestSenseBlockDeaf(_TestSenseBlock):
                 c.assert_no_ic()
 
         self.c0.sic('Cant hear you.', anim='sad')
-        self.c0.assert_ic('(Your ears are ringing)', folder=self.c0_cname, anim='sad', over=True)
+        self.c0.assert_ic('(Your ears are ringing) ', folder=self.c0_cname, anim='sad', over=True)
         self.c2.assert_ic('Cant hear you.', folder=self.c0_cname, anim='sad', over=True)
 
         for c in others:
@@ -66,6 +66,8 @@ class TestSenseBlockDeaf_02_Effect(_TestSenseBlock):
         """
         Situation: C0 and C1 talk to one another. C1 hears normally, C0 doesn't.
         """
+        # Note that some messages have extra spaces
+        # That is because AO filters out messages with repetitions
 
         self.c0.sic('Hello?')
         self.c0.assert_ic('(Your ears are ringing)', folder=self.c0_cname, anim='happy', over=True)
@@ -74,7 +76,7 @@ class TestSenseBlockDeaf_02_Effect(_TestSenseBlock):
         self.c3.assert_no_ic()
 
         self.c1.sic('Yes I can hear you.')
-        self.c0.assert_ic('(Your ears are ringing)', folder=self.c1_cname, anim='happy', over=True)
+        self.c0.assert_ic('(Your ears are ringing) ', folder=self.c1_cname, anim='happy', over=True)
         self.c1.assert_ic('Yes I can hear you.', folder=self.c1_cname, anim='happy', over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
@@ -99,7 +101,7 @@ class TestSenseBlockDeaf_02_Effect(_TestSenseBlock):
         self.c0.move_area(4)
 
         self.c2.sic('Oi m8.')
-        self.c0.assert_ic('(Your ears are ringing)', folder=self.c2_cname, anim='happy', over=True)
+        self.c0.assert_ic('(Your ears are ringing) ', folder=self.c2_cname, anim='happy', over=True)
         self.c2.assert_ic('Oi m8.', folder=self.c2_cname, anim='happy', over=True)
         self.c1.assert_no_ic()
         self.c3.assert_no_ic()

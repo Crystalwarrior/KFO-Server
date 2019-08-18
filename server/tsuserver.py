@@ -42,10 +42,11 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 1
         self.minor_version = 0
-        self.segment_version = 'RC1'
-        self.internal_version = '190818a'
-        self.software = 'TsuserverDR {}'.format(self.get_version_string())
-        self.version = 'TsuserverDR {} ({})'.format(self.get_version_string(), self.internal_version)
+        self.segment_version = 'RC2'
+        self.internal_version = '190818b'
+        version_string = self.get_version_string()
+        self.software = 'TsuserverDR {}'.format(version_string)
+        self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
         self.in_test = in_test
 
         self.protocol = AOProtocol if protocol is None else protocol
