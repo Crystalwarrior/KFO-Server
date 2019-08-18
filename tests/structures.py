@@ -318,6 +318,8 @@ class _TestClientManager(ClientManager):
             if over:
                 err = ('{} expected no more packets (did you accidentally put over=True?)'
                        .format(self))
+                err += ('\r\nCurrent packets: {}'
+                        .format('\r\n*'.join([str(x) for x in self.received_packets])))
                 assert(len(self.received_packets) == 0), err
             elif ooc_over or ic_over:
                 # Assumes actual over checks are done manually

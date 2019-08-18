@@ -170,8 +170,10 @@ class ClientChangeArea:
 
         ###########
         # If someone else is bleeding in the new area, notify the person moving
-        bleeding_visible = [c for c in area.clients if c.is_visible and c.is_bleeding]
-        bleeding_sneaking = [c for c in area.clients if not c.is_visible and c.is_bleeding]
+        bleeding_visible = [c for c in area.clients
+                            if c.is_visible and c.is_bleeding and c != clnt]
+        bleeding_sneaking = [c for c in area.clients
+                             if not c.is_visible and c.is_bleeding and c != clnt]
         info = ''
         vis_info = ''
         sne_info = ''
@@ -183,9 +185,11 @@ class ClientChangeArea:
         # Otherwise, just prepare 'smell' if lights turned off or you are blind
 
         if bleeding_visible:
-            if clnt.is_staff() or (changed_visibility and area.lights and not clnt.is_blind):
-                vis_info = ('You see {} {} bleeding'
-                            .format(Constants.cjoin([c.get_char_name() for c in bleeding_visible]),
+            normal_visibility = changed_visibility and area.lights and not clnt.is_blind
+            if clnt.is_staff() or normal_visibility:
+                vis_info = ('{}You see {} {} bleeding'
+                            .format('(X) ' if not normal_visibility else '',
+                                    Constants.cjoin([c.get_char_name() for c in bleeding_visible]),
                                     'is' if len(bleeding_visible) == 1 else 'are'))
             elif not clnt.is_deaf and changed_hearing:
                 vis_info = 'You hear faint drops of blood'
@@ -229,22 +233,27 @@ class ClientChangeArea:
         ## and the regular blood trail message with extra text for staff.
         # If neither is true, send 'smell' notification as long as the following is true:
         # 1. Lights turned off or you are blind
-        # 2. 'You smell blood' was not sent as a result of someone bleeding (see previous part)
+        # 2. A notification was not sent in the previous part
 
-        if clnt.is_staff() or (changed_visibility and area.lights and not clnt.is_blind):
+        normal_visibility = changed_visibility and area.lights and not clnt.is_blind
+        if clnt.is_staff() or normal_visibility:
+            start_connector = '(X) ' if not normal_visibility else ''
             smeared_connector = 'smeared ' if clnt.is_staff() and area.blood_smeared else ''
 
             if not clnt.is_staff() and area.blood_smeared:
-                clnt.send_ooc('You spot some smeared blood in the area.')
+                clnt.send_ooc('{}You spot some smeared blood in the area.'
+                              .format(start_connector))
             elif area.bleeds_to == set([area.name]):
-                clnt.send_ooc('You spot some {}blood in the area.'.format(smeared_connector))
+                clnt.send_ooc('You spot some {}blood in the area.'
+                              .format(start_connector, smeared_connector))
             elif len(area.bleeds_to) > 1:
                 bleed_to_areas = list(area.bleeds_to - set([area.name]))
-                info = ('You spot a {}blood trail leading to {}.'
-                        .format(smeared_connector, Constants.cjoin(bleed_to_areas, the=True)))
+                info = ('{}You spot a {}blood trail leading to {}.'
+                        .format(start_connector, smeared_connector,
+                                Constants.cjoin(bleed_to_areas, the=True)))
                 clnt.send_ooc(info)
         elif not clnt.is_staff() and area.bleeds_to and changed_area:
-            if 'You smell blood' not in [vis_info, sne_info]:
+            if not info:
                 clnt.send_ooc('You smell blood.')
 
     def notify_others(self, area, old_char, ignore_bleeding=False):
