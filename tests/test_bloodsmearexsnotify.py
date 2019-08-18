@@ -1,6 +1,6 @@
 from .structures import _TestSituation5Mc1Gc2
 
-class _TestBloodTrail(_TestSituation5Mc1Gc2):
+class _TestBloodTrailSmeared(_TestSituation5Mc1Gc2):
     @classmethod
     def setUpClass(cls):
         """
@@ -16,6 +16,9 @@ class _TestBloodTrail(_TestSituation5Mc1Gc2):
         C2 in area 7, bleeding
         C3 in area 6, bleeding
         C4 in area 0, not bleeding
+
+        A2 has smeared blood from no blood trail
+        A4, A6, A7 have smeared blood trails
         """
 
         super().setUpClass()
@@ -27,6 +30,7 @@ class _TestBloodTrail(_TestSituation5Mc1Gc2):
         cls.c0.move_area(0)
         cls.c0.move_area(6)
         cls.c0.move_area(7)
+        cls.c0.ooc('/bloodtrail_smear')
 
         cls.c1.ooc('/bloodtrail 2')
         cls.c2.move_area(6)
@@ -34,7 +38,9 @@ class _TestBloodTrail(_TestSituation5Mc1Gc2):
 
         cls.c1.ooc('/bloodtrail 3')
         cls.c3.move_area(6)
+        cls.c2.ooc('/bloodtrail_smear 6')
 
+        cls.c2.ooc('/bloodtrail_smear {}, {}'.format(cls.a2_name_s, cls.a4_name))
         cls.c0.discard_all()
         cls.c1.discard_all()
         cls.c2.discard_all()
@@ -43,32 +49,33 @@ class _TestBloodTrail(_TestSituation5Mc1Gc2):
 
         cls.blackout_background = cls.server.config['blackout_background']
 
-class TestBloodNotifyPreexisting_01_Lights(_TestBloodTrail):
+class TestBloodSmearNotifyExs_01_Lights(_TestBloodTrailSmeared):
     def test_01_normalarrival(self):
         """
         Situation: C4 moves to:
         1. Area 6, where C3 is bleeding.
         2. Area 7, where C0 and C2 are bleeding.
-        3. Area 4, where only blood trails exist
-        4. Area 2, where there is nothing
+        3. Area 4, where only blood trails exist with smear
+        4. Area 1, where there is no blood
+        5. Area 2, where there is just a smear
         """
 
         self.c4.move_area(6, discard_trivial=True)
         self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_cname))
-        self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
         self.c4.move_area(7, discard_trivial=True)
         self.c4.assert_ooc('You see {} and {} are bleeding.'.format(self.c0_cname, self.c2_cname))
-        self.c4.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
         self.c4.move_area(4, discard_trivial=True)
-        self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a5_name, self.a6_name), over=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
+
+        self.c4.move_area(1, discard_trivial=True)
+        self.c4.assert_no_ooc()
 
         self.c4.move_area(2, discard_trivial=True)
-        self.c4.assert_no_ooc()
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
     def test_02_blindarrival(self):
         """
@@ -91,8 +98,11 @@ class TestBloodNotifyPreexisting_01_Lights(_TestBloodTrail):
         self.c4.move_area(4, discard_trivial=True)
         self.c4.assert_ooc('You smell blood.', over=True)
 
-        self.c4.move_area(2, discard_trivial=True)
+        self.c4.move_area(1, discard_trivial=True)
         self.c4.assert_no_ooc()
+
+        self.c4.move_area(2, discard_trivial=True)
+        self.c4.assert_ooc('You smell blood.', over=True)
 
     def test_03_blinddeafarrival(self):
         """
@@ -115,8 +125,11 @@ class TestBloodNotifyPreexisting_01_Lights(_TestBloodTrail):
         self.c4.move_area(4, discard_trivial=True)
         self.c4.assert_ooc('You smell blood.', over=True)
 
-        self.c4.move_area(2, discard_trivial=True)
+        self.c4.move_area(1, discard_trivial=True)
         self.c4.assert_no_ooc()
+
+        self.c4.move_area(2, discard_trivial=True)
+        self.c4.assert_ooc('You smell blood.', over=True)
 
     def test_04_deafarrival(self):
         """
@@ -131,22 +144,19 @@ class TestBloodNotifyPreexisting_01_Lights(_TestBloodTrail):
 
         self.c4.move_area(6, discard_trivial=True)
         self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_cname))
-        self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
         self.c4.move_area(7, discard_trivial=True)
         self.c4.assert_ooc('You see {} and {} are bleeding.'.format(self.c0_cname, self.c2_cname))
-        self.c4.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
-        self.c4.move_area(4, discard_trivial=True)
-        self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a5_name, self.a6_name), over=True)
-
-        self.c4.move_area(2, discard_trivial=True)
+        self.c4.move_area(1, discard_trivial=True)
         self.c4.assert_no_ooc()
 
-class TestBloodNotifyPreexisting_02_NoLights(_TestBloodTrail):
+        self.c4.move_area(2, discard_trivial=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
+
+class TestBloodSmearNotifyExs_02_NoLights(_TestBloodTrailSmeared):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -155,6 +165,8 @@ class TestBloodNotifyPreexisting_02_NoLights(_TestBloodTrail):
         cls.c1.move_area(4)
         cls.c1.ooc('/lights off')
         cls.c1.move_area(2)
+        cls.c1.ooc('/lights off')
+        cls.c1.move_area(1)
         cls.c1.ooc('/lights off')
         cls.c1.move_area(0)
 
@@ -185,8 +197,12 @@ class TestBloodNotifyPreexisting_02_NoLights(_TestBloodTrail):
         self.c4.assert_ooc('You enter a pitch dark room.')
         self.c4.assert_ooc('You smell blood.', over=True)
 
-        self.c4.move_area(2, discard_trivial=True)
+        self.c4.move_area(1, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.', over=True)
+
+        self.c4.move_area(2, discard_trivial=True)
+        self.c4.assert_ooc('You enter a pitch dark room.')
+        self.c4.assert_ooc('You smell blood.', over=True)
 
     def test_02_blindarrival(self):
         """
@@ -209,8 +225,11 @@ class TestBloodNotifyPreexisting_02_NoLights(_TestBloodTrail):
         self.c4.move_area(4, discard_trivial=True)
         self.c4.assert_ooc('You smell blood.', over=True)
 
-        self.c4.move_area(2, discard_trivial=True)
+        self.c4.move_area(1, discard_trivial=True)
         self.c4.assert_no_ooc()
+
+        self.c4.move_area(2, discard_trivial=True)
+        self.c4.assert_ooc('You smell blood.', over=True)
 
     def test_03_blinddeafarrival(self):
         """
@@ -233,8 +252,11 @@ class TestBloodNotifyPreexisting_02_NoLights(_TestBloodTrail):
         self.c4.move_area(4, discard_trivial=True)
         self.c4.assert_ooc('You smell blood.', over=True)
 
-        self.c4.move_area(2, discard_trivial=True)
+        self.c4.move_area(1, discard_trivial=True)
         self.c4.assert_no_ooc()
+
+        self.c4.move_area(2, discard_trivial=True)
+        self.c4.assert_ooc('You smell blood.', over=True)
 
     def test_04_deafarrival(self):
         """
@@ -259,10 +281,14 @@ class TestBloodNotifyPreexisting_02_NoLights(_TestBloodTrail):
         self.c4.assert_ooc('You enter a pitch dark room.')
         self.c4.assert_ooc('You smell blood.', over=True)
 
-        self.c4.move_area(2, discard_trivial=True)
+        self.c4.move_area(1, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.', over=True)
 
-class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_NoLights):
+        self.c4.move_area(2, discard_trivial=True)
+        self.c4.assert_ooc('You enter a pitch dark room.')
+        self.c4.assert_ooc('You smell blood.', over=True)
+
+class TestBloodSmearNotifyExs_03_SwitchLights(TestBloodSmearNotifyExs_02_NoLights):
     def test_01_normalarrival(self):
         """
         Situation: C4 moves to:
@@ -279,13 +305,11 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c3.ooc('/lights on')
         self.c3.assert_packet('BN', self.area6.background)
         self.c3.assert_ooc('You turned the lights on.')
-        self.c3.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+        self.c3.assert_ooc('You spot some smeared blood in the area.', over=True)
         self.c4.assert_packet('BN', self.area6.background)
         self.c4.assert_ooc('The lights were turned on.')
         self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_cname))
-        self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
         self.c3.ooc('/lights off')
         self.c3.assert_packet('BN', self.blackout_background)
@@ -303,18 +327,16 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
         self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_cname))
-        self.c0.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+        self.c0.assert_ooc('You spot some smeared blood in the area.', over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
         self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_cname))
-        self.c2.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+        self.c2.assert_ooc('(X) You spot a smeared blood trail leading to the {}.'
+                           .format(self.a6_name), over=True) # Staff get hidden blood trail
         self.c4.assert_packet('BN', self.area7.background)
         self.c4.assert_ooc('The lights were turned on.')
         self.c4.assert_ooc('You see {} and {} are bleeding.'.format(self.c0_cname, self.c2_cname))
-        self.c4.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
         self.c2.ooc('/lights off')
         self.c0.assert_packet('BN', self.blackout_background)
@@ -323,7 +345,7 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c2.assert_packet('BN', self.blackout_background)
         self.c2.assert_ooc('You turned the lights off.')
         self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_cname)) # STAFF!
-        self.c2.assert_ooc('(X) You spot a blood trail leading to the {}.' # STAFF!
+        self.c2.assert_ooc('(X) You spot a smeared blood trail leading to the {}.' # STAFF!
                            .format(self.a6_name), over=True)
         # self.c2.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING
         self.c4.assert_packet('BN', self.blackout_background)
@@ -337,8 +359,7 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c4.ooc('/lights on')
         self.c4.assert_packet('BN', self.area4.background)
         self.c4.assert_ooc('You turned the lights on.')
-        self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a5_name, self.a6_name), over=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
         self.c4.ooc('/lights off')
         self.c4.assert_packet('BN', self.blackout_background)
@@ -346,16 +367,31 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         # self.c3.assert_ooc('You smell blood.', over=True) # NO, DIDNT CHANGE SMELLING
 
         ###
-        self.c4.move_area(2, discard_trivial=True)
+        self.c4.move_area(1, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.', over=True)
 
         self.c4.ooc('/lights on')
-        self.c4.assert_packet('BN', self.area2.background)
+        self.c4.assert_packet('BN', self.area1.background)
         self.c4.assert_ooc('You turned the lights on.', over=True)
 
         self.c4.ooc('/lights off')
         self.c4.assert_packet('BN', self.blackout_background)
         self.c4.assert_ooc('You turned the lights off.', over=True)
+
+        ###
+        self.c4.move_area(2, discard_trivial=True)
+        self.c4.assert_ooc('You enter a pitch dark room.')
+        self.c4.assert_ooc('You smell blood.', over=True)
+
+        self.c4.ooc('/lights on')
+        self.c4.assert_packet('BN', self.area2.background)
+        self.c4.assert_ooc('You turned the lights on.')
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
+
+        self.c4.ooc('/lights off')
+        self.c4.assert_packet('BN', self.blackout_background)
+        self.c4.assert_ooc('You turned the lights off.', over=True)
+        # self.c3.assert_ooc('You smell blood.', over=True) # NO, DIDNT CHANGE SMELLING
 
     def test_02_blindarrival(self):
         """
@@ -375,8 +411,7 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c3.ooc('/lights on')
         self.c3.assert_packet('BN', self.area6.background)
         self.c3.assert_ooc('You turned the lights on.')
-        self.c3.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+        self.c3.assert_ooc('You spot some smeared blood in the area.', over=True)
         self.c4.assert_packet('BN', self.blackout_background)
         self.c4.assert_ooc('You hear a flicker.', over=True)
 
@@ -395,13 +430,12 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
         self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_cname))
-        self.c0.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+        self.c0.assert_ooc('You spot some smeared blood in the area.', over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
         self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_cname))
-        self.c2.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+        self.c2.assert_ooc('(X) You spot a smeared blood trail leading to the {}.'
+                           .format(self.a6_name), over=True) # STAFF!
         self.c4.assert_packet('BN', self.blackout_background)
         self.c4.assert_ooc('You hear a flicker.', over=True)
 
@@ -412,7 +446,7 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c2.assert_packet('BN', self.blackout_background)
         self.c2.assert_ooc('You turned the lights off.')
         self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_cname)) # STAFF!
-        self.c2.assert_ooc('(X) You spot a blood trail leading to the {}.' # STAFF!
+        self.c2.assert_ooc('(X) You spot a smeared blood trail leading to the {}.' # STAFF!
                            .format(self.a6_name), over=True)
         # self.c2.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING
         self.c4.assert_packet('BN', self.blackout_background)
@@ -432,7 +466,7 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         # self.c3.assert_ooc('You smell blood.', over=True) # NO, DIDNT CHANGE SMELLING
 
         ###
-        self.c4.move_area(2, discard_trivial=True)
+        self.c4.move_area(1, discard_trivial=True)
         self.c4.assert_no_ooc()
 
         self.c4.ooc('/lights on')
@@ -442,6 +476,19 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c4.ooc('/lights off')
         self.c4.assert_packet('BN', self.blackout_background)
         self.c4.assert_ooc('You hear a flicker.', over=True)
+
+        ###
+        self.c4.move_area(2, discard_trivial=True)
+        self.c4.assert_ooc('You smell blood.', over=True)
+
+        self.c4.ooc('/lights on')
+        self.c4.assert_packet('BN', self.blackout_background)
+        self.c4.assert_ooc('You hear a flicker.', over=True)
+
+        self.c4.ooc('/lights off')
+        self.c4.assert_packet('BN', self.blackout_background)
+        self.c4.assert_ooc('You hear a flicker.', over=True)
+        # self.c3.assert_ooc('You smell blood.', over=True) # NO, DIDNT CHANGE SMELLING
 
     def test_03_blinddeafarrival(self):
         """
@@ -461,8 +508,7 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c3.ooc('/lights on')
         self.c3.assert_packet('BN', self.area6.background)
         self.c3.assert_ooc('You turned the lights on.')
-        self.c3.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+        self.c3.assert_ooc('You spot some smeared blood in the area.', over=True)
         self.c4.assert_packet('BN', self.blackout_background, over=True)
 
         self.c3.ooc('/lights off')
@@ -479,12 +525,11 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
         self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_cname))
-        self.c0.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+        self.c0.assert_ooc('You spot some smeared blood in the area.', over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
         self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_cname))
-        self.c2.assert_ooc('You spot a blood trail leading to the {}.'
+        self.c2.assert_ooc('(X) You spot a smeared blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
         self.c4.assert_packet('BN', self.blackout_background, over=True)
 
@@ -495,7 +540,7 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c2.assert_packet('BN', self.blackout_background)
         self.c2.assert_ooc('You turned the lights off.')
         self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_cname)) # STAFF!
-        self.c2.assert_ooc('(X) You spot a blood trail leading to the {}.' # STAFF!
+        self.c2.assert_ooc('(X) You spot a smeared blood trail leading to the {}.' # STAFF!
                            .format(self.a6_name), over=True)
         # self.c2.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING
         self.c4.assert_packet('BN', self.blackout_background, over=True)
@@ -514,7 +559,7 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         # self.c3.assert_ooc('You smell blood.', over=True) # NO, DIDNT CHANGE SMELLING
 
         ###
-        self.c4.move_area(2, discard_trivial=True)
+        self.c4.move_area(1, discard_trivial=True)
         self.c4.assert_no_ooc()
 
         self.c4.ooc('/lights on')
@@ -524,6 +569,19 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c4.ooc('/lights off')
         self.c4.assert_packet('BN', self.blackout_background)
         self.c4.assert_ooc('You feel a light switch was flipped.', over=True)
+
+        ###
+        self.c4.move_area(2, discard_trivial=True)
+        self.c4.assert_ooc('You smell blood.', over=True)
+
+        self.c4.ooc('/lights on')
+        self.c4.assert_packet('BN', self.blackout_background)
+        self.c4.assert_ooc('You feel a light switch was flipped.', over=True)
+
+        self.c4.ooc('/lights off')
+        self.c4.assert_packet('BN', self.blackout_background)
+        self.c4.assert_ooc('You feel a light switch was flipped.', over=True)
+        # self.c3.assert_ooc('You smell blood.', over=True) # NO, DIDNT CHANGE SMELLING
 
     def test_04_deafarrival(self):
         """
@@ -543,13 +601,11 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c3.ooc('/lights on')
         self.c3.assert_packet('BN', self.area6.background)
         self.c3.assert_ooc('You turned the lights on.')
-        self.c3.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+        self.c3.assert_ooc('You spot some smeared blood in the area.', over=True)
         self.c4.assert_packet('BN', self.area6.background)
         self.c4.assert_ooc('The lights were turned on.')
         self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_cname))
-        self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
         self.c3.ooc('/lights off')
         self.c3.assert_packet('BN', self.blackout_background)
@@ -567,18 +623,16 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
         self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_cname))
-        self.c0.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+        self.c0.assert_ooc('You spot some smeared blood in the area.', over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
         self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_cname))
-        self.c2.assert_ooc('You spot a blood trail leading to the {}.'
+        self.c2.assert_ooc('(X) You spot a smeared blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
         self.c4.assert_packet('BN', self.area7.background)
         self.c4.assert_ooc('The lights were turned on.')
         self.c4.assert_ooc('You see {} and {} are bleeding.'.format(self.c0_cname, self.c2_cname))
-        self.c4.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
         self.c2.ooc('/lights off')
         self.c0.assert_packet('BN', self.blackout_background)
@@ -587,7 +641,7 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c2.assert_packet('BN', self.blackout_background)
         self.c2.assert_ooc('You turned the lights off.')
         self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_cname)) # STAFF!
-        self.c2.assert_ooc('(X) You spot a blood trail leading to the {}.' # STAFF!
+        self.c2.assert_ooc('(X) You spot a smeared blood trail leading to the {}.' # STAFF!
                            .format(self.a6_name), over=True)
         # self.c2.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING
         self.c4.assert_packet('BN', self.blackout_background)
@@ -601,8 +655,7 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         self.c4.ooc('/lights on')
         self.c4.assert_packet('BN', self.area4.background)
         self.c4.assert_ooc('You turned the lights on.')
-        self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a5_name, self.a6_name), over=True)
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
         self.c4.ooc('/lights off')
         self.c4.assert_packet('BN', self.blackout_background)
@@ -610,13 +663,28 @@ class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_N
         # self.c4.assert_ooc('You smell blood.', over=True) # NO, DIDNT CHANGE SMELLING
 
         ###
-        self.c4.move_area(2, discard_trivial=True)
+        self.c4.move_area(1, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.', over=True)
 
         self.c4.ooc('/lights on')
-        self.c4.assert_packet('BN', self.area2.background)
+        self.c4.assert_packet('BN', self.area1.background)
         self.c4.assert_ooc('You turned the lights on.', over=True)
 
         self.c4.ooc('/lights off')
         self.c4.assert_packet('BN', self.blackout_background)
         self.c4.assert_ooc('You turned the lights off.', over=True)
+
+        ###
+        self.c4.move_area(2, discard_trivial=True)
+        self.c4.assert_ooc('You enter a pitch dark room.')
+        self.c4.assert_ooc('You smell blood.', over=True)
+
+        self.c4.ooc('/lights on')
+        self.c4.assert_packet('BN', self.area2.background)
+        self.c4.assert_ooc('You turned the lights on.')
+        self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
+
+        self.c4.ooc('/lights off')
+        self.c4.assert_packet('BN', self.blackout_background)
+        self.c4.assert_ooc('You turned the lights off.', over=True)
+        # self.c4.assert_ooc('You smell blood.', over=True) # NO, DIDNT CHANGE SMELLING

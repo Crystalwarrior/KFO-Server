@@ -15,13 +15,13 @@
   locking_allowed: true
   iniswap_allowed: true
   reachable_areas: Class Trial Room,\ 2, Basement
+  rp_getarea_allowed: false
   gm_iclock_allowed: false
   afk_delay: 5
   private_area: True
   scream_range: Basement
   restricted_chars: Shuichi Saihara_HD
   default_description: A class trial room that does not like Shuichi.
-  has_lights: False
   cbg_allowed: True
 - area: Class Trial Room, 2
   background: Class Trial Debate Room V3-1_HD
@@ -30,6 +30,7 @@
   locking_allowed: false
   iniswap_allowed: true
   change_reachability_allowed: false
+  rp_getareas_allowed: false
   gm_iclock_allowed: true
   afk_delay: 10
   afk_sendto: 3
@@ -52,6 +53,7 @@
   afk_sendto: 1
   lobby_area: True
   private_area: True
+  has_lights: False
   song_switch_allowed: True
   cbg_allowed: True
 - area: Test 1

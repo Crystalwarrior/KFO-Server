@@ -26,6 +26,7 @@ class _Unittest(unittest.TestCase):
         cls.a0_name = cls.area0.name
         cls.a1_name = cls.area1.name
         cls.a2_name = cls.area2.name
+        cls.a2_name_s = cls.a2_name.replace(', ', ',\ ') # Deal with comma in Class Trial Room, 2
         cls.a3_name = cls.area3.name
         cls.a4_name = cls.area4.name
         cls.a5_name = cls.area5.name
@@ -156,6 +157,7 @@ class _TestClientManager(ClientManager):
             self.received_ooc = list()
             self.received_ic = list()
             self.my_protocol = my_protocol
+            self.last_ic = None, None
 
         def disconnect(self):
             self.my_protocol.connection_lost(None, client=self)
@@ -517,7 +519,24 @@ class _TestClientManager(ClientManager):
             elif command_type == 'PV': # Current character
                 pass
             elif command_type == 'MS': # IC message
-                self.received_ic.append(args)
+                # 0 = msg_type
+                # 1 = pre
+                # 2 = folder
+                # 3 = anim
+                # 4 = msg
+                # 5 = pos
+                # 6 = sfx
+                # 7 = anim_type
+                # 8 = cid
+                # 9 = sfx_delay
+                # 10 = button
+                # 11 = self.client.evi_list[evidence]
+                # 12 = flip
+                # 13 = ding
+                # 14 = color
+                if args[2] != self.last_ic[0] or args[4] != self.last_ic[1]:
+                    self.received_ic.append(args)
+                    self.last_ic = args[2], args[4]
             elif command_type == 'ZZ': # Mod call
                 pass
             else:

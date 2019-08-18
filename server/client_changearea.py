@@ -244,15 +244,18 @@ class ClientChangeArea:
                 clnt.send_ooc('{}You spot some smeared blood in the area.'
                               .format(start_connector))
             elif area.bleeds_to == set([area.name]):
-                clnt.send_ooc('You spot some {}blood in the area.'
+                clnt.send_ooc('{}You spot some {}blood in the area.'
                               .format(start_connector, smeared_connector))
             elif len(area.bleeds_to) > 1:
                 bleed_to_areas = list(area.bleeds_to - set([area.name]))
+                if clnt.is_staff() and area.blood_smeared:
+                    start_connector = '(X) ' # Force staff indication
+
                 info = ('{}You spot a {}blood trail leading to {}.'
                         .format(start_connector, smeared_connector,
                                 Constants.cjoin(bleed_to_areas, the=True)))
                 clnt.send_ooc(info)
-        elif not clnt.is_staff() and area.bleeds_to and changed_area:
+        elif not clnt.is_staff() and (area.bleeds_to or area.blood_smeared) and changed_area:
             if not info:
                 clnt.send_ooc('You smell blood.')
 

@@ -53,3 +53,13 @@ class TestIC_01_Basic(_TestIC):
         self.c1.assert_no_ic()
         self.c2.assert_ic('Anyone in here?', folder=self.c2_cname, over=True)
         self.c3.assert_no_ic()
+
+    def test_03_repeatedmessages(self):
+        """
+        Situation: C2 attempts to send the exact same message with the same character. While they
+        still receive the MS packet, they don't actually show the message in IC.
+        """
+
+        self.c2.sic('Anyone in here?')
+        self.c2.assert_packet('MS', None, over=True)
+        self.c2.assert_no_ic()

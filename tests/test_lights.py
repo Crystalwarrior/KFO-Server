@@ -221,3 +221,34 @@ class TestLights_01_Basic(_TestLights):
         self.c3.assert_packet('BN', self.area6.background)
         self.c3.assert_ooc('You turned the lights on.', over=True)
         self.assert_lights(1, 0)
+
+    def test_07_blindlights(self):
+        """
+        Situation: Blind player attempts to turn off lights that are already turned off. They turn
+        them on. Then they attempt the same with on lights.
+        """
+
+        self.c1.ooc('/blind 3')
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c3.discard_all()
+
+        self.c3.ooc('/lights off')
+        self.c3.assert_packet('BN', self.blackout_background)
+        self.c3.assert_ooc('You hear a flicker.', over=True)
+        self.assert_lights(1, {self.area6})
+
+        self.c3.ooc('/lights off')
+        self.c3.assert_packet('BN', self.blackout_background)
+        self.c3.assert_ooc('You hear a flicker.', over=True)
+        self.assert_lights(1, 0)
+
+        self.c3.ooc('/lights on')
+        self.c3.assert_packet('BN', self.blackout_background)
+        self.c3.assert_ooc('You hear a flicker.', over=True)
+        self.assert_lights(1, {self.area6})
+
+        self.c3.ooc('/lights on')
+        self.c3.assert_packet('BN', self.blackout_background)
+        self.c3.assert_ooc('You hear a flicker.', over=True)
+        self.assert_lights(1, 0)

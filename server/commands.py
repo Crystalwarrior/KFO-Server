@@ -2117,7 +2117,10 @@ def ooc_cmd_lights(client, arg):
     if not client.is_mod and client.area.bg_lock:
         raise AreaError('The background of this area is locked.')
 
-    new_lights = (arg == 'on')
+    if not client.is_staff() and client.is_blind:
+        new_lights = not client.area.lights
+    else:
+        new_lights = (arg == 'on')
     client.area.change_lights(new_lights, initiator=client)
 
 def ooc_cmd_lm(client, arg):
