@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 1
         self.minor_version = 0
-        self.segment_version = 'RC3'
-        self.internal_version = '190818c'
+        self.segment_version = 'RC4'
+        self.internal_version = '190818d'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -346,7 +346,7 @@ class TsuserverDR:
         if not ip in self.ipid_list:
             while True:
                 ipid = random.randint(0, 10**10-1)
-                if ipid not in self.ipid_list:
+                if ipid not in self.ipid_list.values():
                     break
             self.ipid_list[ip] = ipid
             self.dump_ipids()

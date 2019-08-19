@@ -562,7 +562,7 @@ class TestBlood_05_Clean(_TestBlood):
         self.c1.assert_ooc(self.mes, over=True)
 
         self.c1.ooc('/bloodtrail_clean {}'.format(self.a7_name))
-        self.c1.assert_ooc('{} in area {} is still bleeding, so the area cannot be cleaned.'
+        self.c1.assert_ooc('(X) {} in area {} is still bleeding, so the area cannot be cleaned.'
                            .format(self.c0_cname, self.a7_name), over=True)
 
         self.c1.ooc('/bloodtrail_list')

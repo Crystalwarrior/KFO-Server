@@ -1,4 +1,5 @@
 from .test_senseblock import _TestSenseBlock, _UnittestSenseBlock
+from .structures import _TestSituation5Mc1Gc2
 
 class _TestSenseBlockBlind(_TestSenseBlock):
     @classmethod
@@ -144,7 +145,7 @@ class TestSenseBlockBlind_02_Effect(_TestSenseBlockBlind):
         self.c2.assert_ic('Cant see you either', folder=self.c0_cname, anim='sad', over=True)
         self.c3.assert_no_ic()
 
-class TestSenseBlockBlind_03_Advanced(_TestSenseBlockBlind):
+class TestSenseBlockBlind_03_ChangeArea(_TestSenseBlockBlind):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()

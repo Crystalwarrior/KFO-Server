@@ -173,12 +173,13 @@
 ## 190806 (4.0.5)
 * Fixed logging in to a second rank making you keep the first one
 
-## 1908?? (4.1)
+## 190819 (4.1)
 * Added sense block support with
  - /blind
  - /deaf
  - /gag
 * Added /bloodtrail_smear to smear blood trails in the area
+ - If player is blind or area lights are out, /bloodtrail_clean effectively runs this instead
 * Added /ping to check for lost connection
 * Added /showname_area to list shownames just in the current area
 * CMs now receive Call Mod notifications
@@ -187,6 +188,7 @@
  - Staff now receive autopass messages if lights are off instead of regular lights off messages
  - Reworded messages sent if someone arrives/leaves while bleeding/lights off and sneaking
  - Players now receive special notification if there is blood in the area and lights are off
+* Fixed IPIDs on rare occasions being non-trivially not unique
 * Fixed /pm not sending complete character names to recipient
 * Minor bugfixes with respect to bleeding
  - Blood cleaning notifications will no longer be sent with lights off
