@@ -453,8 +453,12 @@ class AOProtocol(asyncio.Protocol):
             start, end = self.client.multi_ic[0].id, self.client.multi_ic[1].id + 1
             area_range = range(start, end)
             msg = msg.replace(self.client.multi_ic_pre, '', 1)
-            self.client.send_ooc('Sent global IC message {} to areas {} through {}.'
-                                 .format(msg, start, end))
+            if start != end-1:
+                self.client.send_ooc('Sent global IC message "{}" to areas {} through {}.'
+                                     .format(msg, start, end-1))
+            else:
+                self.client.send_ooc('Sent global IC message "{}" to area {}.'
+                                     .format(msg, start))
 
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)

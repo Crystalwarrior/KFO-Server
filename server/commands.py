@@ -3603,8 +3603,10 @@ def ooc_cmd_rpmode(client, arg):
 def ooc_cmd_scream(client, arg):
     """
     Sends a message in the OOC chat visible to all staff members and non-deaf users that are in an
-    area whose screams are reachable from the sender's area. If the user is gagged, a special
-    message is instead sent to non-deaf players in the same area. Staff always get normal messages.
+    area whose screams are reachable from the sender's area.
+    If the user is gagged, a special message is instead sent to non-deaf players in the same area.
+    If a recipient is deaf, a special message is instead received.
+    Staff always get normal messages.
     Returns an error if the user has global chat off or sends an empty message.
 
     SYNTAX
@@ -3635,10 +3637,10 @@ def ooc_cmd_scream(client, arg):
                                is_staff=True, pred=lambda c: not c.muted_global)
     else:
         client.send_ooc('You attempted to scream but you have no mouth.')
-        client.send_ooc_others('{} is trying to scream but has no mouth.'
+        client.send_ooc_others('You hear some grunting noises.'
                                .format(client.get_char_name()), is_staff=False, to_deaf=False,
                                in_area=True, pred=lambda c: not c.muted_global)
-        client.send_ooc_others('{} attempted to scream "{}" while gagged ({}).'
+        client.send_ooc_others('(X) {} attempted to scream "{}" while gagged ({}).'
                                .format(client.get_char_name(), arg, client.area.id),
                                is_staff=True, pred=lambda c: not c.muted_global)
 

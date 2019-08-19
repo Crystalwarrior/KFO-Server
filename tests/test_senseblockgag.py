@@ -1,4 +1,11 @@
+from .structures import _TestSituation5Mc1Gc2
 from .test_senseblock import _TestSenseBlock, _UnittestSenseBlock
+
+class _TestSenseBlockGag(_TestSenseBlock):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.c3.move_area(5)
 
 class TestSenseBlockGag_01_Common(_UnittestSenseBlock):
     @classmethod
@@ -8,7 +15,7 @@ class TestSenseBlockGag_01_Common(_UnittestSenseBlock):
         cls.sense_pp = 'gagged'
         cls.sense_attribute = lambda x, c: c.is_gagged
 
-class TestSenseBlockGag_02_Effect(_TestSenseBlock):
+class TestSenseBlockGag_02_Effect(_TestSenseBlockGag):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -106,3 +113,31 @@ class TestSenseBlockGag_02_Effect(_TestSenseBlock):
         self.c0.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
         self.c2.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
         self.c3.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
+
+class TestSenseBlockGag_04_Miscellaneous(_TestSituation5Mc1Gc2):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.c2.ooc('/gag 0')
+
+        cls.c0.discard_all()
+        cls.c1.discard_all()
+        cls.c2.discard_all()
+
+    def test_01_gaggedspecial(self):
+        """
+        Situation: C0 attempts to scream. Does not go that well.
+        """
+
+        self.area0.scream_range = set([self.area5.name])
+        self.c2.move_area(5)
+        self.c3.move_area(5)
+
+        self.c0.ooc('/scream Hi')
+        self.c0.assert_ooc('You attempted to scream but you have no mouth.', over=True)
+        self.c1.assert_ooc('(X) {} attempted to scream "Hi" while gagged ({}).'
+                           .format(self.c0_cname, 0), over=True)
+        self.c2.assert_ooc('(X) {} attempted to scream "Hi" while gagged ({}).'
+                           .format(self.c0_cname, 0), over=True)
+        self.c3.assert_no_ooc()
+        self.c4.assert_ooc('You hear some grunting noises.', over=True)

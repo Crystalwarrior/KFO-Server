@@ -19,12 +19,12 @@ gmpass7: Saturday-Sunday
 motd: Welcome to my server!
 help_msg: TODO
 
+local: false
+
 use_district: false
 district_ip: 127.0.0.1
 district_port: 11037
 district_password: enter_password
-
-local: false
 
 masterserver_ip: master.aceattorneyonline.com
 masterserver_port: 27016

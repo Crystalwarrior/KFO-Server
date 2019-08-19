@@ -256,3 +256,44 @@ class TestSenseBlockBlind_03_ChangeArea(_TestSenseBlockBlind):
         self.c2.discard_all()
         self.c3.discard_all()
         self.c4.discard_all()
+
+class TestSenseBlockBlind_04_Miscellaneous(_TestSenseBlockBlind):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.c2.ooc('/blind 0')
+
+        cls.c0.discard_all()
+        cls.c1.discard_all()
+        cls.c2.discard_all()
+
+    def test_01_noareainfo(self):
+        """
+        Situation: Blind client attempts to /getarea, /getareas, /showname_area, /showname_areas.
+        These attempts all fail.
+        """
+
+        self.c0.ooc('/getarea')
+        self.c0.assert_ooc('You are blind, so you cannot see anything.', over=True)
+        self.c0.ooc('/getareas')
+        self.c0.assert_ooc('You are blind, so you cannot see anything.', over=True)
+        self.c0.ooc('/showname_area')
+        self.c0.assert_ooc('You are blind, so you cannot see anything.', over=True)
+        self.c0.ooc('/showname_areas')
+        self.c0.assert_ooc('You are blind, so you cannot see anything.', over=True)
+
+    def test_02_nolook(self):
+        """
+        Situation: Blind client attempts to /look. This fails.
+        """
+
+        self.c0.ooc('/look')
+        self.c0.assert_ooc('You are blind, so you cannot see anything.', over=True)
+
+    def test_03_nopartycreation(self):
+        """
+        Situation: Blind client attempts to create a party. This fails.
+        """
+
+        self.c0.ooc('/party')
+        self.c0.assert_ooc('You cannot create a party as you are blind.', over=True)

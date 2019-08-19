@@ -129,7 +129,7 @@ class TestSenseBlockDeaf_02_Effect(_TestSenseBlock):
         self.c0.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
         self.c2.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
 
-class TestSenseBlockDeaf_03_Advanced(_TestSenseBlockDeaf):
+class TestSenseBlockDeaf_03_ChangeArea(_TestSenseBlockDeaf):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -229,3 +229,64 @@ class TestSenseBlockDeaf_03_Advanced(_TestSenseBlockDeaf):
         self.c2.discard_all()
         self.c3.discard_all()
         self.c4.discard_all()
+
+class TestSenseBlockDeaf_04_Miscellaneous(_TestSenseBlockDeaf):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.c2.ooc('/deafen 0')
+
+        cls.c0.discard_all()
+        cls.c1.discard_all()
+        cls.c2.discard_all()
+
+    def test_01_globalicringssears(self):
+        """
+        Situation: C3 uses /globalic to talk to people in area 0. C0 gets (Your ears are ringing).
+        """
+
+        self.c2.ooc('/globalic 0')
+        self.c2.assert_ooc('Your IC messages will now be sent to area {}.'
+                           .format(self.a0_name), over=True)
+
+        self.c2.sic('Hi')
+        self.c0.assert_ic('(Your ears are ringing)', folder=self.c2_cname, over=True)
+        self.c1.assert_ic('Hi', folder=self.c2_cname, over=True)
+        self.c2.assert_ooc('Sent global IC message "Hi" to area {}.'
+                           .format(0), over=True)
+
+        self.c2.ooc('/globalic 0, 1')
+        self.c2.assert_ooc('Your IC messages will now be sent to areas {} through {}.'
+                           .format(self.a0_name, self.a1_name), over=True)
+
+        self.c2.sic('Hi.')
+        self.c0.assert_ic('(Your ears are ringing) ', folder=self.c2_cname, over=True) # client wk
+        self.c1.assert_ic('Hi.', folder=self.c2_cname, over=True)
+        self.c2.assert_ooc('Sent global IC message "Hi." to areas {} through {}.'
+                           .format(0, 1), over=True)
+
+    def test_02_noknock(self):
+        """
+        Situation: C3 uses /knock on area 0. C0 gets nothing.
+        """
+
+        self.c3.ooc('/knock {}'.format(0))
+        self.c0.assert_no_ooc()
+        self.c1.assert_ooc('{} knocked on the door to area {} in area {} ({}).'
+                           .format(self.c3_cname, self.a0_name, self.a5_name, 5), over=True)
+        self.c2.assert_ooc('{} knocked on the door to area {} in area {} ({}).'
+                           .format(self.c3_cname, self.a0_name, self.a5_name, 5), over=True)
+        self.c3.assert_ooc('You knocked on the door to area {}.'.format(self.a0_name), over=True)
+
+    def test_03_screamringsears(self):
+        """
+        Situation: C3 in another area screams. C0 gets nerfed message.
+        """
+
+        self.area5.scream_range = set([self.area0.name])
+
+        self.c3.ooc('/scream Hi')
+        self.c0.assert_ooc('Your ears are ringing.', over=True)
+        self.c1.assert_ooc('{} screamed "Hi" ({}).'.format(self.c3_cname, 5), over=True)
+        self.c2.assert_ooc('{} screamed "Hi" ({}).'.format(self.c3_cname, 5), over=True)
+        self.c3.assert_ooc('You screamed "Hi"', over=True)

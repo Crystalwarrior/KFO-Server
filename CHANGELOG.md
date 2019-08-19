@@ -188,6 +188,7 @@
  - Staff now receive autopass messages if lights are off instead of regular lights off messages
  - Reworded messages sent if someone arrives/leaves while bleeding/lights off and sneaking
  - Players now receive special notification if there is blood in the area and lights are off
+* Fixed global IC OOC notifications showing message went one area past the last area actually sent to
 * Fixed IPIDs on rare occasions being non-trivially not unique
 * Fixed /pm not sending complete character names to recipient
 * Minor bugfixes with respect to bleeding
