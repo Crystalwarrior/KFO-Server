@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 1
         self.minor_version = 1
-        self.segment_version = ''
-        self.internal_version = '190820a'
+        self.segment_version = 'post1'
+        self.internal_version = '190820b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -189,8 +189,10 @@ class TsuserverDR:
                     self.loop.run_until_complete(self.await_cancellation(task))
 
     def get_version_string(self):
-        return ('{}.{}.{}{}'
-                .format(self.release, self.major_version, self.minor_version, self.segment_version))
+        mes = '{}.{}.{}'.format(self.release, self.major_version, self.minor_version)
+        if self.segment_version:
+            mes = '{}-{}'.format(mes, self.segment_version)
+        return mes
 
     def reload(self):
         with Constants.fopen('config/characters.yaml', 'r') as chars:

@@ -418,6 +418,8 @@ class ClientChangeArea:
 
         if not override_all:
             # All the code that could raise errors goes here
+
+            # If player is in a party, do special method instead of this
             if from_party:
                 clnt.server.party_manager.move_party(clnt.party, clnt, area)
                 return

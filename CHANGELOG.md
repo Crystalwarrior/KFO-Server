@@ -1,14 +1,15 @@
-## 180801 (3.0.1)
+## TsuserverDR 3
+### 180801 (3.0.1)
 * Added /time12
 
-## 180812 (3.1)
+### 180812 (3.1)
 * Added /ddroll, /ddrollp for rolls with modifiers
 * Added 'rp_getarea(s)' attributes to restrict /getarea(s)
 * Added /toggle_rpgetarea(s) to change the above attribute
 * Added /st for staff-only chat
 * /g now includes OOC usernames as opposed to charname
 
-## 180910 (3.2)
+### 180910 (3.2)
 * Added reachable areas support with
  - /unilock
  - /bilock
@@ -19,7 +20,7 @@
 * OOC usernames may no longer include the hostname or global message prefixe
 * Fixed /kick crash on unrecognized parameters
 
-## 190126 (3.3)
+### 190126 (3.3)
 * Added AFK kicks
 * Added user-initiated timers with
  - /timer start
@@ -27,27 +28,27 @@
  - /timer cancel
 * Area lists now only list reachable areas
 
-## 190225 (3.4)
+### 190225 (3.4)
 * Added inter-area OOC communication with /scream
 * Added debugging tool /exec
 * Added inter-area music setting with /rplay
 * Renamed /ddroll -> /roll, /ddrollp -> /rollp
 
-## 190323 (3.5)
+### 190323 (3.5)
 * Added sneak support with /sneak and /reveal
 * Added inter-area IC announcements with /globalic, /unglobalic
 * Added server custom shownames with /shownames
 * Added soundproof area attribute
 * Expanded inter-area OOC communication with /knock
 
-## 190519 (3.6)
+### 190519 (3.6)
 * Added support for custom music lists with /music_list
 * Added area list reloading with /area_list
 * Added character restriction on a per-area basis with /char_restrict
 * Added scream ranges on a per-area basis (deprecating soundproof attribute)
 * Default server configuration now uses DRO standards
 
-## 190602 (3.7)
+### 190602 (3.7)
 * Added automatic passing messages with /autopass
 * Added passage lock transientness with /transient
 * Added showname moderation tools
@@ -61,7 +62,7 @@
 * Fixed /getareas listing an empty area if only people there are sneaking
 * Players on server select no longer count in online playercount, nor in /getarea[s] and /area
 
-## 190609 (3.8)
+### 190609 (3.8)
 * Added movement handicaps with /handicap, /unhandicap
 * Added area lights with /lights
 * Added blood trails with
@@ -73,7 +74,7 @@
 * Allowed for more DRO client effects being used
 * Fixed /autopass not sending messages from or for staff
 
-## 190618 (first with date version system) (3.9)
+### 190618 (first with date version system) (3.9)
 * Added area descriptions with /look, /look_set
 * Console now displays server opening/closing/reconnecting messages.
 * Python errors now show additional debugging info on server log+client if error came as a result of command
@@ -94,7 +95,7 @@
 * Fixed /follow allowing to follow yourself
 * Fixed "Knock" client effect not being sent
 
-## 190630 (3.10)
+### 190630 (3.10)
 * Added support for user initiated day cycles with 
  - /clock
  - /clock_cancel
@@ -116,7 +117,7 @@
 * Fixed server ghosting on master server list on incorrect server closing
 * Fixed pre2.2.5 clients being unable to join
 
-## 190708 (3.11)
+### 190708 (3.11)
 * Added various moderation/debugging tools
  - /lasterror
  - /multiclients
@@ -132,7 +133,7 @@
 * Fixed a player not unfollowing a player who disconnects and then crashing on area change
 * Fixed /roll crashing on too many arguments
 
-## 190721 (3.12)
+### 190721 (3.12)
 * Added global IC prefixes with /globalic_pre
 * Added first person mode with /toggle_fp
 * Banned players now receive 'You are banned from this server' notifications on attempting to join+Notifies mods of this attempt
@@ -142,7 +143,9 @@
 * Renamed some commands from /toggle to /can
 * Fixed clients being able to join too quickly on server select and crashing
 
-## 190801 (4.0)
+## TsuserverDR 4.0 (The Party Update)
+
+### 190801 (4.0)
 * Added party support so players move with one another automatically with
  - /party
  - /party_disband
@@ -161,19 +164,21 @@
 * Fixed security issue with webAO
 * TsuserverDR now uses semantic versioning.
 
-## 190801b (4.0.1)
+### 190801b (4.0.1)
 * Introduced CI testing on Travis
 
-## 190802 (4.0.3)
+### 190802 (4.0.2-4.0.3)
 * Fixed server player limit not being enforced
 
-## 190805 (4.0.4)
+### 190805 (4.0.4)
 * Fixed invalid characters crash with /area_list and /music_list
 
-## 190806 (4.0.5)
+### 190806 (4.0.5)
 * Fixed logging in to a second rank making you keep the first one
 
-## 190819 (4.1)
+## TsuserverDR 4.1 (The Sense Block Update)
+
+### 190819 (4.1)
 * Added sense block support with
  - /blind
  - /deaf
@@ -184,6 +189,7 @@
 * Added /showname_area to list shownames just in the current area
 * CMs now receive Call Mod notifications
 * Renamed /mutepm -> /toggle_pm, /showname_list -> /showname_areas
+* Started including additional marks to certain staff only RP notifications
 * Minor changes to messages sent on area change
  - Staff now receive autopass messages if lights are off instead of regular lights off messages
  - Reworded messages sent if someone arrives/leaves while bleeding/lights off and sneaking
@@ -194,3 +200,7 @@
 * Minor bugfixes with respect to bleeding
  - Blood cleaning notifications will no longer be sent with lights off
  - Blood will now automatically be spilled on the area as soon as /bloodtrail is executed, not only on area change
+ 
+### 190820 (4.1.1)
+* Added special marks to more staff only RP notifications
+* Reworded global IC notification messages
