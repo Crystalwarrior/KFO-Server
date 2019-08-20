@@ -1,6 +1,6 @@
 from .test_senseblock import _TestSenseBlock, _UnittestSenseBlock
 
-class _TestSenseBlockDeaf(_TestSenseBlock):
+class _TestDeafen(_TestSenseBlock):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -31,7 +31,7 @@ class _TestSenseBlockDeaf(_TestSenseBlock):
             else:
                 c.assert_no_ic()
 
-class TestSenseBlockDeaf_01_Common(_UnittestSenseBlock):
+class TestDeafen_01_Common(_UnittestSenseBlock):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -39,7 +39,7 @@ class TestSenseBlockDeaf_01_Common(_UnittestSenseBlock):
         cls.sense_pp = 'deafened'
         cls.sense_attribute = lambda x, c: c.is_deaf
 
-class TestSenseBlockDeaf_02_Effect(_TestSenseBlock):
+class TestDeafen_02_Effect(_TestSenseBlock):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -53,7 +53,7 @@ class TestSenseBlockDeaf_02_Effect(_TestSenseBlock):
         self.c1.ooc('/deafen {}'.format(0))
         self.c1.assert_ooc('You have deafened {}.'.format(self.c0_cname), over=True)
         self.c0.assert_ooc('You have been deafened.', ooc_over=True)
-        self.c2.assert_ooc('{} has deafened {} ({}).'
+        self.c2.assert_ooc('(X) {} has deafened {} ({}).'
                            .format(self.c1.name, self.c0_cname, 0), over=True)
         self.c3.assert_no_ooc()
 
@@ -129,7 +129,7 @@ class TestSenseBlockDeaf_02_Effect(_TestSenseBlock):
         self.c0.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
         self.c2.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
 
-class TestSenseBlockDeaf_03_ChangeArea(_TestSenseBlockDeaf):
+class TestDeafen_03_ChangeArea(_TestDeafen):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -230,7 +230,7 @@ class TestSenseBlockDeaf_03_ChangeArea(_TestSenseBlockDeaf):
         self.c3.discard_all()
         self.c4.discard_all()
 
-class TestSenseBlockDeaf_04_Miscellaneous(_TestSenseBlockDeaf):
+class TestDeafen_04_Miscellaneous(_TestDeafen):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -253,7 +253,7 @@ class TestSenseBlockDeaf_04_Miscellaneous(_TestSenseBlockDeaf):
         self.c0.assert_ic('(Your ears are ringing)', folder=self.c2_cname, over=True)
         self.c1.assert_ic('Hi', folder=self.c2_cname, over=True)
         self.c2.assert_ooc('Sent global IC message "Hi" to area {}.'
-                           .format(0), over=True)
+                           .format(self.a0_name), over=True)
 
         self.c2.ooc('/globalic 0, 1')
         self.c2.assert_ooc('Your IC messages will now be sent to areas {} through {}.'
@@ -263,7 +263,7 @@ class TestSenseBlockDeaf_04_Miscellaneous(_TestSenseBlockDeaf):
         self.c0.assert_ic('(Your ears are ringing) ', folder=self.c2_cname, over=True) # client wk
         self.c1.assert_ic('Hi.', folder=self.c2_cname, over=True)
         self.c2.assert_ooc('Sent global IC message "Hi." to areas {} through {}.'
-                           .format(0, 1), over=True)
+                           .format(self.a0_name, self.a1_name), over=True)
 
     def test_02_noknock(self):
         """

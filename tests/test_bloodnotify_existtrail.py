@@ -43,7 +43,7 @@ class _TestBloodTrail(_TestSituation5Mc1Gc2):
 
         cls.blackout_background = cls.server.config['blackout_background']
 
-class TestBloodNotifyPreexisting_01_Lights(_TestBloodTrail):
+class TestBloodNotifyExistTrail_01_Lights(_TestBloodTrail):
     def test_01_normalarrival(self):
         """
         Situation: C4 moves to:
@@ -146,7 +146,7 @@ class TestBloodNotifyPreexisting_01_Lights(_TestBloodTrail):
         self.c4.move_area(2, discard_trivial=True)
         self.c4.assert_no_ooc()
 
-class TestBloodNotifyPreexisting_02_NoLights(_TestBloodTrail):
+class TestBloodNotifyExistTrail_02_NoLights(_TestBloodTrail):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -262,7 +262,7 @@ class TestBloodNotifyPreexisting_02_NoLights(_TestBloodTrail):
         self.c4.move_area(2, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.', over=True)
 
-class TestBloodNotifyPreexisting_03_SwitchLights(TestBloodNotifyPreexisting_02_NoLights):
+class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoLights):
     def test_01_normalarrival(self):
         """
         Situation: C4 moves to:

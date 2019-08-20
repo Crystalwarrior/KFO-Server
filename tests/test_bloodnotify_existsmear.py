@@ -49,7 +49,7 @@ class _TestBloodTrailSmeared(_TestSituation5Mc1Gc2):
 
         cls.blackout_background = cls.server.config['blackout_background']
 
-class TestBloodSmearNotifyExs_01_Lights(_TestBloodTrailSmeared):
+class TestBloodNotifyExistSmear_01_Lights(_TestBloodTrailSmeared):
     def test_01_normalarrival(self):
         """
         Situation: C4 moves to:
@@ -156,7 +156,7 @@ class TestBloodSmearNotifyExs_01_Lights(_TestBloodTrailSmeared):
         self.c4.move_area(2, discard_trivial=True)
         self.c4.assert_ooc('You spot some smeared blood in the area.', over=True)
 
-class TestBloodSmearNotifyExs_02_NoLights(_TestBloodTrailSmeared):
+class TestBloodNotifyExistSmear_02_NoLights(_TestBloodTrailSmeared):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -288,7 +288,7 @@ class TestBloodSmearNotifyExs_02_NoLights(_TestBloodTrailSmeared):
         self.c4.assert_ooc('You enter a pitch dark room.')
         self.c4.assert_ooc('You smell blood.', over=True)
 
-class TestBloodSmearNotifyExs_03_SwitchLights(TestBloodSmearNotifyExs_02_NoLights):
+class TestBloodNotifyExistSmear_03_SwitchLights(TestBloodNotifyExistSmear_02_NoLights):
     def test_01_normalarrival(self):
         """
         Situation: C4 moves to:

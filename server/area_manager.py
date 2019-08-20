@@ -824,7 +824,7 @@ class AreaManager:
 
         unrecognized_areas = temp_reachable_area_names-temp_area_names-{'<ALL>'}
         if unrecognized_areas != set():
-            info = ('Unrecognized area names defined as a reachable area in area list file: {}. '
+            info = ('Unrecognized area names defined as reachable areas in area list file: {}. '
                     'Please rename the affected areas and try again.'.format(unrecognized_areas))
             raise AreaError(info)
 
@@ -882,6 +882,7 @@ class AreaManager:
         """
         Return the Area object corresponding to the server's default area.
         """
+
         return self.areas[self.server.default_area]
 
     def get_area_by_name(self, name):

@@ -451,14 +451,17 @@ class AOProtocol(asyncio.Protocol):
         else:
             # As msg.startswith('') is True, this also accounts for having no required prefix.
             start, end = self.client.multi_ic[0].id, self.client.multi_ic[1].id + 1
+            start_area = self.server.area_manager.get_area_by_id(start)
+            end_area = self.server.area_manager.get_area_by_id(end-1)
             area_range = range(start, end)
+
             msg = msg.replace(self.client.multi_ic_pre, '', 1)
             if start != end-1:
                 self.client.send_ooc('Sent global IC message "{}" to areas {} through {}.'
-                                     .format(msg, start, end-1))
+                                     .format(msg, start_area.name, end_area.name))
             else:
                 self.client.send_ooc('Sent global IC message "{}" to area {}.'
-                                     .format(msg, start))
+                                     .format(msg, start_area.name, end_area.name))
 
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)

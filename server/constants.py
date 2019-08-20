@@ -104,6 +104,9 @@ class Constants():
 
             if split_spaces:
                 arg = arg.split(' ')
+            elif split_commas:
+                arg = arg.split(', ')
+
             if arg == ['']:
                 arg = list()
 
@@ -117,16 +120,16 @@ class Constants():
             elif symbol == '<':
                 expect = num[0] - 1
                 if len(arg) > expect:
-                    error = ('This command expects at most {} argument{}.', expect)
+                    error = ('This command has at most {} argument{}.', expect)
             elif symbol == '>':
                 expect = num[0] + 1
                 if len(arg) < expect:
-                    error = ('This command expects at least {} argument{}.', expect)
+                    error = ('This command has at least {} argument{}.', expect)
             elif symbol == '&':
                 expect = num
                 if not (expect[0] <= len(arg) <= expect[1]):
                     expect = '{} to {}'.format(expect[0], expect[1])
-                    error = ('This command expects from {} argument{}.', expect)
+                    error = ('This command has from {} argument{}.', expect)
 
             if error:
                 raise ArgumentError(error[0].format(error[1], 's' if error[1] != 1 else ''))

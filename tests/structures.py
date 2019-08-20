@@ -9,9 +9,9 @@ from server.tsuserver import TsuserverDR
 class _Unittest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print('\nTesting {}: '.format(cls.__name__), end=' ')
         if cls.__name__[0] == '_':
             cls.skipTest('', reason='')
+        print('\nTesting {}: '.format(cls.__name__), end=' ')
         cls.server = _TestTsuserverDR()
         cls.clients = cls.server.client_list
         cls.area0 = cls.server.area_manager.get_area_by_id(0)

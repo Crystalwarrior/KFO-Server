@@ -1,13 +1,13 @@
 from .structures import _TestSituation5Mc1Gc2
 from .test_senseblock import _TestSenseBlock, _UnittestSenseBlock
 
-class _TestSenseBlockGag(_TestSenseBlock):
+class _TestGag(_TestSenseBlock):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.c3.move_area(5)
 
-class TestSenseBlockGag_01_Common(_UnittestSenseBlock):
+class TestGag_01_Common(_UnittestSenseBlock):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -15,7 +15,7 @@ class TestSenseBlockGag_01_Common(_UnittestSenseBlock):
         cls.sense_pp = 'gagged'
         cls.sense_attribute = lambda x, c: c.is_gagged
 
-class TestSenseBlockGag_02_Effect(_TestSenseBlockGag):
+class TestGag_02_Effect(_TestGag):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -29,7 +29,7 @@ class TestSenseBlockGag_02_Effect(_TestSenseBlockGag):
         self.c1.ooc('/gag {}'.format(0))
         self.c1.assert_ooc('You have gagged {}.'.format(self.c0_cname), over=True)
         self.c0.assert_ooc('You have been gagged.', ooc_over=True)
-        self.c2.assert_ooc('{} has gagged {} ({}).'
+        self.c2.assert_ooc('(X) {} has gagged {} ({}).'
                            .format(self.c1.name, self.c0_cname, 0), over=True)
         self.c3.assert_no_ooc()
 
@@ -114,7 +114,7 @@ class TestSenseBlockGag_02_Effect(_TestSenseBlockGag):
         self.c2.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
         self.c3.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
 
-class TestSenseBlockGag_04_Miscellaneous(_TestSituation5Mc1Gc2):
+class TestGag_03_Miscellaneous(_TestSituation5Mc1Gc2):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()

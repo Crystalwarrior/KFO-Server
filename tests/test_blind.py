@@ -1,7 +1,7 @@
 from .test_senseblock import _TestSenseBlock, _UnittestSenseBlock
 from .structures import _TestSituation5Mc1Gc2
 
-class _TestSenseBlockBlind(_TestSenseBlock):
+class _TestBlind(_TestSenseBlock):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -36,7 +36,7 @@ class _TestSenseBlockBlind(_TestSenseBlock):
                 c.assert_no_ic()
 
 
-class TestSenseBlockBlind_01_Common(_UnittestSenseBlock):
+class TestBlind_01_Common(_UnittestSenseBlock):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -57,7 +57,7 @@ class TestSenseBlockBlind_01_Common(_UnittestSenseBlock):
         else:
             raise TypeError
 
-class TestSenseBlockBlind_02_Effect(_TestSenseBlockBlind):
+class TestBlind_02_Effect(_TestBlind):
     def test_01_blindC0(self):
         """
         Situation: C1 blinds C0.
@@ -66,7 +66,7 @@ class TestSenseBlockBlind_02_Effect(_TestSenseBlockBlind):
         self.c1.ooc('/blind {}'.format(0))
         self.c1.assert_ooc('You have blinded {}.'.format(self.c0_cname), over=True)
         self.c0.assert_ooc('You have been blinded.', ooc_over=True)
-        self.c2.assert_ooc('{} has blinded {} ({}).'
+        self.c2.assert_ooc('(X) {} has blinded {} ({}).'
                            .format(self.c1.name, self.c0_cname, 0), over=True)
         self.c3.assert_no_ooc()
 
@@ -145,7 +145,7 @@ class TestSenseBlockBlind_02_Effect(_TestSenseBlockBlind):
         self.c2.assert_ic('Cant see you either', folder=self.c0_cname, anim='sad', over=True)
         self.c3.assert_no_ic()
 
-class TestSenseBlockBlind_03_ChangeArea(_TestSenseBlockBlind):
+class TestBlind_03_ChangeArea(_TestBlind):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -257,7 +257,7 @@ class TestSenseBlockBlind_03_ChangeArea(_TestSenseBlockBlind):
         self.c3.discard_all()
         self.c4.discard_all()
 
-class TestSenseBlockBlind_04_Miscellaneous(_TestSenseBlockBlind):
+class TestBlind_04_Miscellaneous(_TestBlind):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
