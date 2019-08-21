@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 1
         self.minor_version = 1
-        self.segment_version = 'post1'
-        self.internal_version = '190820b'
+        self.segment_version = 'post2'
+        self.internal_version = '190821a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -212,7 +212,7 @@ class TsuserverDR:
             return error
 
     def new_client(self, transport, ip=None, my_protocol=None):
-        c = self.client_manager.new_client(transport)
+        c = self.client_manager.new_client(transport, my_protocol=my_protocol)
         if self.rp_mode:
             c.in_rp = True
         c.server = self

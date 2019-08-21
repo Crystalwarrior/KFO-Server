@@ -550,7 +550,7 @@ class _TestClientManager(ClientManager):
 
     def new_client(self, transport, ip=None, my_protocol=None):
         if ip is None:
-            ip = self.server.get_ipid("127.0.0.1")
+            ip = "127.0.0.1"
         c = super().new_client(transport, client_obj=self._TestClient, ip=ip,
                                my_protocol=my_protocol)
         return c
@@ -591,15 +591,6 @@ class _TestTsuserverDR(TsuserverDR):
         new_ao_protocol = self.ao_protocol(self)
         new_ao_protocol.connection_made(None, my_protocol=new_ao_protocol)
         return new_ao_protocol.client
-
-    def new_client(self, transport=None, my_protocol=None):
-        c = self.client_manager.new_client(transport, my_protocol=my_protocol)
-        if self.rp_mode:
-            c.in_rp = True
-        c.server = self
-        c.area = self.area_manager.default_area()
-        c.area.new_client(c)
-        return c
 
     def make_client(self, char_id, hdid='FAKEHDID'):
         c = self.create_client()
