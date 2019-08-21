@@ -1,6 +1,8 @@
 import random
 import unittest
 
+from unittest.mock import Mock
+
 from server.aoprotocol import AOProtocol
 from server.client_manager import ClientManager
 from server.exceptions import TsuserverException
@@ -152,17 +154,26 @@ class _TestSituation5Mc1Gc2(_TestSituation5):
 class _TestClientManager(ClientManager):
     class _TestClient(ClientManager.Client):
         def __init__(self, *args, my_protocol=None):
+            """ Overwrites client_manager.ClientManager.Client.__init__ """
+
             super().__init__(*args)
+
+            if my_protocol is None:
+                my_protocol = self.server.ao_protocol()
+            self.my_protocol = my_protocol
             self.received_packets = list()
             self.received_ooc = list()
             self.received_ic = list()
-            self.my_protocol = my_protocol
             self.last_ic = None, None
 
         def disconnect(self):
+            """ Overwrites client_manager.ClientManager.Client.disconnect """
+
             self.my_protocol.connection_lost(None, client=self)
 
         def send_command(self, command, *args):
+            """ Overwrites ClientManager.Client.send_command """
+
             self.send_command_stc(command, *args)
 
         def send_command_stc(self, command_type, *args):
@@ -546,9 +557,13 @@ class _TestClientManager(ClientManager):
                 self.send_command_cts(buffer)
 
     def __init__(self, server):
+        """ Overwrites client_manager.ClientManager.__init__ """
+
         super().__init__(server, client_obj=self._TestClient)
 
     def new_client(self, transport, ip=None, my_protocol=None):
+        """ Overwrites client_manager.ClientManager.new_client """
+
         if ip is None:
             ip = "127.0.0.1"
         c = super().new_client(transport, client_obj=self._TestClient, ip=ip,
@@ -556,33 +571,24 @@ class _TestClientManager(ClientManager):
         return c
 
 class _TestAOProtocol(AOProtocol):
-    def connection_made(self, transport, my_protocol=None):
-        """ Called upon a new client connecting
-
-        :param transport: the transport object
-        """
-        self.client = None
-        self.ping_timeout = None
-
-        super().connection_made(transport, my_protocol=my_protocol)
-
     def connection_lost(self, exc, client=None):
-        """ User disconnected
+        """ Overwrites AOProtocol.connection_lost
 
-        :param exc: reason
+        Is needed in the off chance the client is disconnected before the handshake is over.
+        In particular, if the client is disconnected because they attempt to join a full server.
         """
+
         if not self.client:
             self.client = client
-        self.server.remove_client(self.client)
+        if not self.ping_timeout:
+            self.ping_timeout = Mock()
 
-        if self.ping_timeout:
-            self.ping_timeout.cancel()
-
-    def data_received(self, data):
-        super().data_received(data)
+        super().connection_lost(exc)
 
 class _TestTsuserverDR(TsuserverDR):
     def __init__(self):
+        """ Overwrites tsuserver.TsuserverDR """
+
         super().__init__(client_manager=_TestClientManager, in_test=True)
         self.ao_protocol = _TestAOProtocol
         self.client_list = [None] * self.config['playerlimit']
