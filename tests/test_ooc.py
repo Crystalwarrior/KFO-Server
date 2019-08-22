@@ -128,27 +128,7 @@ class TestOOC_01_Basic(_TestOOC):
             self.c2.assert_ooc(message, username=self.c2.name, over=True)
             self.c3.assert_no_ooc()
 
-    def test_04_ping(self):
-        """
-        Situation: Clients attempt to test whether they are still connected.
-        """
-
-        self.c0.ooc('/ping a')
-        self.c0.assert_ooc('This command has no arguments.', over=True)
-        self.c1.assert_no_ooc()
-        self.c2.assert_no_ooc()
-        self.c3.assert_no_ooc()
-
-        for (n, c) in enumerate(self.clients[:4]):
-            c.ooc('/ping')
-
-            for i in range(4):
-                if n == i:
-                    self.clients[i].assert_ooc('Pong.', over=True)
-                else:
-                    self.clients[i].assert_no_ooc()
-
-    def test_05_changename(self):
+    def test_04_changename(self):
         """
         Situation: Client 0 changes their OOC name.
         """
@@ -167,7 +147,7 @@ class TestOOC_01_Basic(_TestOOC):
         self.c1.assert_ooc('Changed to {}.'.format(new_name), username=new_name, over=True)
         self.assertEqual(self.c0.name, new_name)
 
-    def test_06_sameoocname(self):
+    def test_05_sameoocname(self):
         """
         Situation: Client 0 changes their OOC name to match... someone else's name, and it succeeds.
         Because apparently the code to check for OOC repetition was commented out.
@@ -185,7 +165,33 @@ class TestOOC_01_Basic(_TestOOC):
         self.c1.assert_ooc('AAA', username=new_name, over=True)
         self.assertEqual(self.c0.name, new_name)
 
-class TestOOC_02_PM(_TestOOC):
+class TestOOC_02_Ping(_TestOOC):
+    def test_01_wrongarguments(self):
+        """
+        Situation: Clients attempt to use /ping incorrectly.
+        """
+
+        self.c0.ooc('/ping a')
+        self.c0.assert_ooc('This command has no arguments.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+    def test_02_ping(self):
+        """
+        Situation: Clients attempt to test whether they are still connected.
+        """
+
+        for (n, c) in enumerate(self.clients[:4]):
+            c.ooc('/ping')
+
+            for i in range(4):
+                if n == i:
+                    self.clients[i].assert_ooc('Pong.', over=True)
+                else:
+                    self.clients[i].assert_no_ooc()
+
+class TestOOC_03_PM(_TestOOC):
     def test_01_pmwrongarguments(self):
         """
         Situation: C0 attempts to PM incorrectly.
@@ -263,16 +269,23 @@ class TestOOC_02_PM(_TestOOC):
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
-    def test_04_mutepm(self):
+class TestOOC_04_TogglePM(_TestOOC):
+    def test_01_wrongarguments(self):
         """
-        Situation: C0 mutes PMs.
+        Clients attempt to use /toggle_pm incorrectly.
         """
 
+        # Pass arguments
         self.c0.ooc('/toggle_pm e')
         self.c0.assert_ooc('This command has no arguments.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
+
+    def test_02_usetogglepm(self):
+        """
+        Situation: C0 uses /toggle_pm repeatedly.
+        """
 
         self.c0.ooc('/toggle_pm')
         self.c0.assert_ooc('You will no longer receive PMs.', over=True)
@@ -288,9 +301,9 @@ class TestOOC_02_PM(_TestOOC):
         self.c3.assert_no_ooc()
         self.assertFalse(self.c0.pm_mute)
 
-    def test_05_pmtomutedpm(self):
+    def test_03_pmtomutedpm(self):
         """
-        Situation: C1 and C0 attempt to PM one another, but fail as C0 has PMs muted.
+        Situation: C0 mutes PMs and C1 and C0 attempt to PM one another. They both fail.
         """
 
         self.c0.ooc('/toggle_pm')
@@ -314,35 +327,128 @@ class TestOOC_02_PM(_TestOOC):
         self.c3.assert_no_ooc()
         self.assertTrue(self.c0.pm_mute)
 
-class TestOOC_03_Global(_TestOOC):
-    def test_01_sendglobal(self):
+class TestOOC_05_ToggleGlobal(_TestOOC):
+    def test_01_wrongarguments(self):
         """
-        Situation: C0 attempts to send an empty global, then C0-4 send correct globals. They all
-        receive one another's globals, even if they are in different areas.
+        Situation: Clients attempt to use /toggle_global incorrectly.
         """
-        self.c0.ooc('/g')
-        self.c0.assert_ooc('You cannot send an empty message.', over=True)
+
+        # Pass arguments
+        self.c0.ooc('/toggle_global e')
+        self.c0.assert_ooc('This command has no arguments.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
-
-        for (i, c) in enumerate(self.clients[:4]):
-            c.ooc('/g Hello.')
-            name = c.name
-            area = c.area.id
-            for x in self.clients[:4]:
-                x.assert_ooc('Hello.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
+        self.assertFalse(self.c0.muted_global)
+        self.assertFalse(self.c1.muted_global)
+        self.assertFalse(self.c2.muted_global)
+        self.assertFalse(self.c3.muted_global)
 
     def test_02_muteglobal(self):
         """
         Situation: C0 mutes global messages.
         """
 
-        self.c0.ooc('/toggle_global e')
-        self.c0.assert_ooc('This command has no arguments.', over=True)
+        self.c0.ooc('/toggle_global')
+        self.c0.assert_ooc('You will no longer receive global messages.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
+        self.assertTrue(self.c0.muted_global)
+        self.assertFalse(self.c1.muted_global)
+        self.assertFalse(self.c2.muted_global)
+        self.assertFalse(self.c3.muted_global)
+
+        self.c0.ooc('/toggle_global')
+        self.c0.assert_ooc('You will now receive global messages.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+        self.assertFalse(self.c0.muted_global)
+        self.assertFalse(self.c1.muted_global)
+        self.assertFalse(self.c2.muted_global)
+        self.assertFalse(self.c3.muted_global)
+
+    def test_03_deprecatedname(self):
+        """
+        Situation: Client uses /toggleglobal (deprecated name). It works... for now.
+        """
+
+        self.c0.ooc('/toggleglobal')
+        self.c0.assert_ooc('You will no longer receive global messages.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+        self.assertTrue(self.c0.muted_global)
+        self.assertFalse(self.c1.muted_global)
+        self.assertFalse(self.c2.muted_global)
+        self.assertFalse(self.c3.muted_global)
+
+        self.c0.ooc('/toggleglobal')
+        self.c0.assert_ooc('You will now receive global messages.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+        self.assertFalse(self.c0.muted_global)
+        self.assertFalse(self.c1.muted_global)
+        self.assertFalse(self.c2.muted_global)
+        self.assertFalse(self.c3.muted_global)
+
+class TestOOC_06_Announce(_TestOOC):
+    def test_01_wrongarguments(self):
+        """
+        Situation: Clients attempt to use /announce incorrectly.
+        """
+
+        # Not mod
+        self.c0.ooc('/announce Hello.')
+        self.c0.assert_ooc('You must be authorized to do that.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c2.ooc('/announce Hello.')
+        self.c2.assert_ooc('You must be authorized to do that.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        # Empty message
+        self.c1.ooc('/announce')
+        self.c0.assert_no_ooc()
+        self.c1.assert_ooc('You cannot send an empty announcement.', over=True)
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+    def test_02_sendannouncement(self):
+        """
+        Situation: Mods send announcements to entire server, twice. Everyone receives them.
+        """
+
+        self.c2.make_mod()
+
+        self.c1.ooc('/announce Hi')
+        self.c0.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c1.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c2.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c3.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+
+        self.c2.ooc('/announce Hi')
+        self.c0.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c1.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c2.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c3.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+
+        self.c2.ooc('/announce Bye')
+        self.c0.assert_ooc('=== Announcement ===\r\nBye\r\n==================', over=True)
+        self.c1.assert_ooc('=== Announcement ===\r\nBye\r\n==================', over=True)
+        self.c2.assert_ooc('=== Announcement ===\r\nBye\r\n==================', over=True)
+        self.c3.assert_ooc('=== Announcement ===\r\nBye\r\n==================', over=True)
+
+    def test_03_announcewhilemutedglobal(self):
+        """
+        Situation: C0 and C1 mute globals. C1 can use /announce, C0 and C1 receive /announce.
+        """
 
         self.c0.ooc('/toggle_global')
         self.c0.assert_ooc('You will no longer receive global messages.', over=True)
@@ -350,11 +456,49 @@ class TestOOC_03_Global(_TestOOC):
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
-        self.c0.ooc('/toggle_global')
-        self.c0.assert_ooc('You will now receive global messages.', over=True)
+        self.c1.ooc('/toggle_global')
+        self.c0.assert_no_ooc()
+        self.c1.assert_ooc('You will no longer receive global messages.', over=True)
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c1.ooc('/announce Hi')
+        self.c0.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c1.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c2.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c3.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+
+        self.c2.ooc('/announce Hi')
+        self.c0.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c1.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c2.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+        self.c3.assert_ooc('=== Announcement ===\r\nHi\r\n==================', over=True)
+
+class TestOOC_07_Global(_TestOOC):
+    def test_01_wrongarguments(self):
+        """
+        Situation: Clients attempt to use /g incorrectly.
+        """
+
+        # No arguments
+        self.c0.ooc('/g')
+        self.c0.assert_ooc('You cannot send an empty message.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
+
+    def test_02_sendglobal(self):
+        """
+        Situation: C0-4 send correct globals. They all
+        receive one another's globals, even if they are in different areas.
+        """
+
+        for (i, c) in enumerate(self.clients[:4]):
+            c.ooc('/g Hello.')
+            name = c.name
+            area = c.area.id
+            for x in self.clients[:4]:
+                x.assert_ooc('Hello.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
 
     def test_03_globalwhilemutedglobal(self):
         """
@@ -380,3 +524,185 @@ class TestOOC_03_Global(_TestOOC):
         self.c1.assert_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
         self.c2.assert_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
         self.c3.assert_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
+
+class TestOOC_08_GlobalMod(_TestOOC):
+    def test_01_wrongarguments(self):
+        """
+        Situation: Clients attempt to use /gm incorrectly.
+        """
+
+        # Not mod
+        self.c0.ooc('/gm Hello.')
+        self.c0.assert_ooc('You must be authorized to do that.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c2.ooc('/gm Hello.')
+        self.c2.assert_ooc('You must be authorized to do that.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        # Empty message
+        self.c1.ooc('/gm')
+        self.c0.assert_no_ooc()
+        self.c1.assert_ooc('You cannot send an empty message.', over=True)
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+    def test_02_sendgm(self):
+        """
+        Situation: Mods send global mod messages to entire server, twice. Everyone receives them.
+        C1 is in area 0. C2 is in area 4.
+        """
+
+        self.c2.make_mod()
+
+        self.c1.ooc('/gm Hi')
+        self.c0.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
+                                           .format(0, self.c1.name)), over=True)
+        self.c1.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
+                                           .format(0, self.c1.name)), over=True)
+        self.c2.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
+                                           .format(0, self.c1.name)), over=True)
+        self.c3.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
+                                           .format(0, self.c1.name)), over=True)
+
+        self.c2.ooc('/gm Hi')
+        self.c0.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
+                                           .format(4, self.c2.name)), over=True)
+        self.c1.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
+                                           .format(4, self.c2.name)), over=True)
+        self.c2.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
+                                           .format(4, self.c2.name)), over=True)
+        self.c3.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
+                                           .format(4, self.c2.name)), over=True)
+
+        self.c2.ooc('/gm Bye')
+        self.c0.assert_ooc('Bye', username=('<dollar>G[{}][{}][M]'
+                                            .format(4, self.c2.name)), over=True)
+        self.c1.assert_ooc('Bye', username=('<dollar>G[{}][{}][M]'
+                                            .format(4, self.c2.name)), over=True)
+        self.c2.assert_ooc('Bye', username=('<dollar>G[{}][{}][M]'
+                                            .format(4, self.c2.name)), over=True)
+        self.c3.assert_ooc('Bye', username=('<dollar>G[{}][{}][M]'
+                                            .format(4, self.c2.name)), over=True)
+
+    def test_03_gmwhilemutedglobal(self):
+        """
+        Situation: C0 and C1 mute globals. C1 cannot use /gm, C0 and C1 do not receive /gm.
+        """
+
+        self.c0.ooc('/toggle_global')
+        self.c0.assert_ooc('You will no longer receive global messages.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c1.ooc('/toggle_global')
+        self.c0.assert_no_ooc()
+        self.c1.assert_ooc('You will no longer receive global messages.', over=True)
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c1.ooc('/gm Hello C2.')
+        self.c0.assert_no_ooc()
+        self.c1.assert_ooc('You have the global chat muted.', over=True)
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c2.ooc('/gm Welcome.')
+        name = self.c2.name
+        area = self.c2.area.id
+        self.c0.assert_no_ooc()
+        self.c1.assert_no_ooc()
+        self.c2.assert_ooc('Welcome.', username=('<dollar>G[{}][{}][M]'
+                                                 .format(area, name)), over=True)
+        self.c3.assert_ooc('Welcome.', username=('<dollar>G[{}][{}][M]'
+                                                 .format(area, name)), over=True)
+
+class TestOOC_09_LocalMod(_TestOOC):
+    def test_01_wrongarguments(self):
+        """
+        Situation: Clients attempt to use /gm incorrectly.
+        """
+
+        # Not mod
+        self.c0.ooc('/lm Hello.')
+        self.c0.assert_ooc('You must be authorized to do that.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c2.ooc('/lm Hello.')
+        self.c2.assert_ooc('You must be authorized to do that.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        # Empty message
+        self.c1.ooc('/lm')
+        self.c0.assert_no_ooc()
+        self.c1.assert_ooc('You cannot send an empty message.', over=True)
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+    def test_02_sendlm(self):
+        """
+        Situation: Mods send global mod messages to their area, twice.
+        For C1's messages, C0 and C1 receive them (area 0)
+        For C2's message, only C2 receives it (area 4)
+        """
+
+        self.c2.make_mod()
+
+        self.c1.ooc('/lm Hi')
+        self.c0.assert_ooc('Hi', username='<dollar>H[MOD][{}]'.format(self.c1_cname), over=True)
+        self.c1.assert_ooc('Hi', username='<dollar>H[MOD][{}]'.format(self.c1_cname), over=True)
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c2.ooc('/lm Hi')
+        self.c0.assert_no_ooc()
+        self.c1.assert_no_ooc()
+        self.c2.assert_ooc('Hi', username='<dollar>H[MOD][{}]'.format(self.c2_cname), over=True)
+        self.c3.assert_no_ooc()
+
+        self.c2.ooc('/lm Bye')
+        self.c0.assert_no_ooc()
+        self.c1.assert_no_ooc()
+        self.c2.assert_ooc('Bye', username='<dollar>H[MOD][{}]'.format(self.c2_cname), over=True)
+        self.c3.assert_no_ooc()
+
+    def test_03_lmwhilemutedglobal(self):
+        """
+        Situation: C0 and C1 mute globals. C1 can use /lm, C0 and C0 and C1 receive /lm.
+        """
+
+        self.c0.ooc('/toggle_global')
+        self.c0.assert_ooc('You will no longer receive global messages.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c1.ooc('/toggle_global')
+        self.c0.assert_no_ooc()
+        self.c1.assert_ooc('You will no longer receive global messages.', over=True)
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c1.ooc('/lm Hello C0.')
+        self.c0.assert_ooc('Hello C0.', username=('<dollar>H[MOD][{}]'
+                                                  .format(self.c1_cname)), over=True)
+        self.c1.assert_ooc('Hello C0.', username=('<dollar>H[MOD][{}]'
+                                                  .format(self.c1_cname)), over=True)
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c2.ooc('/lm Welcome.')
+        self.c0.assert_no_ooc()
+        self.c1.assert_no_ooc()
+        self.c2.assert_ooc('Welcome.', username=('<dollar>H[MOD][{}]'
+                                                  .format(self.c2_cname)), over=True)
+        self.c3.assert_no_ooc()

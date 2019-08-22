@@ -1744,12 +1744,13 @@ def ooc_cmd_gm(client, arg):
     EXAMPLE
     /gm Hello World     :: Sends Hello World to globat chat, preceded with [GLOBAL-MOD].
     """
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
+    try:
+        Constants.command_assert(client, arg, is_mod=True, parameters='>0')
+    except ArgumentError:
+        raise ArgumentError("You cannot send an empty message.")
+
     if client.muted_global:
         raise ClientError('You have the global chat muted.')
-    if len(arg) == 0:
-        raise ArgumentError("You cannot send an empty message.")
 
     client.server.broadcast_global(client, arg, True)
     logger.log_server('[{}][{}][GLOBAL-MOD]{}.'
@@ -2174,10 +2175,10 @@ def ooc_cmd_lm(client, arg):
     EXAMPLE
     /lm Hello World     :: Sends Hello World to all users in the current area, preceded with [MOD].
     """
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError("Can't send an empty message.")
+    try:
+        Constants.command_assert(client, arg, is_mod=True, parameters='>0')
+    except ArgumentError:
+        raise ArgumentError('You cannot send an empty message.')
 
     client.area.send_command('CT', '{}[MOD][{}]'
                              .format(client.server.config['hostname'], client.get_char_name()), arg)
@@ -4409,8 +4410,7 @@ def ooc_cmd_toggle_global(client, arg):
     EXAMPLE
     /toggle_global
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
+    Constants.command_assert(client, arg, parameters='=0')
 
     client.muted_global = not client.muted_global
     status = {True: 'no longer', False: 'now'}

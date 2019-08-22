@@ -587,7 +587,7 @@ class _TestAOProtocol(AOProtocol):
 
 class _TestTsuserverDR(TsuserverDR):
     def __init__(self):
-        """ Overwrites tsuserver.TsuserverDR """
+        """ Overwrites tsuserver.TsuserverDR.__init__ """
 
         super().__init__(client_manager=_TestClientManager, in_test=True)
         self.ao_protocol = _TestAOProtocol
