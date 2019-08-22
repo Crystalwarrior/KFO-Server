@@ -633,8 +633,9 @@ def ooc_cmd_bloodtrail_clean(client, arg):
                                        in_area=area, to_blind=False, pred=lambda c: area.lights)
                 area.blood_smeared = True
             else:
-                client.send_ooc_others('The blood trail in your area was cleaned.',
-                                       is_staff=False, in_area=area, to_blind=False)
+                client.send_ooc_others('{} cleaned the blood trail in your area.'
+                                       .format(client.get_char_name()), is_staff=False,
+                                       in_area=area, to_blind=False, pred=lambda c: area.lights)
                 area.bleeds_to = set()
                 area.blood_smeared = False
             successful_cleans.add(area.name)
@@ -644,25 +645,28 @@ def ooc_cmd_bloodtrail_clean(client, arg):
             message = client.area.name
             client.send_ooc('You cleaned the blood trail in your area.')
             connector = '(X) ' if not area.lights else ''
+            aname1 = 'your area'
+            aname2 = 'area {}'.format(client.area.name)
+
             if client.is_staff():
-                mes = '{}{} cleaned the blood trail in area {}.'
-                client.send_ooc_others(mes.format(connector, client.name, client.area.name),
+                mes = '{}{} cleaned the blood trail in {}.'
+                client.send_ooc_others(mes.format(connector, client.name, aname1),
                                        is_staff=True, in_area=True)
-                client.send_ooc_others(mes.format('(X) ', client.name, client.area.name),
+                client.send_ooc_others(mes.format('(X) ', client.name, aname2),
                                        is_staff=True, in_area=False)
             else:
                 mes = ''
 
                 if (client.is_blind or not area.lights) and area.blood_smeared:
-                    mes = ('{}{} tried to clean the blood trail in area {}, but as they could not '
+                    mes = ('{}{} tried to clean the blood trail in {}, but as they could not '
                            'see, they only managed to smear it all over the place.')
                 elif not (client.is_blind or not area.lights):
-                    mes = '{}{} cleaned the blood trail in area {}.'
+                    mes = '{}{} cleaned the blood trail in {}.'
 
-                client.send_ooc_others(mes.format(connector, client.get_char_name(),
-                                                  client.area.name), is_staff=True, in_area=True)
-                client.send_ooc_others(mes.format('(X) ', client.get_char_name(),
-                                                  client.area.name), is_staff=True, in_area=False)
+                client.send_ooc_others(mes.format(connector, client.get_char_name(), aname1),
+                                       is_staff=True, in_area=True)
+                client.send_ooc_others(mes.format('(X) ', client.get_char_name(), aname2),
+                                       is_staff=True, in_area=False)
 
         elif len(successful_cleans) == 1:
             message = str(successful_cleans.pop())
@@ -704,14 +708,12 @@ def ooc_cmd_bloodtrail_list(client, arg):
     info = '== Blood trails in this server =='
     for area in areas:
         area_bleeds_to = sorted(area.bleeds_to)
-        if area_bleeds_to:
-            if area_bleeds_to == [area.name]:
-                pre_info = area.name
-            else:
-                area_bleeds_to.remove(area.name)
-                pre_info = ", ".join(area_bleeds_to)
+
+        if area_bleeds_to == [area.name]:
+            pre_info = area.name
         else:
-            pre_info = "-"
+            area_bleeds_to.remove(area.name)
+            pre_info = ", ".join(area_bleeds_to)
 
         if area.blood_smeared:
             pre_info += ' (SMEARED)'
@@ -802,13 +804,17 @@ def ooc_cmd_bloodtrail_smear(client, arg):
         elif area.blood_smeared:
             client.send_ooc('Area {} already has its blood trails smeared.'.format(area.name))
         else:
-            client.send_ooc_others('The blood trail in your area was smeared.', is_staff=False,
+            client.send_ooc_others('{} smeared the blood trail in your area.'
+                                   .format(client.get_char_name()), is_staff=False,
                                    in_area=area, to_blind=False, pred=lambda c: area.lights)
             area.blood_smeared = True
             successful_smears.add(area.name)
 
     if len(successful_smears) > 0:
         if len(arg) == 0:
+            aname1 = 'your area'
+            aname2 = 'area {}'.format(client.area.name)
+
             message = client.area.name
             client.send_ooc("You smeared the blood trail in your area.")
             connector = '(X) ' if not client.area.lights else ''
@@ -818,11 +824,9 @@ def ooc_cmd_bloodtrail_smear(client, arg):
             else:
                 name = client.get_char_name()
 
-            mes = '{}{} smeared the blood trail in area {}.'
-            client.send_ooc_others(mes.format(connector, name, client.area.name),
-                                   is_staff=True, in_area=True)
-            client.send_ooc_others(mes.format('(X) ', name, client.area.name),
-                                   is_staff=True, in_area=False)
+            mes = '{}{} smeared the blood trail in {}.'
+            client.send_ooc_others(mes.format(connector, name, aname1), is_staff=True, in_area=True)
+            client.send_ooc_others(mes.format('(X) ', name, aname2), is_staff=True, in_area=False)
         elif len(successful_smears) == 1:
             message = str(successful_smears.pop())
             client.send_ooc("You smeared the blood trail in area {}.".format(message))

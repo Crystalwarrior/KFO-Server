@@ -79,31 +79,32 @@ def log_error(msg, server, errortype='P'):
 
     # Add list of clients to error log
     try:
-        msg += '\r\n\r\n\r\n= Client dump ='
-        msg += '\r\n*Number of clients: {}'.format(len(server.client_manager.clients))
-        msg += '\r\n*Current clients'
-        for c in server.client_manager.clients:
-            msg += '\r\n{}'.format(c.get_info(as_mod=True))
+        msg += '\n\n\n= Client dump ='
+        msg += '\n*Number of clients: {}'.format(len(server.client_manager.clients))
+        msg += '\n*Current clients'
+        clients = sorted(server.client_manager.clients, key=lambda c: c.id)
+        for c in clients:
+            msg += '\n\n{}'.format(c.get_info(as_mod=True))
     except Exception:
         etype, evalue, etraceback = sys.exc_info()
-        msg += '\r\nError generating client dump'
-        msg += '\r\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
+        msg += '\nError generating client dump'
+        msg += '\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
 
     # Add list of areas to error log
     try:
-        msg += '\r\n\r\n\r\n= Area dump ='
-        msg += '\r\n*Current area list: {}'.format(server.area_list)
-        msg += '\r\n*Old area list: {}'.format(server.old_area_list)
-        msg += '\r\n*Current areas:'
+        msg += '\n\n\n= Area dump ='
+        msg += '\n*Current area list: {}'.format(server.area_list)
+        msg += '\n*Old area list: {}'.format(server.old_area_list)
+        msg += '\n*Current areas:'
 
         for area in server.area_manager.areas:
-            msg += '\r\n**{}'.format(area)
+            msg += '\n**{}'.format(area)
             for c in area.clients:
-                msg += '\r\n***{}'.format(c)
+                msg += '\n***{}'.format(c)
     except Exception:
         etype, evalue, etraceback = sys.exc_info()
-        msg += '\r\nError generating area dump'
-        msg += '\r\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
+        msg += '\nError generating area dump'
+        msg += '\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
 
     # Write and log
     error_log.error(msg)
