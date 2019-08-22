@@ -165,33 +165,7 @@ class TestOOC_01_Basic(_TestOOC):
         self.c1.assert_ooc('AAA', username=new_name, over=True)
         self.assertEqual(self.c0.name, new_name)
 
-class TestOOC_02_Ping(_TestOOC):
-    def test_01_wrongarguments(self):
-        """
-        Situation: Clients attempt to use /ping incorrectly.
-        """
-
-        self.c0.ooc('/ping a')
-        self.c0.assert_ooc('This command has no arguments.', over=True)
-        self.c1.assert_no_ooc()
-        self.c2.assert_no_ooc()
-        self.c3.assert_no_ooc()
-
-    def test_02_ping(self):
-        """
-        Situation: Clients attempt to test whether they are still connected.
-        """
-
-        for (n, c) in enumerate(self.clients[:4]):
-            c.ooc('/ping')
-
-            for i in range(4):
-                if n == i:
-                    self.clients[i].assert_ooc('Pong.', over=True)
-                else:
-                    self.clients[i].assert_no_ooc()
-
-class TestOOC_03_PM(_TestOOC):
+class TestOOC_02_PM(_TestOOC):
     def test_01_pmwrongarguments(self):
         """
         Situation: C0 attempts to PM incorrectly.
@@ -269,7 +243,7 @@ class TestOOC_03_PM(_TestOOC):
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
-class TestOOC_04_TogglePM(_TestOOC):
+class TestOOC_03_TogglePM(_TestOOC):
     def test_01_wrongarguments(self):
         """
         Clients attempt to use /toggle_pm incorrectly.

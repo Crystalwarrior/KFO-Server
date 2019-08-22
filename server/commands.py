@@ -1429,8 +1429,8 @@ def ooc_cmd_discord(client, arg):
     EXAMPLE
     /discord            :: Sends the Discord invite link
     """
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+    Constants.command_assert(client, arg, parameters='=0')
+
     client.send_ooc('Discord Invite Link: {}'.format(client.server.config['discord_link']))
 
 def ooc_cmd_disemconsonant(client, arg):
@@ -2539,8 +2539,7 @@ def ooc_cmd_motd(client, arg):
     EXAMPLES
     /motd
     """
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+    Constants.command_assert(client, arg, parameters='=0')
 
     client.send_motd()
 
@@ -2683,8 +2682,7 @@ def ooc_cmd_online(client, arg):
     If there are 2 players online in a server of maximum capacity 100
     /online         :: Will return: "Online: 2/100"
     """
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+    Constants.command_assert(client, arg, parameters='=0')
 
     client.send_ooc("Online: {}/{}"
                     .format(client.server.get_player_count(), client.server.config['playerlimit']))

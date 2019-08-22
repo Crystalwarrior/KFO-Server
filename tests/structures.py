@@ -166,10 +166,16 @@ class _TestClientManager(ClientManager):
             self.received_ic = list()
             self.last_ic = None, None
 
-        def disconnect(self):
+        def disconnect(self, assert_no_outstanding=False):
             """ Overwrites client_manager.ClientManager.Client.disconnect """
 
             self.my_protocol.connection_lost(None, client=self)
+
+            if assert_no_outstanding:
+                self.assert_no_packets()
+                self.assert_no_ooc()
+            if self.id >= 0:
+                self.server.client_list[self.id] = None
 
         def send_command(self, command, *args):
             """ Overwrites ClientManager.Client.send_command """
@@ -649,11 +655,7 @@ class _TestTsuserverDR(TsuserverDR):
         if not client:
             raise KeyError(client_id)
 
-        client.disconnect()
-        if assert_no_outstanding:
-            client.assert_no_packets()
-            client.assert_no_ooc()
-        self.client_list[client_id] = None
+        client.disconnect(assert_no_outstanding=assert_no_outstanding)
 
     def disconnect_all(self, assert_no_outstanding=False):
         for (i, client) in enumerate(self.client_list):
