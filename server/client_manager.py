@@ -304,8 +304,8 @@ class ClientManager:
                     more_unavail_chars=more_unavail_chars, from_party=from_party)
 
         def change_showname(self, showname, target_area=None, forced=True):
-            # forced=True means that someone else other than the user themselves requested the showname change.
-            # Should only be false when using /showname.
+            # forced=True means that someone else other than the user themselves requested the
+            # showname change. Should only be false when using /showname.
             if target_area is None:
                 target_area = self.area
 
@@ -324,13 +324,13 @@ class ClientManager:
 
             if self.showname != showname:
                 status = {True: 'Was', False: 'Self'}
-
+                ctime = Constants.get_time()
                 if showname != '':
                     self.showname_history.append("{} | {} set to {}"
-                                                 .format(Constants.get_time(), status[forced], showname))
+                                                 .format(ctime, status[forced], showname))
                 else:
                     self.showname_history.append("{} | {} cleared"
-                                                 .format(Constants.get_time(), status[forced]))
+                                                 .format(ctime, status[forced]))
             self.showname = showname
 
         def change_visibility(self, new_status):
@@ -339,9 +339,9 @@ class ClientManager:
                 self.is_visible = True
 
                 # Player should also no longer be under the effect of the server's sneaked handicap.
-                # Thus, we check if there existed a previous movement handicap that had a shorter delay
-                # than the server's sneaked handicap and restore it (as by default the server will take the
-                # largest handicap when dealing with the automatic sneak handicap)
+                # Thus, we check if there existed a previous movement handicap that had a shorter
+                # delay than the server's sneaked handicap and restore it (as by default the server
+                # will take the largest handicap when dealing with the automatic sneak handicap)
                 try:
                     _, _, name, _ = self.server.get_task_args(self, ['as_handicap'])
                 except KeyError:
@@ -350,19 +350,21 @@ class ClientManager:
                     if name == "Sneaking":
                         if self.server.config['sneak_handicap'] > 0 and self.handicap_backup:
                             # Only way for a handicap backup to exist and to be in this situation is
-                            # for the player to had a custom handicap whose length was shorter than the server's
-                            # sneak handicap, then was set to be sneaking, then was revealed.
-                            # From this, we can recover the old handicap backup
+                            # for the player to had a custom handicap whose length was shorter than
+                            # the server's sneak handicap, then was set to be sneaking, then was
+                            # revealed. From this, we can recover the old handicap backup
                             _, old_length, old_name, old_announce_if_over = self.handicap_backup[1]
 
-                            msg = ('{} was automatically imposed their old movement handicap "{}" '
-                                   'of length {} seconds after being revealed in area {} ({}).')
-                            self.send_ooc_others(msg.format(self.get_char_name(), old_name, old_length, self.area.name, self.area.id),
-                                                 is_staff=True)
+                            msg = ('(X) {} was automatically imposed their old movement handicap '
+                                   '"{}" of length {} seconds after being revealed in area {} ({}).'
+                                   .format(self.get_char_name(), old_name, old_length,
+                                           self.area.name, self.area.id))
+                            self.send_ooc_others(msg, is_staff=True)
                             self.send_ooc('You were automatically imposed your former movement '
                                           'handicap "{}" of length {} seconds when changing areas.'
                                           .format(old_name, old_length))
-                            self.server.create_task(self, ['as_handicap', time.time(), old_length, old_name, old_announce_if_over])
+                            self.server.create_task(self, ['as_handicap', time.time(), old_length,
+                                                           old_name, old_announce_if_over])
                         else:
                             self.server.remove_task(self, ['as_handicap'])
 
@@ -370,24 +372,27 @@ class ClientManager:
             else: # Changed to invisible (e.g. through /sneak)
                 self.send_ooc("You are now sneaking.")
                 self.is_visible = False
-
+                shandicap = self.server.config['sneak_handicap']
                 # Check to see if should impose the server's sneak handicap on the player
                 # This should only happen if two conditions are satisfied:
                 # 1. There is a positive sneak handicap and,
-                # 2. The player has no movement handicap or, if they do, it is shorter than the sneak handicap
-                if self.server.config['sneak_handicap'] > 0:
+                # 2. The player has no movement handicap or one shorter than the sneak handicap
+                if shandicap > 0:
                     try:
                         _, length, _, _ = self.server.get_task_args(self, ['as_handicap'])
-                        if length < self.server.config['sneak_handicap']:
-                            self.send_ooc_others('{} was automatically imposed the longer movement handicap "Sneaking" of length {} seconds in area {} ({}).'
-                                                 .format(self.get_char_name(), self.server.config['sneak_handicap'], self.area.name, self.area.id),
-                                                 is_staff=True)
+                        if length < shandicap:
+                            msg = ('(X) {} was automatically imposed the longer movement handicap '
+                                   '"Sneaking" of length {} seconds in area {} ({}).'
+                                   .format(self.get_char_name(), shandicap, self.area.name,
+                                           self.area.id))
+                            self.send_ooc_others(msg, is_staff=True)
                             raise KeyError # Lazy way to get there, but it works
                     except KeyError:
                         self.send_ooc('You were automatically imposed a movement handicap '
                                       '"Sneaking" of length {} seconds when changing areas.'
-                                      .format(self.server.config['sneak_handicap']))
-                        self.server.create_task(self, ['as_handicap', time.time(), self.server.config['sneak_handicap'], "Sneaking", True])
+                                      .format(shandicap))
+                        self.server.create_task(self, ['as_handicap', time.time(), shandicap,
+                                                       "Sneaking", True])
 
                 logger.log_server('{} is now sneaking.'.format(self.ipid), self)
 
@@ -420,7 +425,8 @@ class ClientManager:
 
         def follow_area(self, area, just_moved=True):
             # just_moved if True assumes the case where the followed user just moved
-            # It being false is the case where, when the following started, the followed user was in another area, and thus the followee is moved automtically
+            # It being false is the case where, when the following started, the followed user was
+            # in another area, and thus the followee is moved automtically
             if just_moved:
                 self.send_ooc('Followed user moved to {} at {}'
                               .format(area.name, Constants.get_time()))
@@ -444,11 +450,11 @@ class ClientManager:
                 locked = area.is_gmlocked or area.is_modlocked or area.is_locked
 
                 if self.is_staff():
-                    num_clients = len([c for c in area.clients if c.char_id is not None])
+                    n_clt = len([c for c in area.clients if c.char_id is not None])
                 else:
-                    num_clients = len([c for c in area.clients if c.is_visible and c.char_id is not None])
+                    n_clt = len([c for c in area.clients if c.is_visible and c.char_id is not None])
 
-                msg += '\r\nArea {}: {} (users: {}) {}'.format(i, area.name, num_clients, lock[locked])
+                msg += '\r\nArea {}: {} (users: {}) {}'.format(i, area.name, n_clt, lock[locked])
                 if self.area == area:
                     msg += ' [*]'
             self.send_ooc(msg)
@@ -517,7 +523,7 @@ class ClientManager:
             #If include_shownames is True, then include non-empty custom shownames.
             #If only_my_multiclients is True, then include only clients opened by the current player
             # Verify that it should send the area info first
-            if not self.is_staff():
+            if not self.is_staff() and not as_mod:
                 getareas_restricted = (area_id == -1 and not self.area.rp_getareas_allowed)
                 getarea_restricted = (area_id != -1 and not self.area.rp_getarea_allowed)
                 if getareas_restricted or getarea_restricted:

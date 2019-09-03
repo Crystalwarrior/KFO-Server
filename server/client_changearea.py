@@ -302,7 +302,7 @@ class ClientChangeArea:
             ybnd = blind_mes
             nbyd = autopass_mes
         if not area.lights:
-            staff = blind_mes if not staff else autopass_mes # Staff get autopass message
+            staff = blind_mes if not staff else '(X) {}'.format(autopass_mes) # Staff get autopass
             nbnd = blind_mes
             ybnd = blind_mes
             nbyd = ''
@@ -368,17 +368,17 @@ class ClientChangeArea:
             def_mes = h_mes
             ybnd_mes = hs_mes
             nbyd_mes = s_mes
-            staff_mes = '{} {} bleeding and sneaking.'.format(char, pconnector)
+            staff_mes = '(X) {} {} bleeding and sneaking.'.format(char, pconnector)
         elif clnt.is_visible and not area.lights:
             def_mes = hs_mes
             ybnd_mes = hs_mes
             nbyd_mes = s_mes
-            staff_mes = '{} {} bleeding.'.format(char, pconnector)
+            staff_mes = '(X) {} {} bleeding.'.format(char, pconnector)
         elif not clnt.is_visible and not area.lights:
             def_mes = hs_mes
             ybnd_mes = hs_mes
             nbyd_mes = s_mes
-            staff_mes = ('{} {} bleeding and sneaking.'.format(char, pconnector))
+            staff_mes = ('(X) {} {} bleeding and sneaking.'.format(char, pconnector))
 
         staff_mes = staff_mes.replace('no longer bleeding and sneaking.',
                                       'no longer bleeding, but is still sneaking.') # Ugly

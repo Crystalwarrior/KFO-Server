@@ -498,7 +498,7 @@ class AreaManager:
                                           is_staff=False, in_area=True, to_blind=False)
                 initiator.send_ooc_others('You hear a flicker.', is_staff=False, in_area=True,
                                           to_blind=True, to_deaf=False)
-                initiator.send_ooc_others('{} turned the lights {}.'
+                initiator.send_ooc_others('(X) {} turned the lights {}.'
                                           .format(initiator.get_char_name(), status[new_lights]),
                                           is_staff=True, in_area=True)
             else: # Otherwise, send generic message

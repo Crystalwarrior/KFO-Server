@@ -351,7 +351,7 @@ class TestBlood_04_Set(_TestBlood):
         """
 
         self.c2.ooc('/bloodtrail_set')
-        self.c1.assert_ooc('{} set the blood trail in area {} to be an unconnected pool of blood.'
+        self.c1.assert_ooc('(X) {} set the blood trail in area {} to be an unconnected pool of blood.'
                            .format(self.c2.name, self.a4_name), over=True)
         self.c2.assert_ooc('Set the blood trail in this area to be an unconnected pool of blood.',
                            over=True)
@@ -372,7 +372,7 @@ class TestBlood_04_Set(_TestBlood):
 
         self.c2.ooc('/bloodtrail_set {}, {}'.format(self.area5.id, self.a7_name))
         x = 'go to the {}, the {} and the {}'.format(self.a4_name, self.a5_name, self.a7_name)
-        self.c1.assert_ooc('{} set the blood trail in area {} to {}.'
+        self.c1.assert_ooc('(X) {} set the blood trail in area {} to {}.'
                            .format(self.c2.name, self.a4_name, x), over=True)
         self.c2.assert_ooc('Set the blood trail in this area to {}.'
                            .format(x), over=True)

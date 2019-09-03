@@ -671,12 +671,12 @@ def ooc_cmd_bloodtrail_clean(client, arg):
         elif len(successful_cleans) == 1:
             message = str(successful_cleans.pop())
             client.send_ooc('You cleaned the blood trail in area {}.'.format(message))
-            client.send_ooc_others('{} cleaned the blood trail in area {}.'
+            client.send_ooc_others('(X) {} cleaned the blood trail in area {}.'
                                    .format(client.name, message), is_staff=True)
         elif len(successful_cleans) > 1:
             message = Constants.cjoin(successful_cleans)
             client.send_ooc('You cleaned the blood trails in areas {}.'.format(message))
-            client.send_ooc_others('{} cleaned the blood trails in areas {}.'
+            client.send_ooc_others('(X) {} cleaned the blood trails in areas {}.'
                                    .format(client.name, message), is_staff=True)
         logger.log_server('[{}][{}]Cleaned the blood trail in {}.'
                           .format(client.area.id, client.get_char_name(), message), client)
@@ -759,7 +759,7 @@ def ooc_cmd_bloodtrail_set(client, arg):
     client.send_ooc('Set the blood trail in this area to {}.'.format(message))
     client.send_ooc_others('The blood trail in this area was set to {}.'.format(message),
                            is_staff=False, in_area=True, to_blind=False)
-    client.send_ooc_others('{} set the blood trail in area {} to {}.'
+    client.send_ooc_others('(X) {} set the blood trail in area {} to {}.'
                            .format(client.name, client.area.name, message), is_staff=True)
     client.area.bleeds_to = {area.name for area in areas_to_link}
 
@@ -830,12 +830,12 @@ def ooc_cmd_bloodtrail_smear(client, arg):
         elif len(successful_smears) == 1:
             message = str(successful_smears.pop())
             client.send_ooc("You smeared the blood trail in area {}.".format(message))
-            client.send_ooc_others('{} smeared the blood trail in area {}.'
+            client.send_ooc_others('(X) {} smeared the blood trail in area {}.'
                                    .format(client.name, message), is_staff=True)
         elif len(successful_smears) > 1:
             message = Constants.cjoin(successful_smears)
             client.send_ooc("You smeared the blood trails in areas {}.".format(message))
-            client.send_ooc_others('{} smeared the blood trails in areas {}.'
+            client.send_ooc_others('(X) {} smeared the blood trails in areas {}.'
                                    .format(client.name, message), is_staff=True)
         logger.log_server('[{}][{}]Smeared the blood trail in {}.'
                           .format(client.area.id, client.get_char_name(), message), client)
@@ -1193,7 +1193,7 @@ def ooc_cmd_clock(client, arg):
 
     client.send_ooc('You initiated a day cycle of length {} seconds per hour in areas {} through '
                     '{}. The cycle ID is {}.'.format(hour_length, area_1, area_2, client.id))
-    client.send_ooc_others('{} initiated a day cycle of length {} seconds per hour in areas {} '
+    client.send_ooc_others('(X) {} initiated a day cycle of length {} seconds per hour in areas {} '
                            'through {}. The cycle ID is {} ({}).'
                            .format(client.name, hour_length, area_1, area_2, client.id,
                                    client.area.id), is_staff=True)
@@ -1830,9 +1830,11 @@ def ooc_cmd_handicap(client, arg):
 
     args = arg.split(' ')
     if len(args) < 2:
-        raise ClientError('This command variation takes at least two parameters (target and length).')
+        raise ClientError('This command variation takes at least two parameters '
+                          '(target and length).')
     if len(args) >= 5:
-        raise ClientError('This command variation takes at most four parameters (target, length, name, announce_if_over).')
+        raise ClientError('This command variation takes at most four parameters '
+                          '(target, length, name, announce_if_over).')
 
     # Obtain targets
     targets = Constants.parse_id_or_ipid(client, args[0])
@@ -1855,13 +1857,16 @@ def ooc_cmd_handicap(client, arg):
     for c in targets:
         client.send_ooc('You imposed a movement handicap "{}" of length {} seconds on {}.'
                         .format(name, length, c.get_char_name()))
-        client.send_ooc_others('{} imposed a movement handicap "{}" of length {} seconds on {} in area {} ({}).'
-                               .format(client.name, name, length, c.get_char_name(), client.area.name, client.area.id),
-                               is_staff=True, pred=lambda x: x != c)
-        c.send_ooc('You were imposed a movement handicap "{}" of length {} seconds when changing areas.'.format(name, length))
+        msg = ('(X) {} imposed a movement handicap "{}" of length {} seconds on {} in area {} ({}).'
+               .format(client.name, name, length, c.get_char_name(), client.area.name,
+                       client.area.id))
+        client.send_ooc_others(msg, is_staff=True, pred=lambda x: x != c)
+        c.send_ooc('You were imposed a movement handicap "{}" of length {} seconds when '
+                   'changing areas.'.format(name, length))
 
         client.server.create_task(c, ['as_handicap', time.time(), length, name, announce_if_over])
-        c.handicap_backup = (client.server.get_task(c, ['as_handicap']), client.server.get_task_args(c, ['as_handicap']))
+        c.handicap_backup = (client.server.get_task(c, ['as_handicap']),
+                             client.server.get_task_args(c, ['as_handicap']))
 
 def ooc_cmd_help(client, arg):
     """
@@ -1880,7 +1885,7 @@ def ooc_cmd_help(client, arg):
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
-    help_url = 'https://github.com/Chrezm/Danganronpa-Online'
+    help_url = 'https://github.com/Chrezm/TsuserverDR'
     help_msg = 'Available commands, source code and issues can be found here: {}'.format(help_url)
     client.send_ooc(help_msg)
 
@@ -1911,7 +1916,7 @@ def ooc_cmd_iclock(client, arg):
     client.send_ooc('You {} the IC lock in this area.'.format(status[client.area.ic_lock]))
     client.send_ooc_others('A staff member has {} the IC lock in this area.'
                            .format(status[client.area.ic_lock]), is_staff=False, in_area=True)
-    client.send_ooc_others('{} has {} the IC lock in area {} ({}).'
+    client.send_ooc_others('(X) {} has {} the IC lock in area {} ({}).'
                            .format(client.name, status[client.area.ic_lock], client.area.name,
                                    client.area.id), is_staff=True)
 
@@ -2074,13 +2079,13 @@ def ooc_cmd_knock(client, arg):
 
     if client.area.default_reachable_areas != {'<ALL>'} and \
     target_area.name not in client.area.default_reachable_areas | client.area.reachable_areas:
-        raise ClientError("You tried to knock on the door to {} but you realized the room is too far away."
-                          .format(target_area.name))
+        raise ClientError('You tried to knock on the door to {} but you realized the room is too '
+                          'far away.'.format(target_area.name))
 
     client.send_ooc('You knocked on the door to area {}.'.format(target_area.name))
     client.send_ooc_others('Someone knocked on your door from area {}.'.format(client.area.name),
                            is_staff=False, in_area=target_area, to_deaf=False)
-    client.send_ooc_others('{} knocked on the door to area {} in area {} ({}).'
+    client.send_ooc_others('(X) {} knocked on the door to area {} in area {} ({}).'
                            .format(client.get_char_name(), target_area.name, client.area.name,
                                    client.area.id), is_staff=True)
 
@@ -2367,13 +2372,13 @@ def ooc_cmd_look_clean(client, arg):
         message = str(successful_cleans.pop())
         client.send_ooc('Restored the original area description of area {}.'
                         .format(message))
-        client.send_ooc_others('{} restored the original area description of area {}.'
+        client.send_ooc_others('(X) {} restored the original area description of area {}.'
                                .format(client.name, message), is_staff=True)
     elif len(successful_cleans) > 1:
         message = Constants.cjoin(successful_cleans)
         client.send_ooc('Restored the original area descriptions of areas {}.'
                         .format(message))
-        client.send_ooc_others('{} restored the original area descriptions of areas {}.'
+        client.send_ooc_others('(X) {} restored the original area descriptions of areas {}.'
                                .format(client.name, message), is_staff=True)
 
     logger.log_server('[{}][{}]Reset the area description in {}.'
@@ -2439,7 +2444,7 @@ def ooc_cmd_look_set(client, arg):
     if len(arg) == 0:
         client.area.description = client.area.default_description
         client.send_ooc('Reset the area description to its original value.')
-        client.send_ooc_others('{} reset the area description of area {} to its original value.'
+        client.send_ooc_others('(X) {} reset the area description of area {} to its original value.'
                                .format(client.name, client.area.name), is_staff=True)
         logger.log_server('[{}][{}]Reset the area description in {}.'
                           .format(client.area.id, client.get_char_name(), client.area.name), client)
@@ -2447,7 +2452,7 @@ def ooc_cmd_look_set(client, arg):
     else:
         client.area.description = arg
         client.send_ooc('Updated the area descriptions to {}'.format(arg))
-        client.send_ooc_others('{} set the area descriptions of area {} to {}.'
+        client.send_ooc_others('(X) {} set the area descriptions of area {} to {}.'
                                .format(client.name, client.area.name, client.area.description),
                                is_staff=True)
         logger.log_server('[{}][{}]Set the area descriptions to {}.'
@@ -2572,7 +2577,7 @@ def ooc_cmd_multiclients(client, arg):
         raise ClientError('You must be authorized to do that.')
 
     target = Constants.parse_id_or_ipid(client, arg)[0]
-    info = target.prepare_area_info(client.area, -1, client.is_mod, as_mod=client.is_mod,
+    info = target.prepare_area_info(client.area, -1, False, as_mod=client.is_staff(),
                                     only_my_multiclients=True)
     info = '== Clients of {} =={}'.format(target.ipid, info)
     client.send_ooc(info)
@@ -2772,7 +2777,7 @@ def ooc_cmd_party(client, arg):
 
     party = client.server.party_manager.new_party(client, tc=True)
     client.send_ooc('You have created party {}.'.format(party.get_id()))
-    client.send_ooc_others('{} has created party {} ({}).'
+    client.send_ooc_others('(X) {} has created party {} ({}).'
                            .format(client.get_char_name(), party.get_id(), client.area.id),
                            is_staff=True)
 
@@ -3503,7 +3508,7 @@ def ooc_cmd_roll(client, arg):
     client.send_ooc('You rolled {} out of {}.'.format(roll_result, num_faces))
     client.send_ooc_others('{} rolled {} out of {}.'
                            .format(client.get_char_name(), roll_result, num_faces), in_area=True)
-    client.send_ooc_others('{} rolled {} out of {} in {} ({}).'
+    client.send_ooc_others('(X) {} rolled {} out of {} in {} ({}).'
                            .format(client.get_char_name(), roll_result, num_faces,
                                    client.area.name, client.area.id), is_staff=True, in_area=False,
                            pred=lambda c: c.get_foreign_rolls)
@@ -3542,10 +3547,10 @@ def ooc_cmd_rollp(client, arg):
     roll_result, num_faces = Constants.dice_roll(arg, 'rollp')
     client.send_ooc('You privately rolled {} out of {}.'.format(roll_result, num_faces))
     client.send_ooc_others('Someone rolled.', is_staff=False, in_area=True)
-    client.send_ooc_others('{} privately rolled {} out of {}.'
+    client.send_ooc_others('(X) {} privately rolled {} out of {}.'
                            .format(client.get_char_name(), roll_result, num_faces), is_staff=True,
                            in_area=True)
-    client.send_ooc_others('{} privately rolled {} out of {} in {} ({}).'
+    client.send_ooc_others('(X) {} privately rolled {} out of {} in {} ({}).'
                            .format(client.get_char_name(), roll_result, num_faces,
                                    client.area.name, client.area.id), is_staff=True,
                            in_area=False, pred=lambda c: c.get_foreign_rolls)
@@ -3649,7 +3654,7 @@ def ooc_cmd_scream(client, arg):
         client.send_ooc_others('Your ears are ringing.', is_staff=False, to_deaf=True,
                                pred=lambda c: not c.muted_global and (c.area == client.area or
                                                c.area.name in client.area.scream_range))
-        client.send_ooc_others('{} screamed "{}" ({}).'
+        client.send_ooc_others('(X) {} screamed "{}" ({}).'
                                .format(client.get_char_name(), arg, client.area.id),
                                is_staff=True, pred=lambda c: not c.muted_global)
     else:
@@ -3731,9 +3736,9 @@ def ooc_cmd_scream_set(client, arg):
     # If intended area not in range, add it
     if intended_area.name not in client.area.scream_range:
         client.area.scream_range.add(intended_area.name)
-        client.broadcast_ooc('Added area {} to the scream range of area {}.'
-                             .format(intended_area.name, client.area.name))
-        client.send_ooc_others('{} added area {} to the scream range of area {} ({}).'
+        client.send_ooc('Added area {} to the scream range of area {}.'
+                        .format(intended_area.name, client.area.name))
+        client.send_ooc_others('(X) {} added area {} to the scream range of area {} ({}).'
                                .format(client.get_char_name(), intended_area.name, client.area.name,
                                        client.area.id), is_staff=True)
         logger.log_server('[{}][{}]Added area {} to the scream range of area {}.'
@@ -3741,9 +3746,9 @@ def ooc_cmd_scream_set(client, arg):
                                   client.area.name), client)
     else: # Otherwise, add it
         client.area.scream_range.remove(intended_area.name)
-        client.broadcast_ooc('Removed area {} from the scream range of area {}.'
-                             .format(intended_area.name, client.area.name))
-        client.send_ooc_others('{} removed area {} from the scream range of area {} ({}).'
+        client.send_ooc('Removed area {} from the scream range of area {}.'
+                        .format(intended_area.name, client.area.name))
+        client.send_ooc_others('(X) {} removed area {} from the scream range of area {} ({}).'
                                .format(client.get_char_name(), intended_area.name, client.area.name,
                                        client.area.id), is_staff=True)
         logger.log_server('[{}][{}]Removed area {} from the scream range of area {}.'
@@ -3787,7 +3792,7 @@ def ooc_cmd_scream_set_range(client, arg):
 
     client.send_ooc('Set the scream range of area {} to be: {}.'
                     .format(client.area.name, area_names))
-    client.send_ooc_others('{} set the scream range of area {} to be: {} ({}).'
+    client.send_ooc_others('(X) {} set the scream range of area {} to be: {} ({}).'
                            .format(client.get_char_name(), client.area.name, area_names,
                                    client.area.id), is_staff=True)
     logger.log_server('[{}][{}]Set the scream range of area {} to be: {}.'
@@ -4778,7 +4783,7 @@ def ooc_cmd_unhandicap(client, arg):
         else:
             client.send_ooc('You removed the movement handicap "{}" on {}.'
                             .format(name, c.get_char_name()))
-            client.send_ooc_others('{} removed the movement handicap "{}" on {} in area {} ({}).'
+            client.send_ooc_others('(X) {} removed the movement handicap "{}" on {} in area {} ({}).'
                                    .format(client.name, name, c.get_char_name(), client.area.name,
                                            client.area.id), is_staff=True)
             c.send_ooc('Your movement handicap "{}" when changing areas was removed.'.format(name))
@@ -4831,7 +4836,7 @@ def ooc_cmd_unilock(client, arg):
 
     client.send_ooc('You have {} the passage from {} to {}.'
                     .format(now0, name0, name1))
-    client.send_ooc_others('{} has {} the passage from {} to {} ({}).'
+    client.send_ooc_others('(X) {} has {} the passage from {} to {} ({}).'
                            .format(cname, now0, name0, name1, client.area.id), is_staff=True)
     logger.log_server('[{}][{}]Has {} the passage from {} to {}.'
                       .format(client.area.id, client.get_char_name(), now0, name0, name1))

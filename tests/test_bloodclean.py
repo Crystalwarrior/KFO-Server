@@ -192,7 +192,7 @@ class TestBloodClean_01_Basic(_TestBlood):
                     .format(self.a0_name, self.area6.id))
         self.c1.assert_ooc('You cleaned the blood trails in areas {} and {}.'
                            .format(self.a0_name, self.a6_name), over=True)
-        self.c2.assert_ooc('{} cleaned the blood trails in areas {} and {}.'
+        self.c2.assert_ooc('(X) {} cleaned the blood trails in areas {} and {}.'
                            .format(self.c1.name, self.a0_name, self.a6_name), over=True)
 
         self.c1.ooc('/bloodtrail_list')

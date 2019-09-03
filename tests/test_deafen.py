@@ -272,9 +272,9 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
 
         self.c3.ooc('/knock {}'.format(0))
         self.c0.assert_no_ooc()
-        self.c1.assert_ooc('{} knocked on the door to area {} in area {} ({}).'
+        self.c1.assert_ooc('(X) {} knocked on the door to area {} in area {} ({}).'
                            .format(self.c3_cname, self.a0_name, self.a5_name, 5), over=True)
-        self.c2.assert_ooc('{} knocked on the door to area {} in area {} ({}).'
+        self.c2.assert_ooc('(X) {} knocked on the door to area {} in area {} ({}).'
                            .format(self.c3_cname, self.a0_name, self.a5_name, 5), over=True)
         self.c3.assert_ooc('You knocked on the door to area {}.'.format(self.a0_name), over=True)
 
@@ -287,6 +287,6 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
 
         self.c3.ooc('/scream Hi')
         self.c0.assert_ooc('Your ears are ringing.', over=True)
-        self.c1.assert_ooc('{} screamed "Hi" ({}).'.format(self.c3_cname, 5), over=True)
-        self.c2.assert_ooc('{} screamed "Hi" ({}).'.format(self.c3_cname, 5), over=True)
+        self.c1.assert_ooc('(X) {} screamed "Hi" ({}).'.format(self.c3_cname, 5), over=True)
+        self.c2.assert_ooc('(X) {} screamed "Hi" ({}).'.format(self.c3_cname, 5), over=True)
         self.c3.assert_ooc('You screamed "Hi"', over=True)

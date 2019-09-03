@@ -43,7 +43,7 @@ class TsuserverDR:
         self.major_version = 1
         self.minor_version = 3
         self.segment_version = ''
-        self.internal_version = '190822c'
+        self.internal_version = '190903a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -604,7 +604,7 @@ class TsuserverDR:
 
     async def as_timer(self, client, args):
         _, length, name, is_public = args # Length in seconds, already converted
-        client_name = client.name # Failsafe in case client disconnects before task is cancelled/expires
+        client_name = client.name # Failsafe in case disconnection before task is cancelled/expires
 
         try:
             await asyncio.sleep(length)
