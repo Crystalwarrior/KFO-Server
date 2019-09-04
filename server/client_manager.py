@@ -89,7 +89,6 @@ class ClientManager:
             self.is_deaf = False
             self.is_gagged = False
             self.send_deaf_space = False
-            self.send_gagged_space = False
 
             #music flood-guard stuff
             self.mus_counter = 0
@@ -158,9 +157,9 @@ class ClientManager:
                 conditions.append(lambda c: c.area == self.area)
             elif in_area is False:
                 conditions.append(lambda c: c.area != self.area)
-            elif type(in_area) is type(self.area): # Lazy way of checking if in_area is an area obj
+            elif isinstance(in_area, type(self.area)): # Lazy way of checking if in_area is an area obj
                 conditions.append(lambda c: c.area == in_area)
-            elif type(in_area) is set:
+            elif isinstance(in_area, set):
                 conditions.append(lambda c: c.area in in_area)
             elif in_area is None:
                 pass
@@ -311,14 +310,14 @@ class ClientManager:
 
             # Check length
             if len(showname) > self.server.config['showname_max_length']:
-                raise ClientError("Given showname {} exceeds the server's character limit of {}."
+                raise ClientError("Showname {} exceeds the server's character limit of {}."
                                   .format(showname, self.server.config['showname_max_length']))
 
             # Check if non-empty showname is already used within area
             if showname != '':
                 for c in target_area.clients:
                     if c.showname == showname and c != self:
-                        raise ValueError("Given showname {} is already in use in this area."
+                        raise ValueError("Showname {} is already in use in this area."
                                          .format(showname))
                         # This ValueError must be recaught, otherwise the client will crash.
 
@@ -540,12 +539,16 @@ class ClientManager:
                 for (i, area) in enumerate(self.server.area_manager.areas):
                     # Get area i details...
                     # If staff and there are clients in the area OR
-                    # If not staff, there are visible clients in the area, and the area is reachable from the current one
-                    not_staff_check = len([c for c in area.clients if c.is_visible or c == self]) > 0 and \
-                                      (unrestricted_access_area or area.name in current_area.reachable_areas or self.is_transient)
+                    # If not staff, there are visible clients in the area, and one of the following
+                    # 1. The area has no passage restrictions.
+                    # 2. The area is reachable from the current one
+                    # 3. The client is transient to area passages
+                    norm_check = (len([c for c in area.clients if c.is_visible or c == self]) > 0
+                                  and (unrestricted_access_area or self.is_transient
+                                       or area.name in current_area.reachable_areas))
 
                     if (self.is_staff() and len(area.clients) > 0) or \
-                    (not self.is_staff() and not_staff_check):
+                    (not self.is_staff() and norm_check):
                         num, ainfo = self.get_area_info(i, mods, as_mod=as_mod,
                                                         include_shownames=include_shownames,
                                                         only_my_multiclients=only_my_multiclients)
@@ -581,9 +584,11 @@ class ClientManager:
             raise NotImplementedError
 
         def send_done(self):
-            avail_char_ids = set(range(len(self.server.char_list))) - self.area.get_chars_unusable(allow_restricted=self.is_staff())
+            unusable = self.area.get_chars_unusable(allow_restricted=self.is_staff())
+            avail_char_ids = set(range(len(self.server.char_list))) - unusable
             # Readd sneaked players if needed so that they don't appear as taken
-            # Their characters will not be able to be reused, but at least that's one less clue about their presence.
+            # Their characters will not be able to be reused, but at least that's one less clue
+            # about their presence.
             if not self.is_staff():
                 avail_char_ids |= {c.char_id for c in self.area.clients if not c.is_visible}
 
@@ -705,7 +710,8 @@ class ClientManager:
 
         def change_position(self, pos=''):
             if pos not in ('', 'def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
-                raise ClientError('Invalid position. Possible values: def, pro, hld, hlp, jud, wit.')
+                raise ClientError('Invalid position. '
+                                  'Possible values: def, pro, hld, hlp, jud, wit.')
             self.pos = pos
 
         def set_mod_call_delay(self):

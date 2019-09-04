@@ -7,6 +7,29 @@ class _TestGag(_TestSenseBlock):
         super().setUpClass()
         cls.c3.move_area(5)
 
+    @staticmethod
+    def _is_gagged_message(msg):
+        if not 5+1 <= len(msg) <= 9+1:
+            return False
+        if not msg.startswith(('G', 'M')):
+            return False
+        non_letters = [x for x in msg[1:] if x not in ['g', 'h', 'r', 'm']]
+        if non_letters:
+            return False
+        return True
+
+    def assert_ic_gag(self, client, over=False, ic_over=False, check_MS_packet=True, **kwargs):
+        # Assert client received a valid gagged message, then continue with assert_ic method
+        assert(len(client.received_ic) > 0)
+        params = client.received_ic[0]
+        param_id_msg = 4 # Change if later protocol changes this
+        msg = params[param_id_msg]
+
+        if not self._is_gagged_message(msg):
+            raise AssertionError('{} expected a gagged message, received {}'.format(client, msg))
+
+        client.assert_ic(msg, over=over, ic_over=ic_over, check_MS_packet=check_MS_packet, **kwargs)
+
 class TestGag_01_Common(_UnittestSenseBlock):
     @classmethod
     def setUpClass(cls):
@@ -44,10 +67,10 @@ class TestGag_02_Effect(_TestGag):
         """
 
         self.c0.sic('Hello?')
-        self.c0.assert_ic('(Gagged noises)', folder=self.c0_cname, anim='happy', over=True)
+        self.assert_ic_gag(self.c0, folder=self.c0_cname, anim='happy', over=True)
         self.c1.assert_ooc('(X) {} tried to say "{}" but is currently gagged.'
                            .format(self.c0_cname, 'Hello?'), ooc_over=True)
-        self.c1.assert_ic('(Gagged noises)', folder=self.c0_cname, anim='happy', over=True)
+        self.assert_ic_gag(self.c1, folder=self.c0_cname, anim='happy', over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
 
@@ -58,10 +81,10 @@ class TestGag_02_Effect(_TestGag):
         self.c3.assert_no_ic()
 
         self.c0.sic('Mood', anim='mood')
-        self.c0.assert_ic('(Gagged noises) ', folder=self.c0_cname, anim='mood', over=True)
+        self.assert_ic_gag(self.c0, folder=self.c0_cname, anim='mood', over=True)
         self.c1.assert_ooc('(X) {} tried to say "{}" but is currently gagged.'
                            .format(self.c0_cname, 'Mood'), ooc_over=True)
-        self.c1.assert_ic('(Gagged noises) ', folder=self.c0_cname, anim='mood', over=True)
+        self.assert_ic_gag(self.c1, folder=self.c0_cname, anim='mood', over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
 
@@ -81,18 +104,18 @@ class TestGag_02_Effect(_TestGag):
 
         self.c2.sic('Oi m8.')
         self.c0.assert_ic('Oi m8.', folder=self.c2_cname, anim='happy', over=True)
+        self.c1.assert_no_ic()
         self.c2.assert_ic('Oi m8.', folder=self.c2_cname, anim='happy', over=True)
         self.c3.assert_ic('Oi m8.', folder=self.c2_cname, anim='happy', over=True)
-        self.c1.assert_no_ic()
 
         self.c0.sic('Im gagged.', anim='sad')
-        self.c0.assert_ic('(Gagged noises)', folder=self.c0_cname, anim='sad', over=True)
+        self.assert_ic_gag(self.c0, folder=self.c0_cname, anim='sad', over=True)
+        self.c1.assert_no_ic()
         self.c2.assert_ooc('(X) {} tried to say "{}" but is currently gagged.'
                            .format(self.c0_cname, 'Im gagged.'), ooc_over=True)
-        self.c2.assert_ic('(Gagged noises)', folder=self.c0_cname,
+        self.assert_ic_gag(self.c2,  folder=self.c0_cname,
                           anim='sad', over=True)
-        self.c3.assert_ic('(Gagged noises)', folder=self.c0_cname, anim='sad', over=True)
-        self.c3.assert_no_ic()
+        self.assert_ic_gag(self.c3, folder=self.c0_cname, anim='sad', over=True)
 
     def test_04_gaggedsaysspecialmessages(self):
         """

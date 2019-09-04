@@ -222,13 +222,15 @@ class TestLights_01_Basic(_TestLights):
         self.c3.assert_ooc('You turned the lights on.', over=True)
         self.assert_lights(1, 0)
 
-    def test_07_blindlights(self):
+class TestLights_02_Miscellaneous(_TestLights):
+    def test_01_blindlights(self):
         """
         Situation: Blind player attempts to turn off lights that are already turned off. They turn
         them on. Then they attempt the same with on lights.
         """
 
         self.c1.ooc('/blind 3')
+        self.c3.move_area(6)
         self.c1.discard_all()
         self.c2.discard_all()
         self.c3.discard_all()

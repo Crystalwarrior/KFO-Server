@@ -481,9 +481,10 @@ class _TestClientManager(ClientManager):
                    .format(self, self.received_ic))
             assert len(self.received_ic) == 0, err
 
-        def discard_packet(self, packet):
+        def discard_packet(self, packet, somewhere=True):
             try:
-                self.search_match(packet, self.received_packets, somewhere=True, remove_match=True)
+                self.search_match(packet, self.received_packets, somewhere=somewhere,
+                                  remove_match=True)
             except AssertionError:
                 pass
 

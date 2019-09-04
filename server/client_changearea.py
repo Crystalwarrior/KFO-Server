@@ -202,11 +202,11 @@ class ClientChangeArea:
 
         if bleeding_sneaking:
             if clnt.is_staff():
-                sne_info = ('You see {} {} bleeding while sneaking'
+                sne_info = ('(X) You see {} {} bleeding while sneaking'
                             .format(Constants.cjoin([c.get_char_name() for c in bleeding_sneaking]),
                                     'is' if len(bleeding_visible) == 1 else 'are'))
             elif not clnt.is_deaf and changed_hearing:
-                    sne_info = 'You hear faint drops of blood'
+                sne_info = 'You hear faint drops of blood'
             elif not area.lights or clnt.is_blind and changed_area:
                 sne_info = 'You smell blood'
 

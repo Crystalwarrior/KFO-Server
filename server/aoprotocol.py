@@ -430,10 +430,13 @@ class AOProtocol(asyncio.Protocol):
             msg = Constants.disemconsonant_message(msg)
         if self.client.remove_h: #If h is removed, replace string.
             msg = Constants.remove_h_message(msg)
+
+        gag_replaced = False
         if self.client.is_gagged:
             allowed_starters = ('(', '*', '[')
             if msg and not msg.startswith(allowed_starters):
-                msg = '(Gagged noises)'
+                gag_replaced = True
+                msg = Constants.gagged_message()
             if msg != raw_msg:
                 self.client.send_ooc_others('(X) {} tried to say "{}" but is currently gagged.'
                                             .format(self.client.get_char_name(), raw_msg),
@@ -461,7 +464,7 @@ class AOProtocol(asyncio.Protocol):
                                      .format(msg, start_area.name, end_area.name))
             else:
                 self.client.send_ooc('Sent global IC message "{}" to area {}.'
-                                     .format(msg, start_area.name, end_area.name))
+                                     .format(msg, start_area.name))
 
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
@@ -507,19 +510,12 @@ class AOProtocol(asyncio.Protocol):
                         to_send[3] = '../../misc/blank'
 
                 # Change "message" parts of IC port
-                # Add space to "gagged" message if needed
                 allowed_starters = ('(', '*', '[')
-                pre_space = to_send[4]
-
-                if self.client.is_gagged and to_send[4] == '(Gagged noises)':
-                    if c.send_gagged_space:
-                        to_send[4] = to_send[4] + ' '
-                    c.send_gagged_space = not c.send_gagged_space
 
                 # Nerf message for deaf
                 if c.is_deaf and to_send[4]:
                     if (not to_send[4].startswith(allowed_starters) or
-                        self.client.is_gagged and pre_space == '(Gagged noises)'):
+                        self.client.is_gagged and gag_replaced):
                         to_send[4] = '(Your ears are ringing)'
                         if c.send_deaf_space:
                             to_send[4] = to_send[4] + ' '

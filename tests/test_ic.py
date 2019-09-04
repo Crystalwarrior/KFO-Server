@@ -492,3 +492,4 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
         self.c4.assert_no_ic()
+

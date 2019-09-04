@@ -546,15 +546,30 @@ def ooc_cmd_bloodtrail(client, arg):
     target = Constants.parse_id(client, arg)
 
     status = {False: 'no longer', True: 'now'}
+    status2 = {False: 'stop', True: 'start'}
     target.is_bleeding = not target.is_bleeding
 
     if target.is_bleeding:
         target.area.bleeds_to.add(target.area.name)
 
     target.send_ooc('You are {} bleeding.'.format(status[target.is_bleeding]))
-    target.send_ooc_others('(X) {} is {} bleeding ({}).'
-                           .format(target.get_char_name(), status[target.is_bleeding],
-                                   target.area.id), is_staff=True)
+    if target.is_visible and target.area.lights and target.area == client.area:
+        connector = ''
+    else:
+        connector = '(X) '
+
+    if target != client:
+        client.send_ooc('{}You made {} {} bleeding.'
+                        .format(connector, target.get_char_name(), status2[target.is_bleeding]))
+        target.send_ooc_others('(X) {} made {} {} bleeding ({}).'
+                               .format(client.name, target.get_char_name(),
+                                       status2[target.is_bleeding], target.area.id),
+                               is_staff=True, not_to={client})
+    else:
+        target.send_ooc_others('(X) {} made themselves {} bleeding ({}).'
+                               .format(client.name, status2[target.is_bleeding], target.area.id),
+                               is_staff=True, not_to={client})
+
     target.area_changer.notify_others_blood(target, target.area, target.get_char_name(),
                                             status='stay', send_to_staff=False)
 
@@ -3659,8 +3674,7 @@ def ooc_cmd_scream(client, arg):
                                is_staff=True, pred=lambda c: not c.muted_global)
     else:
         client.send_ooc('You attempted to scream but you have no mouth.')
-        client.send_ooc_others('You hear some grunting noises.'
-                               .format(client.get_char_name()), is_staff=False, to_deaf=False,
+        client.send_ooc_others('You hear some grunting noises.', is_staff=False, to_deaf=False,
                                in_area=True, pred=lambda c: not c.muted_global)
         client.send_ooc_others('(X) {} attempted to scream "{}" while gagged ({}).'
                                .format(client.get_char_name(), arg, client.area.id),

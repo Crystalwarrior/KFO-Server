@@ -161,11 +161,13 @@ class Constants():
             if arg_length == 2:
                 dice_type, modifiers = args
                 if len(modifiers) > MODIFIER_LENGTH_MAX:
-                    raise ArgumentError('The given modifier is too long to compute. Please try a shorter one')
+                    raise ArgumentError('The modifier is too long to compute. Please try a shorter '
+                                        'one.')
             elif arg_length == 1:
                 dice_type, modifiers = arg, ''
             else:
-                raise ArgumentError('This command takes one or two arguments. Use /{} <num_dice>d<num_faces> <modifiers>'.format(command_type))
+                raise ArgumentError('This command takes one or two arguments. Use /{} '
+                                    '<num_dice>d<num_faces> <modifiers>'.format(command_type))
 
             dice_type = dice_type.split('d')
             if len(dice_type) == 1:
@@ -176,20 +178,22 @@ class Constants():
             try:
                 num_dice, num_faces = int(dice_type[0]), int(dice_type[1])
             except ValueError:
-                raise ArgumentError('Expected integer value for number of rolls and max value of dice')
+                raise ArgumentError('The number of rolls and max value of dice must be integers.')
 
             if not 1 <= num_dice <= NUMDICE_MAX:
-                raise ArgumentError('Number of rolls must be between 1 and {}'.format(NUMDICE_MAX))
+                raise ArgumentError('Number of rolls must be between 1 and {}.'.format(NUMDICE_MAX))
             if not 1 <= num_faces <= NUMFACES_MAX:
-                raise ArgumentError('Dice value must be between 1 and {}'.format(NUMFACES_MAX))
+                raise ArgumentError('Dice value must be between 1 and {}.'.format(NUMFACES_MAX))
 
             for char in modifiers:
                 if char not in ACCEPTABLE_IN_MODIFIER:
-                    raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
+                    raise ArgumentError('The modifier must only include numbers and standard '
+                                        'mathematical operations in modifier')
                 if char == 'r':
                     special_calculation = True
             if '**' in modifiers: #Exponentiation manually disabled, it can be pretty dangerous
-                raise ArgumentError('Expected numbers and standard mathematical operations in modifier')
+                raise ArgumentError('The modifier must only include numbers and standard '
+                                    'mathematical operations in modifier')
         else:
             num_dice, num_faces, modifiers = DEF_NUMDICE, DEF_NUMFACES, DEF_MODIFIER #Default
 
@@ -200,7 +204,7 @@ class Constants():
             while True: # Roll until no division by zeroes happen (or it gives up)
                 # raw_roll: original roll
                 # mid_roll: result after modifiers (if any) have been applied to original roll
-                # final_roll: result after previous result has been capped between 1 and NUMFACES_MAX
+                # final_roll: result after previous result was capped between 1 and NUMFACES_MAX
 
                 raw_roll = str(random.randint(1, num_faces))
                 if modifiers == '':
@@ -214,7 +218,8 @@ class Constants():
                     else: # Ex /roll 20 -3
                         aux_modifier = raw_roll + modifiers + '='
 
-                    # Prevent any terms from reaching past MAXACCEPTABLETERM in order to prevent server lag due to potentially frivolous dice rolls
+                    # Prevent any terms from reaching past MAXACCEPTABLETERM in order to prevent
+                    # server lag due to potentially frivolous dice rolls
                     # In order to do that, it will split the string by the numbers it uses
                     # and check if any individual number is larger than said term.
                     # This also doubles as a second-line defense to junk entries.
@@ -225,20 +230,22 @@ class Constants():
                     for j in aux:
                         try:
                             if j != '' and round(float(j)) > MAXACCEPTABLETERM:
-                                raise ArgumentError("Given mathematical formula takes numbers past the server's computation limit")
+                                raise ArgumentError("The modifier must take numbers within the "
+                                                    "computation limit of the server.")
                         except ValueError:
-                            raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                            raise ArgumentError('The modifier has a syntax error.')
 
                     try:
                         mid_roll = round(eval(aux_modifier[:-1])) #By this point it should be 'safe' to run eval
                     except SyntaxError:
-                        raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                        raise ArgumentError('The modifier has a syntax error.')
                     except TypeError: #Deals with inputs like 3(r-1), which act like Python functions.
-                        raise ArgumentError('Given mathematical formula has a syntax error and cannot be computed')
+                        raise ArgumentError('The modifier has a syntax error.')
                     except ZeroDivisionError:
                         divzero_attempts += 1
                         if divzero_attempts == MAXDIVZERO_ATTEMPTS:
-                            raise ArgumentError('Given mathematical formula produces divisions by zero too often and cannot be computed')
+                            raise ArgumentError('The modifier produces divisions by zero too often '
+                                                'and cannot be computed.')
                         continue
                 break
 
@@ -246,7 +253,9 @@ class Constants():
 
             # Build output string
             if final_roll != mid_roll:
-                final_roll = "|" + str(final_roll) #This visually indicates the roll was capped off due to exceeding the acceptable roll range
+                # This visually indicates the roll was capped off due to exceeding the
+                # acceptable roll range
+                final_roll = "|" + str(final_roll)
             else:
                 final_roll = str(final_roll)
 
@@ -310,6 +319,14 @@ class Constants():
                    'Please don\'t say things like ni**er and f**k it\'s very rude and I don\'t like it',
                    'PLAY NORMIES PLS']
         return random.choice(message)
+
+    @staticmethod
+    def gagged_message():
+        length = random.randint(5, 9)
+        letters = ['g', 'h', 'm', 'r']
+        starters = ['G', 'M']
+        message = random.choice(starters) + "".join([random.choice(letters) for _ in range(length)])
+        return message
 
     @staticmethod
     def cjoin(structure, the=False, sort=True):
