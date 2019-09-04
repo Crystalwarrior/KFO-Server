@@ -213,3 +213,7 @@
 * Renamed repository to TsuserverDR
 * Added more special marks to more staff only RP notifications
 * Fixed /multiclients failing for GMs/CMs on non-staff targets while in RP mode
+
+### 190904 (4.1.4)
+* Gagged messages are now randomly generated
+* Staff get new messages when using /bloodtrail, with (X) added where needed
