@@ -3519,7 +3519,7 @@ def ooc_cmd_roll(client, arg):
     /roll 6 -1+3*r      :: Rolls a d6, multiplies the result by 3 and subtracts 1 to it.
     /roll 3d6 (-1+3)*r  :: Rolls 3 d6's and multiplies each result by 2.
     """
-    roll_result, num_faces = Constants.dice_roll(arg, 'roll')
+    roll_result, num_faces = Constants.dice_roll(arg, 'roll', client.server)
     client.send_ooc('You rolled {} out of {}.'.format(roll_result, num_faces))
     client.send_ooc_others('{} rolled {} out of {}.'
                            .format(client.get_char_name(), roll_result, num_faces), in_area=True)
@@ -3559,7 +3559,7 @@ def ooc_cmd_rollp(client, arg):
     if not client.area.rollp_allowed and not client.is_staff():
         raise ClientError('This command has been restricted to authorized users only in this area.')
 
-    roll_result, num_faces = Constants.dice_roll(arg, 'rollp')
+    roll_result, num_faces = Constants.dice_roll(arg, 'rollp', client.server)
     client.send_ooc('You privately rolled {} out of {}.'.format(roll_result, num_faces))
     client.send_ooc_others('Someone rolled.', is_staff=False, in_area=True)
     client.send_ooc_others('(X) {} privately rolled {} out of {}.'

@@ -135,32 +135,32 @@ class Constants():
                 raise ArgumentError(error[0].format(error[1], 's' if error[1] != 1 else ''))
 
     @staticmethod
-    def dice_roll(arg, command_type):
+    def dice_roll(arg, command_type, server):
         """
         Calculate roll results.
         Confront /roll documentation for more details.
         """
-        NUMFACES_MAX = 11037
-        NUMDICE_MAX = 20
-        MODIFIER_LENGTH_MAX = 12 #Change to a higher number at your own risk
+
+        max_numdice = server.config['max_numdice']
+        max_numfaces = server.config['max_numfaces']
+        max_modifier_length = server.config['max_modifier_length']
+        max_acceptable_term = server.config['max_acceptable_term']
+        def_numdice = server.config['def_numdice']
+        def_numfaces = server.config['def_numfaces']
+        def_modifier = server.config['def_modifier']
+
         ACCEPTABLE_IN_MODIFIER = '1234567890+-*/().r'
         MAXDIVZERO_ATTEMPTS = 10
-        MAXACCEPTABLETERM = 2 * NUMFACES_MAX #Change to a higher number at your own risk
-
-        # Default values
-        DEF_NUMDICE = 1
-        DEF_NUMFACES = 6
-        DEF_MODIFIER = ''
 
         special_calculation = False # Is it given a modifier? False until proven otherwise
         args = arg.split(' ')
         arg_length = len(args)
 
         # Parse number of dice, number of faces and modifiers
-        if arg != '':
+        if arg:
             if arg_length == 2:
                 dice_type, modifiers = args
-                if len(modifiers) > MODIFIER_LENGTH_MAX:
+                if len(modifiers) > max_modifier_length:
                     raise ArgumentError('The modifier is too long to compute. Please try a shorter '
                                         'one.')
             elif arg_length == 1:
@@ -180,10 +180,10 @@ class Constants():
             except ValueError:
                 raise ArgumentError('The number of rolls and max value of dice must be integers.')
 
-            if not 1 <= num_dice <= NUMDICE_MAX:
-                raise ArgumentError('Number of rolls must be between 1 and {}.'.format(NUMDICE_MAX))
-            if not 1 <= num_faces <= NUMFACES_MAX:
-                raise ArgumentError('Dice value must be between 1 and {}.'.format(NUMFACES_MAX))
+            if not 1 <= num_dice <= max_numdice:
+                raise ArgumentError('Number of rolls must be between 1 and {}.'.format(max_numdice))
+            if not 1 <= num_faces <= max_numfaces:
+                raise ArgumentError('Dice value must be between 1 and {}.'.format(max_numfaces))
 
             for char in modifiers:
                 if char not in ACCEPTABLE_IN_MODIFIER:
@@ -195,7 +195,8 @@ class Constants():
                 raise ArgumentError('The modifier must only include numbers and standard '
                                     'mathematical operations in modifier')
         else:
-            num_dice, num_faces, modifiers = DEF_NUMDICE, DEF_NUMFACES, DEF_MODIFIER #Default
+            # Default
+            num_dice, num_faces, modifiers = def_numdice, def_numfaces, def_modifier
 
         roll = ''
 
@@ -204,7 +205,7 @@ class Constants():
             while True: # Roll until no division by zeroes happen (or it gives up)
                 # raw_roll: original roll
                 # mid_roll: result after modifiers (if any) have been applied to original roll
-                # final_roll: result after previous result was capped between 1 and NUMFACES_MAX
+                # final_roll: result after previous result was capped between 1 and max_numfaces
 
                 raw_roll = str(random.randint(1, num_faces))
                 if modifiers == '':
@@ -229,17 +230,19 @@ class Constants():
                     aux = aux.split('!')
                     for j in aux:
                         try:
-                            if j != '' and round(float(j)) > MAXACCEPTABLETERM:
+                            if j != '' and round(float(j)) > max_acceptable_term:
                                 raise ArgumentError("The modifier must take numbers within the "
                                                     "computation limit of the server.")
                         except ValueError:
                             raise ArgumentError('The modifier has a syntax error.')
 
                     try:
-                        mid_roll = round(eval(aux_modifier[:-1])) #By this point it should be 'safe' to run eval
+                        # By this point it should be 'safe' to run eval
+                        mid_roll = round(eval(aux_modifier[:-1]))
                     except SyntaxError:
                         raise ArgumentError('The modifier has a syntax error.')
-                    except TypeError: #Deals with inputs like 3(r-1), which act like Python functions.
+                    except TypeError:
+                        # Deals with inputs like 3(r-1), which act like Python functions.
                         raise ArgumentError('The modifier has a syntax error.')
                     except ZeroDivisionError:
                         divzero_attempts += 1
@@ -249,7 +252,7 @@ class Constants():
                         continue
                 break
 
-            final_roll = min(MAXACCEPTABLETERM, max(1, mid_roll))
+            final_roll = min(max_acceptable_term, max(1, mid_roll))
 
             # Build output string
             if final_roll != mid_roll:
@@ -260,8 +263,8 @@ class Constants():
                 final_roll = str(final_roll)
 
             if modifiers != '':
-                roll += str(raw_roll+':')
-            roll += str(aux_modifier+final_roll) + ', '
+                roll += str(raw_roll + ':')
+            roll += str(aux_modifier + final_roll) + ', '
 
         roll = roll[:-2] # Remove last ', '
         if num_dice > 1:
@@ -283,6 +286,7 @@ class Constants():
         For the area parameters that include lists of comma-separated values, parse them
         appropiately before turning them into sets.
         """
+
         l = csv_values.split(', ')
         for i in range(len(l)): #Ah, escape characters... again...
             l[i] = l[i].replace(',\\', ',')
@@ -313,10 +317,12 @@ class Constants():
                    'how 2 change areas?',
                    'does anyone want to check out my tumblr? :3',
                    '19 years of perfection, i don\'t play games to fucking lose',
-                   'nah... your taunts are fucking useless... only defeat angers me... by trying to taunt just earns you my pitty',
+                   'nah... your taunts are fucking useless... only defeat angers me... by trying '
+                   'to taunt just earns you my pitty',
                    'When do we remove dangits',
                    'MODS STOP GIMPING ME',
-                   'Please don\'t say things like ni**er and f**k it\'s very rude and I don\'t like it',
+                   'Please don\'t say things like ni**er and f**k it\'s very rude and I don\'t '
+                   'like it',
                    'PLAY NORMIES PLS']
         return random.choice(message)
 
@@ -345,14 +351,17 @@ class Constants():
         """
         Convert a list of area names or IDs into area objects.
         """
+
         area_list = list()
         # Replace arguments with proper area objects
         for i in range(len(areas)):
-            #The escape character combination for areas that have commas in their name is ',\' (yes, I know it's inverted)
-            #This double try block takes into account the possibility that some weird person wants ',\' as part of their actual area name
-            #If you are that person... just... why
+            # The escape character combination for areas that have commas in their name is ',\'
+            # (yes, I know it's inverted)
+            # This double try block takes into account the possibility that some weird person
+            # wants ',\' as part of their actual area name. If you are that person... just... why
             try:
-                area_list.append(client.server.area_manager.get_area_by_name(areas[i].replace(',\\', ',')))
+                target = areas[i].replace(',\\', ',')
+                area_list.append(client.server.area_manager.get_area_by_name(target))
             except AreaError:
                 try:
                     area_list.append(client.server.area_manager.get_area_by_name(areas[i]))
@@ -368,12 +377,14 @@ class Constants():
         """
         Given a client ID, returns the client that matches this identifier.
         """
+
         if identifier == '':
             raise ArgumentError('Expected client ID.')
         if not identifier.isdigit():
             raise ArgumentError('{} does not look like a valid client ID.'.format(identifier))
 
-        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(identifier), False)
+        targets = client.server.client_manager.get_targets(client, TargetType.ID,
+                                                           int(identifier), False)
 
         if not targets:
             raise ClientError('No targets found.')
@@ -388,6 +399,7 @@ class Constants():
         First tries to match by ID, then by IPID. IPID can be of the same length as client ID and
         thus be mismatched, but it is extremely unlikely (1 in 100,000,000 chance).
         """
+
         if identifier == '':
             raise ArgumentError('Expected client ID or IPID.')
         if not identifier.isdigit() or len(identifier) > 10:
@@ -437,8 +449,8 @@ class Constants():
                     # And if they try and do, undo changes and restore formerly reachable areas
                     for j in range(num_areas):
                         areas[j].reachable_areas = formerly_reachable[j]
-                    raise ClientError('You must be authorized to create a new passage from {} to {}.'
-                                      .format(areas[i].name, areas[1-i].name))
+                    raise ClientError('You must be authorized to create a new passage from {} to '
+                                      '{}.'.format(areas[i].name, areas[1-i].name))
 
                 # Otherise, create new passages
                 reachable.add(areas[1-i].name)
@@ -499,7 +511,8 @@ class Constants():
         areas = Constants.parse_area_names(client, areas)
 
         if check_valid_range and areas[0].id > areas[1].id:
-            raise ArgumentError('The ID of the first area must be lower than the ID of the second area.')
+            raise ArgumentError('The ID of the first area must be lower than the ID of the second '
+                                'area.')
         if not area_duplicate and areas[0].id == areas[1].id:
             raise ArgumentError('Areas must be different.')
 

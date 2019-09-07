@@ -40,10 +40,10 @@ from server.party_manager import PartyManager
 class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.release = 4
-        self.major_version = 1
-        self.minor_version = 4
-        self.segment_version = ''
-        self.internal_version = '190904a'
+        self.major_version = 2
+        self.minor_version = 0
+        self.segment_version = 'a1'
+        self.internal_version = '190907a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -136,15 +136,19 @@ class TsuserverDR:
             self.district_client = DistrictClient(self)
             self.district_connection = asyncio.ensure_future(self.district_client.connect(), loop=self.loop)
             print(' ')
-            logger.log_print('Attempting to connect to district at {}:{}.'.format(self.config['district_ip'], self.config['district_port']))
+            logger.log_print('Attempting to connect to district at {}:{}.'
+                             .format(self.config['district_ip'], self.config['district_port']))
 
         if self.config['use_masterserver']:
             self.ms_client = MasterServerClient(self)
             self.masterserver_connection = asyncio.ensure_future(self.ms_client.connect(), loop=self.loop)
             print(' ')
-            logger.log_print('Attempting to connect to the master server at {}:{} with the following details:'.format(self.config['masterserver_ip'], self.config['masterserver_port']))
+            logger.log_print('Attempting to connect to the master server at {}:{} with the '
+                             'following details:'.format(self.config['masterserver_ip'],
+                                                         self.config['masterserver_port']))
             logger.log_print('*Server name: {}'.format(self.config['masterserver_name']))
-            logger.log_print('*Server description: {}'.format(self.config['masterserver_description']))
+            logger.log_print('*Server description: {}'
+                             .format(self.config['masterserver_description']))
 
         try:
             self.loop.run_forever()
