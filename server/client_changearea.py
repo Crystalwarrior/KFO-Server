@@ -44,54 +44,54 @@ class ClientChangeArea:
         notifications. Append any intended messages to the captured_messages list and then
         manually send them out outside this function.
         """
-        clnt = self.client
+        client = self.client
         captured_messages = list()
 
         # Obvious check first
-        if clnt.area == area:
+        if client.area == area:
             raise ClientError('User is already in target area.', code='ChArInArea')
 
         # Check if player has waited a non-zero movement delay
-        if not clnt.is_staff() and clnt.is_movement_handicapped and not override_effects:
-            start, length, name, _ = clnt.server.get_task_args(clnt, ['as_handicap'])
+        if not client.is_staff() and client.is_movement_handicapped and not override_effects:
+            start, length, name, _ = client.server.get_task_args(client, ['as_handicap'])
             _, remain_text = Constants.time_remaining(start, length)
             raise ClientError("You are still under the effects of movement handicap '{}'. "
                               "Please wait {} before changing areas."
                               .format(name, remain_text), code='ChArHandicap')
 
         # Check if trying to move to a lobby/private area while sneaking
-        if area.lobby_area and not clnt.is_visible and not clnt.is_mod and not clnt.is_cm:
+        if area.lobby_area and not client.is_visible and not client.is_mod and not client.is_cm:
             raise ClientError('Lobby areas do not let non-authorized users remain sneaking. Please '
                               'change music, speak IC or ask a staff member to reveal you.',
                               code='ChArSneakLobby')
-        if area.private_area and not clnt.is_visible:
+        if area.private_area and not client.is_visible:
             raise ClientError('Private areas do not let sneaked users in. Please change the '
                               'music, speak IC or ask a staff member to reveal you.',
                               code='ChArSneakPrivate')
 
         # Check if area has some sort of lock
-        if not clnt.ipid in area.invite_list:
-            if area.is_locked and not clnt.is_staff():
+        if not client.ipid in area.invite_list:
+            if area.is_locked and not client.is_staff():
                 raise ClientError('That area is locked.', code='ChArLocked')
-            if area.is_gmlocked and not clnt.is_mod and not clnt.is_gm:
+            if area.is_gmlocked and not client.is_mod and not client.is_gm:
                 raise ClientError('That area is gm-locked.', code='ChArGMLocked')
-            if area.is_modlocked and not clnt.is_mod:
+            if area.is_modlocked and not client.is_mod:
                 raise ClientError('That area is mod-locked.', code='ChArModLocked')
 
         # Check if trying to reach an unreachable area
-        if not (clnt.is_staff() or clnt.is_transient or override_passages or
-                area.name in clnt.area.reachable_areas or '<ALL>' in clnt.area.reachable_areas):
+        if not (client.is_staff() or client.is_transient or override_passages or
+                area.name in client.area.reachable_areas or '<ALL>' in client.area.reachable_areas):
             info = ('Selected area cannot be reached from your area without authorization. '
                     'Try one of the following areas instead: ')
-            if clnt.area.reachable_areas == {clnt.area.name}:
+            if client.area.reachable_areas == {client.area.name}:
                 info += '\r\n*No areas available.'
             else:
-                get_name = clnt.server.area_manager.get_area_by_name
+                get_name = client.server.area_manager.get_area_by_name
                 try:
-                    sorted_areas = sorted(clnt.area.reachable_areas, key=lambda x: get_name(x).id)
+                    sorted_areas = sorted(client.area.reachable_areas, key=lambda x: get_name(x).id)
                     for reachable_area in sorted_areas:
-                        if reachable_area != clnt.area.name:
-                            area_id = clnt.server.area_manager.get_area_by_name(reachable_area).id
+                        if reachable_area != client.area.name:
+                            area_id = client.server.area_manager.get_area_by_name(reachable_area).id
                             info += '\r\n*({}) {}'.format(area_id, reachable_area)
                 except AreaError:
                     #When would you ever execute this piece of code is beyond me, but meh
@@ -99,11 +99,11 @@ class ClientChangeArea:
             raise ClientError(info, code='ChArUnreachable')
 
         # Check if current character is taken in the new area
-        new_char_id = clnt.char_id
-        if not area.is_char_available(clnt.char_id, allow_restricted=clnt.is_staff(),
+        new_char_id = client.char_id
+        if not area.is_char_available(client.char_id, allow_restricted=client.is_staff(),
                                       more_unavail_chars=more_unavail_chars):
             try:
-                new_char_id = area.get_rand_avail_char_id(allow_restricted=clnt.is_staff(),
+                new_char_id = area.get_rand_avail_char_id(allow_restricted=client.is_staff(),
                                                           more_unavail_chars=more_unavail_chars)
             except AreaError:
                 raise ClientError('No available characters in that area.',
@@ -133,47 +133,47 @@ class ClientChangeArea:
             self.notify_others(area, old_char, ignore_bleeding=ignore_bleeding)
 
     def notify_me(self, area, old_char, ignore_bleeding=False):
-        clnt = self.client
+        client = self.client
 
         # Code here assumes successful area change, so it will be sending client notifications
-        old_area = clnt.area
+        old_area = client.area
 
         ###########
         # Check if someone in the new area has the same showname
         try: # Verify that showname is still valid
-            clnt.change_showname(clnt.showname, target_area=area)
+            client.change_showname(client.showname, target_area=area)
         except ValueError:
-            clnt.send_ooc('Your showname {} was already used in this area so it has been cleared.'
-                          .format(clnt.showname))
-            clnt.change_showname('', target_area=area)
+            client.send_ooc('Your showname {} was already used in this area so it has been cleared.'
+                          .format(client.showname))
+            client.change_showname('', target_area=area)
             logger.log_server('{} had their showname removed due it being used in the new area.'
-                              .format(clnt.ipid), clnt)
+                              .format(client.ipid), client)
 
         ###########
         # Check if the lights were turned off, and if so, let you know, if you are not blind
         if not area.lights:
-            clnt.send_ooc('You enter a pitch dark room.', to_blind=False)
+            client.send_ooc('You enter a pitch dark room.', to_blind=False)
 
-        if not ignore_bleeding and clnt.is_bleeding:
+        if not ignore_bleeding and client.is_bleeding:
             # As these are sets, repetitions are automatically filtered out
             old_area.bleeds_to.add(area.name)
             area.bleeds_to.add(old_area.name)
-            clnt.send_ooc('You are bleeding.')
+            client.send_ooc('You are bleeding.')
 
         ###########
         # Check bleeding status
         self.notify_me_blood(area)
 
     def notify_me_blood(self, area, changed_visibility=True, changed_hearing=True):
-        clnt = self.client
-        changed_area = (clnt.area != area)
+        client = self.client
+        changed_area = (client.area != area)
 
         ###########
         # If someone else is bleeding in the new area, notify the person moving
         bleeding_visible = [c for c in area.clients
-                            if c.is_visible and c.is_bleeding and c != clnt]
+                            if c.is_visible and c.is_bleeding and c != client]
         bleeding_sneaking = [c for c in area.clients
-                             if not c.is_visible and c.is_bleeding and c != clnt]
+                             if not c.is_visible and c.is_bleeding and c != client]
         info = ''
         vis_info = ''
         sne_info = ''
@@ -185,15 +185,15 @@ class ClientChangeArea:
         # Otherwise, just prepare 'smell' if lights turned off or you are blind
 
         if bleeding_visible:
-            normal_visibility = changed_visibility and area.lights and not clnt.is_blind
-            if clnt.is_staff() or normal_visibility:
+            normal_visibility = changed_visibility and area.lights and not client.is_blind
+            if client.is_staff() or normal_visibility:
                 vis_info = ('{}You see {} {} bleeding'
                             .format('(X) ' if not normal_visibility else '',
                                     Constants.cjoin([c.get_char_name() for c in bleeding_visible]),
                                     'is' if len(bleeding_visible) == 1 else 'are'))
-            elif not clnt.is_deaf and changed_hearing:
+            elif not client.is_deaf and changed_hearing:
                 vis_info = 'You hear faint drops of blood'
-            elif clnt.is_blind and clnt.is_deaf and changed_area:
+            elif client.is_blind and client.is_deaf and changed_area:
                 vis_info = 'You smell blood'
 
         # To prepare message with sneaked bleeding, you must be staff.
@@ -201,13 +201,13 @@ class ClientChangeArea:
         # Otherwise, just prepare 'smell' if lights turned off or you are blind
 
         if bleeding_sneaking:
-            if clnt.is_staff():
+            if client.is_staff():
                 sne_info = ('(X) You see {} {} bleeding while sneaking'
                             .format(Constants.cjoin([c.get_char_name() for c in bleeding_sneaking]),
                                     'is' if len(bleeding_visible) == 1 else 'are'))
-            elif not clnt.is_deaf and changed_hearing:
+            elif not client.is_deaf and changed_hearing:
                 sne_info = 'You hear faint drops of blood'
-            elif not area.lights or clnt.is_blind and changed_area:
+            elif not area.lights or client.is_blind and changed_area:
                 sne_info = 'You smell blood'
 
         # If there is visible info, merge it with sneak info if the following is true
@@ -223,7 +223,7 @@ class ClientChangeArea:
             info = sne_info
 
         if info:
-            clnt.send_ooc(info + '.')
+            client.send_ooc(info + '.')
 
         ###########
         # If there are blood trails in the area, send notification if one of the following is true
@@ -235,59 +235,59 @@ class ClientChangeArea:
         # 1. Lights turned off or you are blind
         # 2. A notification was not sent in the previous part
 
-        normal_visibility = changed_visibility and area.lights and not clnt.is_blind
-        if clnt.is_staff() or normal_visibility:
+        normal_visibility = changed_visibility and area.lights and not client.is_blind
+        if client.is_staff() or normal_visibility:
             start_connector = '(X) ' if not normal_visibility else ''
-            smeared_connector = 'smeared ' if clnt.is_staff() and area.blood_smeared else ''
+            smeared_connector = 'smeared ' if client.is_staff() and area.blood_smeared else ''
 
-            if not clnt.is_staff() and area.blood_smeared:
-                clnt.send_ooc('{}You spot some smeared blood in the area.'
+            if not client.is_staff() and area.blood_smeared:
+                client.send_ooc('{}You spot some smeared blood in the area.'
                               .format(start_connector))
             elif area.bleeds_to == set([area.name]):
-                clnt.send_ooc('{}You spot some {}blood in the area.'
+                client.send_ooc('{}You spot some {}blood in the area.'
                               .format(start_connector, smeared_connector))
             elif len(area.bleeds_to) > 1:
                 bleed_to_areas = list(area.bleeds_to - set([area.name]))
-                if clnt.is_staff() and area.blood_smeared:
+                if client.is_staff() and area.blood_smeared:
                     start_connector = '(X) ' # Force staff indication
 
                 info = ('{}You spot a {}blood trail leading to {}.'
                         .format(start_connector, smeared_connector,
                                 Constants.cjoin(bleed_to_areas, the=True)))
-                clnt.send_ooc(info)
-        elif not clnt.is_staff() and (area.bleeds_to or area.blood_smeared) and changed_area:
+                client.send_ooc(info)
+        elif not client.is_staff() and (area.bleeds_to or area.blood_smeared) and changed_area:
             if not info:
-                clnt.send_ooc('You smell blood.')
+                client.send_ooc('You smell blood.')
 
     def notify_others(self, area, old_char, ignore_bleeding=False):
-        clnt = self.client
+        client = self.client
 
         # Code here assumes successful area change, so it will be sending client notifications
-        old_area = clnt.area
-        new_char = clnt.get_char_name()
+        old_area = client.area
+        new_char = client.get_char_name()
 
         ###########
         # Assuming this is not a spectator...
         # If autopassing, send OOC messages, provided the lights are on. If lights are off,
         # send nerfed announcements regardless. Keep track of who is blind and/or deaf as well.
 
-        if not clnt.char_id < 0 and clnt.is_visible:
-            self.notify_others_moving(clnt, old_area,
+        if not client.char_id < 0 and client.is_visible:
+            self.notify_others_moving(client, old_area,
                                       '{} has left to the {}'.format(old_char, area.name),
                                       'You hear footsteps going out of the room.')
-            self.notify_others_moving(clnt, area,
+            self.notify_others_moving(client, area,
                                       '{} has entered from the {}'.format(new_char, old_area.name),
                                       'You hear footsteps coming into the room.')
 
-        if clnt.is_bleeding:
+        if client.is_bleeding:
             old_area.bleeds_to.add(old_area.name)
             area.bleeds_to.add(area.name)
 
-        if not ignore_bleeding and clnt.is_bleeding:
-            self.notify_others_blood(clnt, area, new_char, status='arrived')
-            self.notify_others_blood(clnt, old_area, old_char, status='left')
+        if not ignore_bleeding and client.is_bleeding:
+            self.notify_others_blood(client, area, new_char, status='arrived')
+            self.notify_others_blood(client, old_area, old_char, status='left')
 
-    def notify_others_moving(self, clnt, area, autopass_mes, blind_mes):
+    def notify_others_moving(self, client, area, autopass_mes, blind_mes):
         staff = nbnd = ybnd = nbyd = '' # nbnd = notblindnotdeaf ybnd=yesblindnotdeaf
 
         # Autopass: at most footsteps if no lights
@@ -296,29 +296,29 @@ class ClientChangeArea:
         # Deaf: can hear autopass but not footsteps
         # No lights: at most footsteps
 
-        if clnt.autopass:
+        if client.autopass:
             staff = autopass_mes
             nbnd = autopass_mes
             ybnd = blind_mes
             nbyd = autopass_mes
         if not area.lights:
-            staff = blind_mes if not staff else '(X) {}'.format(autopass_mes) # Staff get autopass
+            staff = blind_mes if not client.is_staff() else '(X) {}'.format(autopass_mes) # Staff
             nbnd = blind_mes
             ybnd = blind_mes
             nbyd = ''
 
-        clnt.send_ooc_others(staff, in_area=area, is_staff=True)
-        clnt.send_ooc_others(nbnd, in_area=area, is_staff=False, to_blind=False, to_deaf=False)
-        clnt.send_ooc_others(ybnd, in_area=area, is_staff=False, to_blind=True, to_deaf=False)
-        clnt.send_ooc_others(nbyd, in_area=area, is_staff=False, to_blind=False, to_deaf=True)
+        client.send_ooc_others(staff, in_area=area, is_staff=True)
+        client.send_ooc_others(nbnd, in_area=area, is_staff=False, to_blind=False, to_deaf=False)
+        client.send_ooc_others(ybnd, in_area=area, is_staff=False, to_blind=True, to_deaf=False)
+        client.send_ooc_others(nbyd, in_area=area, is_staff=False, to_blind=False, to_deaf=True)
         # Blind and deaf get nothing
 
-    def notify_others_blood(self, clnt, area, char, status='stay', send_to_staff=True):
-        # Assume clnt's bleeding status is worth announcing (for example, it changed, or lights on)
+    def notify_others_blood(self, client, area, char, status='stay', send_to_staff=True):
+        # Assume client's bleeding status is worth announcing (for example, it changed, or lights on)
         # If bleeding, send reminder, and notify everyone in the area if not sneaking
         # (otherwise, just send vague message).
 
-        if clnt.is_bleeding:
+        if client.is_bleeding:
             area_had_bleeding = (len([c for c in area.clients if c.is_bleeding]) > 0)
 
             dsh = {True: 'You start hearing more drops of blood.',
@@ -359,22 +359,22 @@ class ClientChangeArea:
             connector = 'arrive to the {}area while'.format(darkened)
             pconnector = 'arrived to the {}area while'.format(darkened)
 
-        if clnt.is_visible and area.lights:
+        if client.is_visible and area.lights:
             def_mes = 'You see {} {} bleeding.'.format(char, connector)
             ybnd_mes = h_mes
             nbyd_mes = def_mes
             staff_mes = def_mes
-        elif not clnt.is_visible and area.lights:
+        elif not client.is_visible and area.lights:
             def_mes = h_mes
             ybnd_mes = hs_mes
             nbyd_mes = s_mes
             staff_mes = '(X) {} {} bleeding and sneaking.'.format(char, pconnector)
-        elif clnt.is_visible and not area.lights:
+        elif client.is_visible and not area.lights:
             def_mes = hs_mes
             ybnd_mes = hs_mes
             nbyd_mes = s_mes
             staff_mes = '(X) {} {} bleeding.'.format(char, pconnector)
-        elif not clnt.is_visible and not area.lights:
+        elif not client.is_visible and not area.lights:
             def_mes = hs_mes
             ybnd_mes = hs_mes
             nbyd_mes = s_mes
@@ -383,12 +383,12 @@ class ClientChangeArea:
         staff_mes = staff_mes.replace('no longer bleeding and sneaking.',
                                       'no longer bleeding, but is still sneaking.') # Ugly
 
-        clnt.send_ooc_others(def_mes, is_staff=False, in_area=area, to_blind=False, to_deaf=False)
-        clnt.send_ooc_others(ybnd_mes, is_staff=False, in_area=area, to_blind=True, to_deaf=False)
-        clnt.send_ooc_others(nbyd_mes, is_staff=False, in_area=area, to_blind=False, to_deaf=True)
-        clnt.send_ooc_others(ybyd_mes, is_staff=False, in_area=area, to_blind=True, to_deaf=True)
+        client.send_ooc_others(def_mes, is_staff=False, in_area=area, to_blind=False, to_deaf=False)
+        client.send_ooc_others(ybnd_mes, is_staff=False, in_area=area, to_blind=True, to_deaf=False)
+        client.send_ooc_others(nbyd_mes, is_staff=False, in_area=area, to_blind=False, to_deaf=True)
+        client.send_ooc_others(ybyd_mes, is_staff=False, in_area=area, to_blind=True, to_deaf=True)
         if send_to_staff:
-            clnt.send_ooc_others(staff_mes, is_staff=True, in_area=area)
+            client.send_ooc_others(staff_mes, is_staff=True, in_area=area)
 
     def change_area(self, area, override_all=False, override_passages=False,
                     override_effects=False, ignore_bleeding=False, ignore_followers=False,
@@ -414,77 +414,77 @@ class ClientChangeArea:
         *from_party: if the change area order is made assuming the character is in a party (in
          reality, it is just to serve as a base case because change_area is called recursively).
         """
-        clnt = self.client
+        client = self.client
 
         if not override_all:
             # All the code that could raise errors goes here
 
             # If player is in a party, do special method instead of this
             if from_party:
-                clnt.server.party_manager.move_party(clnt.party, clnt, area)
+                client.server.party_manager.move_party(client.party, client, area)
                 return
 
             # It also returns the character name that the player ended up, if it changed.
             if not ignore_checks:
-                new_cid, mes = clnt.check_change_area(area, override_passages=override_passages,
-                                                      override_effects=override_effects,
-                                                      more_unavail_chars=more_unavail_chars)
+                new_cid, mes = client.check_change_area(area, override_passages=override_passages,
+                                                        override_effects=override_effects,
+                                                        more_unavail_chars=more_unavail_chars)
             else:
                 if change_to:
                     new_cid, mes = change_to, list()
                 else:
-                    new_cid, mes = clnt.char_id, list()
+                    new_cid, mes = client.char_id, list()
 
             # Code after this line assumes that the area change will be successful
             # (but has not yet been performed)
 
             # Send client messages that could have been generated during the change area check
             for message in mes:
-                clnt.send_ooc(message)
+                client.send_ooc(message)
 
             # Perform the character switch if new area has a player with the current char
             # or the char is restricted there.
-            old_char = clnt.get_char_name()
-            if new_cid != clnt.char_id:
-                clnt.change_character(new_cid, target_area=area)
+            old_char = client.get_char_name()
+            if new_cid != client.char_id:
+                client.change_character(new_cid, target_area=area)
                 if old_char in area.restricted_chars:
-                    clnt.send_ooc('Your character was restricted in your new area, switched '
-                                  'to {}.'.format(clnt.get_char_name()))
+                    client.send_ooc('Your character was restricted in your new area, switched '
+                                  'to {}.'.format(client.get_char_name()))
                 else:
-                    clnt.send_ooc('Your character was taken in your new area, switched to {}.'
-                                  .format(clnt.get_char_name()))
+                    client.send_ooc('Your character was taken in your new area, switched to {}.'
+                                  .format(client.get_char_name()))
 
             if not ignore_notifications:
-                clnt.send_ooc('Changed area to {}.[{}]'.format(area.name, area.status))
+                client.send_ooc('Changed area to {}.[{}]'.format(area.name, area.status))
                 logger.log_server('[{}]Changed area from {} ({}) to {} ({}).'
-                                  .format(clnt.get_char_name(), clnt.area.name, clnt.area.id,
-                                          area.name, area.id), clnt)
+                                  .format(client.get_char_name(), client.area.name, client.area.id,
+                                          area.name, area.id), client)
                 #logger.log_rp('[{}]Changed area from {} ({}) to {} ({}).'
-                #              .format(clnt.get_char_name(), old_area.name, old_area.id,
-                #                      clnt.area.name, clnt.area.id), clnt)
+                #              .format(client.get_char_name(), old_area.name, old_area.id,
+                #                      client.area.name, client.area.id), client)
 
-                clnt.notify_change_area(area, old_char, ignore_bleeding=ignore_bleeding)
+                client.notify_change_area(area, old_char, ignore_bleeding=ignore_bleeding)
 
-        clnt.area.remove_client(clnt)
-        clnt.area = area
-        area.new_client(clnt)
+        client.area.remove_client(client)
+        client.area = area
+        area.new_client(client)
 
-        clnt.send_command('HP', 1, clnt.area.hp_def)
-        clnt.send_command('HP', 2, clnt.area.hp_pro)
-        clnt.send_command('BN', clnt.area.background)
-        clnt.send_command('LE', *clnt.area.get_evidence_list(clnt))
+        client.send_command('HP', 1, client.area.hp_def)
+        client.send_command('HP', 2, client.area.hp_pro)
+        client.send_command('BN', client.area.background)
+        client.send_command('LE', *client.area.get_evidence_list(client))
 
-        if clnt.followedby and not ignore_followers and not override_all:
-            for c in clnt.followedby:
+        if client.followedby and not ignore_followers and not override_all:
+            for c in client.followedby:
                 c.follow_area(area)
 
-        clnt.reload_music_list() # Update music list to include new area's reachable areas
-        clnt.server.create_task(clnt, ['as_afk_kick', area.afk_delay, area.afk_sendto])
+        client.reload_music_list() # Update music list to include new area's reachable areas
+        client.server.create_task(client, ['as_afk_kick', area.afk_delay, area.afk_sendto])
         # Try and restart handicap if needed
         try:
-            _, length, name, announce_if_over = clnt.server.get_task_args(clnt, ['as_handicap'])
+            _, length, name, announce_if_over = client.server.get_task_args(client, ['as_handicap'])
         except (ValueError, KeyError):
             pass
         else:
-            clnt.server.create_task(clnt, ['as_handicap', time.time(), length, name,
+            client.server.create_task(client, ['as_handicap', time.time(), length, name,
                                            announce_if_over])

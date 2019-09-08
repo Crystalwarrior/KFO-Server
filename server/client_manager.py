@@ -43,6 +43,9 @@ class ClientManager:
             self.fake_name = ''
             self.char_folder = ''
             self.pos = ''
+            self.showname = ''
+            self.joined = time.time()
+            self.last_active = Constants.get_time()
 
             self.area = server.area_manager.default_area()
             self.party = None
@@ -50,27 +53,27 @@ class ClientManager:
             self.is_gm = False
             self.is_dj = True
             self.is_cm = False
-            self.pm_mute = False
-            self.evi_list = []
-            self.disemvowel = False
-            self.remove_h = False
-            self.disemconsonant = False
-            self.gimp = False
-            self.muted_global = False
-            self.muted_adverts = False
             self.is_muted = False
             self.is_ooc_muted = False
             self.pm_mute = False
             self.mod_call_time = 0
+            self.evi_list = []
+            self.muted_adverts = False
+            self.muted_global = False
+            self.pm_mute = False
+
             self.in_rp = False
+            self.autopass = False
+            self.disemvowel = False
+            self.remove_h = False
+            self.disemconsonant = False
+            self.gimp = False
             self.is_visible = True
             self.multi_ic = None
             self.multi_ic_pre = ''
-            self.showname = ''
             self.following = None
             self.followedby = set()
             self.music_list = None
-            self.autopass = False
             self.showname_history = list()
             self.is_transient = False
             self.handicap_backup = None # Use if custom handicap is overwritten with a server one
@@ -81,14 +84,13 @@ class ClientManager:
             self.last_sent_clock = None
             self.last_ic_message = ''
             self.last_ooc_message = ''
-            self.joined = time.time()
-            self.last_active = Constants.get_time()
             self.first_person = False
             self.last_ic_notme = None, None
             self.is_blind = False
             self.is_deaf = False
             self.is_gagged = False
             self.send_deaf_space = False
+            self.dicelog = list()
 
             #music flood-guard stuff
             self.mus_counter = 0
@@ -140,8 +142,8 @@ class ClientManager:
                                     to_deaf=to_deaf)
             self.server.send_all_cmd_pred('CT', username, msg, pred=cond)
 
-        def _build_cond(self, is_staff=None, in_area=None, pred=None, not_to=None, to_blind=None,
-                        to_deaf=None):
+        def _build_cond(self, is_staff=None, is_mod=None, in_area=None, pred=None, not_to=None,
+                        to_blind=None, to_deaf=None):
             conditions = list()
 
             if is_staff is True:
@@ -152,6 +154,15 @@ class ClientManager:
                 pass
             else:
                 raise KeyError('Invalid argument for _build_cond is_staff: {}'.format(is_staff))
+
+            if is_mod is True:
+                conditions.append(lambda c: c.is_mod)
+            elif is_mod is False:
+                conditions.append(lambda c: not c.is_mod)
+            elif is_mod is None:
+                pass
+            else:
+                raise KeyError('Invalid argument for _build_cond is_mod: {}'.format(is_mod))
 
             if in_area is True:
                 conditions.append(lambda c: c.area == self.area)
@@ -614,6 +625,23 @@ class ClientManager:
             if not self.party:
                 raise PartyError('You are not part of a party.')
             return self.party
+
+        def add_to_dicelog(self, msg):
+            if len(self.dicelog) >= 20:
+                self.dicelog = self.dicelog[1:]
+
+            info = '{} | {} {}'.format(Constants.get_time(), self.get_char_name(), msg)
+            self.dicelog.append(info)
+
+        def get_dicelog(self):
+            info = '== Roll history of client {} =='.format(self.id)
+
+            if not self.dicelog:
+                info += '\r\nThe player has not rolled since joining the server.'
+            else:
+                for log in self.dicelog:
+                    info += '\r\n*{}'.format(log)
+            return info
 
         def is_staff(self):
             """

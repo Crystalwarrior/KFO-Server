@@ -1996,8 +1996,7 @@ def ooc_cmd_judgelog(client, arg):
     *Sat Jun 29 12:06:17 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
     *Sat Jun 29 12:06:19 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
     """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
+    Constants.command_assert(client, arg, is_staff=True)
     if len(arg) == 0:
         arg = client.area.name
 
@@ -3520,14 +3519,14 @@ def ooc_cmd_roll(client, arg):
     /roll 3d6 (-1+3)*r  :: Rolls 3 d6's and multiplies each result by 2.
     """
     roll_result, num_faces = Constants.dice_roll(arg, 'roll', client.server)
-    client.send_ooc('You rolled {} out of {}.'.format(roll_result, num_faces))
-    client.send_ooc_others('{} rolled {} out of {}.'
-                           .format(client.get_char_name(), roll_result, num_faces), in_area=True)
-    client.send_ooc_others('(X) {} rolled {} out of {} in {} ({}).'
-                           .format(client.get_char_name(), roll_result, num_faces,
-                                   client.area.name, client.area.id), is_staff=True, in_area=False,
-                           pred=lambda c: c.get_foreign_rolls)
-
+    roll_message = 'rolled {} out of {}'.format(roll_result, num_faces)
+    client.send_ooc('You {}.'.format(roll_message))
+    client.send_ooc_others('{} {}.'.format(client.get_char_name(), roll_message), in_area=True)
+    client.send_ooc_others('(X) {} {} in {} ({}).'
+                           .format(client.get_char_name(), roll_message, client.area.name,
+                                   client.area.id), is_staff=True, in_area=False,
+                                   pred=lambda c: c.get_foreign_rolls)
+    client.add_to_dicelog(roll_message + '.')
     logger.log_server('[{}][{}]Used /roll and got {} out of {}.'
                       .format(client.area.id, client.get_char_name(), roll_result, num_faces), client)
 
@@ -3560,15 +3559,16 @@ def ooc_cmd_rollp(client, arg):
         raise ClientError('This command has been restricted to authorized users only in this area.')
 
     roll_result, num_faces = Constants.dice_roll(arg, 'rollp', client.server)
-    client.send_ooc('You privately rolled {} out of {}.'.format(roll_result, num_faces))
+    roll_message = 'privately rolled {} out of {}'.format(roll_result, num_faces)
+    client.send_ooc('You {}.'.format(roll_message))
     client.send_ooc_others('Someone rolled.', is_staff=False, in_area=True)
-    client.send_ooc_others('(X) {} privately rolled {} out of {}.'
-                           .format(client.get_char_name(), roll_result, num_faces), is_staff=True,
-                           in_area=True)
-    client.send_ooc_others('(X) {} privately rolled {} out of {} in {} ({}).'
-                           .format(client.get_char_name(), roll_result, num_faces,
-                                   client.area.name, client.area.id), is_staff=True,
-                           in_area=False, pred=lambda c: c.get_foreign_rolls)
+    client.send_ooc_others('(X) {} {}.'.format(client.get_char_name(), roll_message),
+                           is_staff=True, in_area=True)
+    client.send_ooc_others('(X) {} {} in {} ({}).'
+                           .format(client.get_char_name(), roll_message, client.area.name,
+                                   client.area.id), is_staff=True, in_area=False,
+                           pred=lambda c: c.get_foreign_rolls)
+    client.add_to_dicelog(roll_message + '.')
 
     SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
     logger.log_server('[{}][{}]Used /rollp and got {} out of {}.'
@@ -3962,12 +3962,12 @@ def ooc_cmd_showname_freeze(client, arg):
     status = {False: 'unfrozen', True: 'frozen'}
 
     client.send_ooc('You have {} all shownames.'.format(status[client.server.showname_freeze]))
-    client.send_ooc_others('A mod has {} all shownames.'.format(status[client.server.showname_freeze]),
-                           pred=lambda c: not c.is_mod)
+    client.send_ooc_others('A mod has {} all shownames.'
+                           .format(status[client.server.showname_freeze]), is_mod=False)
     client.send_ooc_others('{} has {} all shownames.'
-                           .format(client.name, status[client.server.showname_freeze]),
-                           pred=lambda c: c.is_mod)
-    logger.log_server('{} has {} all shownames.'.format(client.name, status[client.server.showname_freeze]), client)
+                           .format(client.name, status[client.server.showname_freeze]), is_mod=True)
+    logger.log_server('{} has {} all shownames.'
+                      .format(client.name, status[client.server.showname_freeze]), client)
 
 def ooc_cmd_showname_history(client, arg):
     """ (MOD ONLY)
@@ -4030,8 +4030,8 @@ def ooc_cmd_showname_nuke(client, arg):
             c.change_showname('')
 
     client.send_ooc('You have nuked all shownames.')
-    client.send_ooc_others('A mod has nuked all shownames.', pred=lambda c: not c.is_mod)
-    client.send_ooc_others('{} has nuked all shownames.'.format(client.name), pred=lambda c: c.is_mod)
+    client.send_ooc_others('A mod has nuked all shownames.', is_mod=False)
+    client.send_ooc_others('{} has nuked all shownames.'.format(client.name), is_mod=True)
     logger.log_server('{} has nuked all shownames.'.format(client.name), client)
 
 def ooc_cmd_showname_set(client, arg):
@@ -4073,7 +4073,8 @@ def ooc_cmd_showname_set(client, arg):
         try:
             c.change_showname(showname)
         except ValueError:
-            raise ClientError("Unable to set the showname of {}: Given showname {} is already in use in area {}.".format(c.get_char_name(), showname, c.area.name))
+            raise ClientError("Unable to set the showname of {}: Given showname {} is already in "
+                              "use in area {}.".format(c.get_char_name(), showname, c.area.name))
 
         if showname != '':
             logger.log_server('Set showname of {} to {}.'.format(c.ipid, showname), client)
@@ -5026,11 +5027,13 @@ def ooc_cmd_whereis(client, arg):
 
 def ooc_cmd_whois(client, arg):
     """ (STAFF ONLY)
-    Lists A LOT of a client properties. Mods additionally get access to a client's HDID.
+    Lists A LOT of a client properties. CMs and mods additionally get access to a client's HDID.
     The player can be filtered by either client ID, IPID, OOC username (in the same area) or
     character name (in the same area). If multiple clients match the given identifier, only one of
-    them will be returned. For best results, use client ID (number in brackets), as this is the
-    only tag that is guaranteed to be unique.
+    them will be returned.
+    For best results, use client ID (number in brackets), as this is the only tag that is
+    guaranteed to be unique.
+    If given no identifier, it will return your properties.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -5045,31 +5048,32 @@ def ooc_cmd_whois(client, arg):
     /whois Phantom      :: Returns client info for the player whose OOC username is Phantom.
     /whois Phantom_HD   :: Returns client info for the player whose character name is Phantom_HD.
     """
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
-        raise ArgumentError('Expected identifier.')
+    Constants.command_assert(client, arg, is_staff=True)
+    if not arg:
+        targets = [client]
+    else:
+        targets = []
 
-    targets = []
-    # Pretend the identifier is a client ID
-    if arg.isdigit():
+    # If needed, pretend the identifier is a client ID
+    if not targets and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
 
     # If still needed, pretend the identifier is a client IPID
-    if len(targets) == 0 and arg.isdigit():
+    if not targets and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
 
     # If still needed, pretend the identifier is an OOC username
-    if len(targets) == 0:
+    if not targets:
         targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, True)
 
     # If still needed, pretend the identifier is a character name
-    if len(targets) == 0:
+    if not targets:
         targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, arg, True)
 
     # If still not found, too bad
-    if len(targets) == 0:
+    if not targets:
         raise ArgumentError('Target not found.')
+
     # Otherwise, send information
     info = targets[0].get_info(as_mod=client.is_mod, as_cm=client.is_cm, identifier=arg)
     client.send_ooc(info)
@@ -5102,6 +5106,16 @@ def ooc_cmd_narrate(client, arg):
 
     for c in client.area.clients:
         c.send_command('MS', *to_send)
+
+def ooc_cmd_dicelog(client, arg):
+    Constants.command_assert(client, arg, is_staff=True)
+    if len(arg) == 0:
+        arg = str(client.id)
+
+    # Obtain target's dicelog
+    target = Constants.parse_id(client, arg)
+    info = target.get_dicelog()
+    client.send_ooc(info)
 
 def ooc_cmd_exec(client, arg):
     """
