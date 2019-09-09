@@ -47,6 +47,7 @@ def ooc_cmd_announce(client, arg):
     EXAMPLE
     /announce Hello World       :: Sends Hello World to all users in the server.
     """
+
     try:
         Constants.command_assert(client, arg, is_mod=True, parameters='>0')
     except ArgumentError:
@@ -73,6 +74,7 @@ def ooc_cmd_area(client, arg):
     /area       :: Lists all areas in the server along with their user count.
     /area 1     :: Moves you to area 1
     """
+
     args = arg.split()
     # List all areas
     if len(args) == 0:
@@ -118,6 +120,7 @@ def ooc_cmd_area_kick(client, arg):
     /area_kick 0987654321 Lobby         :: Kicks all the clients opened by the player whose IPID is 0987654321 to Lobby.
     /area_kick 3 Class Trial Room,\ 2   :: Kicks the player whose client ID is 1 to Class Trial Room, 2 (note the ,\).
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if not client.is_mod and not client.is_cm and client.area.lobby_area:
@@ -173,6 +176,7 @@ def ooc_cmd_area_list(client, arg):
     /area_list dr1dr2       :: Load the "dr1dr2" area list.
     /area_list              :: Reset the area list to its original value.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
@@ -215,6 +219,7 @@ def ooc_cmd_area_lists(client, arg):
     EXAMPLES
     /area_lists             :: Return all available area lists
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -245,6 +250,7 @@ def ooc_cmd_autopass(client, arg):
     EXAMPLE
     /autopass
     """
+
     if len(arg) != 0:
         raise ArgumentError("This command has no arguments.")
 
@@ -271,6 +277,7 @@ def ooc_cmd_ban(client, arg):
     /ban 1234567890             :: Bans the user whose IPID is 1234567890
     /ban 127.0.0.1              :: Bans the user whose IP is 127.0.0.1
     """
+
     arg = arg.strip()
     Constants.command_assert(client, arg, parameters='>0', is_mod=True)
 
@@ -314,6 +321,7 @@ def ooc_cmd_banhdid(client, arg):
     EXAMPLES
     /banhdid abcd1234             :: Bans the user whose HDID is abcd1234
     """
+
     Constants.command_assert(client, arg, parameters='=1', is_mod=True)
 
     if not arg in client.server.hdid_list:
@@ -360,6 +368,7 @@ def ooc_cmd_bg(client, arg):
     EXAMPLES
     /bg Principal's Room   :: Changes background to Principal's Room
     """
+
     if len(arg) == 0:
         raise ArgumentError('You must specify a name. Use /bg <background>.')
     if not client.is_mod and client.area.bg_lock:
@@ -384,6 +393,7 @@ def ooc_cmd_bglock(client, arg):
     EXAMPLES
     /bglock
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -425,6 +435,7 @@ def ooc_cmd_bilock(client, arg):
     /bilock Class Trial Room,\ 2, 0     :: Locks the passage in both directions between areas 0
                                            and Class Trial Room, 2 (note the ,\ in the command.
     """
+
     areas = arg.split(', ')
     if len(areas) > 2 or arg == '':
         raise ArgumentError('This command takes one or two arguments.')
@@ -476,6 +487,7 @@ def ooc_cmd_blind(client, arg):
     /blind 1            :: Blinds client 1
     /blind 1            :: Unblinds client 1
     """
+
     Constants.command_assert(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
@@ -515,6 +527,7 @@ def ooc_cmd_blockdj(client, arg):
     /blockdj 1                     :: Revokes DJ permissions to the client whose ID is 1.
     /blockdj 1234567890            :: Revokes DJ permissions to all clients opened by the user whose IPID is 1234567890.
     """
+
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
 
@@ -542,6 +555,7 @@ def ooc_cmd_bloodtrail(client, arg):
     Assuming a player with client ID 0 and IPID 1234567890 starts as not being leaving a blood trail
     /bloodtrail 0            :: This player will now leave a blood trail wherever they go.
     """
+
     Constants.command_assert(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
@@ -593,6 +607,7 @@ def ooc_cmd_bloodtrail_clean(client, arg):
     /bloodtrail_clean                           :: Cleans the blood trail in area 0
     /bloodtrail_clean 3, Class Trial Room,\ 2   :: Cleans the blood trail in area 3 and Class Trial Room, 2 (note the ,\)
     """
+
     if not arg:
         areas_to_clean = [client.area]
     else:
@@ -655,8 +670,8 @@ def ooc_cmd_bloodtrail_clean(client, arg):
                 area.blood_smeared = False
             successful_cleans.add(area.name)
 
-    if len(successful_cleans) > 0:
-        if len(arg) == 0:
+    if successful_cleans:
+        if not arg:
             message = client.area.name
             client.send_ooc('You cleaned the blood trail in your area.')
             connector = '(X) ' if not area.lights else ''
@@ -709,6 +724,7 @@ def ooc_cmd_bloodtrail_list(client, arg):
     EXAMPLE
     /bloodtrail_list
     """
+
     Constants.command_assert(client, arg, is_staff=True, parameters='=0')
 
     # Get all areas with blood in them
@@ -716,7 +732,7 @@ def ooc_cmd_bloodtrail_list(client, arg):
                     area.blood_smeared], key=lambda x: x.name)
 
     # No areas found means there are no blood trails
-    if len(areas) == 0:
+    if not areas:
         raise ClientError('No areas have blood.')
 
     # Otherwise, build the list of all areas with blood
@@ -759,10 +775,11 @@ def ooc_cmd_bloodtrail_set(client, arg):
     included, as it does not make too much physical sense to have a trail lead out of an area
     while there being no blood in the current area.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
-    if len(arg) == 0:
+    if not arg:
         areas_to_link = [client.area]
         message = 'be an unconnected pool of blood'
     else:
@@ -798,7 +815,8 @@ def ooc_cmd_bloodtrail_smear(client, arg):
     /bloodtrail_smear                           :: Smears the blood trail in area 0
     /bloodtrail_smear 3, Class Trial Room,\ 2   :: Smears the blood trail in area 3 and Class Trial Room, 2 (note the ,\)
     """
-    if len(arg) == 0:
+
+    if not arg:
         areas_to_smear = [client.area]
     else:
         if not client.is_staff():
@@ -825,8 +843,8 @@ def ooc_cmd_bloodtrail_smear(client, arg):
             area.blood_smeared = True
             successful_smears.add(area.name)
 
-    if len(successful_smears) > 0:
-        if len(arg) == 0:
+    if successful_smears:
+        if not arg:
             aname1 = 'your area'
             aname2 = 'area {}'.format(client.area.name)
 
@@ -868,6 +886,7 @@ def ooc_cmd_can_iniswap(client, arg):
     EXAMPLES
     /can_iniswap
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -899,6 +918,7 @@ def ooc_cmd_can_passagelock(client, arg):
     /can_passagelock         :: Non-staff members can no longer use /bilock or /unilock.
     /can_passagelock         :: Non-staff members can now use /bilock and /unilock again.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -924,6 +944,7 @@ def ooc_cmd_can_rollp(client, arg):
     EXAMPLES
     /can_rollp
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -951,6 +972,7 @@ def ooc_cmd_can_rpgetarea(client, arg):
     EXAMPLE
     /can_rpgetarea
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -978,6 +1000,7 @@ def ooc_cmd_can_rpgetareas(client, arg):
     EXAMPLE
     /can_rpgetareas
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -1042,6 +1065,7 @@ def ooc_cmd_char_restrict(client, arg):
     /char_restrict Phantom_HD           :: Restrict the use of Phantom_HD.
     /char_restrict Phantom_HD           :: Unrestrict the use of Phantom_HD.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -1084,6 +1108,7 @@ def ooc_cmd_chars_restricted(client, arg):
     If only Phantom_HD is restricted in the current area...
     /chars_restricted           :: Returns 'Phantom_HD'
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -1111,6 +1136,7 @@ def ooc_cmd_cleardoc(client, arg):
     EXAMPLES
     /cleardoc
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -1132,6 +1158,7 @@ def ooc_cmd_cleargm(client, arg):
     EXAMPLE
     /cleargm
     """
+
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -1170,6 +1197,7 @@ def ooc_cmd_clock(client, arg):
     /clock 16 116 900 8         :: Start a 900-second hour clock spanning areas 16 through 116, with starting hour 8 a.m.
     /clock 0 5 10 19            :: Start a 10-second hour clock spanning areas 0 through 5, with starting hour 7 p.m.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -1233,6 +1261,7 @@ def ooc_cmd_clock_cancel(client, arg):
     EXAMPLE
     /clock_cancel 0         :: Cancels the day cycle established by the player whose client ID is 0.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -1264,6 +1293,7 @@ def ooc_cmd_clock_pause(client, arg):
     EXAMPLE
     /clock_pause 0         :: Pauses the day cycle established by the player whose client ID is 0.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -1302,6 +1332,7 @@ def ooc_cmd_clock_unpause(client, arg):
     EXAMPLE
     /clock_unpause 0         :: Unpauses the day cycle established by the player whose client ID is 0.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -1337,6 +1368,7 @@ def ooc_cmd_coinflip(client, arg):
     EXAMPLES
     /coinflip
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -1360,6 +1392,7 @@ def ooc_cmd_currentmusic(client, arg):
     EXAMPLES
     /currentmusic
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -1388,6 +1421,7 @@ def ooc_cmd_deafen(client, arg):
     /deafen 1            :: Deafens client 1
     /deafen 1            :: Undeafens client 1
     """
+
     Constants.command_assert(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
@@ -1416,6 +1450,7 @@ def ooc_cmd_defaultarea(client, arg):
     EXAMPLES
     /defaultarea 1          :: Set area 1 to be the default area.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -1444,6 +1479,7 @@ def ooc_cmd_discord(client, arg):
     EXAMPLE
     /discord            :: Sends the Discord invite link
     """
+
     Constants.command_assert(client, arg, parameters='=0')
 
     client.send_ooc('Discord Invite Link: {}'.format(client.server.config['discord_link']))
@@ -1468,6 +1504,7 @@ def ooc_cmd_disemconsonant(client, arg):
     /disemconsonant 1           :: Disemconsonants the player whose client ID is 1.
     /disemconsonant 1234567890  :: Disemconsonants all clients opened by the user whose IPID is 1234567890.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
@@ -1497,6 +1534,7 @@ def ooc_cmd_disemvowel(client, arg):
     /disemvowel 1                     :: Disemvowels the player whose client ID is 1.
     /disemvowel 1234567890            :: Disemwvowels all clients opened by the user whose IPID is 1234567890.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
@@ -1520,6 +1558,7 @@ def ooc_cmd_doc(client, arg):
     /doc https://www.google.com     :: Sets the document link to the Google homepage.
     /doc                            :: Returns the current document (e.g. https://www.google.com)
     """
+
     # Clear doc case
     if len(arg) == 0:
         client.send_ooc('Document: {}'.format(client.area.doc))
@@ -1548,6 +1587,7 @@ def ooc_cmd_follow(client, arg):
     EXAMPLE
     /follow 1                     :: Starts following the player whose client ID is 1
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if client.party:
@@ -1572,6 +1612,7 @@ def ooc_cmd_g(client, arg):
     EXAMPLE
     /g Hello World      :: Sends Hello World to global chat.
     """
+
     if client.muted_global:
         raise ClientError('You have the global chat muted.')
     if len(arg) == 0:
@@ -1598,6 +1639,7 @@ def ooc_cmd_gag(client, arg):
     /gag 1            :: Gags client 1
     /gag 1            :: Ungags client 1
     """
+
     Constants.command_assert(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
@@ -1625,6 +1667,7 @@ def ooc_cmd_getarea(client, arg):
     EXAMPLE
     /getarea
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
     if not client.is_staff() and client.is_blind:
@@ -1647,6 +1690,7 @@ def ooc_cmd_getareas(client, arg):
     EXAMPLE
     /getareas
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
     if not client.is_staff() and client.is_blind:
@@ -1674,6 +1718,7 @@ def ooc_cmd_gimp(client, arg):
     /gimp 1                     :: Gimps the player whose client ID is 1.
     /gimp 1234567890            :: Gimps all clients opened by the user whose IPID is 1234567890.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
@@ -1708,6 +1753,7 @@ def ooc_cmd_globalic(client, arg):
     /globalic 1, 1                          :: Send IC messages just to area 1.
     /globalic Courtroom,\ 2, Courtroom 3    :: Send IC messages to areas "Courtroom, 2" through "Courtroom 3" (note the escape character).
     """
+
     Constants.command_assert(client, arg, parameters='&1-2', is_staff=True, split_commas=True)
     areas = Constants.parse_two_area_names(client, arg.split(', '))
 
@@ -1739,6 +1785,7 @@ def ooc_cmd_globalic_pre(client, arg):
     /globalic_pre >>>       :: Only IC messages that start with >>> will be sent globally-
     /globalic_pre           :: All IC messages will be sent globally.
     """
+
     Constants.command_assert(client, arg, is_staff=True)
 
     client.multi_ic_pre = arg
@@ -1763,6 +1810,7 @@ def ooc_cmd_gm(client, arg):
     EXAMPLE
     /gm Hello World     :: Sends Hello World to globat chat, preceded with [GLOBAL-MOD].
     """
+
     try:
         Constants.command_assert(client, arg, is_mod=True, parameters='>0')
     except ArgumentError:
@@ -1791,6 +1839,7 @@ def ooc_cmd_gmlock(client, arg):
     EXAMPLE
     /gmlock             :: Sets the current area as accessible only to staff members.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -1840,6 +1889,7 @@ def ooc_cmd_handicap(client, arg):
     /handicap 1 15 StabWound False  :: Sets a 15 second movement handicap called "StabWound" on the player whose client ID is 0
     which will not send notifications once the timer expires.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -1897,6 +1947,7 @@ def ooc_cmd_help(client, arg):
     EXAMPLES
     /help
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -1918,6 +1969,7 @@ def ooc_cmd_iclock(client, arg):
     EXAMPLES
     /iclock
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if not (client.is_mod or client.is_cm) and (client.is_gm and not client.area.gm_iclock_allowed):
@@ -1956,6 +2008,7 @@ def ooc_cmd_invite(client, arg):
     /invite 1                     :: Invites the player whose client ID is 1.
     /invite 1234567890            :: Invites all clients of the player whose IPID is 1234567890.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
@@ -1996,6 +2049,7 @@ def ooc_cmd_judgelog(client, arg):
     *Sat Jun 29 12:06:17 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
     *Sat Jun 29 12:06:19 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
     """
+
     Constants.command_assert(client, arg, is_staff=True)
     if len(arg) == 0:
         arg = client.area.name
@@ -2024,6 +2078,7 @@ def ooc_cmd_kick(client, arg):
     /kick 1                     :: Kicks client whose ID is 1.
     /kick 1234567890            :: Kick all clients opened by the user whose IPID is 1234567890.
     """
+
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
 
@@ -2047,6 +2102,7 @@ def ooc_cmd_kickself(client, arg):
     EXAMPLES
     /kickself
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -2075,6 +2131,7 @@ def ooc_cmd_knock(client, arg):
     /knock 0                :: Knock the door to area 0
     /knock Courtroom, 2     :: Knock the door to area "Courtroom, 2"
     """
+
     if len(arg) == 0:
         raise ArgumentError('This command takes one argument.')
 
@@ -2138,6 +2195,7 @@ def ooc_cmd_lasterror(client, arg):
 
     Note: yes, this is an error message that was created while testing this command.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -2168,6 +2226,7 @@ def ooc_cmd_lights(client, arg):
     /lights off             :: Turns off lights
     /lights on              :: Turns on lights
     """
+
     if len(arg) == 0:
         raise ArgumentError('You must specify either on or off.')
     if arg not in ['off', 'on']:
@@ -2198,6 +2257,7 @@ def ooc_cmd_lm(client, arg):
     EXAMPLE
     /lm Hello World     :: Sends Hello World to all users in the current area, preceded with [MOD].
     """
+
     try:
         Constants.command_assert(client, arg, is_mod=True, parameters='>0')
     except ArgumentError:
@@ -2223,6 +2283,7 @@ def ooc_cmd_lock(client, arg):
     EXAMPLE
     /lock
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -2250,6 +2311,7 @@ def ooc_cmd_login(client, arg):
     EXAMPLES
     /login Mod      :: Attempt to log in as mod with "Mod" as password.
     """
+
     client.login(arg, client.auth_mod, 'moderator')
 
 def ooc_cmd_logincm(client, arg):
@@ -2265,6 +2327,7 @@ def ooc_cmd_logincm(client, arg):
     EXAMPLES
     /logincm CM     :: Attempt to log in as community maanger with "CM" as password.
     """
+
     client.login(arg, client.auth_cm, 'community manager')
 
 def ooc_cmd_loginrp(client, arg):
@@ -2280,6 +2343,7 @@ def ooc_cmd_loginrp(client, arg):
     EXAMPLES
     /loginrp GM     :: Attempt to log in as game master with "GM" as password.
     """
+
     client.login(arg, client.auth_gm, 'game master')
 
 def ooc_cmd_logout(client, arg):
@@ -2295,8 +2359,8 @@ def ooc_cmd_logout(client, arg):
     EXAMPLE
     /logout
     """
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+
+    Constants.command_assert(client, arg, parameters='=0')
 
     client.is_mod = False
     client.is_gm = False
@@ -2340,6 +2404,7 @@ def ooc_cmd_look(client, arg):
     If the current area's description is "Literally a courtroom"...
     /look               :: Returns "Literally a courtroom"
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
     if not client.is_staff() and client.is_blind:
@@ -2365,6 +2430,7 @@ def ooc_cmd_look_clean(client, arg):
     /look_clean                           :: Restores the default area description in area 0
     /look_clean 3, Class Trial Room,\ 2   :: Restores the default area descriptions in area 3 and Class Trial Room, 2 (note the ,\)
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -2415,6 +2481,7 @@ def ooc_cmd_look_list(client, arg):
     == Areas in this server with custom descriptions ==
     *(0) Basement: Not a courtroom
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -2490,6 +2557,7 @@ def ooc_cmd_minimap(client, arg):
     EXAMPLE
     /minimap
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -2530,6 +2598,7 @@ def ooc_cmd_modlock(client, arg):
     EXAMPLE
     /modlock             :: Sets the current area as accessible only to staff members.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -2558,6 +2627,7 @@ def ooc_cmd_motd(client, arg):
     EXAMPLES
     /motd
     """
+
     Constants.command_assert(client, arg, parameters='=0')
 
     client.send_motd()
@@ -2587,6 +2657,7 @@ def ooc_cmd_multiclients(client, arg):
     == Area 4: Test 1 ==
     [4] Eggs_HD (1234567890)
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -2614,6 +2685,7 @@ def ooc_cmd_music_list(client, arg):
     /music_list dr2         :: Load the "dr2" music list.
     /music_list             :: Reset the music list to its default value.
     """
+
     if len(arg) == 0:
         client.music_list = None
         client.reload_music_list()
@@ -2643,6 +2715,7 @@ def ooc_cmd_music_lists(client, arg):
     EXAMPLES
     /music_lists            :: Return all available music lists
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -2701,6 +2774,7 @@ def ooc_cmd_online(client, arg):
     If there are 2 players online in a server of maximum capacity 100
     /online         :: Will return: "Online: 2/100"
     """
+
     Constants.command_assert(client, arg, parameters='=0')
 
     client.send_ooc("Online: {}/{}"
@@ -2721,6 +2795,7 @@ def ooc_cmd_ooc_mute(client, arg):
     EXAMPLE
     /ooc_mute Aba           :: Mutes from OOC the player whose username is Aba
     """
+
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -2750,6 +2825,7 @@ def ooc_cmd_ooc_unmute(client, arg):
     EXAMPLE
     /ooc_unmute Aba         :: Unmutes from OOC the player whose username is Aba
     """
+
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -2780,6 +2856,7 @@ def ooc_cmd_party(client, arg):
     EXAMPLES
     /party      :: May return something like "You have created party 11037."
     """
+
     Constants.command_assert(client, arg, parameters='=0')
 
     if not client.is_staff() and client.is_blind:
@@ -2814,6 +2891,7 @@ def ooc_cmd_party_disband(client, arg):
     /party_disband 11037    :: Disbands party 11037
     /party_disband 73011    :: Disbands party 73011
     """
+
     if client.is_staff():
         Constants.command_assert(client, arg, parameters='<2')
     else:
@@ -2853,6 +2931,7 @@ def ooc_cmd_party_id(client, arg):
     If you were part of party 11037...
     /party_id           :: May return something like "Your party ID is 11037".
     """
+
     Constants.command_assert(client, arg, parameters='=0')
 
     party = client.get_party(tc=True)
@@ -2877,6 +2956,7 @@ def ooc_cmd_party_invite(client, arg):
     EXAMPLES
     /party_invite 2         :: Invites the player with ID 2 to join your party.
     """
+
     Constants.command_assert(client, arg, parameters='=1')
 
     party = client.get_party(tc=True)
@@ -2916,6 +2996,7 @@ def ooc_cmd_party_join(client, arg):
     EXAMPLES
     /party_join 11037       :: If previously invited, you will join party 11037.
     """
+
     Constants.command_assert(client, arg, split_spaces=True, parameters='=1')
     if client.following:
         raise PartyError('You cannot join a party while following someone.')
@@ -2944,6 +3025,7 @@ def ooc_cmd_party_kick(client, arg):
     EXAMPLES
     /party_kick 2       :: Kicks the player with client ID 2 off your party.
     """
+
     Constants.command_assert(client, arg, parameters='=1')
 
     party = client.get_party()
@@ -2978,6 +3060,7 @@ def ooc_cmd_party_lead(client, arg):
     EXAMPLES
     /party_lead         :: Sets you as leader of your party.
     """
+
     Constants.command_assert(client, arg, parameters='=0')
 
     party = client.get_party()
@@ -3002,6 +3085,7 @@ def ooc_cmd_party_leave(client, arg):
     EXAMPLES
     /party_leave        :: Makes you leave your current party.
     """
+
     Constants.command_assert(client, arg, parameters='=0')
 
     party = client.get_party(tc=True)
@@ -3031,6 +3115,7 @@ def ooc_cmd_party_list(client, arg):
     == Active parties ==
     *Party 11037 [2/7] (3). Leaders: Phantom_HD. Regular members: Spam_HD
     """
+
     Constants.command_assert(client, arg, parameters='=0', is_staff=True)
 
     info = '== Active parties =='
@@ -3061,6 +3146,7 @@ def ooc_cmd_party_members(client, arg):
     *Leaders: Phantom_HD, Spam_HD
     *Members: Eggs_HD
     """
+
     Constants.command_assert(client, arg, parameters='=0')
 
     party = client.get_party(tc=True)
@@ -3089,6 +3175,7 @@ def ooc_cmd_party_uninvite(client, arg):
     EXAMPLES
     /party_uninvite 2       :: Revokes the invitation sent to player with ID 2 to join your party.
     """
+
     Constants.command_assert(client, arg, split_spaces=True, parameters='=1')
 
     party = client.get_party(tc=True)
@@ -3120,6 +3207,7 @@ def ooc_cmd_party_unlead(client, arg):
     EXAMPLES
     /party_unlead       :: Removes your party leader role.
     """
+
     Constants.command_assert(client, arg, parameters='=0')
 
     party = client.get_party()
@@ -3152,6 +3240,7 @@ def ooc_cmd_passage_clear(client, arg):
     /passage_clear                :: Clears the passages starting in area 0.
     /passage_clear 16, 116        :: Restores the passages starting in areas 16 through 116.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     areas = arg.split(', ')
@@ -3190,6 +3279,7 @@ def ooc_cmd_passage_restore(client, arg):
     /passage_restore                :: Restores the passages starting in area 0 to default.
     /passage_restore 16, 116        :: Restores the passages starting in areas 16 through 116.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     areas = arg.split(', ')
@@ -3221,6 +3311,7 @@ def ooc_cmd_ping(client, arg):
     EXAMPLES
     /ping               :: Returns "Pong"
     """
+
     Constants.command_assert(client, arg, parameters='=0')
 
     client.send_ooc('Pong.')
@@ -3241,6 +3332,7 @@ def ooc_cmd_play(client, arg):
     /play Trial(AJ).mp3         :: Plays Trial(AJ).mp3
     /play CustomTrack.mp3       :: Plays CustomTrack.mp3 (will only be audible to users with CustomTrack.mp3)
     """
+
     if not (client.is_staff() or client.area.song_switch_allowed):
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -3267,6 +3359,7 @@ def ooc_cmd_pm(client, arg):
     /pm 0 Nothing                               :: Sends that message to the user whose client ID is 0.
     /pm Santa_HD Sad                            :: Sends that message to the user whose character name is Santa_HD.
     """
+
     if client.pm_mute:
         raise ClientError('You have muted all PM conversations.')
     args = arg.split()
@@ -3326,6 +3419,7 @@ def ooc_cmd_pos(client, arg):
     /pos jud                :: Switches to the judge position
     /pos                    :: Resets to original position
     """
+
     # Resetting to original position
     if len(arg) == 0:
         client.change_position()
@@ -3351,6 +3445,7 @@ def ooc_cmd_randomchar(client, arg):
     EXAMPLE
     /randomchar
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -3371,6 +3466,7 @@ def ooc_cmd_refresh(client, arg):
     EXAMPLE
     /refresh
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) > 0:
@@ -3392,6 +3488,7 @@ def ooc_cmd_reload(client, arg):
     EXAMPLE
     /reload
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -3414,6 +3511,7 @@ def ooc_cmd_reload_commands(client, arg):
     EXAMPLE
     /reload_commands
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) > 0:
@@ -3447,6 +3545,7 @@ def ooc_cmd_remove_h(client, arg):
     /remove_h 1           :: Has all messages sent by the player whose client ID is 1 have their H's removed.
     /remove_h 1234567890  :: Has all messages sent by all clients opened by the user whose IPID is 1234567890 have their H's removed.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
@@ -3477,6 +3576,7 @@ def ooc_cmd_reveal(client, arg):
     /reveal 1                     :: Set client whose ID is 1 to no longer be sneaking.
     /reveal 1234567890            :: Set all clients opened by the user whose IPID is 1234567890 to no longer be sneaking.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -3491,6 +3591,7 @@ def ooc_cmd_roll(client, arg):
     Rolls a given number of dice with given number of faces and modifiers. If certain parameters
     are not given, command assumes preset defaults. The result is broadcast to all players in the
     area as well as staff members who have turned foreign roll notifications with /toggle_allrolls.
+    The roll is also logged in the client's and area's dice log.
     Returns an error if parameters exceed specified constants or an invalid mathematical operation
     is put as a modifier.
 
@@ -3518,6 +3619,7 @@ def ooc_cmd_roll(client, arg):
     /roll 6 -1+3*r      :: Rolls a d6, multiplies the result by 3 and subtracts 1 to it.
     /roll 3d6 (-1+3)*r  :: Rolls 3 d6's and multiplies each result by 2.
     """
+
     roll_result, num_faces = Constants.dice_roll(arg, 'roll', client.server)
     roll_message = 'rolled {} out of {}'.format(roll_result, num_faces)
     client.send_ooc('You {}.'.format(roll_message))
@@ -3527,6 +3629,7 @@ def ooc_cmd_roll(client, arg):
                                    client.area.id), is_staff=True, in_area=False,
                                    pred=lambda c: c.get_foreign_rolls)
     client.add_to_dicelog(roll_message + '.')
+    client.area.add_to_dicelog(client, roll_message + '.')
     logger.log_server('[{}][{}]Used /roll and got {} out of {}.'
                       .format(client.area.id, client.get_char_name(), roll_result, num_faces), client)
 
@@ -3534,6 +3637,7 @@ def ooc_cmd_rollp(client, arg):
     """
     Similar to /roll, but instead announces roll results (and who rolled) only to yourself and
     staff members who are in the area or who have foreign roll notifications with /toggle_allrolls.
+    The roll is also logged in the client's and area's dice log, but marked as private.
     Returns an error if current area does not authorize /rollp and user is not logged in.
 
     SYNTAX
@@ -3555,6 +3659,7 @@ def ooc_cmd_rollp(client, arg):
     /rollp 6 -1+3*r      :: Rolls a d6, multiplies the result by 3 and subtracts 1 to it.
     /rollp 3d6 (-1+3)*r  :: Rolls 3 d6's and multiplies each result by 2.
     """
+
     if not client.area.rollp_allowed and not client.is_staff():
         raise ClientError('This command has been restricted to authorized users only in this area.')
 
@@ -3569,6 +3674,7 @@ def ooc_cmd_rollp(client, arg):
                                    client.area.id), is_staff=True, in_area=False,
                            pred=lambda c: c.get_foreign_rolls)
     client.add_to_dicelog(roll_message + '.')
+    client.area.add_to_dicelog(client, roll_message + '.')
 
     SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
     logger.log_server('[{}][{}]Used /rollp and got {} out of {}.'
@@ -3590,6 +3696,7 @@ def ooc_cmd_rplay(client, arg):
     /rplay Trial(AJ).mp3         :: Plays Trial(AJ).mp3
     /rplay CustomTrack.mp3       :: Plays CustomTrack.mp3 (will only be audible to users with CustomTrack.mp3)
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -3616,6 +3723,7 @@ def ooc_cmd_rpmode(client, arg):
     /rpmode on              :: Turns on RP mode
     /rpmode off             :: Turns off RP mode
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if not client.server.config['rp_mode_enabled']:
@@ -3655,6 +3763,7 @@ def ooc_cmd_scream(client, arg):
     EXAMPLE
     /scream Hello World      :: Sends Hello World to users in scream reachable areas+staff.
     """
+
     if client.muted_global:
         raise ClientError('You have the global chat muted.')
     if len(arg) == 0:
@@ -3697,6 +3806,7 @@ def ooc_cmd_scream_range(client, arg):
     EXAMPLES
     /scream_range           :: Obtain the current area's scream range, for example {'Basement'}
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -3733,6 +3843,7 @@ def ooc_cmd_scream_set(client, arg):
     /scream_set Class Trial Room,\ 2 :: Adds "Class Trial Room, 2" to the scream range of Basement (note the \ escape character)-
     /scream_set 2                    :: Removes "Class Trial Room, 2" from the scream range of Basement.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -3791,6 +3902,7 @@ def ooc_cmd_scream_set_range(client, arg):
     /scream_set_range Class Trial Room,\ 2, 1, Class Trial Room 3   :: Sets Basement's scream range to "Class Trial Room, 2" (note the \ escape character"), area 1 and "Class Trial Room 3".
     /scream_set_range                                               :: Sets Basement's scream range to no areas.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -3834,6 +3946,7 @@ def ooc_cmd_shoutlog(client, arg):
     *Sat Jun 29 13:15:56 2019 | [1] Phantom (1234567890) used shout 1 with the message: I consent
     *Sat Jun 29 13:16:41 2019 | [1] Phantom (1234567890) used shout 3 with the message: u wrong m9
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) == 0:
@@ -3865,6 +3978,7 @@ def ooc_cmd_showname(client, arg):
     /showname Phantom       :: Sets your showname to Phantom
     /showname               :: Clears your showname
     """
+
     if client.server.showname_freeze and not client.is_staff():
         raise ClientError('Shownames are frozen.')
 
@@ -3900,6 +4014,7 @@ def ooc_cmd_showname_area(client, arg):
     [0] Phantom_HD
     [1] Spam_HD (Spam, Spam, Spam...)
     """
+
     Constants.command_assert(client, arg, parameters='=0')
     if not client.is_staff() and client.is_blind:
         raise ClientError('You are blind, so you cannot see anything.')
@@ -3929,6 +4044,7 @@ def ooc_cmd_showname_areas(client, arg):
     == Area 1: Class Trial Room 1 ==
     [2] Eggs_HD (Not Spam?)
     """
+
     Constants.command_assert(client, arg, parameters='=0')
     if not client.is_staff() and client.is_blind:
         raise ClientError('You are blind, so you cannot see anything.')
@@ -3999,6 +4115,7 @@ def ooc_cmd_showname_history(client, arg):
     *Sat Jun 1 18:54:36 2019 | Self set to Cos
     *Sat Jun 1 18:54:46 2019 | Was cleared
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
@@ -4020,6 +4137,7 @@ def ooc_cmd_showname_nuke(client, arg):
     EXAMPLE
     /showname_nuke          :: Clears all shownames
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -4057,6 +4175,7 @@ def ooc_cmd_showname_set(client, arg):
     /showname_set 1 Phantom     :: Sets the showname of the client whose ID is 1 to Phantom.
     /showname_set 1234567890    :: Clears the showname of the client(s) whose IPID is 1234567890.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -4106,6 +4225,7 @@ def ooc_cmd_sneak(client, arg):
     /sneak 1                     :: Set client whose ID is 1 to be sneaking.
     /sneak 1234567890            :: Set all clients opened by the user whose IPID is 1234567890 to be sneaking.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -4138,6 +4258,7 @@ def ooc_cmd_st(client, arg):
     EXAMPLES
     /st Need help in area 0.       :: Sends "Need help in area 0" to all staff members.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -4159,6 +4280,7 @@ def ooc_cmd_switch(client, arg):
     EXAMPLES
     /switch Phoenix_HD
     """
+
     if len(arg) == 0:
         raise ArgumentError('You must specify a character name.')
 
@@ -4180,6 +4302,7 @@ def ooc_cmd_time(client, arg):
     EXAMPLES
     /time           :: May return something like "Sat Apr 27 09:04:17 2019"
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -4199,6 +4322,7 @@ def ooc_cmd_time12(client, arg):
     EXAMPLES
     /time12         :: May return something like "Sat Apr 27 09:04:47 AM (EST) 2019"
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -4234,6 +4358,7 @@ def ooc_cmd_timer(client, arg):
     * Public timers initiated by staff will send timer announcements/can be consulted by
       anyone at any area.
     """
+
     if len(arg) == 0:
         raise ClientError('This command takes at least one argument.')
     arg = arg.split(' ')
@@ -4284,6 +4409,7 @@ def ooc_cmd_timer_cancel(client, arg):
     /timer_cancel S     :: Both Spam and Phantom would cancel timer S if either ran this.
     /timer_cancel P     :: Only Phantom would cancel timer P if either ran this.
     """
+
     if len(arg) == 0:
         raise ArgumentError('Expected timer name.')
     arg = arg.split(' ')
@@ -4322,6 +4448,7 @@ def ooc_cmd_timer_get(client, arg):
     /timer_get P    :: Spam, Phantom and Eggs would get the remaining time of P.
     /timer_get E    :: Spam, Phantom and Eggs would get the remaining time of E.
     """
+
     arg = arg.split(' ') if arg else list()
     if len(arg) > 1:
         raise ClientError('This command takes at most one argument.')
@@ -4385,6 +4512,7 @@ def ooc_cmd_ToD(client, arg):
     EXAMPLES
     /ToD                :: May return something like 'Phoenix_HD has to do a truth.'
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -4408,6 +4536,7 @@ def ooc_cmd_toggle_allrolls(client, arg):
     EXAMPLE
     /toggle_allrolls
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -4418,26 +4547,6 @@ def ooc_cmd_toggle_allrolls(client, arg):
 
     client.send_ooc('You are {} receiving roll results from other areas.'
                     .format(status[client.get_foreign_rolls]))
-
-def ooc_cmd_toggle_global(client, arg):
-    """
-    Toggles global messages being sent to the current user being allowed/disallowed.
-
-    SYNTAX
-    /toggle_global
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /toggle_global
-    """
-    Constants.command_assert(client, arg, parameters='=0')
-
-    client.muted_global = not client.muted_global
-    status = {True: 'no longer', False: 'now'}
-
-    client.send_ooc('You will {} receive global messages.'.format(status[client.muted_global]))
 
 def ooc_cmd_toggle_fp(client, arg):
     """
@@ -4455,6 +4564,7 @@ def ooc_cmd_toggle_fp(client, arg):
     /toggle_fp          :: Toggles first person mode on.
     /toggle_fp          :: Toggles first person mode off.
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -4462,6 +4572,27 @@ def ooc_cmd_toggle_fp(client, arg):
     status = {True: 'now', False: 'no longer'}
 
     client.send_ooc('You are {} in first person mode.'.format(status[client.first_person]))
+
+def ooc_cmd_toggle_global(client, arg):
+    """
+    Toggles global messages being sent to the current user being allowed/disallowed.
+
+    SYNTAX
+    /toggle_global
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /toggle_global
+    """
+
+    Constants.command_assert(client, arg, parameters='=0')
+
+    client.muted_global = not client.muted_global
+    status = {True: 'no longer', False: 'now'}
+
+    client.send_ooc('You will {} receive global messages.'.format(status[client.muted_global]))
 
 def ooc_cmd_toggle_pm(client, arg):
     """
@@ -4476,6 +4607,7 @@ def ooc_cmd_toggle_pm(client, arg):
     EXAMPLE
     /toggle_pm
     """
+
     Constants.command_assert(client, arg, parameters='=0')
 
     client.pm_mute = not client.pm_mute
@@ -4499,6 +4631,7 @@ def ooc_cmd_toggle_shownames(client, arg):
     /toggle_shownames           :: All subsequent messages will only include character names as the message sender.
     /toggle_shownames           :: All subsequent messages will include the shownames of the senders if they have one.
     """
+
     if len(arg) != 0:
         raise ArgumentError("This command has no arguments.")
 
@@ -4528,6 +4661,7 @@ def ooc_cmd_transient(client, arg):
     /transient 0            :: This player can now access all areas regardless of passage locks.
     /transient 1234567890   :: This player can now only access only reachable areas.
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -4554,6 +4688,7 @@ def ooc_cmd_unban(client, arg):
     EXAMPLES
     /unban 1234567890           :: Unbans user whose IPID is 1234567890
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
@@ -4580,6 +4715,7 @@ def ooc_cmd_unbanhdid(client, arg):
     EXAMPLES
     /unbanhdid abcd1234         :: Unbans user whose HDID is abcd1234
     """
+
     Constants.command_assert(client, arg, parameters='=1', is_mod=True)
 
     if not arg in client.server.hdid_list:
@@ -4620,6 +4756,7 @@ def ooc_cmd_unblockdj(client, arg):
     /unblockdj 1                     :: Restores DJ permissions to the client whose ID is 1.
     /unblockdj 1234567890            :: Restores DJ permissions to all clients opened by the user whose IPID is 1234567890.
     """
+
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
 
@@ -4650,6 +4787,7 @@ def ooc_cmd_undisemconsonant(client, arg):
     /undisemconsonant 1           :: Undisemconsonants the player whose client ID is 1.
     /undisemconsonant 1234567890  :: Undisemconsonants all clients opened by the user whose IPID is 1234567890.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
@@ -4680,6 +4818,7 @@ def ooc_cmd_undisemvowel(client, arg):
     /undisemvowel 1           :: Undisemvowel the player whose client ID is 1.
     /undisemvowel 1234567890  :: Undisemvowel all clients opened by the user whose IPID is 1234567890.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
@@ -4704,6 +4843,7 @@ def ooc_cmd_unfollow(client, arg):
     Assuming you were following someone...
     /unfollow                     :: Stops following the player
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -4732,6 +4872,7 @@ def ooc_cmd_ungimp(client, arg):
     /ungimp 1                     :: Gimps the player whose client ID is 1.
     /ungimp 1234567890            :: Gimps all clients opened by the user whose IPID is 1234567890.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
@@ -4755,6 +4896,7 @@ def ooc_cmd_unglobalic(client, arg):
     EXAMPLES
     /unglobalic             :: Send subsequent messages normally (only to users in current area).
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
     if len(arg) != 0:
@@ -4785,6 +4927,7 @@ def ooc_cmd_unhandicap(client, arg):
     /unhandicap 0           :: Removes all movement handicaps on the player whose client ID is 0
     /unhandicap 1234567890  :: Removes all movement handicaps on the clients whose IPID is 1234567890
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -4834,6 +4977,7 @@ def ooc_cmd_unilock(client, arg):
     /unilock Class Trial Room,\ 2, 0     :: Locks the passage in from Class Trial Room, 2 to area 0
                                             (note the ,\ in the command).
     """
+
     areas = arg.split(', ')
     if len(areas) > 2 or arg == '':
         raise ArgumentError('This command takes one or two arguments.')
@@ -4875,6 +5019,7 @@ def ooc_cmd_uninvite(client, arg):
     /uninvite 1                   :: Uninvites the player whose client ID is 1.
     /uninvite 1234567890          :: Uninvites all clients opened by the player whose IPID is 1234567890.
     """
+
     # Uninvite matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
         try:
@@ -4904,6 +5049,7 @@ def ooc_cmd_unlock(client, arg):
     EXAMPLE
     /unlock             :: Perform one of the unlocks described above if possible
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -4940,6 +5086,7 @@ def ooc_cmd_unmute(client, arg):
     /unmute 1                     :: Unmutes client whose ID is 1.
     /unmute 1234567890            :: Unmutes all clients opened by the user whose IPID is 1234567890.
     """
+
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
 
@@ -4970,6 +5117,7 @@ def ooc_cmd_unremove_h(client, arg):
     /unremove_h 1           :: Removes the 'Remove H' effect on the player whose client ID is 1.
     /unremove_h 1234567890  :: Removes the 'Remove H' effect on all clients opened by the user whose IPID is 1234567890.
     """
+
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
@@ -4992,6 +5140,7 @@ def ooc_cmd_version(client, arg):
     EXAMPLES
     /version        :: May return something like: This server is running TsuserverDR 4.0.0 (190801a)
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -5018,6 +5167,7 @@ def ooc_cmd_whereis(client, arg):
     /whereis 1           :: May return something like this: Client 1 (1234567890) is in Basement (0)
     /whereis 1234567890  :: May return something like this: Client 1 (1234567890) is in Basement (0)
     """
+
     if not client.is_staff():
         raise ClientError('You must be authorized to do that.')
 
@@ -5048,6 +5198,7 @@ def ooc_cmd_whois(client, arg):
     /whois Phantom      :: Returns client info for the player whose OOC username is Phantom.
     /whois Phantom_HD   :: Returns client info for the player whose character name is Phantom_HD.
     """
+
     Constants.command_assert(client, arg, is_staff=True)
     if not arg:
         targets = [client]
@@ -5091,6 +5242,7 @@ def ooc_cmd_8ball(client, arg):
     EXAMPLES
     /8ball              :: May return something like "The magic 8 ball says You shouldn't ask that."
     """
+
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
 
@@ -5114,6 +5266,16 @@ def ooc_cmd_dicelog(client, arg):
 
     # Obtain target's dicelog
     target = Constants.parse_id(client, arg)
+    info = target.get_dicelog()
+    client.send_ooc(info)
+
+def ooc_cmd_dicelog_area(client, arg):
+    Constants.command_assert(client, arg, is_staff=True)
+    if len(arg) == 0:
+        arg = str(client.area.id)
+
+    # Obtain target's dicelog
+    target = Constants.parse_area_names(client, [arg])[0]
     info = target.get_dicelog()
     client.send_ooc(info)
 
@@ -5145,6 +5307,7 @@ def ooc_cmd_exec(client, arg):
     /exec 1+1                                           :: Returns 2
     /exec while True: client.send_ooc("Hi")             :: Commit sudoku
     """
+
     # IF YOU WANT TO DISABLE /exec: SET debug TO 0 (debug = 0)
     # IF YOU WANT TO ENABLE /exec: SET debug TO 1 (debug = 1)
     debug = 0

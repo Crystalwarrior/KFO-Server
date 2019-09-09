@@ -249,7 +249,7 @@ Additional notes are listed at the end of the command list.
 * **char_restrict** "character name"
 	- Changes the restricted status of a character in the current area.
 	- If a character is restricted, only GMs and above can use the character in the current area.
-* **clock** "area range start" "area range end" "hour length "hour start"
+* **clock** "area range start" "area range end" "hour length" "hour start"
 	- Sets up a day cycle that, starting from the given hour, will tick one hour every given number of seconds and provide a time announcement to a given range of areas.
 * **clock_cancel** "ID"
 	- Cancels the day cycle initiated by the target or yourself if not given a target.

@@ -82,6 +82,7 @@ class AreaManager:
             self.lights = True
             self.last_ic_messages = list()
             self.parties = set()
+            self.dicelog = list()
 
             self.name = parameters['area']
             self.background = parameters['background']
@@ -317,6 +318,39 @@ class AreaManager:
             unused = char_id in self.get_chars_unusable(allow_restricted=allow_restricted,
                                                         more_unavail_chars=more_unavail_chars)
             return char_id == -1 or not unused
+
+        def add_to_dicelog(self, client, msg):
+            """
+            Add a dice roll to the dice log of the area.
+
+            Parameters
+            ----------
+            client : server.ClientManager.Client
+                Client to record.
+            msg : str
+                Dice log to record.
+            """
+
+            if len(self.dicelog) >= 20:
+                self.dicelog = self.dicelog[1:]
+
+            info = '{} | [{}] {} ({}) {}'.format(Constants.get_time(), client.id,
+                                                 client.get_char_name(), client.get_ip(), msg)
+            self.dicelog.append(info)
+
+        def get_dicelog(self):
+            """
+            Return the dice log of the area.
+            """
+
+            info = '== Dice log of area {} ({}) =='.format(self.name, self.id)
+
+            if not self.dicelog:
+                info += '\r\nNo dice have been rolled since the area was loaded.'
+            else:
+                for log in self.dicelog:
+                    info += '\r\n*{}'.format(log)
+            return info
 
         def change_doc(self, doc='No document.'):
             """
