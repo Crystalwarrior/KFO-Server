@@ -96,8 +96,6 @@ class _TestSituation3(_Unittest):
         cls.c0 = cls.clients[0]
         cls.c1 = cls.clients[1]
         cls.c2 = cls.clients[2]
-        cls.c0.showname = 'e'
-        cls.c1.showname = 'f'
         cls.c2.showname = 'Phantom'
         cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
         cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
@@ -115,8 +113,6 @@ class _TestSituation4(_Unittest):
         cls.c1 = cls.clients[1]
         cls.c2 = cls.clients[2]
         cls.c3 = cls.clients[3]
-        cls.c0.showname = 'e'
-        cls.c1.showname = 'f'
         cls.c2.showname = 'Phantom'
         cls.c3.showname = 'The Judge'
         cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
@@ -138,10 +134,9 @@ class _TestSituation5(_Unittest):
         cls.c2 = cls.clients[2]
         cls.c3 = cls.clients[3]
         cls.c4 = cls.clients[4]
-        cls.c0.showname = 'e'
-        cls.c1.showname = 'f'
         cls.c2.showname = 'Phantom'
         cls.c3.showname = 'The Judge'
+        cls.c4.showname = 'aaaa'
         cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
         cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
         cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
