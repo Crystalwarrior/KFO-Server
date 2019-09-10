@@ -439,7 +439,7 @@ class AOProtocol(asyncio.Protocol):
                 msg = Constants.gagged_message()
             if msg != raw_msg:
                 self.client.send_ooc_others('(X) {} tried to say "{}" but is currently gagged.'
-                                            .format(self.client.get_char_name(), raw_msg),
+                                            .format(self.client.displayname, raw_msg),
                                             is_staff=True, in_area=True)
 
         if evidence:
@@ -541,13 +541,16 @@ class AOProtocol(asyncio.Protocol):
                 target_area.add_to_shoutlog(self.client, info)
 
         self.client.area.set_next_msg_delay(len(msg))
-        logger.log_server('[IC][{}][{}]{}'.format(self.client.area.id, self.client.get_char_name(), msg), self.client)
+        logger.log_server('[IC][{}][{}]{}'
+                          .format(self.client.area.id, self.client.get_char_name(), msg),
+                          self.client)
 
         # Sending IC messages reveals sneaked players
         if not self.client.is_staff() and not self.client.is_visible:
             self.client.change_visibility(True)
 
-        self.server.create_task(self.client, ['as_afk_kick', self.client.area.afk_delay, self.client.area.afk_sendto])
+        self.server.create_task(self.client, ['as_afk_kick', self.client.area.afk_delay,
+                                              self.client.area.afk_sendto])
         if self.client.area.is_recording:
             self.client.area.recorded_messages.append(args)
 
@@ -625,7 +628,8 @@ class AOProtocol(asyncio.Protocol):
         MC#<song_name:int>#<???:int>#%
 
         """
-        # First attempt to switch area, because music lists typically include area names for quick access
+        # First attempt to switch area,
+        # because music lists typically include area names for quick access
         try:
             delimiter = args[0].find('-')
             area = self.server.area_manager.get_area_by_name(args[0][delimiter+1:])
@@ -654,7 +658,8 @@ class AOProtocol(asyncio.Protocol):
                 self.client.area.add_music_playing(self.client, name)
 
                 logger.log_server('[{}][{}]Changed music to {}.'
-                                  .format(self.client.area.id, self.client.get_char_name(), name), self.client)
+                                  .format(self.client.area.id, self.client.get_char_name(), name),
+                                  self.client)
 
                 # Changing music reveals sneaked players
                 if not self.client.is_staff() and not self.client.is_visible:
@@ -674,7 +679,7 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
-            self.client.send_ooc("You have been muted by a moderator")
+            self.client.send_ooc('You have been muted by a moderator.')
             return
         if not self.validate_net_cmd(args, self.ArgType.STR):
             return
@@ -682,7 +687,9 @@ class AOProtocol(asyncio.Protocol):
             return
         self.client.area.send_command('RT', args[0])
         self.client.area.add_to_judgelog(self.client, 'used judge button {}.'.format(args[0]))
-        logger.log_server("[{}]{} used judge button {}.".format(self.client.area.id, self.client.get_char_name(), args[0]), self.client)
+        logger.log_server('[{}]{} used judge button {}.'
+                          .format(self.client.area.id, self.client.get_char_name(), args[0]),
+                          self.client)
         self.client.last_active = Constants.get_time()
 
     def net_cmd_hp(self, args):
@@ -701,7 +708,8 @@ class AOProtocol(asyncio.Protocol):
             info = 'changed penalty bar {} to {}.'.format(args[0], args[1])
             self.client.area.add_to_judgelog(self.client, info)
             logger.log_server('[{}]{} changed HP ({}) to {}'
-                              .format(self.client.area.id, self.client.get_char_name(), args[0], args[1]), self.client)
+                              .format(self.client.area.id, self.client.get_char_name(),
+                                      args[0], args[1]), self.client)
         except AreaError:
             return
         self.client.last_active = Constants.get_time()

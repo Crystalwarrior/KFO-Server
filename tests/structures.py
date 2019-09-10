@@ -96,9 +96,15 @@ class _TestSituation3(_Unittest):
         cls.c0 = cls.clients[0]
         cls.c1 = cls.clients[1]
         cls.c2 = cls.clients[2]
+        cls.c0.showname = 'e'
+        cls.c1.showname = 'f'
+        cls.c2.showname = 'Phantom'
         cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
         cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
         cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
+        cls.c0_dname = cls.c0.displayname
+        cls.c1_dname = cls.c1.displayname
+        cls.c2_dname = cls.c2.displayname
 
 class _TestSituation4(_Unittest):
     @classmethod
@@ -109,10 +115,18 @@ class _TestSituation4(_Unittest):
         cls.c1 = cls.clients[1]
         cls.c2 = cls.clients[2]
         cls.c3 = cls.clients[3]
+        cls.c0.showname = 'e'
+        cls.c1.showname = 'f'
+        cls.c2.showname = 'Phantom'
+        cls.c3.showname = 'The Judge'
         cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
         cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
         cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
         cls.c3_cname = cls.c3.get_char_name() #'Monokuma_HD'
+        cls.c0_dname = cls.c0.displayname
+        cls.c1_dname = cls.c1.displayname
+        cls.c2_dname = cls.c2.displayname
+        cls.c3_dname = cls.c3.displayname
 
 class _TestSituation5(_Unittest):
     @classmethod
@@ -124,11 +138,20 @@ class _TestSituation5(_Unittest):
         cls.c2 = cls.clients[2]
         cls.c3 = cls.clients[3]
         cls.c4 = cls.clients[4]
+        cls.c0.showname = 'e'
+        cls.c1.showname = 'f'
+        cls.c2.showname = 'Phantom'
+        cls.c3.showname = 'The Judge'
         cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
         cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
         cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
         cls.c3_cname = cls.c3.get_char_name() #'Monokuma_HD'
         cls.c4_cname = cls.c4.get_char_name() #'SPECTATOR'
+        cls.c0_dname = cls.c0.displayname
+        cls.c1_dname = cls.c1.displayname
+        cls.c2_dname = cls.c2.displayname
+        cls.c3_dname = cls.c3.displayname
+        cls.c4_dname = cls.c4.displayname
 
 class _TestSituation4Mc12(_TestSituation4):
     @classmethod

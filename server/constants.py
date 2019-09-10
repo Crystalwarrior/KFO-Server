@@ -31,7 +31,8 @@ class TargetType(Enum):
     CHAR_NAME = 3
     IPID = 4
     HDID = 5
-    ALL = 6
+    SHOWNAME = 6
+    ALL = 7
 
 class Constants():
     @staticmethod

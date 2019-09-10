@@ -44,6 +44,7 @@ class ClientChangeArea:
         notifications. Append any intended messages to the captured_messages list and then
         manually send them out outside this function.
         """
+
         client = self.client
         captured_messages = list()
 
@@ -128,6 +129,7 @@ class ClientChangeArea:
 
         If just_me is True, no notifications are sent to other players in the area.
         """
+
         self.notify_me(area, old_char, ignore_bleeding=ignore_bleeding)
         if not just_me:
             self.notify_others(area, old_char, ignore_bleeding=ignore_bleeding)
@@ -189,7 +191,7 @@ class ClientChangeArea:
             if client.is_staff() or normal_visibility:
                 vis_info = ('{}You see {} {} bleeding'
                             .format('(X) ' if not normal_visibility else '',
-                                    Constants.cjoin([c.get_char_name() for c in bleeding_visible]),
+                                    Constants.cjoin([c.displayname for c in bleeding_visible]),
                                     'is' if len(bleeding_visible) == 1 else 'are'))
             elif not client.is_deaf and changed_hearing:
                 vis_info = 'You hear faint drops of blood'
@@ -203,7 +205,7 @@ class ClientChangeArea:
         if bleeding_sneaking:
             if client.is_staff():
                 sne_info = ('(X) You see {} {} bleeding while sneaking'
-                            .format(Constants.cjoin([c.get_char_name() for c in bleeding_sneaking]),
+                            .format(Constants.cjoin([c.displayname for c in bleeding_sneaking]),
                                     'is' if len(bleeding_visible) == 1 else 'are'))
             elif not client.is_deaf and changed_hearing:
                 sne_info = 'You hear faint drops of blood'
@@ -264,7 +266,7 @@ class ClientChangeArea:
 
         # Code here assumes successful area change, so it will be sending client notifications
         old_area = client.area
-        new_char = client.get_char_name()
+        new_char = client.displayname
 
         ###########
         # Assuming this is not a spectator...
@@ -414,6 +416,7 @@ class ClientChangeArea:
         *from_party: if the change area order is made assuming the character is in a party (in
          reality, it is just to serve as a base case because change_area is called recursively).
         """
+
         client = self.client
 
         if not override_all:
@@ -445,6 +448,7 @@ class ClientChangeArea:
             # Perform the character switch if new area has a player with the current char
             # or the char is restricted there.
             old_char = client.get_char_name()
+            old_displayname = client.displayname
             if new_cid != client.char_id:
                 client.change_character(new_cid, target_area=area)
                 if old_char in area.restricted_chars:
@@ -463,7 +467,7 @@ class ClientChangeArea:
                 #              .format(client.get_char_name(), old_area.name, old_area.id,
                 #                      client.area.name, client.area.id), client)
 
-                client.notify_change_area(area, old_char, ignore_bleeding=ignore_bleeding)
+                client.notify_change_area(area, old_displayname, ignore_bleeding=ignore_bleeding)
 
         client.area.remove_client(client)
         client.area = area

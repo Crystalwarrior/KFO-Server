@@ -331,21 +331,21 @@ class TestGlobal_05_LocalMod(_TestOOC):
         self.c2.make_mod()
 
         self.c1.ooc('/lm Hi')
-        self.c0.assert_ooc('Hi', username='<dollar>H[MOD][{}]'.format(self.c1_cname), over=True)
-        self.c1.assert_ooc('Hi', username='<dollar>H[MOD][{}]'.format(self.c1_cname), over=True)
+        self.c0.assert_ooc('Hi', username='<dollar>H[MOD][{}]'.format(self.c1_dname), over=True)
+        self.c1.assert_ooc('Hi', username='<dollar>H[MOD][{}]'.format(self.c1_dname), over=True)
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         self.c2.ooc('/lm Hi')
         self.c0.assert_no_ooc()
         self.c1.assert_no_ooc()
-        self.c2.assert_ooc('Hi', username='<dollar>H[MOD][{}]'.format(self.c2_cname), over=True)
+        self.c2.assert_ooc('Hi', username='<dollar>H[MOD][{}]'.format(self.c2_dname), over=True)
         self.c3.assert_no_ooc()
 
         self.c2.ooc('/lm Bye')
         self.c0.assert_no_ooc()
         self.c1.assert_no_ooc()
-        self.c2.assert_ooc('Bye', username='<dollar>H[MOD][{}]'.format(self.c2_cname), over=True)
+        self.c2.assert_ooc('Bye', username='<dollar>H[MOD][{}]'.format(self.c2_dname), over=True)
         self.c3.assert_no_ooc()
 
     def test_03_lmwhilemutedglobal(self):
@@ -367,9 +367,9 @@ class TestGlobal_05_LocalMod(_TestOOC):
 
         self.c1.ooc('/lm Hello C0.')
         self.c0.assert_ooc('Hello C0.', username=('<dollar>H[MOD][{}]'
-                                                  .format(self.c1_cname)), over=True)
+                                                  .format(self.c1_dname)), over=True)
         self.c1.assert_ooc('Hello C0.', username=('<dollar>H[MOD][{}]'
-                                                  .format(self.c1_cname)), over=True)
+                                                  .format(self.c1_dname)), over=True)
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
@@ -377,5 +377,5 @@ class TestGlobal_05_LocalMod(_TestOOC):
         self.c0.assert_no_ooc()
         self.c1.assert_no_ooc()
         self.c2.assert_ooc('Welcome.', username=('<dollar>H[MOD][{}]'
-                                                  .format(self.c2_cname)), over=True)
+                                                  .format(self.c2_dname)), over=True)
         self.c3.assert_no_ooc()

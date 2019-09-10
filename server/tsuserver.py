@@ -497,7 +497,7 @@ class TsuserverDR:
                 'GLOBAL#{}#{}#{}#{}'.format(int(as_mod), client.area.id, username, msg))
 
     def broadcast_need(self, client, msg):
-        char_name = client.get_char_name()
+        char_name = client.displayname
         area_name = client.area.name
         area_id = client.area.id
         self.send_all_cmd_pred('CT', '{}'.format(self.config['hostname']),
@@ -584,7 +584,7 @@ class TsuserverDR:
 
             try:
                 original_area = client.area
-                original_name = client.get_char_name()
+                original_name = client.displayname
                 client.change_area(area, override_passages=True, override_effects=True,
                                    ignore_bleeding=True)
             except Exception:

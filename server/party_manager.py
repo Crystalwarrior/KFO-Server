@@ -240,7 +240,7 @@ class PartyManager:
         return self.parties.values()
 
     def move_party(self, party, initiator, new_area):
-        ini_name = initiator.get_char_name() # Backup in case initiator's char changes.
+        ini_name = initiator.displayname # Backup in case initiator's char changes.
         movers = self.check_move_party(party, initiator, new_area)
         moving, staying = movers[True], movers[False]
 
@@ -447,7 +447,7 @@ class PartyManager:
                 if error.code in ['ChArHandicap', 'ChArSneakLobby', 'ChArSneakPrivate',
                                   'ChArUnreachable', 'ChrNoAvailableCharacters']:
                     member.send_ooc(error.message)
-                    culprit = member.get_char_name() if member != initiator else 'yourself'
+                    culprit = member.displayname if member != initiator else 'yourself'
                     raise ClientError('Unable to move the party due to {}.'.format(culprit))
 
                 if error.code in ['ChArLocked', 'ChArGMLocked', 'ChArModLocked',

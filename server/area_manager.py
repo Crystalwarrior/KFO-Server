@@ -47,11 +47,11 @@ class AreaManager:
             """
             Parameters
             ----------
-            area_id : int
+            area_id: int
                 The area ID.
-            server : server.TsuServer3
+            server: server.TsuserverDR
                 The server this area belongs to.
-            parameters : dict
+            parameters: dict
                 Area parameters as specified in the loaded area list.
             """
 
@@ -139,7 +139,7 @@ class AreaManager:
 
             Parameters
             ----------
-            client : server.ClientManager.Client
+            client: server.ClientManager.Client
                 Client to add.
             """
 
@@ -151,7 +151,7 @@ class AreaManager:
 
             Parameters
             ----------
-            client : server.ClientManager.Client
+            client: server.ClientManager.Client
                 Client to remove.
 
 
@@ -177,7 +177,7 @@ class AreaManager:
 
             Parameters
             ----------
-            cmd : str
+            cmd: str
                 ID of the packet.
             *args
                 Packet arguments.
@@ -192,7 +192,7 @@ class AreaManager:
 
             Parameters
             ----------
-            msg : str
+            msg: str
                 Message to be sent.
             """
 
@@ -204,12 +204,12 @@ class AreaManager:
 
             Parameters
             ----------
-            bg : str
+            bg: str
                 New background name.
-            validate : bool, optional
+            validate: bool, optional
                 Whether to first determine if background name is listed as a server background
                 before changing. Defaults to True.
-            override_blind : bool, optional
+            override_blind: bool, optional
                 Whether to send the intended background to blind people as opposed to the server
                 blackout one. Defaults to False (send blackout).
 
@@ -235,16 +235,16 @@ class AreaManager:
 
             Parameters
             ----------
-            allow_restricted : bool, optional
+            allow_restricted: bool, optional
                 Whether to include characters whose usage has been manually restricted in the area.
                 Defaults to False.
-            more_unavail_chars : set, optional
+            more_unavail_chars: set, optional
                 Additional characters to mark as taken (and thus unusuable) in the area. Defaults
                 to None.
 
             Returns
             -------
-            unavailable : dict
+            unavailable: dict
                 Character IDs of all unavailable characters in the area.
             """
 
@@ -267,10 +267,10 @@ class AreaManager:
 
             Parameters
             ----------
-            allow_restricted : bool, optional
+            allow_restricted: bool, optional
                 Whether to include characters whose usage has been manually restricted in the area.
                 Defaults to false.
-            more_unavail_chars : set, optional
+            more_unavail_chars: set, optional
                 Additional characters to mark as taken (and thus unsuable) in the area. Defaults to
                 None.
 
@@ -300,12 +300,12 @@ class AreaManager:
 
             Parameters
             ----------
-            char_id : int
+            char_id: int
                 ID of the character to test.
-            allow_restricted : bool, optional
+            allow_restricted: bool, optional
                 Whether to include characters whose usage has been manually restricted in the area.
                 Defaults to False.
-            more_unavail_chars : set, optional
+            more_unavail_chars: set, optional
                 Additional characters to mark as taken in the area. Defaults to None.
 
             Returns
@@ -325,9 +325,9 @@ class AreaManager:
 
             Parameters
             ----------
-            client : server.ClientManager.Client
+            client: server.ClientManager.Client
                 Client to record.
-            msg : str
+            msg: str
                 Dice log to record.
             """
 
@@ -335,7 +335,7 @@ class AreaManager:
                 self.dicelog = self.dicelog[1:]
 
             info = '{} | [{}] {} ({}) {}'.format(Constants.get_time(), client.id,
-                                                 client.get_char_name(), client.get_ip(), msg)
+                                                 client.displayname, client.get_ip(), msg)
             self.dicelog.append(info)
 
         def get_dicelog(self):
@@ -358,7 +358,7 @@ class AreaManager:
 
             Parameters
             ----------
-            doc : str, optional
+            doc: str, optional
                 New casing document of the area. Defaults to 'No document.'
             """
             self.doc = doc
@@ -369,7 +369,7 @@ class AreaManager:
 
             Parameters
             ----------
-            client : server.ClientManager.Client
+            client: server.ClientManager.Client
                 Client to target.
             """
 
@@ -392,9 +392,9 @@ class AreaManager:
 
             Parameters
             ----------
-            side : int
+            side: int
                 Penalty bar to change (1 for def, 2 for pro).
-            val : int
+            val: int
                 New health value of the penalty bar.
 
             Raises
@@ -422,13 +422,13 @@ class AreaManager:
 
             Parameters
             ----------
-            client : server.ClientManager.Client
+            client: server.ClientManager.Client
                 Client to test.
-            anim1 : str
+            anim1: str
                 Location of the preanimation the client used.
-            anim2 : str
+            anim2: str
                 Location of the main animation the client used.
-            char : str
+            char: str
                 Name of the folder the client claims their files are.
 
             Returns
@@ -455,9 +455,9 @@ class AreaManager:
 
             Parameters
             ----------
-            client : server.ClientManager.Client
+            client: server.ClientManager.Client
                 Client to record.
-            msg : str
+            msg: str
                 Judge action to record.
             """
 
@@ -465,7 +465,7 @@ class AreaManager:
                 self.judgelog = self.judgelog[1:]
 
             info = '{} | [{}] {} ({}) {}'.format(Constants.get_time(), client.id,
-                                                 client.get_char_name(), client.get_ip(), msg)
+                                                 client.displayname, client.get_ip(), msg)
             self.judgelog.append(info)
 
         def get_judgelog(self):
@@ -490,9 +490,9 @@ class AreaManager:
 
             Parameters
             ----------
-            new_lights : bool
+            new_lights: bool
                 New light status
-            initiator : server.ClientManager.Client, optional
+            initiator: server.ClientManager.Client, optional
                 Client who triggered the light status change.
 
             Raises
@@ -533,7 +533,7 @@ class AreaManager:
                 initiator.send_ooc_others('You hear a flicker.', is_staff=False, in_area=True,
                                           to_blind=True, to_deaf=False)
                 initiator.send_ooc_others('(X) {} turned the lights {}.'
-                                          .format(initiator.get_char_name(), status[new_lights]),
+                                          .format(initiator.displayname, status[new_lights]),
                                           is_staff=True, in_area=True)
             else: # Otherwise, send generic message
                 self.broadcast_ooc('The lights were turned {}.'.format(status[new_lights]))
@@ -552,7 +552,7 @@ class AreaManager:
 
             Parameters
             ----------
-            msg_length : int
+            msg_length: int
                 Length of the current message.
             """
 
@@ -578,14 +578,15 @@ class AreaManager:
 
             Parameters
             ----------
-            name : str
+            name: str
                 Name of the track to play.
-            cid : int
+            cid: int
                 Character ID of the player who played the track, or -1 if the server initiated it.
-            length : int
+            length: int
                 Length of the track in seconds to allow for seamless server-managed looping.
                 Defaults to -1 (no looping).
             """
+
             self.send_command('MC', name, cid)
 
             if self.music_looper:
@@ -600,12 +601,13 @@ class AreaManager:
 
             Parameters
             ----------
-            client : server.ClientManager.Client
+            client: server.ClientManager.Client
                 Client to record.
-            name : str
+            name: str
                 Track name to record.
             """
-            self.current_music_player = client.get_char_name()
+
+            self.current_music_player = client.displayname
             self.current_music = name
 
         def add_to_shoutlog(self, client, msg):
@@ -614,16 +616,17 @@ class AreaManager:
 
             Parameters
             ----------
-            client : server.ClientManager.Client
+            client: server.ClientManager.Client
                 Client to record.
-            msg : str
+            msg: str
                 Shout message to record.
             """
+
             if len(self.shoutlog) >= 20:
                 self.shoutlog = self.shoutlog[1:]
 
             info = '{} | [{}] {} ({}) {}'.format(Constants.get_time(), client.id,
-                                                 client.get_char_name(), client.get_ip(), msg)
+                                                 client.displayname, client.get_ip(), msg)
             self.shoutlog.append(info)
 
         def add_party(self, party):
@@ -632,7 +635,7 @@ class AreaManager:
 
             Parameters
             ----------
-            party : server.PartyManager.Party
+            party: server.PartyManager.Party
                 Party to record.
 
             Raises
@@ -652,7 +655,7 @@ class AreaManager:
 
             Parameters
             ----------
-            party : server.PartyManager.Party
+            party: server.PartyManager.Party
                 Party to record.
 
             Raises
@@ -679,13 +682,14 @@ class AreaManager:
                     info += '\r\n*{}'.format(log)
             return info
 
+
         def change_status(self, value):
             """
             Change the casing status of the area to one of predetermined values.
 
             Parameters
             ----------
-            value : str
+            value: str
                 New casing status of the area.
 
             Raises
@@ -745,7 +749,7 @@ class AreaManager:
 
         Parameters
         ----------
-        server : server.TsuServer3
+        server: server.TsuserverDR
             The server this area belongs to.
         """
 
@@ -925,7 +929,7 @@ class AreaManager:
 
         Parameters
         ----------
-        name : str
+        name: str
             Area name to look for.
 
         Raises
@@ -945,7 +949,7 @@ class AreaManager:
 
         Parameters
         ----------
-        id : num
+        id: num
             Area ID to look for.
 
         Raises

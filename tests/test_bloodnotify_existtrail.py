@@ -54,12 +54,13 @@ class TestBloodNotifyExistTrail_01_Lights(_TestBloodTrail):
         """
 
         self.c4.move_area(6, discard_trivial=True)
-        self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_cname))
+        self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_dname))
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
                            .format(self.a0_name, self.a4_name, self.a7_name), over=True)
 
         self.c4.move_area(7, discard_trivial=True)
-        self.c4.assert_ooc('You see {} and {} are bleeding.'.format(self.c0_cname, self.c2_cname))
+        self.c4.assert_ooc('You see {} and {} are bleeding.'
+                           .format(*sorted([self.c0_dname, self.c2_dname])))
         self.c4.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
 
@@ -130,12 +131,13 @@ class TestBloodNotifyExistTrail_01_Lights(_TestBloodTrail):
         self.c4.discard_all()
 
         self.c4.move_area(6, discard_trivial=True)
-        self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_cname))
+        self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_dname))
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
                            .format(self.a0_name, self.a4_name, self.a7_name), over=True)
 
         self.c4.move_area(7, discard_trivial=True)
-        self.c4.assert_ooc('You see {} and {} are bleeding.'.format(self.c0_cname, self.c2_cname))
+        self.c4.assert_ooc('You see {} and {} are bleeding.'
+                           .format(*sorted([self.c0_dname, self.c2_dname])))
         self.c4.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
 
@@ -283,7 +285,7 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
                            .format(self.a0_name, self.a4_name, self.a7_name), over=True)
         self.c4.assert_packet('BN', self.area6.background)
         self.c4.assert_ooc('The lights were turned on.')
-        self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_cname))
+        self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_dname))
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
                            .format(self.a0_name, self.a4_name, self.a7_name), over=True)
 
@@ -302,17 +304,18 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         self.c2.ooc('/lights on')
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
-        self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_cname))
+        self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_dname))
         self.c0.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
-        self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_cname))
+        self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_dname))
         self.c2.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
         self.c4.assert_packet('BN', self.area7.background)
         self.c4.assert_ooc('The lights were turned on.')
-        self.c4.assert_ooc('You see {} and {} are bleeding.'.format(self.c0_cname, self.c2_cname))
+        self.c4.assert_ooc('You see {} and {} are bleeding.'
+                           .format(*sorted([self.c0_dname, self.c2_dname])))
         self.c4.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
 
@@ -322,7 +325,7 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         # self.c0.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING
         self.c2.assert_packet('BN', self.blackout_background)
         self.c2.assert_ooc('You turned the lights off.')
-        self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_cname)) # STAFF!
+        self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_dname)) # STAFF!
         self.c2.assert_ooc('(X) You spot a blood trail leading to the {}.' # STAFF!
                            .format(self.a6_name), over=True)
         # self.c2.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING
@@ -394,12 +397,12 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         self.c2.ooc('/lights on')
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
-        self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_cname))
+        self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_dname))
         self.c0.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
-        self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_cname))
+        self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_dname))
         self.c2.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
         self.c4.assert_packet('BN', self.blackout_background)
@@ -411,7 +414,7 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         # self.c0.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING
         self.c2.assert_packet('BN', self.blackout_background)
         self.c2.assert_ooc('You turned the lights off.')
-        self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_cname)) # STAFF!
+        self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_dname)) # STAFF!
         self.c2.assert_ooc('(X) You spot a blood trail leading to the {}.' # STAFF!
                            .format(self.a6_name), over=True)
         # self.c2.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING
@@ -478,12 +481,12 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         self.c2.ooc('/lights on')
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
-        self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_cname))
+        self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_dname))
         self.c0.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
-        self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_cname))
+        self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_dname))
         self.c2.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
         self.c4.assert_packet('BN', self.blackout_background, over=True)
@@ -494,7 +497,7 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         # self.c0.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING
         self.c2.assert_packet('BN', self.blackout_background)
         self.c2.assert_ooc('You turned the lights off.')
-        self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_cname)) # STAFF!
+        self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_dname)) # STAFF!
         self.c2.assert_ooc('(X) You spot a blood trail leading to the {}.' # STAFF!
                            .format(self.a6_name), over=True)
         # self.c2.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING
@@ -547,7 +550,7 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
                            .format(self.a0_name, self.a4_name, self.a7_name), over=True)
         self.c4.assert_packet('BN', self.area6.background)
         self.c4.assert_ooc('The lights were turned on.')
-        self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_cname))
+        self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_dname))
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
                            .format(self.a0_name, self.a4_name, self.a7_name), over=True)
 
@@ -566,17 +569,18 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         self.c2.ooc('/lights on')
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
-        self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_cname))
+        self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_dname))
         self.c0.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
-        self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_cname))
+        self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_dname))
         self.c2.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
         self.c4.assert_packet('BN', self.area7.background)
         self.c4.assert_ooc('The lights were turned on.')
-        self.c4.assert_ooc('You see {} and {} are bleeding.'.format(self.c0_cname, self.c2_cname))
+        self.c4.assert_ooc('You see {} and {} are bleeding.'
+                           .format(*sorted([self.c0_dname, self.c2_dname])))
         self.c4.assert_ooc('You spot a blood trail leading to the {}.'
                            .format(self.a6_name), over=True)
 
@@ -586,7 +590,7 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         # self.c0.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING
         self.c2.assert_packet('BN', self.blackout_background)
         self.c2.assert_ooc('You turned the lights off.')
-        self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_cname)) # STAFF!
+        self.c2.assert_ooc('(X) You see {} is bleeding.'.format(self.c0_dname)) # STAFF!
         self.c2.assert_ooc('(X) You spot a blood trail leading to the {}.' # STAFF!
                            .format(self.a6_name), over=True)
         # self.c2.assert_ooc('You hear faint drops of blood.', over=True) # NO, DIDNT CHANGE HEARING

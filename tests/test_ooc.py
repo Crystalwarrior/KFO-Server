@@ -171,8 +171,8 @@ class TestOOC_02_PM(_TestOOC):
         Situation: C0 attempts to PM incorrectly.
         """
 
-        mes = ('Not enough arguments. Use /pm <target> <message>. Target should be ID, OOC-name or '
-               'char-name. Use /getarea for getting info like "[ID] char-name".')
+        mes = ('Not enough arguments. Use /pm <target> <message>. Target should be '
+               'char-name, custom showname, ID or OOC-name or char-name.')
 
         # No target
         self.c0.ooc('/pm')
@@ -201,11 +201,11 @@ class TestOOC_02_PM(_TestOOC):
         """
 
         for c_a in self.clients[:4]:
-            receipt = 'PM from {} in {} ({}): '.format(c_a.name, c_a.area.name, c_a.get_char_name())
+            receipt = 'PM from {} in {} ({}): '.format(c_a.name, c_a.area.name, c_a.displayname)
             for c_b in self.clients[:4]:
                 targets = [c_b.id]
                 if c_a.area == c_b.area:
-                    targets.extend([c_b.name, c_b.get_char_name()])
+                    targets.extend([c_b.name, c_b.displayname])
 
                 target = random.choice(targets)
                 sent = 'PM sent to {}. Message: '.format(target)
@@ -220,7 +220,7 @@ class TestOOC_02_PM(_TestOOC):
         """
 
         receipt = ('PM from {} in {} ({}): '
-                   .format(self.c0.name, self.c0.area.name, self.c0.get_char_name()))
+                   .format(self.c0.name, self.c0.area.name, self.c0.displayname))
 
         message = 'Works with cID.'
         self.c0.ooc('/pm 2 {}'.format(message))

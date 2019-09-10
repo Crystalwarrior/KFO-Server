@@ -205,6 +205,9 @@ class ClientManager:
 
             return cond
 
+        def disconnect(self):
+            self.transport.close()
+
         def send_motd(self):
             self.send_ooc('=== MOTD ===\r\n{}\r\n============='.format(self.server.config['motd']))
 
@@ -218,8 +221,11 @@ class ClientManager:
                     #return False
             return True
 
-        def disconnect(self):
-            self.transport.close()
+        @property
+        def displayname(self):
+            if  self.showname:
+                return self.showname
+            return self.get_char_name()
 
         def change_character(self, char_id, force=False, target_area=None):
             # Added target_area parameter because when switching areas, the change character code
@@ -367,7 +373,7 @@ class ClientManager:
 
                             msg = ('(X) {} was automatically imposed their old movement handicap '
                                    '"{}" of length {} seconds after being revealed in area {} ({}).'
-                                   .format(self.get_char_name(), old_name, old_length,
+                                   .format(self.displayname, old_name, old_length,
                                            self.area.name, self.area.id))
                             self.send_ooc_others(msg, is_staff=True)
                             self.send_ooc('You were automatically imposed your former movement '
@@ -393,7 +399,7 @@ class ClientManager:
                         if length < shandicap:
                             msg = ('(X) {} was automatically imposed the longer movement handicap '
                                    '"Sneaking" of length {} seconds in area {} ({}).'
-                                   .format(self.get_char_name(), shandicap, self.area.name,
+                                   .format(self.displayname, shandicap, self.area.name,
                                            self.area.id))
                             self.send_ooc_others(msg, is_staff=True)
                             raise KeyError # Lazy way to get there, but it works
@@ -630,7 +636,7 @@ class ClientManager:
             if len(self.dicelog) >= 20:
                 self.dicelog = self.dicelog[1:]
 
-            info = '{} | {} {}'.format(Constants.get_time(), self.get_char_name(), msg)
+            info = '{} | {} {}'.format(Constants.get_time(), self.displayname, msg)
             self.dicelog.append(info)
 
         def get_dicelog(self):
@@ -847,7 +853,7 @@ class ClientManager:
         self.clients.remove(client)
 
     def get_targets(self, client, key, value, local=False):
-        #possible keys: ip, OOC, id, cname, ipid, hdid
+        #possible keys: ip, OOC, id, cname, ipid, hdid, showname
         areas = None
         if local:
             areas = [client.area]
@@ -855,28 +861,31 @@ class ClientManager:
             areas = client.server.area_manager.areas
         targets = []
         if key == TargetType.ALL:
-            for nkey in range(6):
+            for nkey in range(7):
                 targets += self.get_targets(client, nkey, value, local)
         for area in areas:
-            for c in area.clients:
+            for target in area.clients:
                 if key == TargetType.IP:
-                    if value.lower().startswith(c.get_ipreal().lower()):
-                        targets.append(c)
+                    if value.lower().startswith(target.get_ipreal().lower()):
+                        targets.append(target)
                 elif key == TargetType.OOC_NAME:
-                    if value.lower().startswith(c.name.lower()) and c.name:
-                        targets.append(c)
+                    if value.lower().startswith(target.name.lower()) and target.name:
+                        targets.append(target)
                 elif key == TargetType.CHAR_NAME:
-                    if value.lower().startswith(c.get_char_name().lower()):
-                        targets.append(c)
+                    if value.lower().startswith(target.get_char_name().lower()):
+                        targets.append(target)
                 elif key == TargetType.ID:
-                    if c.id == value:
-                        targets.append(c)
+                    if target.id == value:
+                        targets.append(target)
                 elif key == TargetType.IPID:
-                    if c.ipid == value:
-                        targets.append(c)
+                    if target.ipid == value:
+                        targets.append(target)
                 elif key == TargetType.HDID:
-                    if c.hdid == value:
-                        targets.append(c)
+                    if target.hdid == value:
+                        targets.append(target)
+                elif key == TargetType.SHOWNAME:
+                    if target.showname and value.lower().startswith(target.showname.lower()):
+                        targets.append(target)
         return targets
 
     def get_muted_clients(self):
