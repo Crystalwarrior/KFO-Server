@@ -179,22 +179,24 @@ class Constants():
             try:
                 num_dice, num_faces = int(dice_type[0]), int(dice_type[1])
             except ValueError:
-                raise ArgumentError('The number of rolls and max value of dice must be integers.')
+                raise ArgumentError('The number of rolls and faces of the dice must be '
+                                    'positive integers.')
 
             if not 1 <= num_dice <= max_numdice:
                 raise ArgumentError('Number of rolls must be between 1 and {}.'.format(max_numdice))
             if not 1 <= num_faces <= max_numfaces:
-                raise ArgumentError('Dice value must be between 1 and {}.'.format(max_numfaces))
+                raise ArgumentError('Number of faces must be between 1 and {}.'
+                                    .format(max_numfaces))
 
             for char in modifiers:
                 if char not in ACCEPTABLE_IN_MODIFIER:
                     raise ArgumentError('The modifier must only include numbers and standard '
-                                        'mathematical operations in modifier')
+                                        'mathematical operations in the modifier.')
                 if char == 'r':
                     special_calculation = True
             if '**' in modifiers: #Exponentiation manually disabled, it can be pretty dangerous
                 raise ArgumentError('The modifier must only include numbers and standard '
-                                    'mathematical operations in modifier')
+                                    'mathematical operations in the modifier.')
         else:
             # Default
             num_dice, num_faces, modifiers = def_numdice, def_numfaces, def_modifier
@@ -208,7 +210,7 @@ class Constants():
                 # mid_roll: result after modifiers (if any) have been applied to original roll
                 # final_roll: result after previous result was capped between 1 and max_numfaces
 
-                raw_roll = str(random.randint(1, num_faces))
+                raw_roll = str(server.random.randint(1, num_faces))
                 if modifiers == '':
                     aux_modifier = ''
                     mid_roll = int(raw_roll)
@@ -220,11 +222,11 @@ class Constants():
                     else: # Ex /roll 20 -3
                         aux_modifier = raw_roll + modifiers + '='
 
-                    # Prevent any terms from reaching past MAXACCEPTABLETERM in order to prevent
+                    # Prevent any terms from reaching past max_acceptable_term in order to prevent
                     # server lag due to potentially frivolous dice rolls
                     # In order to do that, it will split the string by the numbers it uses
                     # and check if any individual number is larger than said term.
-                    # This also doubles as a second-line defense to junk entries.
+                    # This also doubles as a second-line defense to junk entries such as "+1..4"
                     aux = aux_modifier[:-1]
                     for j in "+-*/()":
                         aux = aux.replace(j, "!")
@@ -232,8 +234,8 @@ class Constants():
                     for j in aux:
                         try:
                             if j != '' and round(float(j)) > max_acceptable_term:
-                                raise ArgumentError("The modifier must take numbers within the "
-                                                    "computation limit of the server.")
+                                raise ArgumentError('The modifier must take numbers within the '
+                                                    'computation limit of the server.')
                         except ValueError:
                             raise ArgumentError('The modifier has a syntax error.')
 
@@ -248,8 +250,7 @@ class Constants():
                     except ZeroDivisionError:
                         divzero_attempts += 1
                         if divzero_attempts == MAXDIVZERO_ATTEMPTS:
-                            raise ArgumentError('The modifier produces divisions by zero too often '
-                                                'and cannot be computed.')
+                            raise ArgumentError('The modifier causes divisions by zero too often.')
                         continue
                 break
 

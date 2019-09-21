@@ -1979,12 +1979,12 @@ def ooc_cmd_iclock(client, arg):
         raise ArgumentError('This command has no arguments.')
 
     client.area.ic_lock = not client.area.ic_lock
-    status = {True: 'enabled', False: 'disabled'}
+    status = {True: 'locked', False: 'unlocked'}
 
-    client.send_ooc('You {} the IC lock in this area.'.format(status[client.area.ic_lock]))
-    client.send_ooc_others('A staff member has {} the IC lock in this area.'
+    client.send_ooc('You {} the IC chat in this area.'.format(status[client.area.ic_lock]))
+    client.send_ooc_others('A staff member has {} the IC chat in this area.'
                            .format(status[client.area.ic_lock]), is_staff=False, in_area=True)
-    client.send_ooc_others('(X) {} has {} the IC lock in area {} ({}).'
+    client.send_ooc_others('(X) {} has {} the IC chat in area {} ({}).'
                            .format(client.name, status[client.area.ic_lock], client.area.name,
                                    client.area.id), is_staff=True)
 
@@ -3380,7 +3380,7 @@ def ooc_cmd_pm(client, arg):
     if not targets:
         targets = cm.get_targets(client, TargetType.SHOWNAME, arg, True)
         if targets:
-            target_length = len(targets[0].name.split(' '))
+            target_length = len(targets[0].showname.split(' '))
 
     # If still needed, pretend the identifier is a client ID
     if not targets and args[0].isdigit():

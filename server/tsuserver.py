@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a4'
-        self.internal_version = '190910'
+        self.segment_version = 'a5'
+        self.internal_version = '190920'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -53,6 +53,7 @@ class TsuserverDR:
         client_manager = ClientManager if client_manager is None else client_manager
         logger.log_print = logger.log_print2 if self.in_test else logger.log_print
         logger.log_server = logger.log_server2 if self.in_test else logger.log_server
+        self.random = importlib.reload(random)
 
         logger.log_print('Launching {}...'.format(self.version))
         logger.log_print('Loading server configurations...')
