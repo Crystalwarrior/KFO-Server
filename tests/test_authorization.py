@@ -22,8 +22,6 @@ class _TestAuthorization(_TestSituation3):
         cls.wrong = "AAAABBBB" # Please do not make this any of your staff passwords
 
         current_day = datetime.datetime.today().weekday()
-        if datetime.datetime.now().hour < 15:
-            current_day += 1
         cls.daily_gmpass = cls.server.config['gmpass{}'.format((current_day % 7) + 1)]
         cls.not_daily_gmpasses = {cls.server.config['gmpass{}'.format((x % 7) + 1)]
                                   for x in range(1, 7) if x != current_day}

@@ -695,10 +695,8 @@ class ClientManager:
             if self.is_gm:
                 raise ClientError('Already logged in.')
 
-            # Obtain the daily gm pass (changes at 3 pm server time)
+            # Obtain the daily gm pass (changes at midnight server time, gmpass1=Monday..)
             current_day = datetime.datetime.today().weekday()
-            if datetime.datetime.now().hour < 15:
-                current_day += 1
             daily_gmpass = self.server.config['gmpass{}'.format((current_day % 7) + 1)]
 
             valid_passwords = [self.server.config['gmpass']]

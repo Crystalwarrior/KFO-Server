@@ -5296,6 +5296,17 @@ def ooc_cmd_dicelog_area(client, arg):
     info = target.get_dicelog()
     client.send_ooc(info)
 
+def ooc_cmd_make_gm(client, arg):
+    if not client.is_mod and not client.is_cm:
+        raise ClientError('You must be authorized to do that.')
+    target = Constants.parse_id(client, arg)
+
+    if target.is_gm:
+        raise ClientError('Client {} is already a GM.'.format(target.id))
+
+    target.login(client.server.config['gmpass'], target.auth_gm, 'game master')
+    client.send_ooc('Logged client {} as a GM.'.format(target.id))
+
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
