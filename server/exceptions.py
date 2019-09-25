@@ -43,3 +43,6 @@ class ServerError(TsuserverException):
 
 class PartyError(TsuserverException):
     pass
+
+class ZoneError(TsuserverException):
+    pass

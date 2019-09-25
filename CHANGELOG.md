@@ -215,5 +215,17 @@
 * Fixed /multiclients failing for GMs/CMs on non-staff targets while in RP mode
 
 ### 190904 (4.1.4)
-* Gagged messages are now randomly generated
+* Gagged messages are now randomly generated 
 * Staff get new messages when using /bloodtrail, with (X) added where needed
+
+### (4.2-In progress)
+* Added /make_gm so CMs and mods can log in other players as GMs
+* Improved roll management mechanics
+ - Added dice log commands to retrieve roll history through /dicelog (for one player) and /dicelog_area (for one area)
+ - Roll options are now modifiable from server configurations
+* Reworded notifications for the following mechanics
+ - Rolls failing
+ - Enabling/disabling IC locks
+* Fixed daily passwords switching at 3 pm incorrectly, they now switch correctly and at midnight
+
+ 
