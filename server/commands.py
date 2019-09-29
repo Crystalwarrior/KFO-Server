@@ -5387,6 +5387,8 @@ def ooc_cmd_zone_list(client, arg):
     *Zone 1000 [15] (2, 16-116). Watchers: Phantom (16)
     """
 
+    pass
+
 def ooc_cmd_zone_remove(client, arg):
     """ (STAFF ONLY)
     Remove an area by name or ID from the zone the user is watching.
@@ -5426,7 +5428,7 @@ def ooc_cmd_zone_unwatch(client, arg):
     pass
 
 def ooc_cmd_zone_watch(client, arg):
-     """ (STAFF ONLY)
+    """ (STAFF ONLY)
     Makes the user start watching a zone by ID
     Returns an error if the user is already watching a zone.
 
