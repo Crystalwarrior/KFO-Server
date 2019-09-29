@@ -65,8 +65,8 @@ class ClientManager:
             self.in_rp = False
             self.autopass = False
             self.disemvowel = False
-            self.remove_h = False
             self.disemconsonant = False
+            self.remove_h = False
             self.gimp = False
             self.is_visible = True
             self.multi_ic = None
@@ -91,6 +91,7 @@ class ClientManager:
             self.is_gagged = False
             self.send_deaf_space = False
             self.dicelog = list()
+            self._zone_watched = None
 
             #music flood-guard stuff
             self.mus_counter = 0

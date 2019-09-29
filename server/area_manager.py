@@ -83,6 +83,7 @@ class AreaManager:
             self.last_ic_messages = list()
             self.parties = set()
             self.dicelog = list()
+            self._in_zone = None
 
             self.name = parameters['area']
             self.background = parameters['background']
@@ -733,6 +734,38 @@ class AreaManager:
             self.is_gmlocked = False
             self.is_locked = False
             self.invite_list = {}
+
+        @property
+        def in_zone(self):
+            """
+            Declarator for a public in_zone attribute.
+            """
+
+            return self._in_zone
+
+        @in_zone.setter
+        def in_zone(self, new_zone_value):
+            """
+            Set the in_zone parameter to the given one
+
+            Parameters
+            ----------
+            new_zone_value: ZoneManager.Zone or None
+                New zone the area belongs to.
+
+            Raises
+            ------
+            AreaError:
+                If the area was not part of a zone and new_zone_value is None or,
+                if the area was part of a zone and new_zone_value is not None.
+            """
+
+            if new_zone_value is None and self._in_zone is None:
+                raise AreaError('This area is already not part of a zone.')
+            elif new_zone_value is not None and self._in_zone is not None:
+                raise AreaError('This area is already part of a zone.')
+
+            self._in_zone = new_zone_value
 
         def __repr__(self):
             """

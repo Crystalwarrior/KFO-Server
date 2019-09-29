@@ -5307,6 +5307,141 @@ def ooc_cmd_make_gm(client, arg):
     target.login(client.server.config['gmpass'], target.auth_gm, 'game master')
     client.send_ooc('Logged client {} as a GM.'.format(target.id))
 
+def ooc_cmd_zone(client, arg):
+    """ (STAFF ONLY)
+    Makes a zone that spans the given area range, or just the current area if not given any.
+    Returns an error if the user is already watching some other zone, or if any of the areas to be
+    made part of the zone to be created already belong to some other zone.
+
+    SYNTAX
+    /zone
+    /zone <area_range_start>, <area_range_end>
+
+    PARAMETERS
+    <area_range_start>: Start of area range (inclusive)
+    <area_range_end>: End of area range (inclusive)
+
+    EXAMPLES
+    Assuming the player is in area 0...
+    /zone                :: Creates a zone that has area 0.
+    /zone 16, 116        :: Creates a zone that has areas 16 through 116.
+    """
+
+    pass
+
+def ooc_cmd_zone_add(client, arg):
+    """ (STAFF ONLY)
+    Adds an area by name or ID to the zone the user is watching.
+    Returns an error if the area identifier does not correspond to an area, if the area is part of
+    some other zone, or if the user is not watching a zone.
+
+    SYNTAX
+    /zone_add <area_name>
+    /zone_add <area_id>
+
+    PARAMETERS
+    <area_name>: Name of the area whose door you want to knock.
+    <area_id>: ID of the area whose door you want to knock.
+
+    EXAMPLES
+    /zone_add 0                :: Add area 0 to the zone
+    /zone_add Courtroom, 2     :: Add area "Courtroom, 2" to the zone
+    """
+
+    pass
+
+def ooc_cmd_zone_global(client, arg):
+    """
+    Sends a global message in the OOC chat visible to all users in the zone the user area's belongs
+    to who have not disabled global chat.
+    Returns an error if the user has global chat off, sends an empty message, or is in an area
+    not part of a zone.
+
+    SYNTAX
+    /zone_glabal <message>
+
+    PARAMETERS
+    <message>: Message to be sent
+
+    EXAMPLE
+    /zone_glabal Hello World      :: Sends Hello World to global chat.
+    """
+
+    pass
+
+def ooc_cmd_zone_list(client, arg):
+    """ (STAFF ONLY)
+    Lists all active zones in the server. For each zone, it lists details such as: zone ID,
+    the number of players it has, the areas it contains, and who is watching it.
+    Returns an error if there are no active zones.
+
+    SYNTAX
+    /zone_list
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /zone_list         :: May return something like this:
+    == Active zones ==
+    *Zone 1000 [15] (2, 16-116). Watchers: Phantom (16)
+    """
+
+def ooc_cmd_zone_remove(client, arg):
+    """ (STAFF ONLY)
+    Remove an area by name or ID from the zone the user is watching.
+    Returns an error if the area identifier does not correspond to an area, if the area is not part
+    of the zone the user is watching, or if the user is not watching a zone.
+
+    SYNTAX
+    /zone_remove <area_name>
+    /zone_remove <area_id>
+
+    PARAMETERS
+    <area_name>: Name of the area whose door you want to knock.
+    <area_id>: ID of the area whose door you want to knock.
+
+    EXAMPLES
+    /zone_remove 0                :: Remove area 0 from the zone
+    /zone_remove Courtroom, 2     :: Remove area "Courtroom, 2" from the zone
+    """
+
+    pass
+
+def ooc_cmd_zone_unwatch(client, arg):
+    """ (STAFF ONLY)
+    Makes the user no longer watch the zone they are watching.
+    Returns an error if the user is not watching a zone.
+
+    SYNTAX
+    /zone_unwatch
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /zone_unwatch           :: Makes the user no longer watch their zone
+    """
+
+    pass
+
+def ooc_cmd_zone_watch(client, arg):
+     """ (STAFF ONLY)
+    Makes the user start watching a zone by ID
+    Returns an error if the user is already watching a zone.
+
+    SYNTAX
+    /zone_watch <zone_ID>
+
+    PARAMETERS
+    <zone_ID>: Identifier of zone to watch
+
+    EXAMPLES
+    /zone_watch 1000       :: Makes the user watch zone 1000
+    """
+
+    pass
+
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

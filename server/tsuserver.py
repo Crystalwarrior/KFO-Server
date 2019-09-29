@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a7'
-        self.internal_version = '190925a'
+        self.segment_version = 'a8'
+        self.internal_version = '190929a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -247,23 +247,28 @@ class TsuserverDR:
             if daily_gmpass not in self.config or not self.config[daily_gmpass]:
                 self.config[daily_gmpass] = None
 
-        if 'music_change_floodguard' not in self.config:
-            self.config['music_change_floodguard'] = {'times_per_interval': 1, 'interval_length': 0, 'mute_length': 0}
-        # Backwards compatibility checks
-        if 'spectator_name' not in self.config:
-            self.config['spectator_name'] = 'SPECTATOR'
-        if 'showname_max_length' not in self.config:
-            self.config['showname_max_length'] = 30
-        if 'sneak_handicap' not in self.config:
-            self.config['sneak_handicap'] = 5 # Seconds
-        if 'blackout_background' not in self.config:
-            self.config['blackout_background'] = 'Blackout_HD'
-        if 'discord_link' not in self.config:
-            self.config['discord_link'] = 'None'
-        if 'default_area_description' not in self.config:
-            self.config['default_area_description'] = 'No description.'
-        if 'party_lights_timeout' not in self.config:
-            self.config['party_lights_timeout'] = 10
+        # Default values to fill in config.yaml if not present
+        defaults_for_tags = {'discord_link': None,
+                             'max_numdice': 20,
+                             'max_numfaces': 11037,
+                             'max_modifier_length': 12,
+                             'max_acceptable_term': 22074,
+                             'def_numdice': 1,
+                             'def_numfaces': 6,
+                             'def_modifier': '',
+                             'blackout_background': 'Blackout_HD',
+                             'default_area_description': 'No description.',
+                             'party_lights_timeout': 10,
+                             'showname_max_length': 30,
+                             'sneak_handicap': 5,
+                             'spectator_name': 'SPECTATOR',
+                             'music_change_floodguard': {'times_per_interval': 1,
+                                                         'interval_length': 0,
+                                                         'mute_length': 0}}
+
+        for (tag, value) in defaults_for_tags.items():
+            if tag not in self.config:
+                self.config[tag] = value
 
         # Check that all passwords were generated and that they are unique
         passwords = ['guardpass',

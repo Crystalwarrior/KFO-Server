@@ -67,6 +67,25 @@ class ZoneManager:
 
             raise NotImplementedError
 
+        def add_areas(self, areas):
+            """
+            Add a set of areas to the zone area set if ALL areas were not part of a zone already.
+
+            This also sets the zone of the given areas to the current zone.
+
+            Parameters
+            ----------
+            areas: set of AreaManager.Area
+                Areas to add to the zone area set.
+
+            Raises
+            ------
+            KeyError:
+                If any of the given areas is already a part of some zone area set.
+            """
+
+            raise NotImplementedError
+
         def remove_area(self, area):
             """
             Remove an area from the zone area set if it was there.
@@ -212,6 +231,23 @@ class ZoneManager:
         ------
         ZoneError:
             If zone_tag is not a zone or zone identifier.
+        """
+
+        raise NotImplementedError
+
+    def areas_in_some_zone(self, areas):
+        """
+        Return all of the areas among the given areas that are in a zone.
+
+        Parameters
+        ----------
+        areas: set of AreaManager.Area
+            Areas to check if they belong in a zone.
+
+        Returns
+        -------
+        set of AreaManager.Area
+            All the areas among the given areas that are in a zone.
         """
 
         raise NotImplementedError
