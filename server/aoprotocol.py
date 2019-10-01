@@ -469,69 +469,9 @@ class AOProtocol(asyncio.Protocol):
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
             for c in target_area.clients:
-                # 0 = msg_type
-                # 1 = pre
-                # 2 = folder
-                # 3 = anim
-                # 4 = msg
-                # 5 = pos
-                # 6 = sfx
-                # 7 = anim_type
-                # 8 = cid
-                # 9 = sfx_delay
-                # 10 = button
-                # 11 = self.client.evi_list[evidence]
-                # 12 = flip
-                # 13 = ding
-                # 14 = color
-                # 15 = showname
-
-                # self.client is the client who sent the IC message
-                # c is who is receiving the IC message at this particular moment
-
                 to_send = [msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid, sfx_delay,
-                           button, self.client.evi_list[evidence], flip, ding, color, '']
-
-                # Change "character" parts of IC port
-                if c.is_blind:
-                    to_send[3] = '../../misc/blank'
-                    c.send_command('BN', self.server.config['blackout_background'])
-                elif c == self.client and c.first_person:
-                    last_area, last_args = c.last_ic_notme
-                    # Check that the last received message exists and comes from the current area
-                    if area_id == last_area and last_args:
-                        to_send[2] = last_args[2]
-                        to_send[3] = last_args[3]
-                        to_send[5] = last_args[5]
-                        to_send[7] = last_args[7]
-                        to_send[12] = last_args[12]
-                    # Otherwise, send blank
-                    else:
-                        to_send[3] = '../../misc/blank'
-
-                # Change "message" parts of IC port
-                allowed_starters = ('(', '*', '[')
-
-                # Nerf message for deaf
-                if c.is_deaf and to_send[4]:
-                    if (not to_send[4].startswith(allowed_starters) or
-                        self.client.is_gagged and gag_replaced):
-                        to_send[4] = '(Your ears are ringing)'
-                        if c.send_deaf_space:
-                            to_send[4] = to_send[4] + ' '
-                        c.send_deaf_space = not c.send_deaf_space
-                        c.send_gagged_space = False # doesn't matter at this point
-
-                if c.is_blind and c.is_deaf:
-                    to_send[15] = '???'
-                elif c.show_shownames:
-                    to_send[15] = self.client.showname
-
-                # Done modifying IC message for c
-                c.send_command('MS', *to_send)
-
-                if c != self.client:
-                    c.last_ic_notme = area_id, to_send
+                       button, self.client.evi_list[evidence], flip, ding, color, '']
+                c.send_ic(self.client, to_send, gag_replaced=gag_replaced)
 
             target_area.set_next_msg_delay(len(msg))
 

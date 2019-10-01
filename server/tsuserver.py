@@ -37,13 +37,15 @@ from server.exceptions import ServerError
 from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
 
+
+
 class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a8.1'
-        self.internal_version = '190929b'
+        self.segment_version = 'a9'
+        self.internal_version = '190930a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -677,7 +679,7 @@ class TsuserverDR:
                       self.get_task_attr(client, ['as_day_cycle'], 'just_unpaused')):
                     client.send_ooc('Your day cycle in areas {} through {} has been unpaused.'
                                     .format(area_1, area_2))
-                    client.send_ooc_others('The day cycle initiated by {} in areas {} through {} has been unpaused.'
+                    client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through {} has been unpaused.'
                                            .format(client.name, area_1, area_2), is_staff=True)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_unpaused', False)
@@ -710,7 +712,7 @@ class TsuserverDR:
                 if not is_paused:
                     client.send_ooc('Your day cycle in areas {} through {} has been canceled.'
                                     .format(area_1, area_2))
-                    client.send_ooc_others('The day cycle initiated by {} in areas {} through {} has been canceled.'
+                    client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through {} has been canceled.'
                                            .format(client.name, area_1, area_2), is_staff=True)
                     targets = [c for c in self.client_manager.clients if c == client or
                                area_1 <= c.area.id <= area_2]
@@ -725,7 +727,7 @@ class TsuserverDR:
                                                    '{0:02d}'.format(int(minute)))
                     client.send_ooc('Your day cycle in areas {} through {} has been paused at {}.'
                                     .format(area_1, area_2, time_at_pause))
-                    client.send_ooc_others('The day cycle initiated by {} in areas {} through {} has been paused at {}.'
+                    client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through {} has been paused at {}.'
                                            .format(client.name, area_1, area_2, time_at_pause),
                                            is_staff=True)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_paused', True)

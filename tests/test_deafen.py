@@ -265,20 +265,7 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
         self.c2.assert_ooc('Sent global IC message "Hi." to areas {} through {}.'
                            .format(self.a0_name, self.a1_name), over=True)
 
-    def test_02_noknock(self):
-        """
-        Situation: C3 uses /knock on area 0. C0 gets nothing.
-        """
-
-        self.c3.ooc('/knock {}'.format(0))
-        self.c0.assert_no_ooc()
-        self.c1.assert_ooc('(X) {} knocked on the door to area {} in area {} ({}).'
-                           .format(self.c3_dname, self.a0_name, self.a5_name, 5), over=True)
-        self.c2.assert_ooc('(X) {} knocked on the door to area {} in area {} ({}).'
-                           .format(self.c3_dname, self.a0_name, self.a5_name, 5), over=True)
-        self.c3.assert_ooc('You knocked on the door to area {}.'.format(self.a0_name), over=True)
-
-    def test_03_screamringsears(self):
+    def test_02_screamringsears(self):
         """
         Situation: C3 in another area screams. C0 gets nerfed message.
         """
@@ -290,3 +277,23 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
         self.c1.assert_ooc('(X) {} screamed "Hi" ({}).'.format(self.c3_dname, 5), over=True)
         self.c2.assert_ooc('(X) {} screamed "Hi" ({}).'.format(self.c3_dname, 5), over=True)
         self.c3.assert_ooc('You screamed "Hi"', over=True)
+
+    def test_03_noknock(self):
+        """
+        Situation: C0 moves out of lobby. C3 uses /knock on C0's area. C0 gets nothing.
+        """
+
+        self.c0.move_area(6)
+
+        self.c3.ooc('/knock {}'.format(6))
+        self.c0.assert_no_ooc()
+        self.c0.assert_ic('', ding=0, over=True)
+        self.c1.assert_ooc('(X) {} knocked on the door to area {} in area {} ({}).'
+                           .format(self.c3_dname, self.a6_name, self.a5_name, 5), over=True)
+        self.c1.assert_no_ic()
+        self.c2.assert_ooc('(X) {} knocked on the door to area {} in area {} ({}).'
+                           .format(self.c3_dname, self.a6_name, self.a5_name, 5), over=True)
+        self.c2.assert_no_ic()
+        self.c3.assert_ooc('You knocked on the door to area {}.'.format(self.a6_name),
+                           ooc_over=True)
+        self.c3.assert_ic('', ding=7, over=True)

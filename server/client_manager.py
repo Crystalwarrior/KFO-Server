@@ -206,6 +206,75 @@ class ClientManager:
 
             return cond
 
+        def send_ic(self, sender, to_send, gag_replaced=False, bypass_checks=False):
+            # to_send is a list whose indices map to the following values
+            # 0 = msg_type
+            # 1 = pre
+            # 2 = folder
+            # 3 = anim
+            # 4 = msg
+            # 5 = pos
+            # 6 = sfx
+            # 7 = anim_type
+            # 8 = cid
+            # 9 = sfx_delay
+            # 10 = button
+            # 11 = self.client.evi_list[evidence]
+            # 12 = flip
+            # 13 = ding
+            # 14 = color
+            # 15 = showname
+
+            # sender is the client who sent the IC message
+            # self is who is receiving the IC message at this particular moment
+
+            if not bypass_checks:
+                # Change "character" parts of IC port
+                if self.is_blind:
+                    to_send[3] = '../../misc/blank'
+                    self.send_command('BN', self.server.config['blackout_background'])
+                elif sender == self and self.first_person:
+                    last_area, last_args = self.last_ic_notme
+                    # Check that the last received message exists and comes from the current area
+                    if self.area.id == last_area and last_args:
+                        to_send[2] = last_args[2]
+                        to_send[3] = last_args[3]
+                        to_send[5] = last_args[5]
+                        to_send[7] = last_args[7]
+                        to_send[12] = last_args[12]
+                    # Otherwise, send blank
+                    else:
+                        to_send[3] = '../../misc/blank'
+
+                # Change "message" parts of IC port
+                allowed_starters = ('(', '*', '[')
+
+                # Nerf message for deaf
+                if self.is_deaf and to_send[4]:
+                    if (not to_send[4].startswith(allowed_starters) or
+                        sender.is_gagged and gag_replaced):
+                        to_send[4] = '(Your ears are ringing)'
+                        if self.send_deaf_space:
+                            to_send[4] = to_send[4] + ' '
+                        self.send_deaf_space = not self.send_deaf_space
+                        self.send_gagged_space = False # doesn't matter at this point
+
+                if self.is_blind and self.is_deaf:
+                    to_send[15] = '???'
+                elif self.show_shownames and sender:
+                    to_send[15] = sender.showname
+
+                if sender != self:
+                    self.last_ic_notme = self.area.id, to_send
+
+            # Done modifying IC message
+            self.send_command('MS', *to_send)
+
+        def send_ic_narration(self, msg, ding=0):
+            to_send = [0, '-', '<NOCHAR>', '../../misc/blank', msg, 'jud', 0, 0, 0, 0, 0, 0, 0,
+                       ding, 0, ' ']
+            self.send_ic(None, to_send, bypass_checks=True)
+
         def disconnect(self):
             self.transport.close()
 

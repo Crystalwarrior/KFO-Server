@@ -2116,9 +2116,10 @@ def ooc_cmd_kickself(client, arg):
 def ooc_cmd_knock(client, arg):
     """
     'Knock' on some area's door, sending a notification to users in said area.
-    Returns an error if the area could not be found, if the user is already in the target area or
+    Returns an error if the area could not be found, if the user is already in the target area,
     if the area cannot be reached as per the DEFAULT server configuration (as users may lock
-    passages, but that does not mean the door no longer exists, usually).
+    passages, but that does not mean the door no longer exists, usually), or if the user is either
+    in an area marked as lobby or attempting to knock the door to a lobby area.
 
     SYNTAX
     /knock <area_name>
@@ -2148,6 +2149,10 @@ def ooc_cmd_knock(client, arg):
     # Filter out edge cases
     if target_area.name == client.area.name:
         raise ClientError('You cannot knock on the door of your current area.')
+    if client.area.lobby_area:
+        raise ClientError('You cannot knock doors from a lobby area.')
+    if target_area.lobby_area:
+        raise ClientError('You cannot knock the door to a lobby area.')
 
     if client.area.default_reachable_areas != {'<ALL>'} and \
     target_area.name not in client.area.default_reachable_areas | client.area.reachable_areas:
@@ -2160,6 +2165,10 @@ def ooc_cmd_knock(client, arg):
     client.send_ooc_others('(X) {} knocked on the door to area {} in area {} ({}).'
                            .format(client.displayname, target_area.name, client.area.name,
                                    client.area.id), is_staff=True)
+    for c in client.area.clients:
+        c.send_ic_narration('', ding=0 if c.is_deaf else 7)
+    for c in target_area.clients:
+        c.send_ic_narration('', ding=0 if c.is_deaf else 7)
 
 def ooc_cmd_lasterror(client, arg):
     """ (MOD ONLY)
@@ -5271,10 +5280,8 @@ def ooc_cmd_8ball(client, arg):
                       .format(client.area.id, client.get_char_name(), flip), client)
 
 def ooc_cmd_narrate(client, arg):
-    to_send = [0, '-', '<NOCHAR>', '../../misc/blank', arg, 'jud', 0, 0, +0, 0, 0, 0, 0, 0, 0, ' ']
-
     for c in client.area.clients:
-        c.send_command('MS', *to_send)
+        c.send_ic_narration(arg)
 
 def ooc_cmd_dicelog(client, arg):
     Constants.command_assert(client, arg, is_staff=True)
