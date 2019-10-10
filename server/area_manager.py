@@ -189,7 +189,7 @@ class AreaManager:
 
         def broadcast_ooc(self, msg):
             """
-            Send an OOC server message to this client.
+            Send an OOC server message to the clients in the area.
 
             Parameters
             ----------

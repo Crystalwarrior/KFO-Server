@@ -173,7 +173,7 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_ooc_others('Banned client with HDID {} and IPID {} attempted to '
                                             'join the server but was refused entrance.'
                                             .format(self.client.hdid, self.client.ipid),
-                                            pred=lambda c: c.is_mod)
+                                            pred=lambda c: c.is_mod or c.is_cm)
                 self.client.send_command('BD')
                 self.client.disconnect()
                 return
@@ -469,9 +469,9 @@ class AOProtocol(asyncio.Protocol):
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
             for c in target_area.clients:
-                to_send = [msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid, sfx_delay,
+                ic_params = [msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid, sfx_delay,
                        button, self.client.evi_list[evidence], flip, ding, color, '']
-                c.send_ic(self.client, to_send, gag_replaced=gag_replaced)
+                c.send_ic(ic_params=ic_params, sender=self.client, gag_replaced=gag_replaced)
 
             target_area.set_next_msg_delay(len(msg))
 

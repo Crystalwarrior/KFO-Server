@@ -44,8 +44,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a9'
-        self.internal_version = '190930a'
+        self.segment_version = 'a10'
+        self.internal_version = '191010a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -447,6 +447,11 @@ class TsuserverDR:
             if pred(client):
                 client.send_command(cmd, *args)
 
+    def make_all_clients_do(self, function, *args, pred=lambda x: True, **kwargs):
+        for client in self.client_manager.clients:
+            if pred(client):
+                getattr(client, function)(*args, **kwargs)
+
     def send_error_report(self, client, cmd, args, ex):
         """
         In case of an error caused by a client packet, send error report to user, notify moderators
@@ -474,7 +479,7 @@ class TsuserverDR:
         info += '\r\n========='
         client.send_ooc(info)
         client.send_ooc_others('Client {} triggered a Python error through a client packet. '
-                               'Do /lasterror to take a look.'.format(client.id),
+                               'Do /lasterror to take a look at it.'.format(client.id),
                                pred=lambda c: c.is_mod)
 
         # Print complete traceback to console

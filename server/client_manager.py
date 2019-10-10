@@ -117,22 +117,26 @@ class ClientManager:
             else:
                 self.send_raw_message('{}#%'.format(command))
 
-        def send_ooc(self, msg, allow_empty=False, is_staff=None, in_area=None, pred=None,
-                     not_to=None, to_blind=None, to_deaf=None):
+        def send_ooc(self, msg, username=None, allow_empty=False, is_staff=None, in_area=None,
+                     pred=None, not_to=None, to_blind=None, to_deaf=None):
             if not allow_empty and not msg:
                 return
+            if username is None:
+                username = self.server.config['hostname']
 
             cond = self._build_cond(is_staff=is_staff, in_area=in_area, pred=pred, not_to=not_to,
                                     to_blind=to_blind, to_deaf=to_deaf)
 
             if cond(self):
-                self.send_command('CT', self.server.config['hostname'], msg)
+                self.send_command('CT', username, msg)
 
-        def send_ooc_others(self, msg, allow_empty=False, is_staff=None, in_area=None, pred=None,
-                            not_to=None, to_blind=None, to_deaf=None, username=None):
+        def send_ooc_others(self, msg, username=None, allow_empty=False, is_staff=None,
+                            in_area=None, pred=None, not_to=None, to_blind=None, to_deaf=None):
             if not allow_empty and not msg:
                 return
 
+            if pred is None:
+                pred = lambda x: True
             if not_to is None:
                 not_to = set()
             if username is None:
@@ -141,7 +145,8 @@ class ClientManager:
             cond = self._build_cond(is_staff=is_staff, in_area=in_area, pred=pred,
                                     not_to=not_to.union({self}), to_blind=to_blind,
                                     to_deaf=to_deaf)
-            self.server.send_all_cmd_pred('CT', username, msg, pred=cond)
+            self.server.make_all_clients_do("send_ooc", msg, pred=cond, allow_empty=allow_empty,
+                                            username=username)
 
         def _build_cond(self, is_staff=None, is_mod=None, in_area=None, pred=None, not_to=None,
                         to_blind=None, to_deaf=None):
@@ -206,7 +211,9 @@ class ClientManager:
 
             return cond
 
-        def send_ic(self, sender, to_send, gag_replaced=False, bypass_checks=False):
+        def send_ic(self, ic_params=None, sender=None, bypass_replace=False, pred=None, not_to=None,
+                    gag_replaced=False, is_staff=None, in_area=None, to_blind=None, to_deaf=None,
+                    msg=None, ding=None):
             # to_send is a list whose indices map to the following values
             # 0 = msg_type
             # 1 = pre
@@ -228,7 +235,34 @@ class ClientManager:
             # sender is the client who sent the IC message
             # self is who is receiving the IC message at this particular moment
 
-            if not bypass_checks:
+            # Assert correct call to the function
+            if ic_params is None and msg is None:
+                raise ValueError('Expected message.')
+
+            # Fill in defaults
+            # Expected behavior is as follows:
+            #  If ic_params is None, then the sent IC message will only include custom details
+            #  about the ding and the message, everything else is fixed. However, sender details
+            #  are considered when replacing the parameters based on sender/receiver's properties
+            #  If ic_params is not None, then the sent IC message will use the parameters given in
+            #  ic_params, and use the properties of sender to replace the parameters if needed.
+
+            if ic_params is None:
+                to_send = [0, '-', '<NOCHAR>', '../../misc/blank', msg, 'jud', 0, 0, 0, 0, 0,
+                           0, 0, ding, 0, ' ']
+            else:
+                to_send = ic_params.copy()
+                if msg is not None:
+                    to_send[4] = msg
+
+            # Check if receiver is actually meant to receive the message. Bail out early if not.
+            cond = self._build_cond(is_staff=is_staff, in_area=in_area, pred=pred, not_to=not_to,
+                                    to_blind=to_blind, to_deaf=to_deaf)
+            if not cond(self):
+                return
+
+            # Change the message to account for receiver's properties
+            if not bypass_replace:
                 # Change "character" parts of IC port
                 if self.is_blind:
                     to_send[3] = '../../misc/blank'
@@ -259,21 +293,31 @@ class ClientManager:
                         self.send_deaf_space = not self.send_deaf_space
                         self.send_gagged_space = False # doesn't matter at this point
 
-                if self.is_blind and self.is_deaf:
+                if self.is_blind and self.is_deaf and sender:
                     to_send[15] = '???'
                 elif self.show_shownames and sender:
                     to_send[15] = sender.showname
 
-                if sender != self:
-                    self.last_ic_notme = self.area.id, to_send
-
             # Done modifying IC message
+            # Now send it
+            if sender != self:
+                self.last_ic_notme = self.area.id, to_send
+
             self.send_command('MS', *to_send)
 
-        def send_ic_narration(self, msg, ding=0):
-            to_send = [0, '-', '<NOCHAR>', '../../misc/blank', msg, 'jud', 0, 0, 0, 0, 0, 0, 0,
-                       ding, 0, ' ']
-            self.send_ic(None, to_send, bypass_checks=True)
+        def send_ic_others(self, ic_params=None, sender=None, bypass_replace=False, pred=None,
+                           not_to=None, gag_replaced=False, is_staff=None, in_area=None,
+                           to_blind=None, to_deaf=None, msg=None, ding=None):
+            if not_to is None:
+                not_to = {self}
+            else:
+                not_to = not_to.union({self})
+
+            for c in self.server.client_manager.clients:
+                c.send_ic(ic_params=None, sender=sender, bypass_replace=bypass_replace, pred=pred,
+                          not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
+                          in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
+                          msg=msg, ding=ding)
 
         def disconnect(self):
             self.transport.close()

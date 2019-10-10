@@ -183,6 +183,7 @@ class _TestClientManager(ClientManager):
             self.received_ooc = list()
             self.received_ic = list()
             self.last_ic = None, None
+            self.discarded_ic_somewhere = False
 
         def disconnect(self, assert_no_outstanding=False):
             """ Overwrites client_manager.ClientManager.Client.disconnect """
@@ -296,7 +297,6 @@ class _TestClientManager(ClientManager):
             elif discard_packets:
                 self.discard_all()
 
-
         def check_match(self, exp_args, act_args, allow_partial_match=False):
             assert len(exp_args) == len(act_args), (len(exp_args), len(act_args))
 
@@ -357,7 +357,7 @@ class _TestClientManager(ClientManager):
                        .format(self))
                 err += ('\r\nCurrent packets: {}'
                         .format('\r\n*'.join([str(x) for x in self.received_packets])))
-                assert(len(self.received_packets) == 0), err
+                assert len(self.received_packets) == 0, err
             elif ooc_over or ic_over:
                 # Assumes actual over checks are done manually
                 pass
@@ -393,7 +393,9 @@ class _TestClientManager(ClientManager):
                 self.assert_packet('CT', (user, message), over=over, ooc_over=ooc_over,
                                             somewhere=somewhere)
 
-            assert(len(self.received_ooc) > 0)
+            err = 'Expected OOC messages, found none.'
+            assert len(self.received_ooc) > 0, err
+
             self.search_match([user, message], self.received_ooc, somewhere=somewhere)
 
             if over or ooc_over:
@@ -402,7 +404,9 @@ class _TestClientManager(ClientManager):
                         .format('\r\n*'.join([str(x) for x in self.received_ooc])))
                 assert len(self.received_ooc) == 0, err
             else:
-                assert(len(self.received_ooc) != 0)
+                err = ('Expected more OOC messages, found none (did you forget to put over=True '
+                       'or ooc_over=True?).')
+                assert len(self.received_ooc) != 0, err
 
         def assert_no_ooc(self):
             err = ('{} expected no more OOC messages, found {}'
@@ -459,11 +463,14 @@ class _TestClientManager(ClientManager):
             if check_MS_packet:
                 self.assert_packet('MS', None, over=over, ic_over=ic_over)
 
-            assert(len(self.received_ic) > 0)
+            err = 'Expected IC messages, found none.'
+            if self.discarded_ic_somewhere:
+                err = (err + ' \nWARNING: Some IC messages were discarded sometime after the '
+                       'last assert_ic call due to the client receiving repeated IC messages.')
+            assert len(self.received_ic) > 0, err
+
             params = self.received_ic.pop(0)
-
             message = self.convert_word_to_symbol(message)
-
             param_ids = {'msg_type': 0,
                          'pre': 1,
                          'folder': 2,
@@ -491,6 +498,7 @@ class _TestClientManager(ClientManager):
 
             if over or ic_over:
                 assert(len(self.received_ic) == 0)
+                self.discarded_ic_somewhere = False
             else:
                 assert(len(self.received_ic) != 0)
 
@@ -570,9 +578,14 @@ class _TestClientManager(ClientManager):
                 # 12 = flip
                 # 13 = ding
                 # 14 = color
+                # 15 = showname
+                if not (len(args) == 16):
+                    raise ValueError('Malformed MS packet for an IC message {}'.format(args))
                 if args[2] != self.last_ic[0] or args[4] != self.last_ic[1]:
                     self.received_ic.append(args)
                     self.last_ic = args[2], args[4]
+                else:
+                    self.discarded_ic_somewhere = True
             elif command_type == 'ZZ': # Mod call
                 pass
             else:

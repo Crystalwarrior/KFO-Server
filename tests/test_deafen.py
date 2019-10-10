@@ -240,9 +240,25 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
         cls.c1.discard_all()
         cls.c2.discard_all()
 
-    def test_01_globalicringssears(self):
+    def test_01_screamringsears(self):
         """
-        Situation: C3 uses /globalic to talk to people in area 0. C0 gets (Your ears are ringing).
+        Situation: C3 in another area screams. C0 gets nerfed message.
+        """
+
+        self.area5.scream_range = set([self.area0.name])
+
+        self.c3.ooc('/scream Hi')
+        self.c0.assert_ooc('Your ears are ringing.', ooc_over=True)
+        self.c0.assert_ic('', over=True)
+        self.c1.assert_ooc('(X) {} screamed "Hi" ({}).'.format(self.c3_dname, 5), ooc_over=True)
+        self.c1.assert_ic('Hi', over=True)
+        self.c2.assert_ooc('(X) {} screamed "Hi" ({}).'.format(self.c3_dname, 5), over=True)
+        self.c2.assert_no_ic() # C2 is not in scream range
+        self.c3.assert_ooc('You screamed "Hi".', over=True)
+
+    def test_02_globalicringssears(self):
+        """
+        Situation: C2 uses /globalic to talk to people in area 0. C0 gets (Your ears are ringing).
         """
 
         self.c2.ooc('/globalic 0')
@@ -264,19 +280,6 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
         self.c1.assert_ic('Hi.', folder=self.c2_cname, over=True)
         self.c2.assert_ooc('Sent global IC message "Hi." to areas {} through {}.'
                            .format(self.a0_name, self.a1_name), over=True)
-
-    def test_02_screamringsears(self):
-        """
-        Situation: C3 in another area screams. C0 gets nerfed message.
-        """
-
-        self.area5.scream_range = set([self.area0.name])
-
-        self.c3.ooc('/scream Hi')
-        self.c0.assert_ooc('Your ears are ringing.', over=True)
-        self.c1.assert_ooc('(X) {} screamed "Hi" ({}).'.format(self.c3_dname, 5), over=True)
-        self.c2.assert_ooc('(X) {} screamed "Hi" ({}).'.format(self.c3_dname, 5), over=True)
-        self.c3.assert_ooc('You screamed "Hi"', over=True)
 
     def test_03_noknock(self):
         """

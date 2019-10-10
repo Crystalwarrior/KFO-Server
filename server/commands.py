@@ -2165,10 +2165,11 @@ def ooc_cmd_knock(client, arg):
     client.send_ooc_others('(X) {} knocked on the door to area {} in area {} ({}).'
                            .format(client.displayname, target_area.name, client.area.name,
                                    client.area.id), is_staff=True)
+
     for c in client.area.clients:
-        c.send_ic_narration('', ding=0 if c.is_deaf else 7)
+        c.send_ic(msg='', ding=0 if c.is_deaf else 7)
     for c in target_area.clients:
-        c.send_ic_narration('', ding=0 if c.is_deaf else 7)
+        c.send_ic(msg='', ding=0 if c.is_deaf else 7)
 
 def ooc_cmd_lasterror(client, arg):
     """ (MOD ONLY)
@@ -3765,9 +3766,10 @@ def ooc_cmd_rpmode(client, arg):
 def ooc_cmd_scream(client, arg):
     """
     Sends a message in the OOC chat visible to all staff members and non-deaf users that are in an
-    area whose screams are reachable from the sender's area.
+    area whose screams are reachable from the sender's area. It also sends an IC message with the
+    scream message.
     If the user is gagged, a special message is instead sent to non-deaf players in the same area.
-    If a recipient is deaf, a special message is instead received.
+    If a recipient is deaf, they receive a special OOC message and a blank IC message.
     Staff always get normal messages.
     Returns an error if the user has global chat off or sends an empty message.
 
@@ -3787,7 +3789,8 @@ def ooc_cmd_scream(client, arg):
         raise ArgumentError("You cannot send an empty message.")
 
     if not client.is_gagged:
-        client.send_ooc('You screamed "{}"'.format(arg))
+        client.send_ooc('You screamed "{}".'.format(arg))
+
         client.send_ooc_others(arg, username="<dollar>SCREAM[{}]".format(client.displayname),
                                is_staff=False, to_deaf=False,
                                pred=lambda c: (not c.muted_global and
@@ -3800,10 +3803,20 @@ def ooc_cmd_scream(client, arg):
         client.send_ooc_others('(X) {} screamed "{}" ({}).'
                                .format(client.displayname, arg, client.area.id),
                                is_staff=True, pred=lambda c: not c.muted_global)
+
+        client.send_ic_others(msg=arg, to_deaf=False,
+                              pred=lambda c: (not c.muted_global and
+                                              (c.area == client.area or
+                                               c.area.name in client.area.scream_range)))
+        client.send_ic_others(msg='', to_deaf=True,
+                              pred=lambda c: (not c.muted_global and
+                                              (c.area == client.area or
+                                               c.area.name in client.area.scream_range)))
     else:
         client.send_ooc('You attempted to scream but you have no mouth.')
         client.send_ooc_others('You hear some grunting noises.', is_staff=False, to_deaf=False,
                                in_area=True, pred=lambda c: not c.muted_global)
+        # Deaf players get no notification on a gagged player screaming
         client.send_ooc_others('(X) {} attempted to scream "{}" while gagged ({}).'
                                .format(client.displayname, arg, client.area.id),
                                is_staff=True, pred=lambda c: not c.muted_global)
@@ -5281,7 +5294,7 @@ def ooc_cmd_8ball(client, arg):
 
 def ooc_cmd_narrate(client, arg):
     for c in client.area.clients:
-        c.send_ic_narration(arg)
+        c.send_ic(msg=arg, as_narration=True)
 
 def ooc_cmd_dicelog(client, arg):
     Constants.command_assert(client, arg, is_staff=True)

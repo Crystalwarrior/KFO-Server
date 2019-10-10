@@ -258,8 +258,8 @@ Additional notes are listed at the end of the command list.
 * **clock_unpause** "ID"
 	- Unpauses the day cycle initiated by the target or yourself if not given a target.
 * **deafen** "ID"
-    - Changes the deaf status of a target.
-    - Deaf players will be unable to read IC messages properly or receive other audio cues from commands such as /knock, /scream, etc.
+    - Changes the deafened status of a target.
+    - Deafened players will be unable to read IC messages properly or receive other audio cues from commands such as /knock, /scream, etc.
 * **follow** "ID"
     - Starts following a target. If the target changes areas, you will automatically follow them there.
 * **gag** "ID"
@@ -366,7 +366,9 @@ Additional notes are listed at the end of the command list.
     - Mutes the target from all OOC actions.
 * **ooc_unmute** "OOC name" 
     - Unmutes the target.
-* **showname_list**
+* **showname_area**
+	- Similar to /getarea, but lists shownames along with character names as well as their IPIDs.
+* **showname_areas**
 	- Similar to /getareas, but lists shownames along with character names as well as their IPIDs.
 * **unblockdj** "target"
     - Allows the target to change music again.
@@ -437,7 +439,7 @@ Additional notes are listed at the end of the command list.
 * **lasterror**
 	- (DEBUG) Obtains the latest uncaught error as a result of a client packet. This message emulates what is output on the server console.
 * **reload_commands**
-	- (DEBUG) Reloads the commands.py file.
+	- (DEBUG) Reloads the `server/commands.py` file.
 
 ### Deprecated commands and aliases
 Commands marked with (D) are marked as deprecated. They will continue to serve their original purpose as usual for three months after the stated date. If an alternative command name is given to a deprecated command, please try and use that command instead. 
