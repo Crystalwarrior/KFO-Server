@@ -35,6 +35,42 @@ class _Unittest(unittest.TestCase):
         cls.a6_name = cls.area6.name
         cls.a7_name = cls.area7.name
 
+    @classmethod
+    def setUpClients(cls, num_clients):
+        cls.server.make_clients(num_clients)
+
+        cls.c0 = cls.clients[0]
+        cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
+        cls.c0_dname = cls.c0.displayname
+        if num_clients == 1: return
+
+        cls.c1 = cls.clients[1]
+        cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
+        cls.c1_dname = cls.c1.displayname
+        if num_clients == 2: return
+
+        cls.c2 = cls.clients[2]
+        cls.c2.showname = 'Phantom'
+        cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
+        cls.c2_dname = cls.c2.displayname
+        if num_clients == 3: return
+
+        cls.c3 = cls.clients[3]
+        cls.c3.showname = 'The Judge'
+        cls.c3_cname = cls.c3.get_char_name() #'Monokuma_HD'
+        cls.c3_dname = cls.c3.displayname
+        if num_clients == 4: return
+
+        cls.c4 = cls.clients[4]
+        cls.c4.showname = 'aaaa'
+        cls.c4_cname = cls.c4.get_char_name() #'SPECTATOR'
+        cls.c4_dname = cls.c4.displayname
+        if num_clients == 5: return
+
+        cls.c5 = cls.clients[5]
+        cls.c5_cname = cls.c5.get_char_name() #'SPECTATOR'
+        cls.c5_dname = cls.c5.displayname
+
     def list2reason(self, exc_list):
         if exc_list and exc_list[-1][0] is self:
             return exc_list[-1][1]
@@ -92,61 +128,25 @@ class _TestSituation3(_Unittest):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.server.make_clients(3)
-        cls.c0 = cls.clients[0]
-        cls.c1 = cls.clients[1]
-        cls.c2 = cls.clients[2]
-        cls.c2.showname = 'Phantom'
-        cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
-        cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
-        cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
-        cls.c0_dname = cls.c0.displayname
-        cls.c1_dname = cls.c1.displayname
-        cls.c2_dname = cls.c2.displayname
+        super().setUpClients(3)
 
 class _TestSituation4(_Unittest):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.server.make_clients(4)
-        cls.c0 = cls.clients[0]
-        cls.c1 = cls.clients[1]
-        cls.c2 = cls.clients[2]
-        cls.c3 = cls.clients[3]
-        cls.c2.showname = 'Phantom'
-        cls.c3.showname = 'The Judge'
-        cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
-        cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
-        cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
-        cls.c3_cname = cls.c3.get_char_name() #'Monokuma_HD'
-        cls.c0_dname = cls.c0.displayname
-        cls.c1_dname = cls.c1.displayname
-        cls.c2_dname = cls.c2.displayname
-        cls.c3_dname = cls.c3.displayname
+        super().setUpClients(4)
 
 class _TestSituation5(_Unittest):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.server.make_clients(5)
-        cls.c0 = cls.clients[0]
-        cls.c1 = cls.clients[1]
-        cls.c2 = cls.clients[2]
-        cls.c3 = cls.clients[3]
-        cls.c4 = cls.clients[4]
-        cls.c2.showname = 'Phantom'
-        cls.c3.showname = 'The Judge'
-        cls.c4.showname = 'aaaa'
-        cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
-        cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
-        cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
-        cls.c3_cname = cls.c3.get_char_name() #'Monokuma_HD'
-        cls.c4_cname = cls.c4.get_char_name() #'SPECTATOR'
-        cls.c0_dname = cls.c0.displayname
-        cls.c1_dname = cls.c1.displayname
-        cls.c2_dname = cls.c2.displayname
-        cls.c3_dname = cls.c3.displayname
-        cls.c4_dname = cls.c4.displayname
+        super().setUpClients(5)
+
+class _TestSituation6(_Unittest):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        super().setUpClients(6)
 
 class _TestSituation4Mc12(_TestSituation4):
     @classmethod
@@ -168,6 +168,14 @@ class _TestSituation5Mc1Gc2(_TestSituation5):
         super().setUpClass()
         cls.c1.make_mod()
         cls.c2.make_gm()
+
+class _TestSituation6Mc1Gc25(_TestSituation6):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.c1.make_mod()
+        cls.c2.make_gm()
+        cls.c5.make_gm()
 
 class _TestClientManager(ClientManager):
     class _TestClient(ClientManager.Client):

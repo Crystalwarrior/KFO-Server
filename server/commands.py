@@ -3826,7 +3826,7 @@ def ooc_cmd_scream(client, arg):
 
     if client.muted_global:
         raise ClientError('You have the global chat muted.')
-    if len(arg) == 0:
+    if not arg:
         raise ArgumentError("You cannot send an empty message.")
 
     if not client.is_gagged:
@@ -5388,7 +5388,7 @@ def ooc_cmd_zone(client, arg):
     /zone 16, 116        :: Creates a zone that has areas 16 through 116.
     """
 
-    pass
+    Constants.command_assert(client, arg, is_staff=True)
 
 def ooc_cmd_zone_add(client, arg):
     """ (STAFF ONLY)
@@ -5409,7 +5409,24 @@ def ooc_cmd_zone_add(client, arg):
     /zone_add Courtroom, 2     :: Add area "Courtroom, 2" to the zone
     """
 
-    pass
+    Constants.command_assert(client, arg, is_staff=True, parameters='=1')
+
+def ooc_cmd_zone_delete(client, arg):
+    """ (STAFF ONLY)
+    Deletes a zone by zone ID, so that it is no longer part of the server's zone list.
+    Returns an error if the zone identifier does not correspond to a zone.
+
+    SYNTAX
+    /zone_delete <zone_ID>
+
+    PARAMETERS
+    <zone_ID>: Identifier of zone to delete
+
+    EXAMPLES
+    /zone_delete 1000       :: Deletes the zone 1000
+    """
+
+    Constants.command_assert(client, arg, is_staff=True, parameters='=1')
 
 def ooc_cmd_zone_global(client, arg):
     """
@@ -5428,7 +5445,8 @@ def ooc_cmd_zone_global(client, arg):
     /zone_glabal Hello World      :: Sends Hello World to global chat.
     """
 
-    pass
+    if not arg:
+        raise ArgumentError("You cannot send an empty message.")
 
 def ooc_cmd_zone_list(client, arg):
     """ (STAFF ONLY)
@@ -5448,7 +5466,7 @@ def ooc_cmd_zone_list(client, arg):
     *Zone 1000 [15] (2, 16-116). Watchers: Phantom (16)
     """
 
-    pass
+    Constants.command_assert(client, arg, is_staff=True, parameters='=0')
 
 def ooc_cmd_zone_remove(client, arg):
     """ (STAFF ONLY)
@@ -5469,7 +5487,7 @@ def ooc_cmd_zone_remove(client, arg):
     /zone_remove Courtroom, 2     :: Remove area "Courtroom, 2" from the zone
     """
 
-    pass
+    Constants.command_assert(client, arg, is_staff=True, parameters='=1')
 
 def ooc_cmd_zone_unwatch(client, arg):
     """ (STAFF ONLY)
@@ -5486,7 +5504,7 @@ def ooc_cmd_zone_unwatch(client, arg):
     /zone_unwatch           :: Makes the user no longer watch their zone
     """
 
-    pass
+    Constants.command_assert(client, arg, is_staff=True, parameters='=0')
 
 def ooc_cmd_zone_watch(client, arg):
     """ (STAFF ONLY)
@@ -5503,7 +5521,7 @@ def ooc_cmd_zone_watch(client, arg):
     /zone_watch 1000       :: Makes the user watch zone 1000
     """
 
-    pass
+    Constants.command_assert(client, arg, is_staff=True, parameters='=1')
 
 def ooc_cmd_exec(client, arg):
     """
