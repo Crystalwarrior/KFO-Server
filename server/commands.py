@@ -1949,12 +1949,53 @@ def ooc_cmd_help(client, arg):
     /help
     """
 
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+    if not arg:
+        url = 'https://github.com/Chrezm/TsuserverDR'
+        help_msg = 'Available commands, source code and issues can be found here: {}'.format(url)
+        client.send_ooc(help_msg)
+        return
 
-    help_url = 'https://github.com/Chrezm/TsuserverDR'
-    help_msg = 'Available commands, source code and issues can be found here: {}'.format(help_url)
-    client.send_ooc(help_msg)
+    ranks_to_try = [
+            ('normie', True),
+            ('gm', client.is_staff()),
+            ('cm', client.is_mod or client.is_cm),
+            ('mod', client.is_mod)
+            ]
+
+    # Try and find the most elevated description
+    command_info, found_match, command_authorization = None, False, False
+    for (rank, authorized) in ranks_to_try:
+        try:
+            pre_info = client.server.commandhelp[rank][arg]
+        except KeyError:
+            continue
+
+        found_match = True
+        if not authorized: # Check if client is authorized to use this command with this rank
+            break # If not authorized now, won't be authorized later, so break out
+
+        command_info = pre_info
+        command_authorization = True # This means at least one suitable variant of the command
+        # that can be run with the user's rank was found
+
+    # If a command was found somewhere among the user's available commands, command_info
+    # would be non-empty.
+    if not found_match:
+        raise ClientError('Could not find help for command "{}"'.format(arg))
+
+    message = 'Help for command "{}"'.format(arg)
+    # If user was not authorized to run the command, display help for command version that requires
+    # the least rank possible.
+    if not command_authorization:
+        command_info = pre_info
+
+    for detail in command_info:
+        message += ('\n' + detail)
+
+    if not command_authorization:
+        message += ('\nYou need rank at least {} to use this command.'.format(rank))
+
+    client.send_ooc(message)
 
 def ooc_cmd_iclock(client, arg):
     """ (STAFF ONLY)

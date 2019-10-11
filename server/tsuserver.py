@@ -37,15 +37,13 @@ from server.exceptions import ServerError
 from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
 
-
-
 class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a10'
-        self.internal_version = '191010a'
+        self.segment_version = 'a11'
+        self.internal_version = '191011a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -77,6 +75,7 @@ class TsuserverDR:
         self.char_list = list()
         self.char_pages_ao1 = None
         self.load_characters()
+        self.load_commandhelp()
         self.client_manager = client_manager(self)
         self.area_manager = AreaManager(self)
         self.ban_manager = BanManager(self)
@@ -302,6 +301,68 @@ class TsuserverDR:
         with Constants.fopen('config/characters.yaml', 'r', encoding='utf-8') as chars:
             self.char_list = yaml.safe_load(chars)
         self.build_char_pages_ao1()
+
+    def load_commandhelp(self):
+        with Constants.fopen('readme.md', 'r', encoding='utf-8') as readme:
+            lines = [x.rstrip() for x in readme.readlines()]
+
+        self.linetorank = {
+                '### User Commands': 'normie',
+                '### GM Commands': 'gm',
+                '### Community Manager Commands': 'cm',
+                '### Moderator Commands': 'mod'}
+
+        self.commandhelp = {
+                'normie': dict(),
+                'gm': dict(),
+                'cm': dict(),
+                'mod': dict()}
+
+        # Look for the start of the command list
+        start_index = lines.index('## Commands')
+        end_index = lines.index('### Debug commands')
+        rank = None
+        current_command = None
+
+        for line in lines[start_index:end_index]:
+            # Check if empty line
+            if not line:
+                continue
+
+            # Check if this line defines the rank we are taking a look at right now
+            if line in self.linetorank.keys():
+                rank = self.linetorank[line]
+                current_command = None
+                continue
+
+            # Otherwise, check if we do not have a rank yet
+            if rank is None:
+                continue
+
+            # Otherwise, check if this is the start of a command
+            if line[0] == '*':
+                # Get the command name
+                command_split = line[4:].split('** ')
+                if len(command_split) == 1:
+                    # Case: * **version**
+                    current_command = command_split[0][:-2]
+                else:
+                    # Case: * **uninvite** "ID/IPID"
+                    current_command = command_split[0]
+
+                self.commandhelp[rank][current_command] = [ line[2:] ]
+                continue
+
+            # Otherwise, line is part of command description, so add it to its current command desc
+            #     - Unlocks your area, provided the lock came as a result of /lock.
+            # ... assuming we have a command
+            if current_command:
+                self.commandhelp[rank][current_command].append(line[4:])
+                continue
+
+            # Otherwise, we have a line that is a description of the rank
+            # Do nothing about them
+            continue # Not really needed, but made explicit
 
     def load_ids(self):
         self.ipid_list = {}
