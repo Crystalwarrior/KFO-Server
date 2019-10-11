@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a11'
-        self.internal_version = '191011a'
+        self.segment_version = 'a12'
+        self.internal_version = '191011b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -303,7 +303,7 @@ class TsuserverDR:
         self.build_char_pages_ao1()
 
     def load_commandhelp(self):
-        with Constants.fopen('readme.md', 'r', encoding='utf-8') as readme:
+        with Constants.fopen('README.md', 'r', encoding='utf-8') as readme:
             lines = [x.rstrip() for x in readme.readlines()]
 
         self.linetorank = {

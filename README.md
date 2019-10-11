@@ -117,6 +117,12 @@ Additional notes are listed at the end of the command list.
 * **lock**
     - Locks your area. Prevents normal users from entering.
     - People in the area, including yourself, at the time the area is locked are free to come and go regardless of their status.
+* **logincm** "password"
+    - Makes you a Community Manager.
+* **loginrp** "password"
+    - Makes you a GM.
+* **logout**
+    - Logs you out of the rank you have, if any.
 * **look**
     - Obtains the description of the current area.
 * **minimap**
@@ -210,14 +216,10 @@ Additional notes are listed at the end of the command list.
     - Gain insight from the magic 8 ball.
     
 ### GM Commands
-* **loginrp** "password"
-    - Makes you a GM.
-    - GMs can: 
-      - Bypass Locks.
-      - See all areas even in RP mode.
-      - Use GM commands.
-* **logout**
-    - Logs you out of the GM role.
+GMs can: 
+  - Bypass area passages and locks.
+  - Receive special RP notifications.
+  - Use GM commands.
 * **area_kick** "ID/IPID" "area number"
     - Kicks target from your area to the intended area and remove them from its invite-list.
     - If not given a target area, it will use the server's default area (usually area 0).
@@ -345,11 +347,6 @@ Additional notes are listed at the end of the command list.
     - Obtains a lot of properties of the target.
     
 ### Community Manager Commands
-
-* **logincm** "password"
-    - Makes you a Community Manager.
-* **logout**
-    - Logs you out of the Community Manager role.
 * **blockdj** "ID/IPID"
     - Mutes the target from changing music. 
 * **cleargm**
@@ -379,10 +376,6 @@ Additional notes are listed at the end of the command list.
     
 ### Moderator Commands
 
-* **login** "password"
-    - Makes you a Moderator.
-* **logout**
-    - Logs you out of the Moderator role.
 * **announce** "message" 
     - Sends a serverwide announcement
 * **area_list** "area list"
