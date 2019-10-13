@@ -901,6 +901,38 @@ class ClientManager:
                      .format(Constants.time_elapsed(self.joined), self.last_active))
             return info
 
+        @property
+        def zone_watched(self):
+            """
+            Declarator for a public zone_watched attribute.
+            """
+
+            return self._zone_watched
+
+        @zone_watched.setter
+        def zone_watched(self, new_zone_value):
+            """
+            Set the zone_watched parameter to the given one.
+
+            Parameters
+            ----------
+            new_zone_value: ZoneManager.Zone or None
+                New zone the client is watching.
+
+            Raises
+            ------
+            ClientError:
+                If the client was not watching a zone and new_zone_value is None or,
+                if the client was watching a zone and new_zone_value is not None.
+            """
+
+            if new_zone_value is None and self._zone_watched is None:
+                raise ClientError('This client is already not watching a zone.')
+            elif new_zone_value is not None and self._zone_watched is not None:
+                raise ClientError('This client is already watching a zone.')
+
+            self._zone_watched = new_zone_value
+
         def __repr__(self):
             return ('C::{}:{}:{}:{}:{}:{}:{}'
                     .format(self.id, self.ipid, self.name, self.get_char_name(), self.showname,

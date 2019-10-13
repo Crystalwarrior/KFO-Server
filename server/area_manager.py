@@ -995,3 +995,24 @@ class AreaManager:
             if area.id == num:
                 return area
         raise AreaError('Area not found.')
+
+    def get_areas_in_range(self, area1, area2):
+        """
+        Return all areas whose ID is at least area1's and at most area2's.
+        If both areas have the same ID, return just the given area.
+        If area2's ID is smaller than area1's, return the empty set.
+
+        Parameters
+        ----------
+        area1: self.Area
+            Area whose ID will be the lower bound.
+        area2: self.Area
+            Area whose ID will be the upper bound
+
+        Returns
+        ------
+        set of self.Area
+            All areas in `self.areas` that satisfy area1.id <= area.id <= area2.id
+        """
+
+        return set([self.get_area_by_id(i) for i in range(area1.id, area2.id+1)])

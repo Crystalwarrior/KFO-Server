@@ -131,7 +131,6 @@ def ooc_cmd_area_kick(client, arg):
         area = client.server.area_manager.get_area_by_id(client.server.default_area)
     else:
         area = Constants.parse_area_names(client, [" ".join(arg[1:])])[0]
-    output = area.id
 
     for c in Constants.parse_id_or_ipid(client, arg[0]):
         # Failsafe in case kicked player has their character changed due to its character being used
@@ -141,10 +140,10 @@ def ooc_cmd_area_kick(client, arg):
         except ClientError as error:
             error_mes = ", ".join([str(s) for s in error.args])
             client.send_ooc('Unable to kick {} to area {}: {}'
-                            .format(current_char, output, error_mes))
+                            .format(current_char, area.id, error_mes))
         else:
-            client.send_ooc("Kicked {} to area {}.".format(current_char, output))
-            c.send_ooc("You were kicked from the area to area {}.".format(output))
+            client.send_ooc('Kicked {} to area {}.'.format(current_char, area.id))
+            c.send_ooc("You were kicked from the area to area {}.".format(area.id))
             if client.area.is_locked or client.area.is_modlocked:
                 try: # Try and remove the IPID from the area's invite list
                     client.area.invite_list.pop(c.ipid)
@@ -154,9 +153,9 @@ def ooc_cmd_area_kick(client, arg):
             if client.party:
                 party = client.party
                 party.remove_member(client)
-                client.send_ooc('You were also kicked off from your party.')
+                client.send_ooc('You were also kicked off your party.')
                 for member in party.get_members():
-                    member.send_ooc('{} was area kicked from your party.'.format(current_char))
+                    member.send_ooc('{} was area kicked off your party.'.format(current_char))
 
 def ooc_cmd_area_list(client, arg):
     """ (MOD ONLY)
@@ -194,10 +193,10 @@ def ooc_cmd_area_list(client, arg):
             client.server.area_manager.load_areas(area_list_file=new_area_file)
         except ServerError as exc:
             if exc.code == 'FileNotFound':
-                raise ArgumentError('Could not find the area list file {}'.format(new_area_file))
+                raise ArgumentError('Could not find the area list file `{}`.'.format(new_area_file))
             raise # Weird exception, reraise it
         except AreaError as exc:
-            raise ArgumentError('The area list {} returned the following error when loading: {}'
+            raise ArgumentError('The area list {} returned the following error when loading: `{}`.'
                                 .format(new_area_file, exc))
 
         client.send_ooc('You have loaded the area list {}.'.format(arg))
@@ -299,10 +298,19 @@ def ooc_cmd_ban(client, arg):
     # Kick+ban all clients opened by the targeted user.
     if targets:
         for c in targets:
-            client.area.broadcast_ooc('{} was banned.'.format(c.get_char_name()))
+            client.send_ooc('You banned {} [{}/{}].'.format(c.displayname, c.ipid, c.hdid))
+            client.send_ooc_others('{} was banned.'.format(c.displayname),
+                                   pred=lambda x: not (x.is_mod or x.is_cm), in_area=True)
+            client.send_ooc_others('{} banned {} [{}/{}].'
+                                   .format(client.name, c.displayname, c.ipid, c.hdid),
+                                   pred=lambda x: x.is_mod or x.is_cm)
             c.disconnect()
 
-    client.send_ooc('{} clients were banned.'.format(len(targets)))
+    client.send_ooc('You banned {}. As a result, {} clients were kickbanned.'
+                    .format(idnt, len(targets)))
+    client.send_ooc_others('{} banned {}. As a result, {} clients were kickbanned.'
+                           .format(client.name, idnt, len(targets)),
+                           pred=lambda c: c.is_mod or c.is_cm)
     logger.log_server('Banned {}.'.format(idnt), client)
 
 def ooc_cmd_banhdid(client, arg):
@@ -348,10 +356,19 @@ def ooc_cmd_banhdid(client, arg):
     # Kick+ban all clients opened by the targeted user.
     if targets:
         for c in targets:
-            client.area.broadcast_ooc('{} was banned.'.format(c.get_char_name()))
+            client.send_ooc('You HDID banned {} [{}/{}].'.format(c.displayname, c.ipid, c.hdid))
+            client.send_ooc_others('{} was banned.'.format(c.displayname),
+                                   pred=lambda x: not (x.is_mod or x.is_cm), in_area=True)
+            client.send_ooc_others('{} HDID banned {} [{}/{}].'
+                                   .format(client.name, c.displayname, c.ipid, c.hdid),
+                                   pred=lambda x: x.is_mod or x.is_cm)
             c.disconnect()
 
-    client.send_ooc('Banned player with HDID {}.'.format(arg))
+    client.send_ooc('You banned HDID {}. As a result, {} clients were kickbanned.'
+                    .format(arg, len(targets)))
+    client.send_ooc_others('{} banned {}. As a result, {} clients were kickbanned.'
+                           .format(client.name, arg, len(targets)),
+                           pred=lambda c: c.is_mod or c.is_cm)
     logger.log_server('HDID-banned {}.'.format(identifier), client)
 
 def ooc_cmd_bg(client, arg):
@@ -2126,8 +2143,13 @@ def ooc_cmd_kick(client, arg):
 
     # Kick matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
+        client.send_ooc('You kicked {} [{}/{}].'.format(c.displayname, c.ipid, c.hdid))
+        client.send_ooc_others('{} was kicked.'.format(c.displayname),
+                               pred=lambda x: not (x.is_mod or x.is_cm), in_area=True)
+        client.send_ooc_others('{} kicked {} [{}/{}].'
+                               .format(client.name, c.displayname, c.ipid, c.hdid),
+                               pred=lambda x: x.is_mod or x.is_cm)
         logger.log_server('Kicked {}.'.format(c.ipid), client)
-        client.area.broadcast_ooc("{} was kicked.".format(c.get_char_name()))
         c.disconnect()
 
 def ooc_cmd_kickself(client, arg):
@@ -5370,25 +5392,49 @@ def ooc_cmd_make_gm(client, arg):
 
 def ooc_cmd_zone(client, arg):
     """ (STAFF ONLY)
-    Makes a zone that spans the given area range, or just the current area if not given any.
+    Makes a zone that spans the given area range, or just the given area if just given one area, or
+    the current area if not given any.
     Returns an error if the user is already watching some other zone, or if any of the areas to be
     made part of the zone to be created already belong to some other zone.
 
     SYNTAX
     /zone
+    /zone <sole_area_in_zone>
     /zone <area_range_start>, <area_range_end>
 
     PARAMETERS
+    <sole_area_in_zone>: Sole area to add to the zone
     <area_range_start>: Start of area range (inclusive)
     <area_range_end>: End of area range (inclusive)
 
     EXAMPLES
     Assuming the player is in area 0...
-    /zone                :: Creates a zone that has area 0.
-    /zone 16, 116        :: Creates a zone that has areas 16 through 116.
+    /zone                       :: Creates a zone that has area 0.
+    /zone Class Trial Room 1    :: Creates a zone that only has area Class Trial Room 1
+    /zone 16, 116               :: Creates a zone that has areas 16 through 116.
     """
 
     Constants.command_assert(client, arg, is_staff=True)
+    if client.zone_watched:
+        raise ClientError('You cannot create a zone while watching another.')
+
+    # Obtain area range and create zone based on it
+    raw_area_names = arg.split(', ') if arg else []
+    lower_area, upper_area = Constants.parse_two_area_names(client, raw_area_names,
+                                                            check_valid_range=True)
+    areas = client.server.area_manager.get_areas_in_range(lower_area, upper_area)
+    try:
+        zone_id = client.server.zone_manager.new_zone(areas, {client})
+    except ValueError: # Only possibility here is that there is an area conflict
+        raise ClientError('Some of the areas of your new zone are already part of some other zone.')
+
+    # Prepare client output
+    if lower_area == upper_area:
+        output = 'just area {}'.format(lower_area.id)
+    else:
+        output = 'areas {} through {}'.format(lower_area.id, upper_area.id)
+
+    client.send_ooc('You have created zone {} containing {}.'.format(zone_id, output))
 
 def ooc_cmd_zone_add(client, arg):
     """ (STAFF ONLY)

@@ -36,14 +36,15 @@ from server.districtclient import DistrictClient
 from server.exceptions import ServerError
 from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
+from server.zone_manager import ZoneManager
 
 class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a13'
-        self.internal_version = '191011c'
+        self.segment_version = 'a14'
+        self.internal_version = '191012a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -80,6 +81,7 @@ class TsuserverDR:
         self.area_manager = AreaManager(self)
         self.ban_manager = BanManager(self)
         self.party_manager = PartyManager(self)
+        self.zone_manager = ZoneManager(self)
 
         self.ipid_list = {}
         self.hdid_list = {}

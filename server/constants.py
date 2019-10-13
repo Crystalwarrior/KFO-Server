@@ -371,7 +371,7 @@ class Constants():
                     try:
                         area_list.append(client.server.area_manager.get_area_by_id(int(areas[i])))
                     except Exception:
-                        raise ArgumentError('Could not parse area {}'.format(areas[i]))
+                        raise ArgumentError('Could not parse area `{}`.'.format(areas[i]))
         return area_list
 
     @staticmethod
@@ -493,24 +493,25 @@ class Constants():
         return length
 
     @staticmethod
-    def parse_two_area_names(client, areas, area_duplicate=True, check_valid_range=True):
+    def parse_two_area_names(client, raw_areas, area_duplicate=True, check_valid_range=True):
         """
         Convert the area passage commands inputs into inputs for parse_area_names.
         and check for the different cases it needs to possibly handle
         """
+
         # Convert to two-area situation
-        if len(areas) == 0:
-            areas = [client.area.name, client.area.name]
-        elif len(areas) == 1:
+        if len(raw_areas) == 0:
+            raw_areas = [client.area.name, client.area.name]
+        elif len(raw_areas) == 1:
             if area_duplicate:
-                areas.append(areas[0])
+                raw_areas.append(raw_areas[0])
             else:
-                areas.insert(0, client.area.name)
-        elif len(areas) > 2:
+                raw_areas.insert(0, client.area.name)
+        elif len(raw_areas) > 2:
             raise ArgumentError('Expected at most two area names.')
 
         # Replace arguments with proper area objects
-        areas = Constants.parse_area_names(client, areas)
+        areas = Constants.parse_area_names(client, raw_areas)
 
         if check_valid_range and areas[0].id > areas[1].id:
             raise ArgumentError('The ID of the first area must be lower than the ID of the second '
