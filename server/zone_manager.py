@@ -23,6 +23,7 @@ Zones group areas together such that it allows notifications to only propagate t
 as well as perform tasks only on the areas of the zone.
 """
 
+from server.constants import Constants
 from server.exceptions import AreaError, ClientError, ZoneError
 
 class ZoneManager:
@@ -48,10 +49,10 @@ class ZoneManager:
                 Set of clients who are watching the zone.
             """
 
-            self.server = server
-            self.zone_id = zone_id
-            self.areas = set()
-            self.watchers = set()
+            self._server = server
+            self._zone_id = zone_id
+            self._areas = set()
+            self._watchers = set()
 
             self.add_areas(areas, check_structure=False)
             self.add_watchers(watchers, check_structure=False)
@@ -95,18 +96,30 @@ class ZoneManager:
             """
 
             for area in areas:
-                if area in self.areas:
+                if area in self._areas:
                     raise ValueError('Area {} is already part of zone {}.'.format(area, self))
                 if area.in_zone:
                     raise ValueError('Area {} is already part of zone {}.'
                                      .format(area, area.in_zone))
 
             for area in areas:
-                self.areas.add(area)
+                self._areas.add(area)
                 area.in_zone = self
 
             if check_structure:
-                self.server.zone_manager._check_structure()
+                self._server.zone_manager._check_structure()
+
+        def get_areas(self):
+            """
+            Return all of the zone's areas.
+
+            Returns
+            -------
+            set of AreaManager.Area:
+                All of the areas part of the zone.
+            """
+
+            return self._areas.copy()
 
         def remove_area(self, area):
             """
@@ -126,6 +139,18 @@ class ZoneManager:
             """
 
             raise NotImplementedError
+
+        def get_id(self):
+            """
+            Return the zone ID.
+
+            Returns
+            -------
+            str:
+                The ID of the zone.
+            """
+
+            return self._zone_id
 
         def add_watcher(self, watcher):
             """
@@ -167,18 +192,30 @@ class ZoneManager:
             """
 
             for watcher in watchers:
-                if watcher in self.watchers:
+                if watcher in self._watchers:
                     raise ValueError('Watcher {} is already watching zone {}.'.format(watcher, self))
                 if watcher.zone_watched:
                     raise ValueError('Watcher {} is already watching zone {}.'
                                     .format(watcher, watcher.zone_watched))
 
             for watcher in watchers:
-                self.watchers.add(watcher)
+                self._watchers.add(watcher)
                 watcher.zone_watched = self
 
             if check_structure:
-                self.server.zone_manager._check_structure()
+                self._server.zone_manager._check_structure()
+
+        def get_watchers(self):
+            """
+            Return all of the zone's watchers.
+
+            Returns
+            -------
+            set of ClientManager.Client
+                Watchers of the zone
+            """
+
+            return self._watchers.copy()
 
         def remove_watcher(self, watcher):
             """
@@ -197,19 +234,68 @@ class ZoneManager:
                 If the watcher is not part of the zone watcher set.
             """
 
-            if watcher not in self.watchers:
+            if watcher not in self._watchers:
                 raise ValueError('Watcher {} is not watching zone {}.'.format(watcher, self))
 
-            self.watchers.remove(watcher)
+            self._watchers.remove(watcher)
             watcher.zone_watched = None
 
             # If no more watchers, delete the zone
-            if not self.watchers:
-                self.server.zone_manager.remove_zone(self.zone_id)
-            self.server.zone_manager._check_structure()
+            if not self._watchers:
+                self._server.zone_manager.remove_zone(self._zone_id)
+            self._server.zone_manager._check_structure()
+
+        def get_info(self):
+            """
+            Obtain the zone details (ID, areas, watchers) as a human readable string.
+
+            Returns
+            -------
+            str:
+                Zone details in human readable format.
+            """
+
+            # Obtain area ranges
+            raw_area_ids = sorted([area.id for area in self._areas])
+            last_area = raw_area_ids[0]
+            area_ranges = list()
+            current_range = [last_area, last_area]
+
+            def add_range():
+                if current_range[0] != current_range[1]:
+                    area_ranges.append('{}-{}'.format(current_range[0], current_range[1]))
+                else:
+                    area_ranges.append('{}'.format(current_range[0]))
+
+            for area_id in raw_area_ids[1:]:
+                if area_id != last_area+1:
+                    add_range()
+                    current_range = [area_id, area_id]
+                else:
+                    current_range[1] = area_id
+                last_area = area_id
+
+            add_range()
+            area_description = Constants.cjoin(area_ranges)
+
+            # Obtain watchers
+            watcher_infos = ['{} ({})'.format(c.displayname, c.area.id) for c in self._watchers]
+            watcher_description = Constants.cjoin(watcher_infos)
+
+            return ('Zone {}. Contains areas: {}. Is watched by: {}.'
+                    .format(self._zone_id, area_description, watcher_description))
 
         def __repr__(self):
-            return 'Z::{}:{}:{}'.format(self.zone_id, self.areas, self.watchers)
+            """
+            Return a debugging expression for the zone.
+
+            Returns
+            -------
+            str:
+                Zone details in debugging format.
+            """
+
+            return 'Z::{}:{}:{}'.format(self._zone_id, self._areas, self._watchers)
 
     def __init__(self, server):
         """
@@ -221,8 +307,8 @@ class ZoneManager:
             The server this zone manager belongs to.
         """
 
-        self.server = server
-        self.zones = dict()
+        self._server = server
+        self._zones = dict()
         self._zone_limit = 10000
 
     def new_zone(self, areas, watchers):
@@ -243,10 +329,22 @@ class ZoneManager:
         """
 
         zone_id = self._generate_id()
-        zone = self.Zone(self.server, zone_id, areas, watchers)
-        self.zones[zone_id] = zone
+        zone = self.Zone(self._server, zone_id, areas, watchers)
+        self._zones[zone_id] = zone
         self._check_structure()
         return zone_id
+
+    def get_zones(self):
+        """
+        Return all of the zones this manager is handling.
+
+        Returns
+        -------
+        set of ZoneManager.Zone:
+            All of the zones handled by this manager.
+        """
+
+        return self._zones.copy()
 
     def remove_zone(self, zone_id):
         """
@@ -263,10 +361,10 @@ class ZoneManager:
             If the zone ID is invalid.
         """
 
-        zone = self.zones.pop(zone_id)
-        for area in zone.areas:
+        zone = self._zones.pop(zone_id)
+        for area in zone._areas:
             area.in_zone = None
-        for watcher in zone.watchers:
+        for watcher in zone._watchers:
             watcher.zone_watched = None
 
         self._check_structure()
@@ -294,9 +392,9 @@ class ZoneManager:
         if isinstance(zone_tag, self.Zone):
             return zone_tag
         if isinstance(zone_tag, str):
-            if zone_tag not in self.zones.keys():
+            if zone_tag not in self._zones.keys():
                 raise KeyError('{} is not a valid zone ID.'.format(zone_tag))
-            return self.zones[zone_tag]
+            return self._zones[zone_tag]
         raise KeyError('{} is not a valid zone tag.'.format(zone_tag))
 
     def get_zone_id(self, zone_tag):
@@ -322,10 +420,29 @@ class ZoneManager:
         if isinstance(zone_tag, str):
             return zone_tag
         if isinstance(zone_tag, self.Zone):
-            if zone_tag not in self.zones.values():
+            if zone_tag not in self._zones.values():
                 raise KeyError('{} is not a zone in this server.'.format(zone_tag))
             return zone_tag.zone_id
         raise KeyError('{} is not a valid zone tag.'.format(zone_tag))
+
+    def get_info(self):
+        """
+        List all zones in the server, as well as some of their properties.
+        If there are no zones, return a special message instead.
+
+        Returns
+        -------
+        str:
+            All zones in the server.
+        """
+
+        if not self._zones:
+            return 'There are no zones in this server.'
+
+        message = '== Active zones =='
+        for zone in self._zones.values():
+            message += '\r\n*{}'.format(zone.get_info())
+        return message
 
     def areas_in_some_zone(self, areas):
         """
@@ -359,7 +476,7 @@ class ZoneManager:
             If there are no available names for the zone (server reached self._zone_limit zones)
         """
 
-        size = len(self.zones.keys())
+        size = len(self._zones.keys())
         if size == self._zone_limit:
             raise ValueError('Server reached its zone limit.')
 
@@ -384,45 +501,45 @@ class ZoneManager:
         watchers_so_far = set()
 
         # 1.
-        assert len(self.zones.keys()) < self._zone_limit, (
+        assert len(self._zones.keys()) < self._zone_limit, (
                 'Expected the server cap of {} to be enforced, found the server linked to '
-                '{} zones instead.'.format(self._zone_limit, len(self.zones.keys())))
+                '{} zones instead.'.format(self._zone_limit, len(self._zones.keys())))
 
         # 2.
-        for zone_id, zone in self.zones.items():
-            assert zone.zone_id == zone_id, (
+        for zone_id, zone in self._zones.items():
+            assert zone._zone_id == zone_id, (
                     'Expected zone {} associated with ID {} to have the same ID, found it had ID '
-                    '{} instead.'.format(zone, zone_id, zone.zone_id))
+                    '{} instead.'.format(zone, zone_id, zone._zone_id))
 
-        for zone in self.zones.values():
+        for zone in self._zones.values():
             # 3.
-            conflicting_areas = [area for area in zone.areas if area in areas_so_far]
+            conflicting_areas = [area for area in zone._areas if area in areas_so_far]
             assert not conflicting_areas, (
                     'Expected no conflicting areas, but zone {} introduces repeated areas {}.'
                     .format(zone, conflicting_areas))
 
             # 4.
-            for area in zone.areas:
+            for area in zone._areas:
                 assert area.in_zone == zone, (
                         'Expected area {} to recognize it being a part of zone {}, found it '
                         'recognized {} instead.'.format(area, zone, area.in_zone))
                 areas_so_far.add(area)
 
             # 5.
-            conflicting_watchers = [watch for watch in zone.watchers if watch in watchers_so_far]
+            conflicting_watchers = [watch for watch in zone._watchers if watch in watchers_so_far]
             assert not conflicting_watchers, (
                     'Expected no conflicting watchers, but zone {} introduces conflicting watchers '
                     '{}.'.format(zone, conflicting_watchers))
 
             # 6.
-            for watcher in zone.watchers:
+            for watcher in zone._watchers:
                 assert watcher.zone_watched == zone, (
                         'Expected watcher {} to recognize it is watching zone {}, found it '
                         'recognized {} instead.'.format(watcher, zone, watcher.zone_watched))
                 watchers_so_far.add(watcher)
 
         # 7.
-        for area in self.server.area_manager.areas:
+        for area in self._server.area_manager.areas:
             if area in areas_so_far:
                 continue
             assert area.in_zone is None, (
@@ -430,7 +547,7 @@ class ZoneManager:
                     'found it recognized {} instead'.format(area, area.in_zone))
 
         # 8.
-        for watcher in self.server.client_manager.clients:
+        for watcher in self._server.client_manager.clients:
             if watcher in watchers_so_far:
                 continue
             assert watcher.zone_watched is None, (

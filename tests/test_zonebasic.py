@@ -17,14 +17,14 @@ class _TestZone(_TestSituation6Mc1Gc25):
         Assert that the set of zone IDs matches exactly to the server's zone manager's zones
         """
 
-        self.assertEqual(len(expected_zones), len(self.zm.zones))
+        self.assertEqual(len(expected_zones), len(self.zm.get_zones()))
         for (expected_zone_id, expected_zone_areas) in expected_zones.items():
-            self.assertTrue(expected_zone_id in self.zm.zones.keys())
+            self.assertTrue(expected_zone_id in self.zm.get_zones().keys())
 
             actual_zone = self.zm.get_zone(expected_zone_id)
-            self.assertEquals(expected_zone_id, actual_zone.zone_id)
+            self.assertEquals(expected_zone_id, actual_zone.get_id())
 
-            actual_zone_areas = {area.id for area in actual_zone.areas}
+            actual_zone_areas = {area.id for area in actual_zone.get_areas()}
             self.assertEquals(expected_zone_areas, actual_zone_areas)
 
 class TestZoneBasic_01_Zone(_TestZone):
@@ -219,6 +219,8 @@ class TestZoneBasic_02_Global(_TestZone):
         Situation: Clients attempt to use /zg, the alias of /zone_global.
         """
 
+        pass
+
 class TestZoneBasic_03_List(_TestZone):
     def test_01_wrongarguments(self):
         """
@@ -242,3 +244,63 @@ class TestZoneBasic_03_List(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
+
+    def test_02_nozones(self):
+        """
+        Situation: C1 gets the zone list when there are no zones.
+        """
+
+        self.c1.ooc('/zone_list')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('There are no zones in this server.', over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+    def test_03_onezonetrivialrange(self):
+        """
+        Situation: C2 creates a zone that has just one area. C1 gets the zone list.
+        """
+
+        self.c2.ooc('/zone 1')
+        self.c2.discard_all()
+
+        self.c1.ooc('/zone_list')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('== Active zones =='
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
+                           .format('z0', '1', '{} ({})'.format(self.c2_dname, self.c2.area.id)),
+                           over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+
+    def test_04_twozonesnontrivialrange(self):
+        """
+        Situation: C5 creates a zone that has more than one area. C1 gets the zone list.
+        """
+
+        self.c5.ooc('/zone 2, 4')
+        self.c5.discard_all()
+
+        self.c1.ooc('/zone_list')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('== Active zones =='
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
+                           .format('z0', '1', '{} ({})'.format(self.c2_dname, self.c2.area.id),
+                                   'z1', '2-4', '{} ({})'.format(self.c5_dname, self.c5.area.id)),
+                           over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+
+    def test_05_threezonesdisjointrange(self):
+        """
+        Situation: C4 (who is made mod) creates a zone with a disjoint range. C1 gets the zone list.
+        """
+
+        pass
+
+

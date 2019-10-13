@@ -5514,6 +5514,9 @@ def ooc_cmd_zone_list(client, arg):
 
     Constants.command_assert(client, arg, is_staff=True, parameters='=0')
 
+    info = client.server.zone_manager.get_info()
+    client.send_ooc(info)
+
 def ooc_cmd_zone_remove(client, arg):
     """ (STAFF ONLY)
     Remove an area by name or ID from the zone the user is watching.
@@ -5557,10 +5560,10 @@ def ooc_cmd_zone_unwatch(client, arg):
     target_zone = client.zone_watched
     target_zone.remove_watcher(client)
 
-    client.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.zone_id))
-    if not target_zone.watchers:
+    client.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.get_id()))
+    if not target_zone.get_watchers():
         client.send_ooc('As you were the last person watching it, your last zone was removed.')
-    for c in target_zone.watchers:
+    for c in target_zone.get_watchers():
         c.send_ooc('(X) {} is no longer watching your zone.'.format(client.name))
 
 def ooc_cmd_zone_watch(client, arg):
@@ -5585,8 +5588,8 @@ def ooc_cmd_zone_watch(client, arg):
     target_zone = client.server.zone_manager.get_zone(arg)
     target_zone.add_watcher(client)
 
-    client.send_ooc('You are now watching zone `{}`.'.format(target_zone.zone_id))
-    for c in target_zone.watchers:
+    client.send_ooc('You are now watching zone `{}`.'.format(target_zone.get_id()))
+    for c in target_zone.get_watchers():
         if c == client:
             continue
         c.send_ooc('(X) {} is now watching your zone.'.format(client.name))
