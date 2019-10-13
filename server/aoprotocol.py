@@ -24,7 +24,8 @@ from enum import Enum
 
 from server import logger
 from server.constants import Constants
-from server.exceptions import ClientError, AreaError, ArgumentError, ServerError, PartyError
+from server.exceptions import ArgumentError, AreaError, ClientError, ServerError
+from server.exceptions import PartyError, ZoneError
 from server.fantacrypt import fanta_decrypt
 from server.evidence import EvidenceList
 
@@ -545,7 +546,9 @@ class AOProtocol(asyncio.Protocol):
             if function:
                 try:
                     function(self.client, arg)
-                except (ClientError, AreaError, ArgumentError, ServerError, PartyError) as ex:
+                except (ClientError, AreaError, ArgumentError, ServerError) as ex:
+                    self.client.send_ooc(ex)
+                except (PartyError, ZoneError) as ex:
                     self.client.send_ooc(ex)
         else:
             if self.client.disemvowel: #If you are disemvoweled, replace string.

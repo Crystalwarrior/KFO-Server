@@ -26,7 +26,8 @@ import traceback
 
 from server import logger
 from server.constants import Constants, TargetType
-from server.exceptions import ClientError, ServerError, ArgumentError, AreaError, PartyError
+from server.exceptions import ArgumentError, AreaError, ClientError, ServerError
+from server.exceptions import PartyError, ZoneError
 
 """ <parameter_name>: required parameter
 {parameter_name}: optional parameter
@@ -5415,18 +5416,19 @@ def ooc_cmd_zone(client, arg):
     """
 
     Constants.command_assert(client, arg, is_staff=True)
-    if client.zone_watched:
-        raise ClientError('You cannot create a zone while watching another.')
 
     # Obtain area range and create zone based on it
     raw_area_names = arg.split(', ') if arg else []
     lower_area, upper_area = Constants.parse_two_area_names(client, raw_area_names,
                                                             check_valid_range=True)
     areas = client.server.area_manager.get_areas_in_range(lower_area, upper_area)
+
     try:
         zone_id = client.server.zone_manager.new_zone(areas, {client})
-    except ValueError: # Only possibility here is that there is an area conflict
-        raise ClientError('Some of the areas of your new zone are already part of some other zone.')
+    except ZoneError.AreaConflictError:
+        raise ZoneError('Some of the areas of your new zone are already part of some other zone.')
+    except ZoneError.WatcherConflictError:
+        raise ZoneError('You cannot create a zone while watching another.')
 
     # Prepare client output
     if lower_area == upper_area:
@@ -5456,6 +5458,19 @@ def ooc_cmd_zone_add(client, arg):
     """
 
     Constants.command_assert(client, arg, is_staff=True, parameters='=1')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+    area = Constants.parse_area_names(client, arg).pop()
+
+    try:
+        client.zone_watched.add_area(area)
+    except ZoneError.AreaConflictError:
+        raise ZoneError('Area {} already belongs to a zone.'.format(arg))
+
+    client.send_ooc('You have added area {} to your zone.'.format(area.id))
+    client.send_ooc_others('(X) {} has added area {} to your zone.'.format(client.name, area.id),
+                           to_zone_watcher=True)
 
 def ooc_cmd_zone_delete(client, arg):
     """ (STAFF ONLY)
@@ -5563,8 +5578,8 @@ def ooc_cmd_zone_unwatch(client, arg):
     client.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.get_id()))
     if not target_zone.get_watchers():
         client.send_ooc('As you were the last person watching it, your last zone was removed.')
-    for c in target_zone.get_watchers():
-        c.send_ooc('(X) {} is no longer watching your zone.'.format(client.name))
+    client.send_ooc_others('(X) {} is no longer watching your zone.'.format(client.name),
+                           to_zone_watcher=target_zone)
 
 def ooc_cmd_zone_watch(client, arg):
     """ (STAFF ONLY)
@@ -5582,17 +5597,19 @@ def ooc_cmd_zone_watch(client, arg):
     """
 
     Constants.command_assert(client, arg, is_staff=True, parameters='=1')
-    if client.zone_watched:
-        raise ClientError('You cannot watch a zone while watching another.')
 
     target_zone = client.server.zone_manager.get_zone(arg)
-    target_zone.add_watcher(client)
+    try:
+        target_zone.add_watcher(client)
+    except ZoneError.WatcherConflictError:
+        raise ZoneError('You cannot watch a zone while watching another.')
 
     client.send_ooc('You are now watching zone `{}`.'.format(target_zone.get_id()))
     for c in target_zone.get_watchers():
         if c == client:
             continue
-        c.send_ooc('(X) {} is now watching your zone.'.format(client.name))
+    client.send_ooc_others('(X) {} is now watching your zone.'.format(client.name),
+                           to_zone_watcher=True)
 
 def ooc_cmd_exec(client, arg):
     """

@@ -27,6 +27,8 @@ class _TestZone(_TestSituation6Mc1Gc25):
             actual_zone_areas = {area.id for area in actual_zone.get_areas()}
             self.assertEquals(expected_zone_areas, actual_zone_areas)
 
+        self.zm._check_structure() # Remove later
+
 class TestZoneBasic_01_Zone(_TestZone):
     def test_01_wrongarguments(self):
         """
@@ -198,6 +200,7 @@ class TestZoneBasic_01_Zone(_TestZone):
                            'zone.', over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
+        self.assert_zones({'z0': {4}, 'z1': {3}, 'z2': {5, 6, 7}})
 
 class TestZoneBasic_02_Global(_TestZone):
     def test_01_wrongarguments(self):

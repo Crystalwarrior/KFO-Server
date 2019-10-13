@@ -45,4 +45,8 @@ class PartyError(TsuserverException):
     pass
 
 class ZoneError(TsuserverException):
-    pass
+    class AreaConflictError(TsuserverException):
+        pass
+
+    class WatcherConflictError(TsuserverException):
+        pass

@@ -33,6 +33,11 @@ class ZoneManager:
     """
 
     class Zone:
+        """
+        A zone is a group of areas with some watchers who will receive notifications about events
+        that occur in areas in the zone.
+        """
+
         def __init__(self, server, zone_id, areas, watchers):
             """
             Initialization method for a zone.
@@ -67,11 +72,6 @@ class ZoneManager:
             ----------
             area: AreaManager.Area
                 Area to add to the zone area set.
-
-            Raises
-            ------
-            ValueError:
-                If the area is already a part of some zone area set, possibly not this one.
             """
 
             self.add_areas({area})
@@ -91,16 +91,15 @@ class ZoneManager:
 
             Raises
             ------
-            ValueError:
+            ZoneError.AreaConflictError:
                 If any of the given areas is already a part of some zone area set.
             """
 
             for area in areas:
-                if area in self._areas:
-                    raise ValueError('Area {} is already part of zone {}.'.format(area, self))
                 if area.in_zone:
-                    raise ValueError('Area {} is already part of zone {}.'
-                                     .format(area, area.in_zone))
+                    raise ZoneError.AreaConflictError(
+                            'Area {} is already part of zone {}.'
+                            .format(area, area.in_zone))
 
             for area in areas:
                 self._areas.add(area)
@@ -162,11 +161,6 @@ class ZoneManager:
             ----------
             watcher: ClientManager.Client
                 Client to add to the zone watcher set.
-
-            Raises
-            ------
-            ValueError:
-                If the watcher is already watching some zone, possibly not this one.
             """
 
             self.add_watchers({watcher})
@@ -187,16 +181,15 @@ class ZoneManager:
 
             Raises
             ------
-            ValueError:
+            ZoneError.WatcherConflictError:
                 If any of the given watchers is already watching some other zone
             """
 
             for watcher in watchers:
-                if watcher in self._watchers:
-                    raise ValueError('Watcher {} is already watching zone {}.'.format(watcher, self))
                 if watcher.zone_watched:
-                    raise ValueError('Watcher {} is already watching zone {}.'
-                                    .format(watcher, watcher.zone_watched))
+                    raise ZoneError.WatcherConflictError(
+                            'Watcher {} is already watching zone {}.'
+                            .format(watcher, watcher.zone_watched))
 
             for watcher in watchers:
                 self._watchers.add(watcher)
@@ -326,9 +319,34 @@ class ZoneManager:
         -------
         str
             The ID of the zone just created.
+
+        Raises
+        ------
+        ZoneError.AreaConflictError:
+            If one of the areas of the new zone already belongs to some other zone.
+        ZoneError.WatcherConflictError:
+            If one of the watchers of the new zone is already watching some other zone.
         """
 
         zone_id = self._generate_id()
+        conflict_areas = self.areas_in_some_zone(areas)
+        if conflict_areas:
+            if len(conflict_areas) == 1:
+                message = 'Area {} already belongs in a zone.'.format(conflict_areas.pop())
+            else:
+                message = ('Areas {} already belong in a zone.'
+                           .format(Constants.cjoin(conflict_areas)))
+            raise ZoneError.AreaConflictError(message)
+
+        conflict_watchers = self.watchers_in_some_zone(watchers)
+        if conflict_watchers:
+            if len(conflict_watchers) == 1:
+                message = 'Watcher {} is already watching a zone.'.format(conflict_watchers.pop())
+            else:
+                message = ('Watchers {} are already watching a zone.'
+                           .format(Constants.cjoin(conflict_watchers)))
+            raise ZoneError.WatcherConflictError(message)
+
         zone = self.Zone(self._server, zone_id, areas, watchers)
         self._zones[zone_id] = zone
         self._check_structure()
@@ -459,7 +477,24 @@ class ZoneManager:
             All the areas among the given areas that are in a zone.
         """
 
-        raise NotImplementedError
+        return {area for area in areas if area.in_zone}
+
+    def watchers_in_some_zone(self, watchers):
+        """
+        Return all of the watchers among the given watchers that are watching a zone.
+
+        Parameters
+        ----------
+        watchers: set of ClientManager.Client
+            Watchers to check if they are watching a zone.
+
+        Returns
+        -------
+        set of ClientManager.Client
+            All the watchers among the given watchers that are watching a zone.
+        """
+
+        return {watcher for watcher in watchers if watcher.zone_watched}
 
     def _generate_id(self):
         """
@@ -544,7 +579,7 @@ class ZoneManager:
                 continue
             assert area.in_zone is None, (
                     'Expected area {} not part of a zone to recognize it not being in a zone, '
-                    'found it recognized {} instead'.format(area, area.in_zone))
+                    'found it recognized {} instead.'.format(area, area.in_zone))
 
         # 8.
         for watcher in self._server.client_manager.clients:
