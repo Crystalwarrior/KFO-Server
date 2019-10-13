@@ -44,7 +44,7 @@ class ZoneManager:
 
             Parameters
             ----------
-            server: tsuserver.TsuserverDR
+            server: TsuserverDR
                 Server the zone belongs to
             zone_id: string
                 Identifier of zone.
@@ -137,7 +137,17 @@ class ZoneManager:
                 If the area is not part of the zone area set.
             """
 
-            raise NotImplementedError
+            if area not in self._areas:
+                raise ZoneError.AreaNotInZoneError(
+                        'Area {} is not part of zone {}.'.format(area, self))
+
+            self._areas.remove(area)
+            area.in_zone = None
+
+            # If no more areas, delete the zone
+            if not self._areas:
+                self._server.zone_manager.delete_zone(self._zone_id)
+            self._server.zone_manager._check_structure()
 
         def get_id(self):
             """
@@ -223,19 +233,20 @@ class ZoneManager:
 
             Raises
             ------
-            KeyError:
+            ZoneError.WatcherNotInZoneError:
                 If the watcher is not part of the zone watcher set.
             """
 
             if watcher not in self._watchers:
-                raise ValueError('Watcher {} is not watching zone {}.'.format(watcher, self))
+                raise ZoneError.WatcherNotInZoneError(
+                        'Watcher {} is not watching zone {}.'.format(watcher, self))
 
             self._watchers.remove(watcher)
             watcher.zone_watched = None
 
             # If no more watchers, delete the zone
             if not self._watchers:
-                self._server.zone_manager.remove_zone(self._zone_id)
+                self._server.zone_manager.delete_zone(self._zone_id)
             self._server.zone_manager._check_structure()
 
         def get_info(self):
@@ -296,7 +307,7 @@ class ZoneManager:
 
         Parameters
         ----------
-        server: server.TsuserverDR
+        server: TsuserverDR
             The server this zone manager belongs to.
         """
 
@@ -335,7 +346,7 @@ class ZoneManager:
                 message = 'Area {} already belongs in a zone.'.format(conflict_areas.pop())
             else:
                 message = ('Areas {} already belong in a zone.'
-                           .format(Constants.cjoin(conflict_areas)))
+                           .format(Constants.cjoin([area.id for area in conflict_areas])))
             raise ZoneError.AreaConflictError(message)
 
         conflict_watchers = self.watchers_in_some_zone(watchers)
@@ -364,13 +375,13 @@ class ZoneManager:
 
         return self._zones.copy()
 
-    def remove_zone(self, zone_id):
+    def delete_zone(self, zone_id: str):
         """
-        Remove a zone by its ID.
+        Delete a zone by its ID.
 
         Parameters
         ----------
-        zone_id: string
+        zone_id: str
             ID of zone to remove.
 
         Raises
@@ -496,7 +507,7 @@ class ZoneManager:
 
         return {watcher for watcher in watchers if watcher.zone_watched}
 
-    def _generate_id(self):
+    def _generate_id(self) -> str:
         """
         Helper method to generate a new zone ID.
 

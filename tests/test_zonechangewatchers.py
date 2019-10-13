@@ -263,7 +263,7 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_ooc('You are no longer watching zone `{}`.'.format('z0'))
-        self.c5.assert_ooc('As you were the last person watching it, your last zone was removed.',
+        self.c5.assert_ooc('As you were the last person watching it, your zone has been deleted.',
                            over=True)
 
 class TestZoneChangeWatchers_03_Disconnections(_TestZone):

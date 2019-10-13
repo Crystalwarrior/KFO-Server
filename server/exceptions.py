@@ -48,5 +48,11 @@ class ZoneError(TsuserverException):
     class AreaConflictError(TsuserverException):
         pass
 
+    class AreaNotInZoneError(TsuserverException):
+        pass
+
     class WatcherConflictError(TsuserverException):
+        pass
+
+    class WatcherNotInZoneError(TsuserverException):
         pass

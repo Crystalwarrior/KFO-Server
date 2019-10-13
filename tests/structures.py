@@ -1,9 +1,12 @@
 import random
 import unittest
 
+from typing import List, Set
+
 from unittest.mock import Mock
 
 from server.aoprotocol import AOProtocol
+from server.area_manager import AreaManager
 from server.client_manager import ClientManager
 from server.exceptions import TsuserverException
 from server.tsuserver import TsuserverDR
@@ -15,61 +18,61 @@ class _Unittest(unittest.TestCase):
             cls.skipTest('', reason='')
         print('\nTesting {}: '.format(cls.__name__), end=' ')
         cls.server = _TestTsuserverDR()
-        cls.clients = cls.server.client_list
-        cls.area0 = cls.server.area_manager.get_area_by_id(0)
-        cls.area1 = cls.server.area_manager.get_area_by_id(1)
-        cls.area2 = cls.server.area_manager.get_area_by_id(2)
-        cls.area3 = cls.server.area_manager.get_area_by_id(3)
-        cls.area4 = cls.server.area_manager.get_area_by_id(4)
-        cls.area5 = cls.server.area_manager.get_area_by_id(5)
-        cls.area6 = cls.server.area_manager.get_area_by_id(6)
-        cls.area7 = cls.server.area_manager.get_area_by_id(7)
+        cls.clients: List[_TestClientManager._Testclient] = cls.server.client_list
+        cls.area0: AreaManager.Area  = cls.server.area_manager.get_area_by_id(0)
+        cls.area1: AreaManager.Area = cls.server.area_manager.get_area_by_id(1)
+        cls.area2: AreaManager.Area = cls.server.area_manager.get_area_by_id(2)
+        cls.area3: AreaManager.Area = cls.server.area_manager.get_area_by_id(3)
+        cls.area4: AreaManager.Area = cls.server.area_manager.get_area_by_id(4)
+        cls.area5: AreaManager.Area = cls.server.area_manager.get_area_by_id(5)
+        cls.area6: AreaManager.Area = cls.server.area_manager.get_area_by_id(6)
+        cls.area7: AreaManager.Area = cls.server.area_manager.get_area_by_id(7)
 
-        cls.a0_name = cls.area0.name
-        cls.a1_name = cls.area1.name
-        cls.a2_name = cls.area2.name
-        cls.a2_name_s = cls.a2_name.replace(', ', ',\ ') # Deal with comma in Class Trial Room, 2
-        cls.a3_name = cls.area3.name
-        cls.a4_name = cls.area4.name
-        cls.a5_name = cls.area5.name
-        cls.a6_name = cls.area6.name
-        cls.a7_name = cls.area7.name
+        cls.a0_name: str = cls.area0.name
+        cls.a1_name: str = cls.area1.name
+        cls.a2_name: str = cls.area2.name
+        cls.a2_name_s: str = cls.a2_name.replace(', ', ',\ ') # comma in Class Trial Room, 2
+        cls.a3_name: str = cls.area3.name
+        cls.a4_name: str = cls.area4.name
+        cls.a5_name: str = cls.area5.name
+        cls.a6_name: str = cls.area6.name
+        cls.a7_name: str = cls.area7.name
 
     @classmethod
     def setUpClients(cls, num_clients):
         cls.server.make_clients(num_clients)
 
-        cls.c0 = cls.clients[0]
-        cls.c0_cname = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
-        cls.c0_dname = cls.c0.displayname
+        cls.c0: _TestClientManager._TestClient = cls.clients[0]
+        cls.c0_cname: str = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
+        cls.c0_dname: str = cls.c0.displayname
         if num_clients == 1: return
 
-        cls.c1 = cls.clients[1]
-        cls.c1_cname = cls.c1.get_char_name() #'Shuichi Saihara_HD'
-        cls.c1_dname = cls.c1.displayname
+        cls.c1: _TestClientManager._TestClient = cls.clients[1]
+        cls.c1_cname: str = cls.c1.get_char_name() #'Shuichi Saihara_HD'
+        cls.c1_dname: str = cls.c1.displayname
         if num_clients == 2: return
 
-        cls.c2 = cls.clients[2]
+        cls.c2: _TestClientManager._TestClient = cls.clients[2]
         cls.c2.showname = 'Phantom'
-        cls.c2_cname = cls.c2.get_char_name() #'Maki Harukawa_HD'
-        cls.c2_dname = cls.c2.displayname
+        cls.c2_cname: str = cls.c2.get_char_name() #'Maki Harukawa_HD'
+        cls.c2_dname: str = cls.c2.displayname
         if num_clients == 3: return
 
-        cls.c3 = cls.clients[3]
+        cls.c3: _TestClientManager._TestClient = cls.clients[3]
         cls.c3.showname = 'The Judge'
-        cls.c3_cname = cls.c3.get_char_name() #'Monokuma_HD'
-        cls.c3_dname = cls.c3.displayname
+        cls.c3_cname: str = cls.c3.get_char_name() #'Monokuma_HD'
+        cls.c3_dname: str = cls.c3.displayname
         if num_clients == 4: return
 
-        cls.c4 = cls.clients[4]
+        cls.c4: _TestClientManager._TestClient = cls.clients[4]
         cls.c4.showname = 'aaaa'
-        cls.c4_cname = cls.c4.get_char_name() #'SPECTATOR'
-        cls.c4_dname = cls.c4.displayname
+        cls.c4_cname: str = cls.c4.get_char_name() #'SPECTATOR'
+        cls.c4_dname: str = cls.c4.displayname
         if num_clients == 5: return
 
-        cls.c5 = cls.clients[5]
-        cls.c5_cname = cls.c5.get_char_name() #'SPECTATOR'
-        cls.c5_dname = cls.c5.displayname
+        cls.c5: _TestClientManager._TestClient = cls.clients[5]
+        cls.c5_cname: str = cls.c5.get_char_name() #'SPECTATOR'
+        cls.c5_dname: str = cls.c5.displayname
 
     def list2reason(self, exc_list):
         if exc_list and exc_list[-1][0] is self:
@@ -349,8 +352,8 @@ class _TestClientManager(ClientManager):
                     connector = 'somewhere among'
                 else:
                     connector = 'at the start of'
-                err = 'Cannot find {} {} the packets of {}'.format(exp_args, connector, self)
-                err += ('\r\nCurrent packets: {}'
+                err = 'Cannot find \r\n {} \r\n{} the packets of {}'.format(exp_args, connector, self)
+                err += ('\r\nCurrent packets: \r\n*{}'
                         .format('\r\n*'.join([str(x) for x in structure])))
                 raise AssertionError(err)
 
@@ -659,7 +662,7 @@ class _TestTsuserverDR(TsuserverDR):
 
         return c
 
-    def make_clients(self, number, hdid_list=None, user_list=None):
+    def make_clients(self, number, hdid_list=None, user_list=None) -> Set[_TestClientManager._TestClient]:
         if hdid_list is None:
             hdid_list = ['FAKEHDID'] * number
         else:

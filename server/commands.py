@@ -5474,20 +5474,33 @@ def ooc_cmd_zone_add(client, arg):
 
 def ooc_cmd_zone_delete(client, arg):
     """ (STAFF ONLY)
-    Deletes a zone by zone ID, so that it is no longer part of the server's zone list.
-    Returns an error if the zone identifier does not correspond to a zone.
+    Deletes the zone the user is watching, so that it is no longer part of the server's zone list.
+    Returns an error if the user is not watching a zone.
 
     SYNTAX
-    /zone_delete <zone_ID>
+    /zone_delete
 
     PARAMETERS
-    <zone_ID>: Identifier of zone to delete
+    None
 
     EXAMPLES
-    /zone_delete 1000       :: Deletes the zone 1000
+    If the user is watching zone 1000
+    /zone_delete       :: Deletes the zone 1000
     """
 
-    Constants.command_assert(client, arg, is_staff=True, parameters='=1')
+    Constants.command_assert(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    backup_watchers = client.zone_watched.get_watchers() # Keep backup reference to send to others
+
+    client.server.zone_manager.delete_zone(client.zone_watched.get_id())
+    client.send_ooc('You have deleted your zone.')
+    for c in backup_watchers:
+        if c == client:
+            continue
+        c.send_ooc('(X) {} has deleted your zone.'.format(client.name))
 
 def ooc_cmd_zone_global(client, arg):
     """
@@ -5553,6 +5566,30 @@ def ooc_cmd_zone_remove(client, arg):
 
     Constants.command_assert(client, arg, is_staff=True, parameters='=1')
 
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+    area = Constants.parse_area_names(client, arg).pop()
+
+    target_zone = client.zone_watched
+    backup_watchers = client.zone_watched.get_watchers() # In case zone gets automatically deleted
+    try:
+        target_zone.remove_area(area)
+    except ZoneError.AreaNotInZoneError:
+        raise ZoneError('Area {} is not part of your zone.'.format(arg))
+
+    # Announce area removal, taking care of using the backup watchers in case the zone got
+    # automatically deleted
+    client.send_ooc('You have removed area {} from your zone.'.format(area.id))
+    for c in backup_watchers:
+        if c == client:
+            continue
+        c.send_ooc('(X) {} has removed area {} from your zone.'.format(client.name, area.id))
+
+    # Announce automatic deletion if needed.
+    if not target_zone.get_areas():
+        for c in backup_watchers:
+            c.send_ooc('As your zone no longer covers any areas, it has been deleted.')
+
 def ooc_cmd_zone_unwatch(client, arg):
     """ (STAFF ONLY)
     Makes the user no longer watch the zone they are watching.
@@ -5577,7 +5614,7 @@ def ooc_cmd_zone_unwatch(client, arg):
 
     client.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.get_id()))
     if not target_zone.get_watchers():
-        client.send_ooc('As you were the last person watching it, your last zone was removed.')
+        client.send_ooc('As you were the last person watching it, your zone has been deleted.')
     client.send_ooc_others('(X) {} is no longer watching your zone.'.format(client.name),
                            to_zone_watcher=target_zone)
 

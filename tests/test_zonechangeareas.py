@@ -154,26 +154,132 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
-class TestZoneChangeArea_03_Delete(_TestZone):
-    def test_01_wrongarguments(self):
+    def test_02_removearea(self):
         """
-        Situation: Clients attempt to use /zone_delete incorrectly.
+        Situation: C1 creates a zone with areas 4-7. They, then remove area 5 from the zone.
         """
 
-        # Non-staff
-        self.c0.ooc('/zone_delete 1000')
-        self.c0.assert_ooc('You must be authorized to do that.', over=True)
+        self.c1.ooc('/zone 4, 7')
+        self.c1.discard_all()
+        self.assert_zones({'z0': {4, 5, 6, 7}})
+
+        self.c1.ooc('/zone_remove 5')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('You have removed area {} from your zone.'.format(5), over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+        self.assert_zones({'z0': {4, 6, 7}})
+
+    def test_03_noareasremoveszone(self):
+        """
+        Situation: C1 slowly removes all areas from their zone. After they remove the last one,
+        the zone is automatically disposed of. This is notified to all watchers of the now defunct
+        zone (including C5, who tagged along).
+        """
+
+        self.c5.ooc('/zone_watch z0')
+        self.c1.discard_all()
+        self.c5.discard_all()
+
+        self.c1.ooc('/zone_remove 4')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('You have removed area {} from your zone.'.format(4), over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc('(X) {} has removed area {} from your zone.'.format(self.c1.name, 4),
+                           over=True)
+        self.assert_zones({'z0': {6, 7}})
+
+        self.c1.ooc('/zone_remove 6')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('You have removed area {} from your zone.'.format(6), over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc('(X) {} has removed area {} from your zone.'.format(self.c1.name, 6),
+                           over=True)
+        self.assert_zones({'z0': {7}})
+
+        self.c1.ooc('/zone_remove 7')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('You have removed area {} from your zone.'.format(7))
+        self.c1.assert_ooc('As your zone no longer covers any areas, it has been deleted.',
+                           over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc('(X) {} has removed area {} from your zone.'.format(self.c1.name, 7))
+        self.c5.assert_ooc('As your zone no longer covers any areas, it has been deleted.',
+                   over=True)
+        self.assert_zones(dict())
+
+    def test_04_nonwatcherscannotremove(self):
+        """
+        Situation: C1 recreates zone z0. C5, who is not a watcher of zone z0, attempts to remove
+        an area... somewhere. This fails.
+        """
+
+        self.c1.ooc('/zone 4, 7')
+        self.c1.discard_all()
+
+        self.c5.ooc('/zone_remove 6')
+        self.c0.assert_no_packets()
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_no_packets()
+        self.c5.assert_ooc('You are not watching a zone.', over=True)
 
-        # No parameters
-        self.c1.ooc('/zone_delete')
+    def test_05_newwatcherscanremove(self):
+        """
+        Situation: C5 now watches z0 and removes an area. This now works and C1 is notified of it.
+        """
+
+        self.c5.ooc('/zone_watch z0')
+        self.c1.discard_all()
+        self.c5.discard_all()
+
+        self.c5.ooc('/zone_remove 7')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('This command has 1 argument.', over=True)
+        self.c1.assert_ooc('(X) {} has removed area {} from your zone.'.format(self.c5.name, 7),
+                           over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
+        self.c5.assert_ooc('You have removed area {} from your zone.'.format(7), over=True)
+        self.assert_zones({'z0': {4, 5, 6}})
+
+    def test_06_removeofanoterdoesnotmutate(self):
+        """
+        Situation: C2 creates a new zone and removes an area from it. z0's areas remain the same.
+        """
+
+        self.c2.ooc('/zone 2, 3')
+        self.c2.discard_all()
+        self.assert_zones({'z0': {4, 5, 6}, 'z1': {2, 3}})
+
+        self.c2.ooc('/zone_remove 3')
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc('You have removed area {} from your zone.'.format(3), over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
         self.c5.assert_no_packets()
+        self.assert_zones({'z0': {4, 5, 6}, 'z1': {2}})
+
+    def test_07_cannotremovewhatisnotthere(self):
+        """
+        Situation: C2 attempts to remove an area not part of their zone. This fails
+        """
+
+        self.c2.ooc('/zone_remove 4')
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc('Area {} is not part of your zone.'.format(4), over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+        self.assert_zones({'z0': {4, 5, 6}, 'z1': {2}})
