@@ -991,8 +991,14 @@ class ClientManager:
             for task_id in self.server.client_tasks[client.id].keys():
                 self.server.get_task(client, [task_id]).cancel()
 
+        # If the client was part of a party, remove them from the party
         if client.party:
             client.party.remove_member(client)
+
+        # If the client was watching a zone, remove them from the zone's watcher list, and check if
+        # the zone is now empty.
+        if client.zone_watched:
+            client.zone_watched.remove_watcher(client)
 
         self.clients.remove(client)
 

@@ -73,7 +73,7 @@ class ZoneManager:
                 If the area is already a part of some zone area set, possibly not this one.
             """
 
-            raise NotImplementedError
+            self.add_areas({area})
 
         def add_areas(self, areas, check_structure=True):
             """
@@ -144,7 +144,7 @@ class ZoneManager:
                 If the watcher is already watching some zone, possibly not this one.
             """
 
-            raise NotImplementedError
+            self.add_watchers({watcher})
 
         def add_watchers(self, watchers, check_structure=True):
             """
@@ -156,7 +156,7 @@ class ZoneManager:
             Parameters
             ----------
             watcher: set of ClientManager.Client
-                Clients to add to the zone watcher set.
+                Watchers to add to the zone watcher set.
             check_structure: boolean, optional
                 If set to False, the manager will skip the structural integrity test.
 
@@ -180,7 +180,7 @@ class ZoneManager:
             if check_structure:
                 self.server.zone_manager._check_structure()
 
-        def remove_watcher(self, client):
+        def remove_watcher(self, watcher):
             """
             Remove a client from the zone watcher set if it was there.
 
@@ -188,16 +188,25 @@ class ZoneManager:
 
             Parameters
             ----------
-            client: ClientManager.Client
-                Client to remove from the zone watcher set.
+            watcher: ClientManager.Client
+                Watcher to remove from the zone watcher set.
 
             Raises
             ------
             KeyError:
-                If the client is not part of the zone watcher set.
+                If the watcher is not part of the zone watcher set.
             """
 
-            raise NotImplementedError
+            if watcher not in self.watchers:
+                raise ValueError('Watcher {} is not watching zone {}.'.format(watcher, self))
+
+            self.watchers.remove(watcher)
+            watcher.zone_watched = None
+
+            # If no more watchers, delete the zone
+            if not self.watchers:
+                self.server.zone_manager.remove_zone(self.zone_id)
+            self.server.zone_manager._check_structure()
 
         def __repr__(self):
             return 'Z::{}:{}:{}'.format(self.zone_id, self.areas, self.watchers)
@@ -254,7 +263,13 @@ class ZoneManager:
             If the zone ID is invalid.
         """
 
-        raise NotImplementedError
+        zone = self.zones.pop(zone_id)
+        for area in zone.areas:
+            area.in_zone = None
+        for watcher in zone.watchers:
+            watcher.zone_watched = None
+
+        self._check_structure()
 
     def get_zone(self, zone_tag):
         """

@@ -5434,7 +5434,7 @@ def ooc_cmd_zone(client, arg):
     else:
         output = 'areas {} through {}'.format(lower_area.id, upper_area.id)
 
-    client.send_ooc('You have created zone {} containing {}.'.format(zone_id, output))
+    client.send_ooc('You have created zone `{}` containing {}.'.format(zone_id, output))
 
 def ooc_cmd_zone_add(client, arg):
     """ (STAFF ONLY)
@@ -5551,11 +5551,22 @@ def ooc_cmd_zone_unwatch(client, arg):
     """
 
     Constants.command_assert(client, arg, is_staff=True, parameters='=0')
+    if not client.zone_watched:
+        raise ClientError('You are not watching any zone.')
+
+    target_zone = client.zone_watched
+    target_zone.remove_watcher(client)
+
+    client.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.zone_id))
+    if not target_zone.watchers:
+        client.send_ooc('As you were the last person watching it, your last zone was removed.')
+    for c in target_zone.watchers:
+        c.send_ooc('(X) {} is no longer watching your zone.'.format(client.name))
 
 def ooc_cmd_zone_watch(client, arg):
     """ (STAFF ONLY)
-    Makes the user start watching a zone by ID
-    Returns an error if the user is already watching a zone.
+    Makes the user start watching a zone by ID.
+    Returns an error if the user is already watching a zone or if the zone ID does not exist.
 
     SYNTAX
     /zone_watch <zone_ID>
@@ -5568,6 +5579,17 @@ def ooc_cmd_zone_watch(client, arg):
     """
 
     Constants.command_assert(client, arg, is_staff=True, parameters='=1')
+    if client.zone_watched:
+        raise ClientError('You cannot watch a zone while watching another.')
+
+    target_zone = client.server.zone_manager.get_zone(arg)
+    target_zone.add_watcher(client)
+
+    client.send_ooc('You are now watching zone `{}`.'.format(target_zone.zone_id))
+    for c in target_zone.watchers:
+        if c == client:
+            continue
+        c.send_ooc('(X) {} is now watching your zone.'.format(client.name))
 
 def ooc_cmd_exec(client, arg):
     """

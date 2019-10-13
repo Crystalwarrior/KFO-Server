@@ -1,6 +1,6 @@
 from .structures import _TestSituation6Mc1Gc25
 
-class _TestZoneChanger(_TestSituation6Mc1Gc25):
+class _TestZone(_TestSituation6Mc1Gc25):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -27,7 +27,7 @@ class _TestZoneChanger(_TestSituation6Mc1Gc25):
             actual_zone_areas = {area.id for area in actual_zone.areas}
             self.assertEquals(expected_zone_areas, actual_zone_areas)
 
-class TestZoneChanger_01_Zone(_TestZoneChanger):
+class TestZoneBasic_01_Zone(_TestZone):
     def test_01_wrongarguments(self):
         """
         Situation: Clients attempt to use /zone incorrectly.
@@ -129,7 +129,7 @@ class TestZoneChanger_01_Zone(_TestZoneChanger):
 
         self.c1.ooc('/zone')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('You have created zone {} containing just area {}.'
+        self.c1.assert_ooc('You have created zone `{}` containing just area {}.'
                            .format('z0', 4), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
@@ -145,7 +145,7 @@ class TestZoneChanger_01_Zone(_TestZoneChanger):
         self.c2.ooc('/zone {}'.format(self.a3_name))
         self.c0.assert_no_packets()
         self.c1.assert_no_packets()
-        self.c2.assert_ooc('You have created zone {} containing just area {}.'
+        self.c2.assert_ooc('You have created zone `{}` containing just area {}.'
                            .format('z1', 3), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -163,7 +163,7 @@ class TestZoneChanger_01_Zone(_TestZoneChanger):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('You have created zone {} containing areas {} through {}.'
+        self.c5.assert_ooc('You have created zone `{}` containing areas {} through {}.'
                            .format('z2', 5, 7), over=True)
         self.assert_zones({'z0': {4}, 'z1': {3}, 'z2': {5, 6, 7}})
 
@@ -199,14 +199,34 @@ class TestZoneChanger_01_Zone(_TestZoneChanger):
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
-class TestZoneChanger_02_Add(_TestZoneChanger):
+class TestZoneBasic_02_Global(_TestZone):
     def test_01_wrongarguments(self):
         """
-        Situation: Clients attempt to use /zone_add incorrectly.
+        Situation: Clients attempt to use /zone_global incorrectly.
+        """
+
+        # No message
+        self.c0.ooc('/zone_global')
+        self.c0.assert_ooc('You cannot send an empty message.', over=True)
+        self.c1.assert_no_packets()
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+    def test_99_alias(self):
+        """
+        Situation: Clients attempt to use /zg, the alias of /zone_global.
+        """
+
+class TestZoneBasic_03_List(_TestZone):
+    def test_01_wrongarguments(self):
+        """
+        Situation: Clients attempt to use /zone_list incorrectly.
         """
 
         # Non-staff
-        self.c0.ooc('/zone_add 16')
+        self.c0.ooc('/zone_list')
         self.c0.assert_ooc('You must be authorized to do that.', over=True)
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
@@ -214,58 +234,10 @@ class TestZoneChanger_02_Add(_TestZoneChanger):
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
-        # No parameters
-        self.c1.ooc('/zone_add')
+        # Parameters
+        self.c1.ooc('/zone_list abc')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('This command has 1 argument.', over=True)
-        self.c2.assert_no_packets()
-        self.c3.assert_no_packets()
-        self.c4.assert_no_packets()
-        self.c5.assert_no_packets()
-
-class TestZoneChanger_03_Remove(_TestZoneChanger):
-    def test_01_wrongarguments(self):
-        """
-        Situation: Clients attempt to use /zone_remove incorrectly.
-        """
-
-        # Non-staff
-        self.c0.ooc('/zone_remove 16')
-        self.c0.assert_ooc('You must be authorized to do that.', over=True)
-        self.c1.assert_no_packets()
-        self.c2.assert_no_packets()
-        self.c3.assert_no_packets()
-        self.c4.assert_no_packets()
-        self.c5.assert_no_packets()
-
-        # No parameters
-        self.c1.ooc('/zone_remove')
-        self.c0.assert_no_packets()
-        self.c1.assert_ooc('This command has 1 argument.', over=True)
-        self.c2.assert_no_packets()
-        self.c3.assert_no_packets()
-        self.c4.assert_no_packets()
-        self.c5.assert_no_packets()
-
-class TestZoneChanger_04_Delete(_TestZoneChanger):
-    def test_01_wrongarguments(self):
-        """
-        Situation: Clients attempt to use /zone_delete incorrectly.
-        """
-
-        # Non-staff
-        self.c0.ooc('/zone_delete 1000')
-        self.c0.assert_ooc('You must be authorized to do that.', over=True)
-        self.c1.assert_no_packets()
-        self.c2.assert_no_packets()
-        self.c3.assert_no_packets()
-        self.c4.assert_no_packets()
-        self.c5.assert_no_packets()
-
-        # No parameters
-        self.c1.ooc('/zone_delete')
-        self.c0.assert_no_packets()
-        self.c1.assert_ooc('This command has 1 argument.', over=True)
+        self.c1.assert_ooc('This command has no arguments.', over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
