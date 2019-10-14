@@ -202,29 +202,7 @@ class TestZoneBasic_01_Zone(_TestZone):
         self.c5.assert_no_packets()
         self.assert_zones({'z0': {4}, 'z1': {3}, 'z2': {5, 6, 7}})
 
-class TestZoneBasic_02_Global(_TestZone):
-    def test_01_wrongarguments(self):
-        """
-        Situation: Clients attempt to use /zone_global incorrectly.
-        """
-
-        # No message
-        self.c0.ooc('/zone_global')
-        self.c0.assert_ooc('You cannot send an empty message.', over=True)
-        self.c1.assert_no_packets()
-        self.c2.assert_no_packets()
-        self.c3.assert_no_packets()
-        self.c4.assert_no_packets()
-        self.c5.assert_no_packets()
-
-    def test_99_alias(self):
-        """
-        Situation: Clients attempt to use /zg, the alias of /zone_global.
-        """
-
-        pass
-
-class TestZoneBasic_03_List(_TestZone):
+class TestZoneBasic_02_List(_TestZone):
     def test_01_wrongarguments(self):
         """
         Situation: Clients attempt to use /zone_list incorrectly.
@@ -373,7 +351,7 @@ class TestZoneBasic_03_List(_TestZone):
                            over=True)
         self.c5.assert_no_packets()
 
-class TestZoneBasic_04_Delete(_TestZone):
+class TestZoneBasic_03_Delete(_TestZone):
     def test_01_wrongarguments(self):
         """
         Situation: Clients attempt to use /zone_delete incorrectly.

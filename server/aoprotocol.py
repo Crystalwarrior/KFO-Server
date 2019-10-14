@@ -25,7 +25,7 @@ from enum import Enum
 from server import logger
 from server.constants import Constants
 from server.exceptions import ArgumentError, AreaError, ClientError, ServerError
-from server.exceptions import PartyError, ZoneError
+from server.exceptions import PartyError, ZoneError, TsuserverException
 from server.fantacrypt import fanta_decrypt
 from server.evidence import EvidenceList
 
@@ -546,9 +546,7 @@ class AOProtocol(asyncio.Protocol):
             if function:
                 try:
                     function(self.client, arg)
-                except (ClientError, AreaError, ArgumentError, ServerError) as ex:
-                    self.client.send_ooc(ex)
-                except (PartyError, ZoneError) as ex:
+                except TsuserverException as ex:
                     self.client.send_ooc(ex)
         else:
             if self.client.disemvowel: #If you are disemvoweled, replace string.
@@ -596,18 +594,8 @@ class AOProtocol(asyncio.Protocol):
                 return
 
             try:
-                name, length = self.server.get_song_data(args[0], c=self.client)
-                self.client.area.play_music(name, self.client.char_id, length)
-                self.client.area.add_music_playing(self.client, name)
-
-                logger.log_server('[{}][{}]Changed music to {}.'
-                                  .format(self.client.area.id, self.client.get_char_name(), name),
-                                  self.client)
-
-                # Changing music reveals sneaked players
-                if not self.client.is_staff() and not self.client.is_visible:
-                    self.client.change_visibility(True)
-
+                self.client.area.play_track(args[0], self.client, raise_if_not_found=True,
+                                            reveal_sneaked=True)
             except ServerError:
                 return
         except (ClientError, PartyError) as ex:

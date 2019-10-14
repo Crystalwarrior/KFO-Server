@@ -30,7 +30,8 @@ class TsuserverException(Exception):
         return True
 
 class ClientError(TsuserverException):
-    pass
+    class UnauthorizedError(TsuserverException):
+        pass
 
 class AreaError(TsuserverException):
     pass
@@ -39,7 +40,8 @@ class ArgumentError(TsuserverException):
     pass
 
 class ServerError(TsuserverException):
-    pass
+    class MusicNotFoundError(TsuserverException):
+        pass
 
 class PartyError(TsuserverException):
     pass

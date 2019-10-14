@@ -30,62 +30,79 @@ def do_command(command, client, arg):
     function = getattr(source, adapted_command)
     function(client, arg)
 
+def ooc_cmd_zg(client, arg):
+    """
+    Alias for /zone_global.
+    """
+
+    do_command('zone_global', client, arg)
+
 def ooc_cmd_allow_iniswap(client, arg):
     """
     Deprecated for /can_iniswap.
     """
+
     do_command('can_iniswap', client, arg)
 
 def ooc_cmd_delete_areareachlock(client, arg):
     """
     Deprecated for /passage_clear.
     """
+
     do_command('passage_clear', client, arg)
 
 def ooc_cmd_mutepm(client, arg):
     """
     Deprecated for /toggle_pm.
     """
+
     do_command('toggle_pm', client, arg)
 
 def ooc_cmd_restore_areareachlock(client, arg):
     """
     Deprecated for /passage_restore.
     """
+
     do_command('passage_restore', client, arg)
 
 def ooc_cmd_showname_list(client, arg):
     """
     Deprecated for /showname_areas.
     """
+
     do_command('showname_areas', client, arg)
 
 def ooc_cmd_toggle_areareachlock(client, arg):
     """
     Deprecated for /can_passagelock.
     """
+
     do_command('can_passagelock', client, arg)
 
 def ooc_cmd_toggleglobal(client, arg):
     """
     Deprecated for /toggle_global.
     """
+
     do_command('toggle_global', client, arg)
 
 def ooc_cmd_toggle_rollp(client, arg):
     """
     Deprecated for /can_rollp.
     """
+
     do_command('can_rollp', client, arg)
 
 def ooc_cmd_toggle_rpgetarea(client, arg):
     """
     Deprecated for /can_rpgetarea.
     """
+
     do_command('can_rpgetarea', client, arg)
 
 def ooc_cmd_toggle_rpgetareas(client, arg):
     """
     Deprecated for /can_rpgetareas.
     """
+
     do_command('can_rpgetareas', client, arg)

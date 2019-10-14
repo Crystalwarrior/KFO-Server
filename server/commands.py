@@ -50,7 +50,7 @@ def ooc_cmd_announce(client, arg):
     """
 
     try:
-        Constants.command_assert(client, arg, is_mod=True, parameters='>0')
+        Constants.assert_command(client, arg, is_mod=True, parameters='>0')
     except ArgumentError:
         raise ArgumentError('You cannot send an empty announcement.')
 
@@ -280,7 +280,7 @@ def ooc_cmd_ban(client, arg):
     """
 
     arg = arg.strip()
-    Constants.command_assert(client, arg, parameters='>0', is_mod=True)
+    Constants.assert_command(client, arg, parameters='>0', is_mod=True)
 
     # Guesses that any number is an IPID
     # and that any non-numerical entry is an IP address.
@@ -332,7 +332,7 @@ def ooc_cmd_banhdid(client, arg):
     /banhdid abcd1234             :: Bans the user whose HDID is abcd1234
     """
 
-    Constants.command_assert(client, arg, parameters='=1', is_mod=True)
+    Constants.assert_command(client, arg, parameters='=1', is_mod=True)
 
     if not arg in client.server.hdid_list:
         raise ClientError('Unrecognized HDID {}.'.format(arg))
@@ -507,7 +507,7 @@ def ooc_cmd_blind(client, arg):
     /blind 1            :: Unblinds client 1
     """
 
-    Constants.command_assert(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
     status = {False: 'unblinded', True: 'blinded'}
@@ -575,7 +575,7 @@ def ooc_cmd_bloodtrail(client, arg):
     /bloodtrail 0            :: This player will now leave a blood trail wherever they go.
     """
 
-    Constants.command_assert(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
     status = {False: 'no longer', True: 'now'}
@@ -744,7 +744,7 @@ def ooc_cmd_bloodtrail_list(client, arg):
     /bloodtrail_list
     """
 
-    Constants.command_assert(client, arg, is_staff=True, parameters='=0')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     # Get all areas with blood in them
     areas = sorted([area for area in client.server.area_manager.areas if len(area.bleeds_to) > 0 or
@@ -1441,7 +1441,7 @@ def ooc_cmd_deafen(client, arg):
     /deafen 1            :: Undeafens client 1
     """
 
-    Constants.command_assert(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
     status = {False: 'undeafened', True: 'deafened'}
@@ -1499,7 +1499,7 @@ def ooc_cmd_discord(client, arg):
     /discord            :: Sends the Discord invite link
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     client.send_ooc('Discord Invite Link: {}'.format(client.server.config['discord_link']))
 
@@ -1659,7 +1659,7 @@ def ooc_cmd_gag(client, arg):
     /gag 1            :: Ungags client 1
     """
 
-    Constants.command_assert(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
     status = {False: 'ungagged', True: 'gagged'}
@@ -1773,7 +1773,7 @@ def ooc_cmd_globalic(client, arg):
     /globalic Courtroom,\ 2, Courtroom 3    :: Send IC messages to areas "Courtroom, 2" through "Courtroom 3" (note the escape character).
     """
 
-    Constants.command_assert(client, arg, parameters='&1-2', is_staff=True, split_commas=True)
+    Constants.assert_command(client, arg, parameters='&1-2', is_staff=True, split_commas=True)
     areas = Constants.parse_two_area_names(client, arg.split(', '))
 
     client.multi_ic = areas
@@ -1805,7 +1805,7 @@ def ooc_cmd_globalic_pre(client, arg):
     /globalic_pre           :: All IC messages will be sent globally.
     """
 
-    Constants.command_assert(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True)
 
     client.multi_ic_pre = arg
     if arg:
@@ -1831,7 +1831,7 @@ def ooc_cmd_gm(client, arg):
     """
 
     try:
-        Constants.command_assert(client, arg, is_mod=True, parameters='>0')
+        Constants.assert_command(client, arg, is_mod=True, parameters='>0')
     except ArgumentError:
         raise ArgumentError("You cannot send an empty message.")
 
@@ -2110,7 +2110,7 @@ def ooc_cmd_judgelog(client, arg):
     *Sat Jun 29 12:06:19 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
     """
 
-    Constants.command_assert(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True)
     if len(arg) == 0:
         arg = client.area.name
 
@@ -2334,7 +2334,7 @@ def ooc_cmd_lm(client, arg):
     """
 
     try:
-        Constants.command_assert(client, arg, is_mod=True, parameters='>0')
+        Constants.assert_command(client, arg, is_mod=True, parameters='>0')
     except ArgumentError:
         raise ArgumentError('You cannot send an empty message.')
 
@@ -2435,7 +2435,7 @@ def ooc_cmd_logout(client, arg):
     /logout
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     client.is_mod = False
     client.is_gm = False
@@ -2704,7 +2704,7 @@ def ooc_cmd_motd(client, arg):
     /motd
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     client.send_motd()
 
@@ -2851,7 +2851,7 @@ def ooc_cmd_online(client, arg):
     /online         :: Will return: "Online: 2/100"
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     client.send_ooc("Online: {}/{}"
                     .format(client.server.get_player_count(), client.server.config['playerlimit']))
@@ -2933,7 +2933,7 @@ def ooc_cmd_party(client, arg):
     /party      :: May return something like "You have created party 11037."
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     if not client.is_staff() and client.is_blind:
         raise ClientError('You cannot create a party as you are blind.')
@@ -2968,10 +2968,10 @@ def ooc_cmd_party_disband(client, arg):
     /party_disband 73011    :: Disbands party 73011
     """
 
-    if client.is_staff():
-        Constants.command_assert(client, arg, parameters='<2')
-    else:
-        Constants.command_assert(client, arg, parameters='=0')
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='<2')
+    except ClientError.UnauthorizedError:
+        Constants.assert_command(client, arg, parameters='=0')
 
     if not arg:
         party = client.get_party()
@@ -3008,7 +3008,7 @@ def ooc_cmd_party_id(client, arg):
     /party_id           :: May return something like "Your party ID is 11037".
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     party = client.get_party(tc=True)
     client.send_ooc('Your party ID is: {}'.format(party.get_id()))
@@ -3033,7 +3033,7 @@ def ooc_cmd_party_invite(client, arg):
     /party_invite 2         :: Invites the player with ID 2 to join your party.
     """
 
-    Constants.command_assert(client, arg, parameters='=1')
+    Constants.assert_command(client, arg, parameters='=1')
 
     party = client.get_party(tc=True)
     if not party.is_leader(client) and not client.is_staff():
@@ -3073,7 +3073,7 @@ def ooc_cmd_party_join(client, arg):
     /party_join 11037       :: If previously invited, you will join party 11037.
     """
 
-    Constants.command_assert(client, arg, split_spaces=True, parameters='=1')
+    Constants.assert_command(client, arg, split_spaces=True, parameters='=1')
     if client.following:
         raise PartyError('You cannot join a party while following someone.')
 
@@ -3102,7 +3102,7 @@ def ooc_cmd_party_kick(client, arg):
     /party_kick 2       :: Kicks the player with client ID 2 off your party.
     """
 
-    Constants.command_assert(client, arg, parameters='=1')
+    Constants.assert_command(client, arg, parameters='=1')
 
     party = client.get_party()
     if not party.is_leader(client) and not client.is_staff():
@@ -3137,7 +3137,7 @@ def ooc_cmd_party_lead(client, arg):
     /party_lead         :: Sets you as leader of your party.
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     party = client.get_party()
     party.add_leader(client, tc=True)
@@ -3162,7 +3162,7 @@ def ooc_cmd_party_leave(client, arg):
     /party_leave        :: Makes you leave your current party.
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     party = client.get_party(tc=True)
     party.remove_member(client)
@@ -3192,7 +3192,7 @@ def ooc_cmd_party_list(client, arg):
     *Party 11037 [2/7] (3). Leaders: Phantom_HD. Regular members: Spam_HD
     """
 
-    Constants.command_assert(client, arg, parameters='=0', is_staff=True)
+    Constants.assert_command(client, arg, parameters='=0', is_staff=True)
 
     info = '== Active parties =='
     for party in client.server.party_manager.get_parties():
@@ -3223,7 +3223,7 @@ def ooc_cmd_party_members(client, arg):
     *Members: Eggs_HD
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     party = client.get_party(tc=True)
     regulars, leaders = party.get_members_leaders()
@@ -3252,7 +3252,7 @@ def ooc_cmd_party_uninvite(client, arg):
     /party_uninvite 2       :: Revokes the invitation sent to player with ID 2 to join your party.
     """
 
-    Constants.command_assert(client, arg, split_spaces=True, parameters='=1')
+    Constants.assert_command(client, arg, split_spaces=True, parameters='=1')
 
     party = client.get_party(tc=True)
     if not party.is_leader(client) and not client.is_staff():
@@ -3284,7 +3284,7 @@ def ooc_cmd_party_unlead(client, arg):
     /party_unlead       :: Removes your party leader role.
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     party = client.get_party()
     party.remove_leader(client, tc=True)
@@ -3388,7 +3388,7 @@ def ooc_cmd_ping(client, arg):
     /ping               :: Returns "Pong"
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     client.send_ooc('Pong.')
 
@@ -3409,14 +3409,15 @@ def ooc_cmd_play(client, arg):
     /play CustomTrack.mp3       :: Plays CustomTrack.mp3 (will only be audible to users with CustomTrack.mp3)
     """
 
-    if not (client.is_staff() or client.area.song_switch_allowed):
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+    except ClientError.UnauthorizedError:
+        if not client.area.song_switch_allowed:
+            raise
+    except ArgumentError:
         raise ArgumentError('You must specify a song.')
 
-    client.area.play_music(arg, client.char_id, -1)
-    client.area.add_music_playing(client, arg)
-    logger.log_server('[{}][{}]Changed music to {}.'.format(client.area.id, client.get_char_name(), arg), client)
+    client.area.play_track(arg, client, raise_if_not_found=False, reveal_sneaked=False)
 
 def ooc_cmd_pm(client, arg):
     """
@@ -3778,17 +3779,14 @@ def ooc_cmd_rplay(client, arg):
     /rplay CustomTrack.mp3       :: Plays CustomTrack.mp3 (will only be audible to users with CustomTrack.mp3)
     """
 
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
-    if len(arg) == 0:
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+    except ArgumentError:
         raise ArgumentError('You must specify a song.')
 
     for reachable_area_name in client.area.reachable_areas:
         reachable_area = client.server.area_manager.get_area_by_name(reachable_area_name)
-        reachable_area.play_music(arg, client.char_id, -1)
-        reachable_area.add_music_playing(client, arg)
-        logger.log_server('[{}][{}]Changed music to {}.'
-                          .format(client.area.id, client.get_char_name(), arg), client)
+        reachable_area.play_track(arg, client, raise_if_not_found=False, reveal_sneaked=False)
 
 def ooc_cmd_rpmode(client, arg):
     """ (STAFF ONLY)
@@ -4111,7 +4109,7 @@ def ooc_cmd_showname_area(client, arg):
     [1] Spam_HD (Spam, Spam, Spam...)
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
     if not client.is_staff() and client.is_blind:
         raise ClientError('You are blind, so you cannot see anything.')
 
@@ -4141,7 +4139,7 @@ def ooc_cmd_showname_areas(client, arg):
     [2] Eggs_HD (Not Spam?)
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
     if not client.is_staff() and client.is_blind:
         raise ClientError('You are blind, so you cannot see anything.')
 
@@ -4683,7 +4681,7 @@ def ooc_cmd_toggle_global(client, arg):
     /toggle_global
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     client.muted_global = not client.muted_global
     status = {True: 'no longer', False: 'now'}
@@ -4704,7 +4702,7 @@ def ooc_cmd_toggle_pm(client, arg):
     /toggle_pm
     """
 
-    Constants.command_assert(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     client.pm_mute = not client.pm_mute
     status = {True: 'You will no longer receive PMs.', False: 'You will now receive PMs.'}
@@ -4812,7 +4810,7 @@ def ooc_cmd_unbanhdid(client, arg):
     /unbanhdid abcd1234         :: Unbans user whose HDID is abcd1234
     """
 
-    Constants.command_assert(client, arg, parameters='=1', is_mod=True)
+    Constants.assert_command(client, arg, parameters='=1', is_mod=True)
 
     if not arg in client.server.hdid_list:
         raise ClientError('Unrecognized HDID {}.'.format(arg))
@@ -5297,7 +5295,7 @@ def ooc_cmd_whois(client, arg):
     /whois Phantom_HD   :: Returns client info.
     """
 
-    Constants.command_assert(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True)
     if not arg:
         targets = [client]
         arg = client.id
@@ -5357,11 +5355,43 @@ def ooc_cmd_8ball(client, arg):
                       .format(client.area.id, client.get_char_name(), flip), client)
 
 def ooc_cmd_narrate(client, arg):
+    """ (STAFF ONLY)
+    Sends a message from the "Narrator" position to all players in the area. This will override
+    any existing IC message, or any hearing properties of the targets.
+
+    SYNTAX
+    /narrate <message>
+
+    PARAMETERS
+    <message>: Message to send
+
+    EXAMPLES
+    /narrate Hello World!   :: Sends `Hello World!` to the people in the area as a narrator.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True)
+
     for c in client.area.clients:
         c.send_ic(msg=arg, as_narration=True)
 
 def ooc_cmd_dicelog(client, arg):
-    Constants.command_assert(client, arg, is_staff=True)
+    """ (STAFF ONLY)
+    Obtains the last 20 roll resuls from the target by ID or the user if not given any.
+    Returns an error if the identifier does not correspond to a user.
+
+    SYNTAX
+    /dicelog
+    /dicelog <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /dicelog        :: Returns the user's last 20 rolls
+    /dicelog 1      :: Returns the user with ID 1's last 20 rolls
+    """
+
+    Constants.assert_command(client, arg, is_staff=True)
     if len(arg) == 0:
         arg = str(client.id)
 
@@ -5371,7 +5401,23 @@ def ooc_cmd_dicelog(client, arg):
     client.send_ooc(info)
 
 def ooc_cmd_dicelog_area(client, arg):
-    Constants.command_assert(client, arg, is_staff=True)
+    """ (STAFF ONLY)
+    Obtains the last 20 roll resuls from the target by ID or the user if not given any.
+    Returns an error if the identifier does not correspond to a user.
+
+    SYNTAX
+    /dicelog
+    /dicelog <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /dicelog_area       :: Returns the last 20 rolls of the user's current area
+    /dicelog_area 1     :: Returns the last 20 rolls of Area 1
+    """
+
+    Constants.assert_command(client, arg, is_staff=True)
     if len(arg) == 0:
         arg = str(client.area.id)
 
@@ -5381,6 +5427,19 @@ def ooc_cmd_dicelog_area(client, arg):
     client.send_ooc(info)
 
 def ooc_cmd_make_gm(client, arg):
+    """ (MOD AND CM ONLY)
+    Makes a player by ID a GM without them needing to put in a GM password.
+
+    SYNTAX
+    /make_gm <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /make_gm 3      :: Makes the client with ID 3 a GM
+    """
+
     if not client.is_mod and not client.is_cm:
         raise ClientError('You must be authorized to do that.')
     target = Constants.parse_id(client, arg)
@@ -5415,7 +5474,7 @@ def ooc_cmd_zone(client, arg):
     /zone 16, 116               :: Creates a zone that has areas 16 through 116.
     """
 
-    Constants.command_assert(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True)
 
     # Obtain area range and create zone based on it
     raw_area_names = arg.split(', ') if arg else []
@@ -5457,7 +5516,7 @@ def ooc_cmd_zone_add(client, arg):
     /zone_add Courtroom, 2     :: Add area "Courtroom, 2" to the zone
     """
 
-    Constants.command_assert(client, arg, is_staff=True, parameters='=1')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     if not client.zone_watched:
         raise ZoneError('You are not watching a zone.')
@@ -5488,7 +5547,7 @@ def ooc_cmd_zone_delete(client, arg):
     /zone_delete       :: Deletes the zone 1000
     """
 
-    Constants.command_assert(client, arg, is_staff=True, parameters='=0')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     if not client.zone_watched:
         raise ZoneError('You are not watching a zone.')
@@ -5520,7 +5579,23 @@ def ooc_cmd_zone_global(client, arg):
     """
 
     if not arg:
-        raise ArgumentError("You cannot send an empty message.")
+        raise ArgumentError('You cannot send an empty message.')
+
+    if client.zone_watched:
+        target_zone = client.zone_watched
+    elif client.area.in_zone:
+        target_zone = client.area.in_zone
+    else:
+        raise ZoneError('You are not in a zone.')
+
+    targets = target_zone.get_watchers()
+    for area in target_zone.get_areas():
+        targets.update({c for c in area.clients if c.zone_watched in [None, target_zone]})
+
+    for target in targets:
+        target.send_ooc(arg, username='<dollar>ZG[{}][{}]'
+                        .format(client.area.id, client.displayname),
+                        pred=lambda c: not c.muted_global)
 
 def ooc_cmd_zone_list(client, arg):
     """ (STAFF ONLY)
@@ -5540,14 +5615,42 @@ def ooc_cmd_zone_list(client, arg):
     *Zone 1000 [15] (2, 16-116). Watchers: Phantom (16)
     """
 
-    Constants.command_assert(client, arg, is_staff=True, parameters='=0')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     info = client.server.zone_manager.get_info()
     client.send_ooc(info)
 
+def ooc_cmd_zone_play(client, arg):
+    """ (STAFF ONLY)
+    Plays a given track in all areas of the zone, even if not explicitly in the music list.
+    It is the way to play custom music in all areas of a zone simultaneously.
+
+    SYNTAX
+    /zone_play <track_name>
+
+    PARAMETERS
+    <track_name>: Track to play
+
+    EXAMPLES
+    Assuming the user is watching zone z0
+    /zone_play Trial(AJ).mp3         :: Plays Trial(AJ).mp3 for all areas in zone z0
+    /zone_play CustomTrack.mp3       :: Plays CustomTrack.mp3 (will only be audible to users with CustomTrack.mp3) for all areas in zone z0
+    """
+
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+    except ArgumentError:
+        raise ArgumentError('You must specify a song.')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    for zone_area in client.zone_watched.get_areas():
+        zone_area.play_track(arg, client, raise_if_not_found=False, reveal_sneaked=False)
+
 def ooc_cmd_zone_remove(client, arg):
     """ (STAFF ONLY)
-    Remove an area by name or ID from the zone the user is watching.
+    Removes an area by name or ID from the zone the user is watching.
     Returns an error if the area identifier does not correspond to an area, if the area is not part
     of the zone the user is watching, or if the user is not watching a zone.
 
@@ -5564,7 +5667,7 @@ def ooc_cmd_zone_remove(client, arg):
     /zone_remove Courtroom, 2     :: Remove area "Courtroom, 2" from the zone
     """
 
-    Constants.command_assert(client, arg, is_staff=True, parameters='=1')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     if not client.zone_watched:
         raise ZoneError('You are not watching a zone.')
@@ -5605,7 +5708,7 @@ def ooc_cmd_zone_unwatch(client, arg):
     /zone_unwatch           :: Makes the user no longer watch their zone
     """
 
-    Constants.command_assert(client, arg, is_staff=True, parameters='=0')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
     if not client.zone_watched:
         raise ClientError('You are not watching any zone.')
 
@@ -5633,7 +5736,7 @@ def ooc_cmd_zone_watch(client, arg):
     /zone_watch 1000       :: Makes the user watch zone 1000
     """
 
-    Constants.command_assert(client, arg, is_staff=True, parameters='=1')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     target_zone = client.server.zone_manager.get_zone(arg)
     try:

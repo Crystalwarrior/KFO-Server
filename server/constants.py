@@ -81,19 +81,78 @@ class Constants():
         return text
 
     @staticmethod
-    def command_assert(client, arg, is_staff=None, is_mod=None, parameters=None,
+    def assert_command(client, arg, is_staff=None, is_mod=None, parameters=None,
                        split_spaces=None, split_commas=False):
         if is_staff is not None:
             if is_staff is True and not client.is_staff():
-                raise ClientError('You must be authorized to do that.')
+                raise ClientError.UnauthorizedError('You must be authorized to do that.')
             if is_staff is False and client.is_staff():
-                raise ClientError('You have too high a rank to do that.')
+                raise ClientError.UnauthorizedError('You have too high a rank to do that.')
 
         if is_mod is not None:
             if is_mod is True and not client.is_mod:
-                raise ClientError('You must be authorized to do that.')
+                raise ClientError.UnauthorizedError('You must be authorized to do that.')
             if is_mod is False and client.is_mod():
-                raise ClientError('You have too high a rank to do that.')
+                raise ClientError.UnauthorizedError('You have too high a rank to do that.')
+
+        if parameters is not None:
+            symbol, num = parameters[0], [int(i) for i in parameters[1:].split('-')]
+            # Set up default values
+            if (num[0] > 0 or symbol == '&') and split_spaces is None and split_commas is False:
+                split_spaces = True
+            elif split_spaces is None:
+                split_spaces = False
+
+            if split_spaces:
+                arg = arg.split(' ')
+            elif split_commas:
+                arg = arg.split(', ')
+
+            if arg == ['']:
+                arg = list()
+
+            error = None
+            if symbol == '=':
+                expect = num[0]
+                if len(arg) != expect:
+                    if expect == 0:
+                        expect = 'no'
+                    error = ('This command has {} argument{}.', expect)
+            elif symbol == '<':
+                expect = num[0] - 1
+                if len(arg) > expect:
+                    error = ('This command has at most {} argument{}.', expect)
+            elif symbol == '>':
+                expect = num[0] + 1
+                if len(arg) < expect:
+                    error = ('This command has at least {} argument{}.', expect)
+            elif symbol == '&':
+                expect = num
+                if not (expect[0] <= len(arg) <= expect[1]):
+                    expect = '{} to {}'.format(expect[0], expect[1])
+                    error = ('This command has from {} argument{}.', expect)
+
+            if error:
+                raise ArgumentError(error[0].format(error[1], 's' if error[1] != 1 else ''))
+
+    @staticmethod
+    def command_assert(client, arg, is_staff=None, is_mod=None, parameters=None,
+                       split_spaces=None, split_commas=False):
+        """
+        Kept for backwards compatibility. Use assert_command.
+        """
+
+        if is_staff is not None:
+            if is_staff is True and not client.is_staff():
+                raise ClientError.UnauthorizedError('You must be authorized to do that.')
+            if is_staff is False and client.is_staff():
+                raise ClientError.UnauthorizedError('You have too high a rank to do that.')
+
+        if is_mod is not None:
+            if is_mod is True and not client.is_mod:
+                raise ClientError.UnauthorizedError('You must be authorized to do that.')
+            if is_mod is False and client.is_mod():
+                raise ClientError.UnauthorizedError('You have too high a rank to do that.')
 
         if parameters is not None:
             symbol, num = parameters[0], [int(i) for i in parameters[1:].split('-')]

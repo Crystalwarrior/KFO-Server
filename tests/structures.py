@@ -359,6 +359,21 @@ class _TestClientManager(ClientManager):
 
         def assert_packet(self, command_type, args, over=False, ooc_over=False, ic_over=False,
                           somewhere=False):
+            """
+            Assert that the client does not have a particular packet among its unaccounted ones.
+
+            Parameters
+            ----------
+            command_type: str
+                Packet type
+            args: list pf str
+                Packet arguments
+            somewhere: boolean, optional
+                If True, will assert that the client has not a particular packet among any of its
+                unaccounted ones. If False, will assert that the client has not as its earliest
+                unaccounted packet the given packet.
+            """
+
             err = '{} expected packets, found none'.format(self)
             assert len(self.received_packets) > 0, err
             self.search_match([command_type, args], self.received_packets, somewhere=somewhere)
@@ -366,7 +381,7 @@ class _TestClientManager(ClientManager):
             if over:
                 err = ('{} expected no more packets (did you accidentally put over=True?)'
                        .format(self))
-                err += ('\r\nCurrent packets: {}'
+                err += ('\r\nCurrent packets: \r\n*{}'
                         .format('\r\n*'.join([str(x) for x in self.received_packets])))
                 assert len(self.received_packets) == 0, err
             elif ooc_over or ic_over:
@@ -378,11 +393,35 @@ class _TestClientManager(ClientManager):
                 assert len(self.received_packets) != 0, err
 
         def assert_no_packets(self):
+            """
+            Assert that the client has no packets that have not been accounted for.
+
+            Raises
+            ------
+            AssertionError:
+                If the client has some outstanding packets.
+            """
+
             err = ('{} expected no outstanding packets, found {}.'
                    .format(self, self.received_packets))
             assert len(self.received_packets) == 0, err
 
         def assert_not_packet(self, command_type, args, somewhere=True):
+            """
+            Assert that the client does not have a particular packet among its unaccounted ones.
+
+            Parameters
+            ----------
+            command_type: str
+                Packet type
+            args: list pf str
+                Packet arguments
+            somewhere: boolean, optional
+                If True, will assert that the client has not a particular packet among any of its
+                unaccounted ones. If False, will assert that the client has not as its earliest
+                unaccounted packet the given packet.
+            """
+
             try:
                 self.search_match([command_type, args], self.received_packets,
                                   somewhere=somewhere, remove_match=False)
@@ -394,6 +433,38 @@ class _TestClientManager(ClientManager):
 
         def assert_ooc(self, message, username=None, over=False, ooc_over=False,
                        check_CT_packet=True, somewhere=False):
+            """
+            Assert that the client has a particular message as an unaccounted OOC message.
+
+            Parameters
+            ----------
+            message: str
+                Message to test.
+            username: str, optional
+                Username of the earliest expected OOC message. If None, it will assume the server's
+                hostname.
+            over: boolean, optional
+                If True, it will assume the client has no further packets to account for, even
+                those that are not from OOC messages. If False, it will assume the client still
+                has some packets to account for.
+            ooc_over: boolean, optional
+                If True, it will assume the client has no further OOC packets to account for, but
+                still possibly some other non-OOC packets. If False, it will assume the client
+                still has some packets to account for.
+            check_CT_packet: boolean, optional
+                If True, it will also try and account that the earliest unaccounted packet is an
+                OOC packet. If False, it will not do so.
+            somewhere: boolean, optional
+                If True, it will try and account for an unaccounted OOC message anywhere among the
+                client's unaccounted packets. If False, it will only look at the earliest
+                unaccounted message.
+
+            Raises
+            ------
+            AssertionError
+                If it is unable to match the expected OOC message according to the given conditions.
+            """
+
             if username is None:
                 username = self.server.config['hostname']
 
@@ -420,11 +491,42 @@ class _TestClientManager(ClientManager):
                 assert len(self.received_ooc) != 0, err
 
         def assert_no_ooc(self):
+            """
+            Assert that the client has no unaccounted OOC messages.
+
+            Raises
+            ------
+            AssertionError:
+                If the client has unaccounted OOC messages.
+            """
+
             err = ('{} expected no more OOC messages, found {}'
                    .format(self, self.received_ooc))
             assert len(self.received_ooc) == 0, err
 
         def assert_not_ooc(self, message, username=None, somewhere=True):
+            """
+            Assert that the client does not have a particular OOC message among its unaccounted
+            OOC messages.
+
+            Parameters
+            ----------
+            message: str
+                Message to test.
+            username: str, optional
+                Username of the earliest expected OOC message. If None, it will assume the server's
+                hostname.
+            somewhere: boolean, optional
+                If True, it will try and account for an unaccounted OOC message anywhere among the
+                client's unaccounted packets. If False, it will only look at the earliest
+                unaccounted message.
+
+            Raises
+            ------
+            AssertionError:
+                If the client has an OOC message matching the parameters.
+            """
+
             if username is None:
                 username = self.server.config['hostname']
 
@@ -597,10 +699,12 @@ class _TestClientManager(ClientManager):
                     self.last_ic = args[2], args[4]
                 else:
                     self.discarded_ic_somewhere = True
+            elif command_type == 'MC': # Start playing track
+                pass
             elif command_type == 'ZZ': # Mod call
                 pass
             else:
-                raise KeyError('Unrecognized STC argument {} {}'.format(command_type, args))
+                raise KeyError('Unrecognized STC argument `{}` {}'.format(command_type, args))
 
             if buffer:
                 self.send_command_cts(buffer)

@@ -28,8 +28,9 @@ import random
 import time
 import yaml
 
+from server import logger
 from server.constants import Constants
-from server.exceptions import AreaError
+from server.exceptions import AreaError, ServerError
 from server.evidence import EvidenceList
 
 class AreaManager:
@@ -572,6 +573,47 @@ class AreaManager:
             """
 
             return (time.time() * 1000.0 - self.next_message_time) > 0
+
+        def play_track(self, name, client, raise_if_not_found=False, reveal_sneaked=False):
+            """
+            Wrapper function to play a music track in an area.
+
+            Parameters
+            ----------
+            name: str
+                Name of the track to play
+            client: ClientManager.Client
+                Client who initiated the track change request.
+            raise_if_not_found: boolean, optional
+                If True, it will raise ServerError if the track name is not in the server's music
+                list nor the client's music list. If False, it will not care about it.
+            reveal_sneaked: boolean, optional
+                If True, it will change the visibility status of the sender client to True (reveal
+                them). If False, it will keep their visibility as it was.
+
+            Raises
+            ------
+            ServerError.MusicNotFoundError:
+                If `name` is not a music track in the server or client's music list and
+                `raise_if_not_found` is True.
+            """
+
+            try:
+                name, length = self.server.get_song_data(name, c=client)
+            except ServerError.MusicNotFoundError:
+                if raise_if_not_found:
+                    raise
+                name, length = name, -1
+
+            self.play_music(name, client.char_id, length)
+            self.add_music_playing(client, name)
+
+            logger.log_server('[{}][{}]Changed music to {}.'
+                              .format(self.id, client.get_char_name(), name), client)
+
+            # Changing music reveals sneaked players, so do that if requested
+            if not client.is_staff() and not client.is_visible and reveal_sneaked:
+                client.change_visibility(True)
 
         def play_music(self, name, cid, length=-1):
             """
