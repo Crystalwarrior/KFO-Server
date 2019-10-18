@@ -309,10 +309,10 @@ class ClientChangeArea:
             ybnd = blind_mes
             nbyd = ''
 
-        client.send_ooc_others(staff, in_area=area, is_staff=True)
-        client.send_ooc_others(nbnd, in_area=area, is_staff=False, to_blind=False, to_deaf=False)
-        client.send_ooc_others(ybnd, in_area=area, is_staff=False, to_blind=True, to_deaf=False)
-        client.send_ooc_others(nbyd, in_area=area, is_staff=False, to_blind=False, to_deaf=True)
+        client.send_ooc_others(staff, in_area=area, is_zstaff=True)
+        client.send_ooc_others(nbnd, in_area=area, is_zstaff=False, to_blind=False, to_deaf=False)
+        client.send_ooc_others(ybnd, in_area=area, is_zstaff=False, to_blind=True, to_deaf=False)
+        client.send_ooc_others(nbyd, in_area=area, is_zstaff=False, to_blind=False, to_deaf=True)
         # Blind and deaf get nothing
 
     def notify_others_blood(self, client, area, char, status='stay', send_to_staff=True):
@@ -348,7 +348,7 @@ class ClientChangeArea:
             hs_mes = dshs[area_sole_bleeding] # hearing and smelling message
             vis_status = 'no longer'
 
-        ybyd_mes = hs_mes
+        ybyd = hs_mes
         darkened = 'darkened ' if not area.lights else ''
 
         if status == 'stay':
@@ -362,35 +362,35 @@ class ClientChangeArea:
             pconnector = 'arrived to the {}area while'.format(darkened)
 
         if client.is_visible and area.lights:
-            def_mes = 'You see {} {} bleeding.'.format(char, connector)
-            ybnd_mes = h_mes
-            nbyd_mes = def_mes
-            staff_mes = def_mes
+            norm = 'You see {} {} bleeding.'.format(char, connector)
+            ybnd = h_mes
+            nbyd = norm
+            staff = norm
         elif not client.is_visible and area.lights:
-            def_mes = h_mes
-            ybnd_mes = hs_mes
-            nbyd_mes = s_mes
-            staff_mes = '(X) {} {} bleeding and sneaking.'.format(char, pconnector)
+            norm = h_mes
+            ybnd = hs_mes
+            nbyd = s_mes
+            staff = '(X) {} {} bleeding and sneaking.'.format(char, pconnector)
         elif client.is_visible and not area.lights:
-            def_mes = hs_mes
-            ybnd_mes = hs_mes
-            nbyd_mes = s_mes
-            staff_mes = '(X) {} {} bleeding.'.format(char, pconnector)
+            norm = hs_mes
+            ybnd = hs_mes
+            nbyd = s_mes
+            staff = '(X) {} {} bleeding.'.format(char, pconnector)
         elif not client.is_visible and not area.lights:
-            def_mes = hs_mes
-            ybnd_mes = hs_mes
-            nbyd_mes = s_mes
-            staff_mes = ('(X) {} {} bleeding and sneaking.'.format(char, pconnector))
+            norm = hs_mes
+            ybnd = hs_mes
+            nbyd = s_mes
+            staff = ('(X) {} {} bleeding and sneaking.'.format(char, pconnector))
 
-        staff_mes = staff_mes.replace('no longer bleeding and sneaking.',
-                                      'no longer bleeding, but is still sneaking.') # Ugly
+        staff = staff.replace('no longer bleeding and sneaking.',
+                              'no longer bleeding, but is still sneaking.') # Ugly
 
-        client.send_ooc_others(def_mes, is_staff=False, in_area=area, to_blind=False, to_deaf=False)
-        client.send_ooc_others(ybnd_mes, is_staff=False, in_area=area, to_blind=True, to_deaf=False)
-        client.send_ooc_others(nbyd_mes, is_staff=False, in_area=area, to_blind=False, to_deaf=True)
-        client.send_ooc_others(ybyd_mes, is_staff=False, in_area=area, to_blind=True, to_deaf=True)
+        client.send_ooc_others(norm, is_zstaff=False, in_area=area, to_blind=False, to_deaf=False)
+        client.send_ooc_others(ybnd, is_zstaff=False, in_area=area, to_blind=True, to_deaf=False)
+        client.send_ooc_others(nbyd, is_zstaff=False, in_area=area, to_blind=False, to_deaf=True)
+        client.send_ooc_others(ybyd, is_zstaff=False, in_area=area, to_blind=True, to_deaf=True)
         if send_to_staff:
-            client.send_ooc_others(staff_mes, is_staff=True, in_area=area)
+            client.send_ooc_others(staff, is_zstaff=True, in_area=area)
 
     def change_area(self, area, override_all=False, override_passages=False,
                     override_effects=False, ignore_bleeding=False, ignore_followers=False,

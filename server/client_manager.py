@@ -132,7 +132,7 @@ class ClientManager:
 
         def send_ooc_others(self, msg, username=None, allow_empty=False, is_staff=None,
                             in_area=None, pred=None, not_to=None, to_blind=None, to_deaf=None,
-                            to_zone_watcher=None):
+                            to_zone_watcher=None, is_zstaff=None):
             if not allow_empty and not msg:
                 return
 
@@ -145,12 +145,13 @@ class ClientManager:
 
             cond = self._build_cond(is_staff=is_staff, in_area=in_area, pred=pred,
                                     not_to=not_to.union({self}), to_blind=to_blind,
-                                    to_deaf=to_deaf, to_zone_watcher=to_zone_watcher)
+                                    to_deaf=to_deaf, to_zone_watcher=to_zone_watcher,
+                                    is_zstaff=is_zstaff)
             self.server.make_all_clients_do("send_ooc", msg, pred=cond, allow_empty=allow_empty,
                                             username=username)
 
         def _build_cond(self, is_staff=None, is_mod=None, in_area=None, pred=None, not_to=None,
-                        to_blind=None, to_deaf=None, to_zone_watcher=None):
+                        to_blind=None, to_deaf=None, to_zone_watcher=None, is_zstaff=None):
             conditions = list()
 
             if is_staff is True:
@@ -209,13 +210,19 @@ class ClientManager:
                 raise KeyError('Invalid argument for _build_cond to_deaf: {}'.format(to_deaf))
 
             if to_zone_watcher is True:
-                if self.zone_watched is None:
-                    raise ValueError('Client {} is not watching a zone.'.format(self))
-                conditions.append(lambda c: c.zone_watched == self.zone_watched)
+                if self.zone_watched:
+                    conditions.append(lambda c: c.zone_watched == self.zone_watched)
+                elif self.area.in_zone:
+                    conditions.append(lambda c: c.area.in_zone == self.area.in_zone)
+                else:
+                    pass
             elif to_zone_watcher is False:
-                if self.zone_watched is None:
-                    raise ValueError('Client {} is not watching a zone.'.format(self))
-                conditions.append(lambda c: c.zone_watched != self.zone_watched)
+                if self.zone_watched:
+                    conditions.append(lambda c: c.zone_watched != self.zone_watched)
+                elif self.area.in_zone:
+                    conditions.append(lambda c: c.area.in_zone != self.area.in_zone)
+                else:
+                    pass
             elif isinstance(to_zone_watcher, self.server.zone_manager.Zone):
                 conditions.append(lambda c: c.zone_watched == to_zone_watcher)
             elif to_zone_watcher is None:
@@ -223,6 +230,23 @@ class ClientManager:
             else:
                 raise KeyError('Invalid argument for _build_cond is_zone_watcher: {}'
                                .format(to_zone_watcher))
+
+            if is_zstaff is True:
+                # Applies if client is staff, and for the triggerer's area:
+                #  1. They are not watching a zone and the triggerer's area is not in a zone, or
+                #  2. They are watching a zone and the triggerer's area is part of that zone
+                conditions.append(lambda c: c.is_staff() and c.zone_watched == self.area.in_zone)
+            elif is_zstaff is False:
+                # Applies if client is not staff, or for the triggerer' area::
+                #  1. They are not watching a zone and the triggerer' area is part of a zone, or
+                #  2. They are watching a zone and the triggerer' area is not part of that zone
+                # Use in conjunction with in_area=True to limit player output
+                conditions.append(lambda c: not c.is_staff() or c.zone_watched != self.area.in_zone)
+            elif is_zstaff is None:
+                pass
+            else:
+                raise KeyError('Invalid argument for _build_cond is_zstaff: {}'
+                               .format(is_zstaff))
 
             cond = lambda c: all([cond(c) for cond in conditions])
 
@@ -507,7 +531,7 @@ class ClientManager:
                                    '"{}" of length {} seconds after being revealed in area {} ({}).'
                                    .format(self.displayname, old_name, old_length,
                                            self.area.name, self.area.id))
-                            self.send_ooc_others(msg, is_staff=True)
+                            self.send_ooc_others(msg, is_zstaff=True)
                             self.send_ooc('You were automatically imposed your former movement '
                                           'handicap "{}" of length {} seconds when changing areas.'
                                           .format(old_name, old_length))
@@ -533,7 +557,7 @@ class ClientManager:
                                    '"Sneaking" of length {} seconds in area {} ({}).'
                                    .format(self.displayname, shandicap, self.area.name,
                                            self.area.id))
-                            self.send_ooc_others(msg, is_staff=True)
+                            self.send_ooc_others(msg, is_zstaff=True)
                             raise KeyError # Lazy way to get there, but it works
                     except KeyError:
                         self.send_ooc('You were automatically imposed a movement handicap '

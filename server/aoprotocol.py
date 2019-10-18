@@ -441,7 +441,7 @@ class AOProtocol(asyncio.Protocol):
             if msg != raw_msg:
                 self.client.send_ooc_others('(X) {} tried to say "{}" but is currently gagged.'
                                             .format(self.client.displayname, raw_msg),
-                                            is_staff=True, in_area=True)
+                                            is_zstaff=True, in_area=True)
 
         if evidence:
             if self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos != 'all':

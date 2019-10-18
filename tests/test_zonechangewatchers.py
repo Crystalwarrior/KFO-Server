@@ -114,15 +114,6 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         Situation: Clients attempt to use /zone_unwatch incorrectly.
         """
 
-        # Non-staff
-        self.c0.ooc('/zone_unwatch')
-        self.c0.assert_ooc('You must be authorized to do that.', over=True)
-        self.c1.assert_no_packets()
-        self.c2.assert_no_packets()
-        self.c3.assert_no_packets()
-        self.c4.assert_no_packets()
-        self.c5.assert_no_packets()
-
         # Parameters
         self.c1.ooc('/zone_unwatch 1000')
         self.c0.assert_no_packets()

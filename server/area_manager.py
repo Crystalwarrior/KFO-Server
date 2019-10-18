@@ -531,12 +531,12 @@ class AreaManager:
                     initiator.send_ooc('You feel a light switch was flipped.')
 
                 initiator.send_ooc_others('The lights were turned {}.'.format(status[new_lights]),
-                                          is_staff=False, in_area=True, to_blind=False)
-                initiator.send_ooc_others('You hear a flicker.', is_staff=False, in_area=True,
+                                          is_zstaff=False, in_area=True, to_blind=False)
+                initiator.send_ooc_others('You hear a flicker.', is_zstaff=False, in_area=True,
                                           to_blind=True, to_deaf=False)
                 initiator.send_ooc_others('(X) {} turned the lights {}.'
                                           .format(initiator.displayname, status[new_lights]),
-                                          is_staff=True, in_area=True)
+                                          is_zstaff=True, in_area=True)
             else: # Otherwise, send generic message
                 self.broadcast_ooc('The lights were turned {}.'.format(status[new_lights]))
 

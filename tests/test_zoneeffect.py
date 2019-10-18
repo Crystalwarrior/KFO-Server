@@ -219,7 +219,7 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
-class TestZoneEffect_01_Play(_TestZone):
+class TestZoneEffect_02_Play(_TestZone):
     def test_01_wrongarguments(self):
         """
         Situation: Clients attempt to use /zone_play incorrectly.
@@ -270,3 +270,236 @@ class TestZoneEffect_01_Play(_TestZone):
         self.c3.assert_no_packets()
         self.c5.assert_packet('MC', ('Is it you.mp3', 1), over=True)
         self.c4.assert_no_packets()
+
+class TestZoneEffect_03_RPNotifications(_TestZone):
+    """
+    This class uses /iclock, which has different behavior for the following cases:
+        1. The sender
+        2. Non-staff and staff who are not watching the zone the area the sender is in belongs to
+        3. Staff who are watching the zone that the area the sender is in belongs to
+
+    Assert that the behavior is correct for all cases.
+    For consistency, the chat will be set to unlocked at the start of each test for consistent
+    output.
+
+    C0 is in Area 4
+    C1 is in Area 4 (mod)
+    C2 is in Area 5 (gm)
+    C3 is in Area 5
+    C4 is in Area 6
+    C5 is in Area 7 (gm)
+
+    This is the /iclock code for OOC output
+    a) client.send_ooc('You {} the IC chat in this area.'.format(status[client.area.ic_lock]))
+    b) client.send_ooc_others('The IC chat has been {} in this area.'
+                              .format(status[client.area.ic_lock]), is_zstaff=False, in_area=True)
+    c&d) client.send_ooc_others('(X) {} has {} the IC chat in area {} ({}).'
+                                .format(client.name, status[client.area.ic_lock], client.area.name,
+                                        client.area.id), is_zstaff=True)
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.mes_a = 'You locked the IC chat in this area.'
+        self.mes_b = 'The IC chat has been locked in this area.'
+        self.mes_c = ('(X) {} has locked the IC chat in area {} ({}).'
+                      .format(self.c1.name, self.c1.area.name, self.c1.area.id))
+        self.mes_d = ('(X) {} has locked the IC chat in area {} ({}).'
+                      .format(self.c5.name, self.c5.area.name, self.c5.area.id))
+        self.c1.area.ic_lock = False
+        self.c5.area.ic_lock = False
+
+    def test_01_nozone(self):
+        """
+        Situation: C1 runs /iclock when there are no zones.
+        * C0 receives b (non-staff in area)
+        * C1 receives a (sender)
+        * C2 receives c (staff outside area)
+        * C3 does not receive message (non-staff outside area)
+        * C4 does not receive message (non-staff outside area)
+        * C5 receives c (staff outside area)
+        """
+
+        self.c1.ooc('/iclock')
+        self.c0.assert_ooc(self.mes_b, over=True)
+        self.c1.assert_ooc(self.mes_a, over=True)
+        self.c2.assert_ooc(self.mes_c, over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc(self.mes_c, over=True)
+
+    def test_02_zone(self):
+        """
+        Situation: C1 creates a zone involving areas 3 through 5. C1 then runs /iclock.
+        * C0 receives b (non-staff in area)
+        * C1 receives a (sender)
+        * C2 does not receive message (staff not in area in zone not watching zone)
+        * C3 does not receive message (non-staff outside area)
+        * C4 does not receive message (non-staff outside area)
+        * C5 does not receive message (staff not in zone not watching zone)
+        """
+
+        self.c1.ooc('/zone 3, 5')
+        self.c1.discard_all()
+
+        self.c1.ooc('/iclock')
+        self.c0.assert_ooc(self.mes_b, over=True)
+        self.c1.assert_ooc(self.mes_a, over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+    def test_03_zonewatcherinzone(self):
+        """
+        Situation: Now C2 starts watching the zone. C1 then runs /iclock.
+        * C0 receives b (non-staff in area)
+        * C1 receives a (sender)
+        * C2 receives c (staff not in area in zone watching zone)
+        * C3 does not receive message (non-staff outside area)
+        * C4 does not receive message (non-staff outside area)
+        * C5 does not receive message (staff not in zone not watching zone)
+        """
+
+        self.c2.ooc('/zone_watch z0')
+        self.c1.discard_all()
+        self.c2.discard_all()
+
+        self.c1.ooc('/iclock')
+        self.c0.assert_ooc(self.mes_b, over=True)
+        self.c1.assert_ooc(self.mes_a, over=True)
+        self.c2.assert_ooc(self.mes_c, over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+    def test_03_zonewatchernotinzone(self):
+        """
+        Situation: Now C5 starts watching the zone. C1 then runs /iclock.
+        * C0 receives b (non-staff in area)
+        * C1 receives a (sender)
+        * C2 receives c (staff not in area in zone watching zone)
+        * C3 does not receive message (non-staff outside area)
+        * C4 does not receive message (non-staff outside area)
+        * C5 receives c (staff not in zone watching zone)
+        """
+
+        self.c5.ooc('/zone_watch z0')
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c5.discard_all()
+
+        self.c1.ooc('/iclock')
+        self.c0.assert_ooc(self.mes_b, over=True)
+        self.c1.assert_ooc(self.mes_a, over=True)
+        self.c2.assert_ooc(self.mes_c, over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc(self.mes_c, over=True)
+
+    def test_04_zonewatchernotstaff(self):
+        """
+        Situation: Now C2 logs out, while still watching the zone. C1 then runs /iclock.
+        * C0 receives b (non-staff in area)
+        * C1 receives a (sender)
+        * C2 does not receive message (non-staff outside area in zone watching zone)
+        * C3 does not receive message (non-staff outside area)
+        * C4 does not receive message (non-staff outside area)
+        * C5 receives c (staff not in zone watching zone)
+        """
+
+        self.c2.ooc('/logout')
+        self.c2.discard_all()
+
+        self.c1.ooc('/iclock')
+        self.c0.assert_ooc(self.mes_b, over=True)
+        self.c1.assert_ooc(self.mes_a, over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc(self.mes_c, over=True)
+
+    def test_05_zoneindependence(self):
+        """
+        Situation: C5 stops watching z0, creates their own zone z1 in area 7 and runs /iclock.
+        * C0 does not receive message (non-staff outside area)
+        * C1 does not receive message (staff outside area outside zone not watching zone)
+        * C2 does not receive message (non-staff outside area outside zone watching other zone)
+        * C3 does not receive message (non-staff outside area)
+        * C4 does not receive message (non-staff outside area)
+        * C5 receives a (sender)
+
+        Then C1 runs /iclock
+        * C0 receives b (non-staff in area)
+        * C1 receives a (sender)
+        * C2 does not receive message (non-staff outside area in zone watching zone)
+        * C3 does not receive message (non-staff outside area)
+        * C4 does not receive message (non-staff outside area)
+        * C5 does not receive message (staff not in zone not watching zone)
+        """
+
+        self.c5.ooc('/zone_unwatch')
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c5.discard_all()
+        self.c5.ooc('/zone')
+        self.c5.discard_all()
+
+        self.c5.ooc('/iclock')
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc(self.mes_a, over=True)
+
+        self.c1.ooc('/iclock')
+        self.c0.assert_ooc(self.mes_b, over=True)
+        self.c1.assert_ooc(self.mes_a, over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+    def test_06_inzoneAwatchzoneBreceivezoneBnotif(self):
+        """
+        Situation: C2 is made GM again, unwatches zone z0, then watches z1 while being in an area
+        part of z0. Then C5 runs /iclock.
+        * C0 does not receive message (non-staff outside area)
+        * C1 does not receive message (staff outside area outside zone not watching zone)
+        * C2 receives d (staff outside area outside zone watching zone)
+        * C3 does not receive message (non-staff outside area)
+        * C4 does not receive message (non-staff outside area)
+        * C5 receives a (sender)
+
+        Then C1 runs /iclock.
+        * C0 receives b (non-staff in area)
+        * C1 receives a (sender)
+        * C2 does not receive message (non-staff outside area in zone watching other zone)
+        * C3 does not receive message (non-staff outside area)
+        * C4 does not receive message (non-staff outside area)
+        * C5 does not receive message (staff not in zone not watching zone)
+        """
+
+        self.c2.make_gm()
+        self.c2.ooc('/zone_unwatch')
+        self.c2.ooc('/zone_watch z1')
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c5.discard_all()
+
+        self.c5.ooc('/iclock')
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc(self.mes_d, over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc(self.mes_a, over=True)
+
+        self.c1.ooc('/iclock')
+        self.c0.assert_ooc(self.mes_b, over=True)
+        self.c1.assert_ooc(self.mes_a, over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
