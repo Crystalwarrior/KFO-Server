@@ -248,9 +248,9 @@
  - Rolls failing
  - Enabling/disabling IC locks
 * The following actions now send an IC message in conjunction with an OOC notification:
- - /knock (which has been restricted from lobby areas)
+ - /knock (which has been restricted to non-lobby areas only)
  - /scream
 * Fixed /play and /rplay not looping music tracks that appear in the server music list.
 * Fixed daily GM passwords switching at 3 pm incorrectly, they now switch correctly and at midnight
-
+* Explicitly allowed Python 3.8 support for server owners
  

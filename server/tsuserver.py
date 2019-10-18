@@ -43,8 +43,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a22'
-        self.internal_version = '191018a'
+        self.segment_version = 'a23'
+        self.internal_version = '191018b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -117,7 +117,7 @@ class TsuserverDR:
             server_name = 'localhost'
             logger.log_print('Starting a local server...')
         else:
-            server_name = self.config['masterserver_name'] if self.config['use_masterserver'] else ''
+            server_name = self.config['masterserver_name']
             logger.log_print('Starting a nonlocal server...')
 
         ao_server_crt = self.loop.create_server(lambda: self.protocol(self), bound_ip, self.config['port'])
