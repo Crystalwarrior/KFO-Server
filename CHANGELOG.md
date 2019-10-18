@@ -189,7 +189,7 @@
 * Added /showname_area to list shownames just in the current area
 * CMs now receive Call Mod notifications
 * Renamed /mutepm -> /toggle_pm, /showname_list -> /showname_areas
-* Started including additional marks to certain staff only RP notifications
+* Started including additional marks to certain staff privileged RP notifications
 * Minor changes to messages sent on area change
  - Staff now receive autopass messages if lights are off instead of regular lights off messages
  - Reworded messages sent if someone arrives/leaves while bleeding/lights off and sneaking
@@ -202,11 +202,11 @@
  - Blood will now automatically be spilled on the area as soon as /bloodtrail is executed, not only on area change
  
 ### 190820 (4.1.1)
-* Added special marks to more staff only RP notifications
+* Added special marks to more staff privileged RP notifications
 * Reworded global IC notification messages
 
 ### 190822 (4.1.2)
-* Added more special marks to more staff only RP notifications
+* Added more special marks to more staff privileged RP notifications
 * Normal players now get who cleaned/smeared blood in area if they are not blind and the lights are on
 
 ### 190903 (4.1.3)
@@ -216,16 +216,41 @@
 
 ### 190904 (4.1.4)
 * Gagged messages are now randomly generated 
-* Staff get new messages when using /bloodtrail, with (X) added where needed
+* Staff get new messages when using /bloodtrail, with privilege marks added where needed
 
-### (4.2-In progress)
+## (4.2-In progress)
+* Added zones. Zones are groups of areas such that any privileged server notifications that come from a player action within the zone will be sent only to "watchers", who are people who watch the zone. They come with the following commands:
+ - /zone
+ - /zone_add
+ - /zone_delete
+ - /zone_global (alias /zg)
+ - /zone_list
+ - /zone_play
+ - /zone_remove
+ - /zone_unwatch
+ - /zone_watch
+* Zones will send notifications to all zone watchers for standard RP notifications as well as the following:
+ - Players coming IN and OUT of the zone (with their shownames)
+ - Players in the zone disconnecting
+ - Players in the zone changing character
+ - Players in the zone changing showname
 * Added /make_gm so CMs and mods can log in other players as GMs
+* Custom shownames now appear if set in server notifications instead of character folders
+* Improved /help
+ - It can now take a command name and it will show a brief description and expected syntax, as well as the 
+ minimum required rank if the player is not authorized to use it
 * Improved roll management mechanics
  - Added dice log commands to retrieve roll history through /dicelog (for one player) and /dicelog_area (for one area)
  - Roll options are now modifiable from server configurations
+* Improved information sent to moderators on mod actions
+ - /ban, /banhdid and /kick notifications are now sent to all mods and CMs in the area, as well as appropiate information on the targets.
 * Reworded notifications for the following mechanics
  - Rolls failing
  - Enabling/disabling IC locks
-* Fixed daily passwords switching at 3 pm incorrectly, they now switch correctly and at midnight
+* The following actions now send an IC message in conjunction with an OOC notification:
+ - /knock (which has been restricted from lobby areas)
+ - /scream
+* Fixed /play and /rplay not looping music tracks that appear in the server music list.
+* Fixed daily GM passwords switching at 3 pm incorrectly, they now switch correctly and at midnight
 
  
