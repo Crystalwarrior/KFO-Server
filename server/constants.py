@@ -298,13 +298,16 @@ class Constants():
                         except ValueError:
                             raise ArgumentError('The modifier has a syntax error.')
 
+                    for j in range(10):
+                        # Deals with inputs like 3(r-1), which act like Python functions.
+                        # Needed to be done here to prevent Python 3.8 from raising SyntaxWarning
+                        if '{}('.format(j) in aux_modifier[:-1]:
+                            raise ArgumentError('The modifier has a syntax error.')
+
                     try:
                         # By this point it should be 'safe' to run eval
                         mid_roll = round(eval(aux_modifier[:-1]))
                     except SyntaxError:
-                        raise ArgumentError('The modifier has a syntax error.')
-                    except TypeError:
-                        # Deals with inputs like 3(r-1), which act like Python functions.
                         raise ArgumentError('The modifier has a syntax error.')
                     except ZeroDivisionError:
                         divzero_attempts += 1

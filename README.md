@@ -3,13 +3,13 @@
 
 A Python-based server for Danganronpa Online. It is a fork from [tsuserver3](https://github.com/AttorneyOnline/tsuserver3) which is targeted towards Attorney Online.
 
-Requires Python 3.6+ and PyYAML.
+Requires Python 3.6-3.8 and PyYAML.
 
 ## How to use
 
 ### Installing
 
-* Install the latest version of Python. **Python 2 will not work**, as TsuserverDR depends on async/await, which can only be found on Python 3.5 and newer.
+* Install the latest version of Python. **Python 2 will not work**.
   - If your system supports it, it is recommended that you use a separate virtual environment, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python).
   - If prompted during the installation to add `python` as a PATH environment variable, accept this option.
 * Open Command Prompt or your terminal, and change to the directory where you downloaded TsuserverDR to. You can do this in two ways:
@@ -65,6 +65,11 @@ Requires Python 3.6+ and PyYAML.
 * If you already have a version of TsuserverDR or tsuserver installed and wish to update to a new version, you can download the new version and then overwrite your previously existing files. Do note that you do not need to shut down your server before overwriting the files, but you must restart it from console in order for changes to take effect.
 
   - This process will not overwrite your server configurations inside the `config` folder, your existing logs inside the `logs` folder, or the user information inside the `storage` folder. However, it will overwrite other files including the Python files inside the `server` folder. Therefore, make sure to save backups of those files before overwriting in case you have modified them and wish to keep an archive of your changes.
+  
+* If you want to update **Python** itself, you can get the latest Python download [from their website here](https://www.python.org/downloads/) and then follow the instructions under the Installing section in this readme. To check your current version of Python, you can run ``python`` on its own and look at the first line. The latest stable major Python release is *Python 3.8* as of October 18, 2019.
+
+  - Please follow the installation instructions again even if you had successfully ran a server before, because your new Python installation may be missing libraries that TsuserverDR expects there to exist. You should not need to change any server configuration files though.
+  - In general, updating to a Python version beyond what is specified as supported may lead to unstable behavior, so for active servers try to keep your Python version among the ones specifically labeled as supported.
  
 ## Commands
 Additional notes are listed at the end of the command list.
