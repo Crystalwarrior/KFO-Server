@@ -112,10 +112,15 @@ class ClientChangeArea:
 
         return new_char_id, captured_messages
 
-    def notify_change_area(self, area, old_char, ignore_bleeding=False, just_me=False):
+    def notify_change_area(self, area, old_dname, ignore_bleeding=False, just_me=False):
         """
         Send all OOC notifications that come from switching areas.
         Right now there is
+        * Zone entry/exit notifications
+        ** Zone exit if player was in area in zone A and now moves to area not in zone A,
+           sent to player who's moving and zone A watchers
+        ** Zone entry if player was in area not in zone B and now moves to area in zone B,
+           sent to player who's moving and zone B watchers
         * Showname conflict if there is one, sent to player who's moving.
         * Lights off notification if no lights in new area, sent to player who's moving.
         * Traveling notifications:
@@ -130,17 +135,25 @@ class ClientChangeArea:
         If just_me is True, no notifications are sent to other players in the area.
         """
 
-        self.notify_me(area, old_char, ignore_bleeding=ignore_bleeding)
+        self.notify_me(area, old_dname, ignore_bleeding=ignore_bleeding)
         if not just_me:
-            self.notify_others(area, old_char, ignore_bleeding=ignore_bleeding)
+            self.notify_others(area, old_dname, ignore_bleeding=ignore_bleeding)
 
-    def notify_me(self, area, old_char, ignore_bleeding=False):
+    def notify_me(self, area, old_dname, ignore_bleeding=False):
         client = self.client
 
         # Code here assumes successful area change, so it will be sending client notifications
         old_area = client.area
 
         ###########
+        # Check if exiting a zone
+        if old_area.in_zone and area.in_zone != old_area.in_zone:
+            client.send_ooc('You have left zone `{}`.'.format(old_area.in_zone.get_id()))
+
+        # Check if entering a zone
+        if area.in_zone and area.in_zone != old_area.in_zone:
+            client.send_ooc('You have entered zone `{}`.'.format(area.in_zone.get_id()))
+
         # Check if someone in the new area has the same showname
         try: # Verify that showname is still valid
             client.change_showname(client.showname, target_area=area)
@@ -261,24 +274,36 @@ class ClientChangeArea:
             if not info:
                 client.send_ooc('You smell blood.')
 
-    def notify_others(self, area, old_char, ignore_bleeding=False):
+    def notify_others(self, area, old_dname, ignore_bleeding=False):
         client = self.client
 
         # Code here assumes successful area change, so it will be sending client notifications
         old_area = client.area
-        new_char = client.displayname
+        new_dname = client.displayname
 
         ###########
+        # Check if exiting a zone
+        if old_area.in_zone and area.in_zone != old_area.in_zone:
+            client.send_ooc_others('(X) Client {} ({}) has left your zone ({}).'
+                                   .format(client.id, old_dname, area.id),
+                                   is_zstaff=old_area.in_zone)
+
+        # Check if entering a zone
+        if area.in_zone and area.in_zone != old_area.in_zone:
+            client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}).'
+                                   .format(client.id, new_dname, area.id),
+                                   is_zstaff=area.in_zone)
+
         # Assuming this is not a spectator...
         # If autopassing, send OOC messages, provided the lights are on. If lights are off,
         # send nerfed announcements regardless. Keep track of who is blind and/or deaf as well.
 
         if not client.char_id < 0 and client.is_visible:
             self.notify_others_moving(client, old_area,
-                                      '{} has left to the {}'.format(old_char, area.name),
+                                      '{} has left to the {}'.format(old_dname, area.name),
                                       'You hear footsteps going out of the room.')
             self.notify_others_moving(client, area,
-                                      '{} has entered from the {}'.format(new_char, old_area.name),
+                                      '{} has entered from the {}'.format(new_dname, old_area.name),
                                       'You hear footsteps coming into the room.')
 
         if client.is_bleeding:
@@ -286,8 +311,8 @@ class ClientChangeArea:
             area.bleeds_to.add(area.name)
 
         if not ignore_bleeding and client.is_bleeding:
-            self.notify_others_blood(client, area, new_char, status='arrived')
-            self.notify_others_blood(client, old_area, old_char, status='left')
+            self.notify_others_blood(client, old_area, old_dname, status='left')
+            self.notify_others_blood(client, area, new_dname, status='arrived')
 
     def notify_others_moving(self, client, area, autopass_mes, blind_mes):
         staff = nbnd = ybnd = nbyd = '' # nbnd = notblindnotdeaf ybnd=yesblindnotdeaf
@@ -448,7 +473,7 @@ class ClientChangeArea:
             # Perform the character switch if new area has a player with the current char
             # or the char is restricted there.
             old_char = client.get_char_name()
-            old_displayname = client.displayname
+            old_dname = client.displayname
             if new_cid != client.char_id:
                 client.change_character(new_cid, target_area=area)
                 if old_char in area.restricted_chars:
@@ -467,7 +492,7 @@ class ClientChangeArea:
                 #              .format(client.get_char_name(), old_area.name, old_area.id,
                 #                      client.area.name, client.area.id), client)
 
-                client.notify_change_area(area, old_displayname, ignore_bleeding=ignore_bleeding)
+                client.notify_change_area(area, old_dname, ignore_bleeding=ignore_bleeding)
 
         client.area.remove_client(client)
         client.area = area

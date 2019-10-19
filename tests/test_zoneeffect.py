@@ -145,6 +145,7 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c5.ooc('/zone 6')
         self.c5.discard_all()
         self.c5.move_area(4)
+        self.c1.discard_all() # Discard mod notification for zone creation and C5 moving into zone
 
         self.c5.ooc('/zone_global c4!')
         self.c0.assert_no_packets()
@@ -262,6 +263,7 @@ class TestZoneEffect_02_Play(_TestZone):
 
         self.c3.move_area(7)
         self.c5.move_area(5)
+        self.c1.discard_all() # Discard C3 moving out of zone and C5 moving into zone notifications
 
         self.c1.ooc('/zone_play Is it you.mp3')
         self.c0.assert_packet('MC', ('Is it you.mp3', 1), over=True)
@@ -443,6 +445,7 @@ class TestZoneEffect_03_RPNotifications(_TestZone):
         self.c2.discard_all()
         self.c5.discard_all()
         self.c5.ooc('/zone')
+        self.c1.discard_all() # Discard mod notification for zone creation
         self.c5.discard_all()
 
         self.c5.ooc('/iclock')

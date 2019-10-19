@@ -53,19 +53,19 @@ class _Unittest(unittest.TestCase):
         if num_clients == 2: return
 
         cls.c2: _TestClientManager._TestClient = cls.clients[2]
-        cls.c2.showname = 'Phantom'
+        cls.c2.showname = 'showname2'
         cls.c2_cname: str = cls.c2.get_char_name() #'Maki Harukawa_HD'
         cls.c2_dname: str = cls.c2.displayname
         if num_clients == 3: return
 
         cls.c3: _TestClientManager._TestClient = cls.clients[3]
-        cls.c3.showname = 'The Judge'
+        cls.c3.showname = 'showname3'
         cls.c3_cname: str = cls.c3.get_char_name() #'Monokuma_HD'
         cls.c3_dname: str = cls.c3.displayname
         if num_clients == 4: return
 
         cls.c4: _TestClientManager._TestClient = cls.clients[4]
-        cls.c4.showname = 'aaaa'
+        cls.c4.showname = 'showname4'
         cls.c4_cname: str = cls.c4.get_char_name() #'SPECTATOR'
         cls.c4_dname: str = cls.c4.displayname
         if num_clients == 5: return

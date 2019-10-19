@@ -133,7 +133,7 @@ class TestZoneBasic_01_Zone(_TestZone):
         self.c0.assert_no_packets()
         self.c1.assert_ooc('You have created zone `{}` containing just area {}.'
                            .format('z0', 4), over=True)
-        self.c2.assert_no_packets()
+        self.c2.assert_no_packets() # GM does not receive zone creation notification
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
@@ -141,12 +141,13 @@ class TestZoneBasic_01_Zone(_TestZone):
 
     def test_03_oneargument(self):
         """
-        Situation: C2 creates a zone for another area
+        Situation: C2 creates a zone for another area. C1 as mod gets notification.
         """
 
         self.c2.ooc('/zone {}'.format(self.a3_name))
         self.c0.assert_no_packets()
-        self.c1.assert_no_packets()
+        self.c1.assert_ooc('{} has created zone `{}` containing just area {} ({}).'
+                           .format(self.c2_dname, 'z1', 3, self.c2.area.id), over=True)
         self.c2.assert_ooc('You have created zone `{}` containing just area {}.'
                            .format('z1', 3), over=True)
         self.c3.assert_no_packets()
@@ -161,7 +162,8 @@ class TestZoneBasic_01_Zone(_TestZone):
 
         self.c5.ooc('/zone {}, {}'.format(self.a5_name, self.a7_name))
         self.c0.assert_no_packets()
-        self.c1.assert_no_packets()
+        self.c1.assert_ooc('{} has created zone `{}` containing areas {} through {} ({}).'
+                           .format(self.c5_dname, 'z2', 5, 7, self.c5.area.id), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -245,6 +247,7 @@ class TestZoneBasic_02_List(_TestZone):
         """
 
         self.c2.ooc('/zone 1')
+        self.c1.discard_all() # Discard mod notification
         self.c2.discard_all()
 
         self.c1.ooc('/zone_list')
@@ -263,6 +266,7 @@ class TestZoneBasic_02_List(_TestZone):
         """
 
         self.c5.ooc('/zone 2, 4')
+        self.c1.discard_all() # Discard mod notification
         self.c5.discard_all()
 
         self.c1.ooc('/zone_list')
@@ -285,6 +289,7 @@ class TestZoneBasic_02_List(_TestZone):
         self.c4.make_mod()
         self.c4.ooc('/zone 0')
         self.c4.ooc('/zone_add 5')
+        self.c1.discard_all() # Discard mod notification
         self.c4.discard_all()
 
         self.c4.ooc('/zone_list')
@@ -439,6 +444,7 @@ class TestZoneBasic_03_Delete(_TestZone):
         """
 
         self.c2.ooc('/zone 5')
+        self.c1.discard_all()
         self.c2.discard_all()
 
         self.c2.ooc('/zone_delete')

@@ -68,6 +68,8 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         self.c4.make_mod()
         self.c0.ooc('/zone {}, {}'.format(1, 3))
         self.c0.discard_all()
+        self.c1.discard_all() # Discard mod notification for zone creation
+        self.c4.discard_all() # Discard mod notification for zone creation
 
         self.c4.ooc('/zone_watch {}'.format('z1'))
         self.c0.assert_ooc('(X) {} is now watching your zone.'.format(self.c4.name), over=True)
@@ -182,7 +184,9 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         """
 
         self.c2.ooc('/zone 0')
+        self.c1.discard_all() # Discard mod notification for zone creation
         self.c2.discard_all()
+        self.c4.discard_all() # Discard mod notification for zone creation
         self.assertEquals(2, len(self.zm.get_zones()))
         self.assertEquals({self.c1, self.c5}, self.zm.get_zone('z0').get_watchers())
         self.assertEquals({self.c2}, self.zm.get_zone('z1').get_watchers())
@@ -283,6 +287,7 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         self.c4.make_mod()
 
         self.c4.ooc('/zone 3')
+        self.c1.discard_all() # Discard mod notification for zone creation
         self.c4.discard_all()
         self.assertEquals(2, len(self.zm.get_zones()))
         self.assertEquals({self.c2, self.c1}, self.zm.get_zone('z0').get_watchers())

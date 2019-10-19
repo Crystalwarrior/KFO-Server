@@ -174,7 +174,7 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_ooc_others('Banned client with HDID {} and IPID {} attempted to '
                                             'join the server but was refused entrance.'
                                             .format(self.client.hdid, self.client.ipid),
-                                            pred=lambda c: c.is_mod or c.is_cm)
+                                            is_officer=True)
                 self.client.send_command('BD')
                 self.client.disconnect()
                 return

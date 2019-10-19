@@ -300,18 +300,17 @@ def ooc_cmd_ban(client, arg):
     if targets:
         for c in targets:
             client.send_ooc('You banned {} [{}/{}].'.format(c.displayname, c.ipid, c.hdid))
-            client.send_ooc_others('{} was banned.'.format(c.displayname),
-                                   pred=lambda x: not (x.is_mod or x.is_cm), in_area=True)
+            client.send_ooc_others('{} was banned.'.format(c.displayname), is_officer=False,
+                                   in_area=True)
             client.send_ooc_others('{} banned {} [{}/{}].'
                                    .format(client.name, c.displayname, c.ipid, c.hdid),
-                                   pred=lambda x: x.is_mod or x.is_cm)
+                                   is_officer=True)
             c.disconnect()
 
     client.send_ooc('You banned {}. As a result, {} clients were kickbanned.'
                     .format(idnt, len(targets)))
     client.send_ooc_others('{} banned {}. As a result, {} clients were kickbanned.'
-                           .format(client.name, idnt, len(targets)),
-                           pred=lambda c: c.is_mod or c.is_cm)
+                           .format(client.name, idnt, len(targets)), is_officer=True)
     logger.log_server('Banned {}.'.format(idnt), client)
 
 def ooc_cmd_banhdid(client, arg):
@@ -358,18 +357,17 @@ def ooc_cmd_banhdid(client, arg):
     if targets:
         for c in targets:
             client.send_ooc('You HDID banned {} [{}/{}].'.format(c.displayname, c.ipid, c.hdid))
-            client.send_ooc_others('{} was banned.'.format(c.displayname),
-                                   pred=lambda x: not (x.is_mod or x.is_cm), in_area=True)
+            client.send_ooc_others('{} was banned.'.format(c.displayname), is_officer=False,
+                                   in_area=True)
             client.send_ooc_others('{} HDID banned {} [{}/{}].'
                                    .format(client.name, c.displayname, c.ipid, c.hdid),
-                                   pred=lambda x: x.is_mod or x.is_cm)
+                                   is_officer=True)
             c.disconnect()
 
     client.send_ooc('You banned HDID {}. As a result, {} clients were kickbanned.'
                     .format(arg, len(targets)))
     client.send_ooc_others('{} banned {}. As a result, {} clients were kickbanned.'
-                           .format(client.name, arg, len(targets)),
-                           pred=lambda c: c.is_mod or c.is_cm)
+                           .format(client.name, arg, len(targets)), is_officer=True)
     logger.log_server('HDID-banned {}.'.format(identifier), client)
 
 def ooc_cmd_bg(client, arg):
@@ -2146,11 +2144,11 @@ def ooc_cmd_kick(client, arg):
     # Kick matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
         client.send_ooc('You kicked {} [{}/{}].'.format(c.displayname, c.ipid, c.hdid))
-        client.send_ooc_others('{} was kicked.'.format(c.displayname),
-                               pred=lambda x: not (x.is_mod or x.is_cm), in_area=True)
+        client.send_ooc_others('{} was kicked.'.format(c.displayname), is_officer=False,
+                               in_area=True)
         client.send_ooc_others('{} kicked {} [{}/{}].'
                                .format(client.name, c.displayname, c.ipid, c.hdid),
-                               pred=lambda x: x.is_mod or x.is_cm)
+                               is_officer=True)
         logger.log_server('Kicked {}.'.format(c.ipid), client)
         c.disconnect()
 
@@ -5497,6 +5495,9 @@ def ooc_cmd_zone(client, arg):
         output = 'areas {} through {}'.format(lower_area.id, upper_area.id)
 
     client.send_ooc('You have created zone `{}` containing {}.'.format(zone_id, output))
+    client.send_ooc_others('{} has created zone `{}` containing {} ({}).'
+                           .format(client.displayname, zone_id, output, client.area.id),
+                           is_officer=True)
 
 def ooc_cmd_zone_add(client, arg):
     """ (STAFF ONLY)

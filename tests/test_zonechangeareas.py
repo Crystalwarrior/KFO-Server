@@ -104,6 +104,7 @@ class TestZoneChangeArea_01_Add(_TestZone):
         """
 
         self.c2.ooc('/zone 2')
+        self.c1.discard_all() # Discard mod notification for zone creation
         self.c2.discard_all()
         self.assert_zones({'z0': {0, 1, 4, 5, 6, 7}, 'z1': {2}})
 
@@ -258,6 +259,7 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         """
 
         self.c2.ooc('/zone 2, 3')
+        self.c1.discard_all() # Discard mod notification for zone creation
         self.c2.discard_all()
         self.assert_zones({'z0': {4, 5, 6}, 'z1': {2, 3}})
 
