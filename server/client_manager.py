@@ -132,7 +132,8 @@ class ClientManager:
 
         def send_ooc_others(self, msg, username=None, allow_empty=False, is_staff=None,
                             in_area=None, pred=None, not_to=None, to_blind=None, to_deaf=None,
-                            to_zone_watcher=None, is_zstaff=None, is_officer=None):
+                            to_zone_watcher=None, is_zstaff=None, in_zone_area=None,
+                            is_officer=None):
             if not allow_empty and not msg:
                 return
 
@@ -146,13 +147,14 @@ class ClientManager:
             cond = self._build_cond(is_staff=is_staff, in_area=in_area, pred=pred,
                                     not_to=not_to.union({self}), to_blind=to_blind,
                                     to_deaf=to_deaf, to_zone_watcher=to_zone_watcher,
-                                    is_zstaff=is_zstaff, is_officer=is_officer)
+                                    is_zstaff=is_zstaff, in_zone_area=in_zone_area,
+                                    is_officer=is_officer)
             self.server.make_all_clients_do("send_ooc", msg, pred=cond, allow_empty=allow_empty,
                                             username=username)
 
         def _build_cond(self, is_staff=None, is_officer=None, is_mod=None, in_area=None, pred=None,
                         not_to=None, to_blind=None, to_deaf=None, to_zone_watcher=None,
-                        is_zstaff=None):
+                        in_zone_area=None, is_zstaff=None):
             """
             Acceptable conditions:
                 is_staff: If target is GM, CM or Mod
@@ -165,6 +167,7 @@ class ClientManager:
                 to_deaf: If target is deaf
                 to_zone_watcher: If target is watching the same zone as client, or is watching the
                  same zone their current area belongs to
+                in_zone: If target is in an area that belongs to the same zone as the client's area
                 is_zstaff: If target is GM, CM or Mod, and if they are watching the zone their area
                 is in or their area is not part of a zone and they are not watching a zone.
             """
@@ -255,6 +258,19 @@ class ClientManager:
             else:
                 raise KeyError('Invalid argument for _build_cond to_zone_watcher: {}'
                                .format(to_zone_watcher))
+
+            if in_zone_area is True:
+                conditions.append(lambda c: c.area.in_zone == self.area.in_zone != None)
+            elif in_zone_area is False:
+                conditions.append(lambda c: c.area.in_zone != self.area.in_zone and
+                                  self.area.in_zone)
+            elif isinstance(in_zone_area, self.server.area_manager.Area):
+                conditions.append(lambda c: c.area.in_zone == in_zone_area.in_zone != None)
+            elif in_zone_area is None:
+                pass
+            else:
+                raise KeyError('Invalid argument for _build_cond in_zone: {}'
+                               .format(in_zone_area))
 
             if is_zstaff is True:
                 # Applies if client is staff, and for the triggerer's area:
@@ -409,7 +425,7 @@ class ClientManager:
                 return self.showname
             return self.get_char_name()
 
-        def change_character(self, char_id, force=False, target_area=None):
+        def change_character(self, char_id, force=False, target_area=None, announce_zwatch=True):
             # Added target_area parameter because when switching areas, the change character code
             # is run before the character's area actually changes, so it would look for the wrong
             # area if I just did self.area
@@ -437,6 +453,12 @@ class ClientManager:
             self.char_folder = self.get_char_name() # Assumes players are not iniswapped initially
             self.pos = ''
             self.send_command('PV', self.id, 'CID', self.char_id)
+
+            if announce_zwatch:
+                self.send_ooc_others('(X) Client {} has changed from character `{}` to `{}` in '
+                                     'your zone ({}).'
+                                     .format(self.id, old_char, self.char_folder, self.area.id),
+                                     is_zstaff=target_area, in_zone_area=target_area)
             logger.log_server('[{}]Changed character from {} to {}.'
                               .format(self.area.id, old_char, self.get_char_name()), self)
 

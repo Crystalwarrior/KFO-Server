@@ -215,3 +215,207 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
                            'removed.'.format(b_showname), over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
+
+class TestZoneExtraNotifications_03_ChangeCharacter(_TestZone):
+    """
+    A character can be changed by
+    1. Client using the character select screeen with a "CC" packet
+    2. Client changed to an area and their character was used
+    3. Client changed to an area and their character was restricted
+    4. Staff set a character to restricted, and automatically has clients in area using them restrc
+    5. Staff logs out while using restricted character
+    6. Client changes character with /randomchar
+    7. Client changes character with /switch
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.sc0_name = cls.server.char_list[0]
+        cls.sc1_name = cls.server.char_list[1]
+        cls.sc2_name = cls.server.char_list[2]
+        cls.sc3_name = cls.server.char_list[3]
+        cls.scs_name = cls.server.config['spectator_name']
+        cls.expected_next_results = None
+
+        class x():
+            def __init__(self, expected_next_results=None):
+                cls.expected_next_results = expected_next_results
+
+            @staticmethod
+            def choice(seq):
+                if not cls.expected_next_results:
+                    raise KeyError('No expected results left for custom random object.')
+                to_return = cls.expected_next_results.pop(0)
+                if to_return not in seq:
+                    raise ValueError('Expected next random choice {} is not among actual choices {}'
+                                     .format(to_return, seq))
+                return to_return
+
+        cls.random_factory = x
+
+    def test_01_fromcharselect(self):
+        """
+        Situation: C2 creates a zone involving areas 4 through 5. C0 in the zone changes character.
+        Only C2 is notified, as the only zone watcher.
+         Current chars
+        C0: 3   C1: 1   C2: 2   C3: 3   C4: -1  C5: -1
+        """
+
+        self.c2.ooc('/zone 4, 6')
+        self.c1.discard_all()
+        self.c2.discard_all()
+
+        self.c0.send_command_cts("CC#0#3#FAKEHDID#%") # Attempt to pick char 3
+        self.c0.assert_packet('PV', (0, 'CID', 3), over=True)
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc('(X) Client {} has changed from character `{}` to `{}` in your zone '
+                           '({}).'.format(0, self.sc0_name, self.sc3_name, self.c0.area.id),
+                           over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+    def test_02_fromcharconflict(self):
+        """
+        Situation: C3 moves to C0's area, where they encounter a character conflict, C0 is using
+        C3's character! C3 is randomly (read: forced by test) changed to char 2,
+        C2 gets notified of the switch.
+         Current chars
+        C0: 3   C1: 2   C2: 2   C3: 3   C4: -1  C5: -1
+        """
+
+        self.server.random = self.random_factory(expected_next_results=[2]) # Force random to be 2
+
+        self.c3.move_area(self.c0.area.id, discard_trivial=True)
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc('(X) Client {} had their character changed from `{}` to `{}` in your '
+                           'zone as their old character was taken in their new area ({}).'
+                           .format(3, self.sc3_name, self.sc2_name, self.c0.area.id), over=True)
+        self.c3.assert_packet('PV', (3, 'CID', 2))
+        self.c3.assert_ooc('Your character was taken in your new area, switched to `{}`.'
+                           .format(self.sc2_name), over=True)
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+    def test_03_frompreviouscharrestricted(self):
+        """
+        Situation: Area 6 is set to restrict character 2, C3's char, manually. C3 then moves there
+        and is randomly changed to char 0. C2 gets notified of the switch.
+         Current chars
+        C0: 3   C1: 2   C2: 2   C3: 3   C4: -1  C5: -1
+        """
+
+        self.server.random = self.random_factory(expected_next_results=[0]) # Force random to be 0
+        self.area6.restricted_chars = {self.sc2_name}
+
+        self.c3.move_area(6, discard_trivial=True)
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc('(X) Client {} had their character changed from `{}` to `{}` in your '
+                           'zone as their old character was restricted in their new area ({}).'
+                           .format(3, self.sc2_name, self.sc0_name, self.c3.area.id), over=True)
+        self.c3.assert_packet('PV', (3, 'CID', 0))
+        self.c3.assert_ooc('Your character was restricted in your new area, switched to `{}`.'
+                           .format(self.sc0_name), over=True)
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+    def test_04_fromnewcharrestricted(self):
+        """
+        Situation: C1 moves to area 6 and restricts character 0, C3's char. C2 has their char
+        randomly changed to char 3 (the only available one). C2 gets notified of the switch.
+         Current chars
+        C0: 3   C1: 1   C2: 2   C3: 3   C4: -1  C5: -1
+        """
+
+        self.server.random = self.random_factory(expected_next_results=[3])
+        self.c1.move_area(6)
+
+        self.c1.ooc('/char_restrict {}'.format(self.sc0_name))
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('You have disabled the use of character `{}` in this area.'
+                           .format(self.sc0_name), over=True)
+        self.c2.assert_ooc('(X) {} has disabled the use of character `{}` in area {} ({}).'
+                           .format(self.c1.displayname, self.sc0_name, self.c1.area.name,
+                                   self.c1.area.id))
+        self.c2.assert_ooc('(X) Client {} had their character changed from `{}` to `{}` in your '
+                           'zone as their old character was just restricted in their new area ({}).'
+                           .format(self.c3.id, self.sc0_name, self.sc3_name, self.c3.area.id),
+                           over=True)
+        self.c3.assert_ooc('A staff member has disabled the use of character {} in this area.'
+                           .format(self.sc0_name))
+        self.c3.assert_packet('PV', (3, 'CID', 3))
+        self.c3.assert_ooc('Your character has been set to restricted in this area by a staff '
+                           'member. Switching you to `{}`.'.format(self.sc3_name), over=True)
+        self.c4.assert_ooc('A staff member has disabled the use of character {} in this area.'
+                           .format(self.sc0_name), over=True)
+        self.c5.assert_no_packets()
+
+    def test_05_fromstafflogoutusingrestricted(self):
+        """
+        Situation: C1 switches to char 0, which they have just restricted. C1 then logs out, and is
+        randomly changed to char 1 (their former one and currently only available one). C2 gets
+        notified of the switch.
+         Current chars
+        C0: 3   C1: 1   C2: 2   C3: 3   C4: -1  C5: -1
+        """
+
+        self.server.random = self.random_factory(expected_next_results=[1])
+        self.c1.send_command_cts("CC#1#0#FAKEHDID#%") # Attempt to pick char 0
+        self.c1.assert_packet('PV', (1, 'CID', 0), over=True)
+        self.c2.discard_all()
+
+        self.c1.make_normie(over=False)
+        self.c0.assert_no_packets()
+        self.c1.assert_packet('PV', (1, 'CID', 1))
+        self.c1.assert_ooc('Your character has been set to restricted in this area by a staff '
+                           'member. Switching you to `{}`.'.format(self.sc1_name), over=True)
+        self.c2.assert_ooc('(X) Client {} had their character changed from `{}` to `{}` in your '
+                           'zone as their old character was restricted in their area ({}).'
+                           .format(self.c1.id, self.sc0_name, self.sc1_name, self.c1.area.id),
+                           over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+    def test_06_fromrandomchar(self):
+        """
+        Situation: Area 6's restricted chars are manually blanked out. C4 does /randomchar and gets
+        randomly changed to char 0. C2 gets notified of the switch.
+         Current chars
+        C0: 3   C1: 1   C2: 2   C3: 3   C4: 0  C5: -1
+        """
+
+        self.area6.restricted_chars = set()
+        self.server.random = self.random_factory(expected_next_results=[0])
+
+        self.c4.ooc('/randomchar')
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc('(X) Client {} has changed from character `{}` to `{}` in your zone '
+                           '({}).'.format(4, self.scs_name, self.sc0_name, self.c4.area.id),
+                           over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_packet('PV', (4, 'CID', 0))
+        self.c4.assert_ooc('Randomly switched to `{}`.'.format(self.sc0_name), over=True)
+        self.c5.assert_no_packets()
+
+    def test_07_fromswitch(self):
+        """
+        Situation: C4 switches to char 2 with /switch. C2 gets notified of the switch.
+         Current chars
+        C0: 3   C1: 1   C2: 2   C3: 3   C4: 2  C5: -1
+        """
+
+        self.c4.ooc('/switch {}'.format(self.sc2_name))
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc('(X) Client {} has changed from character `{}` to `{}` in your zone '
+                           '({}).'.format(4, self.sc0_name, self.sc2_name, self.c4.area.id),
+                           over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_packet('PV', (4, 'CID', 2))
+        self.c4.assert_ooc('Character changed.', over=True)
+        self.c5.assert_no_packets()

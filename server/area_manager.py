@@ -294,7 +294,7 @@ class AreaManager:
             if not available:
                 raise AreaError('No available characters.')
 
-            return random.choice(tuple(available))
+            return self.server.random.choice(tuple(available))
 
         def is_char_available(self, char_id, allow_restricted=False, more_unavail_chars=None):
             """

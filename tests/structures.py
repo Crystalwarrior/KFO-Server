@@ -271,10 +271,10 @@ class _TestClientManager(ClientManager):
             self.assert_ooc('Logged in as a game master.', over=True)
             assert self.is_gm
 
-        def make_normie(self):
+        def make_normie(self, over=True):
             self.ooc('/logout')
-            self.assert_ooc('You are no longer logged in.', ooc_over=True)
-            self.assert_packet('FM', None, over=True)
+            self.assert_ooc('You are no longer logged in.', ooc_over=over)
+            self.assert_packet('FM', None, over=over)
             assert not (self.is_mod and self.is_cm and self.is_gm)
 
         def move_area(self, area_id, discard_packets=True, discard_trivial=False):

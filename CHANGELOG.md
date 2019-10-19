@@ -243,11 +243,12 @@
  - Added dice log commands to retrieve roll history through /dicelog (for one player) and /dicelog_area (for one area)
  - Roll options are now modifiable from server configurations
 * Improved information sent to moderators on mod actions
- - /ban, /banhdid and /kick notifications are now sent to all mods and CMs in the area, as well as appropiate information on the targets.
+ - /ban, /banhdid and /kick notifications are now sent to all mods and CMs in the server, as well as appropiate information on the targets.
 * Reworded notifications for the following mechanics
  - Rolls failing
  - Enabling/disabling IC locks
  - Setting your own showname, or someone else's showname
+ - Characters becoming restricted in an area
 * The following actions now send an IC message in conjunction with an OOC notification:
  - /knock (which has been restricted to non-lobby areas only)
  - /scream

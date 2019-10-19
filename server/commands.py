@@ -1093,8 +1093,15 @@ def ooc_cmd_char_restrict(client, arg):
         raise ArgumentError('Unrecognized character folder name: {}'.format(arg))
 
     status = {True: 'enabled', False: 'disabled'}
-    client.area.broadcast_ooc('A staff member has {} the use of character {} in this area.'
-                              .format(status[arg in client.area.restricted_chars], arg))
+    new_stat = status[arg in client.area.restricted_chars]
+
+    client.send_ooc('You have {} the use of character `{}` in this area.'
+                    .format(new_stat, arg))
+    client.send_ooc_others('A staff member has {} the use of character {} in this area.'
+                           .format(new_stat, arg), is_zstaff=False, in_area=True)
+    client.send_ooc_others('(X) {} has {} the use of character `{}` in area {} ({}).'
+                           .format(client.displayname, new_stat, arg, client.area.name,
+                                   client.area.id), is_zstaff=True, in_zone_area=True)
 
     # If intended character not in area's restriction, add it
     if arg not in client.area.restricted_chars:
@@ -1107,9 +1114,14 @@ def ooc_cmd_char_restrict(client, arg):
                 except AreaError:
                     # Force into spectator mode if all other available characters are taken
                     new_char_id = -1
-                c.change_character(new_char_id)
+                c.change_character(new_char_id, announce_zwatch=False)
                 c.send_ooc('Your character has been set to restricted in this area by a staff '
-                           'member. Switching you to {}.'.format(c.get_char_name()))
+                           'member. Switching you to `{}`.'.format(c.get_char_name()))
+                c.send_ooc_others('(X) Client {} had their character changed from `{}` to '
+                                  '`{}` in your zone as their old character was just '
+                                  'restricted in their new area ({}).'
+                                  .format(c.id, arg, c.get_char_name(), c.area.id),
+                                  is_zstaff=True)
     else:
         client.area.restricted_chars.remove(arg)
 
@@ -2457,9 +2469,17 @@ def ooc_cmd_logout(client, arg):
             new_char_id = client.area.get_rand_avail_char_id(allow_restricted=False)
         except AreaError:
             new_char_id = -1 # Force into spectator mode if all other available characters are taken
-        client.change_character(new_char_id)
+
+        old_char = client.get_char_name()
+        client.change_character(new_char_id, announce_zwatch=False)
+        new_char = client.get_char_name()
+
         client.send_ooc('Your character has been set to restricted in this area by a staff member. '
-                        'Switching you to {}.'.format(client.get_char_name()))
+                        'Switching you to `{}`.'.format(new_char))
+        client.send_ooc_others('(X) Client {} had their character changed from `{}` to `{}` in '
+                               'your zone as their old character was restricted in their area ({}).'
+                               .format(client.id, old_char, new_char, client.area.id),
+                               is_zstaff=True)
 
 def ooc_cmd_look(client, arg):
     """
@@ -3527,12 +3547,11 @@ def ooc_cmd_randomchar(client, arg):
     /randomchar
     """
 
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+    Constants.assert_command(client, arg, parameters='=0')
 
     free_id = client.area.get_rand_avail_char_id(allow_restricted=client.is_staff())
     client.change_character(free_id)
-    client.send_ooc('Randomly switched to {}'.format(client.get_char_name()))
+    client.send_ooc('Randomly switched to `{}`.'.format(client.get_char_name()))
 
 def ooc_cmd_refresh(client, arg):
     """ (MOD ONLY)
@@ -4097,7 +4116,7 @@ def ooc_cmd_showname(client, arg):
         l_message = '{} removed their showname.'.format(client.ipid)
 
     client.send_ooc(s_message)
-    client.send_ooc_others(w_message, is_zstaff=True)
+    client.send_ooc_others(w_message, is_zstaff=True, in_zone_area=True)
     logger.log_server(l_message, client)
 
 def ooc_cmd_showname_area(client, arg):
@@ -4321,7 +4340,7 @@ def ooc_cmd_showname_set(client, arg):
             l_message = 'Removed showname {} of {}.'.format(showname, c.ipid)
 
         client.send_ooc(s_message)
-        client.send_ooc_others(w_message, not_to={c}, is_zstaff=c.area)
+        client.send_ooc_others(w_message, not_to={c}, is_zstaff=c.area, in_zone_area=c.area)
         c.send_ooc(o_message)
         logger.log_server(l_message, client)
 

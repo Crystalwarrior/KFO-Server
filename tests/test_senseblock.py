@@ -253,13 +253,14 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
         Situation: Sense blocked client disconnects and on reconnection are no longer sense blocked.
         """
-
         self.server.disconnect_client(3)
         assert not self.sense_attribute(self.c0)
         assert not self.sense_attribute(self.c1)
         assert not self.sense_attribute(self.c2)
 
         self.server.make_clients(1)
+
+        self.c1.assert_no_packets()
         self.c3 = self.server.client_list[3]
         assert not self.sense_attribute(self.c0)
         assert not self.sense_attribute(self.c1)

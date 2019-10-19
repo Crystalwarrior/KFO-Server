@@ -163,7 +163,8 @@ class ClientChangeArea:
             client.send_ooc_others('(X) Client {} had their showname `{}` removed in your zone '
                                    'due to it conflicting with the showname of another player in '
                                    'the same area ({}).'
-                                   .format(client.id, client.showname, area.id), is_zstaff=True)
+                                   .format(client.id, client.showname, area.id), is_zstaff=area,
+                                   in_zone_area=area)
             client.change_showname('', target_area=area)
             logger.log_server('{} had their showname removed due it being used in the new area.'
                               .format(client.ipid), client)
@@ -289,12 +290,14 @@ class ClientChangeArea:
         # Check if exiting a zone
         if old_area.in_zone and area.in_zone != old_area.in_zone:
             client.send_ooc_others('(X) Client {} ({}) has left your zone ({}).'
-                                   .format(client.id, old_dname, area.id), is_zstaff=old_area)
+                                   .format(client.id, old_dname, area.id), is_zstaff=old_area,
+                                   in_zone_area=old_area)
 
         # Check if entering a zone
         if area.in_zone and area.in_zone != old_area.in_zone:
             client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}).'
-                                   .format(client.id, new_dname, area.id), is_zstaff=area)
+                                   .format(client.id, new_dname, area.id), is_zstaff=area,
+                                   in_zone_area=area)
 
         # Assuming this is not a spectator...
         # If autopassing, send OOC messages, provided the lights are on. If lights are off,
@@ -477,13 +480,24 @@ class ClientChangeArea:
             old_char = client.get_char_name()
             old_dname = client.displayname
             if new_cid != client.char_id:
-                client.change_character(new_cid, target_area=area)
+                client.change_character(new_cid, target_area=area, announce_zwatch=False)
+                new_char = client.get_char_name()
                 if old_char in area.restricted_chars:
                     client.send_ooc('Your character was restricted in your new area, switched '
-                                  'to {}.'.format(client.get_char_name()))
+                                    'to `{}`.'.format(new_char))
+                    client.send_ooc_others('(X) Client {} had their character changed from `{}` to '
+                                           '`{}` in your zone as their old character was '
+                                           'restricted in their new area ({}).'
+                                           .format(client.id, old_char, new_char, area.id),
+                                           is_zstaff=area, in_zone_area=area)
                 else:
-                    client.send_ooc('Your character was taken in your new area, switched to {}.'
+                    client.send_ooc('Your character was taken in your new area, switched to `{}`.'
                                   .format(client.get_char_name()))
+                    client.send_ooc_others('(X) Client {} had their character changed from `{}` to '
+                                           '`{}` in your zone as their old character was '
+                                           'taken in their new area ({}).'
+                                           .format(client.id, old_char, new_char, area.id),
+                                           is_zstaff=area, in_zone_area=area)
 
             if not ignore_notifications:
                 client.send_ooc('Changed area to {}.[{}]'.format(area.name, area.status))
