@@ -267,8 +267,8 @@ class ClientManager:
                 #  2. They are watching a zone and the triggerer' area is not part of that zone
                 # Use in conjunction with in_area=True to limit player output
                 conditions.append(lambda c: not c.is_staff() or c.zone_watched != self.area.in_zone)
-            elif isinstance(is_zstaff, self.server.zone_manager.Zone):
-                conditions.append(lambda c: c.is_staff() and c.zone_watched == is_zstaff)
+            elif isinstance(is_zstaff, self.server.area_manager.Area):
+                conditions.append(lambda c: c.is_staff() and c.zone_watched == is_zstaff.in_zone)
             elif is_zstaff is None:
                 pass
             else:
@@ -510,14 +510,14 @@ class ClientManager:
 
             # Check length
             if len(showname) > self.server.config['showname_max_length']:
-                raise ClientError("Showname {} exceeds the server's character limit of {}."
+                raise ClientError("Showname `{}` exceeds the server's character limit of {}."
                                   .format(showname, self.server.config['showname_max_length']))
 
             # Check if non-empty showname is already used within area
             if showname != '':
                 for c in target_area.clients:
                     if c.showname == showname and c != self:
-                        raise ValueError("Showname {} is already in use in this area."
+                        raise ValueError("Showname `{}` is already in use in this area."
                                          .format(showname))
                         # This ValueError must be recaught, otherwise the client will crash.
 

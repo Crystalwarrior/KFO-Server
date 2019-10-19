@@ -158,8 +158,12 @@ class ClientChangeArea:
         try: # Verify that showname is still valid
             client.change_showname(client.showname, target_area=area)
         except ValueError:
-            client.send_ooc('Your showname {} was already used in this area so it has been cleared.'
-                          .format(client.showname))
+            client.send_ooc('Your showname `{}` was already used in this area, so it has been '
+                            'removed.'.format(client.showname))
+            client.send_ooc_others('(X) Client {} had their showname `{}` removed in your zone '
+                                   'due to it conflicting with the showname of another player in '
+                                   'the same area ({}).'
+                                   .format(client.id, client.showname, area.id), is_zstaff=True)
             client.change_showname('', target_area=area)
             logger.log_server('{} had their showname removed due it being used in the new area.'
                               .format(client.ipid), client)
@@ -285,14 +289,12 @@ class ClientChangeArea:
         # Check if exiting a zone
         if old_area.in_zone and area.in_zone != old_area.in_zone:
             client.send_ooc_others('(X) Client {} ({}) has left your zone ({}).'
-                                   .format(client.id, old_dname, area.id),
-                                   is_zstaff=old_area.in_zone)
+                                   .format(client.id, old_dname, area.id), is_zstaff=old_area)
 
         # Check if entering a zone
         if area.in_zone and area.in_zone != old_area.in_zone:
             client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}).'
-                                   .format(client.id, new_dname, area.id),
-                                   is_zstaff=area.in_zone)
+                                   .format(client.id, new_dname, area.id), is_zstaff=area)
 
         # Assuming this is not a spectator...
         # If autopassing, send OOC messages, provided the lights are on. If lights are off,

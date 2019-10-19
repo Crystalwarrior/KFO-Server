@@ -247,6 +247,7 @@
 * Reworded notifications for the following mechanics
  - Rolls failing
  - Enabling/disabling IC locks
+ - Setting your own showname, or someone else's showname
 * The following actions now send an IC message in conjunction with an OOC notification:
  - /knock (which has been restricted to non-lobby areas only)
  - /scream

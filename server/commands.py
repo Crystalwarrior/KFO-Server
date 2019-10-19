@@ -4075,17 +4075,30 @@ def ooc_cmd_showname(client, arg):
     if client.server.showname_freeze and not client.is_staff():
         raise ClientError('Shownames are frozen.')
 
+    old_showname = client.showname
     try:
         client.change_showname(arg, forced=False)
     except ValueError:
-        raise ClientError("Given showname {} is already in use in this area.".format(arg))
+        raise ClientError('Given showname `{}` is already in use in this area.'.format(arg))
 
-    if arg != '':
-        client.send_ooc('You have set your showname to {}'.format(arg))
-        logger.log_server('{} set their showname to {}.'.format(client.ipid, arg), client)
+    if arg:
+        s_message = 'You have set your showname to `{}`.'.format(arg)
+        if old_showname:
+            w_message = ('(X) Client {} changed their showname from `{}` to `{}` in your zone ({}).'
+                         .format(client.id, old_showname, client.showname, client.area.id))
+        else:
+            w_message = ('(X) Client {} set their showname to `{}` in your zone ({}).'
+                         .format(client.id, client.showname, client.area.id))
+        l_message = '{} set their showname to `{}`.'.format(client.ipid, arg)
     else:
-        client.send_ooc('You have removed your custom showname.')
-        logger.log_server('{} removed their showname.'.format(client.ipid), client)
+        s_message = 'You have removed your showname.'
+        w_message = ('(X) Client {} removed their showname `{}` in your zone ({}).'
+                         .format(client.id, old_showname, client.area.id))
+        l_message = '{} removed their showname.'.format(client.ipid)
+
+    client.send_ooc(s_message)
+    client.send_ooc_others(w_message, is_zstaff=True)
+    logger.log_server(l_message, client)
 
 def ooc_cmd_showname_area(client, arg):
     """
@@ -4282,20 +4295,35 @@ def ooc_cmd_showname_set(client, arg):
 
     # Set matching targets's showname
     for c in Constants.parse_id_or_ipid(client, ID):
+        old_showname = c.showname
         try:
             c.change_showname(showname)
         except ValueError:
-            raise ClientError("Unable to set the showname of {}: Given showname {} is already in "
-                              "use in area {}.".format(c.get_char_name(), showname, c.area.name))
+            raise ClientError('Unable to set the showname of {}: Given showname `{}` is already in '
+                              'use in area {}.'.format(c.get_char_name(), showname, c.area.name))
 
-        if showname != '':
-            logger.log_server('Set showname of {} to {}.'.format(c.ipid, showname), client)
-            client.send_ooc('Set showname of {} to {}.'.format(c.get_char_name(), showname))
-            c.send_ooc("Your showname was set to {} by a staff member.".format(showname))
+        if showname:
+            s_message = 'You have set the showname of client {} to `{}`.'.format(c.id, showname)
+            if old_showname:
+                w_message = ('(X) {} changed the showname of client {} from `{}` to `{}` in your '
+                             'zone ({}).'
+                             .format(client.displayname, c.id, old_showname, c.showname, c.area.id))
+            else:
+                w_message = ('(X) {} set the showname of client {} to `{}` in your zone ({}).'
+                             .format(client.displayname, c.id, c.showname, c.area.id))
+            o_message = 'Your showname was set to `{}` by a staff member.'.format(showname)
+            l_message = 'Set showname of {} to {}.'.format(c.ipid, showname)
         else:
-            logger.log_server('Removed showname {} of {}.'.format(showname, c.ipid), client)
-            client.send_ooc('Removed showname {} of {}.'.format(showname, c.get_char_name()))
-            c.send_ooc("Your showname was removed by a staff member.")
+            s_message = 'You have removed the showname of client {}.'.format(c.id)
+            w_message = ('(X) {} removed the showname `{}` of client {} in your zone ({}).'
+                         .format(client.displayname, old_showname, c.id, c.area.id))
+            o_message = 'Your showname was removed by a staff member.'
+            l_message = 'Removed showname {} of {}.'.format(showname, c.ipid)
+
+        client.send_ooc(s_message)
+        client.send_ooc_others(w_message, not_to={c}, is_zstaff=c.area)
+        c.send_ooc(o_message)
+        logger.log_server(l_message, client)
 
 def ooc_cmd_sneak(client, arg):
     """ (STAFF ONLY)
