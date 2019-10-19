@@ -5765,10 +5765,13 @@ def ooc_cmd_zone_unwatch(client, arg):
     target_zone.remove_watcher(client)
 
     client.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.get_id()))
-    if not target_zone.get_watchers():
+    if target_zone.get_watchers():
+        client.send_ooc_others('(X) {} is no longer watching your zone.'.format(client.name),
+                               to_zone_watcher=target_zone)
+    else:
         client.send_ooc('As you were the last person watching it, your zone has been deleted.')
-    client.send_ooc_others('(X) {} is no longer watching your zone.'.format(client.name),
-                           to_zone_watcher=target_zone)
+        client.send_ooc_others('Zone `{}` was automatically deleted as no one was watching it '
+                               'anymore.'.format(target_zone.get_id()), is_officer=True)
 
 def ooc_cmd_zone_watch(client, arg):
     """ (STAFF ONLY)

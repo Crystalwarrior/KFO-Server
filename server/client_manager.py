@@ -283,6 +283,12 @@ class ClientManager:
                 #  2. They are watching a zone and the triggerer' area is not part of that zone
                 # Use in conjunction with in_area=True to limit player output
                 conditions.append(lambda c: not c.is_staff() or c.zone_watched != self.area.in_zone)
+            elif isinstance(is_zstaff, self.server.zone_manager.Zone):
+                # Only use this if you are sure that the object you are passing is a zone.
+                # This could cause issues if you are passing something like client.zone_watched or
+                # area.in_zone, because they could be None and be caught as part of the pass
+                # case later on
+                conditions.append(lambda c: c.is_staff() and c.zone_watched == is_zstaff)
             elif isinstance(is_zstaff, self.server.area_manager.Area):
                 conditions.append(lambda c: c.is_staff() and c.zone_watched == is_zstaff.in_zone)
             elif is_zstaff is None:
@@ -1088,8 +1094,24 @@ class ClientManager:
 
         # If the client was watching a zone, remove them from the zone's watcher list, and check if
         # the zone is now empty.
+        backup_zone = client.zone_watched
+
         if client.zone_watched:
             client.zone_watched.remove_watcher(client)
+            client.send_ooc_others('(X) Client {} ({}) disconnected while watching your zone ({}).'
+                                   .format(client.id, client.displayname, client.area.id),
+                                   is_zstaff=backup_zone)
+            if not backup_zone.get_watchers():
+                client.send_ooc_others('Zone `{}` was automatically deleted as no one was watching '
+                                       'it anymore.'.format(backup_zone.get_id()), is_officer=True)
+
+        # If the client was in an area part of a zone, notify all of its watchers, except if they
+        # have been already notified. This would happen if a client is in an area part of zone A
+        # but they are watching some different zone B instead.
+        if client.area.in_zone and backup_zone != client.area.in_zone:
+            client.send_ooc_others('(X) Client {} ({}) disconnected in your zone ({}).'
+                                   .format(client.id, client.displayname, client.area.id),
+                                   is_zstaff=True)
 
         self.clients.remove(client)
 

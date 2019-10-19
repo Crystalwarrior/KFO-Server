@@ -419,3 +419,71 @@ class TestZoneExtraNotifications_03_ChangeCharacter(_TestZone):
         self.c4.assert_packet('PV', (4, 'CID', 2))
         self.c4.assert_ooc('Character changed.', over=True)
         self.c5.assert_no_packets()
+
+class TestZoneExtraNotifications_04_Disconnection(_TestZone):
+    def test_01_nonstaffleaves(self):
+        """
+        Situation: C2 creates a zone involving areas 4 through 6. C5 decides to watch zone, but not
+        C1. C4, non-staff in zone, leaves. C1 and C5 get notified, not C2.
+        """
+
+        self.c2.ooc('/zone 4, 6')
+        self.c5.ooc('/zone_watch z0')
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c5.discard_all()
+
+        self.c4.disconnect()
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets() # Not watching zone
+        self.c2.assert_ooc('(X) Client {} ({}) disconnected in your zone ({}).'
+                           .format(4, self.c4_dname, self.c4.area.id), over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc('(X) Client {} ({}) disconnected in your zone ({}).'
+                           .format(4, self.c4_dname, self.c4.area.id), over=True)
+
+    def test_02_staffwatcherleaves(self):
+        """
+        Situation: C2, a staff zone watcher, leaves. Only C5 gets notified.
+        """
+
+        self.c2.disconnect()
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets() # Not watching zone
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        # self.c4.assert_no_packets() # NO c4
+        self.c5.assert_ooc('(X) Client {} ({}) disconnected while watching your zone ({}).'
+                           .format(2, self.c2_dname, self.c2.area.id), over=True)
+
+    def test_03_staffnonwatcherleaves(self):
+        """
+        Situation: C1, a staff non-zone watcher, leaves. Only C5 gets notified
+        """
+
+        self.c1.disconnect()
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        # self.c2.assert_no_packets() # NO c2
+        self.c3.assert_no_packets()
+        # self.c4.assert_no_packets() # NO c4
+        self.c5.assert_ooc('(X) Client {} ({}) disconnected in your zone ({}).'
+                           .format(1, self.c1_dname, self.c1.area.id), over=True)
+
+    def test_04_outofzoneleaves(self):
+        """
+        Situation: C3 goes out of zone and then disconnects. C5 gets no notification of DC (they do
+        of them leaving the zone, but that is not tested here).
+        """
+
+        self.c3.move_area(0)
+        self.c5.discard_all()
+
+        self.c3.disconnect()
+        self.c0.assert_no_packets()
+        # self.c1.assert_no_packets() # NO c1
+        # self.c2.assert_no_packets() # NO c2
+        self.c3.assert_no_packets()
+        # self.c4.assert_no_packets() # NO c4
+        self.c5.assert_no_packets()

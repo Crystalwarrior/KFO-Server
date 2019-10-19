@@ -248,15 +248,17 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
     def test_08_lastpersonunwatches(self):
         """
         Situation: C5 unwatches their zone. As they were the last person watching it, they get a
-        special message about their zone being removed.
+        special message about their zone being removed. C1/4 also gets a message by being a mod.
         """
 
         self.c5.ooc('/zone_unwatch')
         self.c0.assert_no_packets()
-        self.c1.assert_no_packets()
+        self.c1.assert_ooc('Zone `{}` was automatically deleted as no one was watching it anymore.'
+                           .format('z0'), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
-        self.c4.assert_no_packets()
+        self.c4.assert_ooc('Zone `{}` was automatically deleted as no one was watching it anymore.'
+                           .format('z0'), over=True)
         self.c5.assert_ooc('You are no longer watching zone `{}`.'.format('z0'))
         self.c5.assert_ooc('As you were the last person watching it, your zone has been deleted.',
                            over=True)
@@ -276,6 +278,15 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         self.c5.discard_all()
 
         self.c5.disconnect()
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('(X) Client {} ({}) disconnected while watching your zone ({}).'
+                           .format(5, self.c5_dname, self.c5.area.id), over=True)
+        self.c2.assert_ooc('(X) Client {} ({}) disconnected while watching your zone ({}).'
+                           .format(5, self.c5_dname, self.c5.area.id), over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
         self.assertEquals(1, len(self.zm.get_zones()))
         self.assertEquals({self.c2, self.c1}, self.zm.get_zone('z0').get_watchers())
 
@@ -299,5 +310,14 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         """
 
         self.c4.disconnect()
+        self.c1.assert_ooc('Zone `{}` was automatically deleted as no one was watching it anymore.'
+                           .format('z1'))
+        self.c1.assert_ooc('(X) Client {} ({}) disconnected in your zone ({}).'
+                           .format(4, self.c4_dname, self.c4.area.id), over=True)
+        self.c2.assert_ooc('(X) Client {} ({}) disconnected in your zone ({}).'
+                           .format(4, self.c4_dname, self.c4.area.id), over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+
         self.assertEquals(1, len(self.zm.get_zones()))
         self.assertEquals({self.c2, self.c1}, self.zm.get_zone('z0').get_watchers())
