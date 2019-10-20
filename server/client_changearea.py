@@ -163,8 +163,7 @@ class ClientChangeArea:
             client.send_ooc_others('(X) Client {} had their showname `{}` removed in your zone '
                                    'due to it conflicting with the showname of another player in '
                                    'the same area ({}).'
-                                   .format(client.id, client.showname, area.id), is_zstaff=area,
-                                   in_zone_area=area)
+                                   .format(client.id, client.showname, area.id), is_zstaff=area)
             client.change_showname('', target_area=area)
             logger.log_server('{} had their showname removed due it being used in the new area.'
                               .format(client.ipid), client)
@@ -290,14 +289,12 @@ class ClientChangeArea:
         # Check if exiting a zone
         if old_area.in_zone and area.in_zone != old_area.in_zone:
             client.send_ooc_others('(X) Client {} ({}) has left your zone ({}).'
-                                   .format(client.id, old_dname, area.id), is_zstaff=old_area,
-                                   in_zone_area=old_area)
+                                   .format(client.id, old_dname, area.id), is_zstaff=old_area)
 
         # Check if entering a zone
         if area.in_zone and area.in_zone != old_area.in_zone:
             client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}).'
-                                   .format(client.id, new_dname, area.id), is_zstaff=area,
-                                   in_zone_area=area)
+                                   .format(client.id, new_dname, area.id), is_zstaff=area)
 
         # Assuming this is not a spectator...
         # If autopassing, send OOC messages, provided the lights are on. If lights are off,
@@ -339,10 +336,10 @@ class ClientChangeArea:
             ybnd = blind_mes
             nbyd = ''
 
-        client.send_ooc_others(staff, in_area=area, is_zstaff=True)
-        client.send_ooc_others(nbnd, in_area=area, is_zstaff=False, to_blind=False, to_deaf=False)
-        client.send_ooc_others(ybnd, in_area=area, is_zstaff=False, to_blind=True, to_deaf=False)
-        client.send_ooc_others(nbyd, in_area=area, is_zstaff=False, to_blind=False, to_deaf=True)
+        client.send_ooc_others(staff, in_area=area, is_zstaff_flex=True)
+        client.send_ooc_others(nbnd, in_area=area, is_zstaff_flex=False, to_blind=False, to_deaf=False)
+        client.send_ooc_others(ybnd, in_area=area, is_zstaff_flex=False, to_blind=True, to_deaf=False)
+        client.send_ooc_others(nbyd, in_area=area, is_zstaff_flex=False, to_blind=False, to_deaf=True)
         # Blind and deaf get nothing
 
     def notify_others_blood(self, client, area, char, status='stay', send_to_staff=True):
@@ -415,12 +412,12 @@ class ClientChangeArea:
         staff = staff.replace('no longer bleeding and sneaking.',
                               'no longer bleeding, but is still sneaking.') # Ugly
 
-        client.send_ooc_others(norm, is_zstaff=False, in_area=area, to_blind=False, to_deaf=False)
-        client.send_ooc_others(ybnd, is_zstaff=False, in_area=area, to_blind=True, to_deaf=False)
-        client.send_ooc_others(nbyd, is_zstaff=False, in_area=area, to_blind=False, to_deaf=True)
-        client.send_ooc_others(ybyd, is_zstaff=False, in_area=area, to_blind=True, to_deaf=True)
+        client.send_ooc_others(norm, is_zstaff_flex=False, in_area=area, to_blind=False, to_deaf=False)
+        client.send_ooc_others(ybnd, is_zstaff_flex=False, in_area=area, to_blind=True, to_deaf=False)
+        client.send_ooc_others(nbyd, is_zstaff_flex=False, in_area=area, to_blind=False, to_deaf=True)
+        client.send_ooc_others(ybyd, is_zstaff_flex=False, in_area=area, to_blind=True, to_deaf=True)
         if send_to_staff:
-            client.send_ooc_others(staff, is_zstaff=True, in_area=area)
+            client.send_ooc_others(staff, is_zstaff_flex=True, in_area=area)
 
     def change_area(self, area, override_all=False, override_passages=False,
                     override_effects=False, ignore_bleeding=False, ignore_followers=False,
@@ -489,7 +486,7 @@ class ClientChangeArea:
                                            '`{}` in your zone as their old character was '
                                            'restricted in their new area ({}).'
                                            .format(client.id, old_char, new_char, area.id),
-                                           is_zstaff=area, in_zone_area=area)
+                                           is_zstaff=area)
                 else:
                     client.send_ooc('Your character was taken in your new area, switched to `{}`.'
                                   .format(client.get_char_name()))
@@ -497,7 +494,7 @@ class ClientChangeArea:
                                            '`{}` in your zone as their old character was '
                                            'taken in their new area ({}).'
                                            .format(client.id, old_char, new_char, area.id),
-                                           is_zstaff=area, in_zone_area=area)
+                                           is_zstaff=area)
 
             if not ignore_notifications:
                 client.send_ooc('Changed area to {}.[{}]'.format(area.name, area.status))

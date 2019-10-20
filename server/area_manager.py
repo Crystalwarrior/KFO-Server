@@ -531,12 +531,12 @@ class AreaManager:
                     initiator.send_ooc('You feel a light switch was flipped.')
 
                 initiator.send_ooc_others('The lights were turned {}.'.format(status[new_lights]),
-                                          is_zstaff=False, in_area=True, to_blind=False)
-                initiator.send_ooc_others('You hear a flicker.', is_zstaff=False, in_area=True,
+                                          is_zstaff_flex=False, in_area=True, to_blind=False)
+                initiator.send_ooc_others('You hear a flicker.', is_zstaff_flex=False, in_area=True,
                                           to_blind=True, to_deaf=False)
                 initiator.send_ooc_others('(X) {} turned the lights {}.'
                                           .format(initiator.displayname, status[new_lights]),
-                                          is_zstaff=True, in_area=True)
+                                          is_zstaff_flex=True, in_area=True)
             else: # Otherwise, send generic message
                 self.broadcast_ooc('The lights were turned {}.'.format(status[new_lights]))
 
@@ -614,6 +614,8 @@ class AreaManager:
             # Changing music reveals sneaked players, so do that if requested
             if not client.is_staff() and not client.is_visible and reveal_sneaked:
                 client.change_visibility(True)
+                client.send_ooc_others('(X) {} revealed themselves by playing music ({}).'
+                                        .format(client.displayname, client.area.id), is_zstaff=True)
 
         def play_music(self, name, cid, length=-1):
             """

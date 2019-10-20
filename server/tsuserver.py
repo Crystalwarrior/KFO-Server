@@ -43,8 +43,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a31'
-        self.internal_version = '191020c'
+        self.segment_version = 'a32'
+        self.internal_version = '191020d'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -748,7 +748,7 @@ class TsuserverDR:
                     client.send_ooc('Your day cycle in areas {} through {} has been unpaused.'
                                     .format(area_1, area_2))
                     client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through {} has been unpaused.'
-                                           .format(client.name, area_1, area_2), is_zstaff=True)
+                                           .format(client.name, area_1, area_2), is_zstaff_flex=True)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_unpaused', False)
 
@@ -781,7 +781,7 @@ class TsuserverDR:
                     client.send_ooc('Your day cycle in areas {} through {} has been canceled.'
                                     .format(area_1, area_2))
                     client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through {} has been canceled.'
-                                           .format(client.name, area_1, area_2), is_zstaff=True)
+                                           .format(client.name, area_1, area_2), is_zstaff_flex=True)
                     targets = [c for c in self.client_manager.clients if c == client or
                                area_1 <= c.area.id <= area_2]
                     for c in targets:
@@ -797,7 +797,7 @@ class TsuserverDR:
                                     .format(area_1, area_2, time_at_pause))
                     client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through {} has been paused at {}.'
                                            .format(client.name, area_1, area_2, time_at_pause),
-                                           is_zstaff=True)
+                                           is_zstaff_flex=True)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_paused', True)
             else:
                 if (not self.get_task_attr(client, ['as_day_cycle'], 'is_paused') and

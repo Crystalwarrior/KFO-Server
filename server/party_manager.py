@@ -165,7 +165,7 @@ class PartyManager:
                 rando = self.get_random_member() # Just need a client for this next part
                 rando.send_ooc_others('(X) Party {} was disbanded for being in a dark room for too '
                                       'long ({}).'.format(self.get_id(), self.area.id),
-                                      is_zstaff=True)
+                                      is_zstaff_flex=True)
 
                 self.server.party_manager.disband_party(self)
 
@@ -393,7 +393,7 @@ class PartyManager:
         end_parties = ", ".join([str(p.get_id()) for p in parties if p is not None])
         initiator.send_ooc_others("(X) {}'s party {} was split into these parties: {}".
                                   format(ini_name, parties[og_party_id].get_id(), end_parties),
-                                  is_zstaff=True)
+                                  is_zstaff_flex=True)
 
     def check_move_party(self, party, initiator, new_area):
         """

@@ -68,7 +68,7 @@ class TestGag_02_Effect(_TestGag):
 
         self.c0.sic('Hello?')
         self.assert_ic_gag(self.c0, folder=self.c0_cname, anim='happy', over=True)
-        self.c1.assert_ooc('(X) {} tried to say "{}" but is currently gagged.'
+        self.c1.assert_ooc('(X) {} tried to say `{}` but is currently gagged.'
                            .format(self.c0_dname, 'Hello?'), ooc_over=True)
         self.assert_ic_gag(self.c1, folder=self.c0_cname, anim='happy', over=True)
         self.c2.assert_no_ic()
@@ -82,7 +82,7 @@ class TestGag_02_Effect(_TestGag):
 
         self.c0.sic('Mood', anim='mood')
         self.assert_ic_gag(self.c0, folder=self.c0_cname, anim='mood', over=True)
-        self.c1.assert_ooc('(X) {} tried to say "{}" but is currently gagged.'
+        self.c1.assert_ooc('(X) {} tried to say `{}` but is currently gagged.'
                            .format(self.c0_dname, 'Mood'), ooc_over=True)
         self.assert_ic_gag(self.c1, folder=self.c0_cname, anim='mood', over=True)
         self.c2.assert_no_ic()
@@ -111,7 +111,7 @@ class TestGag_02_Effect(_TestGag):
         self.c0.sic('Im gagged.', anim='sad')
         self.assert_ic_gag(self.c0, folder=self.c0_cname, anim='sad', over=True)
         self.c1.assert_no_ic()
-        self.c2.assert_ooc('(X) {} tried to say "{}" but is currently gagged.'
+        self.c2.assert_ooc('(X) {} tried to say `{}` but is currently gagged.'
                            .format(self.c0_dname, 'Im gagged.'), ooc_over=True)
         self.assert_ic_gag(self.c2,  folder=self.c0_cname,
                           anim='sad', over=True)

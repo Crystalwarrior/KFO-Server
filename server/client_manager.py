@@ -133,8 +133,8 @@ class ClientManager:
 
         def send_ooc_others(self, msg, username=None, allow_empty=False,
                             is_staff=None, is_officer=None, in_area=None, not_to=None, part_of=None,
-                            to_blind=None, to_deaf=None, to_zone_watcher=None, in_zone_area=None,
-                            is_zstaff=None, pred=None):
+                            to_blind=None, to_deaf=None, is_zstaff=None, is_zstaff_flex=None,
+                            pred=None):
             if not allow_empty and not msg:
                 return
 
@@ -148,8 +148,8 @@ class ClientManager:
             cond = Constants.build_cond(self, is_staff=is_staff, is_officer=is_officer,
                                         in_area=in_area, not_to=not_to.union({self}),
                                         part_of=part_of, to_blind=to_blind, to_deaf=to_deaf,
-                                        to_zone_watcher=to_zone_watcher, in_zone_area=in_zone_area,
-                                        is_zstaff=is_zstaff, pred=pred)
+                                        is_zstaff=is_zstaff, is_zstaff_flex=is_zstaff_flex,
+                                        pred=pred)
             self.server.make_all_clients_do("send_ooc", msg, pred=cond, allow_empty=allow_empty,
                                             username=username)
 
@@ -316,7 +316,7 @@ class ClientManager:
                 self.send_ooc_others('(X) Client {} has changed from character `{}` to `{}` in '
                                      'your zone ({}).'
                                      .format(self.id, old_char, self.char_folder, self.area.id),
-                                     is_zstaff=target_area, in_zone_area=target_area)
+                                     is_zstaff=target_area)
             logger.log_server('[{}]Changed character from {} to {}.'
                               .format(self.area.id, old_char, self.get_char_name()), self)
 
@@ -438,7 +438,7 @@ class ClientManager:
                                    '"{}" of length {} seconds after being revealed in area {} ({}).'
                                    .format(self.displayname, old_name, old_length,
                                            self.area.name, self.area.id))
-                            self.send_ooc_others(msg, is_zstaff=True)
+                            self.send_ooc_others(msg, is_zstaff_flex=True)
                             self.send_ooc('You were automatically imposed your former movement '
                                           'handicap "{}" of length {} seconds when changing areas.'
                                           .format(old_name, old_length))
@@ -464,7 +464,7 @@ class ClientManager:
                                    '"Sneaking" of length {} seconds in area {} ({}).'
                                    .format(self.displayname, shandicap, self.area.name,
                                            self.area.id))
-                            self.send_ooc_others(msg, is_zstaff=True)
+                            self.send_ooc_others(msg, is_zstaff_flex=True)
                             raise KeyError # Lazy way to get there, but it works
                     except KeyError:
                         self.send_ooc('You were automatically imposed a movement handicap '
@@ -952,7 +952,7 @@ class ClientManager:
             client.zone_watched.remove_watcher(client)
             client.send_ooc_others('(X) Client {} ({}) disconnected while watching your zone ({}).'
                                    .format(client.id, client.displayname, client.area.id),
-                                   is_zstaff=backup_zone)
+                                   part_of=backup_zone.get_watchers())
             if not backup_zone.get_watchers():
                 client.send_ooc_others('Zone `{}` was automatically deleted as no one was watching '
                                        'it anymore.'.format(backup_zone.get_id()), is_officer=True)

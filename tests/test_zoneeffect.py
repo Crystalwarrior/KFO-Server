@@ -294,10 +294,10 @@ class TestZoneEffect_03_RPNotifications(_TestZone):
     This is the /iclock code for OOC output
     a) client.send_ooc('You {} the IC chat in this area.'.format(status[client.area.ic_lock]))
     b) client.send_ooc_others('The IC chat has been {} in this area.'
-                              .format(status[client.area.ic_lock]), is_zstaff=False, in_area=True)
+                              .format(status[client.area.ic_lock]), is_zstaff_flex=False, in_area=True)
     c&d) client.send_ooc_others('(X) {} has {} the IC chat in area {} ({}).'
                                 .format(client.name, status[client.area.ic_lock], client.area.name,
-                                        client.area.id), is_zstaff=True)
+                                        client.area.id), is_zstaff_flex=True)
     """
 
     def setUp(self):

@@ -202,8 +202,8 @@ class Constants():
 
     @staticmethod
     def build_cond(sender, is_staff=None, is_officer=None, is_mod=None, in_area=None, pred=None,
-                   part_of=None, not_to=None, to_blind=None, to_deaf=None,
-                   to_zone_watcher=None, in_zone_area=None, is_zstaff=None):
+                   part_of=None, not_to=None, to_blind=None, to_deaf=None, is_zstaff=None,
+                   is_zstaff_flex=None):
         """
         Acceptable conditions:
             is_staff: If target is GM, CM or Mod
@@ -214,11 +214,12 @@ class Constants():
             not_to: If target is not in a set of clients that are filtered out
             to_blind: If target is blind
             to_deaf: If target is deaf
-            to_zone_watcher: If target is watching the same zone as client, or is watching the
-             same zone their current area belongs to
-            in_zone_area: If target is in an area that is in the same zone as the client's area
-            is_zstaff: If target is GM, CM or Mod, and if they are watching the zone their area
-            is in or their area is not part of a zone and they are not watching a zone.
+            is_zstaff: If target is GM, CM or Mod, and if they are watching the zone the sender's
+             area is in, or the area that is given. This EXPECTS the targets to be watching a
+             non-None zone.
+            is_zstaff_flex: If target is GM, CM, or Mod, and if they are watching the zone the
+             sender's area is in, or the area that is given, or both the target's watched zone
+             and the zone the sender's/given area is in are both None for its True and area cases.
             pred: If target satisfies some custom condition
         """
         conditions = list()
@@ -263,9 +264,6 @@ class Constants():
         else:
             raise KeyError('Invalid argument for _build_cond in_area: {}'.format(in_area))
 
-        if pred is not None:
-            conditions.append(pred)
-
         if part_of is not None:
             conditions.append(lambda c: c in part_of)
 
@@ -290,65 +288,77 @@ class Constants():
         else:
             raise KeyError('Invalid argument for _build_cond to_deaf: {}'.format(to_deaf))
 
-        if to_zone_watcher is True:
-            if sender.zone_watched:
-                conditions.append(lambda c: c.zone_watched == sender.zone_watched)
-            elif sender.area.in_zone:
-                conditions.append(lambda c: c.area.in_zone == sender.area.in_zone)
-            else:
-                pass
-        elif to_zone_watcher is False:
-            if sender.zone_watched:
-                conditions.append(lambda c: c.zone_watched != sender.zone_watched)
-            elif sender.area.in_zone:
-                conditions.append(lambda c: c.area.in_zone != sender.area.in_zone)
-            else:
-                pass
-        elif isinstance(to_zone_watcher, sender.server.zone_manager.Zone):
-            conditions.append(lambda c: c.zone_watched == to_zone_watcher)
-        elif to_zone_watcher is None:
-            pass
-        else:
-            raise KeyError('Invalid argument for _build_cond to_zone_watcher: {}'
-                           .format(to_zone_watcher))
-
-        if in_zone_area is True:
-            conditions.append(lambda c: c.area.in_zone == sender.area.in_zone != None)
-        elif in_zone_area is False:
-            conditions.append(lambda c: c.area.in_zone != sender.area.in_zone and
-                              sender.area.in_zone)
-        elif isinstance(in_zone_area, sender.server.area_manager.Area):
-            conditions.append(lambda c: c.area.in_zone == in_zone_area.in_zone != None)
-        elif in_zone_area is None:
-            pass
-        else:
-            raise KeyError('Invalid argument for _build_cond in_zone: {}'
-                           .format(in_zone_area))
-
+        # This is a strict parameter.
+        # To be precise, is_zstaff expects the sender to be watching a zone or be in a zone, or
+        # if given an area, that it is part of a zone.
         if is_zstaff is True:
-            # Applies if client is staff, and for the triggerer's area:
-            #  1. They are not watching a zone and the triggerer's area is not in a zone, or
-            #  2. They are watching a zone and the triggerer's area is part of that zone
-            conditions.append(lambda c: c.is_staff() and c.zone_watched == sender.area.in_zone)
+            # Only staff members who are watching the sender's zone will receive it, PROVIDED that
+            # the sender is watching a zone, or in an area part of a zone. If neither is true,
+            # NO notification is sent.
+            conditions.append(lambda c: c.is_staff() and c.zone_watched)
+            if sender.zone_watched:
+                conditions.append(lambda c: (c.zone_watched == sender.zone_watched))
+            elif sender.area.in_zone:
+                conditions.append(lambda c: (c.zone_watched == sender.area.in_zone))
+            else:
+                conditions.append(lambda c: False)
         elif is_zstaff is False:
-            # Applies if client is not staff, or for the triggerer' area::
-            #  1. They are not watching a zone and the triggerer' area is part of a zone, or
-            #  2. They are watching a zone and the triggerer' area is not part of that zone
-            # Use in conjunction with in_area=True to limit player output
-            conditions.append(lambda c: not c.is_staff() or c.zone_watched != sender.area.in_zone)
-        elif isinstance(is_zstaff, sender.server.zone_manager.Zone):
-            # Only use this if you are sure that the object you are passing is a zone.
-            # This could cause issues if you are passing something like client.zone_watched or
-            # area.in_zone, because they could be None and be caught as part of the pass
-            # case later on
-            conditions.append(lambda c: c.is_staff() and c.zone_watched == is_zstaff)
+            if sender.zone_watched:
+                conditions.append(lambda c: (c.zone_watched != sender.zone_watched))
+            elif sender.area.in_zone:
+                conditions.append(lambda c: (c.zone_watched != sender.area.in_zone))
+            else:
+                conditions.append(lambda c: False)
         elif isinstance(is_zstaff, sender.server.area_manager.Area):
-            conditions.append(lambda c: c.is_staff() and c.zone_watched == is_zstaff.in_zone)
+            # Only staff members who are watching the area's zone will receive it, PROVIDED the area
+            # is part of a zone. Otherwise, NO notification is sent.
+            target_zone = is_zstaff.in_zone
+            if target_zone:
+                conditions.append(lambda c: c.is_staff() and c.zone_watched == target_zone)
+            else:
+                conditions.append(lambda c: False)
         elif is_zstaff is None:
             pass
         else:
-            raise KeyError('Invalid argument for _build_cond is_zstaff: {}'
-                           .format(is_zstaff))
+            raise KeyError('Invalid argument for build_cond is_zstaff: {}'.format(is_zstaff))
+
+        # This is a less strict parameter. The sender may or may not be in a zone (or the given
+        # area may not be in a zone), in which case it will ignore zone limitations and effectively
+        # just act as is_staff.
+        # This is a BACKWARDS COMPATIBILITY only parameter, designed to keep the pre-4.2 notifs
+        # that were sent to all staff members as they were pre-zones, so that if a notif happens
+        # outside a zone, it notifies all staff members
+        # Please use is_zstaff for 4.2 forwards.
+        if is_zstaff_flex is True:
+            # Only staff members who are watching the sender's zone will receive it, PROVIDED that
+            # the sender is watching a zone, or in an area part of a zone. If neither is true,
+            # NO notification is sent.
+            conditions.append(lambda c: c.is_staff())
+            if sender.zone_watched:
+                conditions.append(lambda c: (c.zone_watched == sender.zone_watched))
+            elif sender.area.in_zone:
+                conditions.append(lambda c: (c.zone_watched == sender.area.in_zone))
+        elif is_zstaff_flex is False:
+            if sender.zone_watched:
+                condition1 = lambda c: (c.zone_watched != sender.zone_watched)
+            elif sender.area.in_zone:
+                condition1 = lambda c: (c.zone_watched != sender.area.in_zone)
+            else:
+                condition1 = lambda c: False
+            conditions.append(lambda c: condition1(c) or not c.is_staff())
+        elif isinstance(is_zstaff_flex, sender.server.area_manager.Area):
+            # Only staff members who are watching the area's zone will receive it, PROVIDED the area
+            # is part of a zone. Otherwise, NO notification is sent.
+            target_zone = is_zstaff_flex.in_zone
+            conditions.append(lambda c: c.is_staff() and c.zone_watched == target_zone)
+        elif is_zstaff_flex is None:
+            pass
+        else:
+            raise KeyError('Invalid argument for build_cond is_zstaff_flex: {}'
+                           .format(is_zstaff_flex))
+
+        if pred is not None:
+            conditions.append(pred)
 
         cond = lambda c: all([cond(c) for cond in conditions])
 

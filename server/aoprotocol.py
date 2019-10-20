@@ -439,9 +439,9 @@ class AOProtocol(asyncio.Protocol):
                 gag_replaced = True
                 msg = Constants.gagged_message()
             if msg != raw_msg:
-                self.client.send_ooc_others('(X) {} tried to say "{}" but is currently gagged.'
+                self.client.send_ooc_others('(X) {} tried to say `{}` but is currently gagged.'
                                             .format(self.client.displayname, raw_msg),
-                                            is_zstaff=True, in_area=True)
+                                            is_zstaff_flex=True, in_area=True)
 
         if evidence:
             if self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos != 'all':
@@ -489,6 +489,9 @@ class AOProtocol(asyncio.Protocol):
         # Sending IC messages reveals sneaked players
         if not self.client.is_staff() and not self.client.is_visible:
             self.client.change_visibility(True)
+            self.client.send_ooc_others('(X) {} revealed themselves by talking ({}).'
+                                        .format(self.client.displayname, self.client.area.id),
+                                        is_zstaff=True)
 
         self.server.create_task(self.client, ['as_afk_kick', self.client.area.afk_delay,
                                               self.client.area.afk_sendto])
