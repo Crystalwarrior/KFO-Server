@@ -5478,15 +5478,16 @@ def ooc_cmd_dicelog(client, arg):
 
 def ooc_cmd_dicelog_area(client, arg):
     """ (STAFF ONLY)
-    Obtains the last 20 roll resuls from the target by ID or the user if not given any.
-    Returns an error if the identifier does not correspond to a user.
+    Obtains the last 20 roll resuls from an area by its ID or name or the user's current one if
+    not given any.
+    Returns an error if the identifier does not correspond to an area.
 
     SYNTAX
     /dicelog
-    /dicelog <client_id>
+    /dicelog_area <target_area>
 
     PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
+    <target_area>: Area whose rolls will be listed
 
     EXAMPLES
     /dicelog_area       :: Returns the last 20 rolls of the user's current area
@@ -5497,7 +5498,7 @@ def ooc_cmd_dicelog_area(client, arg):
     if len(arg) == 0:
         arg = str(client.area.id)
 
-    # Obtain target's dicelog
+    # Obtain target area's dicelog
     target = Constants.parse_area_names(client, [arg])[0]
     info = target.get_dicelog()
     client.send_ooc(info)

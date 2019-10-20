@@ -217,6 +217,8 @@ Additional notes are listed at the end of the command list.
     - Unlocks your area, provided the lock came as a result of /lock.
 * **version**
     - Obtains the current version of the server software.
+* **zone_global**
+    - Sends a message to all players in the zone you are in.
 * **8ball**
     - Gain insight from the magic 8 ball.
     
@@ -267,6 +269,10 @@ GMs can:
 * **deafen** "ID"
     - Changes the deafened status of a target.
     - Deafened players will be unable to read IC messages properly or receive other audio cues from commands such as /knock, /scream, etc.
+* **dicelog** "ID"
+    - Obtains the last 20 rolls from a target, or your last 20 rolls if not given a target.
+* **dicelog_area** "area"
+    - Obtains the last 20 rolls from an area by ID or name, or the last 20 rolls of your area if not given one.
 * **follow** "ID"
     - Starts following a target. If the target changes areas, you will automatically follow them there.
 * **gag** "ID"
@@ -304,7 +310,7 @@ GMs can:
 * **party_join** "party ID"
     - Makes you join a party, even if you were not invited to it.
 * **party_list**
-    - Lists all active parties in the server, as well as some of its details.
+    - Lists all active parties in the server, as well as some of their details.
 * **passage_clear** "area range start", "area range end"
     - Clears passage locks that start in the areas in the given area range, or just the ones in the current area if not given a range.
 * **passage_restore** "area range start", "area range end"
@@ -350,7 +356,24 @@ GMs can:
     - Obtains the area a target is.
 * **whois** "ID/IPID"
     - Obtains a lot of properties of the target.
-    
+* **zone** "area range start", "area range end"
+    - Creates a zone involving the area range given above, just the given area if given one parameter, or just the current area if not given a parameter.
+    - You are automatically set to watch the zones you create like this.
+* **zone_add* "area"
+    - Adds an area by name or ID to the zone you are watching.
+* **zone_delete**
+    - Deletes the zone you are watching.
+* **zone_list**
+    - Lists all active zones in the server, as well as some of their details.
+* **zone_play**
+    - Plays a track in all areas in the zone you are watching.
+* **zone_remove** "area"
+    - Removes an area by name or ID from the zone you are watching.
+* **zone_unwatch**
+    - Makes you stop watching the zone you were watching.
+* **zone_watch** "zone"
+    - Makes you start watching a zone by its ID.
+
 ### Community Manager Commands
 * **blockdj** "ID/IPID"
     - Mutes the target from changing music. 
@@ -362,6 +385,8 @@ GMs can:
     - Shows all characters in all areas of the server as well as their IPIDs.
 * **kick** "ID/IPID" 
     - Kicks the target from the server.
+* **make_gm** "ID"
+    - Makes the target a GM.
 * **mute** "ID/IPID" 
     - Mutes the target from all IC actions.
 * **ooc_mute** "OOC name" 
@@ -378,6 +403,8 @@ GMs can:
     - Unmutes the target from the IC chat.
 * **whois** "ID/IPID"
     - Obtains a lot of properties of the target, including HDID and IPID.
+* **zone_delete** "zone"
+    - Deletes a zone by its ID, or the zone you are watching if not given a zone.
     
 ### Moderator Commands
 
@@ -445,9 +472,10 @@ Commands marked with (D) are marked as deprecated. They will continue to serve t
 Commands without (D) are aliases to commands and can be freely used (subject to the parent command's conditions).
 
 #### Everyone
-* **mutepm** (D: Aug.19.19): Same as /toggle_pm
+* **mutepm** (D: Aug.19.19): Same as /toggle_pm.
 * **toggleglobal** (D: Jul.15.19): Same as /toggle_global.
 * **showname_list** (D: Aug.19.19): Same as /showname_areas.
+* **zg**: Same as /zone_global.
 
 #### GM+
 * **delete_areareachlock** (D: Jul.15.19): Same as /passage_clear.
