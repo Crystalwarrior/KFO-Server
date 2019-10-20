@@ -117,23 +117,24 @@ class ClientManager:
             else:
                 self.send_raw_message('{}#%'.format(command))
 
-        def send_ooc(self, msg, username=None, allow_empty=False, is_staff=None, in_area=None,
-                     pred=None, not_to=None, to_blind=None, to_deaf=None, is_officer=None):
+        def send_ooc(self, msg, username=None, allow_empty=False, is_staff=None, is_officer=None,
+                     in_area=None, not_to=None, to_blind=None, to_deaf=None, pred=None):
             if not allow_empty and not msg:
                 return
             if username is None:
                 username = self.server.config['hostname']
 
-            cond = self._build_cond(is_staff=is_staff, is_officer=is_officer, in_area=in_area,
-                                    pred=pred, not_to=not_to, to_blind=to_blind, to_deaf=to_deaf)
+            cond = Constants.build_cond(self, is_staff=is_staff, is_officer=is_officer,
+                                        in_area=in_area, not_to=not_to, to_blind=to_blind,
+                                        to_deaf=to_deaf, pred=pred)
 
             if cond(self):
                 self.send_command('CT', username, msg)
 
-        def send_ooc_others(self, msg, username=None, allow_empty=False, is_staff=None,
-                            in_area=None, pred=None, not_to=None, to_blind=None, to_deaf=None,
-                            to_zone_watcher=None, is_zstaff=None, in_zone_area=None,
-                            is_officer=None):
+        def send_ooc_others(self, msg, username=None, allow_empty=False,
+                            is_staff=None, is_officer=None, in_area=None, not_to=None, part_of=None,
+                            to_blind=None, to_deaf=None, to_zone_watcher=None, in_zone_area=None,
+                            is_zstaff=None, pred=None):
             if not allow_empty and not msg:
                 return
 
@@ -144,162 +145,13 @@ class ClientManager:
             if username is None:
                 username = self.server.config['hostname']
 
-            cond = self._build_cond(is_staff=is_staff, in_area=in_area, pred=pred,
-                                    not_to=not_to.union({self}), to_blind=to_blind,
-                                    to_deaf=to_deaf, to_zone_watcher=to_zone_watcher,
-                                    is_zstaff=is_zstaff, in_zone_area=in_zone_area,
-                                    is_officer=is_officer)
+            cond = Constants.build_cond(self, is_staff=is_staff, is_officer=is_officer,
+                                        in_area=in_area, not_to=not_to.union({self}),
+                                        part_of=part_of, to_blind=to_blind, to_deaf=to_deaf,
+                                        to_zone_watcher=to_zone_watcher, in_zone_area=in_zone_area,
+                                        is_zstaff=is_zstaff, pred=pred)
             self.server.make_all_clients_do("send_ooc", msg, pred=cond, allow_empty=allow_empty,
                                             username=username)
-
-        def _build_cond(self, is_staff=None, is_officer=None, is_mod=None, in_area=None, pred=None,
-                        not_to=None, to_blind=None, to_deaf=None, to_zone_watcher=None,
-                        in_zone_area=None, is_zstaff=None):
-            """
-            Acceptable conditions:
-                is_staff: If target is GM, CM or Mod
-                is_officer: If target is CM or Mod
-                is_mod: If target is Mod
-                in_area: If target is in client's area, or some particular area
-                pred: If target satisfies some custom condition
-                not_to: If target is not in a set of clients that are filtered out
-                to_blind: If target is blind
-                to_deaf: If target is deaf
-                to_zone_watcher: If target is watching the same zone as client, or is watching the
-                 same zone their current area belongs to
-                in_zone: If target is in an area that belongs to the same zone as the client's area
-                is_zstaff: If target is GM, CM or Mod, and if they are watching the zone their area
-                is in or their area is not part of a zone and they are not watching a zone.
-            """
-            conditions = list()
-
-            if is_staff is True:
-                conditions.append(lambda c: c.is_staff())
-            elif is_staff is False:
-                conditions.append(lambda c: not c.is_staff())
-            elif is_staff is None:
-                pass
-            else:
-                raise KeyError('Invalid argument for _build_cond is_staff: {}'.format(is_staff))
-
-            if is_officer is True:
-                conditions.append(lambda c: c.is_cm or c.is_mod)
-            elif is_officer is False:
-                conditions.append(lambda c: not (c.is_cm or c.is_mod))
-            elif is_officer is None:
-                pass
-            else:
-                raise KeyError('Invalid argument for _build_cond is_officer: {}'.format(is_officer))
-
-            if is_mod is True:
-                conditions.append(lambda c: c.is_mod)
-            elif is_mod is False:
-                conditions.append(lambda c: not c.is_mod)
-            elif is_mod is None:
-                pass
-            else:
-                raise KeyError('Invalid argument for _build_cond is_mod: {}'.format(is_mod))
-
-            if in_area is True:
-                conditions.append(lambda c: c.area == self.area)
-            elif in_area is False:
-                conditions.append(lambda c: c.area != self.area)
-            elif isinstance(in_area, type(self.area)): # Lazy way of checking if in_area is an area obj
-                conditions.append(lambda c: c.area == in_area)
-            elif isinstance(in_area, set):
-                conditions.append(lambda c: c.area in in_area)
-            elif in_area is None:
-                pass
-            else:
-                raise KeyError('Invalid argument for _build_cond in_area: {}'.format(in_area))
-
-            if pred is not None:
-                conditions.append(pred)
-
-            if not_to is not None:
-                conditions.append(lambda c: c not in not_to)
-
-            if to_blind is True:
-                conditions.append(lambda c: c.is_blind)
-            elif to_blind is False:
-                conditions.append(lambda c: not c.is_blind)
-            elif to_blind is None:
-                pass
-            else:
-                raise KeyError('Invalid argument for _build_cond to_blind: {}'.format(to_blind))
-
-            if to_deaf is True:
-                conditions.append(lambda c: c.is_deaf)
-            elif to_deaf is False:
-                conditions.append(lambda c: not c.is_deaf)
-            elif to_deaf is None:
-                pass
-            else:
-                raise KeyError('Invalid argument for _build_cond to_deaf: {}'.format(to_deaf))
-
-            if to_zone_watcher is True:
-                if self.zone_watched:
-                    conditions.append(lambda c: c.zone_watched == self.zone_watched)
-                elif self.area.in_zone:
-                    conditions.append(lambda c: c.area.in_zone == self.area.in_zone)
-                else:
-                    pass
-            elif to_zone_watcher is False:
-                if self.zone_watched:
-                    conditions.append(lambda c: c.zone_watched != self.zone_watched)
-                elif self.area.in_zone:
-                    conditions.append(lambda c: c.area.in_zone != self.area.in_zone)
-                else:
-                    pass
-            elif isinstance(to_zone_watcher, self.server.zone_manager.Zone):
-                conditions.append(lambda c: c.zone_watched == to_zone_watcher)
-            elif to_zone_watcher is None:
-                pass
-            else:
-                raise KeyError('Invalid argument for _build_cond to_zone_watcher: {}'
-                               .format(to_zone_watcher))
-
-            if in_zone_area is True:
-                conditions.append(lambda c: c.area.in_zone == self.area.in_zone != None)
-            elif in_zone_area is False:
-                conditions.append(lambda c: c.area.in_zone != self.area.in_zone and
-                                  self.area.in_zone)
-            elif isinstance(in_zone_area, self.server.area_manager.Area):
-                conditions.append(lambda c: c.area.in_zone == in_zone_area.in_zone != None)
-            elif in_zone_area is None:
-                pass
-            else:
-                raise KeyError('Invalid argument for _build_cond in_zone: {}'
-                               .format(in_zone_area))
-
-            if is_zstaff is True:
-                # Applies if client is staff, and for the triggerer's area:
-                #  1. They are not watching a zone and the triggerer's area is not in a zone, or
-                #  2. They are watching a zone and the triggerer's area is part of that zone
-                conditions.append(lambda c: c.is_staff() and c.zone_watched == self.area.in_zone)
-            elif is_zstaff is False:
-                # Applies if client is not staff, or for the triggerer' area::
-                #  1. They are not watching a zone and the triggerer' area is part of a zone, or
-                #  2. They are watching a zone and the triggerer' area is not part of that zone
-                # Use in conjunction with in_area=True to limit player output
-                conditions.append(lambda c: not c.is_staff() or c.zone_watched != self.area.in_zone)
-            elif isinstance(is_zstaff, self.server.zone_manager.Zone):
-                # Only use this if you are sure that the object you are passing is a zone.
-                # This could cause issues if you are passing something like client.zone_watched or
-                # area.in_zone, because they could be None and be caught as part of the pass
-                # case later on
-                conditions.append(lambda c: c.is_staff() and c.zone_watched == is_zstaff)
-            elif isinstance(is_zstaff, self.server.area_manager.Area):
-                conditions.append(lambda c: c.is_staff() and c.zone_watched == is_zstaff.in_zone)
-            elif is_zstaff is None:
-                pass
-            else:
-                raise KeyError('Invalid argument for _build_cond is_zstaff: {}'
-                               .format(is_zstaff))
-
-            cond = lambda c: all([cond(c) for cond in conditions])
-
-            return cond
 
         def send_ic(self, ic_params=None, sender=None, bypass_replace=False, pred=None, not_to=None,
                     gag_replaced=False, is_staff=None, in_area=None, to_blind=None, to_deaf=None,
@@ -346,8 +198,8 @@ class ClientManager:
                     to_send[4] = msg
 
             # Check if receiver is actually meant to receive the message. Bail out early if not.
-            cond = self._build_cond(is_staff=is_staff, in_area=in_area, pred=pred, not_to=not_to,
-                                    to_blind=to_blind, to_deaf=to_deaf)
+            cond = Constants.build_cond(self, is_staff=is_staff, in_area=in_area, not_to=not_to,
+                                        to_blind=to_blind, to_deaf=to_deaf, pred=pred)
             if not cond(self):
                 return
 

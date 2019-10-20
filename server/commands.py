@@ -5581,9 +5581,10 @@ def ooc_cmd_zone_add(client, arg):
                            to_zone_watcher=True)
 
 def ooc_cmd_zone_delete(client, arg):
-    """ (STAFF ONLY)
-    Deletes the zone the user is watching, so that it is no longer part of the server's zone list.
-    Returns an error if the user is not watching a zone.
+    """ (VARYING REQUIREMENTS)
+    Deletes the zone the user is watching, so that it is no longer part of the server's zone list,
+    if no argument is given (GM OR ABOVE ONLY), or deletes the zone by its name (CM OR MOD ONLY)
+    Returns an error if the user gives no zone name and is not watching a zone.
 
     SYNTAX
     /zone_delete
@@ -5596,19 +5597,36 @@ def ooc_cmd_zone_delete(client, arg):
     /zone_delete       :: Deletes the zone 1000
     """
 
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+    try:
+        Constants.assert_command(client, arg, is_officer=True)
+    except ClientError.UnauthorizedError:
+        # Case GM, who can only delete a zone they are watching
+        try:
+            Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+        except ArgumentError:
+            raise ClientError.UnauthorizedError('You must be authorized to use a zone name with '
+                                                'this command.')
 
-    if not client.zone_watched:
-        raise ZoneError('You are not watching a zone.')
+    if arg:
+        target_zone = client.server.zone_manager.get_zone(arg)
+    else:
+        if not client.zone_watched:
+            raise ZoneError('You are not watching a zone.')
+        target_zone = client.zone_watched
 
-    backup_watchers = client.zone_watched.get_watchers() # Keep backup reference to send to others
+    backup_watchers = target_zone.get_watchers() # Keep backup reference to send to others
+    backup_id = target_zone.get_id()
 
-    client.server.zone_manager.delete_zone(client.zone_watched.get_id())
-    client.send_ooc('You have deleted your zone.')
-    for c in backup_watchers:
-        if c == client:
-            continue
-        c.send_ooc('(X) {} has deleted your zone.'.format(client.name))
+    client.server.zone_manager.delete_zone(backup_id)
+
+    if arg:
+        client.send_ooc('You have deleted zone `{}`.'.format(backup_id))
+    else:
+        client.send_ooc('You have deleted your zone.')
+    client.send_ooc_others('(X) {} has deleted your zone.'.format(client.name),
+                           part_of=backup_watchers)
+    client.send_ooc_others('(X) {} has deleted zone `{}`.'.format(client.name, backup_id),
+                           is_officer=True, not_to=backup_watchers)
 
 def ooc_cmd_zone_global(client, arg):
     """

@@ -371,14 +371,15 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
-        # No parameters
-        self.c1.ooc('/zone_delete 10000')
+        # Passing parameters as not CM or Mod
+        self.c5.ooc('/zone_delete 10000')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('This command has no arguments.', over=True)
+        self.c1.assert_no_packets()
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_no_packets()
+        self.c5.assert_ooc('You must be authorized to use a zone name with this command.',
+                           over=True)
 
     def test_02_deletezone(self):
         """
@@ -403,19 +404,20 @@ class TestZoneBasic_03_Delete(_TestZone):
         Situation: C1 creates a zone, C2 watches it, then deletes it.
         """
 
-        self.c1.ooc('/zone')
+        self.c5.ooc('/zone')
         self.c1.discard_all()
+        self.c5.discard_all()
         self.c2.ooc('/zone_watch z0')
-        self.c1.discard_all()
         self.c2.discard_all()
+        self.c5.discard_all()
 
         self.c2.ooc('/zone_delete')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} has deleted your zone.'.format(self.c2.name), over=True)
+        self.c1.assert_ooc('(X) {} has deleted zone `{}`.'.format(self.c2.name, 'z0'), over=True)
         self.c2.assert_ooc('You have deleted your zone.', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_no_packets()
+        self.c5.assert_ooc('(X) {} has deleted your zone.'.format(self.c2.name), over=True)
 
         self.assert_zones(dict())
 
@@ -449,9 +451,26 @@ class TestZoneBasic_03_Delete(_TestZone):
 
         self.c2.ooc('/zone_delete')
         self.c0.assert_no_packets()
-        self.c1.assert_no_packets()
+        self.c1.assert_ooc('(X) {} has deleted zone `{}`.'.format(self.c2.name, 'z1'), over=True)
         self.c2.assert_ooc('You have deleted your zone.', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
 
         self.assert_zones({'z0': {4}})
+
+    def test_06_deletezonewitharg(self):
+        """
+        Situation: C3 (who is made a mod) deletes C1's zone via using the zone name. C1, C3 and C4
+        (who is made CM) are notified.
+        """
+
+        self.c3.make_mod()
+        self.c4.make_cm()
+
+        self.c3.ooc('/zone_delete {}'.format('z0'))
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('(X) {} has deleted your zone.'.format(self.c3.name), over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_ooc('You have deleted zone `{}`.'.format('z0'), over=True)
+        self.c4.assert_ooc('(X) {} has deleted zone `{}`.'.format(self.c3.name, 'z0'), over=True)
+        self.c5.assert_no_packets()
