@@ -1205,6 +1205,22 @@ def ooc_cmd_cleargm(client, arg):
             c.server.create_task(client, ['as_afk_kick', client.area.afk_delay, client.area.afk_sendto])
 
             c.send_ooc('You are no longer a GM.')
+            # If watching a zone, stop watching it
+            target_zone = c.zone_watched
+            if target_zone:
+                target_zone.remove_watcher(c)
+
+                c.send_ooc('You are no longer watching zone `{}`.'
+                                .format(target_zone.get_id()))
+                if target_zone.get_watchers():
+                    c.send_ooc_others('(X) {} is no longer watching your zone.'.format(c.name),
+                                       to_zone_watcher=target_zone)
+                else:
+                    c.send_ooc('As you were the last person watching it, your zone has been '
+                               'deleted.')
+                    c.send_ooc_others('Zone `{}` was automatically deleted as no one was watching '
+                                      'it anymore.'.format(target_zone.get_id()), is_officer=True)
+
     client.send_ooc('All GMs logged out.')
 
 def ooc_cmd_clock(client, arg):
@@ -5778,7 +5794,7 @@ def ooc_cmd_zone_remove(client, arg):
                                not_to=backup_watchers)
 
 def ooc_cmd_zone_unwatch(client, arg):
-    """
+    """ (STAFF ONLY)
     Makes the user no longer watch the zone they are watching.
     Returns an error if the user is not watching a zone.
 
@@ -5792,7 +5808,7 @@ def ooc_cmd_zone_unwatch(client, arg):
     /zone_unwatch           :: Makes the user no longer watch their zone
     """
 
-    Constants.assert_command(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
     if not client.zone_watched:
         raise ClientError('You are not watching any zone.')
 

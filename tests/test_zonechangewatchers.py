@@ -116,6 +116,15 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         Situation: Clients attempt to use /zone_unwatch incorrectly.
         """
 
+        # Non-staff
+        self.c0.ooc('/zone_watch 1000')
+        self.c0.assert_ooc('You must be authorized to do that.', over=True)
+        self.c1.assert_no_packets()
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
         # Parameters
         self.c1.ooc('/zone_unwatch 1000')
         self.c0.assert_no_packets()
@@ -336,3 +345,25 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
+
+    def test_05_watcheriscleargmd(self):
+        """
+        Situation: C2 is made GM again and watches zone z0. C1 then /cleargm's, thus making C2 stop
+        watching zone z0. C1 is notified.
+        """
+
+        self.c2.make_gm()
+        self.c2.ooc('/zone_watch z0')
+        self.c1.discard_all()
+        self.c2.discard_all()
+
+        self.c1.ooc('/cleargm')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('(X) {} is no longer watching your zone.'.format(self.c2.name))
+        self.c1.assert_ooc('All GMs logged out.', over=True)
+        self.c2.assert_packet('FM', None)
+        self.c2.assert_ooc('You are no longer a GM.')
+        self.c2.assert_ooc('You are no longer watching zone `{}`.'.format('z0'), over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+
