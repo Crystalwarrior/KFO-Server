@@ -207,14 +207,14 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         self.c1.ooc('/zone_remove 7')
         self.c0.assert_no_packets()
         self.c1.assert_ooc('You have removed area {} from your zone.'.format(7))
-        self.c1.assert_ooc('As your zone no longer covers any areas, it has been deleted.',
+        self.c1.assert_ooc('(X) As your zone no longer covers any areas, it has been deleted.',
                            over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_ooc('(X) {} has removed area {} from your zone.'.format(self.c1.name, 7))
-        self.c5.assert_ooc('As your zone no longer covers any areas, it has been deleted.',
-                   over=True)
+        self.c5.assert_ooc('(X) As your zone no longer covers any areas, it has been deleted.',
+                           over=True)
         self.assert_zones(dict())
 
     def test_04_nonwatcherscannotremove(self):

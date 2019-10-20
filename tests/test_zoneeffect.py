@@ -399,31 +399,10 @@ class TestZoneEffect_03_RPNotifications(_TestZone):
         self.c4.assert_no_packets()
         self.c5.assert_ooc(self.mes_c, over=True)
 
-    def test_04_zonewatchernotstaff(self):
-        """
-        Situation: Now C2 logs out, while still watching the zone. C1 then runs /iclock.
-        * C0 receives b (non-staff in area)
-        * C1 receives a (sender)
-        * C2 does not receive message (non-staff outside area in zone watching zone)
-        * C3 does not receive message (non-staff outside area)
-        * C4 does not receive message (non-staff outside area)
-        * C5 receives c (staff not in zone watching zone)
-        """
-
-        self.c2.ooc('/logout')
-        self.c2.discard_all()
-
-        self.c1.ooc('/iclock')
-        self.c0.assert_ooc(self.mes_b, over=True)
-        self.c1.assert_ooc(self.mes_a, over=True)
-        self.c2.assert_no_packets()
-        self.c3.assert_no_packets()
-        self.c4.assert_no_packets()
-        self.c5.assert_ooc(self.mes_c, over=True)
-
     def test_05_zoneindependence(self):
         """
-        Situation: C5 stops watching z0, creates their own zone z1 in area 7 and runs /iclock.
+        Situation: C2 logs out and C5 stops watching z0, creates their own zone z1 in area 7 and
+        runs /iclock.
         * C0 does not receive message (non-staff outside area)
         * C1 does not receive message (staff outside area outside zone not watching zone)
         * C2 does not receive message (non-staff outside area outside zone watching other zone)
@@ -439,6 +418,9 @@ class TestZoneEffect_03_RPNotifications(_TestZone):
         * C4 does not receive message (non-staff outside area)
         * C5 does not receive message (staff not in zone not watching zone)
         """
+
+        self.c2.make_normie(over=False)
+        self.c2.discard_all()
 
         self.c5.ooc('/zone_unwatch')
         self.c1.discard_all()

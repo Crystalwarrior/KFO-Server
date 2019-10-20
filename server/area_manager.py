@@ -943,6 +943,14 @@ class AreaManager:
 
         # Only once all areas have been created, actually set the corresponding values
         # Helps avoiding junk area lists if there was an error
+        # But first, remove all zones
+
+        backup_zones = self.server.zone_manager.get_zones()
+        for (zone_id, zone) in backup_zones.items():
+            self.server.zone_manager.delete_zone(zone_id)
+            for client in zone.get_watchers():
+                client.send_ooc('Your zone has been automatically deleted.')
+
         old_areas = self.areas
         self.areas = temp_areas
         self.area_names = temp_area_names

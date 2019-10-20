@@ -146,7 +146,7 @@ class TestZoneBasic_01_Zone(_TestZone):
 
         self.c2.ooc('/zone {}'.format(self.a3_name))
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('{} has created zone `{}` containing just area {} ({}).'
+        self.c1.assert_ooc('(X) {} has created zone `{}` containing just area {} ({}).'
                            .format(self.c2_dname, 'z1', 3, self.c2.area.id), over=True)
         self.c2.assert_ooc('You have created zone `{}` containing just area {}.'
                            .format('z1', 3), over=True)
@@ -162,7 +162,7 @@ class TestZoneBasic_01_Zone(_TestZone):
 
         self.c5.ooc('/zone {}, {}'.format(self.a5_name, self.a7_name))
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('{} has created zone `{}` containing areas {} through {} ({}).'
+        self.c1.assert_ooc('(X) {} has created zone `{}` containing areas {} through {} ({}).'
                            .format(self.c5_dname, 'z2', 5, 7, self.c5.area.id), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()

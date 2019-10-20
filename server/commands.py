@@ -2481,6 +2481,20 @@ def ooc_cmd_logout(client, arg):
                                .format(client.id, old_char, new_char, client.area.id),
                                is_zstaff=True)
 
+    # If watching a zone, stop watching it
+    target_zone = client.zone_watched
+    if target_zone:
+        target_zone.remove_watcher(client)
+
+        client.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.get_id()))
+        if target_zone.get_watchers():
+            client.send_ooc_others('(X) {} is no longer watching your zone.'.format(client.name),
+                                   to_zone_watcher=target_zone)
+        else:
+            client.send_ooc('As you were the last person watching it, your zone has been deleted.')
+            client.send_ooc_others('Zone `{}` was automatically deleted as no one was watching it '
+                                   'anymore.'.format(target_zone.get_id()), is_officer=True)
+
 def ooc_cmd_look(client, arg):
     """
     Obtain the current area's description, which is either the description in the area list
@@ -5542,7 +5556,7 @@ def ooc_cmd_zone(client, arg):
         output = 'areas {} through {}'.format(lower_area.id, upper_area.id)
 
     client.send_ooc('You have created zone `{}` containing {}.'.format(zone_id, output))
-    client.send_ooc_others('{} has created zone `{}` containing {} ({}).'
+    client.send_ooc_others('(X) {} has created zone `{}` containing {} ({}).'
                            .format(client.displayname, zone_id, output, client.area.id),
                            is_officer=True)
 
@@ -5758,7 +5772,10 @@ def ooc_cmd_zone_remove(client, arg):
     # Announce automatic deletion if needed.
     if not target_zone.get_areas():
         for c in backup_watchers:
-            c.send_ooc('As your zone no longer covers any areas, it has been deleted.')
+            c.send_ooc('(X) As your zone no longer covers any areas, it has been deleted.')
+        client.send_ooc_others('(X) Zone `{}` was automatically deleted as it no longer covered '
+                               'any areas.'.format(target_zone.get_id()), is_officer=True,
+                               not_to=backup_watchers)
 
 def ooc_cmd_zone_unwatch(client, arg):
     """
@@ -5788,7 +5805,7 @@ def ooc_cmd_zone_unwatch(client, arg):
                                to_zone_watcher=target_zone)
     else:
         client.send_ooc('As you were the last person watching it, your zone has been deleted.')
-        client.send_ooc_others('Zone `{}` was automatically deleted as no one was watching it '
+        client.send_ooc_others('(X) Zone `{}` was automatically deleted as no one was watching it '
                                'anymore.'.format(target_zone.get_id()), is_officer=True)
 
 def ooc_cmd_zone_watch(client, arg):

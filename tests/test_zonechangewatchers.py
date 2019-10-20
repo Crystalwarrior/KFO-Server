@@ -253,12 +253,12 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
 
         self.c5.ooc('/zone_unwatch')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('Zone `{}` was automatically deleted as no one was watching it anymore.'
-                           .format('z0'), over=True)
+        self.c1.assert_ooc('(X) Zone `{}` was automatically deleted as no one was watching it '
+                           'anymore.'.format('z0'), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
-        self.c4.assert_ooc('Zone `{}` was automatically deleted as no one was watching it anymore.'
-                           .format('z0'), over=True)
+        self.c4.assert_ooc('(X) Zone `{}` was automatically deleted as no one was watching it '
+                           'anymore.'.format('z0'), over=True)
         self.c5.assert_ooc('You are no longer watching zone `{}`.'.format('z0'))
         self.c5.assert_ooc('As you were the last person watching it, your zone has been deleted.',
                            over=True)
@@ -321,3 +321,18 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
 
         self.assertEquals(1, len(self.zm.get_zones()))
         self.assertEquals({self.c2, self.c1}, self.zm.get_zone('z0').get_watchers())
+
+    def test_04_watcherlogsout(self):
+        """
+        Situation: C2, who is watching Z0, logs out. They stop watching the zone and the other
+        watcher, C1, is notified.
+        """
+
+        self.c2.make_normie(over=False)
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('(X) {} is no longer watching your zone.'.format(self.c2.name),
+                           over=True)
+        self.c2.assert_ooc('You are no longer watching zone `{}`.'.format('z0'), over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()

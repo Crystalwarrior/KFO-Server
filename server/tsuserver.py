@@ -43,8 +43,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a28'
-        self.internal_version = '191019c'
+        self.segment_version = 'a29'
+        self.internal_version = '191020a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -78,10 +78,10 @@ class TsuserverDR:
         self.load_characters()
         self.load_commandhelp()
         self.client_manager = client_manager(self)
+        self.zone_manager = ZoneManager(self)
         self.area_manager = AreaManager(self)
         self.ban_manager = BanManager(self)
         self.party_manager = PartyManager(self)
-        self.zone_manager = ZoneManager(self)
 
         self.ipid_list = {}
         self.hdid_list = {}
