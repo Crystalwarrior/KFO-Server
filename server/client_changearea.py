@@ -54,7 +54,7 @@ class ClientChangeArea:
 
         # Check if player has waited a non-zero movement delay
         if not client.is_staff() and client.is_movement_handicapped and not override_effects:
-            start, length, name, _ = client.server.get_task_args(client, ['as_handicap'])
+            start, length, name, _ = client.server.tasker.get_task_args(client, ['as_handicap'])
             _, remain_text = Constants.time_remaining(start, length)
             raise ClientError("You are still under the effects of movement handicap '{}'. "
                               "Please wait {} before changing areas."
@@ -521,12 +521,14 @@ class ClientChangeArea:
                 c.follow_area(area)
 
         client.reload_music_list() # Update music list to include new area's reachable areas
-        client.server.create_task(client, ['as_afk_kick', area.afk_delay, area.afk_sendto])
+        client.server.tasker.create_task(client, ['as_afk_kick', area.afk_delay, area.afk_sendto])
         # Try and restart handicap if needed
         try:
-            _, length, name, announce_if_over = client.server.get_task_args(client, ['as_handicap'])
+            _, length, name, announce_if_over = client.server.tasker.get_task_args(client,
+                                                                                   ['as_handicap'])
         except (ValueError, KeyError):
             pass
         else:
-            client.server.create_task(client, ['as_handicap', time.time(), length, name,
-                                           announce_if_over])
+            client.server.tasker.create_task(client,
+                                             ['as_handicap', time.time(), length, name,
+                                              announce_if_over])

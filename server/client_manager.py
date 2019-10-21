@@ -303,8 +303,8 @@ class ClientManager:
 
             if self.char_id < 0 and char_id >= 0: # No longer spectator?
                 # Now bound by AFK rules
-                self.server.create_task(self, ['as_afk_kick', self.area.afk_delay,
-                                               self.area.afk_sendto])
+                self.server.tasker.create_task(self, ['as_afk_kick', self.area.afk_delay,
+                                                      self.area.afk_sendto])
 
             old_char = self.get_char_name()
             self.char_id = char_id
@@ -422,7 +422,7 @@ class ClientManager:
                 # delay than the server's sneaked handicap and restore it (as by default the server
                 # will take the largest handicap when dealing with the automatic sneak handicap)
                 try:
-                    _, _, name, _ = self.server.get_task_args(self, ['as_handicap'])
+                    _, _, name, _ = self.server.tasker.get_task_args(self, ['as_handicap'])
                 except KeyError:
                     pass
                 else:
@@ -442,10 +442,11 @@ class ClientManager:
                             self.send_ooc('You were automatically imposed your former movement '
                                           'handicap "{}" of length {} seconds when changing areas.'
                                           .format(old_name, old_length))
-                            self.server.create_task(self, ['as_handicap', time.time(), old_length,
-                                                           old_name, old_announce_if_over])
+                            self.server.tasker.create_task(self, ['as_handicap', time.time(),
+                                                                  old_length, old_name,
+                                                                  old_announce_if_over])
                         else:
-                            self.server.remove_task(self, ['as_handicap'])
+                            self.server.tasker.remove_task(self, ['as_handicap'])
 
                 logger.log_server('{} is no longer sneaking.'.format(self.ipid), self)
             else: # Changed to invisible (e.g. through /sneak)
@@ -458,7 +459,7 @@ class ClientManager:
                 # 2. The player has no movement handicap or one shorter than the sneak handicap
                 if shandicap > 0:
                     try:
-                        _, length, _, _ = self.server.get_task_args(self, ['as_handicap'])
+                        _, length, _, _ = self.server.tasker.get_task_args(self, ['as_handicap'])
                         if length < shandicap:
                             msg = ('(X) {} was automatically imposed the longer movement handicap '
                                    '"Sneaking" of length {} seconds in area {} ({}).'
@@ -470,8 +471,8 @@ class ClientManager:
                         self.send_ooc('You were automatically imposed a movement handicap '
                                       '"Sneaking" of length {} seconds when changing areas.'
                                       .format(shandicap))
-                        self.server.create_task(self, ['as_handicap', time.time(), shandicap,
-                                                       "Sneaking", True])
+                        self.server.tasker.create_task(self, ['as_handicap', time.time(), shandicap,
+                                                              "Sneaking", True])
 
                 logger.log_server('{} is now sneaking.'.format(self.ipid), self)
 
@@ -919,7 +920,7 @@ class ClientManager:
             c.disconnect()
             return c
         self.cur_id[cur_id] = True
-        self.server.client_tasks[cur_id] = dict()
+        self.server.tasker.client_tasks[cur_id] = dict()
         return c
 
     def remove_client(self, client):
@@ -937,8 +938,8 @@ class ClientManager:
         if client.id >= 0: # Avoid having pre-clients do this (before they are granted a cID)
             self.cur_id[client.id] = False
             # Cancel client's pending tasks
-            for task_id in self.server.client_tasks[client.id].keys():
-                self.server.get_task(client, [task_id]).cancel()
+            for task_id in self.server.tasker.client_tasks[client.id].keys():
+                self.server.tasker.get_task(client, [task_id]).cancel()
 
         # If the client was part of a party, remove them from the party
         if client.party:

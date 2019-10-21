@@ -231,7 +231,7 @@ class Constants():
         elif is_staff is None:
             pass
         else:
-            raise KeyError('Invalid argument for _build_cond is_staff: {}'.format(is_staff))
+            raise KeyError('Invalid argument for build_cond is_staff: {}'.format(is_staff))
 
         if is_officer is True:
             conditions.append(lambda c: c.is_cm or c.is_mod)
@@ -240,7 +240,7 @@ class Constants():
         elif is_officer is None:
             pass
         else:
-            raise KeyError('Invalid argument for _build_cond is_officer: {}'.format(is_officer))
+            raise KeyError('Invalid argument for build_cond is_officer: {}'.format(is_officer))
 
         if is_mod is True:
             conditions.append(lambda c: c.is_mod)
@@ -249,7 +249,7 @@ class Constants():
         elif is_mod is None:
             pass
         else:
-            raise KeyError('Invalid argument for _build_cond is_mod: {}'.format(is_mod))
+            raise KeyError('Invalid argument for build_cond is_mod: {}'.format(is_mod))
 
         if in_area is True:
             conditions.append(lambda c: c.area == sender.area)
@@ -262,7 +262,7 @@ class Constants():
         elif in_area is None:
             pass
         else:
-            raise KeyError('Invalid argument for _build_cond in_area: {}'.format(in_area))
+            raise KeyError('Invalid argument for build_cond in_area: {}'.format(in_area))
 
         if part_of is not None:
             conditions.append(lambda c: c in part_of)
@@ -277,7 +277,7 @@ class Constants():
         elif to_blind is None:
             pass
         else:
-            raise KeyError('Invalid argument for _build_cond to_blind: {}'.format(to_blind))
+            raise KeyError('Invalid argument for build_cond to_blind: {}'.format(to_blind))
 
         if to_deaf is True:
             conditions.append(lambda c: c.is_deaf)
@@ -286,7 +286,7 @@ class Constants():
         elif to_deaf is None:
             pass
         else:
-            raise KeyError('Invalid argument for _build_cond to_deaf: {}'.format(to_deaf))
+            raise KeyError('Invalid argument for build_cond to_deaf: {}'.format(to_deaf))
 
         # This is a strict parameter.
         # To be precise, is_zstaff expects the sender to be watching a zone or be in a zone, or

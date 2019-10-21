@@ -1205,7 +1205,8 @@ def ooc_cmd_cleargm(client, arg):
                 c.in_rp = True
             # Update the music list to show reachable areas and activate the AFK timer
             c.reload_music_list()
-            c.server.create_task(client, ['as_afk_kick', client.area.afk_delay, client.area.afk_sendto])
+            c.server.tasker.create_task(client, ['as_afk_kick', client.area.afk_delay,
+                                                 client.area.afk_sendto])
 
             c.send_ooc('You are no longer a GM.')
             # If watching a zone, stop watching it
@@ -1276,7 +1277,7 @@ def ooc_cmd_clock(client, arg):
 
     # Code after this assumes input is validated
     try:
-        client.server.get_task(client, ['as_day_cycle'])
+        client.server.tasker.get_task(client, ['as_day_cycle'])
     except KeyError:
         normie_notif = True
     else:
@@ -1294,8 +1295,8 @@ def ooc_cmd_clock(client, arg):
         client.send_ooc_others('{} initiated a day cycle.'.format(client.displayname),
                                is_zstaff_flex=False, pred=lambda c: area_1 <= c.area.id <= area_2)
 
-    client.server.create_task(client, ['as_day_cycle', time.time(), area_1, area_2, hour_length,
-                                       hour_start, normie_notif])
+    client.server.tasker.create_task(client, ['as_day_cycle', time.time(), area_1, area_2,
+                                              hour_length, hour_start, normie_notif])
 
 def ooc_cmd_clock_cancel(client, arg):
     """ (STAFF ONLY)
@@ -1323,7 +1324,7 @@ def ooc_cmd_clock_cancel(client, arg):
         raise ArgumentError('Client {} is not online.'.format(arg))
 
     try:
-        client.server.remove_task(c, ['as_day_cycle'])
+        client.server.tasker.remove_task(c, ['as_day_cycle'])
     except KeyError:
         raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
 
@@ -1355,16 +1356,16 @@ def ooc_cmd_clock_pause(client, arg):
         raise ArgumentError('Client {} is not online.'.format(arg))
 
     try:
-        task = client.server.get_task(c, ['as_day_cycle'])
+        task = client.server.tasker.get_task(c, ['as_day_cycle'])
     except KeyError:
         raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
 
-    is_paused = client.server.get_task_attr(c, ['as_day_cycle'], 'is_paused')
+    is_paused = client.server.tasker.get_task_attr(c, ['as_day_cycle'], 'is_paused')
     if is_paused:
         raise ClientError('Day cycle is already paused.')
 
-    client.server.set_task_attr(c, ['as_day_cycle'], 'is_paused', True)
-    client.server.cancel_task(task)
+    client.server.tasker.set_task_attr(c, ['as_day_cycle'], 'is_paused', True)
+    client.server.tasker.cancel_task(task)
 
 def ooc_cmd_clock_unpause(client, arg):
     """ (STAFF ONLY)
@@ -1394,16 +1395,16 @@ def ooc_cmd_clock_unpause(client, arg):
         raise ArgumentError('Client {} is not online.'.format(arg))
 
     try:
-        client.server.get_task(c, ['as_day_cycle'])
+        client.server.tasker.get_task(c, ['as_day_cycle'])
     except KeyError:
         raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
 
-    is_paused = client.server.get_task_attr(c, ['as_day_cycle'], 'is_paused')
+    is_paused = client.server.tasker.get_task_attr(c, ['as_day_cycle'], 'is_paused')
     if not is_paused:
         raise ClientError('Day cycle is already unpaused.')
 
-    client.server.set_task_attr(c, ['as_day_cycle'], 'is_paused', False)
-    client.server.set_task_attr(c, ['as_day_cycle'], 'just_unpaused', True)
+    client.server.tasker.set_task_attr(c, ['as_day_cycle'], 'is_paused', False)
+    client.server.tasker.set_task_attr(c, ['as_day_cycle'], 'just_unpaused', True)
 
 def ooc_cmd_coinflip(client, arg):
     """
@@ -1978,9 +1979,10 @@ def ooc_cmd_handicap(client, arg):
         c.send_ooc('You were imposed a movement handicap "{}" of length {} seconds when '
                    'changing areas.'.format(name, length))
 
-        client.server.create_task(c, ['as_handicap', time.time(), length, name, announce_if_over])
-        c.handicap_backup = (client.server.get_task(c, ['as_handicap']),
-                             client.server.get_task_args(c, ['as_handicap']))
+        client.server.tasker.create_task(c, ['as_handicap', time.time(), length, name,
+                                             announce_if_over])
+        c.handicap_backup = (client.server.tasker.get_task(c, ['as_handicap']),
+                             client.server.tasker.get_task_args(c, ['as_handicap']))
 
 def ooc_cmd_help(client, arg):
     """
@@ -2480,7 +2482,8 @@ def ooc_cmd_logout(client, arg):
 
     # Update the music list to show reachable areas and activate the AFK timer
     client.reload_music_list()
-    client.server.create_task(client, ['as_afk_kick', client.area.afk_delay, client.area.afk_sendto])
+    client.server.tasker.create_task(client, ['as_afk_kick', client.area.afk_delay,
+                                              client.area.afk_sendto])
 
     # If using a character restricted in the area, switch out
     if client.get_char_name() in client.area.restricted_chars:
@@ -4552,7 +4555,7 @@ def ooc_cmd_timer(client, arg):
         name = arg[1]
     else:
         name = client.name.replace(" ", "") + "Timer" # No spaces!
-    if name in client.server.active_timers.keys():
+    if name in client.server.tasker.active_timers.keys():
         raise ClientError('Timer name {} is already taken.'.format(name))
 
     # Check public status
@@ -4561,7 +4564,7 @@ def ooc_cmd_timer(client, arg):
     else:
         is_public = True
 
-    client.server.active_timers[name] = client #Add to active timers list
+    client.server.tasker.active_timers[name] = client #Add to active timers list
     client.send_ooc('You initiated a timer "{}" of length {} seconds.'.format(name, length))
     client.send_ooc_others('{} initiated a timer "{}" of length {} seconds in area {} ({}).'
                            .format(client.displayname, name, length, client.area.name,
@@ -4570,7 +4573,7 @@ def ooc_cmd_timer(client, arg):
                            .format(client.displayname, name, length), is_zstaff_flex=False,
                            pred=lambda c: is_public)
 
-    client.server.create_task(client, ['as_timer', time.time(), length, name, is_public])
+    client.server.tasker.create_task(client, ['as_timer', time.time(), length, name, is_public])
 
 def ooc_cmd_timer_cancel(client, arg):
     """
@@ -4597,7 +4600,7 @@ def ooc_cmd_timer_cancel(client, arg):
 
     timer_name = arg[0]
     try:
-        timer_client = client.server.active_timers[timer_name]
+        timer_client = client.server.tasker.active_timers[timer_name]
     except KeyError:
         raise ClientError('Timer {} is not an active timer.'.format(timer_name))
 
@@ -4605,8 +4608,8 @@ def ooc_cmd_timer_cancel(client, arg):
     if not client.is_staff() and client != timer_client:
         raise ClientError('You must be authorized to do that.')
 
-    timer = client.server.get_task(timer_client, ['as_timer'])
-    client.server.cancel_task(timer)
+    timer = client.server.tasker.get_task(timer_client, ['as_timer'])
+    client.server.tasker.cancel_task(timer)
 
 def ooc_cmd_timer_get(client, arg):
     """
@@ -4637,18 +4640,18 @@ def ooc_cmd_timer_get(client, arg):
     if len(arg) == 1:
         # Check specific timer
         timer_name = arg[0]
-        if timer_name not in client.server.active_timers.keys():
+        if timer_name not in client.server.tasker.active_timers.keys():
             raise ClientError('Timer {} is not an active timer.'.format(timer_name))
         timers_to_check = [timer_name]
     else: # Case len(arg) == 0
         # List all timers
-        timers_to_check = client.server.active_timers.keys()
+        timers_to_check = client.server.tasker.active_timers.keys()
         if len(timers_to_check) == 0:
             raise ClientError('No active timers.')
 
     for timer_name in timers_to_check:
-        timer_client = client.server.active_timers[timer_name]
-        start, length, _, is_public = client.server.get_task_args(timer_client, ['as_timer'])
+        timer_client = client.server.tasker.active_timers[timer_name]
+        start, length, _, is_public = client.server.tasker.get_task_args(timer_client, ['as_timer'])
 
         # Non-public timers can only be consulted by staff and the client who started the timer
         if not is_public and not (client.is_staff() or client == timer_client):
@@ -5113,7 +5116,7 @@ def ooc_cmd_unhandicap(client, arg):
     # Obtain targets
     for c in Constants.parse_id_or_ipid(client, arg):
         try:
-            _, _, name, _ = client.server.get_task_args(c, ['as_handicap'])
+            _, _, name, _ = client.server.tasker.get_task_args(c, ['as_handicap'])
         except KeyError:
             client.send_ooc('{} does not have an active movement handicap.'
                             .format(c.displayname))
@@ -5125,7 +5128,7 @@ def ooc_cmd_unhandicap(client, arg):
                                            client.area.id), is_zstaff_flex=True)
             c.send_ooc('Your movement handicap "{}" when changing areas was removed.'.format(name))
             c.handicap_backup = None
-            client.server.remove_task(c, ['as_handicap'])
+            client.server.tasker.remove_task(c, ['as_handicap'])
 
 def ooc_cmd_unilock(client, arg):
     """ (VARYING REQUIREMENTS)

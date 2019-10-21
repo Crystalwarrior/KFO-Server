@@ -149,7 +149,7 @@ class PartyManager:
             loop = asyncio.get_event_loop()
             # Restart light timer
             if self.lights_timeout is not None:
-                self.server.cancel_task(self.lights_timeout)
+                self.server.tasker.cancel_task(self.lights_timeout)
             self.lights_timeout = None
 
             if not self.area.lights:

@@ -359,7 +359,7 @@ GMs can:
 * **zone** "area range start", "area range end"
     - Creates a zone involving the area range given above, just the given area if given one parameter, or just the current area if not given a parameter.
     - You are automatically set to watch the zones you create like this.
-* **zone_add* "area"
+* **zone_add** "area"
     - Adds an area by name or ID to the zone you are watching.
 * **zone_delete**
     - Deletes the zone you are watching.

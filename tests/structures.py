@@ -1,3 +1,4 @@
+import asyncio
 import random
 import unittest
 
@@ -9,6 +10,7 @@ from server.aoprotocol import AOProtocol
 from server.area_manager import AreaManager
 from server.client_manager import ClientManager
 from server.exceptions import TsuserverException
+from server.tasker import Tasker
 from server.tsuserver import TsuserverDR
 
 class _Unittest(unittest.TestCase):
@@ -745,6 +747,13 @@ class _TestTsuserverDR(TsuserverDR):
         super().__init__(client_manager=_TestClientManager, in_test=True)
         self.ao_protocol = _TestAOProtocol
         self.client_list = [None] * self.config['playerlimit']
+
+        try:
+            self.loop = asyncio.get_event_loop()
+        except RuntimeError:
+            self.loop = asyncio.new_event_loop()
+
+        self.tasker = Tasker(self, self.loop)
 
     def create_client(self):
         new_ao_protocol = self.ao_protocol(self)

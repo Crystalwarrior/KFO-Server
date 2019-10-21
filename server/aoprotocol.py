@@ -493,8 +493,9 @@ class AOProtocol(asyncio.Protocol):
                                         .format(self.client.displayname, self.client.area.id),
                                         is_zstaff=True)
 
-        self.server.create_task(self.client, ['as_afk_kick', self.client.area.afk_delay,
-                                              self.client.area.afk_sendto])
+        self.server.tasker.create_task(self.client,
+                                       ['as_afk_kick', self.client.area.afk_delay,
+                                        self.client.area.afk_sendto])
         if self.client.area.is_recording:
             self.client.area.recorded_messages.append(args)
 
