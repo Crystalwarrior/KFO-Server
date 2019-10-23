@@ -554,7 +554,7 @@ def ooc_cmd_blockdj(client, arg):
     for c in Constants.parse_id_or_ipid(client, arg):
         c.is_dj = False
         logger.log_server('Revoked DJ permissions to {}.'.format(c.ipid), client)
-        client.area.broadcast_ooc("{} was revoked DJ permissions.".format(c.displayname))
+        client.area.broadcast_ooc('{} had their DJ permissions revoked.'.format(c.displayname))
 
 def ooc_cmd_bloodtrail(client, arg):
     """ (STAFF ONLY)
@@ -4946,7 +4946,7 @@ def ooc_cmd_unblockdj(client, arg):
     for c in Constants.parse_id_or_ipid(client, arg):
         c.is_dj = True
         logger.log_server('Restored DJ permissions to {}.'.format(c.ipid), client)
-        client.area.broadcast_ooc("{} was restored DJ permissions.".format(c.displayname))
+        client.area.broadcast_ooc('{} had their DJ permissions restored.'.format(c.displayname))
 
 def ooc_cmd_undisemconsonant(client, arg):
     """ (MOD ONLY)
