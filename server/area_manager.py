@@ -957,6 +957,13 @@ class AreaManager:
         self.areas = temp_areas
         self.area_names = temp_area_names
 
+        # And cancel all existing day cycles
+        for client in self.server.client_manager.clients:
+            try:
+                client.server.tasker.remove_task(client, ['as_day_cycle'])
+            except KeyError:
+                pass
+
         # If the default area ID is now past the number of available areas, reset it back to zero
         if self.server.default_area >= len(self.areas):
             self.server.default_area = 0

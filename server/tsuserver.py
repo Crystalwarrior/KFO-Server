@@ -44,8 +44,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a34'
-        self.internal_version = '191023a'
+        self.segment_version = 'a35'
+        self.internal_version = '191024a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -126,8 +126,6 @@ class TsuserverDR:
         ao_server = self.loop.run_until_complete(ao_server_crt)
 
         logger.log_pdebug('Server started successfully!')
-        self.client_tasks[3] = 4
-        print(self.client_tasks, "o")
 
         if self.config['local']:
             host_ip = '127.0.0.1'
