@@ -817,7 +817,9 @@ class ClientManager:
             return (time.time() * 1000.0 - self.mod_call_time) > 0
 
         def get_multiclients(self):
-            return self.server.client_manager.get_targets(self, TargetType.IPID, self.ipid, False)
+            ipid = self.server.client_manager.get_targets(self, TargetType.IPID, self.ipid, False)
+            hdid = self.server.client_manager.get_targets(self, TargetType.HDID, self.hdid, False)
+            return list(set(ipid + hdid))
 
         def get_info(self, as_mod=False, as_cm=False, identifier=None):
             if identifier is None:

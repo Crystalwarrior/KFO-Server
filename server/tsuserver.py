@@ -44,8 +44,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a35'
-        self.internal_version = '191024a'
+        self.segment_version = 'a36'
+        self.internal_version = '191024b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -354,7 +354,9 @@ class TsuserverDR:
                     # Case: * **uninvite** "ID/IPID"
                     current_command = command_split[0]
 
-                self.commandhelp[rank][current_command] = [ line[2:] ]
+                formatted_line = '/{}'.format(line[2:])
+                formatted_line = formatted_line.replace('**', '')
+                self.commandhelp[rank][current_command] = [formatted_line]
                 continue
 
             # Otherwise, line is part of command description, so add it to its current command desc
