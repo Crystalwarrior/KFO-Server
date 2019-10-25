@@ -5865,6 +5865,35 @@ def ooc_cmd_zone_watch(client, arg):
     client.send_ooc_others('(X) {} is now watching your zone.'.format(client.name),
                            is_zstaff=True)
 
+def ooc_cmd_gmself(client, arg):
+    """ (STAFF ONLY):
+    Makes all opened multiclients login as game master without them needing to put in a GM password.
+    Returns an error if all opened multiclients are already game masters.
+
+    SYNTAX
+    /gmself
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    If client 0 is GM has multiclients with ID 1 and 3, and runs...
+    /gmself      :: Client 0 logs in clients 1 and 3 as game master.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    targets = [c for c in client.get_multiclients() if not c.is_gm]
+    if not targets:
+        raise ClientError('All opened clients are logged in as game master.')
+
+    for target in targets:
+        target.login(client.server.config['gmpass'], target.auth_gm, 'game master')
+
+    client.send_ooc('Logged in client{} {} as game master.'
+                    .format('s' if len(targets) > 1 else '',
+                            Constants.cjoin([target.id for target in targets])))
+
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

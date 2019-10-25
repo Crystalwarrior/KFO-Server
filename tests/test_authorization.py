@@ -1,7 +1,7 @@
 import datetime
 import time
 
-from .structures import _TestSituation3, _TestSituation5
+from .structures import _TestSituation3, _TestSituation4, _TestSituation5
 
 class _TestAuthorization(_TestSituation3):
     @classmethod
@@ -580,7 +580,95 @@ class TestAuthorization_05_Shortcuts(_TestAuthorization):
         self.assertTrue(self.c1.is_gm and not self.c1.is_cm and not self.c1.is_mod)
         self.assertTrue(self.c2.is_mod and not self.c2.is_cm and not self.c2.is_gm)
 
-class TestAuthorization_06_Effect(_TestSituation5):
+class TestAuthorization_06_GMSelf(_TestSituation4):
+    @classmethod
+    def setUpClass(self):
+        super().setUpClass()
+        self.c0.make_mod()
+        self.c1.make_cm()
+        self.c2.make_gm()
+        self.c0.move_area(5)
+        self.c1.move_area(6)
+        self.c2.move_area(6)
+        self.c0.ipid = 2
+        self.c1.ipid = 1
+        self.c2.ipid = 2
+        self.c3.ipid = 3
+        self.c0.hdid = '0'
+        self.c1.hdid = '1'
+        self.c2.hdid = '2'
+        self.c3.hdid = '2'
+
+    def test_01_wrongarguments(self):
+        """
+        Situation: Clients attempt to use /gmself incorrectly.
+        """
+
+        # Non-staff
+        self.c3.ooc('/gmself')
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_no_packets()
+        self.c3.assert_ooc('You must be authorized to do that.', over=True)
+
+        # Parameters
+        self.c2.ooc('/gmself 1000')
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc('This command has no arguments.', over=True)
+        self.c3.assert_no_packets()
+
+    def test_02_gmselfmorethanone(self):
+        """
+        Situation: C2 uses /gmself. Its multiclients C0 and C3 are now forcefully logged in as GM,
+        even in the case of C0 who was a mod. C1 sees nothing.
+        """
+
+        self.c2.ooc('/gmself')
+        self.c0.assert_packet('FM', None)
+        self.c0.assert_ooc('Logged in as a game master.', over=True)
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc('Logged in clients {} and {} as game master.'.format(0, 3), over=True)
+        self.c3.assert_packet('FM', None)
+        self.c3.assert_ooc('Logged in as a game master.', over=True)
+
+        self.assertTrue(self.c0.is_gm and not self.c0.is_cm and not self.c0.is_mod)
+        self.assertTrue(self.c1.is_cm and not self.c1.is_gm and not self.c1.is_mod)
+        self.assertTrue(self.c2.is_gm and not self.c2.is_cm and not self.c2.is_mod)
+        self.assertTrue(self.c3.is_gm and not self.c3.is_cm and not self.c3.is_mod)
+
+    def test_03_gmselfnone(self):
+        """
+        Situation: C2 uses /gmself. Its multiclients C0 and C3 are already GM, so C0 gets an error.
+        C1 sees nothing.
+        """
+
+        self.c2.ooc('/gmself')
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc('All opened clients are logged in as game master.', over=True)
+        self.c3.assert_no_packets()
+
+        self.assertTrue(self.c0.is_gm and not self.c0.is_cm and not self.c0.is_mod)
+        self.assertTrue(self.c1.is_cm and not self.c1.is_gm and not self.c1.is_mod)
+        self.assertTrue(self.c2.is_gm and not self.c2.is_cm and not self.c2.is_mod)
+        self.assertTrue(self.c3.is_gm and not self.c3.is_cm and not self.c3.is_mod)
+
+    def test_04_multiclientusesgmself(self):
+        """
+        Situation: C2 logs out. C0 uses /gmself. Therefore, C2 is logged in. C1 and C3 see nothing.
+        """
+
+        self.c2.make_normie()
+
+        self.c0.ooc('/gmself')
+        self.c0.assert_ooc('Logged in client {} as game master.'.format(2), over=True)
+        self.c1.assert_no_packets()
+        self.c2.assert_packet('FM', None)
+        self.c2.assert_ooc('Logged in as a game master.', over=True)
+        self.c3.assert_no_packets()
+
+class TestAuthorization_07_Effect(_TestSituation5):
     @classmethod
     def setUpClass(self):
         super().setUpClass()

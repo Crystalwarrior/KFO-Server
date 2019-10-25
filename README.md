@@ -284,6 +284,8 @@ GMs can:
     - Ensures only IC messages that start with the prefix are sent to the preestablished area range through /globalic (otherwise, just to the current area), or removes the need for a prefix if not given one.
 * **gmlock**
     - Locks your area. Prevents CMs and normal users from entering.
+* **gmself**
+    - Logs all opened multiclients as GM.
 * **handicap** "ID/IPID" "length" "name" "announce if over"
     - Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of
     time in seconds between changing areas.

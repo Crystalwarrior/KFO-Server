@@ -234,7 +234,9 @@
  - Players in the zone disconnecting
  - Players in the zone changing character
  - Players in the zone changing showname
-* Added /make_gm so CMs and mods can log in other players as GMs
+* Improved password-less process of GM logins:
+ - Added /make_gm so CMs and mods can log in other players as GMs
+ - Added /gmself so GMs can log in all other clients they opened as GMs
 * Custom shownames now appear if set in server notifications instead of character folders
 * Improved /help
  - It can now take a command name and it will show a brief description and expected syntax, as well as the 
@@ -253,6 +255,9 @@
 * The following actions now send an IC message in conjunction with an OOC notification:
  - /knock (which has been restricted to non-lobby areas only)
  - /scream
+* Fixed clients with same HDID but different IPID not being recognized as multiclients. This fixes the following: 
+ - Players getting a new IP can now kick ghosting clients under their old IP with /kickself
+ - Staff can now recognize such situations with /whois or /multiclients
 * Fixed /play and /rplay not looping music tracks that appear in the server music list
 * Fixed daily GM passwords switching at 3 pm incorrectly, they now switch correctly and at midnight
 * Fixed day cycles not canceling on area list reload
