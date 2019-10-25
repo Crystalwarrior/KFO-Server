@@ -382,6 +382,29 @@ class ClientManager:
                     ignore_notifications=ignore_notifications, change_to=change_to,
                     more_unavail_chars=more_unavail_chars, from_party=from_party)
 
+        def change_blindness(self, blind):
+            changed = (self.is_blind != blind)
+            self.is_blind = blind
+
+            if self.is_blind:
+                self.send_command('BN', self.server.config['blackout_background'])
+            else:
+                self.send_command('BN', self.area.background)
+
+            self.area_changer.notify_me_blood(self.area, changed_visibility=changed,
+                                              changed_hearing=False)
+
+        def change_deafened(self, deaf):
+            changed = (self.is_deaf != deaf)
+            self.is_deaf = deaf
+
+            self.area_changer.notify_me_blood(self.area, changed_visibility=False,
+                                              changed_hearing=changed)
+
+        def change_gagged(self, gagged):
+            # changed = (self.is_gagged != gagged)
+            self.is_gagged = gagged
+
         def change_showname(self, showname, target_area=None, forced=True):
             # forced=True means that someone else other than the user themselves requested the
             # showname change. Should only be false when using /showname.

@@ -23,12 +23,32 @@ from server.exceptions import ServerError
 
 class Tasker:
     def __init__(self, server, loop):
+        """
+        Parameters
+        ----------
+        server: tsuserver.TsuserverDR
+            Server of the tasker.
+        loop: asyncio.<OS_event>.ProactorEventLoop
+            Loop of the server's asyncio call.
+        """
+
         self.server = server
         self.loop = loop
         self.client_tasks = dict()
         self.active_timers = dict()
 
     def create_task(self, client, args):
+        """
+        Create a new task for given client with given arguments.
+
+        Parameters
+        ----------
+        client: ClientManager.Client
+            Client associated to the task.
+        args: list
+            Arguments of the task.
+        """
+
         # Abort old task if it exists
         try:
             old_task = self.get_task(client, args)
@@ -39,33 +59,113 @@ class Tasker:
 
         # Start new task
         async_function = getattr(self, args[0])(client, args[1:])
-        self.client_tasks[client.id][args[0]] = (asyncio.ensure_future(async_function, loop=self.loop),
-                                                 args[1:], dict())
+        async_future = asyncio.ensure_future(async_function, loop=self.loop)
+        self.client_tasks[client.id][args[0]] = (async_future, args[1:], dict())
 
     def cancel_task(self, task):
-        """ Cancels current task and sends order to await cancellation """
+        """
+        Cancel current task and send order to await cancellation.
+
+        Parameters
+        ----------
+        task: asyncio.Task
+            Task to cancel.
+        """
+
         task.cancel()
         asyncio.ensure_future(self.await_cancellation(task))
 
     def remove_task(self, client, args):
-        """ Given client and task name, removes task from server.Tasker.client_tasks, and cancels it """
+        """
+        Given client and task name, remove task from server.Tasker.client_tasks and cancel it.
+
+        Parameters
+        ----------
+        client: ClientManager.Client
+            Client associated to the task.
+        args: list
+            Arguments of the task. The first one must be the task name.
+        """
+
         task = self.client_tasks[client.id].pop(args[0])
         self.cancel_task(task[0])
 
     def get_task(self, client, args):
-        """ Returns actual task instance """
+        """
+        Given client and task arguments, retrieve the associated task instance.
+
+        Parameters
+        ----------
+        client: ClientManager.Client
+            Client associated to the task.
+        args: list
+            Arguments of the task.
+
+        Returns
+        -------
+        asyncio.Task:
+            Task object.
+        """
+
         return self.client_tasks[client.id][args[0]][0]
 
     def get_task_args(self, client, args):
-        """ Returns input arguments of task """
+        """
+        Given client and task arguments, retrieve the creation arguments of the task.
+
+        Parameters
+        ----------
+        client: ClientManager.Client
+            Client associated to the task.
+        args: list
+            Arguments of the task.
+
+        Returns
+        -------
+        list:
+            Task creation arguments.
+        """
+
         return self.client_tasks[client.id][args[0]][1]
 
     def get_task_attr(self, client, args, attr):
-        """ Returns task attribute """
+        """
+        Given client, task arguments, and an attribute name of a task, retrive its associated
+        attribute value.
+
+        Parameters
+        ----------
+        client: ClientManager.Client
+            Client associated to the task.
+        args: list
+            Arguments of the task.
+        attr: str
+            Attribute name.
+
+        Returns
+        -------
+        Attribute value
+        """
+
         return self.client_tasks[client.id][args[0]][2][attr]
 
     def set_task_attr(self, client, args, attr, value):
-        """ Sets task attribute """
+        """
+        Given client, task arguments, attribute name of task and a value, set the attribute to
+        that value.
+
+        Parameters
+        ----------
+        client: ClientManager.Client
+            Client associated to the task.
+        args: list
+            Arguments of the task.
+        attr: str
+            Attribute name.
+        value:
+            Attribute value.
+        """
+
         self.client_tasks[client.id][args[0]][2][attr] = value
 
     async def await_cancellation(self, old_task):

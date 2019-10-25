@@ -511,20 +511,15 @@ def ooc_cmd_blind(client, arg):
     target = Constants.parse_id(client, arg)
 
     status = {False: 'unblinded', True: 'blinded'}
-    target.is_blind = not target.is_blind
+    new_blind = not target.is_blind
 
-    client.send_ooc('You have {} {}.'.format(status[target.is_blind], target.displayname))
-    target.send_ooc('You have been {}.'.format(status[target.is_blind]))
+    client.send_ooc('You have {} {}.'.format(status[new_blind], target.displayname))
+    target.send_ooc('You have been {}.'.format(status[new_blind]))
     target.send_ooc_others('(X) {} has {} {} ({}).'
-                           .format(client.name, status[target.is_blind], target.displayname,
+                           .format(client.name, status[new_blind], target.displayname,
                                    target.area.id), not_to={client}, is_zstaff_flex=True)
 
-    if target.is_blind:
-        target.send_command('BN', client.server.config['blackout_background'])
-    else:
-        target.send_command('BN', client.area.background)
-
-    target.area_changer.notify_me_blood(target.area, changed_visibility=True, changed_hearing=False)
+    target.change_blindness(new_blind)
 
 def ooc_cmd_blockdj(client, arg):
     """ (CM AND MOD ONLY)
@@ -1476,15 +1471,15 @@ def ooc_cmd_deafen(client, arg):
     target = Constants.parse_id(client, arg)
 
     status = {False: 'undeafened', True: 'deafened'}
-    target.is_deaf = not target.is_deaf
+    new_deaf = not target.is_deaf
 
-    client.send_ooc('You have {} {}.'.format(status[target.is_deaf], target.displayname))
-    target.send_ooc('You have been {}.'.format(status[target.is_deaf]))
+    client.send_ooc('You have {} {}.'.format(status[new_deaf], target.displayname))
+    target.send_ooc('You have been {}.'.format(status[new_deaf]))
     target.send_ooc_others('(X) {} has {} {} ({}).'
-                           .format(client.name, status[target.is_deaf], target.displayname,
+                           .format(client.name, status[new_deaf], target.displayname,
                                    target.area.id), is_zstaff_flex=True, not_to={client})
 
-    target.area_changer.notify_me_blood(target.area, changed_visibility=False, changed_hearing=True)
+    target.change_deafened(new_deaf)
 
 def ooc_cmd_defaultarea(client, arg):
     """ (MOD ONLY)
@@ -1694,13 +1689,15 @@ def ooc_cmd_gag(client, arg):
     target = Constants.parse_id(client, arg)
 
     status = {False: 'ungagged', True: 'gagged'}
-    target.is_gagged = not target.is_gagged
+    new_gagged = not target.is_gagged
 
-    client.send_ooc('You have {} {}.'.format(status[target.is_gagged], target.displayname))
-    target.send_ooc('You have been {}.'.format(status[target.is_gagged]))
+    client.send_ooc('You have {} {}.'.format(status[new_gagged], target.displayname))
+    target.send_ooc('You have been {}.'.format(status[new_gagged]))
     target.send_ooc_others('(X) {} has {} {} ({}).'
-                           .format(client.name, status[target.is_gagged], target.displayname,
+                           .format(client.name, status[new_gagged], target.displayname,
                                    target.area.id), is_zstaff_flex=True, not_to={client})
+
+    target.change_gagged(new_gagged)
 
 def ooc_cmd_getarea(client, arg):
     """
@@ -5877,7 +5874,7 @@ def ooc_cmd_gmself(client, arg):
     None
 
     EXAMPLES
-    If client 0 is GM has multiclients with ID 1 and 3, and runs...
+    If client 0 is GM has multiclients with ID 1 and 3, neither GM, and runs...
     /gmself      :: Client 0 logs in clients 1 and 3 as game master.
     """
 
@@ -5893,6 +5890,70 @@ def ooc_cmd_gmself(client, arg):
     client.send_ooc('Logged in client{} {} as game master.'
                     .format('s' if len(targets) > 1 else '',
                             Constants.cjoin([target.id for target in targets])))
+
+def ooc_cmd_poison(client, arg):
+    """ (STAFF ONLY)
+    Poisons the target with some of three effects (blindness, deafened or gagged) that kick in
+    a specified length of time. Multiple effects can be used within the same poison.
+    If the target is already subject to some poison, stack them together as follows:
+     For each effect in the new poison:
+     * If the target's current poison does not include the effect, poison the target such that the
+       effect kicks in the new poison's established length.
+     * Otherwise, poison the target such that the effect kicks in the new poison's established
+       length or the remaining length of the old poison, whichever is shorter.
+    If for some effect of the poison the target is already subject to it after its time expires
+    (which would happen if some staff manually sets it in), do nothing for that effect.
+    Returns an error if the given identifier does not correspond to a user, if the length is not a
+    positive number, or if the effects contain an unrecognized character.
+
+    SYNTAX
+    /poison <client_id> <length> <effects>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <length>: Time to wait before the effects take place (in seconds)
+    <effects>: Effects to apply with the current poison (a string consisting of 'b', 'd', and/or
+    'g' in some order corresponding to the initials of the currently supported effects)
+
+    EXAMPLES
+    Assuming these are run immediately one after the other:
+    /poison 1 10 b      :: Poisons client 1 with a poison that in 10 seconds will turn them blind.
+    /poison 1 8 bd      :: Poisons client 1 with a poison that in 8 seconds will turn them blind and deafened (old poison discarded)
+    /poison 1 15 dg     :: Poisons client 1 with a poison that in 8 seconds will turn them gagged in 15 seconds (old deafened poison of 8 seconds remains)
+    """
+
+    pass
+
+def ooc_cmd_cure(client, arg):
+    """ (STAFF ONLY)
+    Cures the target of some of three effects (blindness, deafened, or gagged) as follows:
+     For each effect in the cure:
+     * If the target is subject to some poison that as one of its effects will cause the effect in
+       the future, cancel that part of the poison.
+     * If the target is currently experiencing that effect (either as a result of a poison that
+       kicked in or being manually set before), remove the effect from the target.
+     * If neither is true, do nothing for that effect.
+     In particular, cancel that part of the poison and effect from the target if they are subject
+     to them.
+    Returns an error if the given identifier does not correspond to a user, or if the effects
+    contain an unrecognized character.
+
+    SYNTAX
+    /cure <client_id> <effects>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <effects>: Effects to cure (a string consisting of 'b', 'd', and/or 'g' in some order
+    corresponding to the initials of the currently supported effects)
+
+    EXAMPLES
+    Assuming client 1 is blind, deafened and gagged and these are run immediately one after the other:
+    /cure 1 b      :: Cures client 1 of blindness.
+    /cure 1 bd     :: Cures client 1 of deafedness (note they were not blind).
+    /cure 1 gdb    :: Cures client 1 of being gagged (noe they were neither deafened or blind).
+    """
+
+    pass
 
 def ooc_cmd_exec(client, arg):
     """
