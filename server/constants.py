@@ -52,6 +52,10 @@ class Effects(Enum):
     def function(self):
         return self.value[2]
 
+    @property
+    def async_name(self):
+        return 'as_effect_{}'.format(self.name.lower())
+
 class Constants():
     @staticmethod
     def fopen(file, *args, **kwargs):
@@ -635,7 +639,7 @@ class Constants():
 
         if not effects:
             raise ArgumentError('Expected effects.')
-        if len(set(effects)) != len(list(effects)):
+        if len(set([x.lower() for x in effects])) != len(list([x.lower() for x in effects])):
             raise ArgumentError('Effect list cannot contained repeated characters.')
 
         parsed_effects = set()

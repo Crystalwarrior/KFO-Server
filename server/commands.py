@@ -5912,22 +5912,22 @@ def ooc_cmd_poison(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <effects>: Effects to apply with the current poison (a string consisting of 'b', 'd', and/or
-    'g' in some order corresponding to the initials of the currently supported effects)
+    <effects>: Effects to apply with the current poison (a string consisting of non-case-sensitive
+    'b', 'd', and/or 'g' in some order corresponding to the initials of the supported effects)
     <length>: Time to wait before the effects take place (in seconds)
 
     EXAMPLES
     Assuming these are run immediately one after the other:
     /poison 1 b 10      :: Poisons client 1 with a poison that in 10 seconds will turn them blind.
-    /poison 1 bd 8      :: Poisons client 1 with a poison that in 8 seconds will turn them blind and deafened (old poison discarded)
-    /poison 1 dg 15     :: Poisons client 1 with a poison that in 8 seconds will turn them gagged in 15 seconds (old deafened poison of 8 seconds remains)
+    /poison 1 bD 8      :: Poisons client 1 with a poison that in 8 seconds will turn them blind and deafened (old poison discarded)
+    /poison 1 Dg 15     :: Poisons client 1 with a poison that in 8 seconds will turn them gagged in 15 seconds (old deafened poison of 8 seconds remains)
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=3')
     raw_target, raw_effects, raw_length = arg.split(' ')
     target = Constants.parse_id(client, raw_target)
-    length = Constants.parse_time_length(raw_length)
     effects = Constants.parse_effects(client, raw_effects)
+    length = Constants.parse_time_length(raw_length)
 
     effect_results = target.set_timed_effects(effects, length)
     target_message = ''
@@ -5996,17 +5996,43 @@ def ooc_cmd_cure(client, arg):
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <effects>: Effects to cure (a string consisting of 'b', 'd', and/or 'g' in some order
-    corresponding to the initials of the currently supported effects)
+    <effects>: Effects to cure (a string consisting of non-case-sensitive 'b', 'd', and/or 'g' in
+    some order corresponding to the initials of the supported effects)
 
     EXAMPLES
     Assuming client 1 is blind, deafened and gagged and these are run immediately one after the other:
     /cure 1 b      :: Cures client 1 of blindness.
-    /cure 1 bd     :: Cures client 1 of deafedness (note they were not blind).
-    /cure 1 gdb    :: Cures client 1 of being gagged (noe they were neither deafened or blind).
+    /cure 1 Bd     :: Cures client 1 of deafedness (note they were not blind).
+    /cure 1 gDB    :: Cures client 1 of being gagged (noe they were neither deafened or blind).
     """
 
-    pass
+    Constants.assert_command(client, arg, is_staff=True, parameters='=2')
+    raw_target, raw_effects = arg.split(' ')
+    target = Constants.parse_id(client, raw_target)
+    effects = Constants.parse_effects(client, raw_effects)
+
+    sorted_effects = sorted(effects, key=lambda effect: effect.name)
+    for effect in sorted_effects:
+        # Check if the client is subject to a countdown for that effect
+        try:
+            client.server.tasker.remove_task(target, [effect.async_name])
+        except KeyError:
+            pass # Do nothing if not subject to one
+
+        if target != client:
+            target.send_ooc('You were cured of the effect `{}`.'.format(effect.name))
+            client.send_ooc('You cured {} of the effect `{}`.'
+                            .format(target.displayname, effect.name))
+            client.send_ooc_others('(X) {} cured {} of the effect `{}` ({}).'
+                                   .format(client.name, target.displayname, effect.name,
+                                           client.area.id,), is_zstaff_flex=True, not_to={target})
+        else:
+            client.send_ooc('You cured yourself of the effect `{}`.'.format(effect.name))
+            client.send_ooc_others('(X) {} cured themselves of the effect `{}` ({}).'
+                                   .format(client.name, effect.name, client.area.id),
+                                   is_zstaff_flex=True)
+
+        effect.function(target, False)
 
 def ooc_cmd_exec(client, arg):
     """

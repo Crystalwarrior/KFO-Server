@@ -510,10 +510,11 @@ class ClientManager:
 
             for effect in effects:
                 name = effect.name
-                task_name = 'as_effect_{}'.format(effect.name.lower())
-                new_args = [task_name, time.time(), length, effect]
+                async_name = effect.async_name
+                new_args = [async_name, time.time(), length, effect]
+
                 try:
-                    args = self.server.tasker.get_task_args(self, [task_name])
+                    args = self.server.tasker.get_task_args(self, [async_name])
                 except KeyError:
                     # New effect
                     self.server.tasker.create_task(self, new_args)

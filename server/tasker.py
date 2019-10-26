@@ -350,7 +350,7 @@ class Tasker:
                 client.send_ooc_others('(X) {} is no longer subject to the effect `{}`.'
                                        .format(client.displayname, effect.name))
                 effect.function(client, False)
-            self.remove_task(client, ['as_effect_{}'.format(effect.name.lower())])
+            self.remove_task(client, [effect.async_name])
 
     async def as_effect_blindness(self, client, args):
         await self.as_effect(client, args+[True])
