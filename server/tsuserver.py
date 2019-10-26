@@ -44,8 +44,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'a39'
-        self.internal_version = '191026a'
+        self.segment_version = 'a40'
+        self.internal_version = '191026b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -188,15 +188,12 @@ class TsuserverDR:
             self.loop.run_until_complete(self.tasker.await_cancellation(self.masterserver_connection))
 
         # Cancel pending client tasks and cleanly remove them from the areas
-        logger.log_print('Kicking {} remaining clients.'.format(self.get_player_count()))
+        players = self.get_player_count()
+        logger.log_print('Kicking {} remaining client{}.'
+                         .format(players, 's' if players != 1 else ''))
 
-        for area in self.area_manager.areas:
-            while area.clients:
-                client = next(iter(area.clients))
-                area.remove_client(client)
-                for task_id in self.tasker.client_tasks[client.id].keys():
-                    task = self.tasker.get_task(client, [task_id])
-                    self.loop.run_until_complete(self.tasker.await_cancellation(task))
+        for client in self.client_manager.clients:
+            client.disconnect()
 
     def get_version_string(self):
         mes = '{}.{}.{}'.format(self.release, self.major_version, self.minor_version)

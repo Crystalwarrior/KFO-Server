@@ -77,7 +77,7 @@ Additional notes are listed at the end of the command list.
 ### User Commands
 
 * **help**
-    - Links to this readme.
+    - Links to the server repository.
 * **area** "area number" 
     - Moves you to an area by its numerical ID if it is reachable from your own, or displays all areas if not given a number.
 * **autopass**
