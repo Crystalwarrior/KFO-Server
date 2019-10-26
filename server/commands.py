@@ -5929,42 +5929,53 @@ def ooc_cmd_poison(client, arg):
     length = Constants.parse_time_length(raw_length)
     effects = Constants.parse_effects(client, raw_effects)
 
-    effect_results = target.set_effects(length, effects)
+    effect_results = target.set_timed_effects(effects, length)
     target_message = ''
     self_message = ''
     zstaff_message = ''
 
-    for (effect_name, (effect_length, effect_reapplied)) in effect_results.items():
+    for effect_name in sorted(effect_results.keys()):
+        effect_length, effect_reapplied = effect_results[effect_name]
+        formatted_effect_length = Constants.time_format(effect_length)
+
         if effect_length == length and not effect_reapplied:
             target_message = ('{}\r\n*{}: acts in {}.'
-                              .format(target_message, effect_name, effect_length))
+                              .format(target_message, effect_name, formatted_effect_length))
             self_message = ('{}\r\n*{}: acts in {}.'
-                            .format(self_message, effect_name, effect_length))
+                            .format(self_message, effect_name, formatted_effect_length))
             zstaff_message = ('{}\r\n*{}: acts in {}.'
-                              .format(self_message, effect_name, effect_length))
+                              .format(zstaff_message, effect_name, formatted_effect_length))
         elif effect_length == length and effect_reapplied:
             # The new effect time was lower than the remaining time for the current effect
             target_message = ('{}\r\n*{}: now acts in {}.'
-                              .format(target_message, effect_name, effect_length))
+                              .format(target_message, effect_name, formatted_effect_length))
             self_message = ('{}\r\n*{}: now acts in {}.'
-                            .format(self_message, effect_name, effect_length))
+                            .format(self_message, effect_name, formatted_effect_length))
             zstaff_message = ('{}\r\n*{}: now acts in {}.'
-                              .format(self_message, effect_name, effect_length))
+                              .format(zstaff_message, effect_name, formatted_effect_length))
         else:
             target_message = ('{}\r\n*{}: still acts in {}.'
-                              .format(target_message, effect_name, effect_length))
+                              .format(target_message, effect_name, formatted_effect_length))
             self_message = ('{}\r\n*{}: still acts in {} (remaining effect time shorter than new '
-                            'length).'.format(self_message, effect_name, effect_length))
+                            'length).'.format(self_message, effect_name, formatted_effect_length))
             zstaff_message = ('{}\r\n*{}: still acts in {} (remaining time shorter than new '
-                              'length).'.format(self_message, effect_name, effect_length))
+                              'length).'.format(zstaff_message, effect_name,
+                                                formatted_effect_length))
 
-    target.send_ooc('You were poisoned. The following effects will apply shortly: {}'
-                    .format(target_message))
-    client.send_ooc('You poisoned {} with the following effects: {}'
-                    .format(target.displayname, self_message))
-    client.send_ooc_others('(X) {} poisoned {} with the followings effects ({}): {}'
-                           .format(client.name, target.displayname, client.area.id, zstaff_message),
-                           is_zstaff_flex=True, not_to={target})
+    if target != client:
+        target.send_ooc('You were poisoned. The following effects will apply shortly: {}'
+                        .format(target_message))
+        client.send_ooc('You poisoned {} with the following effects: {}'
+                        .format(target.displayname, self_message))
+        client.send_ooc_others('(X) {} poisoned {} with the following effects ({}): {}'
+                               .format(client.name, target.displayname, client.area.id,
+                                       zstaff_message), is_zstaff_flex=True, not_to={target})
+    else:
+        client.send_ooc('You poisoned yourself with the following effects: {}'
+                        .format(self_message))
+        client.send_ooc_others('(X) {} poisoned themselves with the following effects ({}): {}'
+                               .format(client.name, client.area.id, zstaff_message),
+                               is_zstaff_flex=True)
 
 def ooc_cmd_cure(client, arg):
     """ (STAFF ONLY)

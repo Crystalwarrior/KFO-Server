@@ -498,8 +498,39 @@ class ClientManager:
 
                 logger.log_server('{} is now sneaking.'.format(self.ipid), self)
 
-        def set_effect(self, effects, length):
-            return dict()
+        def set_timed_effects(self, effects, length):
+            """
+            Parameters
+            ----------
+            effects: set of Constants.Effect
+            length: float
+            """
+
+            resulting_effects = dict()
+
+            for effect in effects:
+                name = effect.name
+                task_name = 'as_effect_{}'.format(effect.name.lower())
+                new_args = [task_name, time.time(), length, effect]
+                try:
+                    args = self.server.tasker.get_task_args(self, [task_name])
+                except KeyError:
+                    # New effect
+                    self.server.tasker.create_task(self, new_args)
+                    resulting_effects[name] = (length, False)
+                else:
+                    # Effect existed before, check if need to replace it with a shorter effect
+                    old_start, old_length, _ = args
+                    old_remaining, _ = Constants.time_remaining(old_start, old_length)
+                    if length < old_remaining:
+                        # Replace with shorter timed effect
+                        self.server.tasker.create_task(self, new_args)
+                        resulting_effects[name] = (length, True)
+                    else:
+                        # Do not replace, current effect's time is shorter
+                        resulting_effects[name] = (old_remaining, False)
+
+            return resulting_effects
 
         def follow_user(self, target):
             if target == self:

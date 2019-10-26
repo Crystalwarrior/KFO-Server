@@ -316,7 +316,6 @@ class _TestClientManager(ClientManager):
             for exp_arg, act_arg in zip(exp_args, act_args):
                 if exp_arg is None:
                     continue
-
                 if isinstance(exp_arg, tuple):
                     assert len(exp_arg) == len(act_arg)
 
@@ -330,6 +329,8 @@ class _TestClientManager(ClientManager):
                         assert condition, (i, param, act_arg[i])
                 elif isinstance(act_arg, tuple):
                     assert exp_arg == act_arg[0], (exp_arg, act_arg[0])
+                elif isinstance(exp_arg, str) and isinstance(act_arg, str) and allow_partial_match:
+                    assert act_arg.startswith(exp_arg)
                 else:
                     assert exp_arg == act_arg, (exp_arg, act_arg)
 
@@ -360,7 +361,7 @@ class _TestClientManager(ClientManager):
                 raise AssertionError(err)
 
         def assert_packet(self, command_type, args, over=False, ooc_over=False, ic_over=False,
-                          somewhere=False):
+                          somewhere=False, allow_partial_match=False):
             """
             Assert that the client does not have a particular packet among its unaccounted ones.
 
@@ -378,7 +379,8 @@ class _TestClientManager(ClientManager):
 
             err = '{} expected packets, found none'.format(self)
             assert len(self.received_packets) > 0, err
-            self.search_match([command_type, args], self.received_packets, somewhere=somewhere)
+            self.search_match([command_type, args], self.received_packets, somewhere=somewhere,
+                              allow_partial_match=allow_partial_match)
 
             if over:
                 err = ('{} expected no more packets (did you accidentally put over=True?)'
@@ -434,7 +436,7 @@ class _TestClientManager(ClientManager):
                                      .format(command_type, args))
 
         def assert_ooc(self, message, username=None, over=False, ooc_over=False,
-                       check_CT_packet=True, somewhere=False):
+                       check_CT_packet=True, somewhere=False, allow_partial_match=False):
             """
             Assert that the client has a particular message as an unaccounted OOC message.
 
@@ -460,6 +462,10 @@ class _TestClientManager(ClientManager):
                 If True, it will try and account for an unaccounted OOC message anywhere among the
                 client's unaccounted packets. If False, it will only look at the earliest
                 unaccounted message.
+            allow_partial_match: boolean, optional
+                If True, instead of matching the whole message, the function will just check if the
+                target unaccounted message starts with the value of message. If False, it will
+                match the target unaccounted message with the value of message exactly.
 
             Raises
             ------
@@ -475,12 +481,13 @@ class _TestClientManager(ClientManager):
 
             if check_CT_packet:
                 self.assert_packet('CT', (user, message), over=over, ooc_over=ooc_over,
-                                            somewhere=somewhere)
+                                   somewhere=somewhere, allow_partial_match=allow_partial_match)
 
             err = 'Expected OOC messages, found none.'
             assert len(self.received_ooc) > 0, err
 
-            self.search_match([user, message], self.received_ooc, somewhere=somewhere)
+            self.search_match([user, message], self.received_ooc, somewhere=somewhere,
+                              allow_partial_match=allow_partial_match)
 
             if over or ooc_over:
                 err = 'Unhandled OOC messages for {}'.format(self)

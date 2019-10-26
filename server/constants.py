@@ -37,7 +37,7 @@ class TargetType(Enum):
 
 class Effects(Enum):
     B = ('Blindness', 'blinded', lambda client, value: client.change_blindness(value))
-    D = ('Deafened', 'deafened', lambda client, value: client.change_deafened(value))
+    D = ('Deafness', 'deafened', lambda client, value: client.change_deafened(value))
     G = ('Gagged', 'gagged', lambda client, value: client.change_gagged(value))
 
     @property

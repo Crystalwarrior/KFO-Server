@@ -168,12 +168,25 @@ class Tasker:
 
         self.client_tasks[client.id][args[0]][2][attr] = value
 
+
+    ###
+    # CURRENTLY SUPPORTED TASKS
+    ###
+
     async def await_cancellation(self, old_task):
         # Wait until it is able to properly retrieve the cancellation exception
         try:
             await old_task
         except asyncio.CancelledError:
             pass
+
+    async def do_nothing(self):
+        while True:
+            try:
+                await asyncio.sleep(1)
+            except KeyboardInterrupt:
+                raise
+
 
     async def as_afk_kick(self, client, args):
         afk_delay, afk_sendto = args
@@ -228,41 +241,6 @@ class Tasker:
                     client.send_ooc('You were also kicked off from your party.')
                     for c in p.get_members():
                         c.send_ooc('{} was AFK kicked from your party.'.format(original_name))
-
-    async def as_timer(self, client, args):
-        _, length, name, is_public = args # Length in seconds, already converted
-        client_name = client.name # Failsafe in case disconnection before task is cancelled/expires
-
-        try:
-            await asyncio.sleep(length)
-        except asyncio.CancelledError:
-            self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                          'Timer "{}" initiated by {} has been canceled.'
-                                          .format(name, client_name),
-                                          pred=lambda c: (c == client or c.is_staff() or
-                                                          (is_public and c.area == client.area)))
-        else:
-            self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                          'Timer "{}" initiated by {} has expired.'
-                                          .format(name, client_name),
-                                          pred=lambda c: (c == client or c.is_staff() or
-                                                          (is_public and c.area == client.area)))
-        finally:
-            del self.active_timers[name]
-
-    async def as_handicap(self, client, args):
-        _, length, _, announce_if_over = args
-        client.is_movement_handicapped = True
-
-        try:
-            await asyncio.sleep(length)
-        except asyncio.CancelledError:
-            pass # Cancellation messages via send_oocs must be sent manually
-        else:
-            if announce_if_over and not client.is_staff():
-                client.send_ooc('Your movement handicap has expired. You may move to a new area.')
-        finally:
-            client.is_movement_handicapped = False
 
     async def as_day_cycle(self, client, args):
         time_start, area_1, area_2, hour_length, hour_start, send_first_hour = args
@@ -354,9 +332,49 @@ class Tasker:
             finally:
                 send_first_hour = True
 
-    async def do_nothing(self):
-        while True:
-            try:
-                await asyncio.sleep(1)
-            except KeyboardInterrupt:
-                raise
+    async def as_effect(self, client, args):
+        pass
+
+    async def as_effect_blindness(self, client, args):
+        pass
+
+    async def as_effect_deafness(self, client, args):
+        pass
+
+    async def as_effect_gagged(self, client, args):
+        pass
+
+    async def as_handicap(self, client, args):
+        _, length, _, announce_if_over = args
+        client.is_movement_handicapped = True
+
+        try:
+            await asyncio.sleep(length)
+        except asyncio.CancelledError:
+            pass # Cancellation messages via send_oocs must be sent manually
+        else:
+            if announce_if_over and not client.is_staff():
+                client.send_ooc('Your movement handicap has expired. You may move to a new area.')
+        finally:
+            client.is_movement_handicapped = False
+
+    async def as_timer(self, client, args):
+        _, length, name, is_public = args # Length in seconds, already converted
+        client_name = client.name # Failsafe in case disconnection before task is cancelled/expires
+
+        try:
+            await asyncio.sleep(length)
+        except asyncio.CancelledError:
+            self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                          'Timer "{}" initiated by {} has been canceled.'
+                                          .format(name, client_name),
+                                          pred=lambda c: (c == client or c.is_staff() or
+                                                          (is_public and c.area == client.area)))
+        else:
+            self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
+                                          'Timer "{}" initiated by {} has expired.'
+                                          .format(name, client_name),
+                                          pred=lambda c: (c == client or c.is_staff() or
+                                                          (is_public and c.area == client.area)))
+        finally:
+            del self.active_timers[name]
