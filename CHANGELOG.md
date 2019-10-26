@@ -261,5 +261,6 @@
 * Fixed /play and /rplay not looping music tracks that appear in the server music list
 * Fixed daily GM passwords switching at 3 pm incorrectly, they now switch correctly and at midnight
 * Fixed day cycles not canceling on area list reload
+* Fixed single space messages sent by gagged players not blankposting but being converted to jumbled text
 * Explicitly allowed Python 3.8 support for server owners
  

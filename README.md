@@ -266,6 +266,8 @@ GMs can:
     - Pauses the day cycle initiated by the target or yourself if not given a target.
 * **clock_unpause** "ID"
     - Unpauses the day cycle initiated by the target or yourself if not given a target.
+* **cure** "ID" "initials of effects"
+    - Clears the given effects from the target, as well as any poison that would have inflicted those effects.
 * **deafen** "ID"
     - Changes the deafened status of a target.
     - Deafened players will be unable to read IC messages properly or receive other audio cues from commands such as /knock, /scream, etc.
@@ -319,6 +321,8 @@ GMs can:
     - Restores passage locks that start in the areas in the given area range to their original status, or just the ones in the current area if not given a range.
 * **play** "song.mp3" 
     - Plays a song, even if not in the server music list.
+* **poison** "ID" "initials of effects" "length"
+    - Applies a poison to the target that will inflict them in the given length of time in seconds the given effects.
 * **reveal** "ID/IPID"
     - Reveals a target if they were previously sneaking.
     - Also restores their formerly assigned handicap if they had one that was shorter than the server's automatic sneaking handicap.

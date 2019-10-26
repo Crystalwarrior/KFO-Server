@@ -435,7 +435,7 @@ class AOProtocol(asyncio.Protocol):
         gag_replaced = False
         if self.client.is_gagged:
             allowed_starters = ('(', '*', '[')
-            if msg and not msg.startswith(allowed_starters):
+            if msg != ' ' and not msg.startswith(allowed_starters):
                 gag_replaced = True
                 msg = Constants.gagged_message()
             if msg != raw_msg:

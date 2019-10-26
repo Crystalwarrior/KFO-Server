@@ -345,3 +345,30 @@ class TestPoisonCure_02_Cure(_TestPoisonCure):
         self.assertTrue(self.c0.is_blind)
         self.assertFalse(self.c0.is_deaf)
         self.assertFalse(self.c0.is_gagged)
+
+    def test_05_cureself(self):
+        """
+        Situation: C1 is made blind, deafened and gagged manually. C1 cures themselves of deafness
+        and blindness but not gagged. C2 gets notified.
+        """
+
+        self.c1.is_blind = True
+        self.c1.is_deaf = True
+        self.c1.is_gagged = True
+
+        self.c1.ooc('/cure 1 BD')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('You cured yourself of the effect `Blindness`.')
+        # Changing blindness sends you the background
+        self.c1.assert_packet('BN', None)
+        self.c1.assert_ooc('You cured yourself of the effect `Deafness`.', over=True)
+        self.c2.assert_ooc('(X) {} cured themselves of the effect `Blindness` ({}).'
+                           .format(self.c1.name, self.c1.area.id))
+        self.c2.assert_ooc('(X) {} cured themselves of the effect `Deafness` ({}).'
+                           .format(self.c1.name, self.c1.area.id), over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+
+        self.assertFalse(self.c1.is_blind)
+        self.assertFalse(self.c1.is_deaf)
+        self.assertTrue(self.c1.is_gagged)
