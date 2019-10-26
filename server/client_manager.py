@@ -92,7 +92,6 @@ class ClientManager:
             self.send_deaf_space = False
             self.dicelog = list()
             self._zone_watched = None
-
             #music flood-guard stuff
             self.mus_counter = 0
             self.mute_time = 0
@@ -498,6 +497,9 @@ class ClientManager:
                                                               "Sneaking", True])
 
                 logger.log_server('{} is now sneaking.'.format(self.ipid), self)
+
+        def set_effect(self, effects, length):
+            return dict()
 
         def follow_user(self, target):
             if target == self:

@@ -5904,25 +5904,67 @@ def ooc_cmd_poison(client, arg):
     If for some effect of the poison the target is already subject to it after its time expires
     (which would happen if some staff manually sets it in), do nothing for that effect.
     Returns an error if the given identifier does not correspond to a user, if the length is not a
-    positive number, or if the effects contain an unrecognized character.
+    positive number or exceeds the server time limit, or if the effects contain an unrecognized or
+    repeated character.
 
     SYNTAX
-    /poison <client_id> <length> <effects>
+    /poison <client_id> <effects> <length>
 
     PARAMETERS
     <client_id>: Client identifier (number in brackets in /getarea)
-    <length>: Time to wait before the effects take place (in seconds)
     <effects>: Effects to apply with the current poison (a string consisting of 'b', 'd', and/or
     'g' in some order corresponding to the initials of the currently supported effects)
+    <length>: Time to wait before the effects take place (in seconds)
 
     EXAMPLES
     Assuming these are run immediately one after the other:
-    /poison 1 10 b      :: Poisons client 1 with a poison that in 10 seconds will turn them blind.
-    /poison 1 8 bd      :: Poisons client 1 with a poison that in 8 seconds will turn them blind and deafened (old poison discarded)
-    /poison 1 15 dg     :: Poisons client 1 with a poison that in 8 seconds will turn them gagged in 15 seconds (old deafened poison of 8 seconds remains)
+    /poison 1 b 10      :: Poisons client 1 with a poison that in 10 seconds will turn them blind.
+    /poison 1 bd 8      :: Poisons client 1 with a poison that in 8 seconds will turn them blind and deafened (old poison discarded)
+    /poison 1 dg 15     :: Poisons client 1 with a poison that in 8 seconds will turn them gagged in 15 seconds (old deafened poison of 8 seconds remains)
     """
 
-    pass
+    Constants.assert_command(client, arg, is_staff=True, parameters='=3')
+    raw_target, raw_effects, raw_length = arg.split(' ')
+    target = Constants.parse_id(client, raw_target)
+    length = Constants.parse_time_length(raw_length)
+    effects = Constants.parse_effects(client, raw_effects)
+
+    effect_results = target.set_effects(length, effects)
+    target_message = ''
+    self_message = ''
+    zstaff_message = ''
+
+    for (effect_name, (effect_length, effect_reapplied)) in effect_results.items():
+        if effect_length == length and not effect_reapplied:
+            target_message = ('{}\r\n*{}: acts in {}.'
+                              .format(target_message, effect_name, effect_length))
+            self_message = ('{}\r\n*{}: acts in {}.'
+                            .format(self_message, effect_name, effect_length))
+            zstaff_message = ('{}\r\n*{}: acts in {}.'
+                              .format(self_message, effect_name, effect_length))
+        elif effect_length == length and effect_reapplied:
+            # The new effect time was lower than the remaining time for the current effect
+            target_message = ('{}\r\n*{}: now acts in {}.'
+                              .format(target_message, effect_name, effect_length))
+            self_message = ('{}\r\n*{}: now acts in {}.'
+                            .format(self_message, effect_name, effect_length))
+            zstaff_message = ('{}\r\n*{}: now acts in {}.'
+                              .format(self_message, effect_name, effect_length))
+        else:
+            target_message = ('{}\r\n*{}: still acts in {}.'
+                              .format(target_message, effect_name, effect_length))
+            self_message = ('{}\r\n*{}: still acts in {} (remaining effect time shorter than new '
+                            'length).'.format(self_message, effect_name, effect_length))
+            zstaff_message = ('{}\r\n*{}: still acts in {} (remaining time shorter than new '
+                              'length).'.format(self_message, effect_name, effect_length))
+
+    target.send_ooc('You were poisoned. The following effects will apply shortly: {}'
+                    .format(target_message))
+    client.send_ooc('You poisoned {} with the following effects: {}'
+                    .format(target.displayname, self_message))
+    client.send_ooc_others('(X) {} poisoned {} with the followings effects ({}): {}'
+                           .format(client.name, target.displayname, client.area.id, zstaff_message),
+                           is_zstaff_flex=True, not_to={target})
 
 def ooc_cmd_cure(client, arg):
     """ (STAFF ONLY)
@@ -5936,7 +5978,7 @@ def ooc_cmd_cure(client, arg):
      In particular, cancel that part of the poison and effect from the target if they are subject
      to them.
     Returns an error if the given identifier does not correspond to a user, or if the effects
-    contain an unrecognized character.
+    contain an unrecognized/repeated character.
 
     SYNTAX
     /cure <client_id> <effects>

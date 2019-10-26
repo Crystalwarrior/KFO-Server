@@ -38,7 +38,7 @@ class TestBlood_01_Basic(_TestBlood):
 
         # Wrong client ID
         self.c1.ooc('/bloodtrail aa bb')
-        self.c1.assert_ooc('aa bb does not look like a valid client ID.', over=True)
+        self.c1.assert_ooc('`aa bb` does not look like a valid client ID.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()

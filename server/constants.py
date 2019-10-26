@@ -19,6 +19,7 @@
 import random
 import re
 import time
+import warnings
 
 from enum import Enum
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
@@ -33,6 +34,23 @@ class TargetType(Enum):
     HDID = 5
     SHOWNAME = 6
     ALL = 7
+
+class Effects(Enum):
+    B = ('Blindness', 'blinded', lambda client, value: client.change_blindness(value))
+    D = ('Deafened', 'deafened', lambda client, value: client.change_deafened(value))
+    G = ('Gagged', 'gagged', lambda client, value: client.change_gagged(value))
+
+    @property
+    def name(self):
+        return self.value[0]
+
+    @property
+    def action(self):
+        return self.value[1]
+
+    @property
+    def function(self):
+        return self.value[2]
 
 class Constants():
     @staticmethod
@@ -147,6 +165,9 @@ class Constants():
         """
         Kept for backwards compatibility. Use assert_command.
         """
+        message = ('Code is using old command_assert syntax. Please change it (or ask your server '
+                   'developer) so that it uses Constants.assert_command instead.')
+        warnings.warn(message, category=UserWarning, stacklevel=2)
 
         if is_staff is not None:
             if is_staff is True and not client.is_staff():
@@ -607,6 +628,26 @@ class Constants():
         return area_list
 
     @staticmethod
+    def parse_effects(client, effects):
+        """
+        Convert a sequence of characters to their associated effect names.
+        """
+
+        if not effects:
+            raise ArgumentError('Expected effects.')
+        if len(set(effects)) != len(list(effects)):
+            raise ArgumentError('Effect list cannot contained repeated characters.')
+
+        parsed_effects = set()
+        for effect_letter in effects:
+            try:
+                parsed_effects.add(Effects[effect_letter.capitalize()])
+            except KeyError:
+                raise ArgumentError('Invalid effect letter `{}`.'.format(effect_letter))
+
+        return parsed_effects
+
+    @staticmethod
     def parse_id(client, identifier):
         """
         Given a client ID, returns the client that matches this identifier.
@@ -615,7 +656,7 @@ class Constants():
         if identifier == '':
             raise ArgumentError('Expected client ID.')
         if not identifier.isdigit():
-            raise ArgumentError('{} does not look like a valid client ID.'.format(identifier))
+            raise ArgumentError('`{}` does not look like a valid client ID.'.format(identifier))
 
         targets = client.server.client_manager.get_targets(client, TargetType.ID,
                                                            int(identifier), False)

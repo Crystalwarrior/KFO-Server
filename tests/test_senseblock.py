@@ -32,7 +32,7 @@ class _UnittestSenseBlock(_TestSenseBlock):
         self.c3.assert_no_ooc()
 
         self.c1.ooc('/{} aa bb'.format(self.sense))
-        self.c1.assert_ooc('aa bb does not look like a valid client ID.', over=True)
+        self.c1.assert_ooc('`aa bb` does not look like a valid client ID.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -119,7 +119,7 @@ class _UnittestSenseBlock(_TestSenseBlock):
         self.c3.assert_no_ooc()
 
         self.c1.ooc('/{} aa bb'.format(self.sense))
-        self.c1.assert_ooc('aa bb does not look like a valid client ID.', over=True)
+        self.c1.assert_ooc('`aa bb` does not look like a valid client ID.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
