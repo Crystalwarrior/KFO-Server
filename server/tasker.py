@@ -333,16 +333,33 @@ class Tasker:
                 send_first_hour = True
 
     async def as_effect(self, client, args):
-        pass
+        start, length, effect, new_value = args # Length in seconds, already converted
+
+        try:
+            await asyncio.sleep(length)
+        except asyncio.CancelledError:
+            pass # Cancellation messages via send_oocs must be sent manually
+        else:
+            if new_value:
+                client.send_ooc('The effect `{}` kicked in.'.format(effect.name))
+                client.send_ooc_others('(X) {} is now subject to the effect `{}`.'
+                                       .format(client.displayname, effect.name))
+                effect.function(client, True)
+            else:
+                client.send_ooc('The effect `{}` stopped.')
+                client.send_ooc_others('(X) {} is no longer subject to the effect `{}`.'
+                                       .format(client.displayname, effect.name))
+                effect.function(client, False)
+            self.remove_task(client, ['as_effect_{}'.format(effect.name.lower())])
 
     async def as_effect_blindness(self, client, args):
-        pass
+        await self.as_effect(client, args+[True])
 
     async def as_effect_deafness(self, client, args):
-        pass
+        await self.as_effect(client, args+[True])
 
     async def as_effect_gagged(self, client, args):
-        pass
+        await self.as_effect(client, args+[True])
 
     async def as_handicap(self, client, args):
         _, length, _, announce_if_over = args
