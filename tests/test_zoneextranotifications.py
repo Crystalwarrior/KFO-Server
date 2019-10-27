@@ -103,6 +103,53 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
         self.c5.assert_ooc('(X) Client {} ({}) has left your zone ({}).'
                            .format(2, self.c2_dname, 5), over=True)
 
+    def test_07_multiclientsenterzone(self):
+        """
+        Situation: C0, C1 and C2 are made multiclients of one another manually. They all move to
+        C5's zone in order. C5 is given the multiclienting warning for C1 and C2.
+        """
+
+        self.c1.ipid = 0
+        self.c2.hdid = '0'
+
+        self.c0.move_area(7, discard_trivial=True)
+        self.c0.assert_ooc('You have left zone `z0`.')
+        self.c0.assert_ooc('You have entered zone `z1`.', over=True)
+        self.c1.assert_ooc('(X) Client {} ({}) has left your zone ({}).'
+                           .format(0, self.c0_dname, 7), over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc('(X) Client {} ({}) has entered your zone ({}).'
+                           .format(0, self.c0_dname, 7), over=True)
+
+        # One multiclient
+        self.c1.move_area(7, discard_trivial=True)
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('You have left zone `z0`.')
+        self.c1.assert_ooc('You have entered zone `z1`.', over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc('(X) Client {} ({}) has entered your zone ({}).'
+                           .format(1, self.c1_dname, 7))
+        self.c5.assert_ooc('(X) Warning: Client {} is multiclienting in your zone. Do '
+                           '/multiclients {} to take a look.'.format(1, 1), over=True)
+
+        # >1 multiclient
+        self.c2.move_area(7, discard_trivial=True)
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('(X) Client {} ({}) has left your zone ({}).'
+                           .format(2, self.c2_dname, 7), over=True)
+        self.c2.assert_ooc('You have left zone `z0`.')
+        self.c2.assert_ooc('You have entered zone `z1`.', over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_ooc('(X) Client {} ({}) has entered your zone ({}).'
+                           .format(2, self.c2_dname, 7))
+        self.c5.assert_ooc('(X) Warning: Client {} is multiclienting in your zone. Do '
+                           '/multiclients {} to take a look.'.format(2, 2), over=True)
+
 class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
     def test_01_manualshownamechange(self):
         """

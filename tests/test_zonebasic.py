@@ -12,6 +12,21 @@ class _TestZone(_TestSituation6Mc1Gc25):
         cls.c5.move_area(7)
         cls.zm = cls.server.zone_manager
 
+        # Prevent multiclienting warning in tests
+        cls.c0.hdid = '0'
+        cls.c1.hdid = '1'
+        cls.c2.hdid = '2'
+        cls.c3.hdid = '3'
+        cls.c4.hdid = '4'
+        cls.c5.hdid = '5'
+
+        cls.c0.ipid = 0
+        cls.c1.ipid = 1
+        cls.c2.ipid = 2
+        cls.c3.ipid = 3
+        cls.c4.ipid = 4
+        cls.c5.ipid = 5
+
     def assert_zones(self, expected_zones):
         """
         Assert that the set of zone IDs matches exactly to the server's zone manager's zones

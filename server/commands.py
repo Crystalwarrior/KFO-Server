@@ -2776,7 +2776,7 @@ def ooc_cmd_multiclients(client, arg):
     EXAMPLES
     Assuming client 1 with IPID 1234567890 is in the Basement (area 0) and has another client open,
     whose client ID is 4...
-    /multiclients 1             :: May return something like the example below:
+    /multiclients 1             :: May return something like the example below (except with 1 instead of 1234567890)
     /multiclients 1234567890    :: May return something like the following:
 
     == Clients of 1234567890 ==
@@ -2786,13 +2786,13 @@ def ooc_cmd_multiclients(client, arg):
     [4] Eggs_HD (1234567890)
     """
 
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     target = Constants.parse_id_or_ipid(client, arg)[0]
     info = target.prepare_area_info(client.area, -1, False, as_mod=client.is_staff(),
+                                    include_ipid=client.is_mod or client.is_cm,
                                     only_my_multiclients=True)
-    info = '== Clients of {} =={}'.format(target.ipid, info)
+    info = '== Clients of {} =={}'.format(arg, info)
     client.send_ooc(info)
 
 def ooc_cmd_music_list(client, arg):

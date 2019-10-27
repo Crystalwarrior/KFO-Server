@@ -295,6 +295,13 @@ class ClientChangeArea:
         if area.in_zone and area.in_zone != old_area.in_zone:
             client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}).'
                                    .format(client.id, new_dname, area.id), is_zstaff=area)
+            # Note that this is not an off-by-one error, as the incoming client is technically
+            # still not in an area within the zone, so only one client being in the zone is
+            # necessary and sufficient to trigger the multiclienting warning.
+            if [c for c in client.get_multiclients() if c.area.in_zone == area.in_zone]:
+                client.send_ooc_others('(X) Warning: Client {} is multiclienting in your zone. '
+                                       'Do /multiclients {} to take a look.'
+                                       .format(client.id, client.id), is_zstaff=area)
 
         # Assuming this is not a spectator...
         # If autopassing, send OOC messages, provided the lights are on. If lights are off,

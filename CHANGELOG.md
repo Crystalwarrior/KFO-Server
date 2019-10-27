@@ -231,9 +231,12 @@
  - /zone_watch
 * Zones will send notifications to all zone watchers for standard RP notifications as well as the following:
  - Players coming IN and OUT of the zone (with their shownames)
+ - Players coming in a zone while having other clients open in the zone.
  - Players in the zone disconnecting
  - Players in the zone changing character
  - Players in the zone changing showname
+* Added poison through /poison. Poisoned targets will be inflicted an assortment of effects at the end of a timer (currently a selection of blindness, deafness and gagged). Targets can have their poison removed  before it affects them by having /cure run on them
+ - /cure will also remove effects if they have been already applied
 * Improved password-less process of GM logins:
  - Added /make_gm so CMs and mods can log in other players as GMs
  - Added /gmself so GMs can log in all other clients they opened as GMs
@@ -262,5 +265,6 @@
 * Fixed daily GM passwords switching at 3 pm incorrectly, they now switch correctly and at midnight
 * Fixed day cycles not canceling on area list reload
 * Fixed single space messages sent by gagged players not blankposting but being converted to jumbled text
+* Fixed GMs receiving IPID information through /multiclients
 * Explicitly allowed Python 3.8 support for server owners
  

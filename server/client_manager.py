@@ -605,9 +605,11 @@ class ClientManager:
             self.send_ooc(msg)
 
         def get_area_info(self, area_id, mods, as_mod=None, include_shownames=False,
-                          only_my_multiclients=False):
+                          include_ipid=None, only_my_multiclients=False):
             if as_mod is None:
                 as_mod = self.is_mod or self.is_cm # Cheap, but decent
+            if include_ipid is None and as_mod:
+                include_ipid = True
 
             area = self.server.area_manager.get_area_by_id(area_id)
             info = '== Area {}: {} =='.format(area.id, area.name)
@@ -640,24 +642,27 @@ class ClientManager:
                     info += ' ({})'.format(c.showname)
                 if not c.is_visible:
                     info += ' (S)'
-                if as_mod:
+                if include_ipid:
                     info += ' ({})'.format(c.ipid)
             return len(sorted_clients), info
 
         def send_area_info(self, current_area, area_id, mods, as_mod=None, include_shownames=False,
-                           only_my_multiclients=False):
+                           include_ipid=None, only_my_multiclients=False):
             info = self.prepare_area_info(current_area, area_id, mods, as_mod=as_mod,
                                           include_shownames=include_shownames,
+                                          include_ipid=include_ipid,
                                           only_my_multiclients=only_my_multiclients)
             if area_id == -1:
                 info = '== Area List ==' + info
             self.send_ooc(info)
 
         def prepare_area_info(self, current_area, area_id, mods, as_mod=None,
-                              include_shownames=False, only_my_multiclients=False):
+                              include_shownames=False, include_ipid=None,
+                              only_my_multiclients=False):
             #If area_id is -1, then return all areas.
-            #If mods is True, then return only mods
+            #If mods is True, then return only mods.
             #If include_shownames is True, then include non-empty custom shownames.
+            #If include_ipid is True, then include IPIDs.
             #If only_my_multiclients is True, then include only clients opened by the current player
             # Verify that it should send the area info first
             if not self.is_staff() and not as_mod:
@@ -689,11 +694,13 @@ class ClientManager:
                     (not self.is_staff() and norm_check):
                         num, ainfo = self.get_area_info(i, mods, as_mod=as_mod,
                                                         include_shownames=include_shownames,
+                                                        include_ipid=include_ipid,
                                                         only_my_multiclients=only_my_multiclients)
                         if num:
                             info += '\r\n{}'.format(ainfo)
             else:
-                _, info = self.get_area_info(area_id, mods, include_shownames=include_shownames)
+                _, info = self.get_area_info(area_id, mods, include_ipid=include_ipid,
+                                             include_shownames=include_shownames)
 
             return info
 
