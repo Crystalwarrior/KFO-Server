@@ -30,29 +30,29 @@ Requires Python 3.6-3.8 and PyYAML.
 
 * Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:  
 
-\[2019-08-19T10:20:20\]: Starting...  
-\[2019-08-19T10:20:20\]: Launching TsuserverDR 4.1.0 (190819a)...  
-\[2019-08-19T10:20:20\]: Loading server configurations...  
-\[2019-08-19T10:20:20\]: Server configurations loaded successfully!  
-\[2019-08-19T10:20:20\]: Starting a nonlocal server...  
-\[2019-08-19T10:20:20\]: Server started successfully!  
-\[2019-08-19T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
+\[2019-10-31T10:20:20\]: Starting...  
+\[2019-10-31T10:20:20\]: Launching TsuserverDR 4.2.0 (191031a)...  
+\[2019-10-31T10:20:20\]: Loading server configurations...  
+\[2019-10-31T10:20:20\]: Server configurations loaded successfully!  
+\[2019-10-31T10:20:20\]: Starting a nonlocal server...  
+\[2019-10-31T10:20:20\]: Server started successfully!  
+\[2019-10-31T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
 
 * If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:  
 
-\[2019-08-19T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
-\[2019-08-19T10:20:21\]: *Server name: My First DR Server  
-\[2019-08-19T10:20:21\]: *Server description: This is my flashy new DR server  
-\[2019-08-19T10:20:22\]: Connected to the master server.  
+\[2019-10-31T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
+\[2019-10-31T10:20:21\]: *Server name: My First DR Server  
+\[2019-10-31T10:20:21\]: *Server description: This is my flashy new DR server  
+\[2019-10-31T10:20:22\]: Connected to the master server.  
 
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If during launch you get  `urllib.error.URLError` or `socket.gaierror`, there is probably something wrong with your internet connection.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
-\[2019-08-19T22:23:04\]: You have initiated a server shut down.  
-\[2019-08-19T22:23:04\]: Kicking 12 remaining clients.  
-\[2019-08-19T22:23:04\]: Server has successfully shut down.  
+\[2019-10-31T22:23:04\]: You have initiated a server shut down.  
+\[2019-10-31T22:23:04\]: Kicking 12 remaining clients.  
+\[2019-10-31T22:23:04\]: Server has successfully shut down.  
 
 * If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
@@ -66,7 +66,7 @@ Requires Python 3.6-3.8 and PyYAML.
 
   - This process will not overwrite your server configurations inside the `config` folder, your existing logs inside the `logs` folder, or the user information inside the `storage` folder. However, it will overwrite other files including the Python files inside the `server` folder. Therefore, make sure to save backups of those files before overwriting in case you have modified them and wish to keep an archive of your changes.
   
-* If you want to update **Python** itself, you can get the latest Python download [from their website here](https://www.python.org/downloads/) and then follow the instructions under the Installing section in this readme. To check your current version of Python, you can run ``python`` on its own and look at the first line. The latest stable major Python release is *Python 3.8* as of October 18, 2019.
+* If you want to update **Python** itself, you can get the latest Python download [from their website here](https://www.python.org/downloads/) and then follow the instructions under the Installing section in this readme. To check your current version of Python, you can run ``python`` on its own and look at the first line. The latest stable major Python release is *Python 3.8* as of October 31, 2019.
 
   - Please follow the installation instructions again even if you had successfully ran a server before, because your new Python installation may be missing libraries that TsuserverDR expects there to exist. You should not need to change any server configuration files though.
   - In general, updating to a Python version beyond what is specified as supported may lead to unstable behavior, so for active servers try to keep your Python version among the ones specifically labeled as supported.
@@ -223,6 +223,7 @@ Additional notes are listed at the end of the command list.
     - Gain insight from the magic 8 ball.
     
 ### GM Commands
+
 GMs can: 
   - Bypass area passages and locks.
   - Receive special RP notifications.
@@ -381,6 +382,7 @@ GMs can:
     - Makes you start watching a zone by its ID.
 
 ### Community Manager Commands
+
 * **blockdj** "ID/IPID"
     - Mutes the target from changing music. 
 * **cleargm**
@@ -478,12 +480,14 @@ Commands marked with (D) are marked as deprecated. They will continue to serve t
 Commands without (D) are aliases to commands and can be freely used (subject to the parent command's conditions).
 
 #### Everyone
+
 * **mutepm** (D: Aug.19.19): Same as /toggle_pm.
 * **toggleglobal** (D: Jul.15.19): Same as /toggle_global.
 * **showname_list** (D: Aug.19.19): Same as /showname_areas.
 * **zg**: Same as /zone_global.
 
 #### GM+
+
 * **delete_areareachlock** (D: Jul.15.19): Same as /passage_clear.
 * **restore_areareachlock** (D: Jul.15.19): Same as /passage_restore.
 * **toggle_areareachlock** (D: Jul.15.19): Same as /can_passagelock.
@@ -492,6 +496,7 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 * **toggle_rpgetareas** (D: Jul.15.19): Same as /can_rpgetareas.
 
 #### Mod+
+
 * **allow_iniswap** (D: Jul.15.19): Same as /can_iniswap.
 
 ### Notes

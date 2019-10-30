@@ -218,7 +218,9 @@
 * Gagged messages are now randomly generated 
 * Staff get new messages when using /bloodtrail, with privilege marks added where needed
 
-## (4.2-In progress)
+## TsuserverDR 4.2 (The 2nd Anniversary Update)
+
+### 190831 (4.2)
 * Added zones. Zones are groups of areas such that any privileged server notifications that come from a player action within the zone will be sent only to "watchers", who are people who watch the zone. They come with the following commands:
  - /zone
  - /zone_add

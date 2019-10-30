@@ -1424,6 +1424,63 @@ def ooc_cmd_coinflip(client, arg):
     logger.log_server('[{}][{}]Used /coinflip and got {}.'
                       .format(client.area.id, client.get_char_name(), flip), client)
 
+def ooc_cmd_cure(client, arg):
+    """ (STAFF ONLY)
+    Cures the target of some of three effects (blindness, deafened, or gagged) as follows:
+     For each effect in the cure:
+     * If the target is subject to some poison that as one of its effects will cause the effect in
+       the future, cancel that part of the poison.
+     * If the target is currently experiencing that effect (either as a result of a poison that
+       kicked in or being manually set before), remove the effect from the target.
+     * If neither is true, do nothing for that effect.
+     In particular, cancel that part of the poison and effect from the target if they are subject
+     to them.
+    Returns an error if the given identifier does not correspond to a user, or if the effects
+    contain an unrecognized/repeated character.
+
+    SYNTAX
+    /cure <client_id> <effects>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <effects>: Effects to cure (a string consisting of non-case-sensitive 'b', 'd', and/or 'g' in
+    some order corresponding to the initials of the supported effects)
+
+    EXAMPLES
+    Assuming client 1 is blind, deafened and gagged and these are run immediately one after the other:
+    /cure 1 b      :: Cures client 1 of blindness.
+    /cure 1 Bd     :: Cures client 1 of deafedness (note they were not blind).
+    /cure 1 gDB    :: Cures client 1 of being gagged (noe they were neither deafened or blind).
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=2')
+    raw_target, raw_effects = arg.split(' ')
+    target = Constants.parse_id(client, raw_target)
+    effects = Constants.parse_effects(client, raw_effects)
+
+    sorted_effects = sorted(effects, key=lambda effect: effect.name)
+    for effect in sorted_effects:
+        # Check if the client is subject to a countdown for that effect
+        try:
+            client.server.tasker.remove_task(target, [effect.async_name])
+        except KeyError:
+            pass # Do nothing if not subject to one
+
+        if target != client:
+            target.send_ooc('You were cured of the effect `{}`.'.format(effect.name))
+            client.send_ooc('You cured {} of the effect `{}`.'
+                            .format(target.displayname, effect.name))
+            client.send_ooc_others('(X) {} cured {} of the effect `{}` ({}).'
+                                   .format(client.name, target.displayname, effect.name,
+                                           client.area.id,), is_zstaff_flex=True, not_to={target})
+        else:
+            client.send_ooc('You cured yourself of the effect `{}`.'.format(effect.name))
+            client.send_ooc_others('(X) {} cured themselves of the effect `{}` ({}).'
+                                   .format(client.name, effect.name, client.area.id),
+                                   is_zstaff_flex=True)
+
+        effect.function(target, False)
+
 def ooc_cmd_currentmusic(client, arg):
     """
     Returns the music currently playing and who played it, or None if no music is playing.
@@ -1510,6 +1567,59 @@ def ooc_cmd_defaultarea(client, arg):
 
     client.server.default_area = int(arg)
     client.send_ooc('Set default area to {}'.format(arg))
+
+def ooc_cmd_dicelog(client, arg):
+    """ (STAFF ONLY)
+    Obtains the last 20 roll resuls from the target by ID or the user if not given any.
+    Returns an error if the identifier does not correspond to a user.
+
+    SYNTAX
+    /dicelog
+    /dicelog <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /dicelog        :: Returns the user's last 20 rolls
+    /dicelog 1      :: Returns the user with ID 1's last 20 rolls
+    """
+
+    Constants.assert_command(client, arg, is_staff=True)
+    if len(arg) == 0:
+        arg = str(client.id)
+
+    # Obtain target's dicelog
+    target = Constants.parse_id(client, arg)
+    info = target.get_dicelog()
+    client.send_ooc(info)
+
+def ooc_cmd_dicelog_area(client, arg):
+    """ (STAFF ONLY)
+    Obtains the last 20 roll resuls from an area by its ID or name or the user's current one if
+    not given any.
+    Returns an error if the identifier does not correspond to an area.
+
+    SYNTAX
+    /dicelog
+    /dicelog_area <target_area>
+
+    PARAMETERS
+    <target_area>: Area whose rolls will be listed
+
+    EXAMPLES
+    /dicelog_area       :: Returns the last 20 rolls of the user's current area
+    /dicelog_area 1     :: Returns the last 20 rolls of Area 1
+    """
+
+    Constants.assert_command(client, arg, is_staff=True)
+    if len(arg) == 0:
+        arg = str(client.area.id)
+
+    # Obtain target area's dicelog
+    target = Constants.parse_area_names(client, [arg])[0]
+    info = target.get_dicelog()
+    client.send_ooc(info)
 
 def ooc_cmd_discord(client, arg):
     """
@@ -1901,6 +2011,35 @@ def ooc_cmd_gmlock(client, arg):
     client.area.broadcast_ooc('Area gm-locked.')
     for i in client.area.clients:
         client.area.invite_list[i.ipid] = None
+
+def ooc_cmd_gmself(client, arg):
+    """ (STAFF ONLY):
+    Makes all opened multiclients login as game master without them needing to put in a GM password.
+    Returns an error if all opened multiclients are already game masters.
+
+    SYNTAX
+    /gmself
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    If client 0 is GM has multiclients with ID 1 and 3, neither GM, and runs...
+    /gmself      :: Client 0 logs in clients 1 and 3 as game master.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    targets = [c for c in client.get_multiclients() if not c.is_gm]
+    if not targets:
+        raise ClientError('All opened clients are logged in as game master.')
+
+    for target in targets:
+        target.login(client.server.config['gmpass'], target.auth_gm, 'game master')
+
+    client.send_ooc('Logged in client{} {} as game master.'
+                    .format('s' if len(targets) > 1 else '',
+                            Constants.cjoin([target.id for target in targets])))
 
 def ooc_cmd_handicap(client, arg):
     """ (STAFF ONLY)
@@ -2669,6 +2808,30 @@ def ooc_cmd_look_set(client, arg):
 
     client.send_ooc_others('The area description was updated to {}.'
                            .format(client.area.description), is_zstaff_flex=True, in_area=True)
+
+def ooc_cmd_make_gm(client, arg):
+    """ (MOD AND CM ONLY)
+    Makes a player by ID a GM without them needing to put in a GM password.
+
+    SYNTAX
+    /make_gm <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /make_gm 3      :: Makes the client with ID 3 a GM
+    """
+
+    if not client.is_mod and not client.is_cm:
+        raise ClientError('You must be authorized to do that.')
+    target = Constants.parse_id(client, arg)
+
+    if target.is_gm:
+        raise ClientError('Client {} is already a GM.'.format(target.id))
+
+    target.login(client.server.config['gmpass'], target.auth_gm, 'game master')
+    client.send_ooc('Logged client {} as a GM.'.format(target.id))
 
 def ooc_cmd_minimap(client, arg):
     """
@@ -3537,6 +3700,92 @@ def ooc_cmd_pm(client, arg):
     client.send_ooc('PM sent to {}. Message: {}'.format(recipient, msg))
     c.send_ooc('PM from {} in {} ({}): {}'
                .format(client.name, client.area.name, client.displayname, msg))
+
+def ooc_cmd_poison(client, arg):
+    """ (STAFF ONLY)
+    Poisons the target with some of three effects (blindness, deafened or gagged) that kick in
+    a specified length of time. Multiple effects can be used within the same poison.
+    If the target is already subject to some poison, stack them together as follows:
+     For each effect in the new poison:
+     * If the target's current poison does not include the effect, poison the target such that the
+       effect kicks in the new poison's established length.
+     * Otherwise, poison the target such that the effect kicks in the new poison's established
+       length or the remaining length of the old poison, whichever is shorter.
+    If for some effect of the poison the target is already subject to it after its time expires
+    (which would happen if some staff manually sets it in), do nothing for that effect.
+    Returns an error if the given identifier does not correspond to a user, if the length is not a
+    positive number or exceeds the server time limit, or if the effects contain an unrecognized or
+    repeated character.
+
+    SYNTAX
+    /poison <client_id> <effects> <length>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <effects>: Effects to apply with the current poison (a string consisting of non-case-sensitive
+    'b', 'd', and/or 'g' in some order corresponding to the initials of the supported effects)
+    <length>: Time to wait before the effects take place (in seconds)
+
+    EXAMPLES
+    Assuming these are run immediately one after the other:
+    /poison 1 b 10      :: Poisons client 1 with a poison that in 10 seconds will turn them blind.
+    /poison 1 bD 8      :: Poisons client 1 with a poison that in 8 seconds will turn them blind and deafened (old poison discarded)
+    /poison 1 Dg 15     :: Poisons client 1 with a poison that in 8 seconds will turn them gagged in 15 seconds (old deafened poison of 8 seconds remains)
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=3')
+    raw_target, raw_effects, raw_length = arg.split(' ')
+    target = Constants.parse_id(client, raw_target)
+    effects = Constants.parse_effects(client, raw_effects)
+    length = Constants.parse_time_length(raw_length)
+
+    effect_results = target.set_timed_effects(effects, length)
+    target_message = ''
+    self_message = ''
+    zstaff_message = ''
+
+    for effect_name in sorted(effect_results.keys()):
+        effect_length, effect_reapplied = effect_results[effect_name]
+        formatted_effect_length = Constants.time_format(effect_length)
+
+        if effect_length == length and not effect_reapplied:
+            target_message = ('{}\r\n*{}: acts in {}.'
+                              .format(target_message, effect_name, formatted_effect_length))
+            self_message = ('{}\r\n*{}: acts in {}.'
+                            .format(self_message, effect_name, formatted_effect_length))
+            zstaff_message = ('{}\r\n*{}: acts in {}.'
+                              .format(zstaff_message, effect_name, formatted_effect_length))
+        elif effect_length == length and effect_reapplied:
+            # The new effect time was lower than the remaining time for the current effect
+            target_message = ('{}\r\n*{}: now acts in {}.'
+                              .format(target_message, effect_name, formatted_effect_length))
+            self_message = ('{}\r\n*{}: now acts in {}.'
+                            .format(self_message, effect_name, formatted_effect_length))
+            zstaff_message = ('{}\r\n*{}: now acts in {}.'
+                              .format(zstaff_message, effect_name, formatted_effect_length))
+        else:
+            target_message = ('{}\r\n*{}: still acts in {}.'
+                              .format(target_message, effect_name, formatted_effect_length))
+            self_message = ('{}\r\n*{}: still acts in {} (remaining effect time shorter than new '
+                            'length).'.format(self_message, effect_name, formatted_effect_length))
+            zstaff_message = ('{}\r\n*{}: still acts in {} (remaining time shorter than new '
+                              'length).'.format(zstaff_message, effect_name,
+                                                formatted_effect_length))
+
+    if target != client:
+        target.send_ooc('You were poisoned. The following effects will apply shortly: {}'
+                        .format(target_message))
+        client.send_ooc('You poisoned {} with the following effects: {}'
+                        .format(target.displayname, self_message))
+        client.send_ooc_others('(X) {} poisoned {} with the following effects ({}): {}'
+                               .format(client.name, target.displayname, client.area.id,
+                                       zstaff_message), is_zstaff_flex=True, not_to={target})
+    else:
+        client.send_ooc('You poisoned yourself with the following effects: {}'
+                        .format(self_message))
+        client.send_ooc_others('(X) {} poisoned themselves with the following effects ({}): {}'
+                               .format(client.name, client.area.id, zstaff_message),
+                               is_zstaff_flex=True)
 
 def ooc_cmd_pos(client, arg):
     """
@@ -5415,127 +5664,6 @@ def ooc_cmd_whois(client, arg):
     info = targets[0].get_info(as_mod=client.is_mod, as_cm=client.is_cm, identifier=arg)
     client.send_ooc(info)
 
-def ooc_cmd_8ball(client, arg):
-    """
-    Calls upon the wisdom of a magic 8 ball. The result is sent to all clients in the sender's area.
-
-    SYNTAX
-    /8ball
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /8ball              :: May return something like "The magic 8 ball says You shouldn't ask that."
-    """
-
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
-
-    coin = ['yes', 'no', 'maybe', "I don't know", 'perhaps', 'please do not', 'try again',
-            "you shouldn't ask that"]
-    flip = random.choice(coin)
-    client.area.broadcast_ooc('The magic 8 ball says {}.'.format(flip))
-    logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'
-                      .format(client.area.id, client.get_char_name(), flip), client)
-
-def ooc_cmd_narrate(client, arg):
-    """ (STAFF ONLY)
-    Sends a message from the "Narrator" position to all players in the area. This will override
-    any existing IC message, or any hearing properties of the targets.
-
-    SYNTAX
-    /narrate <message>
-
-    PARAMETERS
-    <message>: Message to send
-
-    EXAMPLES
-    /narrate Hello World!   :: Sends `Hello World!` to the people in the area as a narrator.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True)
-
-    for c in client.area.clients:
-        c.send_ic(msg=arg, as_narration=True)
-
-def ooc_cmd_dicelog(client, arg):
-    """ (STAFF ONLY)
-    Obtains the last 20 roll resuls from the target by ID or the user if not given any.
-    Returns an error if the identifier does not correspond to a user.
-
-    SYNTAX
-    /dicelog
-    /dicelog <client_id>
-
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-
-    EXAMPLES
-    /dicelog        :: Returns the user's last 20 rolls
-    /dicelog 1      :: Returns the user with ID 1's last 20 rolls
-    """
-
-    Constants.assert_command(client, arg, is_staff=True)
-    if len(arg) == 0:
-        arg = str(client.id)
-
-    # Obtain target's dicelog
-    target = Constants.parse_id(client, arg)
-    info = target.get_dicelog()
-    client.send_ooc(info)
-
-def ooc_cmd_dicelog_area(client, arg):
-    """ (STAFF ONLY)
-    Obtains the last 20 roll resuls from an area by its ID or name or the user's current one if
-    not given any.
-    Returns an error if the identifier does not correspond to an area.
-
-    SYNTAX
-    /dicelog
-    /dicelog_area <target_area>
-
-    PARAMETERS
-    <target_area>: Area whose rolls will be listed
-
-    EXAMPLES
-    /dicelog_area       :: Returns the last 20 rolls of the user's current area
-    /dicelog_area 1     :: Returns the last 20 rolls of Area 1
-    """
-
-    Constants.assert_command(client, arg, is_staff=True)
-    if len(arg) == 0:
-        arg = str(client.area.id)
-
-    # Obtain target area's dicelog
-    target = Constants.parse_area_names(client, [arg])[0]
-    info = target.get_dicelog()
-    client.send_ooc(info)
-
-def ooc_cmd_make_gm(client, arg):
-    """ (MOD AND CM ONLY)
-    Makes a player by ID a GM without them needing to put in a GM password.
-
-    SYNTAX
-    /make_gm <client_id>
-
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-
-    EXAMPLES
-    /make_gm 3      :: Makes the client with ID 3 a GM
-    """
-
-    if not client.is_mod and not client.is_cm:
-        raise ClientError('You must be authorized to do that.')
-    target = Constants.parse_id(client, arg)
-
-    if target.is_gm:
-        raise ClientError('Client {} is already a GM.'.format(target.id))
-
-    target.login(client.server.config['gmpass'], target.auth_gm, 'game master')
-    client.send_ooc('Logged client {} as a GM.'.format(target.id))
-
 def ooc_cmd_zone(client, arg):
     """ (STAFF ONLY)
     Makes a zone that spans the given area range, or just the given area if just given one area, or
@@ -5862,177 +5990,49 @@ def ooc_cmd_zone_watch(client, arg):
     client.send_ooc_others('(X) {} is now watching your zone.'.format(client.name),
                            is_zstaff=True)
 
-def ooc_cmd_gmself(client, arg):
-    """ (STAFF ONLY):
-    Makes all opened multiclients login as game master without them needing to put in a GM password.
-    Returns an error if all opened multiclients are already game masters.
+def ooc_cmd_8ball(client, arg):
+    """
+    Calls upon the wisdom of a magic 8 ball. The result is sent to all clients in the sender's area.
 
     SYNTAX
-    /gmself
+    /8ball
 
     PARAMETERS
     None
 
     EXAMPLES
-    If client 0 is GM has multiclients with ID 1 and 3, neither GM, and runs...
-    /gmself      :: Client 0 logs in clients 1 and 3 as game master.
+    /8ball              :: May return something like "The magic 8 ball says You shouldn't ask that."
     """
 
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+    if len(arg) != 0:
+        raise ArgumentError('This command has no arguments.')
 
-    targets = [c for c in client.get_multiclients() if not c.is_gm]
-    if not targets:
-        raise ClientError('All opened clients are logged in as game master.')
+    coin = ['yes', 'no', 'maybe', "I don't know", 'perhaps', 'please do not', 'try again',
+            "you shouldn't ask that"]
+    flip = random.choice(coin)
+    client.area.broadcast_ooc('The magic 8 ball says {}.'.format(flip))
+    logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'
+                      .format(client.area.id, client.get_char_name(), flip), client)
 
-    for target in targets:
-        target.login(client.server.config['gmpass'], target.auth_gm, 'game master')
-
-    client.send_ooc('Logged in client{} {} as game master.'
-                    .format('s' if len(targets) > 1 else '',
-                            Constants.cjoin([target.id for target in targets])))
-
-def ooc_cmd_poison(client, arg):
+def ooc_cmd_narrate(client, arg):
     """ (STAFF ONLY)
-    Poisons the target with some of three effects (blindness, deafened or gagged) that kick in
-    a specified length of time. Multiple effects can be used within the same poison.
-    If the target is already subject to some poison, stack them together as follows:
-     For each effect in the new poison:
-     * If the target's current poison does not include the effect, poison the target such that the
-       effect kicks in the new poison's established length.
-     * Otherwise, poison the target such that the effect kicks in the new poison's established
-       length or the remaining length of the old poison, whichever is shorter.
-    If for some effect of the poison the target is already subject to it after its time expires
-    (which would happen if some staff manually sets it in), do nothing for that effect.
-    Returns an error if the given identifier does not correspond to a user, if the length is not a
-    positive number or exceeds the server time limit, or if the effects contain an unrecognized or
-    repeated character.
+    Sends a message from the "Narrator" position to all players in the area. This will override
+    any existing IC message, or any hearing properties of the targets.
 
     SYNTAX
-    /poison <client_id> <effects> <length>
+    /narrate <message>
 
     PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <effects>: Effects to apply with the current poison (a string consisting of non-case-sensitive
-    'b', 'd', and/or 'g' in some order corresponding to the initials of the supported effects)
-    <length>: Time to wait before the effects take place (in seconds)
+    <message>: Message to send
 
     EXAMPLES
-    Assuming these are run immediately one after the other:
-    /poison 1 b 10      :: Poisons client 1 with a poison that in 10 seconds will turn them blind.
-    /poison 1 bD 8      :: Poisons client 1 with a poison that in 8 seconds will turn them blind and deafened (old poison discarded)
-    /poison 1 Dg 15     :: Poisons client 1 with a poison that in 8 seconds will turn them gagged in 15 seconds (old deafened poison of 8 seconds remains)
+    /narrate Hello World!   :: Sends `Hello World!` to the people in the area as a narrator.
     """
 
-    Constants.assert_command(client, arg, is_staff=True, parameters='=3')
-    raw_target, raw_effects, raw_length = arg.split(' ')
-    target = Constants.parse_id(client, raw_target)
-    effects = Constants.parse_effects(client, raw_effects)
-    length = Constants.parse_time_length(raw_length)
+    Constants.assert_command(client, arg, is_staff=True)
 
-    effect_results = target.set_timed_effects(effects, length)
-    target_message = ''
-    self_message = ''
-    zstaff_message = ''
-
-    for effect_name in sorted(effect_results.keys()):
-        effect_length, effect_reapplied = effect_results[effect_name]
-        formatted_effect_length = Constants.time_format(effect_length)
-
-        if effect_length == length and not effect_reapplied:
-            target_message = ('{}\r\n*{}: acts in {}.'
-                              .format(target_message, effect_name, formatted_effect_length))
-            self_message = ('{}\r\n*{}: acts in {}.'
-                            .format(self_message, effect_name, formatted_effect_length))
-            zstaff_message = ('{}\r\n*{}: acts in {}.'
-                              .format(zstaff_message, effect_name, formatted_effect_length))
-        elif effect_length == length and effect_reapplied:
-            # The new effect time was lower than the remaining time for the current effect
-            target_message = ('{}\r\n*{}: now acts in {}.'
-                              .format(target_message, effect_name, formatted_effect_length))
-            self_message = ('{}\r\n*{}: now acts in {}.'
-                            .format(self_message, effect_name, formatted_effect_length))
-            zstaff_message = ('{}\r\n*{}: now acts in {}.'
-                              .format(zstaff_message, effect_name, formatted_effect_length))
-        else:
-            target_message = ('{}\r\n*{}: still acts in {}.'
-                              .format(target_message, effect_name, formatted_effect_length))
-            self_message = ('{}\r\n*{}: still acts in {} (remaining effect time shorter than new '
-                            'length).'.format(self_message, effect_name, formatted_effect_length))
-            zstaff_message = ('{}\r\n*{}: still acts in {} (remaining time shorter than new '
-                              'length).'.format(zstaff_message, effect_name,
-                                                formatted_effect_length))
-
-    if target != client:
-        target.send_ooc('You were poisoned. The following effects will apply shortly: {}'
-                        .format(target_message))
-        client.send_ooc('You poisoned {} with the following effects: {}'
-                        .format(target.displayname, self_message))
-        client.send_ooc_others('(X) {} poisoned {} with the following effects ({}): {}'
-                               .format(client.name, target.displayname, client.area.id,
-                                       zstaff_message), is_zstaff_flex=True, not_to={target})
-    else:
-        client.send_ooc('You poisoned yourself with the following effects: {}'
-                        .format(self_message))
-        client.send_ooc_others('(X) {} poisoned themselves with the following effects ({}): {}'
-                               .format(client.name, client.area.id, zstaff_message),
-                               is_zstaff_flex=True)
-
-def ooc_cmd_cure(client, arg):
-    """ (STAFF ONLY)
-    Cures the target of some of three effects (blindness, deafened, or gagged) as follows:
-     For each effect in the cure:
-     * If the target is subject to some poison that as one of its effects will cause the effect in
-       the future, cancel that part of the poison.
-     * If the target is currently experiencing that effect (either as a result of a poison that
-       kicked in or being manually set before), remove the effect from the target.
-     * If neither is true, do nothing for that effect.
-     In particular, cancel that part of the poison and effect from the target if they are subject
-     to them.
-    Returns an error if the given identifier does not correspond to a user, or if the effects
-    contain an unrecognized/repeated character.
-
-    SYNTAX
-    /cure <client_id> <effects>
-
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <effects>: Effects to cure (a string consisting of non-case-sensitive 'b', 'd', and/or 'g' in
-    some order corresponding to the initials of the supported effects)
-
-    EXAMPLES
-    Assuming client 1 is blind, deafened and gagged and these are run immediately one after the other:
-    /cure 1 b      :: Cures client 1 of blindness.
-    /cure 1 Bd     :: Cures client 1 of deafedness (note they were not blind).
-    /cure 1 gDB    :: Cures client 1 of being gagged (noe they were neither deafened or blind).
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=2')
-    raw_target, raw_effects = arg.split(' ')
-    target = Constants.parse_id(client, raw_target)
-    effects = Constants.parse_effects(client, raw_effects)
-
-    sorted_effects = sorted(effects, key=lambda effect: effect.name)
-    for effect in sorted_effects:
-        # Check if the client is subject to a countdown for that effect
-        try:
-            client.server.tasker.remove_task(target, [effect.async_name])
-        except KeyError:
-            pass # Do nothing if not subject to one
-
-        if target != client:
-            target.send_ooc('You were cured of the effect `{}`.'.format(effect.name))
-            client.send_ooc('You cured {} of the effect `{}`.'
-                            .format(target.displayname, effect.name))
-            client.send_ooc_others('(X) {} cured {} of the effect `{}` ({}).'
-                                   .format(client.name, target.displayname, effect.name,
-                                           client.area.id,), is_zstaff_flex=True, not_to={target})
-        else:
-            client.send_ooc('You cured yourself of the effect `{}`.'.format(effect.name))
-            client.send_ooc_others('(X) {} cured themselves of the effect `{}` ({}).'
-                                   .format(client.name, effect.name, client.area.id),
-                                   is_zstaff_flex=True)
-
-        effect.function(target, False)
+    for c in client.area.clients:
+        c.send_ic(msg=arg, as_narration=True)
 
 def ooc_cmd_exec(client, arg):
     """
