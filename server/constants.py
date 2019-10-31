@@ -639,7 +639,7 @@ class Constants():
 
         if not effects:
             raise ArgumentError('Expected effects.')
-        if len(set([x.lower() for x in effects])) != len(list([x.lower() for x in effects])):
+        if len({x.lower() for x in effects}) != len([x.lower() for x in effects]):
             raise ArgumentError('Effect list cannot contained repeated characters.')
 
         parsed_effects = set()

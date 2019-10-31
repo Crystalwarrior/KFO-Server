@@ -24,7 +24,7 @@ as well as perform tasks only on the areas of the zone.
 """
 
 from server.constants import Constants
-from server.exceptions import AreaError, ClientError, ZoneError
+from server.exceptions import ZoneError
 
 class ZoneManager:
     """
@@ -97,9 +97,8 @@ class ZoneManager:
 
             for area in areas:
                 if area.in_zone:
-                    raise ZoneError.AreaConflictError(
-                            'Area {} is already part of zone {}.'
-                            .format(area, area.in_zone))
+                    raise ZoneError.AreaConflictError('Area {} is already part of zone {}.'
+                                                      .format(area, area.in_zone))
 
             for area in areas:
                 self._areas.add(area)
@@ -138,8 +137,8 @@ class ZoneManager:
             """
 
             if area not in self._areas:
-                raise ZoneError.AreaNotInZoneError(
-                        'Area {} is not part of zone {}.'.format(area, self))
+                raise ZoneError.AreaNotInZoneError('Area {} is not part of zone {}.'
+                                                   .format(area, self))
 
             self._areas.remove(area)
             area.in_zone = None
@@ -197,9 +196,8 @@ class ZoneManager:
 
             for watcher in watchers:
                 if watcher.zone_watched:
-                    raise ZoneError.WatcherConflictError(
-                            'Watcher {} is already watching zone {}.'
-                            .format(watcher, watcher.zone_watched))
+                    raise ZoneError.WatcherConflictError('Watcher {} is already watching zone {}.'
+                                                         .format(watcher, watcher.zone_watched))
 
             for watcher in watchers:
                 self._watchers.add(watcher)
@@ -238,8 +236,8 @@ class ZoneManager:
             """
 
             if watcher not in self._watchers:
-                raise ZoneError.WatcherNotInZoneError(
-                        'Watcher {} is not watching zone {}.'.format(watcher, self))
+                raise ZoneError.WatcherNotInZoneError('Watcher {} is not watching zone {}.'
+                                                      .format(watcher, self))
 
             self._watchers.remove(watcher)
             watcher.zone_watched = None
@@ -599,3 +597,4 @@ class ZoneManager:
             assert watcher.zone_watched is None, (
                     'Expected watcher {} to recognize that it is not watching a zone, found it '
                     'recognized it watched {} instead.'.format(watcher, watcher.zone_watched))
+            

@@ -24,7 +24,6 @@ all necessary actions in order to simulate different rooms.
 """
 
 import asyncio
-import random
 import time
 import yaml
 
@@ -615,7 +614,7 @@ class AreaManager:
             if not client.is_staff() and not client.is_visible and reveal_sneaked:
                 client.change_visibility(True)
                 client.send_ooc_others('(X) {} revealed themselves by playing music ({}).'
-                                        .format(client.displayname, client.area.id), is_zstaff=True)
+                                       .format(client.displayname, client.area.id), is_zstaff=True)
 
         def play_music(self, name, cid, length=-1):
             """
@@ -806,7 +805,7 @@ class AreaManager:
 
             if new_zone_value is None and self._in_zone is None:
                 raise AreaError('This area is already not part of a zone.')
-            elif new_zone_value is not None and self._in_zone is not None:
+            if new_zone_value is not None and self._in_zone is not None:
                 raise AreaError('This area is already part of a zone.')
 
             self._in_zone = new_zone_value
@@ -1074,4 +1073,4 @@ class AreaManager:
             All areas in `self.areas` that satisfy area1.id <= area.id <= area2.id
         """
 
-        return set([self.get_area_by_id(i) for i in range(area1.id, area2.id+1)])
+        return {self.get_area_by_id(i) for i in range(area1.id, area2.id+1)}

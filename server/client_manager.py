@@ -232,7 +232,6 @@ class ClientManager:
                         if self.send_deaf_space:
                             to_send[4] = to_send[4] + ' '
                         self.send_deaf_space = not self.send_deaf_space
-                        self.send_gagged_space = False # doesn't matter at this point
 
                 if self.is_blind and self.is_deaf and sender:
                     to_send[15] = '???'

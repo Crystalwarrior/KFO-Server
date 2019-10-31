@@ -261,10 +261,10 @@ class ClientChangeArea:
 
             if not client.is_staff() and area.blood_smeared:
                 client.send_ooc('{}You spot some smeared blood in the area.'
-                              .format(start_connector))
+                                .format(start_connector))
             elif area.bleeds_to == set([area.name]):
                 client.send_ooc('{}You spot some {}blood in the area.'
-                              .format(start_connector, smeared_connector))
+                                .format(start_connector, smeared_connector))
             elif len(area.bleeds_to) > 1:
                 bleed_to_areas = list(area.bleeds_to - set([area.name]))
                 if client.is_staff() and area.blood_smeared:
@@ -344,13 +344,16 @@ class ClientChangeArea:
             nbyd = ''
 
         client.send_ooc_others(staff, in_area=area, is_zstaff_flex=True)
-        client.send_ooc_others(nbnd, in_area=area, is_zstaff_flex=False, to_blind=False, to_deaf=False)
-        client.send_ooc_others(ybnd, in_area=area, is_zstaff_flex=False, to_blind=True, to_deaf=False)
-        client.send_ooc_others(nbyd, in_area=area, is_zstaff_flex=False, to_blind=False, to_deaf=True)
+        client.send_ooc_others(nbnd, in_area=area, is_zstaff_flex=False, to_blind=False,
+                               to_deaf=False)
+        client.send_ooc_others(ybnd, in_area=area, is_zstaff_flex=False, to_blind=True,
+                               to_deaf=False)
+        client.send_ooc_others(nbyd, in_area=area, is_zstaff_flex=False, to_blind=False,
+                               to_deaf=True)
         # Blind and deaf get nothing
 
     def notify_others_blood(self, client, area, char, status='stay', send_to_staff=True):
-        # Assume client's bleeding status is worth announcing (for example, it changed, or lights on)
+        # Assume client's bleeding status is worth announcing (for example, it changed or lights on)
         # If bleeding, send reminder, and notify everyone in the area if not sneaking
         # (otherwise, just send vague message).
 
@@ -419,10 +422,14 @@ class ClientChangeArea:
         staff = staff.replace('no longer bleeding and sneaking.',
                               'no longer bleeding, but is still sneaking.') # Ugly
 
-        client.send_ooc_others(norm, is_zstaff_flex=False, in_area=area, to_blind=False, to_deaf=False)
-        client.send_ooc_others(ybnd, is_zstaff_flex=False, in_area=area, to_blind=True, to_deaf=False)
-        client.send_ooc_others(nbyd, is_zstaff_flex=False, in_area=area, to_blind=False, to_deaf=True)
-        client.send_ooc_others(ybyd, is_zstaff_flex=False, in_area=area, to_blind=True, to_deaf=True)
+        client.send_ooc_others(norm, is_zstaff_flex=False, in_area=area, to_blind=False,
+                               to_deaf=False)
+        client.send_ooc_others(ybnd, is_zstaff_flex=False, in_area=area, to_blind=True,
+                               to_deaf=False)
+        client.send_ooc_others(nbyd, is_zstaff_flex=False, in_area=area, to_blind=False,
+                               to_deaf=True)
+        client.send_ooc_others(ybyd, is_zstaff_flex=False, in_area=area, to_blind=True,
+                               to_deaf=True)
         if send_to_staff:
             client.send_ooc_others(staff, is_zstaff_flex=True, in_area=area)
 
@@ -496,7 +503,7 @@ class ClientChangeArea:
                                            is_zstaff=area)
                 else:
                     client.send_ooc('Your character was taken in your new area, switched to `{}`.'
-                                  .format(client.get_char_name()))
+                                    .format(client.get_char_name()))
                     client.send_ooc_others('(X) Client {} had their character changed from `{}` to '
                                            '`{}` in your zone as their old character was '
                                            'taken in their new area ({}).'

@@ -237,15 +237,14 @@
  - Players in the zone disconnecting
  - Players in the zone changing character
  - Players in the zone changing showname
-* Added poison through /poison. Poisoned targets will be inflicted an assortment of effects at the end of a timer (currently a selection of blindness, deafness and gagged). Targets can have their poison removed  before it affects them by having /cure run on them
+* Added poison through /poison. Poisoned targets will be inflicted an assortment of effects at the end of a timer (currently a selection of blindness, deafness and gagged). Targets can have their poison removed before it affects them by having /cure run on them
  - /cure will also remove effects if they have been already applied
 * Improved password-less process of GM logins:
  - Added /make_gm so CMs and mods can log in other players as GMs
  - Added /gmself so GMs can log in all other clients they opened as GMs
 * Custom shownames now appear if set in server notifications instead of character folders
 * Improved /help
- - It can now take a command name and it will show a brief description and expected syntax, as well as the 
- minimum required rank if the player is not authorized to use it
+ - It can now take a command name and it will show a brief description and expected syntax, as well as the minimum required rank if the player is not authorized to use it
 * Improved roll management mechanics
  - Added dice log commands to retrieve roll history through /dicelog (for one player) and /dicelog_area (for one area)
  - Roll options are now modifiable from server configurations
@@ -260,6 +259,7 @@
 * The following actions now send an IC message in conjunction with an OOC notification:
  - /knock (which has been restricted to non-lobby areas only)
  - /scream
+* Private servers will now include the masterserver name when showing the server IP in the terminal
 * Fixed clients with same HDID but different IPID not being recognized as multiclients. This fixes the following: 
  - Players getting a new IP can now kick ghosting clients under their old IP with /kickself
  - Staff can now recognize such situations with /whois or /multiclients
