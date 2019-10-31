@@ -320,8 +320,15 @@ class TsuserverDR:
                 'mod': dict()}
 
         # Look for the start of the command list
-        start_index = lines.index('## Commands')
-        end_index = lines.index('### Debug commands')
+        try:
+            start_index = lines.index('## Commands')
+            end_index = lines.index('### Debug commands')
+        except ValueError as error:
+            error_mes = ", ".join([str(s) for s in error.args])
+            message = ('Unable to generate help based on README.md: {}. Are you sure you have the '
+                       'latest README.md?'.format(error_mes))
+            raise ServerError(message)
+
         rank = None
         current_command = None
 

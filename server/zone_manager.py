@@ -507,7 +507,7 @@ class ZoneManager:
 
     def _generate_id(self) -> str:
         """
-        Helper method to generate a new zone ID.
+        Helper method to generate a new zone ID based on the lowest available zone number.
 
         Returns
         -------
@@ -520,11 +520,12 @@ class ZoneManager:
             If there are no available names for the zone (server reached self._zone_limit zones)
         """
 
-        size = len(self._zones.keys())
-        if size == self._zone_limit:
-            raise ValueError('Server reached its zone limit.')
+        for zone_number in range(self._zone_limit):
+            new_zone_id = "z{}".format(zone_number)
+            if new_zone_id not in self._zones:
+                return new_zone_id
 
-        return "z{}".format(size)
+        raise ValueError('Server reached its zone limit.')
 
     def _check_structure(self):
         """
@@ -597,4 +598,3 @@ class ZoneManager:
             assert watcher.zone_watched is None, (
                     'Expected watcher {} to recognize that it is not watching a zone, found it '
                     'recognized it watched {} instead.'.format(watcher, watcher.zone_watched))
-            

@@ -269,4 +269,7 @@
 * Fixed single space messages sent by gagged players not blankposting but being converted to jumbled text
 * Fixed GMs receiving IPID information through /multiclients
 * Explicitly allowed Python 3.8 support for server owners
- 
+
+### 190831b (4.2.0-post1)
+* Fixed uncaught ValueError if server files do not contain a valid README.md when attempting to generate help text for commands
+* Fixed zones being able to obtain duplicate zone ID values
