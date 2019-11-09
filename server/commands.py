@@ -307,10 +307,11 @@ def ooc_cmd_ban(client, arg):
                                    is_officer=True)
             c.disconnect()
 
-    client.send_ooc('You banned {}. As a result, {} clients were kickbanned.'
-                    .format(idnt, len(targets)))
-    client.send_ooc_others('{} banned {}. As a result, {} clients were kickbanned.'
-                           .format(client.name, idnt, len(targets)), is_officer=True)
+    plural = 's were' if len(targets) != 1 else ' was'
+    client.send_ooc('You banned `{}`. As a result, {} client{} kicked as well.'
+                    .format(idnt, len(targets), plural))
+    client.send_ooc_others('{} banned `{}`. As a result, {} client{} kicked as well.'
+                           .format(client.name, idnt, len(targets), plural), is_officer=True)
     logger.log_server('Banned {}.'.format(idnt), client)
 
 def ooc_cmd_banhdid(client, arg):
@@ -364,10 +365,11 @@ def ooc_cmd_banhdid(client, arg):
                                    is_officer=True)
             c.disconnect()
 
-    client.send_ooc('You banned HDID {}. As a result, {} clients were kickbanned.'
-                    .format(arg, len(targets)))
-    client.send_ooc_others('{} banned {}. As a result, {} clients were kickbanned.'
-                           .format(client.name, arg, len(targets)), is_officer=True)
+    plural = 's were' if len(targets) != 1 else ' was'
+    client.send_ooc('You banned HDID `{}`. As a result, {} client{} kicked as well.'
+                    .format(arg, len(targets), plural))
+    client.send_ooc_others('{} banned HDID `{}`. As a result, {} client{} kicked as well.'
+                           .format(client.name, arg, len(targets), plural), is_officer=True)
     logger.log_server('HDID-banned {}.'.format(identifier), client)
 
 def ooc_cmd_bg(client, arg):
@@ -3048,7 +3050,7 @@ def ooc_cmd_mute(client, arg):
     # Mute matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
         logger.log_server('Muted {}.'.format(c.ipid), client)
-        client.area.broadcast_ooc("{} was muted.".format(c.get_char_name()))
+        client.area.broadcast_ooc("{} was muted.".format(c.displayname))
         c.is_muted = True
 
 def ooc_cmd_online(client, arg):
@@ -4603,8 +4605,8 @@ def ooc_cmd_showname_set(client, arg):
         try:
             c.change_showname(showname)
         except ValueError:
-            raise ClientError('Unable to set the showname of {}: Given showname `{}` is already in '
-                              'use in area {}.'.format(c.get_char_name(), showname, c.area.name))
+            raise ClientError('Unable to set the showname of client {}: Given showname `{}` is '
+                              'already in use in area {}.'.format(c.id, showname, c.area.name))
 
         if showname:
             s_message = 'You have set the showname of client {} to `{}`.'.format(c.id, showname)
@@ -4692,7 +4694,8 @@ def ooc_cmd_st(client, arg):
 
     pre = '{} [Staff] {}'.format(client.server.config['hostname'], client.name)
     client.server.send_all_cmd_pred('CT', pre, arg, pred=lambda c: c.is_staff())
-    logger.log_server('[{}][STAFFCHAT][{}][{}]{}.'.format(client.area.id, client.get_char_name(), client.name, arg), client)
+    logger.log_server('[{}][STAFFCHAT][{}][{}]{}.'
+                      .format(client.area.id, client.get_char_name(), client.name, arg), client)
 
 def ooc_cmd_switch(client, arg):
     """
@@ -5120,14 +5123,18 @@ def ooc_cmd_unban(client, arg):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
-    # Assumes that any error is caused by putting something other than an IPID.
-    try:
-        client.server.ban_manager.remove_ban(int(arg.strip()))
-    except Exception:
-        raise ClientError('You must specify \'IPID\'')
+    if arg.isdigit():
+        # IPID
+        idnt = int(arg.strip())
+    else:
+        # IP Address
+        idnt = arg.strip()
 
-    logger.log_server('Unbanned {}.'.format(arg), client)
-    client.send_ooc('Unbanned {}'.format(arg))
+    client.server.ban_manager.remove_ban(idnt)
+
+    client.send_ooc('Unbanned `{}`.'.format(idnt))
+    client.send_ooc_others('{} unbanned `{}`.'.format(client.name, idnt), is_officer=True)
+    logger.log_server('Unbanned {}.'.format(idnt), client)
 
 def ooc_cmd_unbanhdid(client, arg):
     """ (MOD ONLY)
@@ -5159,10 +5166,11 @@ def ooc_cmd_unbanhdid(client, arg):
             found_banned = True
 
     if not found_banned:
-        raise ClientError('Player was not banned.')
+        raise ClientError('User is already not banned.')
 
-    logger.log_server('Unbanned {}.'.format(arg), client)
-    client.send_ooc('Unbanned {}.'.format(arg))
+    client.send_ooc('Unbanned HDID `{}`.'.format(arg))
+    client.send_ooc_others('{} unbanned HDID `{}`.'.format(client.name, arg), is_officer=True)
+    logger.log_server('HDID-unbanned {}.'.format(arg), client)
 
 def ooc_cmd_unblockdj(client, arg):
     """ (CM AND MOD ONLY)
@@ -5201,7 +5209,7 @@ def ooc_cmd_undisemconsonant(client, arg):
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
     the given client.
     Requires /disemconsonant to undo.
-    Returns an error if the given identifier does not correspond to a user.
+    Returns an error f the given identifier does not correspond to a user.
 
     SYNTAX
     /undisemconsonant <client_id>
@@ -6032,7 +6040,7 @@ def ooc_cmd_narrate(client, arg):
     Constants.assert_command(client, arg, is_staff=True)
 
     for c in client.area.clients:
-        c.send_ic(msg=arg, as_narration=True)
+        c.send_ic(msg=arg)
 
 def ooc_cmd_exec(client, arg):
     """

@@ -49,7 +49,7 @@ class BanManager:
                 ipaddress.ip_address(ip)
                 ip = self.server.get_ipid(ip)
         except ValueError:
-            raise ServerError('Argument must be an IP address or 10-digit number.')
+            raise ServerError('Argument must be an IP address or IPID.')
         if ip not in self.bans:
             self.bans.append(ip)
         else:
@@ -64,11 +64,11 @@ class BanManager:
                 ipaddress.ip_address(ip)
                 ip = self.server.get_ipid(ip)
         except ValueError:
-            raise ServerError('Argument must be an IP address or 10-digit number.')
+            raise ServerError('Argument must be an IP address or IPID.')
         if ip in self.bans:
             self.bans.remove(ip)
         else:
-            raise ServerError('This IPID is not banned.')
+            raise ServerError('User is already not banned.')
         self.write_banlist()
 
     def is_banned(self, ipid):

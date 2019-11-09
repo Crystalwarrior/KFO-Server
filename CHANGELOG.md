@@ -220,7 +220,7 @@
 
 ## TsuserverDR 4.2 (The 2nd Anniversary Update)
 
-### 190831 (4.2)
+### 191031 (4.2)
 * Added zones. Zones are groups of areas such that any privileged server notifications that come from a player action within the zone will be sent only to "watchers", who are people who watch the zone. They come with the following commands:
  - /zone
  - /zone_add
@@ -270,6 +270,14 @@
 * Fixed GMs receiving IPID information through /multiclients
 * Explicitly allowed Python 3.8 support for server owners
 
-### 190831b (4.2.0-post1)
+### 191031b (4.2.0-post1)
 * Fixed uncaught ValueError if server files do not contain a valid README.md when attempting to generate help text for commands
 * Fixed zones being able to obtain duplicate zone ID values
+
+### 191109a (4.2.0-post2)
+* Fixed /multiclients not considering same HDID users as multiclients
+* Fixed /unban considering the unbanning of an already unbanned person as an invalid IPID
+* Reorganized /ban and /unban text to include backticks surrounding argument
+* Made /unban notify all other mods and CMs in the server whenever executed
+* Fixed /narrate crashing on use
+* Fixed changelog listing incorrect dates for 4.2.0 releases

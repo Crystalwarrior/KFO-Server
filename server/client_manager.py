@@ -628,7 +628,8 @@ class ClientManager:
                 # user will be listed. Useful for /multiclients.
                 if c.char_id is not None:
                     cond = (c == self or self.is_staff() or c.is_visible or (mods and c.is_mod))
-                    multiclient_cond = (not (only_my_multiclients and c.ipid != self.ipid))
+                    multiclient_cond = (not only_my_multiclients or
+                                        (c.ipid == self.ipid or c.hdid == self.hdid))
 
                     if cond and multiclient_cond:
                         sorted_clients.append(c)
