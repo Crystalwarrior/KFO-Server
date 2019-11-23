@@ -24,6 +24,16 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
+        # Zone does not exist
+        # This was a bug as late as 4.2.0-post2 (it raised an uncaught KeyError)
+        self.c1.ooc('/zone_watch zoneThatDoesNotExist')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('`{}` is not a valid zone ID.'.format('zoneThatDoesNotExist'), over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
     def test_02_newwatcher(self):
         """
         Situation: C1 creates a zone from areas 4 through 6. C2 decides to watch it.

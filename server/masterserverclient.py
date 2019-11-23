@@ -89,3 +89,12 @@ class MasterServerClient:
             await self.writer.drain()
         except ConnectionResetError:
             return
+
+    async def shutdown(self):
+        """
+        Explicitly shut down the connection to the master server if one is active.
+        """
+
+        if self.writer:
+            self.writer.close()
+            await self.writer.wait_closed()

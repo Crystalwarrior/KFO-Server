@@ -396,6 +396,16 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c5.assert_ooc('You must be authorized to use a zone name with this command.',
                            over=True)
 
+        # Zone that does not exist
+        # This was a bug as late as 4.2.0-post2 (it raised an uncaught KeyError)
+        self.c1.ooc('/zone_delete zoneThatDoesNotExist')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('`zoneThatDoesNotExist` is not a valid zone ID.', over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
     def test_02_deletezone(self):
         """
         Situation: C1 creates a zone, and then deletes it.
@@ -495,7 +505,7 @@ class TestZoneBasic_03_Delete(_TestZone):
         Situation: C3 creates a zone z0, C4 creates a zone z1. C1 deletes z0. C3 attempts to create
         a new zone again. This zone should have ID z0, despite there being another zone z1, because
         z0 is the earliest available ID.
-        This was a bug in the release version of 4.2.0 (in fact, it crashed!)
+        This was a bug in the release version of 4.2.0 (it raised an uncaught AssertionError)
         """
 
         self.c3.ooc('/zone 0, 5')
@@ -525,4 +535,26 @@ class TestZoneBasic_03_Delete(_TestZone):
                            .format('z0', 0, 5), over=True)
         self.c4.assert_ooc('(X) {} has created zone `{}` containing areas {} through {} ({}).'
                            .format(self.c3_dname, 'z0', 0, 5, self.c3.area.id), over=True)
+        self.c5.assert_no_packets()
+
+    def test_08_attemptdeleteinvalidzone(self):
+        """
+        Situation: C1 deletes zone z0. They then attempt to delete zone z0 again. This fails.
+        This was a bug as late as 4.2.0-post2 (it raised an uncaught KeyError)
+        """
+
+        self.c1.ooc('/zone_delete {}'.format('z0'))
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('You have deleted zone `{}`.'.format('z0'), over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_ooc('(X) {} has deleted your zone.'.format(self.c1.name), over=True)
+        self.c4.assert_ooc('(X) {} has deleted zone `{}`.'.format(self.c1.name, 'z0'), over=True)
+        self.c5.assert_no_packets()
+
+        self.c1.ooc('/zone_delete {}'.format('z0'))
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('`{}` is not a valid zone ID.'.format('z0'), over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
         self.c5.assert_no_packets()

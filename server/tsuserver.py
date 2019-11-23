@@ -20,6 +20,7 @@ import asyncio
 import importlib
 import json
 import random
+import ssl
 import sys
 import traceback
 import urllib.request
@@ -44,8 +45,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 0
-        self.segment_version = 'post2'
-        self.internal_version = '191109a'
+        self.segment_version = 'post3'
+        self.internal_version = '191122a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -130,7 +131,7 @@ class TsuserverDR:
         if self.config['local']:
             host_ip = '127.0.0.1'
         else:
-            host_ip = urllib.request.urlopen('https://api.ipify.org').read().decode('utf8')
+            host_ip = urllib.request.urlopen('https://api.ipify.org', context=ssl.SSLContext()).read().decode('utf8')
 
         logger.log_pdebug('Server should be now accessible from {}:{}:{}'
                           .format(host_ip, self.config['port'], server_name))
@@ -186,6 +187,7 @@ class TsuserverDR:
         if self.masterserver_connection:
             self.masterserver_connection.cancel()
             self.loop.run_until_complete(self.tasker.await_cancellation(self.masterserver_connection))
+            self.loop.run_until_complete(self.tasker.await_cancellation(self.ms_client.shutdown()))
 
         # Cancel pending client tasks and cleanly remove them from the areas
         players = self.get_player_count()

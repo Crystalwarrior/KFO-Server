@@ -5784,7 +5784,10 @@ def ooc_cmd_zone_delete(client, arg):
                                                 'this command.')
 
     if arg:
-        target_zone = client.server.zone_manager.get_zone(arg)
+        try:
+            target_zone = client.server.zone_manager.get_zone(arg)
+        except KeyError:
+            raise ZoneError('`{}` is not a valid zone ID.'.format(arg))
     else:
         if not client.zone_watched:
             raise ZoneError('You are not watching a zone.')
@@ -5985,7 +5988,11 @@ def ooc_cmd_zone_watch(client, arg):
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
-    target_zone = client.server.zone_manager.get_zone(arg)
+    try:
+        target_zone = client.server.zone_manager.get_zone(arg)
+    except KeyError:
+        raise ZoneError('`{}` is not a valid zone ID.'.format(arg))
+
     try:
         target_zone.add_watcher(client)
     except ZoneError.WatcherConflictError:

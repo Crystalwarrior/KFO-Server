@@ -77,34 +77,38 @@ def log_error(msg, server, errortype='P'):
     error_handler.setFormatter(logging.Formatter('[%(asctime)s UTC]%(message)s'))
     error_log.addHandler(error_handler)
 
-    # Add list of clients to error log
-    try:
-        msg += '\n\n\n= Client dump ='
-        msg += '\n*Number of clients: {}'.format(len(server.client_manager.clients))
-        msg += '\n*Current clients'
-        clients = sorted(server.client_manager.clients, key=lambda c: c.id)
-        for c in clients:
-            msg += '\n\n{}'.format(c.get_info(as_mod=True))
-    except Exception:
-        etype, evalue, etraceback = sys.exc_info()
-        msg += '\nError generating client dump'
-        msg += '\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
+    if server:
+        # Add list of clients to error log
+        try:
+            msg += '\n\n\n= Client dump. ='
+            msg += '\n*Number of clients: {}'.format(len(server.client_manager.clients))
+            msg += '\n*Current clients'
+            clients = sorted(server.client_manager.clients, key=lambda c: c.id)
+            for c in clients:
+                msg += '\n\n{}'.format(c.get_info(as_mod=True))
+        except Exception:
+            etype, evalue, etraceback = sys.exc_info()
+            msg += '\nError generating client dump.'
+            msg += '\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
 
-    # Add list of areas to error log
-    try:
-        msg += '\n\n\n= Area dump ='
-        msg += '\n*Current area list: {}'.format(server.area_list)
-        msg += '\n*Old area list: {}'.format(server.old_area_list)
-        msg += '\n*Current areas:'
+        # Add list of areas to error log
+        try:
+            msg += '\n\n\n= Area dump ='
+            msg += '\n*Current area list: {}'.format(server.area_list)
+            msg += '\n*Old area list: {}'.format(server.old_area_list)
+            msg += '\n*Current areas:'
 
-        for area in server.area_manager.areas:
-            msg += '\n**{}'.format(area)
-            for c in area.clients:
-                msg += '\n***{}'.format(c)
-    except Exception:
-        etype, evalue, etraceback = sys.exc_info()
-        msg += '\nError generating area dump'
-        msg += '\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
+            for area in server.area_manager.areas:
+                msg += '\n**{}'.format(area)
+                for c in area.clients:
+                    msg += '\n***{}'.format(c)
+        except Exception:
+            etype, evalue, etraceback = sys.exc_info()
+            msg += '\nError generating area dump.'
+            msg += '\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
+    else:
+        # Case server was not initialized properly, so areas and clients are not set
+        msg += '\nServer was not initialized, so client and area dumps could not be generated.'
 
     # Write and log
     error_log.error(msg)

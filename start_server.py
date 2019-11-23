@@ -38,9 +38,9 @@ def main():
         info = 'TSUSERVERDR HAS ENCOUNTERED A PYTHON ERROR.'
         info += "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
         server.logger.log_print(info)
-        if my_server: # If the server at the very least could initialize correctly...
-            server.logger.log_error(info, server=my_server, errortype='P')
+        server.logger.log_error(info, server=my_server, errortype='P')
         server.logger.log_print('Server is shutting down.')
+        input("Press Enter to continue... ")
 
 if __name__ == '__main__':
     main()
