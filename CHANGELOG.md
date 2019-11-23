@@ -281,3 +281,10 @@
 * Made /unban notify all other mods and CMs in the server whenever executed
 * Fixed /narrate crashing on use
 * Fixed changelog listing incorrect dates for 4.2.0 releases
+
+### 191122a (4.2.0-post3)
+* Fixed /zone_watch and /zone_delete raising an uncaught KeyError if an invalid zone name was passed as an argument
+* Fixed rare issue with new AWS instances raising a certificate error when pinging api.ipify.org on server boot-up
+* Made unrecoverable server errors expect an operator Enter input on console before finishing the program so that they can see the error message if they launched the server by double-clicking `start_server.py`
+* Made error log files be created if the server crashes on bootup, which would normally happen if some files are missing or have some parsing errors.
+* Fixed master server connection not being closed automatically on server shutdown, which displayed ignored exception messages if running Python 3.8

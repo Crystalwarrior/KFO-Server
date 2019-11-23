@@ -48,6 +48,8 @@ class TestGlobal_01_ToggleGlobal(_TestOOC):
         """
 
         self.c0.ooc('/toggleglobal')
+        self.c0.assert_ooc('This command is deprecated and pending removal. Please use '
+                           '/toggle_global next time.')
         self.c0.assert_ooc('You will no longer receive global messages.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
@@ -58,6 +60,8 @@ class TestGlobal_01_ToggleGlobal(_TestOOC):
         self.assertFalse(self.c3.muted_global)
 
         self.c0.ooc('/toggleglobal')
+        self.c0.assert_ooc('This command is deprecated and pending removal. Please use '
+                           '/toggle_global next time.')
         self.c0.assert_ooc('You will now receive global messages.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
