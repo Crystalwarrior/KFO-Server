@@ -28,7 +28,7 @@ from server.exceptions import ZoneError
 
 class ZoneManager:
     """
-    Create a new manager for the zones in a server.
+    A mutable data type for a manager for the zones in a server.
     Contains the Zone object definition, as well as the server's zone list.
     """
 
@@ -512,12 +512,12 @@ class ZoneManager:
         Returns
         -------
         str
-            ID for the new zone
+            ID for the new zone.
 
         Raises
         ------
         ValueError:
-            If there are no available names for the zone (server reached self._zone_limit zones)
+            If there are no available names for the zone (server reached self._zone_limit zones).
         """
 
         for zone_number in range(self._zone_limit):

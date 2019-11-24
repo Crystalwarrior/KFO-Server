@@ -16,6 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import datetime
 import logging
 import sys
 import time
@@ -42,7 +43,9 @@ def setup_logger(debug):
     server_log = logging.getLogger('server')
     server_log.setLevel(logging.INFO)
 
-    server_handler = logging.FileHandler('logs/server.log', encoding='utf-8')
+    current_month = "{:02d}".format(datetime.date.today().month)
+    logfile_name = 'logs/server-{}-{}.log'.format(datetime.date.today().year, current_month)
+    server_handler = logging.FileHandler(logfile_name, encoding='utf-8')
     server_handler.setLevel(logging.INFO)
     server_handler.setFormatter(srv_formatter)
     server_log.addHandler(server_handler)

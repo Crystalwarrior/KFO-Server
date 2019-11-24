@@ -40,6 +40,7 @@ def main():
         server.logger.log_print(info)
         server.logger.log_error(info, server=my_server, errortype='P')
         server.logger.log_print('Server is shutting down.')
+        server.logger.log_server('Server is shutting down due to an unhandled exception.')
         input("Press Enter to continue... ")
 
 if __name__ == '__main__':

@@ -288,3 +288,20 @@
 * Made unrecoverable server errors expect an operator Enter input on console before finishing the program so that they can see the error message if they launched the server by double-clicking `start_server.py`
 * Made error log files be created if the server crashes on bootup, which would normally happen if some files are missing or have some parsing errors.
 * Fixed master server connection not being closed automatically on server shutdown, which displayed ignored exception messages if running Python 3.8
+
+## (4.2.1)
+* Added deprecation warnings to the following commands
+ - **allow_iniswap**: Same as /can_iniswap.
+ - **delete_areareachlock**: Same as /passage_clear.
+ - **mutepm**: Same as /toggle_pm.
+ - **restore_areareachlock**: Same as /passage_restore.
+ - **showname_list**: Same as /showname_areas.
+ - **toggleglobal**: Same as /toggle_global.
+ - **toggle_areareachlock**: Same as /can_passagelock.
+ - **toggle_rollp**: Same as /can_rollp.
+ - **toggle_rpgetarea**: Same as /can_rpgetarea.
+ - **toggle_rpgetareas**: Same as /can_rpgetareas.
+* Added logging messages to the server logs when the server starts up, shuts down, or it crashes and the server can manage to save the log.
+* Server logs files are now separated by month. Logging information will go to the file associated with the month and year the server was launched on (so if in one session the server was launched December 2019 and was shut down January 2020, all logs for that session would go in `logs/server-2019-12.log`). 
+ - `logs/server.log` will now go unused, but you may keep it for your archives.
+ 

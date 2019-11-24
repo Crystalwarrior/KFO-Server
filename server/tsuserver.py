@@ -45,8 +45,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 1
-        self.segment_version = 'a1'
-        self.internal_version = '191122a'
+        self.segment_version = 'a2'
+        self.internal_version = '191122b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -108,6 +108,7 @@ class TsuserverDR:
         logger.log_print('Server configurations loaded successfully!')
 
     def start(self):
+        a
         try:
             self.loop = asyncio.get_event_loop()
         except RuntimeError:
@@ -126,7 +127,7 @@ class TsuserverDR:
         ao_server_crt = self.loop.create_server(lambda: self.protocol(self), bound_ip, self.config['port'])
         ao_server = self.loop.run_until_complete(ao_server_crt)
 
-        logger.log_pdebug('Server started successfully!')
+        logger.log_pserver('Server started successfully!')
 
         if self.config['local']:
             host_ip = '127.0.0.1'
@@ -169,7 +170,7 @@ class TsuserverDR:
         ao_server.close()
         self.loop.run_until_complete(ao_server.wait_closed())
         self.loop.close()
-        logger.log_print('Server has successfully shut down.')
+        logger.log_pserver('Server has successfully shut down.')
 
     def shutdown(self):
         # Cleanup operations

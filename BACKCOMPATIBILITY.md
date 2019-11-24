@@ -8,7 +8,7 @@ TsuserverDR follows a variation of semantic revisioning, where for a public vers
 * May be introduced if Y increases, only if previously announced in a minor release. These are major releases.
 * Are definitely introduced if X increases. These are primary releases.
 
-For tests, backwards-incompatible changes to existing test files may be introduced at any time to comply with whatever patches are being made or new features are being introduced. Such notices will not be included in this document.
+For tests, backwards-incompatible changes to existing test files may be introduced at any time to comply with whatever patches are being made or new features are being introduced. Modifications to test files will not be included in this document.
 
 For development versions, marked with `-a`, `-b` and `-RC`, backwards-incompatible will be rapidly introduced and not typically announced. Such notices will not be included in this document. Server operators should avoid using development versions in their server unless they know what they are doing. 
 
@@ -24,3 +24,4 @@ For development versions, marked with `-a`, `-b` and `-RC`, backwards-incompatib
 - **toggle_rollp**: Same as /can_rollp.
 - **toggle_rpgetarea**: Same as /can_rpgetarea.
 - **toggle_rpgetareas**: Same as /can_rpgetareas.
+* [O] `logs/server.log` will now go unused as server logging information will be split into monthly files in the format `logs/server-[YEAR]-[MONTH].log`
