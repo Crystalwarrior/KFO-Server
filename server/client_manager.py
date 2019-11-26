@@ -92,6 +92,8 @@ class ClientManager:
             self.send_deaf_space = False
             self.dicelog = list()
             self._zone_watched = None
+            self.files = None
+
             #music flood-guard stuff
             self.mus_counter = 0
             self.mute_time = 0

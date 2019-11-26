@@ -6049,6 +6049,74 @@ def ooc_cmd_narrate(client, arg):
     for c in client.area.clients:
         c.send_ic(msg=arg)
 
+def ooc_cmd_files(client, arg):
+    """
+    Obtains the download link of a player by client ID (number in brackets).
+    If given no identifier, it will return your download link.
+    A warning is also given in either case reminding the user to be careful of clicking external
+    links, as the server provides no guarantee on the safety of the link.
+    Returns an error if the given identifier does not correspond to a user or if the target has not
+    set a download link for their files.
+
+    SYNTAX
+    /files
+    /files <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    Assuming client 1 on character Phantom_HD and iniswapped to Spam_HD has set their files'
+    download link to https://example.com
+    /files 1           :: May return something like this:
+        $HOST: Files set by client 1 for Spam_HD: https://example.com
+        $HOST: Links are spoopy. Exercise caution when opening external links.
+    """
+
+    if arg:
+       target = Constants.parse_id(client, arg)
+       if target.files:
+           client.send_ooc('Files set by client {} for `{}`: `{}`.'
+                           .format(target.id, target.files[0], target.files[1]))
+           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
+       else:
+           raise ClientError('Client {} has not provided a download link for their files.'
+                             .format(target.id))
+    else:
+       if client.files:
+           client.send_ooc('Files set by yourself for `{}`: `{}`.'
+                           .format(client.files[0], client.files[1]))
+           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
+       else:
+           raise ClientError('You have not provided a download link for your files.'
+                             .format(client.id))
+
+def ooc_cmd_files_set(client, arg):
+    """
+    Sets the download link to the character the player is using (or has iniswapped to if available)
+    as the  given argument; otherwise, clears it.
+
+    SYNTAX
+    /files_set
+    /files_set <url>
+
+    PARAMETERS
+    <url>: URL to the download link of the characther the player is using.
+
+    EXAMPLES
+    If client 1 is on character Phantom_HD and iniswapped to Spam_HD
+    /files_set https://example.com  :: Sets the download link to Spam_HD to https://example.com
+    """
+
+    if arg:
+        client.files = [client.char_folder, arg]
+        client.send_ooc('You have set the download link to the files of `{}` to `{}`.'
+                        .format(client.char_folder, arg))
+    else:
+        client.send_ooc('You have removed the download link to the files of `{}`.'
+                        .format(client.files[0], arg))
+        client.files = None
+
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
