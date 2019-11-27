@@ -21,8 +21,13 @@ import re
 import time
 import warnings
 
-from enum import Enum
+from enum import Enum, auto
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
+
+class ArgType(Enum):
+    STR = 1
+    STR_OR_EMPTY = 2
+    INT = 3
 
 class TargetType(Enum):
     #possible keys: ip, OOC, id, cname, ipid, hdid
@@ -55,6 +60,26 @@ class Effects(Enum):
     @property
     def async_name(self):
         return 'as_effect_{}'.format(self.name.lower())
+
+class Clients():
+    class ClientDRO(Enum):
+        MS_INBOUND = [
+                ('msg_type', ArgType.STR), #0
+                ('pre', ArgType.STR_OR_EMPTY), #1
+                ('folder', ArgType.STR), #2
+                ('anim', ArgType.STR), #3
+                ('text', ArgType.STR), #4
+                ('pos', ArgType.STR), #5
+                ('sfx', ArgType.STR), #6
+                ('anim_type', ArgType.INT), #7
+                ('cid', ArgType.INT), #8
+                ('sfx_delay', ArgType.INT), #9
+                ('button', ArgType.INT), #10
+                ('evidence', ArgType.INT), #11
+                ('flip', ArgType.INT), #12
+                ('ding', ArgType.INT), #13
+                ('color', ArgType.INT), #14
+                ]
 
 class Constants():
     @staticmethod

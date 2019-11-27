@@ -23,7 +23,7 @@ from server import client_changearea
 from server import fantacrypt
 from server import logger
 from server.exceptions import ClientError, PartyError
-from server.constants import TargetType, Constants
+from server.constants import TargetType, Constants, Clients
 
 class ClientManager:
     class Client:
@@ -34,6 +34,7 @@ class ClientManager:
             self.can_join = 0 # Needs to be 2 to actually connect
             self.can_askchaa = True # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined') # AO version used, established through ID pack
+            self.packet_handler = Clients.ClientDRO
 
             self.hdid = ''
             self.ipid = ipid

@@ -106,6 +106,10 @@ Additional notes are listed at the end of the command list.
     - Displays the invite link of the server's Discord server.
 * **doc** "url" 
     - Gives the doc url if blank, updates the doc url otherwise.
+* **files** "ID"
+    - Gives a download link set by the target that links to their files, or gives your own download link if not given an argument.
+* **files_set** "url"
+    - Sets a download link for the user's files, or clears it if not given an argument.
 * **g** "message" 
     - Sends a serverwide message.
 * **getarea** 
