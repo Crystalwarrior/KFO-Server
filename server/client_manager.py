@@ -96,6 +96,13 @@ class ClientManager:
             self._zone_watched = None
             self.files = None
 
+            # Pairing stuff
+            self.charid_pair = -1
+            self.offset_pair = 0
+            self.last_sprite = ''
+            self.flip = 0
+            self.claimed_folder = ''
+
             #music flood-guard stuff
             self.mus_counter = 0
             self.mute_time = 0
@@ -105,6 +112,7 @@ class ClientManager:
             self.mus_change_time = [x * self.mflood_interval for x in range(self.mflood_times)]
 
         def send_raw_message(self, msg):
+            print(self, msg)
             self.transport.write(msg.encode('utf-8'))
 
         def send_command(self, command, *args):
@@ -183,12 +191,13 @@ class ClientManager:
             #  If ic_params is not None, then the sent IC message will use the parameters given in
             #  ic_params, and use the properties of sender to replace the parameters if needed.
 
+            pargs = {x: y for (x, y) in self.packet_handler.MS_OUTBOUND.value}
             if params is None:
-                pargs = {x: y for (x, y) in self.packet_handler.MS_OUTBOUND.value}
                 pargs['msg'] = msg
                 pargs['ding'] = ding
             else:
-                pargs = params.copy()
+                for key in params:
+                    pargs[key] = params[key]
                 if msg is not None:
                     pargs['msg'] = msg
 

@@ -304,4 +304,4 @@
 * Added logging messages to the server logs when the server starts up, shuts down, or it crashes and the server can manage to save the log.
 * Server logs files are now separated by month. Logging information will go to the file associated with the month and year the server was launched on (so if in one session the server was launched December 2019 and was shut down January 2020, all logs for that session would go in `logs/server-2019-12.log`). 
  - `logs/server.log` will now go unused, but you may keep it for your archives.
- 
+* Improved cross-compatibility between multiple AO-like clients. For client-exclusive features, a best-effort-like approach will be taken to adapt to clients that do not have said features. 

@@ -23,7 +23,7 @@ from time import localtime, strftime
 from enum import Enum
 
 from server import logger
-from server.constants import ArgType, Constants
+from server.constants import ArgType, Clients, Constants
 from server.exceptions import AreaError, ClientError, ServerError, PartyError, TsuserverException
 from server.fantacrypt import fanta_decrypt
 from server.evidence import EvidenceList
@@ -226,7 +226,14 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.is_ao2 = True
         self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping', 'fastloading',
-                                 'noencryption', 'deskmod', 'evidence')
+                                 'noencryption', 'deskmod', 'evidence', 'cccc_ic_support')
+
+        if release == 2 and major >= 6: # AO 2.6
+            self.client.packet_handler = Clients.ClientAO2d6
+        else:
+            # Not really needed, added here for the sake of completeness
+            # As this is the default packet_handler
+            self.client.packet_handler = Clients.ClientDRO
 
     def net_cmd_ch(self, _):
         """ Periodically checks the connection.
@@ -470,6 +477,48 @@ class AOProtocol(asyncio.Protocol):
         pargs['msg'] = msg
         pargs['evidence'] = self.client.evi_list[pargs['evidence']]
         pargs['showname'] = '' # Dummy value, actual showname is computed later
+
+        # Compute pairs
+        # Based on tsuserver3.3 code
+        # Only do this if character is paired, which would only happen for AO 2.6 clients
+
+        self.client.charid_pair = pargs['charid_pair'] if 'charid_pair' in pargs else -1
+        self.client.offset_pair = pargs['offset_pair'] if 'offset_pair' in pargs else 0
+        self.client.flip = pargs['flip']
+        self.client.claimed_folder = pargs['folder']
+        if pargs['anim_type'] not in (5, 6):
+            self.client.last_sprite = pargs['anim']
+
+        pargs['other_offset'] = 0
+        pargs['other_emote'] = 0
+        pargs['other_flip'] = 0
+        pargs['other_folder'] = ''
+        if 'charid_pair' not in pargs or pargs['charid_pair'] < -1:
+            pargs['charid_pair'] = -1
+
+        if pargs['charid_pair'] > -1:
+            for target in self.client.area.clients:
+                #breakpoint()
+                if target == self.client:
+                    continue
+                # Check pair has accepted pair
+                if target.char_id != self.client.charid_pair:
+                    continue
+                if target.charid_pair != self.client.char_id:
+                    continue
+                # Check pair is in same position
+                if target.pos != self.client.pos:
+                    continue
+
+                pargs['other_offset'] = target.offset_pair
+                pargs['other_emote'] = target.last_sprite
+                pargs['other_flip'] = target.flip
+                pargs['other_folder'] = target.claimed_folder
+                break
+            else:
+                # There are no clients who want to pair with this client
+                pargs['charid_pair'] = -1
+
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
             for c in target_area.clients:
