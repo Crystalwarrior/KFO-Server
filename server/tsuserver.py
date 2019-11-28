@@ -45,8 +45,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 1
-        self.segment_version = 'a4'
-        self.internal_version = '191126a'
+        self.segment_version = 'a5'
+        self.internal_version = '191127a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -654,5 +654,5 @@ class TsuserverDR:
     def task_deprecation_warning(self):
         message = ('Code is using old task syntax (assuming it is a server property/method). '
                    'Please change it (or ask your server developer) so that it uses '
-                   'server.tasker instead.')
+                   'server.tasker instead (pending removal in 4.2).')
         warnings.warn(message, category=UserWarning, stacklevel=3)

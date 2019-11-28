@@ -81,6 +81,25 @@ class Clients():
                 ('color', ArgType.INT), #14
                 ]
 
+        MS_OUTBOUND = [
+                ('msg_type', 0), #0
+                ('pre', '-'), #1
+                ('folder', '<NOCHAR>'), #2
+                ('anim', '../../misc/blank'), #3
+                ('msg', ''), #4
+                ('pos', 'jud'), #5
+                ('sfx', 0), #6
+                ('anim_type', 0), #7
+                ('cid', 0), #8
+                ('sfx_delay', 0), #9
+                ('button', 0), #10
+                ('evidence', 0), #11
+                ('flip', 0), #12
+                ('ding', -1), #13
+                ('color', 0), #14
+                ('showname', ' '), #15
+                ]
+
 class Constants():
     @staticmethod
     def fopen(file, *args, **kwargs):

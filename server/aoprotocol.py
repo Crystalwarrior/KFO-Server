@@ -467,26 +467,13 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_ooc('Sent global IC message "{}" to area {}.'
                                      .format(msg, start_area.name))
 
+        pargs['msg'] = msg
+        pargs['evidence'] = self.client.evi_list[pargs['evidence']]
+        pargs['showname'] = '' # Dummy value, actual showname is computed later
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
             for c in target_area.clients:
-                ic_params = [pargs['msg_type'],
-                             pargs['pre'],
-                             pargs['folder'],
-                             pargs['anim'],
-                             msg,
-                             pargs['pos'],
-                             pargs['sfx'],
-                             pargs['anim_type'],
-                             pargs['cid'],
-                             pargs['sfx_delay'],
-                             pargs['button'],
-                             self.client.evi_list[pargs['evidence']],
-                             pargs['flip'],
-                             pargs['ding'],
-                             pargs['color'],
-                             '']
-                c.send_ic(ic_params=ic_params, sender=self.client, gag_replaced=gag_replaced)
+                c.send_ic(params=pargs, sender=self.client, gag_replaced=gag_replaced)
 
             target_area.set_next_msg_delay(len(msg))
 
