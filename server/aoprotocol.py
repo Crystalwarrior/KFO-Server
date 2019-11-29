@@ -485,7 +485,8 @@ class AOProtocol(asyncio.Protocol):
         self.client.charid_pair = pargs['charid_pair'] if 'charid_pair' in pargs else -1
         self.client.offset_pair = pargs['offset_pair'] if 'offset_pair' in pargs else 0
         self.client.flip = pargs['flip']
-        self.client.claimed_folder = pargs['folder']
+        self.client.char_folder = pargs['folder']
+
         if pargs['anim_type'] not in (5, 6):
             self.client.last_sprite = pargs['anim']
 
@@ -498,7 +499,6 @@ class AOProtocol(asyncio.Protocol):
 
         if pargs['charid_pair'] > -1:
             for target in self.client.area.clients:
-                #breakpoint()
                 if target == self.client:
                     continue
                 # Check pair has accepted pair
@@ -513,7 +513,7 @@ class AOProtocol(asyncio.Protocol):
                 pargs['other_offset'] = target.offset_pair
                 pargs['other_emote'] = target.last_sprite
                 pargs['other_flip'] = target.flip
-                pargs['other_folder'] = target.claimed_folder
+                pargs['other_folder'] = target.char_folder
                 break
             else:
                 # There are no clients who want to pair with this client
@@ -551,7 +551,6 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.last_ic_message = msg
         self.client.last_active = Constants.get_time()
-        self.client.char_folder = pargs['folder']
 
     def net_cmd_ct(self, args):
         """ OOC Message

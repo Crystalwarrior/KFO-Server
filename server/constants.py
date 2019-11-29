@@ -97,7 +97,7 @@ class Clients():
                 ('flip', 0), #12
                 ('ding', -1), #13
                 ('color', 0), #14
-                ('showname', ''), #15
+                ('showname', ' '), #15
                 ]
 
     class ClientAO2d6(Enum):
@@ -139,7 +139,7 @@ class Clients():
                 ('flip', 0), #12
                 ('ding', -1), #13
                 ('color', 0), #14
-                ('showname', ''), #15
+                ('showname', ' '), #15
                 ('charid_pair', -1), #16
                 ('other_folder', ''), #17
                 ('other_emote', ''), #18

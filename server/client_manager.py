@@ -112,7 +112,6 @@ class ClientManager:
             self.mus_change_time = [x * self.mflood_interval for x in range(self.mflood_times)]
 
         def send_raw_message(self, msg):
-            print(self, msg)
             self.transport.write(msg.encode('utf-8'))
 
         def send_command(self, command, *args):
@@ -207,6 +206,10 @@ class ClientManager:
             if not cond(self):
                 return
 
+            def pop_if_there(dictionary, argument):
+                if argument in dictionary:
+                    dictionary.pop(argument)
+
             # Change the message to account for receiver's properties
             if not bypass_replace:
                 # Change "character" parts of IC port
@@ -225,6 +228,32 @@ class ClientManager:
                     # Otherwise, send blank
                     else:
                         pargs['anim'] = '../../misc/blank'
+
+                    # Regardless of anything, pairing is visually canceled while in first person
+                    # so set them to default values
+
+
+                    pop_if_there(pargs, 'other_offset')
+                    pop_if_there(pargs, 'other_emote')
+                    pop_if_there(pargs, 'other_flip')
+                    pop_if_there(pargs, 'other_folder')
+                    pop_if_there(pargs, 'offset_pair')
+                    pop_if_there(pargs, 'charid_pair')
+                    # Note this does not affect the client object internal values, it just
+                    # simulates the client is not part of their pair if they are in first person
+                    # mode.
+                elif sender != self and self.first_person:
+                    # Address the situation where this client is in first person mode, paired with
+                    # someone else, and that someone else speaks in IC. This will 'visually' cancel
+                    # pairing for this client, but not remove it completely. It is just so that
+                    # the client's own sprites appear.
+                    if pargs.get('charid_pair', -1) == self.char_id:
+                        pop_if_there(pargs, 'other_offset')
+                        pop_if_there(pargs, 'other_emote')
+                        pop_if_there(pargs, 'other_flip')
+                        pop_if_there(pargs, 'other_folder')
+                        pop_if_there(pargs, 'offset_pair')
+                        pop_if_there(pargs, 'charid_pair')
 
                 # Change "message" parts of IC port
                 allowed_starters = ('(', '*', '[')
@@ -248,7 +277,15 @@ class ClientManager:
             if sender != self:
                 self.last_ic_notme = self.area.id, pargs
 
-            to_send = [pargs[x[0]] for x in self.packet_handler.MS_OUTBOUND.value]
+            # This step also takes care of filtering out the packet arguments that the client
+            # cannot parse, and also make sure they are in the correct oder.
+            to_send = list()
+            for x in self.packet_handler.MS_OUTBOUND.value:
+                try:
+                    to_send.append(pargs[x[0]])
+                except KeyError: # Case the key was popped (e.g. in pair code), use defaults then
+                    to_send.append(x[1])
+
             self.send_command('MS', *to_send)
 
         def send_ic_others(self, ic_params=None, params=None, sender=None, bypass_replace=False,
