@@ -389,18 +389,34 @@ class ClientManager:
             reachable areas+music. Useful when moving areas/logging in or out.
             """
 
+            # Check if a new music file has been chosen, and if so, parse it and set it as the
+            # client's own music list.
             if new_music_file:
-                new_music_list = self.server.load_music(music_list_file=new_music_file,
+                raw_music_list = self.server.load_music(music_list_file=new_music_file,
                                                         server_music_list=False)
-                self.music_list = new_music_list
-                self.server.build_music_list_ao2(from_area=self.area, c=self,
-                                                 music_list=new_music_list)
+                self.music_list = raw_music_list
             else:
-                self.server.build_music_list_ao2(from_area=self.area, c=self)
-            # KEEP THE ASTERISK, unless you want a very weird single area comprised
-            # of all areas back to back forming a black hole area of doom and despair
-            # that crashes all clients that dare attempt join this area.
-            self.send_command('FM', *self.server.music_list_ao2)
+                raw_music_list = None
+
+            # KFO deals with music lists differently than other clients
+            # They want the area lists and music lists separate, so they will have it like that
+            if self.packet_handler != Clients.ClientKFO2d8:
+                reloaded_music_list = self.server.build_music_list_ao2(from_area=self.area, c=self,
+                                                                       music_list=raw_music_list)
+
+                # KEEP THE ASTERISK, unless you want a very weird single area comprised
+                # of all areas back to back forming a black hole area of doom and despair
+                # that crashes all clients that dare attempt join this area.
+                self.send_command('FM', *reloaded_music_list)
+            else:
+                area_list = self.server.build_music_list_ao2(from_area=self.area, c=self,
+                                                             include_areas=True,
+                                                             include_music=False)
+                self.send_command('FA', *area_list)
+                if raw_music_list:
+                    music_list = self.server.prepare_music_list(c=self,
+                                                                specific_music_list=raw_music_list)
+                    self.send_command('FM', *music_list)
 
         def check_change_area(self, area, override_passages=False, override_effects=False,
                               more_unavail_chars=None):

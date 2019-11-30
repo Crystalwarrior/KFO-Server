@@ -228,7 +228,9 @@ class AOProtocol(asyncio.Protocol):
         self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping', 'fastloading',
                                  'noencryption', 'deskmod', 'evidence', 'cccc_ic_support')
 
-        if release == 2 and major >= 6: # AO 2.6
+        if release == 2 and major >= 8: # KFO
+            self.client.packet_handler = Clients.ClientKFO2d8
+        elif release == 2 and major >= 6: # AO 2.6
             self.client.packet_handler = Clients.ClientAO2d6
         else:
             # Not really needed, added here for the sake of completeness
@@ -329,8 +331,18 @@ class AOProtocol(asyncio.Protocol):
         # Force the server to rebuild the music list, so that clients who just
         # join get the correct music list (as well as every time they request
         # an updated music list directly).
-        self.server.build_music_list_ao2()
-        self.client.send_command('SM', *self.server.music_list_ao2)
+
+        # Deal with KFO client compatibility
+#        if self.client.packet_handler == Clients.ClientKFO2d8:
+#            area_list = self.server.build_music_list_ao2(include_areas=True, include_music=False)
+#            music_list = self.server.build_music_list_ao2(include_areas=False, include_music=True)
+#            self.client.send_command('FA', *area_list)
+#            self.client.send_command('FM', *music_list)
+#        # Every other client gets the full music list
+#        else:
+        full_music_list = self.server.build_music_list_ao2(include_areas=True,
+                                                           include_music=True)
+        self.client.send_command('SM', *full_music_list)
 
     def net_cmd_rd(self, _):
         """ Asks for server metadata(charscheck, motd etc.) and a DONE#% signal(also best packet)
@@ -766,6 +778,14 @@ class AOProtocol(asyncio.Protocol):
         raise KeyError('Client using {} {} sent an unsupported RE packet.'
                        .format(self.client.version[0], self.client.version[1]))
 
+    def net_cmd_pw(self, args):
+        # Ignore packet
+        # For now, TsuserverDR will not implement a character password system
+        # However, so that it stops raising errors for clients, an empty method is implemented
+        # Well, not empty, there are these comments which makes it not empty
+        # but not code is run.
+        pass
+
     def net_cmd_opKICK(self, args):
         self.net_cmd_ct(['opkick', '/kick {}'.format(args[0])])
 
@@ -795,6 +815,7 @@ class AOProtocol(asyncio.Protocol):
         'EE': net_cmd_ee,  # edit evidence
         'ZZ': net_cmd_zz,  # call mod button
         'RE': net_cmd_re,  # ??? (Unsupported)
+        'PW': net_cmd_pw,  # character password (only on CC/KFO clients)
         'opKICK': net_cmd_opKICK,  # /kick with guard on
         'opBAN': net_cmd_opBAN,  # /ban with guard on
     }

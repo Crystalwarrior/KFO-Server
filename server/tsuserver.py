@@ -45,8 +45,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 1
-        self.segment_version = 'a7'
-        self.internal_version = '191128b'
+        self.segment_version = 'a8'
+        self.internal_version = '191130a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -88,7 +88,7 @@ class TsuserverDR:
         self.ipid_list = {}
         self.hdid_list = {}
         self.music_list = None
-        self.music_list_ao2 = None
+        self._music_list_ao2 = None # Pending deprecation in 4.3
         self.music_pages_ao1 = None
         self.backgrounds = None
         self.load_music()
@@ -460,30 +460,86 @@ class TsuserverDR:
                 index += 1
         self.music_pages_ao1 = [self.music_pages_ao1[x:x + 10] for x in range(0, len(self.music_pages_ao1), 10)]
 
-    def build_music_list_ao2(self, from_area=None, c=None, music_list=None):
-        # If not provided a specific music list to overwrite
-        if music_list is None:
-            music_list = self.music_list # Default value
-            # But just in case, check if this came as a request of a client who had a
-            # previous music list preference
-            if c and c.music_list is not None:
-                music_list = c.music_list
+    def build_music_list_ao2(self, from_area=None, c=None, music_list=None, include_areas=True,
+                             include_music=True):
+        built_music_list = list()
 
-        self.music_list_ao2 = []
-        # Determine whether to filter the music list or not
+        # add areas first, if needed
+        if include_areas:
+            built_music_list.extend(self.prepare_area_list(c=c, from_area=from_area))
+
+        # then add music, if needed
+        if include_music:
+            built_music_list.extend(self.prepare_music_list(c=c, specific_music_list=music_list))
+
+        self._music_list_ao2 = built_music_list # Backwards compatibility
+        return built_music_list
+
+    def prepare_area_list(self, c=None, from_area=None):
+        """
+        Return the area list of the server. If given c and from_area, it will send an area list
+        that matches the perspective of client `c` as if they were in area `from_area`.
+
+        Parameters
+        ----------
+        c: ClientManager.Client
+            Client whose perspective will be taken into account, by default None
+        from_area: AreaManager.Area
+            Area from which the perspective will be considered, by default None
+
+        Returns
+        -------
+        list of AreaManager.Area
+            Area list that matches intended perspective.
+        """
+
+        # Determine whether to filter the areas in the results
         need_to_check = (from_area is None or '<ALL>' in from_area.reachable_areas
                          or (c is not None and (c.is_staff() or c.is_transient)))
 
-        # add areas first
+        # Now add areas
+        prepared_area_list = list()
         for area in self.area_manager.areas:
             if need_to_check or area.name in from_area.reachable_areas:
-                self.music_list_ao2.append("{}-{}".format(area.id, area.name))
+                    prepared_area_list.append("{}-{}".format(area.id, area.name))
 
-        # then add music
-        for item in music_list:
-            self.music_list_ao2.append(item['category'])
+        return prepared_area_list
+
+    def prepare_music_list(self, c=None, specific_music_list=None):
+        """
+        If `specific_music_list` is not None, return a client-ready version of that music list.
+        Else, if `c` is a client with a custom chosen music list, return their latest music list.
+        Otherwise, return a client-ready version of the server music list.
+
+        Parameters
+        ----------
+        c: ClientManager.Client
+            Client whose current music list if it exists will be considered if `specific_music_list`
+            is None
+        specific_music_list: list of dictionaries with key sets {'category', 'songs'}
+            Music list to use if given
+
+        Returns
+        -------
+        list of str
+            Music list ready to be sent to clients
+        """
+
+        # If not provided a specific music list to overwrite
+        if specific_music_list is None:
+            specific_music_list = self.music_list # Default value
+            # But just in case, check if this came as a request of a client who had a
+            # previous music list preference
+            if c and c.music_list is not None:
+                specific_music_list = c.music_list
+
+        prepared_music_list = list()
+        for item in specific_music_list:
+            prepared_music_list.append(item['category'])
             for song in item['songs']:
-                self.music_list_ao2.append(song['name'])
+                prepared_music_list.append(song['name'])
+
+        return prepared_music_list
 
     def is_valid_char_id(self, char_id):
         return len(self.char_list) > char_id >= -1
@@ -651,8 +707,25 @@ class TsuserverDR:
         self.task_deprecation_warning()
         self.tasker.client_tasks = value
 
+    @property
+    def music_list_ao2(self):
+        self.music_list_ao2_deprecation_warning()
+        return self._music_list_ao2
+
+    @music_list_ao2.setter
+    def music_list_ao2(self, value):
+        self.music_list_ao2_deprecation_warning()
+        self._music_list_ao2 = value
+
     def task_deprecation_warning(self):
         message = ('Code is using old task syntax (assuming it is a server property/method). '
                    'Please change it (or ask your server developer) so that it uses '
-                   'server.tasker instead (pending removal in 4.2).')
+                   'server.tasker instead (pending removal in 4.3).')
+        warnings.warn(message, category=UserWarning, stacklevel=3)
+
+    def music_list_ao2_deprecation_warning(self):
+        message = ('Code is currently using old music_list_ao2_syntax (assuming it is a server '
+                   'property/method). Please change it (or ask your server develop) so that it '
+                   'uses the return value of self.build_music_list_ao2() instead (pending removal '
+                   'in 4.3).')
         warnings.warn(message, category=UserWarning, stacklevel=3)

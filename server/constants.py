@@ -148,6 +148,9 @@ class Clients():
                 ('other_flip', 0), #21
                 ('nonint_pre', 0), #22
                 ]
+
+    ClientKFO2d8 = Enum('ClientKFO2d8', [(m.name, m.value) for m in ClientAO2d6])
+
 class Constants():
     @staticmethod
     def fopen(file, *args, **kwargs):
