@@ -30,8 +30,8 @@ masterserver_port: 27016 # Keep
 # modpass: password for moderators
 # cmpass: password for community managers
 # gmpass: password for game masters
-# gmpass1: password for game masters that is only good on late Sunday-early Monday
-# gmpass2: password for game masters that is only good on late Monday-early Tuesday
+# gmpass1: password for game masters that is only good for Monday based on server time
+# gmpass2: password for game masters that is only good for Tuesday based on server time
 # ....
 
 modpass: Mod
