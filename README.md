@@ -76,7 +76,7 @@ Additional notes are listed at the end of the command list.
 
 ### User Commands
 
-* **help "command name"**
+* **help** "command name"
     - Displays help for a command, or links to the server repository if not given an argument.
 * **area** "area number" 
     - Moves you to an area by its numerical ID if it is reachable from your own, or displays all areas if not given a number.
