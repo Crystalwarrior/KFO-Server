@@ -4,9 +4,9 @@
 
 # Connection configuration
 # playerlimit: the server player limit, if reached, further players will be turned away
-# port: port that the players connect through (it must be open/forwarded to work)
+# port: port that the players connect through (it must be open/forwarded for them to be able to connect)
 # timeout: timeout for automatic client disconnection in seconds (keep above 60)
-# local: if only people in the host machine should be able to connect (i.e. you)
+# local: if only people in the host machine should be able to connect (i.e. you), ideal if testing setup
 
 playerlimit: 100
 port: 50000
@@ -14,8 +14,8 @@ timeout: 250
 local: false
 
 # Master server advertisement configuration
-# use_masterserver: if server should be listed on the master server listed
-# masterserver_name: the name of the server
+# use_masterserver: if server should be listed on the master server list
+# masterserver_name: the name of the server, and what will be shown on the master sever list
 # masterserver_description: the description of the server, listed on the server select screen
 # masterserver_ip: the AO master server IP (do not modify)
 # masterserver_port: the AO master server port (do not modify)
@@ -56,6 +56,7 @@ hostname: <dollar>H
 discord_link: None
 
 # Roll configurations
+
 max_numdice: 20
 max_numfaces: 11037
 max_modifier_length: 12

@@ -2124,22 +2124,30 @@ def ooc_cmd_handicap(client, arg):
 
 def ooc_cmd_help(client, arg):
     """
-    Returns the website with all available commands and their instructions (usually a GitHub
-    repository).
+    Returns a brief description of the command syntax and its functionality of a command by name
+    according to the user's current rank, or if unauthorized to use it, display its functionality
+    as if the user had the minimum rank they need to run it but warn them they need said rank to
+    use it. The syntax and functionality descriptions are pulled from README.md on server boot-up.
+    If not given a command name, returns the website with all available commands and their
+    instructions (usually a GitHub repository).
+    Returns an error if a given command name had no associated instructions on README.md.
 
     SYNTAX
     /help
+    /help <command_name>
 
     PARAMETERS
-    None
+    <command_name>: Name of the command (e.g. help)
 
     EXAMPLES
-    /help
+    /help       :: Displays website with all commands and instructions
+    /help help  :: Displays the syntax and functionality of the help command.
     """
 
     if not arg:
         url = 'https://github.com/Chrezm/TsuserverDR'
-        help_msg = 'Available commands, source code and issues can be found here: {}'.format(url)
+        help_msg = ('Available commands, source code and issues can be found here: {}. If you are '
+                    'looking for help with a specific command, do /help <command_name>'.format(url))
         client.send_ooc(help_msg)
         return
 

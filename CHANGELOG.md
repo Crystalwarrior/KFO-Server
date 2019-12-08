@@ -11,10 +11,10 @@
 
 ### 180910 (3.2)
 * Added reachable areas support with
- - /unilock
- - /bilock
- - /delete_areareachlock
- - /restore_areareachlock
+  - /unilock
+  - /bilock
+  - /delete_areareachlock
+  - /restore_areareachlock
 * Added proper support for spectators (can talk OOC/use commands/change music&areas/use judge buttons now)
 * Added support for IC locking with /iclock
 * OOC usernames may no longer include the hostname or global message prefixe
@@ -23,9 +23,9 @@
 ### 190126 (3.3)
 * Added AFK kicks
 * Added user-initiated timers with
- - /timer start
- - /timer get
- - /timer cancel
+  - /timer start
+  - /timer get
+  - /timer cancel
 * Area lists now only list reachable areas
 
 ### 190225 (3.4)
@@ -52,11 +52,11 @@
 * Added automatic passing messages with /autopass
 * Added passage lock transientness with /transient
 * Added showname moderation tools
- - /showname_freeze
- - /showname_history
- - /showname_list
- - /showname_nuke
- - /showname_set
+  - /showname_freeze
+  - /showname_history
+  - /showname_list
+  - /showname_nuke
+  - /showname_set
 * Enforced showname uniqueness per area
 * Fixed /area_kick crash on unrecognized parameters
 * Fixed /getareas listing an empty area if only people there are sneaking
@@ -66,10 +66,10 @@
 * Added movement handicaps with /handicap, /unhandicap
 * Added area lights with /lights
 * Added blood trails with
- - /bloodtrail
- - /bloodtrail_clean
- - /bloodtrail_list
- - /bloodtrail_set
+  - /bloodtrail
+  - /bloodtrail_clean
+  - /bloodtrail_list
+  - /bloodtrail_set
 * Added /toggle_shownames to disable receiving server shownames
 * Allowed for more DRO client effects being used
 * Fixed /autopass not sending messages from or for staff
@@ -79,14 +79,14 @@
 * Console now displays server opening/closing/reconnecting messages.
 * Python errors now show additional debugging info on server log+client if error came as a result of command
 * Renamed some commands
- - allow_iniswap -> /can_iniswap
- - delete_areareachlock -> /passage_clear
- - restore_areareachlock -> /passage_restore
- - toggle_areareachlock -> /can_passagelock
- - toggleglobal -> /toggle_global
- - toggle_rollp -> /can_rollp
- - toggle_rpgetarea -> /can_rpgetarea
- - toggle_rpgetareas -> /can_rpgetareas
+  - allow_iniswap -> /can_iniswap
+  - delete_areareachlock -> /passage_clear
+  - restore_areareachlock -> /passage_restore
+  - toggle_areareachlock -> /can_passagelock
+  - toggleglobal -> /toggle_global
+  - toggle_rollp -> /can_rollp
+  - toggle_rpgetarea -> /can_rpgetarea
+  - toggle_rpgetareas -> /can_rpgetareas
 * Reworked /area_kick so that it now allows area names as parameter
 * Reworked /discord so that it now shows the server's Discord server invite link
 * Fixed /autopass sending old character name in case of forced char switch on area change
@@ -97,15 +97,15 @@
 
 ### 190630 (3.10)
 * Added support for user initiated day cycles with 
- - /clock
- - /clock_cancel
- - /clock_pause
- - /clock_unpause
+  - /clock
+  - /clock_cancel
+  - /clock_pause
+  - /clock_unpause
 * Added various moderation tools
- - /judgelog
- - /shoutlog
- - /version
- - /whereis
+  - /judgelog
+  - /shoutlog
+  - /version
+  - /whereis
 * Added 'has_lights' parameters to areas to allow/disallow using /lights
 * Enforced different staff passwords on server configuration
 * Shouts now show character used as opposed to OOC name
@@ -119,17 +119,17 @@
 
 ### 190708 (3.11)
 * Added various moderation/debugging tools
- - /lasterror
- - /multiclients
- - /whois
+  - /lasterror
+  - /multiclients
+  - /whois
 * Added area parameters to allow for non-staff use of custom backgrounds/music
 * Added /toggle_allrolls so staff get roll notifications from other areas
 * Day cycle notifications now send 'CL' packets to clients
 * GMs can no longer /area_kick users from lobby areas
 * Renamed timer commands
- - /timer start -> /timer
- - /timer get -> /timer_get
- - /timer cancel -> /timer_cancel
+  - /timer start -> /timer
+  - /timer get -> /timer_get
+  - /timer cancel -> /timer_cancel
 * Fixed a player not unfollowing a player who disconnects and then crashing on area change
 * Fixed /roll crashing on too many arguments
 
@@ -147,17 +147,17 @@
 
 ### 190801 (4.0)
 * Added party support so players move with one another automatically with
- - /party
- - /party_disband
- - /party_id
- - /party_invite
- - /party_join
- - /party_kick
- - /party_lead
- - /party_list
- - /party_members
- - /party_uninvite
- - /party_unlead
+  - /party
+  - /party_disband
+  - /party_id
+  - /party_invite
+  - /party_join
+  - /party_kick
+  - /party_lead
+  - /party_list
+  - /party_members
+  - /party_uninvite
+  - /party_unlead
 * Added HDID bans with /banhdid, /unbanhdid
 * CMs now get IPIDs in /getarea(s), /showname_list and /whois, as well as HDID in /whois
 * Iniswapped folders are now shown with /whois
@@ -180,26 +180,26 @@
 
 ### 190819 (4.1)
 * Added sense block support with
- - /blind
- - /deaf
- - /gag
+  - /blind
+  - /deaf
+  - /gag
 * Added /bloodtrail_smear to smear blood trails in the area
- - If player is blind or area lights are out, /bloodtrail_clean effectively runs this instead
+  - If player is blind or area lights are out, /bloodtrail_clean effectively runs this instead
 * Added /ping to check for lost connection
 * Added /showname_area to list shownames just in the current area
 * CMs now receive Call Mod notifications
 * Renamed /mutepm -> /toggle_pm, /showname_list -> /showname_areas
 * Started including additional marks to certain staff privileged RP notifications
 * Minor changes to messages sent on area change
- - Staff now receive autopass messages if lights are off instead of regular lights off messages
- - Reworded messages sent if someone arrives/leaves while bleeding/lights off and sneaking
- - Players now receive special notification if there is blood in the area and lights are off
+  - Staff now receive autopass messages if lights are off instead of regular lights off messages
+  - Reworded messages sent if someone arrives/leaves while bleeding/lights off and sneaking
+  - Players now receive special notification if there is blood in the area and lights are off
 * Fixed global IC OOC notifications showing message went one area past the last area actually sent to
 * Fixed IPIDs on rare occasions being non-trivially not unique
 * Fixed /pm not sending complete character names to recipient
 * Minor bugfixes with respect to bleeding
- - Blood cleaning notifications will no longer be sent with lights off
- - Blood will now automatically be spilled on the area as soon as /bloodtrail is executed, not only on area change
+  - Blood cleaning notifications will no longer be sent with lights off
+  - Blood will now automatically be spilled on the area as soon as /bloodtrail is executed, not only on area change
  
 ### 190820 (4.1.1)
 * Added special marks to more staff privileged RP notifications
@@ -222,47 +222,47 @@
 
 ### 191031 (4.2)
 * Added zones. Zones are groups of areas such that any privileged server notifications that come from a player action within the zone will be sent only to "watchers", who are people who watch the zone. They come with the following commands:
- - /zone
- - /zone_add
- - /zone_delete
- - /zone_global (alias /zg)
- - /zone_list
- - /zone_play
- - /zone_remove
- - /zone_unwatch
- - /zone_watch
+  - /zone
+  - /zone_add
+  - /zone_delete
+  - /zone_global (alias /zg)
+  - /zone_list
+  - /zone_play
+  - /zone_remove
+  - /zone_unwatch
+  - /zone_watch
 * Zones will send notifications to all zone watchers for standard RP notifications as well as the following:
- - Players coming IN and OUT of the zone (with their shownames)
- - Players coming in a zone while having other clients open in the zone.
- - Players in the zone disconnecting
- - Players in the zone changing character
- - Players in the zone changing showname
+  - Players coming IN and OUT of the zone (with their shownames)
+  - Players coming in a zone while having other clients open in the zone.
+  - Players in the zone disconnecting
+  - Players in the zone changing character
+  - Players in the zone changing showname
 * Added poison through /poison. Poisoned targets will be inflicted an assortment of effects at the end of a timer (currently a selection of blindness, deafness and gagged). Targets can have their poison removed before it affects them by having /cure run on them
- - /cure will also remove effects if they have been already applied
+  - /cure will also remove effects if they have been already applied
 * Improved password-less process of GM logins:
- - Added /make_gm so CMs and mods can log in other players as GMs
- - Added /gmself so GMs can log in all other clients they opened as GMs
+  - Added /make_gm so CMs and mods can log in other players as GMs
+  - Added /gmself so GMs can log in all other clients they opened as GMs
 * Custom shownames now appear if set in server notifications instead of character folders
 * Improved /help
- - It can now take a command name and it will show a brief description and expected syntax, as well as the minimum required rank if the player is not authorized to use it
+  - It can now take a command name and it will show a brief description and expected syntax, as well as the minimum required rank if the player is not authorized to use it
 * Improved roll management mechanics
- - Added dice log commands to retrieve roll history through /dicelog (for one player) and /dicelog_area (for one area)
- - Roll options are now modifiable from server configurations
+  - Added dice log commands to retrieve roll history through /dicelog (for one player) and /dicelog_area (for one area)
+  - Roll options are now modifiable from server configurations
 * Improved information sent to moderators on mod actions
- - /ban, /banhdid and /kick notifications are now sent to all mods and CMs in the server, as well as appropiate information on the targets.
+  - /ban, /banhdid and /kick notifications are now sent to all mods and CMs in the server, as well as appropiate information on the targets.
 * Reworded notifications for the following mechanics
- - Rolls failing
- - Enabling/disabling IC locks
- - Setting your own showname, or someone else's showname
- - Characters becoming restricted in an area
- - Revoking/restoring DJ permissions
+  - Rolls failing
+  - Enabling/disabling IC locks
+  - Setting your own showname, or someone else's showname
+  - Characters becoming restricted in an area
+  - Revoking/restoring DJ permissions
 * The following actions now send an IC message in conjunction with an OOC notification:
- - /knock (which has been restricted to non-lobby areas only)
- - /scream
+  - /knock (which has been restricted to non-lobby areas only)
+  - /scream
 * Private servers will now include the masterserver name when showing the server IP in the terminal
 * Fixed clients with same HDID but different IPID not being recognized as multiclients. This fixes the following: 
- - Players getting a new IP can now kick ghosting clients under their old IP with /kickself
- - Staff can now recognize such situations with /whois or /multiclients
+  - Players getting a new IP can now kick ghosting clients under their old IP with /kickself
+  - Staff can now recognize such situations with /whois or /multiclients
 * Fixed /play and /rplay not looping music tracks that appear in the server music list
 * Fixed daily GM passwords switching at 3 pm incorrectly, they now switch correctly and at midnight
 * Fixed day cycles not canceling on area list reload
@@ -286,22 +286,29 @@
 * Fixed /zone_watch and /zone_delete raising an uncaught KeyError if an invalid zone name was passed as an argument
 * Fixed rare issue with new AWS instances raising a certificate error when pinging api.ipify.org on server boot-up
 * Made unrecoverable server errors expect an operator Enter input on console before finishing the program so that they can see the error message if they launched the server by double-clicking `start_server.py`
-* Made error log files be created if the server crashes on bootup, which would normally happen if some files are missing or have some parsing errors.
+* Made error log files be created if the server crashes on bootup, which would normally happen if some files are missing or have some parsing errors
 * Fixed master server connection not being closed automatically on server shutdown, which displayed ignored exception messages if running Python 3.8
 
 ## (4.2.1)
 * Added deprecation warnings to the following commands
- - **allow_iniswap**: Same as /can_iniswap.
- - **delete_areareachlock**: Same as /passage_clear.
- - **mutepm**: Same as /toggle_pm.
- - **restore_areareachlock**: Same as /passage_restore.
- - **showname_list**: Same as /showname_areas.
- - **toggleglobal**: Same as /toggle_global.
- - **toggle_areareachlock**: Same as /can_passagelock.
- - **toggle_rollp**: Same as /can_rollp.
- - **toggle_rpgetarea**: Same as /can_rpgetarea.
- - **toggle_rpgetareas**: Same as /can_rpgetareas.
+  - **allow_iniswap**: Same as /can_iniswap.
+  - **delete_areareachlock**: Same as /passage_clear.
+  - **mutepm**: Same as /toggle_pm.
+  - **restore_areareachlock**: Same as /passage_restore.
+  - **showname_list**: Same as /showname_areas.
+  - **toggleglobal**: Same as /toggle_global.
+  - **toggle_areareachlock**: Same as /can_passagelock.
+  - **toggle_rollp**: Same as /can_rollp.
+  - **toggle_rpgetarea**: Same as /can_rpgetarea.
+  - **toggle_rpgetareas**: Same as /can_rpgetareas.
 * Added logging messages to the server logs when the server starts up, shuts down, or it crashes and the server can manage to save the log.
-* Server logs files are now separated by month. Logging information will go to the file associated with the month and year the server was launched on (so if in one session the server was launched December 2019 and was shut down January 2020, all logs for that session would go in `logs/server-2019-12.log`). 
- - `logs/server.log` will now go unused, but you may keep it for your archives.
+* Server logs files are now separated by month. Logging information will go to the file associated with the month and year the server was last launched on (so if in one session the server was launched December 2019 and was shut down January 2020, all logs for that session would go in `logs/server-2019-12.log`). 
+  - `logs/server.log` will now go unused, but server owners may keep this file for their archives.
 * Improved cross-compatibility between multiple AO-like clients. For client-exclusive features, a best-effort-like approach will be taken to adapt to clients that do not have said features. 
+* Improved /help message so that it suggests to use the extended syntax (/help "command name") to get help with a particular command
+* Improved README.md instructions so that installation steps are more clear
+* Added /files and /files_set for custom file linking
+* Fixed minor typos in `config_sample/config.yaml`. 
+* Fixed /help not showing extended syntax (/help "command name") when running /help help
+
+
