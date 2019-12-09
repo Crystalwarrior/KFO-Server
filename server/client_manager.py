@@ -18,12 +18,13 @@
 
 import datetime
 import time
+import warnings
 
 from server import client_changearea
 from server import fantacrypt
 from server import logger
 from server.exceptions import ClientError, PartyError
-from server.constants import TargetType, Constants
+from server.constants import TargetType, Constants, Clients
 
 class ClientManager:
     class Client:
@@ -34,6 +35,7 @@ class ClientManager:
             self.can_join = 0 # Needs to be 2 to actually connect
             self.can_askchaa = True # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined') # AO version used, established through ID pack
+            self.packet_handler = Clients.ClientDRO
 
             self.hdid = ''
             self.ipid = ipid
@@ -92,6 +94,15 @@ class ClientManager:
             self.send_deaf_space = False
             self.dicelog = list()
             self._zone_watched = None
+            self.files = None
+
+            # Pairing stuff
+            self.charid_pair = -1
+            self.offset_pair = 0
+            self.last_sprite = ''
+            self.flip = 0
+            self.claimed_folder = ''
+
             #music flood-guard stuff
             self.mus_counter = 0
             self.mute_time = 0
@@ -152,33 +163,24 @@ class ClientManager:
             self.server.make_all_clients_do("send_ooc", msg, pred=cond, allow_empty=allow_empty,
                                             username=username)
 
-        def send_ic(self, ic_params=None, sender=None, bypass_replace=False, pred=None, not_to=None,
-                    gag_replaced=False, is_staff=None, in_area=None, to_blind=None, to_deaf=None,
-                    msg=None, ding=None):
-            # to_send is a list whose indices map to the following values
-            # 0 = msg_type
-            # 1 = pre
-            # 2 = folder
-            # 3 = anim
-            # 4 = msg
-            # 5 = pos
-            # 6 = sfx
-            # 7 = anim_type
-            # 8 = cid
-            # 9 = sfx_delay
-            # 10 = button
-            # 11 = self.client.evi_list[evidence]
-            # 12 = flip
-            # 13 = ding
-            # 14 = color
-            # 15 = showname
+        def send_ic(self, ic_params=None, params=None, sender=None, bypass_replace=False, pred=None,
+                    not_to=None, gag_replaced=False, is_staff=None, in_area=None, to_blind=None,
+                    to_deaf=None, msg=None, color=None, ding=None):
 
             # sender is the client who sent the IC message
             # self is who is receiving the IC message at this particular moment
 
             # Assert correct call to the function
-            if ic_params is None and msg is None:
+            if ic_params is None and params is None and msg is None:
                 raise ValueError('Expected message.')
+
+            if ic_params is not None and params is not None:
+                raise ValueError('Conflicting ic_params and params')
+
+            if ic_params is not None:
+                self.ic_params_deprecation_warning()
+                params = {self.packet_handler.MS_OUTBOUND.value[i][0]: ic_params[i]
+                          for i in range(len(ic_params))}
 
             # Fill in defaults
             # Expected behavior is as follows:
@@ -188,13 +190,16 @@ class ClientManager:
             #  If ic_params is not None, then the sent IC message will use the parameters given in
             #  ic_params, and use the properties of sender to replace the parameters if needed.
 
-            if ic_params is None:
-                to_send = [0, '-', '<NOCHAR>', '../../misc/blank', msg, 'jud', 0, 0, 0, 0, 0,
-                           0, 0, ding, 0, ' ']
+            pargs = {x: y for (x, y) in self.packet_handler.MS_OUTBOUND.value}
+            if params is None:
+                pargs['msg'] = msg
+                pargs['color'] = color
+                pargs['ding'] = ding
             else:
-                to_send = ic_params.copy()
+                for key in params:
+                    pargs[key] = params[key]
                 if msg is not None:
-                    to_send[4] = msg
+                    pargs['msg'] = msg
 
             # Check if receiver is actually meant to receive the message. Bail out early if not.
             cond = Constants.build_cond(self, is_staff=is_staff, in_area=in_area, not_to=not_to,
@@ -202,62 +207,102 @@ class ClientManager:
             if not cond(self):
                 return
 
+            def pop_if_there(dictionary, argument):
+                if argument in dictionary:
+                    dictionary.pop(argument)
+
             # Change the message to account for receiver's properties
             if not bypass_replace:
                 # Change "character" parts of IC port
                 if self.is_blind:
-                    to_send[3] = '../../misc/blank'
+                    pargs['anim'] = '../../misc/blank'
                     self.send_command('BN', self.server.config['blackout_background'])
                 elif sender == self and self.first_person:
                     last_area, last_args = self.last_ic_notme
                     # Check that the last received message exists and comes from the current area
                     if self.area.id == last_area and last_args:
-                        to_send[2] = last_args[2]
-                        to_send[3] = last_args[3]
-                        to_send[5] = last_args[5]
-                        to_send[7] = last_args[7]
-                        to_send[12] = last_args[12]
+                        pargs['folder'] = last_args['folder']
+                        pargs['anim'] = last_args['anim']
+                        pargs['pos'] = last_args['pos']
+                        pargs['anim_type'] = last_args['anim_type']
+                        pargs['flip'] = last_args['flip']
                     # Otherwise, send blank
                     else:
-                        to_send[3] = '../../misc/blank'
+                        pargs['anim'] = '../../misc/blank'
+
+                    # Regardless of anything, pairing is visually canceled while in first person
+                    # so set them to default values
+
+                    pop_if_there(pargs, 'other_offset')
+                    pop_if_there(pargs, 'other_emote')
+                    pop_if_there(pargs, 'other_flip')
+                    pop_if_there(pargs, 'other_folder')
+                    pop_if_there(pargs, 'offset_pair')
+                    pop_if_there(pargs, 'charid_pair')
+                    # Note this does not affect the client object internal values, it just
+                    # simulates the client is not part of their pair if they are in first person
+                    # mode.
+                elif sender != self and self.first_person:
+                    # Address the situation where this client is in first person mode, paired with
+                    # someone else, and that someone else speaks in IC. This will 'visually' cancel
+                    # pairing for this client, but not remove it completely. It is just so that
+                    # the client's own sprites appear.
+                    if pargs.get('charid_pair', -1) == self.char_id:
+                        pop_if_there(pargs, 'other_offset')
+                        pop_if_there(pargs, 'other_emote')
+                        pop_if_there(pargs, 'other_flip')
+                        pop_if_there(pargs, 'other_folder')
+                        pop_if_there(pargs, 'offset_pair')
+                        pop_if_there(pargs, 'charid_pair')
 
                 # Change "message" parts of IC port
                 allowed_starters = ('(', '*', '[')
 
                 # Nerf message for deaf
-                if self.is_deaf and to_send[4]:
-                    if (not to_send[4].startswith(allowed_starters) or
+                if self.is_deaf and pargs['msg']:
+                    if (not pargs['msg'].startswith(allowed_starters) or
                         sender.is_gagged and gag_replaced):
-                        to_send[4] = '(Your ears are ringing)'
+                        pargs['msg'] = '(Your ears are ringing)'
                         if self.send_deaf_space:
-                            to_send[4] = to_send[4] + ' '
+                            pargs['msg'] = pargs['msg'] + ' '
                         self.send_deaf_space = not self.send_deaf_space
 
                 if self.is_blind and self.is_deaf and sender:
-                    to_send[15] = '???'
+                    pargs['showname'] = '???'
                 elif self.show_shownames and sender:
-                    to_send[15] = sender.showname
+                    pargs['showname'] = sender.showname
 
             # Done modifying IC message
             # Now send it
             if sender != self:
-                self.last_ic_notme = self.area.id, to_send
+                self.last_ic_notme = self.area.id, pargs
+
+            # This step also takes care of filtering out the packet arguments that the client
+            # cannot parse, and also make sure they are in the correct oder.
+            to_send = list()
+            for x in self.packet_handler.MS_OUTBOUND.value:
+                try:
+                    to_send.append(pargs[x[0]])
+                except KeyError: # Case the key was popped (e.g. in pair code), use defaults then
+                    to_send.append(x[1])
 
             self.send_command('MS', *to_send)
 
-        def send_ic_others(self, ic_params=None, sender=None, bypass_replace=False, pred=None,
-                           not_to=None, gag_replaced=False, is_staff=None, in_area=None,
-                           to_blind=None, to_deaf=None, msg=None, ding=None):
+        def send_ic_others(self, ic_params=None, params=None, sender=None, bypass_replace=False,
+                           pred=None, not_to=None, gag_replaced=False, is_staff=None, in_area=None,
+                           to_blind=None, to_deaf=None, msg=None, color=None, ding=None):
+            if ic_params is not None:
+                self.ic_params_deprecation_warning()
             if not_to is None:
                 not_to = {self}
             else:
                 not_to = not_to.union({self})
 
             for c in self.server.client_manager.clients:
-                c.send_ic(ic_params=None, sender=sender, bypass_replace=bypass_replace, pred=pred,
-                          not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
+                c.send_ic(ic_params=None, params=None, sender=sender, bypass_replace=bypass_replace,
+                          pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
-                          msg=msg, ding=ding)
+                          msg=msg, color=color, ding=ding)
 
         def disconnect(self):
             self.transport.close()
@@ -344,18 +389,34 @@ class ClientManager:
             reachable areas+music. Useful when moving areas/logging in or out.
             """
 
+            # Check if a new music file has been chosen, and if so, parse it and set it as the
+            # client's own music list.
             if new_music_file:
-                new_music_list = self.server.load_music(music_list_file=new_music_file,
+                raw_music_list = self.server.load_music(music_list_file=new_music_file,
                                                         server_music_list=False)
-                self.music_list = new_music_list
-                self.server.build_music_list_ao2(from_area=self.area, c=self,
-                                                 music_list=new_music_list)
+                self.music_list = raw_music_list
             else:
-                self.server.build_music_list_ao2(from_area=self.area, c=self)
-            # KEEP THE ASTERISK, unless you want a very weird single area comprised
-            # of all areas back to back forming a black hole area of doom and despair
-            # that crashes all clients that dare attempt join this area.
-            self.send_command('FM', *self.server.music_list_ao2)
+                raw_music_list = None
+
+            # KFO deals with music lists differently than other clients
+            # They want the area lists and music lists separate, so they will have it like that
+            if self.packet_handler != Clients.ClientKFO2d8:
+                reloaded_music_list = self.server.build_music_list_ao2(from_area=self.area, c=self,
+                                                                       music_list=raw_music_list)
+
+                # KEEP THE ASTERISK, unless you want a very weird single area comprised
+                # of all areas back to back forming a black hole area of doom and despair
+                # that crashes all clients that dare attempt join this area.
+                self.send_command('FM', *reloaded_music_list)
+            else:
+                area_list = self.server.build_music_list_ao2(from_area=self.area, c=self,
+                                                             include_areas=True,
+                                                             include_music=False)
+                self.send_command('FA', *area_list)
+                if raw_music_list:
+                    music_list = self.server.prepare_music_list(c=self,
+                                                                specific_music_list=raw_music_list)
+                    self.send_command('FM', *music_list)
 
         def check_change_area(self, area, override_passages=False, override_effects=False,
                               more_unavail_chars=None):
@@ -612,7 +673,6 @@ class ClientManager:
 
             area = self.server.area_manager.get_area_by_id(area_id)
             info = '== Area {}: {} =='.format(area.id, area.name)
-
             sorted_clients = []
 
             for c in area.clients:
@@ -628,8 +688,7 @@ class ClientManager:
                 # user will be listed. Useful for /multiclients.
                 if c.char_id is not None:
                     cond = (c == self or self.is_staff() or c.is_visible or (mods and c.is_mod))
-                    multiclient_cond = (not only_my_multiclients or
-                                        (c.ipid == self.ipid or c.hdid == self.hdid))
+                    multiclient_cond = not only_my_multiclients or c in self.get_multiclients()
 
                     if cond and multiclient_cond:
                         sorted_clients.append(c)
@@ -640,6 +699,9 @@ class ClientManager:
                 info += '\r\n[{}] {}'.format(c.id, c.get_char_name())
                 if include_shownames and c.showname != '':
                     info += ' ({})'.format(c.showname)
+                if len(c.get_multiclients()) > 1 and as_mod:
+                    # If client is multiclienting add (MC) for officers
+                    info += ' (MC)'
                 if not c.is_visible:
                     info += ' (S)'
                 if include_ipid:
@@ -699,8 +761,9 @@ class ClientManager:
                         if num:
                             info += '\r\n{}'.format(ainfo)
             else:
-                _, info = self.get_area_info(area_id, mods, include_ipid=include_ipid,
-                                             include_shownames=include_shownames)
+                _, info = self.get_area_info(area_id, mods,
+                                             include_shownames=include_shownames,
+                                             include_ipid=include_ipid)
 
             return info
 
@@ -953,6 +1016,12 @@ class ClientManager:
             return ('C::{}:{}:{}:{}:{}:{}:{}'
                     .format(self.id, self.ipid, self.name, self.get_char_name(), self.showname,
                             self.is_staff(), self.area.id))
+
+        def ic_params_deprecation_warning(self):
+            message = ('Code is using old IC params syntax (using ic_params as an argument). '
+                       'Please change it (or ask your server developer) so that it uses '
+                       'params instead (pending removal in 4.2).')
+            warnings.warn(message, category=UserWarning, stacklevel=3)
 
     def __init__(self, server, client_obj=None):
         if client_obj is None:

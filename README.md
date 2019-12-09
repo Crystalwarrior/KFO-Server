@@ -3,13 +3,14 @@
 
 A Python-based server for Danganronpa Online. It is a fork from [tsuserver3](https://github.com/AttorneyOnline/tsuserver3) which is targeted towards Attorney Online.
 
-Requires Python 3.6-3.8 and PyYAML.
+Requires Python 3.6-3.8 and PyYAML (follow instructions below to install).
 
 ## How to use
 
 ### Installing
 
 * Install the latest version of Python. **Python 2 will not work**.
+  - You can download Python from its official website [here](https://www.python.org/downloads/).
   - If your system supports it, it is recommended that you use a separate virtual environment, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python).
   - If prompted during the installation to add `python` as a PATH environment variable, accept this option.
 * Open Command Prompt or your terminal, and change to the directory where you downloaded TsuserverDR to. You can do this in two ways:
@@ -28,62 +29,62 @@ Requires Python 3.6-3.8 and PyYAML.
 
 ### Running
 
-* Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:  
+* Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:
 
-\[2019-10-31T10:20:20\]: Starting...  
-\[2019-10-31T10:20:20\]: Launching TsuserverDR 4.2.0 (191031a)...  
-\[2019-10-31T10:20:20\]: Loading server configurations...  
-\[2019-10-31T10:20:20\]: Server configurations loaded successfully!  
-\[2019-10-31T10:20:20\]: Starting a nonlocal server...  
-\[2019-10-31T10:20:20\]: Server started successfully!  
-\[2019-10-31T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
+\[2019-12-09T10:20:20\]: Starting...  
+\[2019-12-09T10:20:20\]: Launching TsuserverDR 4.2.1 (191209a)...  
+\[2019-12-09T10:20:20\]: Loading server configurations...  
+\[2019-12-09T10:20:20\]: Server configurations loaded successfully!  
+\[2019-12-09T10:20:20\]: Starting a nonlocal server...  
+\[2019-12-09T10:20:20\]: Server started successfully!  
+\[2019-12-09T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
 
-* If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:  
+* If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:
 
-\[2019-10-31T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
-\[2019-10-31T10:20:21\]: *Server name: My First DR Server  
-\[2019-10-31T10:20:21\]: *Server description: This is my flashy new DR server  
-\[2019-10-31T10:20:22\]: Connected to the master server.  
+\[2019-12-09T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
+\[2019-12-09T10:20:21\]: *Server name: My First DR Server  
+\[2019-12-09T10:20:21\]: *Server description: This is my flashy new DR server  
+\[2019-12-09T10:20:22\]: Connected to the master server.  
 
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If during launch you get  `urllib.error.URLError` or `socket.gaierror`, there is probably something wrong with your internet connection.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
-\[2019-10-31T22:23:04\]: You have initiated a server shut down.  
-\[2019-10-31T22:23:04\]: Kicking 12 remaining clients.  
-\[2019-10-31T22:23:04\]: Server has successfully shut down.  
+\[2019-12-09T22:23:04\]: You have initiated a server shut down.  
+\[2019-12-09T22:23:04\]: Kicking 12 remaining clients.  
+\[2019-12-09T22:23:04\]: Server has successfully shut down.  
 
 * If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
 * To restart a server, you can follow the steps outlined above to shut down and then start the server again.
-  
+
 * In the unlikely event that there is an error during runtime, the server will do its best to print out to your terminal a complete traceback of the error with some additional information, as well as a more complete log file in the `logs` folder with the error timestamp, to help with debugging. Depending on the nature of the error, the server may or may not be able to continue execution normally after such an error happens.
- 
+
 ### Updating
 
 * If you already have a version of TsuserverDR or tsuserver installed and wish to update to a new version, you can download the new version and then overwrite your previously existing files. Do note that you do not need to shut down your server before overwriting the files, but you must restart it from console in order for changes to take effect.
 
   - This process will not overwrite your server configurations inside the `config` folder, your existing logs inside the `logs` folder, or the user information inside the `storage` folder. However, it will overwrite other files including the Python files inside the `server` folder. Therefore, make sure to save backups of those files before overwriting in case you have modified them and wish to keep an archive of your changes.
-  
+
 * If you want to update **Python** itself, you can get the latest Python download [from their website here](https://www.python.org/downloads/) and then follow the instructions under the Installing section in this readme. To check your current version of Python, you can run ``python`` on its own and look at the first line. The latest stable major Python release is *Python 3.8* as of October 31, 2019.
 
   - Please follow the installation instructions again even if you had successfully ran a server before, because your new Python installation may be missing libraries that TsuserverDR expects there to exist. You should not need to change any server configuration files though.
   - In general, updating to a Python version beyond what is specified as supported may lead to unstable behavior, so for active servers try to keep your Python version among the ones specifically labeled as supported.
- 
+
 ## Commands
 Additional notes are listed at the end of the command list.
 
 ### User Commands
 
-* **help**
-    - Links to the server repository.
-* **area** "area number" 
+* **help** "command name"
+    - Displays help for a command, or links to the server repository if not given an argument.
+* **area** "area number"
     - Moves you to an area by its numerical ID if it is reachable from your own, or displays all areas if not given a number.
 * **autopass**
     - Toggles enter/leave messages being sent automatically or not to users in the current area, including original/target areas.
     - Messages will not be sent if sneaking. Altered messages will be sent if the area's lights are turned off.
-* **bg** "background" 
+* **bg** "background"
     - Changes the current background.
 * **bilock** "area number/name"
     - Changes the passage status (locked/unlocked) between the current area and the given area.
@@ -92,25 +93,29 @@ Additional notes are listed at the end of the command list.
     - If someone is bleeding in the current area, the cleaning process will fail.
 * **bloodtrail_smear**
     - Smears the bloodtrail in the current area.
-* **charselect** 
+* **charselect**
     - Puts you back to the character select screen.
 * **chars_restricted**
     - Lists all characters that are restricted in the current area.
-* **cleardoc** 
+* **cleardoc**
     - Clears the doc url of the current area.
 * **coinflip**
     - Flips a coin.
-* **currentmusic** 
+* **currentmusic**
     - Displays the current music and who played it.
 * **discord**
     - Displays the invite link of the server's Discord server.
-* **doc** "url" 
+* **doc** "url"
     - Gives the doc url if blank, updates the doc url otherwise.
-* **g** "message" 
+* **files** "ID"
+    - Gives a download link set by the target that links to their files, or gives your own download link if not given an argument.
+* **files_set** "url"
+    - Sets a download link for the user's files, or clears it if not given an argument.
+* **g** "message"
     - Sends a serverwide message.
-* **getarea** 
+* **getarea**
     - Shows the current characters in your area.
-* **getareas** 
+* **getareas**
     - Shows all characters in all areas reachable from your own.
 * **kickself**
     - Removes all of of the user's clients except the one that used the command.
@@ -164,16 +169,16 @@ Additional notes are listed at the end of the command list.
     - Returns "Pong", used to check for server connection.
 * **play** "song.mp3"
     - Plays a song, provided the area you are in allows non-staff members to run this command.
-* **pm** "ID/IPID/char name/OOC name" "message" 
+* **pm** "ID/IPID/char name/OOC name" "message"
     - PMs the target.
-* **pos** "position" 
+* **pos** "position"
     - Changes your position in the court.
     - Positions: 'def', 'pro', 'hld', 'hlp', 'jud', 'wit'
-* **randomchar** 
+* **randomchar**
     - Changes your character to a randomly chosen one.
-* **reload** 
+* **reload**
     - Reloads your character ini file.
-* **roll** "number of dice"d"number of faces" "modifiers" 
+* **roll** "number of dice"d"number of faces" "modifiers"
     - Rolls as many dice as given with the given number of faces, and applies modifiers if given. If no arguments are given, rolls one d6.
 * **rollp** "number of dice"d"number of faces" "modifiers"
     - Same as roll but other non-staff members in the area only are notified that someone rolled.
@@ -185,7 +190,7 @@ Additional notes are listed at the end of the command list.
     - Similar to /getarea, but lists shownames along with character names.
 * **showname_areas**
     - Similar to /getareas, but lists shownames along with character names.
-* **switch** "character name" 
+* **switch** "character name"
     - Switches you to the given character.
 * **time**
     - Displays the server's local time.
@@ -203,7 +208,7 @@ Additional notes are listed at the end of the command list.
     - Chooses "Truth" or "Dare" for Truth or Dare minigames.
 * **toggle_fp**
     - Changes your setting to be in first person mode (your character does not appear to you when you send IC messages) or normal mode (your character does appear). By default it is in normal mode.
-* **toggle_global** 
+* **toggle_global**
     - Changes your setting to receive global messages. By default it is on.
 * **toggle_pm**
     - Changes your setting to receive PMs. By default it is on.
@@ -221,10 +226,10 @@ Additional notes are listed at the end of the command list.
     - Sends a message to all players in the zone you are in.
 * **8ball**
     - Gain insight from the magic 8 ball.
-    
+
 ### GM Commands
 
-GMs can: 
+GMs can:
   - Bypass area passages and locks.
   - Receive special RP notifications.
   - Use GM commands.
@@ -237,7 +242,7 @@ GMs can:
     - Changes the blind status of a target.
     - Blind players will receive no character sprites nor background with IC messages and cannot use "visual" commands such as /look, /getarea, etc.
 * **bloodtrail** "ID"
-    - Changes the bleeding status of a target. 
+    - Changes the bleeding status of a target.
     - If bleeding, they will leave 'blood' in all areas they pass through, and send OOC notifications to players in the area and those who join indicating their status. Sneaking and bleeding players send altered notifications.
 * **bloodtrail_clean** "area 1", "area 2", ...
     - Cleans the blood trails in the given areas (or the current one if not given any areas).
@@ -320,7 +325,7 @@ GMs can:
     - Clears passage locks that start in the areas in the given area range, or just the ones in the current area if not given a range.
 * **passage_restore** "area range start", "area range end"
     - Restores passage locks that start in the areas in the given area range to their original status, or just the ones in the current area if not given a range.
-* **play** "song.mp3" 
+* **play** "song.mp3"
     - Plays a song, even if not in the server music list.
 * **poison** "ID" "initials of effects" "length"
     - Applies a poison to the target that will inflict them in the given length of time in seconds the given effects.
@@ -384,22 +389,22 @@ GMs can:
 ### Community Manager Commands
 
 * **blockdj** "ID/IPID"
-    - Mutes the target from changing music. 
+    - Mutes the target from changing music.
 * **cleargm**
     - Logs out all GMs in the server and puts them in RP mode if needed.
-* **getarea** 
+* **getarea**
     - Shows the current characters in your area as well as their IPIDs.
-* **getareas** 
+* **getareas**
     - Shows all characters in all areas of the server as well as their IPIDs.
-* **kick** "ID/IPID" 
+* **kick** "ID/IPID"
     - Kicks the target from the server.
 * **make_gm** "ID"
     - Makes the target a GM.
-* **mute** "ID/IPID" 
+* **mute** "ID/IPID"
     - Mutes the target from all IC actions.
-* **ooc_mute** "OOC name" 
+* **ooc_mute** "OOC name"
     - Mutes the target from all OOC actions.
-* **ooc_unmute** "OOC name" 
+* **ooc_unmute** "OOC name"
     - Unmutes the target.
 * **showname_area**
     - Similar to /getarea, but lists shownames along with character names as well as their IPIDs.
@@ -407,27 +412,27 @@ GMs can:
     - Similar to /getareas, but lists shownames along with character names as well as their IPIDs.
 * **unblockdj** "target"
     - Allows the target to change music again.
-* **unmute** "ID/IPID" 
+* **unmute** "ID/IPID"
     - Unmutes the target from the IC chat.
 * **whois** "ID/IPID"
     - Obtains a lot of properties of the target, including HDID and IPID.
 * **zone_delete** "zone"
     - Deletes a zone by its ID, or the zone you are watching if not given a zone.
-    
+
 ### Moderator Commands
 
-* **announce** "message" 
+* **announce** "message"
     - Sends a serverwide announcement
 * **area_list** "area list"
     - Sets the server's current area list.
     - If not given an area list, it will restore the original area list as it was on server bootup.
 * **area_lists**
     - Lists all available area lists as established in `config/area_lists.yaml`.
-* **ban** "IPID"/"IP" 
+* **ban** "IPID"/"IP"
     - Bans the IPID/IP (hdid is linked to ipid so all bans happen at the same time).
 * **banhdid** "HDID"
     - Bans the HDID (hdid is linked to ipid so all bans happen at the same time).
-* **bglock** 
+* **bglock**
     - Toggles the background lock in the current area.
 * **can_iniswap**
     - Changes the iniswap status in the current area.
@@ -440,9 +445,9 @@ GMs can:
     - Removes the respective letters from everything said by the target
 * **gimp** "ID/IPID"
     - Gimps a target so that all their IC messages are replaced with a selection of preset messages.
-* **gm** "message" 
+* **gm** "message"
     - Sends a serverwide message with mod tag.
-* **lm** "message" 
+* **lm** "message"
     - Sends an area OOC message with mod tag.
 * **modlock**
     - Locks your area. Prevents GMs, CMs and normal users from entering.
@@ -456,7 +461,7 @@ GMs can:
     - Clears all shownames from non-staff members.
 * **showname_set** "ID/IPID" "showname"
     - Sets a target's showname to be the given one, or clears it if not given one.
-* **unban** "IPID" 
+* **unban** "IPID"
     - Unbans the specified IPID.
 * **unbanhdid** "HDID"
     - Unbans the specified HDID.
@@ -464,7 +469,7 @@ GMs can:
     - Undo correlating command.
 * **unlock**
     - Unlocks an area, provided the lock came as a result of /gmlock, /lock or /modlock.
-    
+
 ### Debug commands
 
 * **exec** "command"
@@ -475,7 +480,7 @@ GMs can:
     - (DEBUG) Reloads the `server/commands.py` file.
 
 ### Deprecated commands and aliases
-Commands marked with (D) are marked as deprecated. They will continue to serve their original purpose as usual for three months after the stated date. If an alternative command name is given to a deprecated command, please try and use that command instead. 
+Commands marked with (D) are marked as deprecated. They will continue to serve their original purpose as usual for three months after the stated date. If an alternative command name is given to a deprecated command, please try and use that command instead.
 
 Commands without (D) are aliases to commands and can be freely used (subject to the parent command's conditions).
 
@@ -504,7 +509,7 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 * **Note 1**: the commands may refer to the following identifiers for a player:
     - **Character Name**: the folder name of the character the player is using, also the name that appears in /getarea.
     - **HDID**: the hard drive ID of the player, accessible through /whois (requires community manager rank)
-    - **ID**: number in brackets [] in /getarea. 
+    - **ID**: number in brackets [] in /getarea.
     - **IPID**: number in parentheses () in /getarea (requires community manager rank).
     - **IP**: the IP address of the player.
     - **OOC Name**: the username of the player in the OOC chat.

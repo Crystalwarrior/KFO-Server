@@ -23,7 +23,7 @@ from time import localtime, strftime
 from enum import Enum
 
 from server import logger
-from server.constants import Constants
+from server.constants import ArgType, Clients, Constants
 from server.exceptions import AreaError, ClientError, ServerError, PartyError, TsuserverException
 from server.fantacrypt import fanta_decrypt
 from server.evidence import EvidenceList
@@ -32,11 +32,6 @@ class AOProtocol(asyncio.Protocol):
     """
     The main class that deals with the AO protocol.
     """
-
-    class ArgType(Enum):
-        STR = 1,
-        STR_OR_EMPTY = 2,
-        INT = 3
 
     def __init__(self, server):
         super().__init__()
@@ -140,14 +135,23 @@ class AOProtocol(asyncio.Protocol):
         if len(args) != len(types):
             return False
         for i, arg in enumerate(args):
-            if len(arg) == 0 and types[i] != self.ArgType.STR_OR_EMPTY:
+            if len(arg) == 0 and types[i] != ArgType.STR_OR_EMPTY:
                 return False
-            if types[i] == self.ArgType.INT:
+            if types[i] == ArgType.INT:
                 try:
                     args[i] = int(arg)
                 except ValueError:
                     return False
         return True
+
+    def process_arguments(self, identifier, args, needs_auth=True):
+        expected_pairs = self.client.packet_handler['{}_INBOUND'.format(identifier.upper())].value
+        expected_argument_names = [x[0] for x in expected_pairs]
+        expected_types = [x[1] for x in expected_pairs]
+        if not self.validate_net_cmd(args, *expected_types, needs_auth=needs_auth):
+            return None
+
+        return dict(zip(expected_argument_names, args))
 
     def net_cmd_hi(self, args):
         """ Handshake.
@@ -156,7 +160,7 @@ class AOProtocol(asyncio.Protocol):
 
         :param args: a list containing all the arguments
         """
-        if not self.validate_net_cmd(args, self.ArgType.STR, needs_auth=False):
+        if not self.validate_net_cmd(args, ArgType.STR, needs_auth=False):
             return
 
         # Record new HDID and IPID if needed
@@ -222,7 +226,16 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.is_ao2 = True
         self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping', 'fastloading',
-                                 'noencryption', 'deskmod', 'evidence')
+                                 'noencryption', 'deskmod', 'evidence', 'cccc_ic_support')
+
+        if release == 2 and major >= 8: # KFO
+            self.client.packet_handler = Clients.ClientKFO2d8
+        elif release == 2 and major >= 6: # AO 2.6
+            self.client.packet_handler = Clients.ClientAO2d6
+        else:
+            # Not really needed, added here for the sake of completeness
+            # As this is the default packet_handler
+            self.client.packet_handler = Clients.ClientDRO
 
     def net_cmd_ch(self, _):
         """ Periodically checks the connection.
@@ -269,7 +282,7 @@ class AOProtocol(asyncio.Protocol):
         AN#<page:int>#%
 
         """
-        if not self.validate_net_cmd(args, self.ArgType.INT, needs_auth=False):
+        if not self.validate_net_cmd(args, ArgType.INT, needs_auth=False):
             return
         if len(self.server.char_pages_ao1) > args[0] >= 0:
             self.client.send_command('CI', *self.server.char_pages_ao1[args[0]])
@@ -290,7 +303,7 @@ class AOProtocol(asyncio.Protocol):
         AM#<page:int>#%
 
         """
-        if not self.validate_net_cmd(args, self.ArgType.INT, needs_auth=False):
+        if not self.validate_net_cmd(args, ArgType.INT, needs_auth=False):
             return
         if len(self.server.music_pages_ao1) > args[0] >= 0:
             self.client.send_command('EM', *self.server.music_pages_ao1[args[0]])
@@ -318,8 +331,18 @@ class AOProtocol(asyncio.Protocol):
         # Force the server to rebuild the music list, so that clients who just
         # join get the correct music list (as well as every time they request
         # an updated music list directly).
-        self.server.build_music_list_ao2()
-        self.client.send_command('SM', *self.server.music_list_ao2)
+
+        # Deal with KFO client compatibility
+#        if self.client.packet_handler == Clients.ClientKFO2d8:
+#            area_list = self.server.build_music_list_ao2(include_areas=True, include_music=False)
+#            music_list = self.server.build_music_list_ao2(include_areas=False, include_music=True)
+#            self.client.send_command('FA', *area_list)
+#            self.client.send_command('FM', *music_list)
+#        # Every other client gets the full music list
+#        else:
+        full_music_list = self.server.build_music_list_ao2(include_areas=True,
+                                                           include_music=True)
+        self.client.send_command('SM', *full_music_list)
 
     def net_cmd_rd(self, _):
         """ Asks for server metadata(charscheck, motd etc.) and a DONE#% signal(also best packet)
@@ -345,7 +368,7 @@ class AOProtocol(asyncio.Protocol):
         CC#<client_id:int>#<char_id:int>#<hdid:string>#%
 
         """
-        if not self.validate_net_cmd(args, self.ArgType.INT, self.ArgType.INT, self.ArgType.STR,
+        if not self.validate_net_cmd(args, ArgType.INT, ArgType.INT, ArgType.STR,
                                      needs_auth=False):
             return
         cid = args[1]
@@ -369,58 +392,54 @@ class AOProtocol(asyncio.Protocol):
             return
         if not self.client.area.can_send_message():
             return
-        # Assert that all parameters are valid
-        if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR_OR_EMPTY,
-                                     self.ArgType.STR, self.ArgType.STR, self.ArgType.STR,
-                                     self.ArgType.STR, self.ArgType.STR, self.ArgType.INT,
-                                     self.ArgType.INT, self.ArgType.INT, self.ArgType.INT,
-                                     self.ArgType.INT, self.ArgType.INT, self.ArgType.INT,
-                                     self.ArgType.INT):
+
+        pargs = self.process_arguments('ms', args)
+        if not pargs:
             return
-        msg_type, pre, folder, anim, text, pos, sfx, anim_type, cid, sfx_delay, button, evidence, flip, ding, color = args
 
         if not self.client.area.iniswap_allowed:
-            if self.client.area.is_iniswap(self.client, pre, anim, folder):
+            if self.client.area.is_iniswap(self.client, pargs['pre'], pargs['anim'],
+                                           pargs['folder']):
                 self.client.send_ooc("Iniswap is blocked in this area.")
                 return
-        if folder in self.client.area.restricted_chars and not self.client.is_staff():
+        if pargs['folder'] in self.client.area.restricted_chars and not self.client.is_staff():
             self.client.send_ooc('Your character is restricted in the current area.')
             return
-        if msg_type not in ('chat', '0', '1'):
+        if pargs['msg_type'] not in ('chat', '0', '1'):
             return
-        if anim_type not in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10):
+        if pargs['anim_type'] not in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10):
             return
-        if cid != self.client.char_id:
+        if pargs['cid'] != self.client.char_id:
             return
-        if sfx_delay < 0:
+        if pargs['sfx_delay'] < 0:
             return
-        if button not in (0, 1, 2, 3, 4, 5, 6, 7): # Shouts
+        if pargs['button'] not in (0, 1, 2, 3, 4, 5, 6, 7): # Shouts
             return
-        if evidence < 0:
+        if pargs['evidence'] < 0:
             return
-        if ding not in (0, 1, 2, 3, 4, 5, 6, 7): # Effects
+        if pargs['ding'] not in (0, 1, 2, 3, 4, 5, 6, 7): # Effects
             return
-        if color not in (0, 1, 2, 3, 4, 5, 6):
+        if pargs['color'] not in (0, 1, 2, 3, 4, 5, 6):
             return
-        if color == 5 and not self.client.is_mod and not self.client.is_cm:
-            color = 0
-        if color == 6:
+        if pargs['color'] == 5 and not self.client.is_mod and not self.client.is_cm:
+            pargs['color'] = 0
+        if pargs['color'] == 6:
             # Remove all unicode to prevent now yellow text abuse
-            text = re.sub(r'[^\x00-\x7F]+', ' ', text)
-            if len(text.strip(' ')) == 1:
-                color = 0
+            pargs['text'] = re.sub(r'[^\x00-\x7F]+', ' ', pargs['text'])
+            if len(pargs['text'].strip(' ')) == 1:
+                pargs['color'] = 0
             else:
-                if text.strip(' ') in ('<num>', '<percent>', '<dollar>', '<and>'):
-                    color = 0
+                if pargs['text'].strip(' ') in ('<num>', '<percent>', '<dollar>', '<and>'):
+                    pargs['color'] = 0
         if self.client.pos:
-            pos = self.client.pos
+            pargs['pos'] = self.client.pos
         else:
-            if pos not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
+            if pargs['pos']  not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
-        self.client.pos = pos
+        self.client.pos = pargs['pos']
 
         # Truncate and alter message if message effect is in place
-        raw_msg = text[:256]
+        raw_msg = pargs['text'][:256]
         msg = raw_msg
         if self.client.gimp: #If you are gimped, gimp message.
             msg = Constants.gimp_message()
@@ -442,9 +461,10 @@ class AOProtocol(asyncio.Protocol):
                                             .format(self.client.displayname, raw_msg),
                                             is_zstaff_flex=True, in_area=True)
 
-        if evidence:
-            if self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos != 'all':
-                self.client.area.evi_list.evidences[self.client.evi_list[evidence] - 1].pos = 'all'
+        if pargs['evidence']:
+            evidence_position = self.client.evi_list[pargs['evidence']] - 1
+            if self.client.area.evi_list.evidences[evidence_position].pos != 'all':
+                self.client.area.evi_list.evidences[evidence_position].pos = 'all'
                 self.client.area.broadcast_evidence_list()
 
         # If client has GlobalIC enabled, set area range target to intended range and remove
@@ -466,18 +486,61 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_ooc('Sent global IC message "{}" to area {}.'
                                      .format(msg, start_area.name))
 
+        pargs['msg'] = msg
+        pargs['evidence'] = self.client.evi_list[pargs['evidence']]
+        pargs['showname'] = '' # Dummy value, actual showname is computed later
+
+        # Compute pairs
+        # Based on tsuserver3.3 code
+        # Only do this if character is paired, which would only happen for AO 2.6 clients
+
+        self.client.charid_pair = pargs['charid_pair'] if 'charid_pair' in pargs else -1
+        self.client.offset_pair = pargs['offset_pair'] if 'offset_pair' in pargs else 0
+        self.client.flip = pargs['flip']
+        self.client.char_folder = pargs['folder']
+
+        if pargs['anim_type'] not in (5, 6):
+            self.client.last_sprite = pargs['anim']
+
+        pargs['other_offset'] = 0
+        pargs['other_emote'] = 0
+        pargs['other_flip'] = 0
+        pargs['other_folder'] = ''
+        if 'charid_pair' not in pargs or pargs['charid_pair'] < -1:
+            pargs['charid_pair'] = -1
+
+        if pargs['charid_pair'] > -1:
+            for target in self.client.area.clients:
+                if target == self.client:
+                    continue
+                # Check pair has accepted pair
+                if target.char_id != self.client.charid_pair:
+                    continue
+                if target.charid_pair != self.client.char_id:
+                    continue
+                # Check pair is in same position
+                if target.pos != self.client.pos:
+                    continue
+
+                pargs['other_offset'] = target.offset_pair
+                pargs['other_emote'] = target.last_sprite
+                pargs['other_flip'] = target.flip
+                pargs['other_folder'] = target.char_folder
+                break
+            else:
+                # There are no clients who want to pair with this client
+                pargs['charid_pair'] = -1
+
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
             for c in target_area.clients:
-                ic_params = [msg_type, pre, folder, anim, msg, pos, sfx, anim_type, cid, sfx_delay,
-                             button, self.client.evi_list[evidence], flip, ding, color, '']
-                c.send_ic(ic_params=ic_params, sender=self.client, gag_replaced=gag_replaced)
+                c.send_ic(params=pargs, sender=self.client, gag_replaced=gag_replaced)
 
             target_area.set_next_msg_delay(len(msg))
 
             # Deal with shoutlog
-            if button > 0:
-                info = 'used shout {} with the message: {}'.format(button, msg)
+            if pargs['button'] > 0:
+                info = 'used shout {} with the message: {}'.format(pargs['button'], msg)
                 target_area.add_to_shoutlog(self.client, info)
 
         self.client.area.set_next_msg_delay(len(msg))
@@ -500,7 +563,6 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.last_ic_message = msg
         self.client.last_active = Constants.get_time()
-        self.client.char_folder = folder
 
     def net_cmd_ct(self, args):
         """ OOC Message
@@ -511,7 +573,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_ooc_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You have been muted by a moderator.")
             return
-        if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.STR, needs_auth=False):
+        if not self.validate_net_cmd(args, ArgType.STR, ArgType.STR, needs_auth=False):
             return
         if self.client.name != args[0] and self.client.fake_name != args[0]:
             if self.client.is_valid_name(args[0]):
@@ -587,7 +649,7 @@ class AOProtocol(asyncio.Protocol):
             if not self.client.is_dj:
                 self.client.send_ooc('You were blockdj\'d by a moderator.')
                 return
-            if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.INT):
+            if not self.validate_net_cmd(args, ArgType.STR, ArgType.INT):
                 return
             if args[1] != self.client.char_id:
                 return
@@ -615,7 +677,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc('You have been muted by a moderator.')
             return
-        if not self.validate_net_cmd(args, self.ArgType.STR):
+        if not self.validate_net_cmd(args, ArgType.STR):
             return
         if args[0] not in ('testimony1', 'testimony2', 'testimony3', 'testimony4'):
             return
@@ -635,7 +697,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You have been muted by a moderator")
             return
-        if not self.validate_net_cmd(args, self.ArgType.INT, self.ArgType.INT):
+        if not self.validate_net_cmd(args, ArgType.INT, ArgType.INT):
             return
         try:
             self.client.area.change_hp(args[0], args[1])
@@ -716,6 +778,14 @@ class AOProtocol(asyncio.Protocol):
         raise KeyError('Client using {} {} sent an unsupported RE packet.'
                        .format(self.client.version[0], self.client.version[1]))
 
+    def net_cmd_pw(self, args):
+        # Ignore packet
+        # For now, TsuserverDR will not implement a character password system
+        # However, so that it stops raising errors for clients, an empty method is implemented
+        # Well, not empty, there are these comments which makes it not empty
+        # but not code is run.
+        pass
+
     def net_cmd_opKICK(self, args):
         self.net_cmd_ct(['opkick', '/kick {}'.format(args[0])])
 
@@ -745,6 +815,7 @@ class AOProtocol(asyncio.Protocol):
         'EE': net_cmd_ee,  # edit evidence
         'ZZ': net_cmd_zz,  # call mod button
         'RE': net_cmd_re,  # ??? (Unsupported)
+        'PW': net_cmd_pw,  # character password (only on CC/KFO clients)
         'opKICK': net_cmd_opKICK,  # /kick with guard on
         'opBAN': net_cmd_opBAN,  # /ban with guard on
     }

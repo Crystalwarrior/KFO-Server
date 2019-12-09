@@ -136,20 +136,27 @@ def ooc_cmd_area_kick(client, arg):
     for c in Constants.parse_id_or_ipid(client, arg[0]):
         # Failsafe in case kicked player has their character changed due to its character being used
         current_char = c.displayname
+        old_area = c.area
+
         try:
             c.change_area(area, override_passages=True, override_effects=True, ignore_bleeding=True)
         except ClientError as error:
             error_mes = ", ".join([str(s) for s in error.args])
-            client.send_ooc('Unable to kick {} to area {}: {}'
-                            .format(current_char, area.id, error_mes))
+            client.send_ooc('Unable to kick client {} ({}) to area {}: {}'
+                            .format(c.id, current_char, area.id, error_mes))
         else:
-            client.send_ooc('Kicked {} to area {}.'.format(current_char, area.id))
-            c.send_ooc("You were kicked from the area to area {}.".format(area.id))
-            if client.area.is_locked or client.area.is_modlocked:
+            client.send_ooc('You kicked client {} ({}) from area {} to area {}.'
+                            .format(c.id, current_char, old_area.id, area.id))
+            c.send_ooc('You were kicked from the area to area {}.'.format(area.id))
+            client.send_ooc_others('(X) {} kicked client {} from area {} to area {}.'
+                                   .format(client.name, c.id, old_area.id, area.id), not_to={c},
+                                   is_staff=True)
+
+            if old_area.is_locked or old_area.is_modlocked:
                 try: # Try and remove the IPID from the area's invite list
-                    client.area.invite_list.pop(c.ipid)
+                    old_area.invite_list.pop(c.ipid)
                 except KeyError:
-                    pass # Would only happen if client joins through mod powers to the locked area
+                    pass # Would only happen if target had joined the locked area through mod powers
 
             if client.party:
                 party = client.party
@@ -2124,22 +2131,30 @@ def ooc_cmd_handicap(client, arg):
 
 def ooc_cmd_help(client, arg):
     """
-    Returns the website with all available commands and their instructions (usually a GitHub
-    repository).
+    Returns a brief description of the command syntax and its functionality of a command by name
+    according to the user's current rank, or if unauthorized to use it, display its functionality
+    as if the user had the minimum rank they need to run it but warn them they need said rank to
+    use it. The syntax and functionality descriptions are pulled from README.md on server boot-up.
+    If not given a command name, returns the website with all available commands and their
+    instructions (usually a GitHub repository).
+    Returns an error if a given command name had no associated instructions on README.md.
 
     SYNTAX
     /help
+    /help <command_name>
 
     PARAMETERS
-    None
+    <command_name>: Name of the command (e.g. help)
 
     EXAMPLES
-    /help
+    /help       :: Displays website with all commands and instructions
+    /help help  :: Displays the syntax and functionality of the help command.
     """
 
     if not arg:
         url = 'https://github.com/Chrezm/TsuserverDR'
-        help_msg = 'Available commands, source code and issues can be found here: {}'.format(url)
+        help_msg = ('Available commands, source code and issues can be found here: {}. If you are '
+                    'looking for help with a specific command, do /help <command_name>'.format(url))
         client.send_ooc(help_msg)
         return
 
@@ -6047,7 +6062,98 @@ def ooc_cmd_narrate(client, arg):
     Constants.assert_command(client, arg, is_staff=True)
 
     for c in client.area.clients:
-        c.send_ic(msg=arg)
+        c.send_ic(msg=arg, bypass_replace=True)
+
+def ooc_cmd_files(client, arg):
+    """
+    Obtains the download link of a player by client ID (number in brackets).
+    If given no identifier, it will return your download link.
+    A warning is also given in either case reminding the user to be careful of clicking external
+    links, as the server provides no guarantee on the safety of the link.
+    Returns an error if the given identifier does not correspond to a user or if the target has not
+    set a download link for their files.
+
+    SYNTAX
+    /files
+    /files <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    Assuming client 1 on character Phantom_HD and iniswapped to Spam_HD has set their files'
+    download link to https://example.com
+    /files 1           :: May return something like this:
+        $HOST: Files set by client 1 for Spam_HD: https://example.com
+        $HOST: Links are spoopy. Exercise caution when opening external links.
+    """
+
+    if arg:
+       target = Constants.parse_id(client, arg)
+       if target.files:
+           client.send_ooc('Files set by client {} for `{}`: {}'
+                           .format(target.id, target.files[0], target.files[1]))
+           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
+       else:
+           raise ClientError('Client {} has not provided a download link for their files.'
+                             .format(target.id))
+    else:
+       if client.files:
+           client.send_ooc('Files set by yourself for `{}`: {}'
+                           .format(client.files[0], client.files[1]))
+           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
+       else:
+           raise ClientError('You have not provided a download link for your files.'
+                             .format(client.id))
+
+def ooc_cmd_mod_narrate(client, arg):
+    """ (CM AND MOD ONLY)
+    Sends a message from the "Narrator" position to all players in the area using the mod color.
+    This will override any existing IC message, or any hearing properties of the targets.
+
+    SYNTAX
+    /mod_narrate <message>
+
+    PARAMETERS
+    <message>: Message to send
+
+    EXAMPLES
+    /mod_narrate Hello World!   :: Sends `Hello World!` to the people in the area as a narrator with mod color.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True)
+
+    for c in client.area.clients:
+        c.send_ic(msg=arg, color=5, bypass_replace=True)
+
+def ooc_cmd_files_set(client, arg):
+    """
+    Sets the download link to the character the player is using (or has iniswapped to if available)
+    as the  given argument; otherwise, clears it.
+
+    SYNTAX
+    /files_set
+    /files_set <url>
+
+    PARAMETERS
+    <url>: URL to the download link of the characther the player is using.
+
+    EXAMPLES
+    If client 1 is on character Phantom_HD and iniswapped to Spam_HD
+    /files_set https://example.com  :: Sets the download link to Spam_HD to https://example.com
+    """
+
+    if arg:
+        client.files = [client.char_folder, arg]
+        client.send_ooc('You have set the download link for the files of `{}` to {}'
+                        .format(client.char_folder, arg))
+    else:
+        if client.files:
+            client.send_ooc('You have removed the download link for the files of `{}`.'
+                            .format(client.files[0], arg))
+            client.files = None
+        else:
+            raise ClientError('You have not provided a download link for your files.')
 
 def ooc_cmd_exec(client, arg):
     """
