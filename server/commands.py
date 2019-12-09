@@ -136,20 +136,27 @@ def ooc_cmd_area_kick(client, arg):
     for c in Constants.parse_id_or_ipid(client, arg[0]):
         # Failsafe in case kicked player has their character changed due to its character being used
         current_char = c.displayname
+        old_area = c.area
+
         try:
             c.change_area(area, override_passages=True, override_effects=True, ignore_bleeding=True)
         except ClientError as error:
             error_mes = ", ".join([str(s) for s in error.args])
-            client.send_ooc('Unable to kick {} to area {}: {}'
-                            .format(current_char, area.id, error_mes))
+            client.send_ooc('Unable to kick client {} ({}) to area {}: {}'
+                            .format(c.id, current_char, area.id, error_mes))
         else:
-            client.send_ooc('Kicked {} to area {}.'.format(current_char, area.id))
-            c.send_ooc("You were kicked from the area to area {}.".format(area.id))
-            if client.area.is_locked or client.area.is_modlocked:
+            client.send_ooc('You kicked client {} ({}) from area {} to area {}.'
+                            .format(c.id, current_char, old_area.id, area.id))
+            c.send_ooc('You were kicked from the area to area {}.'.format(area.id))
+            client.send_ooc_others('(X) {} kicked client {} from area {} to area {}.'
+                                   .format(client.name, c.id, old_area.id, area.id), not_to={c},
+                                   is_staff=True)
+
+            if old_area.is_locked or old_area.is_modlocked:
                 try: # Try and remove the IPID from the area's invite list
-                    client.area.invite_list.pop(c.ipid)
+                    old_area.invite_list.pop(c.ipid)
                 except KeyError:
-                    pass # Would only happen if client joins through mod powers to the locked area
+                    pass # Would only happen if target had joined the locked area through mod powers
 
             if client.party:
                 party = client.party

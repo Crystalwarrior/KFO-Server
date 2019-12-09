@@ -218,7 +218,7 @@
 * Gagged messages are now randomly generated 
 * Staff get new messages when using /bloodtrail, with privilege marks added where needed
 
-## TsuserverDR 4.2 (The 2nd Anniversary Update)
+## TsuserverDR 4.2 (The DRO 2nd Anniversary Update)
 
 ### 191031 (4.2)
 * Added zones. Zones are groups of areas such that any privileged server notifications that come from a player action within the zone will be sent only to "watchers", who are people who watch the zone. They come with the following commands:
@@ -301,14 +301,13 @@
   - **toggle_rollp**: Same as /can_rollp.
   - **toggle_rpgetarea**: Same as /can_rpgetarea.
   - **toggle_rpgetareas**: Same as /can_rpgetareas.
+* Added /files and /files_set for custom file linking
 * Added logging messages to the server logs when the server starts up, shuts down, or it crashes and the server can manage to save the log.
 * Server logs files are now separated by month. Logging information will go to the file associated with the month and year the server was last launched on (so if in one session the server was launched December 2019 and was shut down January 2020, all logs for that session would go in `logs/server-2019-12.log`). 
   - `logs/server.log` will now go unused, but server owners may keep this file for their archives.
 * Improved cross-compatibility between multiple AO-like clients. For client-exclusive features, a best-effort-like approach will be taken to adapt to clients that do not have said features. 
 * Improved /help message so that it suggests to use the extended syntax (/help "command name") to get help with a particular command
 * Improved README.md instructions so that installation steps are more clear
-* Added /files and /files_set for custom file linking
 * Fixed minor typos in `config_sample/config.yaml`. 
 * Fixed /help not showing extended syntax (/help "command name") when running /help help
-
-
+* Fixed /area_kick'ing someone off a locked area under special circumstances allowing the target to rejoin the locked area
