@@ -28,7 +28,7 @@ class TestCharacters_01_Files_Set(_TestCharacters):
         """
 
         self.c0.ooc('/files_set {}'.format(self.link1))
-        self.c0.assert_ooc('You have set the download link to the files of `{}` to `{}`.'
+        self.c0.assert_ooc('You have set the download link for the files of `{}` to {}'
                            .format(self.c0_dname, self.link1), over=True)
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
@@ -48,7 +48,7 @@ class TestCharacters_01_Files_Set(_TestCharacters):
 
         self.c1.ooc('/files_set {}'.format(self.link2))
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('You have set the download link to the files of `{}` to `{}`.'
+        self.c1.assert_ooc('You have set the download link for the files of `{}` to {}'
                            .format(self.c1_dname, self.link2), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
@@ -66,7 +66,7 @@ class TestCharacters_01_Files_Set(_TestCharacters):
         """
 
         self.c0.ooc('/files_set {}'.format(self.link1))
-        self.c0.assert_ooc('You have set the download link to the files of `{}` to `{}`.'
+        self.c0.assert_ooc('You have set the download link for the files of `{}` to {}'
                            .format(self.c0_dname, self.link1), over=True)
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
@@ -85,7 +85,7 @@ class TestCharacters_01_Files_Set(_TestCharacters):
 
         self.c1.ooc('/files_set')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('You have removed the download link to the files of `{}`.'
+        self.c1.assert_ooc('You have removed the download link for the files of `{}`.'
                            .format(self.c1_dname), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
@@ -108,7 +108,7 @@ class TestCharacters_01_Files_Set(_TestCharacters):
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
-        self.c4.assert_ooc('You have set the download link to the files of `{}` to `{}`.'
+        self.c4.assert_ooc('You have set the download link for the files of `{}` to {}'
                            .format(self.c4.char_folder, self.link2), over=True)
         self.assertEqual([self.c0_dname, self.link1], self.c0.files)
         self.assertEqual(None, self.c1.files)
@@ -118,7 +118,7 @@ class TestCharacters_01_Files_Set(_TestCharacters):
 
     def test_07_iniswappedremoves(self):
         """
-        Situation: C4, who is iniswapped to Spam_HD, removes their download link
+        Situation: C4, who is iniswapped to Spam_HD, removes their download link.
         """
 
         self.c4.ooc('/files_set')
@@ -126,8 +126,38 @@ class TestCharacters_01_Files_Set(_TestCharacters):
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
-        self.c4.assert_ooc('You have removed the download link to the files of `{}`.'
+        self.c4.assert_ooc('You have removed the download link for the files of `{}`.'
                            .format('Spam_HD'), over=True)
+        self.assertEqual([self.c0_dname, self.link1], self.c0.files)
+        self.assertEqual(None, self.c1.files)
+        self.assertEqual(None, self.c2.files)
+        self.assertEqual(None, self.c3.files)
+        self.assertEqual(None, self.c4.files)
+
+    def test_08_nofilesremoves(self):
+        """
+        Situation: C2, who has never run /files_set, and C4, who just ran /files_set to remove
+        their download links. Both fail.
+        """
+
+        self.c2.ooc('/files_set')
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_ooc('You have not provided a download link for your files.', over=True)
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.assertEqual([self.c0_dname, self.link1], self.c0.files)
+        self.assertEqual(None, self.c1.files)
+        self.assertEqual(None, self.c2.files)
+        self.assertEqual(None, self.c3.files)
+        self.assertEqual(None, self.c4.files)
+
+        self.c4.ooc('/files_set')
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_ooc('You have not provided a download link for your files.', over=True)
         self.assertEqual([self.c0_dname, self.link1], self.c0.files)
         self.assertEqual(None, self.c1.files)
         self.assertEqual(None, self.c2.files)
@@ -161,7 +191,7 @@ class TestCharacters_02_Files(_TestCharacters):
         self.c1.discard_all()
 
         self.c0.ooc('/files 1')
-        self.c0.assert_ooc('Files set by client 1 for `{}`: `{}`.'
+        self.c0.assert_ooc('Files set by client 1 for `{}`: {}'
                            .format(self.c1_dname, self.link1))
         self.c0.assert_ooc('Links are spoopy. Exercise caution when opening external links.',
                            over=True)
@@ -181,7 +211,7 @@ class TestCharacters_02_Files(_TestCharacters):
         self.c1.char_folder = 'Spam_HD'
 
         self.c0.ooc('/files 1')
-        self.c0.assert_ooc('Files set by client 1 for `{}`: `{}`.'
+        self.c0.assert_ooc('Files set by client 1 for `{}`: {}'
                            .format(self.c1.old_char_folder, self.link1))
         self.c0.assert_ooc('Links are spoopy. Exercise caution when opening external links.',
                            over=True)
@@ -224,7 +254,7 @@ class TestCharacters_02_Files(_TestCharacters):
 
         self.c1.ooc('/files')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('Files set by yourself for `{}`: `{}`.'
+        self.c1.assert_ooc('Files set by yourself for `{}`: {}'
                            .format(self.c1.char_folder, self.link1))
         self.c1.assert_ooc('Links are spoopy. Exercise caution when opening external links.',
                            over=True)

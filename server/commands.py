@@ -6091,7 +6091,7 @@ def ooc_cmd_files(client, arg):
     if arg:
        target = Constants.parse_id(client, arg)
        if target.files:
-           client.send_ooc('Files set by client {} for `{}`: `{}`.'
+           client.send_ooc('Files set by client {} for `{}`: {}'
                            .format(target.id, target.files[0], target.files[1]))
            client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
        else:
@@ -6099,7 +6099,7 @@ def ooc_cmd_files(client, arg):
                              .format(target.id))
     else:
        if client.files:
-           client.send_ooc('Files set by yourself for `{}`: `{}`.'
+           client.send_ooc('Files set by yourself for `{}`: {}'
                            .format(client.files[0], client.files[1]))
            client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
        else:
@@ -6145,12 +6145,15 @@ def ooc_cmd_files_set(client, arg):
 
     if arg:
         client.files = [client.char_folder, arg]
-        client.send_ooc('You have set the download link to the files of `{}` to `{}`.'
+        client.send_ooc('You have set the download link for the files of `{}` to {}'
                         .format(client.char_folder, arg))
     else:
-        client.send_ooc('You have removed the download link to the files of `{}`.'
-                        .format(client.files[0], arg))
-        client.files = None
+        if client.files:
+            client.send_ooc('You have removed the download link for the files of `{}`.'
+                            .format(client.files[0], arg))
+            client.files = None
+        else:
+            raise ClientError('You have not provided a download link for your files.')
 
 def ooc_cmd_exec(client, arg):
     """
