@@ -311,3 +311,4 @@
 * Fixed minor typos in `config_sample/config.yaml`. 
 * Fixed /help not showing extended syntax (/help "command name") when running /help help
 * Fixed /area_kick'ing someone off a locked area under special circumstances allowing the target to rejoin the locked area
+* Fixed /poison effects kicking in being notified to all players in the server as opposed to zone watchers or staff members if taget is in an area not in a zone
