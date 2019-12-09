@@ -165,7 +165,7 @@ class ClientManager:
 
         def send_ic(self, ic_params=None, params=None, sender=None, bypass_replace=False, pred=None,
                     not_to=None, gag_replaced=False, is_staff=None, in_area=None, to_blind=None,
-                    to_deaf=None, msg=None, ding=None):
+                    to_deaf=None, msg=None, color=None, ding=None):
 
             # sender is the client who sent the IC message
             # self is who is receiving the IC message at this particular moment
@@ -193,6 +193,7 @@ class ClientManager:
             pargs = {x: y for (x, y) in self.packet_handler.MS_OUTBOUND.value}
             if params is None:
                 pargs['msg'] = msg
+                pargs['color'] = color
                 pargs['ding'] = ding
             else:
                 for key in params:
@@ -231,7 +232,6 @@ class ClientManager:
 
                     # Regardless of anything, pairing is visually canceled while in first person
                     # so set them to default values
-
 
                     pop_if_there(pargs, 'other_offset')
                     pop_if_there(pargs, 'other_emote')
@@ -290,7 +290,7 @@ class ClientManager:
 
         def send_ic_others(self, ic_params=None, params=None, sender=None, bypass_replace=False,
                            pred=None, not_to=None, gag_replaced=False, is_staff=None, in_area=None,
-                           to_blind=None, to_deaf=None, msg=None, ding=None):
+                           to_blind=None, to_deaf=None, msg=None, color=None, ding=None):
             if ic_params is not None:
                 self.ic_params_deprecation_warning()
             if not_to is None:
@@ -302,7 +302,7 @@ class ClientManager:
                 c.send_ic(ic_params=None, params=None, sender=sender, bypass_replace=bypass_replace,
                           pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
-                          msg=msg, ding=ding)
+                          msg=msg, color=color, ding=ding)
 
         def disconnect(self):
             self.transport.close()
@@ -673,7 +673,6 @@ class ClientManager:
 
             area = self.server.area_manager.get_area_by_id(area_id)
             info = '== Area {}: {} =='.format(area.id, area.name)
-
             sorted_clients = []
 
             for c in area.clients:
@@ -689,8 +688,7 @@ class ClientManager:
                 # user will be listed. Useful for /multiclients.
                 if c.char_id is not None:
                     cond = (c == self or self.is_staff() or c.is_visible or (mods and c.is_mod))
-                    multiclient_cond = (not only_my_multiclients or
-                                        (c.ipid == self.ipid or c.hdid == self.hdid))
+                    multiclient_cond = not only_my_multiclients or c in self.get_multiclients()
 
                     if cond and multiclient_cond:
                         sorted_clients.append(c)
@@ -701,6 +699,9 @@ class ClientManager:
                 info += '\r\n[{}] {}'.format(c.id, c.get_char_name())
                 if include_shownames and c.showname != '':
                     info += ' ({})'.format(c.showname)
+                if len(c.get_multiclients()) > 1 and as_mod:
+                    # If client is multiclienting add (MC) for officers
+                    info += ' (MC)'
                 if not c.is_visible:
                     info += ' (S)'
                 if include_ipid:
@@ -760,8 +761,9 @@ class ClientManager:
                         if num:
                             info += '\r\n{}'.format(ainfo)
             else:
-                _, info = self.get_area_info(area_id, mods, include_ipid=include_ipid,
-                                             include_shownames=include_shownames)
+                _, info = self.get_area_info(area_id, mods,
+                                             include_shownames=include_shownames,
+                                             include_ipid=include_ipid)
 
             return info
 

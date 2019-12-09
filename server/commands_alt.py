@@ -34,8 +34,8 @@ def do_command_deprecated(command, client, arg):
     """
     Wrapper function for commands that are deprecated and pending removal.
     """
-    client.send_ooc('This command is deprecated and pending removal. Please use /{} next time.'
-                    .format(command))
+    client.send_ooc('This command is deprecated and pending removal in 4.3. '
+                    'Please use /{} next time.'.format(command))
     do_command(command, client, arg)
 
 def ooc_cmd_zg(client, arg):

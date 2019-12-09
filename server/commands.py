@@ -6062,7 +6062,7 @@ def ooc_cmd_narrate(client, arg):
     Constants.assert_command(client, arg, is_staff=True)
 
     for c in client.area.clients:
-        c.send_ic(msg=arg)
+        c.send_ic(msg=arg, bypass_replace=True)
 
 def ooc_cmd_files(client, arg):
     """
@@ -6105,6 +6105,26 @@ def ooc_cmd_files(client, arg):
        else:
            raise ClientError('You have not provided a download link for your files.'
                              .format(client.id))
+
+def ooc_cmd_mod_narrate(client, arg):
+    """ (CM AND MOD ONLY)
+    Sends a message from the "Narrator" position to all players in the area using the mod color.
+    This will override any existing IC message, or any hearing properties of the targets.
+
+    SYNTAX
+    /mod_narrate <message>
+
+    PARAMETERS
+    <message>: Message to send
+
+    EXAMPLES
+    /mod_narrate Hello World!   :: Sends `Hello World!` to the people in the area as a narrator with mod color.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True)
+
+    for c in client.area.clients:
+        c.send_ic(msg=arg, color=5, bypass_replace=True)
 
 def ooc_cmd_files_set(client, arg):
     """
