@@ -289,7 +289,7 @@
 * Made error log files be created if the server crashes on bootup, which would normally happen if some files are missing or have some parsing errors
 * Fixed master server connection not being closed automatically on server shutdown, which displayed ignored exception messages if running Python 3.8
 
-## (4.2.1)
+### 191209a (4.2.1)
 * Added deprecation warnings to the following commands
   - **allow_iniswap**: Same as /can_iniswap.
   - **delete_areareachlock**: Same as /passage_clear.
@@ -302,13 +302,14 @@
   - **toggle_rpgetarea**: Same as /can_rpgetarea.
   - **toggle_rpgetareas**: Same as /can_rpgetareas.
 * Added /files and /files_set for custom file linking
-* Added logging messages to the server logs when the server starts up, shuts down, or it crashes and the server can manage to save the log.
+* Added logging messages to the server logs when the server starts up, shuts down, or it crashes and the server can manage to save the log
 * Server logs files are now separated by month. Logging information will go to the file associated with the month and year the server was last launched on (so if in one session the server was launched December 2019 and was shut down January 2020, all logs for that session would go in `logs/server-2019-12.log`). 
   - `logs/server.log` will now go unused, but server owners may keep this file for their archives.
 * Improved cross-compatibility between multiple AO-like clients. For client-exclusive features, a best-effort-like approach will be taken to adapt to clients that do not have said features. 
 * Improved /help message so that it suggests to use the extended syntax (/help "command name") to get help with a particular command
-* Improved README.md instructions so that installation steps are more clear
-* Fixed minor typos in `config_sample/config.yaml`. 
-* Fixed /help not showing extended syntax (/help "command name") when running /help help
+* Improved README.md instructions so that server installation steps are more clear
+* Fixed minor typos in `config_sample/config.yaml`
 * Fixed /area_kick'ing someone off a locked area under special circumstances allowing the target to rejoin the locked area
+* Fixed /help not showing extended syntax (/help "command name") when running /help help
+* Fixed /narrate messages being replaced for deafened players
 * Fixed /poison effects kicking in being notified to all players in the server as opposed to zone watchers or staff members if taget is in an area not in a zone
