@@ -3677,46 +3677,15 @@ def ooc_cmd_pm(client, arg):
                             'char-name, custom showname, ID or OOC-name or char-name.')
 
     cm = client.server.client_manager
-
-    # Pretend the identifier is a character name
-    targets = cm.get_targets(client, TargetType.CHAR_NAME, arg, True)
-    if targets:
-        target_length = len(targets[0].get_char_name().split(' '))
-
-    # If still needed, pretend the identifier is a custom showname
-    if not targets:
-        targets = cm.get_targets(client, TargetType.SHOWNAME, arg, True)
-        if targets:
-            target_length = len(targets[0].showname.split(' '))
-
-    # If still needed, pretend the identifier is a client ID
-    if not targets and args[0].isdigit():
-        targets = cm.get_targets(client, TargetType.ID, int(args[0]), False)
-        if targets:
-            target_length = 1
-
-    # If still needed, pretend the identifier is an OOC username
-    if not targets:
-        targets = cm.get_targets(client, TargetType.OOC_NAME, arg, True)
-        if targets:
-            target_length = len(targets[0].name.split(' '))
-
-    # If no matching targets found, be sad.
-    if not targets:
-        raise ArgumentError('No targets found.')
-
-    # Obtain the message from the given arguments
-    msg = ' '.join(args[target_length:])
-    recipient = ' '.join(args[:target_length])
+    target, recipient, msg = cm.get_target_public(client, arg)
 
     # Attempt to send the message to the target, provided they do not have PMs disabled.
-    c = targets[0]
-    if c.pm_mute:
+    if target.pm_mute:
         raise ClientError('This user muted all PM conversations.')
 
     client.send_ooc('PM sent to {}. Message: {}'.format(recipient, msg))
-    c.send_ooc('PM from {} in {} ({}): {}'
-               .format(client.name, client.area.name, client.displayname, msg))
+    target.send_ooc('PM from {} in {} ({}): {}'
+                    .format(client.name, client.area.name, client.displayname, msg))
 
 def ooc_cmd_poison(client, arg):
     """ (STAFF ONLY)

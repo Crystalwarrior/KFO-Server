@@ -1117,13 +1117,16 @@ class ClientManager:
         for area in areas:
             for target in area.clients:
                 if key == TargetType.IP:
-                    if value.lower().startswith(target.get_ipreal().lower()):
+                    if target.get_ipreal().lower().startswith(value.lower()):
                         targets.append(target)
                 elif key == TargetType.OOC_NAME:
-                    if value.lower().startswith(target.name.lower()) and target.name:
+                    if target.name.lower().startswith(value.lower()):
                         targets.append(target)
                 elif key == TargetType.CHAR_NAME:
-                    if value.lower().startswith(target.get_char_name().lower()):
+                    if target.get_char_name().lower().startswith(value.lower()):
+                        targets.append(target)
+                elif key == TargetType.CHAR_FOLDER:
+                    if target.char_folder.lower().startswith(value.lower()):
                         targets.append(target)
                 elif key == TargetType.ID:
                     if target.id == value:
@@ -1135,7 +1138,7 @@ class ClientManager:
                     if target.hdid == value:
                         targets.append(target)
                 elif key == TargetType.SHOWNAME:
-                    if target.showname and value.lower().startswith(target.showname.lower()):
+                    if target.showname.lower().startswith(value.lower()):
                         targets.append(target)
         return targets
 
@@ -1152,3 +1155,108 @@ class ClientManager:
             if client.is_ooc_muted:
                 clients.append(client)
         return clients
+
+    def get_target_public(self, client, identifier):
+        """
+        If the first entry of `identifier` is an ID of some client, return that client.
+        Otherwise, return the client in the same area as `client` such that one of the
+        following is true:
+            * Their character name starts with `identifier`
+            * Their character they have iniedited to starts with `identifier`
+            * Their custom showname starts with `identifier`
+            * Their OOC name starts with `identifier`
+        Note these criteria are public information for any client regardless of rank.
+
+        Parameters
+        ----------
+        client: ClientManager.Client
+            Client whose area will be considered when looking for targets
+        identifier: str
+            Identifier for target
+
+        Returns
+        -------
+        (ClientManager.Client, int)
+            Client with an identifier that matches `identifier` as previously described.
+            If `identifier` were split by single spaces, how many entries of this split were used
+            to match the client.
+
+        Raises
+        ------
+        ClientError:
+            If either no clients or more than one client matches the identifier.
+        """
+
+        split_identifier = identifier.split(' ')
+        multiple_match_message = ''
+        valid_targets = list()
+
+        for word_number in range(len(split_identifier)):
+            # As len(split_identifier) >= 1, this for loop is run at least once, so we can use
+            # top-level variables defined here outside the for loop
+
+            # Greedily try and find the smallest possible identifier that gets one unique target
+            identity, rest = (' '.join(split_identifier[:word_number+1]),
+                              ' '.join(split_identifier[word_number+1:]))
+
+            # First pretend the identity is a client ID, which is unique
+            if identity.isdigit():
+                targets = set(self.get_targets(client, TargetType.ID, int(identity), False))
+                if len(targets) == 1:
+                    # Found unique match
+                    valid_targets = targets
+                    valid_match = identity
+                    valid_rest = rest
+                    break
+
+            # Otherwise, other identifiers may not be unique, so consider all possibilities
+            # Pretend the identity is a character name, iniswapped to folder, a showname or OOC name
+            possibilities = [
+                    (TargetType.CHAR_NAME, lambda target: target.get_char_name()),
+                    (TargetType.CHAR_FOLDER, lambda target: target.char_folder),
+                    (TargetType.SHOWNAME, lambda target: target.showname),
+                    (TargetType.OOC_NAME, lambda target: target.name)]
+            targets = set()
+
+            # Match against everything
+            #breakpoint()
+            for possibility in possibilities:
+                id_type, id_value = possibility
+                new_targets = set(self.get_targets(client, id_type, identity, True))
+                if new_targets:
+                    targets |= new_targets
+                    matched = id_value(new_targets.pop())
+
+            if not targets:
+                # Covers both the case where no targets were found (at which case no targets will
+                # be found later on)
+                break
+            elif len(targets) == 1:
+                # Covers the case where exactly one target is found. As the algorithm is meant to
+                # produce a greedy result, the for loop will continue in case a larger selection of
+                # `identifier` can be matched to a single target.
+                valid_targets = targets
+                valid_match = matched
+                valid_rest = rest
+            else:
+                # Otherwise, our identity guess was not precise enough, so keep track of that
+                # for later and continue with the for loop
+                multiple_match_message = 'Multiple targets match identifier `{}`'.format(identity)
+                for target in sorted(list(targets), key=lambda c: c.id):
+                    char = target.get_char_name()
+                    if target.char_folder and target.char_folder != char: # Show iniswap if needed
+                        char = '{}/{}'.format(char, target.char_folder)
+
+                    multiple_match_message += ('\r\n*[{}] {} ({}) (OOC: {})'
+                            .format(target.id, char, target.showname, target.name))
+
+        if not valid_targets or len(valid_targets) > 1:
+            # If was able to match more than one at some point, return that
+            if multiple_match_message:
+                raise ClientError(multiple_match_message)
+            # Otherwise, show that no match was ever found
+            raise ClientError('No targets with identifier `{}` found.'.format(identifier))
+
+        # For `matched` to be undefined, no targets should have been matched, which would have
+        # been caught before.
+        return valid_targets.pop(), valid_match, valid_rest
