@@ -6200,6 +6200,35 @@ def ooc_cmd_mod_narrate(client, arg):
     for c in client.area.clients:
         c.send_ic(msg=arg, color=5, bypass_replace=True)
 
+def ooc_cmd_whisper(client, args):
+    """
+    Sends an IC personal message to a specified user by some ID. The messages have the showname
+    of the sender and their message, but does not include their sprite.
+    Elevated staff notifications are sent on whispers including the message content, so this is not
+    meant to act as a private means of communication between players, for which /pm is recommended.
+    Whispers sent by sneaked players include an empty showname so as to not reveal their identity.
+    Whispers sent to sneaked players will succeed only if the sender is sneaking and both the sender
+    and recipient are part of the same party.
+    Deafened recipients will receive a nerfed message if whispered to.
+    Gagged senders will send a nerfed message if they attempt to whisper.
+    Players in the same area as the whisperer will be notified that they whispered to their target
+    (but will not receive the content of the message), provided they are not blind (in which case
+    no notification is sent)
+    Returns an error if the user could not be found or if the message is empty.
+
+    SYNTAX
+    /whisper <user_ID> <message>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
+    <message>: Message to be sent.
+
+    EXAMPLES
+    /whisper 1 What will I get for Christmas? :: Sends that message to player with client ID 1.
+    /whisper 0 Nothing                        :: Sends that message to player with client ID 0.
+    """
+    pass
+
 def ooc_cmd_exec(client, arg):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
