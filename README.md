@@ -107,7 +107,7 @@ Additional notes are listed at the end of the command list.
     - Displays the invite link of the server's Discord server.
 * **doc** "url"
     - Gives the doc url if blank, updates the doc url otherwise.
-* **files** "ID"
+* **files** "ID/char name/edited-to character/showname/OOC name"
     - Gives a download link set by the target that links to their files, or gives your own download link if not given an argument.
 * **files_set** "url"
     - Sets a download link for the user's files, or clears it if not given an argument.
@@ -151,17 +151,17 @@ Additional notes are listed at the end of the command list.
     - Disbands your party.
 * **party_id**
     - Returns your party ID.
-* **party_invite** "ID"
+* **party_invite** "ID/char name/edited-to character/showname/OOC name"
     - Invites a player in the same area to your party.
 * **party_join** "party ID"
     - Makes you join a party you were invited to.
-* **party_kick** "ID"
+* **party_kick** "ID/char name/edited-to character/showname/OOC name"
     - Kicks a player off your party.
 * **party_lead**
     - Makes you a leader of your party.
 * **party_members**
     - Lists the leaders and regular members of your party.
-* **party_uninvite** "ID"
+* **party_uninvite** "ID/char name/edited-to character/showname/OOC name"
     - Revokes an invitation sent to a player to join your player.
 * **party_unlead**
     - Removes your party leader role.
@@ -169,7 +169,7 @@ Additional notes are listed at the end of the command list.
     - Returns "Pong", used to check for server connection.
 * **play** "song.mp3"
     - Plays a song, provided the area you are in allows non-staff members to run this command.
-* **pm** "ID/IPID/char name/OOC name" "message"
+* **pm** "ID/char name/edited-to character/showname/OOC name" "message"
     - PMs the target.
 * **pos** "position"
     - Changes your position in the court.

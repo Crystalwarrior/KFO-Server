@@ -3249,9 +3249,9 @@ def ooc_cmd_party_invite(client, arg):
     """
     Sends an invite to another player by client ID to join the party. The invitee will receive an
     OOC message with your name and party ID so they can join.
-    The invitee must be in the same area as the player. If that is not the case, but the invitee
-    is in an area that can be reached by screams and is not deaf, they will receive a notification
-    of the party invitation attempt (but will not be invited).
+    The invitee must be in the same area as the player. If that is not the case (and the player
+    used a client ID), but the invitee is in an area that can be reached by screams and is not
+    deaf, they will receive a notification of the party invitation attempt, but will not be invited.
     Returns an error if you are not part of a party, you are not a party leader or staff member,
     if the player is not in the same area as you, or if the player is already invited.
 
@@ -3259,7 +3259,7 @@ def ooc_cmd_party_invite(client, arg):
     /party_invite <client_id>
 
     PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
 
     EXAMPLES
     /party_invite 2         :: Invites the player with ID 2 to join your party.
@@ -3271,7 +3271,7 @@ def ooc_cmd_party_invite(client, arg):
     if not party.is_leader(client) and not client.is_staff():
         raise PartyError('You are not a leader of your party.')
 
-    c = Constants.parse_id(client, arg)
+    c, _, _ = client.server.client_manager.get_target_public(client, arg)
     # Check if invitee is in the same area
     if c.area != party.area:
         if c.area.name in client.area.scream_range and not c.is_deaf:
@@ -3320,7 +3320,7 @@ def ooc_cmd_party_join(client, arg):
 
 def ooc_cmd_party_kick(client, arg):
     """
-    Kicks a player by client ID off your party. Also sends a notification to party leaders and the
+    Kicks a player by some ID off your party. Also sends a notification to party leaders and the
     target if you were visible.
     Returns an error if you are not a leader of your party or the target is not a member.
 
@@ -3328,7 +3328,7 @@ def ooc_cmd_party_kick(client, arg):
     /party_kick <client_id>
 
     PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
 
     EXAMPLES
     /party_kick 2       :: Kicks the player with client ID 2 off your party.
@@ -3340,7 +3340,7 @@ def ooc_cmd_party_kick(client, arg):
     if not party.is_leader(client) and not client.is_staff():
         raise PartyError('You are not a leader of your party.')
 
-    c = Constants.parse_id(client, arg)
+    c, _, _ = client.server.client_manager.get_target_public(client, arg)
     if c == client:
         raise PartyError('You cannot kick yourself off your party.')
 
@@ -3469,16 +3469,17 @@ def ooc_cmd_party_members(client, arg):
 
 def ooc_cmd_party_uninvite(client, arg):
     """
-    Revokes an invitation for a player by client ID to join your party. They will no longer be able
+    Revokes an invitation for a player by some ID to join your party. They will no longer be able
     to join your party until they are invited again.
-    Returns an error if you are not part of a party, you are not a party leader or staff member,
-    or if the player is not invited.
+    Returns an error if you are not part of a party, you are not a party leader or staff member, if
+    the player is not invited, or if some ID other than client ID was used and the player is not in
+    the area of the party.
 
     SYNTAX
     /party_uninvite <client_id>
 
     PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
 
     EXAMPLES
     /party_uninvite 2       :: Revokes the invitation sent to player with ID 2 to join your party.
@@ -3490,7 +3491,7 @@ def ooc_cmd_party_uninvite(client, arg):
     if not party.is_leader(client) and not client.is_staff():
         raise PartyError('You are not a leader of your party.')
 
-    c = Constants.parse_id(client, arg)
+    c, _, _ = client.server.client_manager.get_target_public(client, arg)
     party.remove_invite(c, tc=False)
 
     client.send_ooc('You have uninvited {} to join your party.'.format(c.displayname))
@@ -3504,7 +3505,7 @@ def ooc_cmd_party_unlead(client, arg):
     """
     Removes your party leader role and announces all other party leaders of it. If a party has no
     leaders, all leader functions are available to all members.
-    Returns an error if you are not part of a party or you are not a leader.
+    Returns an error if you are not part of a party or you are not a leader of your party.
 
     SYNTAX
     /party_unlead
@@ -6045,10 +6046,10 @@ def ooc_cmd_files(client, arg):
 
     SYNTAX
     /files
-    /files <client_id>
+    /files <user_id>
 
     PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
 
     EXAMPLES
     Assuming client 1 on character Phantom_HD and iniswapped to Spam_HD has set their files'
