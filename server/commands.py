@@ -2236,34 +2236,56 @@ def ooc_cmd_iclock(client, arg):
                       .format(client.area.id, client.get_char_name(), client.area.ic_lock), client)
 
 def ooc_cmd_invite(client, arg):
-    """ (STAFF ONLY)
-    Adds a client based on client ID or IPID to the area's invite list. If given IPID, it will
-    invite all clients opened by the user. Otherwise, it will just do it to the given client.
-    Returns an error if the given identifier does not correspond to a user.
+    """ (VARYING REQUIREMENTS)
+    Adds a client based on some ID to the area's invite list. Only staff members can invite based
+    on IPID. Invites are IPID based, so anyone with the same IPID becomes part of the area's invite
+    list.
+    Returns an error if the given identifier does not correspond to a user or if target is already
+    invited.
 
     SYNTAX
-    /invite <client_id>
     /invite <client_ipid>
+    /invite <user_id>
 
     PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
     <client_ipid>: IPID for the client (number in parentheses in /getarea)
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
 
     EXAMPLES
     /invite 1                     :: Invites the player whose client ID is 1.
     /invite 1234567890            :: Invites all clients of the player whose IPID is 1234567890.
     """
 
-    if not client.is_staff():
-        raise ClientError('You must be authorized to do that.')
+    Constants.assert_command(client, arg, parameters='>0')
+
     if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
         raise ClientError('Area is not locked.')
 
-    # Invite matching targets
-    for c in Constants.parse_id_or_ipid(client, arg):
-        client.area.invite_list[c.ipid] = None
-        client.send_ooc('Client {} has been invited to your area.'.format(c.id))
-        c.send_ooc('You have been invited to area {}.'.format(client.area.name))
+    targets = list() # Start with empty list
+    if client.is_staff() and arg.isdigit():
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        if targets:
+            some_target = targets[0]
+    if not targets:
+        # Under the hood though, we need the IPID of the target, so we will still end up obtaining
+        # it anyway. We want to get all clients whose IPID match the IPID of whatever we match
+        some_target, _, _ = client.server.client_manager.get_target_public(client, arg)
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID,
+                                                           some_target.ipid, False)
+
+    # Check if target is already invited
+    if some_target.ipid in client.area.invite_list:
+        raise ClientError('Target is already invited to your area.')
+
+    # Add to invite list and notify targets
+    client.area.invite_list[some_target.ipid] = None
+    for c in targets:
+        # If inviting yourself, send special message
+        if client == c:
+            client.send_ooc('You have invited yourself to this area.')
+        else:
+            client.send_ooc('Client {} has been invited to your area.'.format(c.id))
+            c.send_ooc('You have been invited to area {}.'.format(client.area.name))
 
 def ooc_cmd_judgelog(client, arg):
     """ (STAFF ONLY)
@@ -5423,33 +5445,57 @@ def ooc_cmd_unilock(client, arg):
                       .format(client.area.id, client.get_char_name(), now0, name0, name1))
 
 def ooc_cmd_uninvite(client, arg):
-    """
-    Removes a client based on client ID or IPID from the area's invite list.
-    If given IPID, it will uninvite all clients opened by the user. Otherwise, it will just uninvite
-    the given client.
-    Returns an error if the given identifier does not correspond to a user.
+    """ (VARYING REQUIREMENTS)
+    Removes a client based on some ID to the area's invite list. Only staff members can invite based
+    on IPID. Invites are IPID based, so anyone with the same IPID is no longer part of the area's
+    invite list.
+    Returns an error if the given identifier does not correspond to a user or if target is already
+    not invited.
 
     SYNTAX
-    /uninvite <client_id>
     /uninvite <client_ipid>
+    /uninvite <user_id>
 
     PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
     <client_ipid>: IPID for the client (number in parentheses in /getarea)
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
 
     EXAMPLES
     /uninvite 1                   :: Uninvites the player whose client ID is 1.
     /uninvite 1234567890          :: Uninvites all clients opened by the player whose IPID is 1234567890.
     """
 
-    # Uninvite matching targets
-    for c in Constants.parse_id_or_ipid(client, arg):
-        try:
-            client.area.invite_list.pop(c.ipid)
-            client.send_ooc('Client {} was removed from the invite list of your area.'.format(c.id))
-            c.send_ooc('You have been removed from the invite list of area {}.'.format(client.area.name))
-        except (KeyError, IndexError):
-            client.send_ooc('Client {} is not in the invite list.'.format(c.id))
+    Constants.assert_command(client, arg, parameters='>0')
+
+    if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
+        raise ClientError('Area is not locked.')
+
+    targets = list() # Start with empty list
+    if client.is_staff() and arg.isdigit():
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+        if targets:
+            some_target = targets[0]
+    if not targets:
+        # Under the hood though, we need the IPID of the target, so we will still end up obtaining
+        # it anyway. We want to get all clients whose IPID match the IPID of whatever we match
+        some_target, _, _ = client.server.client_manager.get_target_public(client, arg)
+        targets = client.server.client_manager.get_targets(client, TargetType.IPID,
+                                                           some_target.ipid, False)
+
+    # Check if target is already invited
+    if some_target.ipid not in client.area.invite_list:
+        raise ClientError('Target is already not invited to your area.')
+
+    # Remove from invite list and notify targets
+    client.area.invite_list.pop(some_target.ipid)
+
+    for c in targets:
+        # If uninviting yourself, send special message
+        if client == c:
+            client.send_ooc('You have uninvited yourself from this area.')
+        else:
+            client.send_ooc('Client {} has been uninvited from your area.'.format(c.id))
+            c.send_ooc('You have been uninvited from area {}.'.format(client.area.name))
 
 def ooc_cmd_unlock(client, arg):
     """ (VARYING REQUIREMENTS)

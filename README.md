@@ -117,6 +117,8 @@ Additional notes are listed at the end of the command list.
     - Shows the current characters in your area.
 * **getareas**
     - Shows all characters in all areas reachable from your own.
+* **invite** "ID/char name/edited-to character/showname/OOC name"
+    - Adds target to the invite list of your locked area so they may join.
 * **kickself**
     - Removes all of of the user's clients except the one that used the command.
 * **knock** "area"
@@ -203,7 +205,7 @@ Additional notes are listed at the end of the command list.
 * **timer_cancel** "timer name"
     - Cancels the timer by name, provided it is yours.
 * **timer_get** "timer name"
-    - Obtain the remaining time of the given timer by name, provided it is public, or list all remaining times in all public timers if not given a name.
+    - Obtains the remaining time of the given timer by name, provided it is public, or list all remaining times in all public timers if not given a name.
 * **ToD**
     - Chooses "Truth" or "Dare" for Truth or Dare minigames.
 * **toggle_fp**
@@ -216,7 +218,7 @@ Additional notes are listed at the end of the command list.
     - Changes your setting to have the IC messages you receive to include the sender's custom showname. By default it is on.
 * **unilock** "area number/name"
     - Changes the passage status (locked/unlocked) from the current area to the given one.
-* **uninvite** "ID/IPID"
+* **uninvite** "ID/char name/edited-to character/showname/OOC name"
     - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**
     - Unlocks your area, provided the lock came as a result of /lock.
@@ -225,7 +227,7 @@ Additional notes are listed at the end of the command list.
 * **zone_global**
     - Sends a message to all players in the zone you are in.
 * **8ball**
-    - Gain insight from the magic 8 ball.
+    - Gains insight from the magic 8 ball.
 
 ### GM Commands
 
@@ -302,8 +304,8 @@ GMs can:
 * **iclock**
     - Changes the IC lock status of the current area.
     - If the area has an IC lock, only GMs and above will be able to send IC messages.
-* **invite** "ID/IPID"
-    - Adds target in invite list of your area.
+* **invite** "IPID/ID/char name/edited-to character/showname/OOC name"
+    - Adds target to the invite list of your area.
 * **judgelog** "area"
     - Lists the last 20 judge actions performed in the given area (or current area if not given).
     - Each entry includes the time of execution, client ID, character name, client IPID and the judge action performed.
@@ -362,6 +364,8 @@ GMs can:
     - Removes movement handicaps on a target.
 * **unilock** "area 1", "area 2"
     - Changes the passage status (locked/unlocked) from area 1 to area 2.
+* **uninvite** "IPID/ID/char name/edited-to character/showname/OOC name"
+    - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**
     - Unlocks an area, provided the lock came as a result of /gmlock or /lock.
 * **whereis** "ID/IPID"
