@@ -176,7 +176,7 @@ class TestCharacters_02_Files(_TestCharacters):
 
         # Invalid client ID
         self.c0.ooc('/files -1')
-        self.c0.assert_ooc('`-1` does not look like a valid client ID.', over=True)
+        self.c0.assert_ooc('No targets with identifier `-1` found.', over=True)
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()

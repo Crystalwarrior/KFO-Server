@@ -172,7 +172,7 @@ class TestOOC_02_PM(_TestOOC):
         """
 
         mes = ('Not enough arguments. Use /pm <target> <message>. Target should be '
-               'char-name, custom showname, ID or OOC-name or char-name.')
+               'ID, char-name, edited-to character, custom showname or OOC-name.')
 
         # No target
         self.c0.ooc('/pm')

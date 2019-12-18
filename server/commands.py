@@ -3654,13 +3654,14 @@ def ooc_cmd_play(client, arg):
 def ooc_cmd_pm(client, arg):
     """
     Sends a personal message to a specified user.
-    Returns an error if the user could not be found, or if the user or target muted PMs.
+    Returns an error if the user could not be found, if the user or target muted PMs, or if
+    multiple users match the given identifier.
 
     SYNTAX
     /pm <user_id> <message>
 
     PARAMETERS
-    <user_id>: Either the character name, the OOC username, the custom showname or client ID (number in brackets in /getarea) of the intended recipient.
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
     <message>: Message to be sent.
 
     EXAMPLES
@@ -3674,7 +3675,7 @@ def ooc_cmd_pm(client, arg):
     args = arg.split()
     if len(args) < 2:
         raise ArgumentError('Not enough arguments. Use /pm <target> <message>. Target should be '
-                            'char-name, custom showname, ID or OOC-name or char-name.')
+                            'ID, char-name, edited-to character, custom showname or OOC-name.')
 
     cm = client.server.client_manager
     target, recipient, msg = cm.get_target_public(client, arg)
@@ -6058,14 +6059,18 @@ def ooc_cmd_files(client, arg):
     """
 
     if arg:
-       target = Constants.parse_id(client, arg)
+       target, match, _ = client.server.client_manager.get_target_public(client, arg)
+
        if target.files:
-           client.send_ooc('Files set by client {} for `{}`: {}'
-                           .format(target.id, target.files[0], target.files[1]))
+           if match.isdigit():
+               match = 'client {}'.format(match)
+           client.send_ooc('Files set by {} for `{}`: {}'
+                           .format(match, target.files[0], target.files[1]))
            client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
        else:
-           raise ClientError('Client {} has not provided a download link for their files.'
-                             .format(target.id))
+           if match.isdigit():
+               match = 'Client {}'.format(match)
+           raise ClientError('{} has not provided a download link for their files.'.format(match))
     else:
        if client.files:
            client.send_ooc('Files set by yourself for `{}`: {}'

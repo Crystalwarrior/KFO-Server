@@ -1176,10 +1176,10 @@ class ClientManager:
 
         Returns
         -------
-        (ClientManager.Client, int)
+        (ClientManager.Client, str, str)
             Client with an identifier that matches `identifier` as previously described.
-            If `identifier` were split by single spaces, how many entries of this split were used
-            to match the client.
+            The match that was made, using as much from `identifier` as possible.
+            The substring of `identifier` that was not used.
 
         Raises
         ------
@@ -1219,7 +1219,6 @@ class ClientManager:
             targets = set()
 
             # Match against everything
-            #breakpoint()
             for possibility in possibilities:
                 id_type, id_value = possibility
                 new_targets = set(self.get_targets(client, id_type, identity, True))
