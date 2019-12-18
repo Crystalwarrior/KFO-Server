@@ -263,7 +263,8 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
 
         self.c2.ooc('/globalic 0')
         self.c2.assert_ooc('Your IC messages will now be sent to area {}.'
-                           .format(self.a0_name), over=True)
+                           .format(self.a0_name))
+        self.c2.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
 
         self.c2.sic('Hi')
         self.c0.assert_ic('(Your ears are ringing)', folder=self.c2_cname, over=True)
@@ -273,7 +274,8 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
 
         self.c2.ooc('/globalic 0, 1')
         self.c2.assert_ooc('Your IC messages will now be sent to areas {} through {}.'
-                           .format(self.a0_name, self.a1_name), over=True)
+                           .format(self.a0_name, self.a1_name))
+        self.c2.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
 
         self.c2.sic('Hi.')
         self.c0.assert_ic('(Your ears are ringing) ', folder=self.c2_cname, over=True) # client wk

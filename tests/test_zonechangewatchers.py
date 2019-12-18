@@ -41,6 +41,7 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
 
         self.c1.ooc('/zone 4, 6') # Creates zone z0
         self.c1.discard_all()
+        self.c2.discard_all() # staff in zone
         self.assertEquals(1, len(self.zm.get_zones()))
         self.assertEquals({self.c1}, self.zm.get_zone('z0').get_watchers())
 
@@ -74,12 +75,12 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         Situation: C0 (who is made mod) creates a zone z1. C4 (who is made mod) watches their zone.
         """
 
-        self.c0.make_mod()
-        self.c4.make_mod()
+        self.c0.make_mod(over=False)
+        self.c4.make_mod(over=False)
         self.c0.ooc('/zone {}, {}'.format(1, 3))
-        self.c0.discard_all()
-        self.c1.discard_all() # Discard mod notification for zone creation
-        self.c4.discard_all() # Discard mod notification for zone creation
+        self.c0.discard_all() # Discard notification for logging in while in zone
+        self.c1.discard_all() # Discard notification for zone creation
+        self.c4.discard_all() # Discard notification for logging in while in zone & zone creation
 
         self.c4.ooc('/zone_watch {}'.format('z1'))
         self.c0.assert_ooc('(X) {} is now watching your zone.'.format(self.c4.name), over=True)
@@ -185,7 +186,8 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.assertEquals(1, len(self.zm.get_zones()))
         self.assertEquals({self.c1, self.c5}, self.zm.get_zone('z0').get_watchers())
 
-        self.c4.make_mod()
+        self.c4.make_mod(over=False)
+        self.c4.discard_all() # Discard notification for logging in while in zone
 
         self.c4.ooc('/zone_unwatch')
         self.c0.assert_no_packets()
@@ -314,7 +316,7 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         Situation: C4 (who is made mod) creates a zone after a player disconnected.
         """
 
-        self.c4.make_mod()
+        self.c4.make_mod(over=False)
 
         self.c4.ooc('/zone 3')
         self.c1.discard_all() # Discard mod notification for zone creation
@@ -362,7 +364,7 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         watching zone z0. C1 is notified.
         """
 
-        self.c2.make_gm()
+        self.c2.make_gm(over=False)
         self.c2.ooc('/zone_watch z0')
         self.c1.discard_all()
         self.c2.discard_all()

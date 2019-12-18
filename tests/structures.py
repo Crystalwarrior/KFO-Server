@@ -249,28 +249,28 @@ class _TestClientManager(ClientManager):
             mes = mes.replace('<dollar>', '$')
             return mes
 
-        def make_mod(self):
+        def make_mod(self, over=True):
             if self.is_mod:
                 return
             self.ooc('/login {}'.format(self.server.config['modpass']))
             self.assert_packet('FM', None)
-            self.assert_ooc('Logged in as a moderator.', over=True)
+            self.assert_ooc('Logged in as a moderator.', over=over)
             assert self.is_mod
 
-        def make_cm(self):
+        def make_cm(self, over=True):
             if self.is_cm:
                 return
             self.ooc('/logincm {}'.format(self.server.config['cmpass']))
             self.assert_packet('FM', None)
-            self.assert_ooc('Logged in as a community manager.', over=True)
+            self.assert_ooc('Logged in as a community manager.', over=over)
             assert self.is_cm
 
-        def make_gm(self):
+        def make_gm(self, over=True):
             if self.is_gm:
                 return
             self.ooc('/loginrp {}'.format(self.server.config['gmpass']))
             self.assert_packet('FM', None)
-            self.assert_ooc('Logged in as a game master.', over=True)
+            self.assert_ooc('Logged in as a game master.', over=over)
             assert self.is_gm
 
         def make_normie(self, over=True):

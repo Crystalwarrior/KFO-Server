@@ -854,11 +854,19 @@ class ClientManager:
                 raise ClientError('You must specify the password.')
             auth_command(arg)
 
+            # The following actions are true for all logged in roles
             if self.area.evidence_mod == 'HiddenCM':
                 self.area.broadcast_evidence_list()
             self.reload_music_list() # Update music list to show all areas
+
             self.send_ooc('Logged in as a {}.'.format(role))
             logger.log_server('Logged in as a {}.'.format(role), self)
+
+            if self.area.in_zone and self.area.in_zone != self.zone_watched:
+                zone_id = self.area.in_zone.get_id()
+                self.send_ooc('(X) You are in an area part of zone `{}`. To be able to receive its '
+                              'notifications, start watching it with /zone_watch {}'
+                              .format(zone_id, zone_id))
 
         def auth_mod(self, password):
             if self.is_mod:

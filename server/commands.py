@@ -1735,6 +1735,82 @@ def ooc_cmd_doc(client, arg):
         logger.log_server('[{}][{}]Changed document to: {}'
                           .format(client.area.id, client.get_char_name(), arg), client)
 
+def ooc_cmd_files(client, arg):
+    """
+    Obtains the download link of a player by client ID (number in brackets).
+    If given no identifier, it will return your download link.
+    A warning is also given in either case reminding the user to be careful of clicking external
+    links, as the server provides no guarantee on the safety of the link.
+    Returns an error if the given identifier does not correspond to a user or if the target has not
+    set a download link for their files.
+
+    SYNTAX
+    /files
+    /files <user_id>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
+
+    EXAMPLES
+    Assuming client 1 on character Phantom_HD and iniswapped to Spam_HD has set their files'
+    download link to https://example.com
+    /files 1           :: May return something like this:
+        $HOST: Files set by client 1 for Spam_HD: https://example.com
+        $HOST: Links are spoopy. Exercise caution when opening external links.
+    """
+
+    if arg:
+       target, match, _ = client.server.client_manager.get_target_public(client, arg)
+
+       if target.files:
+           if match.isdigit():
+               match = 'client {}'.format(match)
+           client.send_ooc('Files set by {} for `{}`: {}'
+                           .format(match, target.files[0], target.files[1]))
+           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
+       else:
+           if match.isdigit():
+               match = 'Client {}'.format(match)
+           raise ClientError('{} has not provided a download link for their files.'.format(match))
+    else:
+       if client.files:
+           client.send_ooc('Files set by yourself for `{}`: {}'
+                           .format(client.files[0], client.files[1]))
+           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
+       else:
+           raise ClientError('You have not provided a download link for your files.'
+                             .format(client.id))
+
+def ooc_cmd_files_set(client, arg):
+    """
+    Sets the download link to the character the player is using (or has iniswapped to if available)
+    as the  given argument; otherwise, clears it.
+
+    SYNTAX
+    /files_set
+    /files_set <url>
+
+    PARAMETERS
+    <url>: URL to the download link of the characther the player is using.
+
+    EXAMPLES
+    If client 1 is on character Phantom_HD and iniswapped to Spam_HD
+    /files_set https://example.com  :: Sets the download link to Spam_HD to https://example.com
+    """
+
+    if arg:
+        client.files = [client.char_folder, arg]
+        client.send_ooc('You have set the download link for the files of `{}` to {}'
+                        .format(client.char_folder, arg))
+        client.send_ooc('Let others access them with /files {}'.format(client.id))
+    else:
+        if client.files:
+            client.send_ooc('You have removed the download link for the files of `{}`.'
+                            .format(client.files[0], arg))
+            client.files = None
+        else:
+            raise ClientError('You have not provided a download link for your files.')
+
 def ooc_cmd_follow(client, arg):
     """ (STAFF ONLY)
     Starts following a player by their client ID. When the target area moves area, you will follow
@@ -1930,6 +2006,7 @@ def ooc_cmd_globalic(client, arg):
     else:
         client.send_ooc('Your IC messages will now be sent to areas {} through {}.'
                         .format(areas[0].name, areas[1].name))
+    client.send_ooc('Set up a global IC prefix with /globalic_pre')
 
 def ooc_cmd_globalic_pre(client, arg):
     """ (STAFF ONLY)
@@ -3198,6 +3275,7 @@ def ooc_cmd_party(client, arg):
 
     party = client.server.party_manager.new_party(client, tc=True)
     client.send_ooc('You have created party {}.'.format(party.get_id()))
+    client.send_ooc('Invite others to your party with /party_invite <user_id>')
     client.send_ooc_others('(X) {} has created party {} ({}).'
                            .format(client.displayname, party.get_id(), client.area.id),
                            is_zstaff_flex=True)
@@ -3310,6 +3388,7 @@ def ooc_cmd_party_invite(client, arg):
                    .format(client.displayname, c.displayname))
     c.send_ooc('{} has invited you to join their party {}.'
                .format(client.displayname, party.get_id()))
+    c.send_ooc('Accept the invitation with /party_join {}'.format(party.get_id()))
 
 def ooc_cmd_party_join(client, arg):
     """
@@ -5753,6 +5832,12 @@ def ooc_cmd_zone(client, arg):
     client.send_ooc_others('(X) {} has created zone `{}` containing {} ({}).'
                            .format(client.displayname, zone_id, output, client.area.id),
                            is_officer=True)
+    for area in areas:
+        for c in area.clients:
+            if c.is_staff() and c != client:
+                c.send_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
+                           'its notifications, start watching it with /zone_watch {}'
+                           .format(zone_id, zone_id))
 
 def ooc_cmd_zone_add(client, arg):
     """ (STAFF ONLY)
@@ -5787,6 +5872,13 @@ def ooc_cmd_zone_add(client, arg):
     client.send_ooc('You have added area {} to your zone.'.format(area.id))
     client.send_ooc_others('(X) {} has added area {} to your zone.'.format(client.name, area.id),
                            is_zstaff=True)
+
+    zone_id = client.zone_watched.get_id()
+    for c in area.clients:
+        if c.is_staff() and c != client and c.zone_watched != client.zone_watched:
+            c.send_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
+                       'its notifications, start watching it with /zone_watch {}'
+                       .format(zone_id, zone_id))
 
 def ooc_cmd_zone_delete(client, arg):
     """ (VARYING REQUIREMENTS)
@@ -5965,12 +6057,19 @@ def ooc_cmd_zone_remove(client, arg):
                            .format(client.name, area.id), part_of=backup_watchers)
 
     # Announce automatic deletion if needed.
+    zone_id = target_zone.get_id()
     if not target_zone.get_areas():
         for c in backup_watchers:
             c.send_ooc('(X) As your zone no longer covers any areas, it has been deleted.')
         client.send_ooc_others('(X) Zone `{}` was automatically deleted as it no longer covered '
-                               'any areas.'.format(target_zone.get_id()), is_officer=True,
+                               'any areas.'.format(zone_id), is_officer=True,
                                not_to=backup_watchers)
+    # Otherwise, suggest zone watchers who were in the removed area to stop watching the zone
+    else:
+        for c in area.clients:
+            if c.is_staff() and c != client and c in backup_watchers:
+                c.send_ooc('(X) Your area has been removed from your zone. To stop receiving its '
+                           'notifications, stop watching it with /zone_unwatch'.format(zone_id))
 
 def ooc_cmd_zone_unwatch(client, arg):
     """ (STAFF ONLY)
@@ -6081,52 +6180,6 @@ def ooc_cmd_narrate(client, arg):
     for c in client.area.clients:
         c.send_ic(msg=arg, bypass_replace=True)
 
-def ooc_cmd_files(client, arg):
-    """
-    Obtains the download link of a player by client ID (number in brackets).
-    If given no identifier, it will return your download link.
-    A warning is also given in either case reminding the user to be careful of clicking external
-    links, as the server provides no guarantee on the safety of the link.
-    Returns an error if the given identifier does not correspond to a user or if the target has not
-    set a download link for their files.
-
-    SYNTAX
-    /files
-    /files <user_id>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
-
-    EXAMPLES
-    Assuming client 1 on character Phantom_HD and iniswapped to Spam_HD has set their files'
-    download link to https://example.com
-    /files 1           :: May return something like this:
-        $HOST: Files set by client 1 for Spam_HD: https://example.com
-        $HOST: Links are spoopy. Exercise caution when opening external links.
-    """
-
-    if arg:
-       target, match, _ = client.server.client_manager.get_target_public(client, arg)
-
-       if target.files:
-           if match.isdigit():
-               match = 'client {}'.format(match)
-           client.send_ooc('Files set by {} for `{}`: {}'
-                           .format(match, target.files[0], target.files[1]))
-           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
-       else:
-           if match.isdigit():
-               match = 'Client {}'.format(match)
-           raise ClientError('{} has not provided a download link for their files.'.format(match))
-    else:
-       if client.files:
-           client.send_ooc('Files set by yourself for `{}`: {}'
-                           .format(client.files[0], client.files[1]))
-           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
-       else:
-           raise ClientError('You have not provided a download link for your files.'
-                             .format(client.id))
-
 def ooc_cmd_mod_narrate(client, arg):
     """ (CM AND MOD ONLY)
     Sends a message from the "Narrator" position to all players in the area using the mod color.
@@ -6146,35 +6199,6 @@ def ooc_cmd_mod_narrate(client, arg):
 
     for c in client.area.clients:
         c.send_ic(msg=arg, color=5, bypass_replace=True)
-
-def ooc_cmd_files_set(client, arg):
-    """
-    Sets the download link to the character the player is using (or has iniswapped to if available)
-    as the  given argument; otherwise, clears it.
-
-    SYNTAX
-    /files_set
-    /files_set <url>
-
-    PARAMETERS
-    <url>: URL to the download link of the characther the player is using.
-
-    EXAMPLES
-    If client 1 is on character Phantom_HD and iniswapped to Spam_HD
-    /files_set https://example.com  :: Sets the download link to Spam_HD to https://example.com
-    """
-
-    if arg:
-        client.files = [client.char_folder, arg]
-        client.send_ooc('You have set the download link for the files of `{}` to {}'
-                        .format(client.char_folder, arg))
-    else:
-        if client.files:
-            client.send_ooc('You have removed the download link for the files of `{}`.'
-                            .format(client.files[0], arg))
-            client.files = None
-        else:
-            raise ClientError('You have not provided a download link for your files.')
 
 def ooc_cmd_exec(client, arg):
     """

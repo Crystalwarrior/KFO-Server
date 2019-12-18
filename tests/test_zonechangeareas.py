@@ -35,7 +35,7 @@ class TestZoneChangeArea_01_Add(_TestZone):
 
     def test_02_addonearea(self):
         """
-        Situation: After creating a zone themselves, C1 adds another area
+        Situation: After creating a zone themselves, C1 adds another area.
         """
 
         self.c1.ooc('/zone 4, 6')
@@ -45,10 +45,14 @@ class TestZoneChangeArea_01_Add(_TestZone):
         self.c1.ooc('/zone_add 7')
         self.c0.assert_no_packets()
         self.c1.assert_ooc('You have added area {} to your zone.'.format(7), over=True)
-        self.c2.assert_no_packets()
+        self.c2.assert_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
+                           'its notifications, start watching it with /zone_watch {}'
+                           .format('z0', 'z0'), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_no_packets()
+        self.c5.assert_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
+                           'its notifications, start watching it with /zone_watch {}'
+                           .format('z0', 'z0'), over=True)
         self.assert_zones({'z0': {4, 5, 6, 7}})
 
     def test_03_adddisjointarea(self):
@@ -162,6 +166,8 @@ class TestZoneChangeArea_02_Remove(_TestZone):
 
         self.c1.ooc('/zone 4, 7')
         self.c1.discard_all()
+        self.c2.discard_all() # c2 receives being in zone at zone creation notif
+        self.c5.discard_all() # same as above
         self.assert_zones({'z0': {4, 5, 6, 7}})
 
         self.c1.ooc('/zone_remove 5')
@@ -225,6 +231,8 @@ class TestZoneChangeArea_02_Remove(_TestZone):
 
         self.c1.ooc('/zone 4, 7')
         self.c1.discard_all()
+        self.c2.discard_all() # c2 receives being in zone at zone creation notif
+        self.c5.discard_all() # same as above
 
         self.c5.ooc('/zone_remove 6')
         self.c0.assert_no_packets()
