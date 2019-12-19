@@ -6200,20 +6200,21 @@ def ooc_cmd_mod_narrate(client, arg):
     for c in client.area.clients:
         c.send_ic(msg=arg, color=5, bypass_replace=True)
 
-def ooc_cmd_whisper(client, args):
+def ooc_cmd_whisper(client, arg):
     """
     Sends an IC personal message to a specified user by some ID. The messages have the showname
     of the sender and their message, but does not include their sprite.
-    Elevated staff notifications are sent on whispers including the message content, so this is not
-    meant to act as a private means of communication between players, for which /pm is recommended.
+    Elevated notifications are sent to zone watchers/staff members on whispers, which include the
+    message content, so this is not meant to act as a private means of communication between
+    players, for which /pm is recommended.
     Whispers sent by sneaked players include an empty showname so as to not reveal their identity.
     Whispers sent to sneaked players will succeed only if the sender is sneaking and both the sender
     and recipient are part of the same party.
     Deafened recipients will receive a nerfed message if whispered to.
     Gagged senders will send a nerfed message if they attempt to whisper.
-    Players in the same area as the whisperer will be notified that they whispered to their target
-    (but will not receive the content of the message), provided they are not blind (in which case
-    no notification is sent)
+    Non-zone watchers/non-staff players in the same area as the whisperer will be notified that
+    they whispered to their target (but will not receive the content of the message), provided they
+    are not blind (in which case no notification is sent).
     Returns an error if the user could not be found or if the message is empty.
 
     SYNTAX
@@ -6227,7 +6228,24 @@ def ooc_cmd_whisper(client, args):
     /whisper 1 What will I get for Christmas? :: Sends that message to player with client ID 1.
     /whisper 0 Nothing                        :: Sends that message to player with client ID 0.
     """
-    pass
+
+    args = arg.split()
+    if len(args) < 2:
+        raise ArgumentError('Not enough arguments. Use /whisper <target> <message>. Target should '
+                            'be ID, char-name, edited-to character, custom showname or OOC-name.')
+
+    cm = client.server.client_manager
+    target, recipient, msg = cm.get_target_public(client, arg, only_in_area=True)
+
+    client.send_ooc('You whispered `{}` to {}.'.format(msg, target.displayname))
+    client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
+                   bypass_replace=False)
+    target.send_ooc('{} whispered `{}` to you.'.format(client.displayname, msg))
+    target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
+                   bypass_replace=False)
+    client.send_ooc_others('(X) {} whispered `{}` to {} ({}).'
+                             .format(client.displayname, msg, target.displayname, client.area.id),
+                             is_zstaff_flex=True, not_to={target})
 
 def ooc_cmd_exec(client, arg):
     """

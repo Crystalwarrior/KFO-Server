@@ -1,4 +1,4 @@
-from .structures import _TestSituation5Mc1Gc2
+from .structures import _TestSituation5Mc1Gc2, _TestSituation6Mc1Gc25
 
 class _TestIC(_TestSituation5Mc1Gc2):
     @classmethod
@@ -499,3 +499,107 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c3.assert_no_ic()
         self.c4.assert_no_ic()
 
+class TestIC_04_Whisper(_TestSituation6Mc1Gc25):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.c2.move_area(4)
+        cls.c3.move_area(5)
+        cls.c5.move_area(4)
+
+        # C0, C1 (m) and C4 are in area 0
+        # C2 (gm), C5 (gm) are in area 4
+        # C3 is in area 5
+
+    def test_01_wrongarguments(self):
+        """
+        Situation: C0 attempts to whisper incorrectly.
+        """
+
+        mes = ('Not enough arguments. Use /whisper <target> <message>. Target should be '
+               'ID, char-name, edited-to character, custom showname or OOC-name.')
+
+        # No target
+        self.c0.ooc('/whisper')
+        self.c0.assert_ooc(mes, over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        # No message
+        self.c0.ooc('/whisper 1')
+        self.c0.assert_ooc(mes, over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        # No target
+        self.c0.ooc('/whisper 100 Test')
+        self.c0.assert_ooc('No targets with identifier `100 Test` found.', over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+    def test_02_whisperbothnonstaff(self):
+        """
+        Situation: C0 and C4 both whisper to one another, using all available identifiers.
+        C1, C2 and C5 (all staff) get notified.
+        """
+
+        interactions = [(self.c0, self.c4), (self.c4, self.c0)]
+        for (sender, recipient) in interactions:
+            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
+            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
+                identifiers.append(recipient.char_folder)
+            if recipient.showname:
+                identifiers.append(recipient.showname)
+
+            for identifier in identifiers:
+                message = '{} with {} to {}'.format(sender, identifier, recipient)
+                sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
+                recipient_ooc = '{} whispered `{}` to you.'.format(sender.displayname, message)
+                staff_ooc = ('(X) {} whispered `{}` to {} ({}).'
+                             .format(sender.displayname, message, recipient.displayname,
+                                     sender.area.id))
+                sender.ooc('/whisper {} {}'.format(identifier, message))
+                sender.assert_ooc(sent_ooc, ooc_over=True)
+                sender.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
+                                 showname=sender.showname, over=True)
+                recipient.assert_ooc(recipient_ooc, ooc_over=True)
+                recipient.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
+                                    showname=sender.showname, over=True)
+                self.c1.assert_ooc(staff_ooc, over=True)
+                self.c2.assert_ooc(staff_ooc, over=True)
+                self.c3.assert_no_packets()
+                self.c5.assert_ooc(staff_ooc, over=True)
+
+    def test_03_otherareapm(self):
+        """
+        Situation: C0 attempts to PM C2 in another area, only succeeds when using cID 2.
+        """
+
+#        receipt = ('PM from {} in {} ({}): '
+#                   .format(self.c0.name, self.c0.area.name, self.c0.displayname))
+#
+#        message = 'Works with cID.'
+#        self.c0.ooc('/pm 2 {}'.format(message))
+#        self.c0.assert_ooc('PM sent to 2. Message: {}'.format(message), over=True)
+#        self.c2.assert_ooc(receipt + message, over=True)
+#        self.c1.assert_no_ooc()
+#        self.c3.assert_no_ooc()
+#
+#        message = 'Does not work with charname.'
+#        self.c0.ooc('/pm {} {}'.format(self.c2.get_char_name(), message))
+#        self.c0.assert_ooc('No targets with identifier `Maki Harukawa_HD Does not work with '
+#                           'charname.` found.', over=True)
+#        self.c1.assert_no_ooc()
+#        self.c2.assert_no_ooc()
+#        self.c3.assert_no_ooc()
+#
+#        message = 'Does not work with OOC name.'
+#        self.c0.ooc('/pm {} {}'.format(self.c2.name, message))
+#        self.c0.assert_ooc('No targets with identifier `user2 Does not work with OOC name.` found.',
+#                           over=True)
+#        self.c1.assert_no_ooc()
+#        self.c2.assert_no_ooc()
+#        self.c3.assert_no_ooc()

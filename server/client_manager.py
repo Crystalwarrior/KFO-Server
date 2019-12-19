@@ -165,7 +165,8 @@ class ClientManager:
 
         def send_ic(self, ic_params=None, params=None, sender=None, bypass_replace=False, pred=None,
                     not_to=None, gag_replaced=False, is_staff=None, in_area=None, to_blind=None,
-                    to_deaf=None, msg=None, color=None, ding=None):
+                    to_deaf=None,
+                    msg=None, pos=None, cid=None, ding=None, color=None, showname=None):
 
             # sender is the client who sent the IC message
             # self is who is receiving the IC message at this particular moment
@@ -193,8 +194,11 @@ class ClientManager:
             pargs = {x: y for (x, y) in self.packet_handler.MS_OUTBOUND.value}
             if params is None:
                 pargs['msg'] = msg
-                pargs['color'] = color
+                pargs['pos'] = pos
+                pargs['cid'] = cid
                 pargs['ding'] = ding
+                pargs['color'] = color
+                pargs['showname'] = showname
             else:
                 for key in params:
                     pargs[key] = params[key]
@@ -290,7 +294,8 @@ class ClientManager:
 
         def send_ic_others(self, ic_params=None, params=None, sender=None, bypass_replace=False,
                            pred=None, not_to=None, gag_replaced=False, is_staff=None, in_area=None,
-                           to_blind=None, to_deaf=None, msg=None, color=None, ding=None):
+                           to_blind=None, to_deaf=None,
+                           msg=None, pos=None, cid=None, ding=None, color=None, showname=None):
             if ic_params is not None:
                 self.ic_params_deprecation_warning()
             if not_to is None:
@@ -302,7 +307,7 @@ class ClientManager:
                 c.send_ic(ic_params=None, params=None, sender=sender, bypass_replace=bypass_replace,
                           pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
-                          msg=msg, color=color, ding=ding)
+                          msg=msg, pos=pos, cid=cid, ding=ding, color=color, showname=showname)
 
         def disconnect(self):
             self.transport.close()
@@ -1164,7 +1169,7 @@ class ClientManager:
                 clients.append(client)
         return clients
 
-    def get_target_public(self, client, identifier):
+    def get_target_public(self, client, identifier, only_in_area=False):
         """
         If the first entry of `identifier` is an ID of some client, return that client.
         Otherwise, return the client in the same area as `client` such that one of the
@@ -1181,6 +1186,9 @@ class ClientManager:
             Client whose area will be considered when looking for targets
         identifier: str
             Identifier for target
+        only_in_area: bool (optional)
+            If search should be limited just to area for parameters guaranteed to be unique as well
+            (such as client ID). By default false.
 
         Returns
         -------
@@ -1209,7 +1217,7 @@ class ClientManager:
 
             # First pretend the identity is a client ID, which is unique
             if identity.isdigit():
-                targets = set(self.get_targets(client, TargetType.ID, int(identity), False))
+                targets = set(self.get_targets(client, TargetType.ID, int(identity), only_in_area))
                 if len(targets) == 1:
                     # Found unique match
                     valid_targets = targets
