@@ -6246,6 +6246,9 @@ def ooc_cmd_whisper(client, arg):
     client.send_ooc_others('(X) {} whispered `{}` to {} ({}).'
                              .format(client.displayname, msg, target.displayname, client.area.id),
                              is_zstaff_flex=True, not_to={target})
+    client.send_ooc_others('{} whispered something to {}.'
+                             .format(client.displayname, target.displayname),
+                             is_zstaff_flex=False, in_area=True, not_to={target})
 
 def ooc_cmd_exec(client, arg):
     """

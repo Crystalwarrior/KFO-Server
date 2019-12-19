@@ -542,7 +542,7 @@ class TestIC_04_Whisper(_TestSituation6Mc1Gc25):
 
     def test_02_whisperbothnonstaff(self):
         """
-        Situation: C0 and C4 both whisper to one another, using all available identifiers.
+        Situation: C0 and C1 both whisper to one another, using all available identifiers.
         C1, C2 and C5 (all staff) get notified.
         """
 
@@ -573,33 +573,95 @@ class TestIC_04_Whisper(_TestSituation6Mc1Gc25):
                 self.c3.assert_no_packets()
                 self.c5.assert_ooc(staff_ooc, over=True)
 
-    def test_03_otherareapm(self):
+    def test_03_whisperstaffandnonstaff(self):
         """
-        Situation: C0 attempts to PM C2 in another area, only succeeds when using cID 2.
+        Situation: C0 and C1 (mod) both whisper to one another, using all available identifiers.
+        C2 and C5 (all staff) get notified. C4, being in the same area as C0 and C1, but not staff,
+        receives nerfed messages. C1 does NOT get the special staff OOC message (they already get
+        one by virtue of being sender/recipient).
         """
 
-#        receipt = ('PM from {} in {} ({}): '
-#                   .format(self.c0.name, self.c0.area.name, self.c0.displayname))
-#
-#        message = 'Works with cID.'
-#        self.c0.ooc('/pm 2 {}'.format(message))
-#        self.c0.assert_ooc('PM sent to 2. Message: {}'.format(message), over=True)
-#        self.c2.assert_ooc(receipt + message, over=True)
-#        self.c1.assert_no_ooc()
-#        self.c3.assert_no_ooc()
-#
-#        message = 'Does not work with charname.'
-#        self.c0.ooc('/pm {} {}'.format(self.c2.get_char_name(), message))
-#        self.c0.assert_ooc('No targets with identifier `Maki Harukawa_HD Does not work with '
-#                           'charname.` found.', over=True)
-#        self.c1.assert_no_ooc()
-#        self.c2.assert_no_ooc()
-#        self.c3.assert_no_ooc()
-#
-#        message = 'Does not work with OOC name.'
-#        self.c0.ooc('/pm {} {}'.format(self.c2.name, message))
-#        self.c0.assert_ooc('No targets with identifier `user2 Does not work with OOC name.` found.',
-#                           over=True)
-#        self.c1.assert_no_ooc()
-#        self.c2.assert_no_ooc()
-#        self.c3.assert_no_ooc()
+        interactions = [(self.c0, self.c1), (self.c1, self.c0)]
+        for (sender, recipient) in interactions:
+            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
+            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
+                identifiers.append(recipient.char_folder)
+            if recipient.showname:
+                identifiers.append(recipient.showname)
+
+            for identifier in identifiers:
+                message = '{} with {} to {}'.format(sender, identifier, recipient)
+                sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
+                recipient_ooc = '{} whispered `{}` to you.'.format(sender.displayname, message)
+                staff_ooc = ('(X) {} whispered `{}` to {} ({}).'
+                             .format(sender.displayname, message, recipient.displayname,
+                                     sender.area.id))
+                nonstaff_ooc = ('{} whispered something to {}.'
+                                 .format(sender.displayname, recipient.displayname))
+                sender.ooc('/whisper {} {}'.format(identifier, message))
+                sender.assert_ooc(sent_ooc, ooc_over=True)
+                sender.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
+                                 showname=sender.showname, over=True)
+                recipient.assert_ooc(recipient_ooc, ooc_over=True)
+                recipient.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
+                                    showname=sender.showname, over=True)
+                self.c2.assert_ooc(staff_ooc, over=True)
+                self.c3.assert_no_packets()
+                self.c4.assert_ooc(nonstaff_ooc, over=True)
+                self.c5.assert_ooc(staff_ooc, over=True)
+
+    def test_04_whisperbetweenstaff(self):
+        """
+        Situation: C2 and C5 (both staff) whisper to one another, using all available identifiers.
+        C1 (the only other staff) is notified. C0, C3, C4 are non-staff not in the area, so they do
+        not get notified. C2 and C5 do NOT get the special staff OOC message (they already get
+        one by virtue of being sender/recipient).
+        """
+
+        interactions = [(self.c2, self.c5), (self.c5, self.c2)]
+        for (sender, recipient) in interactions:
+            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
+            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
+                identifiers.append(recipient.char_folder)
+            if recipient.showname:
+                identifiers.append(recipient.showname)
+
+            for identifier in identifiers:
+                message = '{} with {} to {}'.format(sender, identifier, recipient)
+                sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
+                recipient_ooc = '{} whispered `{}` to you.'.format(sender.displayname, message)
+                staff_ooc = ('(X) {} whispered `{}` to {} ({}).'
+                             .format(sender.displayname, message, recipient.displayname,
+                                     sender.area.id))
+                sender.ooc('/whisper {} {}'.format(identifier, message))
+                sender.assert_ooc(sent_ooc, ooc_over=True)
+                sender.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
+                                 showname=sender.showname, over=True)
+                recipient.assert_ooc(recipient_ooc, ooc_over=True)
+                recipient.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
+                                    showname=sender.showname, over=True)
+                self.c1.assert_ooc(staff_ooc, over=True)
+                self.c3.assert_no_packets()
+                self.c4.assert_no_packets()
+                self.c5.assert_no_packets()
+
+    def test_05_whispermustbeinarea(self):
+        """
+        Situation: All players attempt to whisper to C3, who is by themselves in area 5. They all
+        fail, including staff members.
+        """
+
+        senders = [self.c0, self.c1, self.c2, self.c4, self.c5]
+        identifiers = [self.c3.id, self.c3.get_char_name(), self.c3.name]
+        if self.c3.char_folder and self.c3.char_folder != self.c3.get_char_name():
+            identifiers.append(self.c3.char_folder)
+        if self.c3.showname:
+            identifiers.append(self.c3.showname)
+
+        for sender in senders:
+            for identifier in identifiers:
+                message = '{} with {} to {}'.format(sender, identifier, self.c3)
+                sender.ooc('/whisper {} {}'.format(identifier, message))
+                sender.assert_ooc('No targets with identifier `{} {}` found.'
+                                  .format(identifier, message), over=True)
+                self.c3.assert_no_packets()
