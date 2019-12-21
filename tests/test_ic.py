@@ -557,7 +557,7 @@ class TestIC_04_Whisper(_TestSituation6Mc1Gc25):
             for identifier in identifiers:
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-                recipient_ooc = '{} whispered `{}` to you.'.format(sender.displayname, message)
+                recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
                 staff_ooc = ('(X) {} whispered `{}` to {} ({}).'
                              .format(sender.displayname, message, recipient.displayname,
                                      sender.area.id))
@@ -592,7 +592,7 @@ class TestIC_04_Whisper(_TestSituation6Mc1Gc25):
             for identifier in identifiers:
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-                recipient_ooc = '{} whispered `{}` to you.'.format(sender.displayname, message)
+                recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
                 staff_ooc = ('(X) {} whispered `{}` to {} ({}).'
                              .format(sender.displayname, message, recipient.displayname,
                                      sender.area.id))
@@ -629,7 +629,7 @@ class TestIC_04_Whisper(_TestSituation6Mc1Gc25):
             for identifier in identifiers:
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-                recipient_ooc = '{} whispered `{}` to you.'.format(sender.displayname, message)
+                recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
                 staff_ooc = ('(X) {} whispered `{}` to {} ({}).'
                              .format(sender.displayname, message, recipient.displayname,
                                      sender.area.id))
