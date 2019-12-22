@@ -6251,10 +6251,11 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                        bypass_replace=False)
 
+        # If target is deafened, behavior is different
         target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
-        target.send_ooc('Your ears are ringing.', to_deaf=True)
         target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                        to_deaf=False)
+        target.send_ooc('Your ears are ringing.', to_deaf=True)
         target.send_ic(msg='', pos=client.pos, cid=client.char_id, showname=client.showname,
                        to_deaf=True)
 
@@ -6269,10 +6270,11 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
                         .format(final_target, final_message))
         client.send_ic(msg=msg, pos='jud', showname='???', bypass_replace=False)
 
+        # If target is deafened, behavior is different
         target.send_ooc('You heard a whisper and you think it is directed at you, but you could '
                         'not seem to tell where it came from.'.format(final_sender), to_deaf=False)
-        target.send_ooc('Your ears are ringing.', to_deaf=True)
         target.send_ic(msg=msg, pos='jud', showname='???', to_deaf=False)
+        target.send_ooc('Your ears are ringing.', to_deaf=True)
         target.send_ic(msg='', pos='jud', showname='???', to_deaf=True)
 
         client.send_ooc_others('(X) {} whispered `{}` to {} while sneaking ({}).'
@@ -6295,10 +6297,11 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
             client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                            bypass_replace=False)
 
+            # If target is deafened, behavior is different
             target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
-            target.send_ooc('Your ears are ringing.', to_deaf=True)
             target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                            to_deaf=False)
+            target.send_ooc('Your ears are ringing.', to_deaf=True)
             target.send_ic(msg='', pos=client.pos, cid=client.char_id, showname=client.showname,
                            to_deaf=True)
 
@@ -6306,6 +6309,11 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
                                    'of the same party ({}).'
                                    .format(final_st_sender, final_message, final_target,
                                            client.area.id), is_zstaff_flex=True, not_to={target})
+    else: # Sender is not sneaked, target is
+        if not client.is_staff():
+            # Normies cannot whisper to sneaked players
+            # This string is copied from client_manager.get_target_public
+            raise ClientError('No targets with identifier `{}` found.'.format(arg))
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

@@ -12,6 +12,23 @@ class _TestWhisper(_TestSituation6Mc1Gc25):
         # C2 (gm), C5 (gm) are in area 4
         # C3 is in area 5
 
+    def get_identifiers(self, client):
+        """
+        Return a list containing the following elements, in order.
+        1. The ID of `client`
+        2. The character name of `client`
+        3. The OOC name of `client`
+        4. The character folder `client` is using if different from (2) (say, via iniediting)
+        5. The showname of `client` if set
+        """
+
+        identifiers = [client.id, client.get_char_name(), client.name]
+        if client.char_folder and client.char_folder != client.get_char_name():
+            identifiers.append(client.char_folder)
+        if client.showname:
+            identifiers.append(client.showname)
+        return identifiers
+
 class TestWhisper_01_WhisperBasic(_TestWhisper):
     def test_01_wrongarguments(self):
         """
@@ -50,13 +67,7 @@ class TestWhisper_01_WhisperBasic(_TestWhisper):
 
         interactions = [(self.c0, self.c4), (self.c4, self.c0)]
         for (sender, recipient) in interactions:
-            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
-            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
-                identifiers.append(recipient.char_folder)
-            if recipient.showname:
-                identifiers.append(recipient.showname)
-
-            for identifier in identifiers:
+            for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
@@ -85,13 +96,7 @@ class TestWhisper_01_WhisperBasic(_TestWhisper):
 
         interactions = [(self.c0, self.c1), (self.c1, self.c0)]
         for (sender, recipient) in interactions:
-            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
-            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
-                identifiers.append(recipient.char_folder)
-            if recipient.showname:
-                identifiers.append(recipient.showname)
-
-            for identifier in identifiers:
+            for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
@@ -122,13 +127,7 @@ class TestWhisper_01_WhisperBasic(_TestWhisper):
 
         interactions = [(self.c2, self.c5), (self.c5, self.c2)]
         for (sender, recipient) in interactions:
-            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
-            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
-                identifiers.append(recipient.char_folder)
-            if recipient.showname:
-                identifiers.append(recipient.showname)
-
-            for identifier in identifiers:
+            for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
@@ -155,14 +154,9 @@ class TestWhisper_02_WhisperSpecial(_TestWhisper):
         """
 
         senders = [self.c0, self.c1, self.c2, self.c4, self.c5]
-        identifiers = [self.c3.id, self.c3.get_char_name(), self.c3.name]
-        if self.c3.char_folder and self.c3.char_folder != self.c3.get_char_name():
-            identifiers.append(self.c3.char_folder)
-        if self.c3.showname:
-            identifiers.append(self.c3.showname)
 
         for sender in senders:
-            for identifier in identifiers:
+            for identifier in self.get_identifiers(self.c3):
                 message = '{} with {} to {}'.format(sender, identifier, self.c3)
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc('No targets with identifier `{} {}` found.'
@@ -185,13 +179,7 @@ class TestWhisper_02_WhisperSpecial(_TestWhisper):
         interactions = [(self.c0, self.c4), (self.c5, self.c2)]
 
         for (sender, recipient) in interactions:
-            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
-            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
-                identifiers.append(recipient.char_folder)
-            if recipient.showname:
-                identifiers.append(recipient.showname)
-
-            for identifier in identifiers:
+            for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, self.c3)
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc('Your attempt at whispering failed because you are gagged.',
@@ -222,13 +210,7 @@ class TestWhisper_02_WhisperSpecial(_TestWhisper):
 
         interactions = [(self.c0, self.c4)]
         for (sender, recipient) in interactions:
-            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
-            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
-                identifiers.append(recipient.char_folder)
-            if recipient.showname:
-                identifiers.append(recipient.showname)
-
-            for identifier in identifiers:
+            for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = ('You spooked {} by whispering `{}` to them while sneaking.'
                             .format(recipient.displayname, message))
@@ -256,14 +238,36 @@ class TestWhisper_02_WhisperSpecial(_TestWhisper):
         self.c5.discard_all()
         self.c3.move_area(5)
 
-    def test_04_whispersneakedtosneakedparty(self):
+    def test_04_whispertonotsneaked(self):
         """
-        Situation: C2 and C3 move to C0's area for this test and C2 is made a normie.
+        Situation: Just for this test, C4 starts sneaking. C0, who is in the same area as C4,
+        attempts to whisper to C4. This fails.
+        """
+
+        self.c1.ooc('/sneak 4')
+        self.c1.discard_all()
+        self.c4.discard_all()
+
+        for identifier in self.get_identifiers(self.c4):
+            message = '{} with {} to {}'.format(self.c0, identifier, self.c4)
+            self.c0.ooc('/whisper {} {}'.format(identifier, message))
+            self.c0.assert_ooc('No targets with identifier `{} {}` found.'
+                              .format(identifier, message), over=True)
+            self.c4.assert_no_packets()
+
+        self.c1.ooc('/reveal 4')
+        self.c1.discard_all()
+        self.c4.discard_all()
+
+    def test_05_whispersneakedtosneakedparty(self):
+        """
+        Situation: Just for this test, C2 and C3 move to C0's area and C2 is made a normie.
         C0 and C4 form a party, C3 another one, and C2 remains partyless.
         C0, C2, C3, C4 all start sneaking.
         They all try to whisper to one another. Only C0-C4 succeed, and for them, all staff (C1 and
         C5 are notified).
         """
+
         self.c3.move_area(0)
         self.c2.move_area(0)
         self.c2.make_normie()
@@ -291,13 +295,7 @@ class TestWhisper_02_WhisperSpecial(_TestWhisper):
         # Successful
         interactions = [(self.c0, self.c4), (self.c4, self.c0)]
         for (sender, recipient) in interactions:
-            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
-            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
-                identifiers.append(recipient.char_folder)
-            if recipient.showname:
-                identifiers.append(recipient.showname)
-
-            for identifier in identifiers:
+            for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
@@ -322,13 +320,7 @@ class TestWhisper_02_WhisperSpecial(_TestWhisper):
                         (self.c4, self.c2), (self.c3, self.c0), (self.c4, self.c3) ]
 
         for (sender, recipient) in interactions:
-            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
-            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
-                identifiers.append(recipient.char_folder)
-            if recipient.showname:
-                identifiers.append(recipient.showname)
-
-            for identifier in identifiers:
+            for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc('No targets with identifier `{} {}` found.'
