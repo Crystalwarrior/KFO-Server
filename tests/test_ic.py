@@ -542,7 +542,7 @@ class TestIC_04_Whisper(_TestSituation6Mc1Gc25):
 
     def test_02_whisperbothnonstaff(self):
         """
-        Situation: C0 and C1 both whisper to one another, using all available identifiers.
+        Situation: C0 and C4 both whisper to one another, using all available identifiers.
         C1, C2 and C5 (all staff) get notified.
         """
 
@@ -701,3 +701,53 @@ class TestIC_04_Whisper(_TestSituation6Mc1Gc25):
         self.c1.discard_all()
         self.c2.discard_all()
         self.c5.discard_all()
+
+    def test_07_whisperfromsneakedtononsneaked(self):
+        """
+        Situation: C3 moves to C0's area for this test. C0 starts sneaking and whispering to C4,
+        using all  available identifiers. C1, C2 and C5 (all staff) get notified. C3 gets no
+        notifications.
+        """
+        self.c3.move_area(0)
+
+        self.c1.ooc('/sneak 0')
+        self.c0.discard_all()
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c5.discard_all()
+
+        interactions = [(self.c0, self.c4)]
+        for (sender, recipient) in interactions:
+            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
+            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
+                identifiers.append(recipient.char_folder)
+            if recipient.showname:
+                identifiers.append(recipient.showname)
+
+            for identifier in identifiers:
+                message = '{} with {} to {}'.format(sender, identifier, recipient)
+                sent_ooc = ('You spooked {} by whispering `{}` to them while sneaking.'
+                            .format(recipient.displayname, message))
+                recipient_ooc = ('You heard a whisper directed at you, but you could not seem to '
+                                 'tell where it came from.')
+                staff_ooc = ('(X) {} whispered `{}` to {} while sneaking ({}).'
+                             .format(sender.displayname, message, recipient.displayname,
+                                     sender.area.id))
+                sender.ooc('/whisper {} {}'.format(identifier, message))
+                sender.assert_ooc(sent_ooc, ooc_over=True)
+                sender.assert_ic(message, folder='<NOCHAR>', pos='jud', showname='???', over=True)
+                recipient.assert_ooc(recipient_ooc, ooc_over=True)
+                recipient.assert_ic(message, folder='<NOCHAR>', pos='jud', showname='???',
+                                    over=True)
+                self.c1.assert_ooc(staff_ooc, over=True)
+                self.c2.assert_ooc(staff_ooc, over=True)
+                self.c3.assert_no_packets()
+                self.c5.assert_ooc(staff_ooc, over=True)
+
+        # Restore original state
+        self.c1.ooc('/reveal 0')
+        self.c0.discard_all()
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c5.discard_all()
+        self.c3.move_area(5)

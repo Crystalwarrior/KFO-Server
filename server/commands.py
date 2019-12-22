@@ -6261,9 +6261,19 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
 
         client.send_ooc_others('{} whispered something to {}.'
                                  .format(final_sender, final_recipient),
-                                 is_zstaff_flex=False, in_area=True, not_to={target})
+                                 is_zstaff_flex=False, in_area=True, not_to={target}, to_deaf=False)
     elif target.is_visible:
-        pass
+        client.send_ooc('You spooked {} by whispering `{}` to them while sneaking.'
+                        .format(final_recipient, final_message))
+        client.send_ic(msg=msg, pos='jud', showname='???', bypass_replace=False)
+
+        target.send_ooc('You heard a whisper directed at you, but you could not seem to tell where '
+                        'it came from.'.format(final_sender))
+        target.send_ic(msg=msg, pos='jud', showname='???', bypass_replace=False)
+
+        client.send_ooc_others('(X) {} whispered `{}` to {} while sneaking ({}).'
+                               .format(final_st_sender, final_message, final_recipient,
+                                       client.area.id), is_zstaff_flex=True, not_to={target})
     else: # Check if both in same party
         pass
 
