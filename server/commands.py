@@ -6251,14 +6251,16 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                        bypass_replace=False)
 
-        target.send_ooc('{} whispered something to you.'.format(final_sender))
+        target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
+        target.send_ooc('Your ears are ringing.', to_deaf=True)
         target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
-                       bypass_replace=False)
+                       to_deaf=False)
+        target.send_ic(msg='', pos=client.pos, cid=client.char_id, showname=client.showname,
+                       to_deaf=True)
 
         client.send_ooc_others('(X) {} whispered `{}` to {} ({}).'
                                .format(final_st_sender, final_message, final_target,
                                        client.area.id), is_zstaff_flex=True, not_to={target})
-
         client.send_ooc_others('{} whispered something to {}.'
                                  .format(final_sender, final_target),
                                  is_zstaff_flex=False, in_area=True, not_to={target}, to_deaf=False)
@@ -6267,9 +6269,11 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
                         .format(final_target, final_message))
         client.send_ic(msg=msg, pos='jud', showname='???', bypass_replace=False)
 
-        target.send_ooc('You heard a whisper directed at you, but you could not seem to tell where '
-                        'it came from.'.format(final_sender))
-        target.send_ic(msg=msg, pos='jud', showname='???', bypass_replace=False)
+        target.send_ooc('You heard a whisper and you think it is directed at you, but you could '
+                        'not seem to tell where it came from.'.format(final_sender), to_deaf=False)
+        target.send_ooc('Your ears are ringing.', to_deaf=True)
+        target.send_ic(msg=msg, pos='jud', showname='???', to_deaf=False)
+        target.send_ic(msg='', pos='jud', showname='???', to_deaf=True)
 
         client.send_ooc_others('(X) {} whispered `{}` to {} while sneaking ({}).'
                                .format(final_st_sender, final_message, final_target,
@@ -6291,9 +6295,12 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
             client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                            bypass_replace=False)
 
-            target.send_ooc('{} whispered something to you.'.format(final_sender))
+            target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
+            target.send_ooc('Your ears are ringing.', to_deaf=True)
             target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
-                           bypass_replace=False)
+                           to_deaf=False)
+            target.send_ic(msg='', pos=client.pos, cid=client.char_id, showname=client.showname,
+                           to_deaf=True)
 
             client.send_ooc_others('(X) {} whispered `{}` to {} while both were sneaking and part '
                                    'of the same party ({}).'

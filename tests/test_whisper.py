@@ -232,8 +232,8 @@ class TestWhisper_02_WhisperSpecial(_TestWhisper):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = ('You spooked {} by whispering `{}` to them while sneaking.'
                             .format(recipient.displayname, message))
-                recipient_ooc = ('You heard a whisper directed at you, but you could not seem to '
-                                 'tell where it came from.')
+                recipient_ooc = ('You heard a whisper and you think it is directed at you, but you '
+                                 'could not seem to tell where it came from.')
                 staff_ooc = ('(X) {} whispered `{}` to {} while sneaking ({}).'
                              .format(sender.displayname, message, recipient.displayname,
                                      sender.area.id))
