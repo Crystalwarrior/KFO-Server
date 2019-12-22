@@ -665,3 +665,39 @@ class TestIC_04_Whisper(_TestSituation6Mc1Gc25):
                 sender.assert_ooc('No targets with identifier `{} {}` found.'
                                   .format(identifier, message), over=True)
                 self.c3.assert_no_packets()
+
+    def test_06_whisperermustnotbegagged(self):
+        """
+        Situation: C0 and C5 are gagged for this test. C0 and C5 attempt to whisper to people in
+        their areas. They all fail, and only they receive notifications.
+        """
+
+        self.c1.ooc('/gag 0')
+        self.c1.ooc('/gag 5')
+        self.c0.discard_all()
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c5.discard_all()
+
+        interactions = [(self.c0, self.c4), (self.c5, self.c2)]
+
+        for (sender, recipient) in interactions:
+            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
+            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
+                identifiers.append(recipient.char_folder)
+            if recipient.showname:
+                identifiers.append(recipient.showname)
+
+            for identifier in identifiers:
+                message = '{} with {} to {}'.format(sender, identifier, self.c3)
+                sender.ooc('/whisper {} {}'.format(identifier, message))
+                sender.assert_ooc('Your attempt at whispering failed because you are gagged.',
+                                  over=True)
+                recipient.assert_no_packets()
+
+        self.c1.ooc('/gag 0')
+        self.c1.ooc('/gag 2')
+        self.c0.discard_all()
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c5.discard_all()
