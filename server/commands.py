@@ -6284,7 +6284,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
                 raise PartyError('') # lazy, but works
         except PartyError:
             # This string is copied from client_manager.get_target_public
-            raise ClientError('No targets a with identifier `{}` found.'.format(arg))
+            raise ClientError('No targets with identifier `{}` found.'.format(arg))
         else:
             # This code comes from the first if
             client.send_ooc('You whispered `{}` to {}.'.format(final_message, final_target))
