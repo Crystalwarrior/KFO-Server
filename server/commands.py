@@ -6239,15 +6239,15 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         raise ClientError('Your attempt at whispering failed because you are gagged.')
 
     cm = client.server.client_manager
-    target, recipient, msg = cm.get_target_public(client, arg, only_in_area=True)
+    target, _, msg = cm.get_target_public(client, arg, only_in_area=True)
 
     final_sender = client.displayname
     final_st_sender = client.displayname
-    final_recipient = target.displayname
+    final_target = target.displayname
     final_message = msg
 
     if client.is_visible and target.is_visible:
-        client.send_ooc('You whispered `{}` to {}.'.format(final_message, final_recipient))
+        client.send_ooc('You whispered `{}` to {}.'.format(final_message, final_target))
         client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                        bypass_replace=False)
 
@@ -6256,15 +6256,15 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
                        bypass_replace=False)
 
         client.send_ooc_others('(X) {} whispered `{}` to {} ({}).'
-                               .format(final_st_sender, final_message, final_recipient,
+                               .format(final_st_sender, final_message, final_target,
                                        client.area.id), is_zstaff_flex=True, not_to={target})
 
         client.send_ooc_others('{} whispered something to {}.'
-                                 .format(final_sender, final_recipient),
+                                 .format(final_sender, final_target),
                                  is_zstaff_flex=False, in_area=True, not_to={target}, to_deaf=False)
     elif target.is_visible:
         client.send_ooc('You spooked {} by whispering `{}` to them while sneaking.'
-                        .format(final_recipient, final_message))
+                        .format(final_target, final_message))
         client.send_ic(msg=msg, pos='jud', showname='???', bypass_replace=False)
 
         target.send_ooc('You heard a whisper directed at you, but you could not seem to tell where '
@@ -6272,11 +6272,33 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         target.send_ic(msg=msg, pos='jud', showname='???', bypass_replace=False)
 
         client.send_ooc_others('(X) {} whispered `{}` to {} while sneaking ({}).'
-                               .format(final_st_sender, final_message, final_recipient,
+                               .format(final_st_sender, final_message, final_target,
                                        client.area.id), is_zstaff_flex=True, not_to={target})
-    else: # Check if both in same party
-        pass
+    elif not client.is_visible and not target.is_visible:
+        # Check if client and target are part of the same party, and if so, allow them to whisper
+        # to one another.
+        try:
+            party_sender = client.get_party()
+            party_target = target.get_party()
+            if party_sender != party_target:
+                raise PartyError('') # lazy, but works
+        except PartyError:
+            # This string is copied from client_manager.get_target_public
+            raise ClientError('No targets a with identifier `{}` found.'.format(arg))
+        else:
+            # This code comes from the first if
+            client.send_ooc('You whispered `{}` to {}.'.format(final_message, final_target))
+            client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
+                           bypass_replace=False)
 
+            target.send_ooc('{} whispered something to you.'.format(final_sender))
+            target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
+                           bypass_replace=False)
+
+            client.send_ooc_others('(X) {} whispered `{}` to {} while both were sneaking and part '
+                                   'of the same party ({}).'
+                                   .format(final_st_sender, final_message, final_target,
+                                           client.area.id), is_zstaff_flex=True, not_to={target})
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

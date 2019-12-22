@@ -751,3 +751,79 @@ class TestIC_04_Whisper(_TestSituation6Mc1Gc25):
         self.c2.discard_all()
         self.c5.discard_all()
         self.c3.move_area(5)
+
+    def test_08_whispersneakedtosneakedparty(self):
+        """
+        Situation: C2 and C3 move to C0's area for this test and C2 is made a normie.
+        C0 and C4 form a party, C3 another  one, and C2 remains partyless.
+        C0, C2, C3, C4 all start sneaking.
+        They all try to whisper to one another. Only C0-C4 succeed, and for them, all staff (C1 and
+        C5 are notified).
+        """
+        self.c3.move_area(0)
+        self.c2.move_area(0)
+        self.c2.make_normie()
+
+        self.c0.ooc('/party')
+        _, p = self.c0.search_match((self.server.config['hostname'], 'You have created party'),
+                                    self.c0.received_ooc, somewhere=True, remove_match=False,
+                                    allow_partial_match=True)
+        party_number = p[1].split(' ')[-1][:-1] # Temporary, will improve later
+        self.c0.ooc('/party_invite 4')
+        self.c4.ooc('/party_join {}'.format(party_number))
+        self.c3.ooc('/party')
+
+        self.c1.ooc('/sneak 0')
+        self.c1.ooc('/sneak 2')
+        self.c1.ooc('/sneak 3')
+        self.c1.ooc('/sneak 4')
+        self.c0.discard_all()
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
+        self.c5.discard_all()
+
+        # Successful
+        interactions = [(self.c0, self.c4), (self.c4, self.c0)]
+        for (sender, recipient) in interactions:
+            identifiers = [recipient.id, recipient.get_char_name(), recipient.name]
+            if recipient.char_folder and recipient.char_folder != recipient.get_char_name():
+                identifiers.append(recipient.char_folder)
+            if recipient.showname:
+                identifiers.append(recipient.showname)
+
+            for identifier in identifiers:
+                message = '{} with {} to {}'.format(sender, identifier, recipient)
+                sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
+                recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
+                staff_ooc = ('(X) {} whispered `{}` to {} while both were sneaking and part of the '
+                             'same party ({}).'
+                             .format(sender.displayname, message, recipient.displayname,
+                                     sender.area.id))
+                sender.ooc('/whisper {} {}'.format(identifier, message))
+                sender.assert_ooc(sent_ooc, ooc_over=True)
+                sender.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
+                                 showname=sender.showname, over=True)
+                recipient.assert_ooc(recipient_ooc, ooc_over=True)
+                recipient.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
+                                    showname=sender.showname, over=True)
+                self.c1.assert_ooc(staff_ooc, over=True)
+                self.c2.assert_no_packets()
+                self.c3.assert_no_packets()
+                self.c5.assert_ooc(staff_ooc, over=True)
+
+        # Restore original state
+        self.c1.ooc('/reveal 0')
+        self.c1.ooc('/reveal 2')
+        self.c1.ooc('/reveal 3')
+        self.c1.ooc('/reveal 4')
+        self.c0.discard_all()
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
+        self.c5.discard_all()
+        self.c2.move_area(4)
+        self.c3.move_area(5)
+        self.c2.make_gm()
