@@ -224,6 +224,9 @@ Additional notes are listed at the end of the command list.
     - Unlocks your area, provided the lock came as a result of /lock.
 * **version**
     - Obtains the current version of the server software.
+* **whisper** "ID/char name/edited-to character/showname/OOC name" "message"
+	- Sends an IC private message to the target, provided they are in the area.
+	- Other people in the area are warned that a whisper has taken place (but not the message content). However, staff members do get message contents, so this command should only be used in RP settings.
 * **zone_global**
     - Sends a message to all players in the zone you are in.
 * **8ball**
@@ -296,6 +299,9 @@ GMs can:
     - Locks your area. Prevents CMs and normal users from entering.
 * **gmself**
     - Logs all opened multiclients as GM.
+* **guide** "ID/char name/edited-to character/showname/OOC name" "message"
+	- Sends an IC private 'guiding' message to the target.
+	- Unlike /whisper, other people in the area are not warned that a whisper has taken place. However, staff members do get message contents, so this command should only be used in RP settings.
 * **handicap** "ID/IPID" "length" "name" "announce if over"
     - Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of
     time in seconds between changing areas.

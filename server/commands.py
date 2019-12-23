@@ -6226,8 +6226,8 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
     <message>: Message to be sent.
 
     EXAMPLES
-    /whisper 1 What will I get for Christmas? :: Sends that message to player with client ID 1.
-    /whisper 0 Nothing                        :: Sends that message to player with client ID 0.
+    /whisper 1 Hey, client 1!   :: Sends that message to player with client ID 1.
+    /whisper 0 Yo               :: Sends that message to player with client ID 0.
     """
 
     try:
@@ -6314,6 +6314,31 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
             # Normies cannot whisper to sneaked players
             # This string is copied from client_manager.get_target_public
             raise ClientError('No targets with identifier `{}` found.'.format(arg))
+
+def ooc_cmd_guide(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sends an IC personal message to a specified user by some ID. Unlike /whisper, the messages do
+    not have the showname of the sender nor do they send notifications to other players in the area.
+    Elevated notifications are sent to zone watchers/staff members on /guide, which include the
+    message content, so this is not meant to act as a private means of communication between
+    players, for which /pm is recommended.
+    As this is meant to act as a "subconscious/guider/personal narrator" command, deafened players
+    are not affected.
+    Returns an error if the user could not be found, if the message is empty or if the sender is
+    IC-muted.
+
+    SYNTAX
+    /guide <user_ID> <message>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
+    <message>: Message to be sent.
+
+    EXAMPLES
+    /guide 1 Hey, is that blood?        :: Sends that message to player with client ID 1.
+    /guide 0 Check out his clothes!     :: Sends that message to player with client ID 0.
+    """
+    pass
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
