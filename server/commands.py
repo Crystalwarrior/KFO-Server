@@ -6216,7 +6216,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
     they whispered to their target (but will not receive the content of the message), provided they
     are not blind (in which case no notification is sent).
     Returns an error if the user could not be found, if the message is empty or if the sender is
-    gagged.
+    gagged or IC-muted.
 
     SYNTAX
     /whisper <user_ID> <message>
@@ -6230,11 +6230,13 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
     /whisper 0 Nothing                        :: Sends that message to player with client ID 0.
     """
 
-    args = arg.split()
-    if len(args) < 2:
+    try:
+        Constants.assert_command(client, arg, parameters='>1')
+    except ArgumentError:
         raise ArgumentError('Not enough arguments. Use /whisper <target> <message>. Target should '
                             'be ID, char-name, edited-to character, custom showname or OOC-name.')
-
+    if client.is_muted:
+        raise ClientError('You have been muted by a moderator.')
     if client.is_gagged:
         raise ClientError('Your attempt at whispering failed because you are gagged.')
 
@@ -6242,6 +6244,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
     target, _, msg = cm.get_target_public(client, arg, only_in_area=True)
 
     final_sender = client.displayname
+    final_rec_sender = 'Someone' if (target.is_deaf and target.is_blind) else client.displayname
     final_st_sender = client.displayname
     final_target = target.displayname
     final_message = msg
@@ -6253,7 +6256,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
 
         target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
         target.send_ooc('{} seemed to whisper something to you, but you could not make it out.'
-                        .format(final_sender), to_deaf=True)
+                        .format(final_rec_sender), to_deaf=True)
         target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                        bypass_deafened_starters=True) # send_ic handles nerfing for deafened
 
@@ -6298,7 +6301,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
 
             target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
             target.send_ooc('{} seemed to whisper something to you, but you could not make it out.'
-                            .format(final_sender), to_deaf=True)
+                            .format(final_rec_sender), to_deaf=True)
             target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                            bypass_deafened_starters=True) # send_ic handles nerfing for deafened
 
