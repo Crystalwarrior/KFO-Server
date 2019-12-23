@@ -6251,31 +6251,30 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                        bypass_replace=False)
 
-        # If target is deafened, behavior is different
         target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
+        target.send_ooc('{} seemed to whisper something to you, but you could not make it out.'
+                        .format(final_sender), to_deaf=True)
         target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
-                       to_deaf=False)
-        target.send_ooc('Your ears are ringing.', to_deaf=True)
-        target.send_ic(msg='', pos=client.pos, cid=client.char_id, showname=client.showname,
-                       to_deaf=True)
+                       bypass_deafened_starters=True) # send_ic handles nerfing for deafened
 
         client.send_ooc_others('(X) {} whispered `{}` to {} ({}).'
                                .format(final_st_sender, final_message, final_target,
                                        client.area.id), is_zstaff_flex=True, not_to={target})
         client.send_ooc_others('{} whispered something to {}.'
-                                 .format(final_sender, final_target),
-                                 is_zstaff_flex=False, in_area=True, not_to={target}, to_deaf=False)
+                               .format(final_sender, final_target),
+                               is_zstaff_flex=False, in_area=True, not_to={target}, to_blind=False)
     elif target.is_visible:
         client.send_ooc('You spooked {} by whispering `{}` to them while sneaking.'
                         .format(final_target, final_message))
         client.send_ic(msg=msg, pos='jud', showname='???', bypass_replace=False)
-
+        # Note this uses pos='jud' instead of pos=client.pos. This is to mask the position of the
+        # sender, so that the target cannot determine who it is based on knowing usual positions
+        # of people.
         # If target is deafened, behavior is different
-        target.send_ooc('You heard a whisper and you think it is directed at you, but you could '
+        target.send_ooc('You heard a whisper and you think it was directed at you, but you could '
                         'not seem to tell where it came from.'.format(final_sender), to_deaf=False)
-        target.send_ic(msg=msg, pos='jud', showname='???', to_deaf=False)
-        target.send_ooc('Your ears are ringing.', to_deaf=True)
-        target.send_ic(msg='', pos='jud', showname='???', to_deaf=True)
+        target.send_ooc('Your ears seemed to pick up something.', to_deaf=True)
+        target.send_ic(msg=msg, pos='jud', showname='???') # send_ic handles nerfing for deafened
 
         client.send_ooc_others('(X) {} whispered `{}` to {} while sneaking ({}).'
                                .format(final_st_sender, final_message, final_target,
@@ -6297,13 +6296,11 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
             client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                            bypass_replace=False)
 
-            # If target is deafened, behavior is different
             target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
+            target.send_ooc('{} seemed to whisper something to you, but you could not make it out.'
+                            .format(final_sender), to_deaf=True)
             target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
-                           to_deaf=False)
-            target.send_ooc('Your ears are ringing.', to_deaf=True)
-            target.send_ic(msg='', pos=client.pos, cid=client.char_id, showname=client.showname,
-                           to_deaf=True)
+                           bypass_deafened_starters=True) # send_ic handles nerfing for deafened
 
             client.send_ooc_others('(X) {} whispered `{}` to {} while both were sneaking and part '
                                    'of the same party ({}).'

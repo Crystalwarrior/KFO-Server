@@ -581,9 +581,11 @@ class _TestClientManager(ClientManager):
                 self.area.can_send_message = lambda: True
             self.send_command_cts(buffer)
 
-        def assert_ic(self, message, over=False, ic_over=False, check_MS_packet=True, **kwargs):
+        def assert_ic(self, message, over=False, ic_over=False, check_MS_packet=True,
+                      allow_partial_match=False, **kwargs):
             if check_MS_packet:
-                self.assert_packet('MS', None, over=over, ic_over=ic_over)
+                self.assert_packet('MS', None, over=over, allow_partial_match=allow_partial_match,
+                                   ic_over=ic_over)
 
             err = 'Expected IC messages, found none.'
             if self.discarded_ic_somewhere:
@@ -614,9 +616,16 @@ class _TestClientManager(ClientManager):
                 kwargs['msg'] = message
 
             for (item, val) in kwargs.items():
-                err = ('Wrong IC parameter {}. Expected "{}", got "{}".'
-                       .format(item, val, params[param_ids[item]]))
-                assert params[param_ids[item]] == val, err
+                expected = val
+                got = params[param_ids[item]]
+                if allow_partial_match and isinstance(got, str):
+                    err = ('Wrong IC parameter {} for {}\nExpected that it began with "{}"\n'
+                           'Got "{}"'.format(item, self, expected, got))
+                    assert got.startswith(expected), err
+                else:
+                    err = ('Wrong IC parameter {} for {}\nExpected "{}"\nGot "{}"'
+                           .format(item, self, expected, got))
+                    assert expected == got, err
 
             if over or ic_over:
                 assert(len(self.received_ic) == 0)

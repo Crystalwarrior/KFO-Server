@@ -163,9 +163,9 @@ class ClientManager:
             self.server.make_all_clients_do("send_ooc", msg, pred=cond, allow_empty=allow_empty,
                                             username=username)
 
-        def send_ic(self, ic_params=None, params=None, sender=None, bypass_replace=False, pred=None,
-                    not_to=None, gag_replaced=False, is_staff=None, in_area=None, to_blind=None,
-                    to_deaf=None,
+        def send_ic(self, ic_params=None, params=None, sender=None, pred=None, not_to=None,
+                    gag_replaced=False, is_staff=None, in_area=None, to_blind=None, to_deaf=None,
+                    bypass_replace=False, bypass_deafened_starters=False,
                     msg=None, pos=None, cid=None, ding=None, color=None, showname=None):
 
             # sender is the client who sent the IC message
@@ -250,7 +250,7 @@ class ClientManager:
                     # Address the situation where this client is in first person mode, paired with
                     # someone else, and that someone else speaks in IC. This will 'visually' cancel
                     # pairing for this client, but not remove it completely. It is just so that
-                    # the client's own sprites appear.
+                    # the client's own sprites do not appear.
                     if pargs.get('charid_pair', -1) == self.char_id:
                         pop_if_there(pargs, 'other_offset')
                         pop_if_there(pargs, 'other_emote')
@@ -265,7 +265,7 @@ class ClientManager:
                 # Nerf message for deaf
                 if self.is_deaf and pargs['msg']:
                     if (not pargs['msg'].startswith(allowed_starters) or
-                        sender.is_gagged and gag_replaced):
+                        (sender.is_gagged and gag_replaced) or bypass_deafened_starters):
                         pargs['msg'] = '(Your ears are ringing)'
                         if self.send_deaf_space:
                             pargs['msg'] = pargs['msg'] + ' '
