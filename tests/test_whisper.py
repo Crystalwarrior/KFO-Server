@@ -540,3 +540,114 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
         self.c2.move_area(4)
         self.c3.move_area(5)
         self.c2.make_gm()
+
+class TestWhisper_04_Guide(_TestWhisper):
+    def test_01_wrongarguments(self):
+        """
+        Situation: Clients attempt to guide incorrectly.
+        """
+
+        mes = ('Not enough arguments. Use /guide <target> <message>. Target should be '
+               'ID, char-name, edited-to character, custom showname or OOC-name.')
+
+        # Not staff
+        self.c0.ooc('/guide 4 Hallo')
+        self.c0.assert_ooc('You must be authorized to do that.', over=True)
+        self.c1.assert_no_packets()
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+        # No target
+        self.c1.ooc('/guide')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc(mes, over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+        # No message
+        self.c1.ooc('/guide 0')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc(mes, over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+        # No target
+        self.c1.ooc('/guide 100 Test')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('No targets with identifier `100 Test` found.', over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+        self.c5.assert_no_packets()
+
+    def test_02_guidenonstaff(self):
+        """
+        Situation: C1 guides all non-staff, even those not in C1's area. All other staff (C2, C5)
+        are notified, but none of the staff are.
+        """
+
+        sender = self.c1
+        for target in [self.c0, self.c4]:
+            for identifier in self.get_identifiers(target):
+                message = '{} with {} to {}'.format(sender, identifier, target)
+                sent_ooc = ('You gave the following guidance to {}: `{}`.'
+                            .format(target.displayname, message))
+                target_ooc = 'You hear a guiding voice in your head.'
+                staff_ooc = ('(X) {} gave the following guidance to {}: `{}` ({}).'
+                             .format(sender.name, target.displayname, message, sender.area.id))
+
+                sender.ooc('/guide {} {}'.format(identifier, message))
+                sender.assert_ooc(sent_ooc, over=True)
+                target.assert_ooc(target_ooc, ooc_over=True)
+                target.assert_ic(message, folder='<NOCHAR>', over=True)
+                self.c2.assert_ooc(staff_ooc, over=True)
+                self.c3.assert_no_packets()
+                self.c5.assert_ooc(staff_ooc, over=True)
+
+        target = self.c3 # Non-staff not in c0's area
+        identifier = '3' # Client ID is the only identifier that will work
+        message = '{} with {} to {}'.format(sender, identifier, target)
+        sent_ooc = ('You gave the following guidance to {}: `{}`.'
+                    .format(target.displayname, message))
+        target_ooc = 'You hear a guiding voice in your head.'
+        staff_ooc = ('(X) {} gave the following guidance to {}: `{}` ({}).'
+                     .format(sender.name, target.displayname, message, sender.area.id))
+
+        sender.ooc('/guide {} {}'.format(identifier, message))
+        sender.assert_ooc(sent_ooc, over=True)
+        target.assert_ooc(target_ooc, ooc_over=True)
+        target.assert_ic(message, folder='<NOCHAR>', over=True)
+        self.c2.assert_ooc(staff_ooc, over=True)
+        self.c3.assert_no_packets()
+        self.c5.assert_ooc(staff_ooc, over=True)
+
+    def test_03_guidestaff(self):
+        """
+        Situation: C2 guides all other staff, even those not in C2's area. The other staff is
+        notified, but none all of the other staff.
+        """
+
+        sender = self.c2
+        for (target, not_st_target) in [(self.c1, self.c5), (self.c5, self.c1)]:
+            identifier = target.id
+            message = '{} with {} to {}'.format(sender, identifier, target)
+            sent_ooc = ('You gave the following guidance to {}: `{}`.'
+                        .format(target.displayname, message))
+            target_ooc = 'You hear a guiding voice in your head.'
+            staff_ooc = ('(X) {} gave the following guidance to {}: `{}` ({}).'
+                         .format(sender.name, target.displayname, message, sender.area.id))
+
+            sender.ooc('/guide {} {}'.format(identifier, message))
+            sender.assert_ooc(sent_ooc, over=True)
+            target.assert_ooc(target_ooc, ooc_over=True)
+            target.assert_ic(message, folder='<NOCHAR>', over=True)
+            not_st_target.assert_ooc(staff_ooc, over=True)
+            self.c0.assert_no_packets()
+            self.c3.assert_no_packets()
+            self.c4.assert_no_packets()

@@ -6324,7 +6324,13 @@ def ooc_cmd_guide(client: ClientManager.Client, arg: str):
     /guide 0 Check out his clothes!     :: Sends that message to player with client ID 0.
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='>1')
+    except ArgumentError:
+        raise ArgumentError('Not enough arguments. Use /guide <target> <message>. Target should '
+                            'be ID, char-name, edited-to character, custom showname or OOC-name.')
+    if client.is_muted:
+        raise ClientError('You have been muted by a moderator.')
 
     cm = client.server.client_manager
     target, _, msg = cm.get_target_public(client, arg)
@@ -6333,10 +6339,10 @@ def ooc_cmd_guide(client: ClientManager.Client, arg: str):
                     .format(target.displayname, msg))
 
     target.send_ooc('You hear a guiding voice in your head.')
-    target.send_ic(msg=arg, bypass_replace=True)
+    target.send_ic(msg=msg, bypass_replace=True)
 
     client.send_ooc_others('(X) {} gave the following guidance to {}: `{}` ({}).'
-                           .format(client.name, msg, target, client.area.id),
+                           .format(client.name, target.displayname, msg, client.area.id),
                            is_zstaff_flex=target.area, not_to={target})
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
