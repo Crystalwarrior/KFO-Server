@@ -1179,6 +1179,9 @@ class ClientManager:
             * Their custom showname starts with `identifier`
             * Their OOC name starts with `identifier`
         Note these criteria are public information for any client regardless of rank.
+        If `client` is not a staff member, targets that are sneaking will be discarded if `client`
+        is not sneaking or, if they are, they are not part of a party of the same party as the
+        target. No output messages will include these discarded targets, even for error messages.
 
         Parameters
         ----------
@@ -1207,6 +1210,29 @@ class ClientManager:
         multiple_match_message = ''
         valid_targets = list()
 
+        def _discard_sneaked_if_needed(targets):
+            try:
+                party_sender = client.get_party()
+            except PartyError:
+                party_sender = None
+
+            new_targets = set()
+            for target in targets:
+                if client.is_staff() or target.is_visible:
+                    new_targets.add(target)
+                # Only consider a sneaked target as valid if the following is true:
+                # 1. Client is not visible
+                # 2. Client and target are part of the same party
+                elif (not client.is_visible and party_sender):
+                    try:
+                        party_target = target.get_party()
+                    except PartyError:
+                        party_target = None
+
+                    if party_sender == party_target:
+                        new_targets.add(target)
+            return new_targets
+
         for word_number in range(len(split_identifier)):
             # As len(split_identifier) >= 1, this for loop is run at least once, so we can use
             # top-level variables defined here outside the for loop
@@ -1214,10 +1240,10 @@ class ClientManager:
             # Greedily try and find the smallest possible identifier that gets one unique target
             identity, rest = (' '.join(split_identifier[:word_number+1]),
                               ' '.join(split_identifier[word_number+1:]))
-
             # First pretend the identity is a client ID, which is unique
             if identity.isdigit():
                 targets = set(self.get_targets(client, TargetType.ID, int(identity), only_in_area))
+                targets = _discard_sneaked_if_needed(targets)
                 if len(targets) == 1:
                     # Found unique match
                     valid_targets = targets
@@ -1238,6 +1264,7 @@ class ClientManager:
             for possibility in possibilities:
                 id_type, id_value = possibility
                 new_targets = set(self.get_targets(client, id_type, identity, True))
+                new_targets = _discard_sneaked_if_needed(new_targets)
                 if new_targets:
                     targets |= new_targets
                     matched = id_value(new_targets.pop())
