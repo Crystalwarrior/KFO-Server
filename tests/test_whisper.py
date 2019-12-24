@@ -120,7 +120,37 @@ class TestWhisper_01_WhisperFailure(_TestWhisper):
             self.c0.ooc('/whisper {} {}'.format(identifier, message))
             self.c0.assert_ooc('No targets with identifier `{} {}` found.'
                               .format(identifier, message), over=True)
+            self.c1.assert_no_packets()
+            self.c2.assert_no_packets()
+            self.c3.assert_no_packets()
             self.c4.assert_no_packets()
+            self.c5.assert_no_packets()
+
+        self.c1.ooc('/reveal 4')
+        self.c1.discard_all()
+        self.c4.discard_all()
+
+    def test_05_staffwhispertosneaked(self):
+        """
+        Situation: Just for this test, C4 starts sneaking. C1, who is in the same area as C4,
+        attempts to whisper to C4. This fails, but with a different message, suggesting to use
+        /guide instead.
+        """
+
+        self.c1.ooc('/sneak 4')
+        self.c1.discard_all()
+        self.c4.discard_all()
+
+        for identifier in self.get_identifiers(self.c4):
+            message = '{} with {} to {}'.format(self.c1, identifier, self.c4)
+            self.c1.ooc('/whisper {} {}'.format(identifier, message))
+            self.c1.assert_ooc('Your target {} is sneaking and whispering to them would reveal '
+                               'them. Instead, use /guide'.format(self.c4.displayname), over=True)
+            self.c0.assert_no_packets()
+            self.c2.assert_no_packets()
+            self.c3.assert_no_packets()
+            self.c4.assert_no_packets()
+            self.c5.assert_no_packets()
 
         self.c1.ooc('/reveal 4')
         self.c1.discard_all()

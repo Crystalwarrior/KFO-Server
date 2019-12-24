@@ -6210,7 +6210,8 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
     players, for which /pm is recommended.
     Whispers sent by sneaked players include an empty showname so as to not reveal their identity.
     Whispers sent to sneaked players will succeed only if the sender is sneaking and both the sender
-    and recipient are part of the same party.
+    and recipient are part of the same party. If the attempt fails but the player is staff member,
+    they will get a friendly suggestion to use /guide instead.
     Deafened recipients will receive a nerfed message if whispered to.
     Non-zone watchers/non-staff players in the same area as the whisperer will be notified that
     they whispered to their target (but will not receive the content of the message), provided they
@@ -6295,10 +6296,14 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
                                .format(final_st_sender, final_message, final_target,
                                        client.area.id), is_zstaff_flex=True, not_to={target})
     else: # Sender is not sneaked, target is
-        if not client.is_staff():
-            # Normies cannot whisper to sneaked players
-            # This string is copied from client_manager.get_target_public
-            raise ClientError('No targets with identifier `{}` found.'.format(arg))
+        if client.is_staff():
+            msg = ('Your target {} is sneaking and whispering to them would reveal them. Instead, '
+                   'use /guide'.format(target.displayname))
+            raise ClientError(msg)
+        else:
+            # Normal clients should never get here except if get_target_public is wrong
+            # which would be very sad.
+            raise ValueError('Never should have come here!')
 
 def ooc_cmd_guide(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
