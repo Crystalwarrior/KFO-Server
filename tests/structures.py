@@ -249,28 +249,28 @@ class _TestClientManager(ClientManager):
             mes = mes.replace('<dollar>', '$')
             return mes
 
-        def make_mod(self):
+        def make_mod(self, over=True):
             if self.is_mod:
                 return
             self.ooc('/login {}'.format(self.server.config['modpass']))
             self.assert_packet('FM', None)
-            self.assert_ooc('Logged in as a moderator.', over=True)
+            self.assert_ooc('Logged in as a moderator.', over=over)
             assert self.is_mod
 
-        def make_cm(self):
+        def make_cm(self, over=True):
             if self.is_cm:
                 return
             self.ooc('/logincm {}'.format(self.server.config['cmpass']))
             self.assert_packet('FM', None)
-            self.assert_ooc('Logged in as a community manager.', over=True)
+            self.assert_ooc('Logged in as a community manager.', over=over)
             assert self.is_cm
 
-        def make_gm(self):
+        def make_gm(self, over=True):
             if self.is_gm:
                 return
             self.ooc('/loginrp {}'.format(self.server.config['gmpass']))
             self.assert_packet('FM', None)
-            self.assert_ooc('Logged in as a game master.', over=True)
+            self.assert_ooc('Logged in as a game master.', over=over)
             assert self.is_gm
 
         def make_normie(self, over=True):
@@ -581,9 +581,11 @@ class _TestClientManager(ClientManager):
                 self.area.can_send_message = lambda: True
             self.send_command_cts(buffer)
 
-        def assert_ic(self, message, over=False, ic_over=False, check_MS_packet=True, **kwargs):
+        def assert_ic(self, message, over=False, ic_over=False, check_MS_packet=True,
+                      allow_partial_match=False, **kwargs):
             if check_MS_packet:
-                self.assert_packet('MS', None, over=over, ic_over=ic_over)
+                self.assert_packet('MS', None, over=over, allow_partial_match=allow_partial_match,
+                                   ic_over=ic_over)
 
             err = 'Expected IC messages, found none.'
             if self.discarded_ic_somewhere:
@@ -614,9 +616,16 @@ class _TestClientManager(ClientManager):
                 kwargs['msg'] = message
 
             for (item, val) in kwargs.items():
-                err = ('Wrong IC parameter {}. Expected "{}", got "{}".'
-                       .format(item, val, params[param_ids[item]]))
-                assert params[param_ids[item]] == val, err
+                expected = val
+                got = params[param_ids[item]]
+                if allow_partial_match and isinstance(got, str):
+                    err = ('Wrong IC parameter {} for {}\nExpected that it began with "{}"\n'
+                           'Got "{}"'.format(item, self, expected, got))
+                    assert got.startswith(expected), err
+                else:
+                    err = ('Wrong IC parameter {} for {}\nExpected "{}"\nGot "{}"'
+                           .format(item, self, expected, got))
+                    assert expected == got, err
 
             if over or ic_over:
                 assert(len(self.received_ic) == 0)

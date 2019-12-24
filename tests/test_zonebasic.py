@@ -179,7 +179,9 @@ class TestZoneBasic_01_Zone(_TestZone):
         self.c0.assert_no_packets()
         self.c1.assert_ooc('(X) {} has created zone `{}` containing areas {} through {} ({}).'
                            .format(self.c5_dname, 'z2', 5, 7, self.c5.area.id), over=True)
-        self.c2.assert_no_packets()
+        self.c2.assert_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
+                           'its notifications, start watching it with /zone_watch {}'
+                           .format('z2', 'z2'), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_ooc('You have created zone `{}` containing areas {} through {}.'
@@ -204,12 +206,15 @@ class TestZoneBasic_01_Zone(_TestZone):
     def test_06_nooverlappingzones(self):
         """
         Situation: C3 (who is made mod for this test case), attempts to create a zone that would
-        conflict with an existing zone (z1). This fails.
+        conflict with an existing zone (z2). This fails.
         """
 
-        self.c3.make_mod()
+        self.c3.make_mod(over=False)
+        self.c3.assert_ooc('(X) You are in an area part of zone `{}`. To be able to receive its '
+                           'notifications, start watching it with /zone_watch {}'
+                           .format('z2', 'z2'), over=True)
 
-        self.c3.ooc('/zone {}, {}'.format(self.a1_name, self.a3_name)) # Area 3 is in z1, bad
+        self.c3.ooc('/zone {}, {}'.format(self.a1_name, self.a3_name)) # Area 5 is in z2, bad
         self.c0.assert_no_packets()
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
@@ -305,7 +310,9 @@ class TestZoneBasic_02_List(_TestZone):
         self.c4.ooc('/zone 0')
         self.c4.ooc('/zone_add 5')
         self.c1.discard_all() # Discard mod notification
+        self.c2.discard_all() # Discard logged in while area added to zone notif
         self.c4.discard_all()
+
 
         self.c4.ooc('/zone_list')
         self.c0.assert_no_packets()
@@ -330,6 +337,7 @@ class TestZoneBasic_02_List(_TestZone):
 
         self.c4.ooc('/zone_add 7')
         self.c4.discard_all()
+        self.c5.discard_all() # Discard logged in while area added to zone notif
 
         self.c4.ooc('/zone_list')
         self.c0.assert_no_packets()
@@ -413,6 +421,7 @@ class TestZoneBasic_03_Delete(_TestZone):
 
         self.c1.ooc('/zone 0, 5')
         self.c1.discard_all()
+        self.c2.discard_all() # would receive being in zone notification
 
         self.c1.ooc('/zone_delete')
         self.c0.assert_no_packets()
@@ -529,8 +538,13 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c3.ooc('/zone 0, 5')
         self.c0.assert_no_packets()
         self.c1.assert_ooc('(X) {} has created zone `{}` containing areas {} through {} ({}).'
-                           .format(self.c3_dname, 'z0', 0, 5, self.c3.area.id), over=True)
-        self.c2.assert_no_packets()
+                           .format(self.c3_dname, 'z0', 0, 5, self.c3.area.id))
+        self.c1.assert_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
+                           'its notifications, start watching it with /zone_watch {}'
+                           .format('z0', 'z0'), over=True)
+        self.c2.assert_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
+                           'its notifications, start watching it with /zone_watch {}'
+                           .format('z0', 'z0'), over=True)
         self.c3.assert_ooc('You have created zone `{}` containing areas {} through {}.'
                            .format('z0', 0, 5), over=True)
         self.c4.assert_ooc('(X) {} has created zone `{}` containing areas {} through {} ({}).'

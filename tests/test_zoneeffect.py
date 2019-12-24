@@ -23,6 +23,7 @@ class TestZoneEffect_01_Global(_TestZone):
 
         self.c1.ooc('/zone 3, 5')
         self.c1.discard_all()
+        self.c2.discard_all()
 
         self.c0.ooc('/zone_global Hello players.')
         self.c0.assert_ooc('Hello players.', username='<dollar>ZG[{}][{}]'.format(4, self.c0_dname),
@@ -252,6 +253,7 @@ class TestZoneEffect_02_Play(_TestZone):
 
         self.c1.ooc('/zone 3, 5')
         self.c1.discard_all()
+        self.c2.discard_all()
 
         self.c1.ooc('/zone_play Hello.mp3')
         self.c0.assert_packet('MC', ('Hello.mp3', 1), over=True)
@@ -343,6 +345,7 @@ class TestZoneEffect_03_RPNotifications(_TestZone):
 
         self.c1.ooc('/zone 3, 5')
         self.c1.discard_all()
+        self.c2.discard_all()
 
         self.c1.ooc('/iclock')
         self.c0.assert_ooc(self.mes_b, over=True)
@@ -466,7 +469,7 @@ class TestZoneEffect_03_RPNotifications(_TestZone):
         * C5 does not receive message (staff not in zone not watching zone)
         """
 
-        self.c2.make_gm()
+        self.c2.make_gm(over=False)
         self.c2.ooc('/zone_unwatch')
         self.c2.ooc('/zone_watch z1')
         self.c1.discard_all()

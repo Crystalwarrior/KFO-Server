@@ -313,3 +313,27 @@
 * Fixed /help not showing extended syntax (/help "command name") when running /help help
 * Fixed /narrate messages being replaced for deafened players
 * Fixed /poison effects kicking in being notified to all players in the server as opposed to zone watchers or staff members if taget is in an area not in a zone
+
+### 191224a (4.2.2)
+* Added /whisper for IC private communications between players (meant to be used for RPs, as staff members can read the contents of the message).
+* Added /guide for providing personalized guidance specific to a particular player.
+* Made /invite be a public command as opposed to GM+.
+* Added helpful commands-to-run-next suggestions for the following actions
+  - Setting files.
+  - Setting up global IC messages
+  - Creating/being invited to a party.
+  - Entering a zone you that a GM+ is not watching/leaving a zone a GM+ is watching.
+  - Logging in in an area part of a zone.
+  - Being in an area when a zone is created involving that area, or that area is added to a zone.
+  - Being in an area that is removed from the player's zone.
+* The following commands can now take character name, edited-to character, showname or OOC name as identifiers, provided they are in the same area
+  - /files
+  - /guide
+  - /invite
+  - /party_invite
+  - /party_kick
+  - /party_uninvite
+  - /pm
+  - /uninvite
+  - /whisper
+* Fixed normal players being able to use /uninvite with IPID.

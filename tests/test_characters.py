@@ -29,7 +29,8 @@ class TestCharacters_01_Files_Set(_TestCharacters):
 
         self.c0.ooc('/files_set {}'.format(self.link1))
         self.c0.assert_ooc('You have set the download link for the files of `{}` to {}'
-                           .format(self.c0_dname, self.link1), over=True)
+                           .format(self.c0_dname, self.link1))
+        self.c0.assert_ooc('Let others access them with /files {}'.format(0), over=True)
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
@@ -49,7 +50,8 @@ class TestCharacters_01_Files_Set(_TestCharacters):
         self.c1.ooc('/files_set {}'.format(self.link2))
         self.c0.assert_no_packets()
         self.c1.assert_ooc('You have set the download link for the files of `{}` to {}'
-                           .format(self.c1_dname, self.link2), over=True)
+                           .format(self.c1_dname, self.link2))
+        self.c1.assert_ooc('Let others access them with /files {}'.format(1), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -67,7 +69,8 @@ class TestCharacters_01_Files_Set(_TestCharacters):
 
         self.c0.ooc('/files_set {}'.format(self.link1))
         self.c0.assert_ooc('You have set the download link for the files of `{}` to {}'
-                           .format(self.c0_dname, self.link1), over=True)
+                           .format(self.c0_dname, self.link1))
+        self.c0.assert_ooc('Let others access them with /files {}'.format(0), over=True)
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
@@ -109,7 +112,8 @@ class TestCharacters_01_Files_Set(_TestCharacters):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_ooc('You have set the download link for the files of `{}` to {}'
-                           .format(self.c4.char_folder, self.link2), over=True)
+                           .format(self.c4.char_folder, self.link2))
+        self.c4.assert_ooc('Let others access them with /files {}'.format(4), over=True)
         self.assertEqual([self.c0_dname, self.link1], self.c0.files)
         self.assertEqual(None, self.c1.files)
         self.assertEqual(None, self.c2.files)
@@ -176,7 +180,7 @@ class TestCharacters_02_Files(_TestCharacters):
 
         # Invalid client ID
         self.c0.ooc('/files -1')
-        self.c0.assert_ooc('`-1` does not look like a valid client ID.', over=True)
+        self.c0.assert_ooc('No targets with identifier `-1` found.', over=True)
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()

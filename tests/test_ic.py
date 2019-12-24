@@ -1,4 +1,4 @@
-from .structures import _TestSituation5Mc1Gc2
+from .structures import _TestSituation5Mc1Gc2, _TestSituation6Mc1Gc25
 
 class _TestIC(_TestSituation5Mc1Gc2):
     @classmethod
@@ -158,7 +158,8 @@ class TestIC_02_GlobalIC(_TestIC):
 
         self.c1.ooc('/globalic {}, {}'.format(1, 5))
         self.c1.assert_ooc('Your IC messages will now be sent to areas {} through {}.'
-                           .format(self.a1_name, self.a5_name), over=True)
+                           .format(self.a1_name, self.a5_name))
+        self.c1.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
         self.assertEqual(self.c1.multi_ic, [self.area1, self.area5])
 
         self.c1.sic('Hallo mates.')
@@ -204,7 +205,8 @@ class TestIC_02_GlobalIC(_TestIC):
 
         self.c1.ooc('/globalic {}, {}'.format(4, 5))
         self.c1.assert_ooc('Your IC messages will now be sent to areas {} through {}.'
-                           .format(self.a4_name, self.a5_name), over=True)
+                           .format(self.a4_name, self.a5_name))
+        self.c1.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
         self.assertEqual(self.c1.multi_ic, [self.area4, self.area5])
 
         self.c1.sic('Hello players.')
@@ -280,7 +282,8 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
 
         self.c1.ooc('/globalic {}, {}'.format(0, 3))
         self.c1.assert_ooc('Your IC messages will now be sent to areas {} through {}.'
-                           .format(self.a0_name, self.a3_name), over=True)
+                           .format(self.a0_name, self.a3_name))
+        self.c1.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
         self.assertEqual(self.c1.multi_ic_pre, '')
 
         self.c1.ooc('/globalic_pre *')
@@ -323,7 +326,8 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
 
         self.c1.ooc('/globalic {}, {}'.format(1, 5))
         self.c1.assert_ooc('Your IC messages will now be sent to areas {} through {}.'
-                           .format(self.a1_name, self.a5_name), over=True)
+                           .format(self.a1_name, self.a5_name))
+        self.c1.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
         self.c1.ooc('/globalic_pre {}'.format('>>>'))
         self.c1.assert_ooc('You have set your global IC prefix to >>>', over=True)
 
@@ -378,7 +382,8 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
 
         self.c1.ooc('/globalic {}, {}'.format(4, 5))
         self.c1.assert_ooc('Your IC messages will now be sent to areas {} through {}.'
-                           .format(self.a4_name, self.a5_name), over=True)
+                           .format(self.a4_name, self.a5_name))
+        self.c1.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
 
         self.c1.sic('>>>Hello players.')
         self.c1.assert_ooc('Sent global IC message "Hello players." to areas {} through {}.'
@@ -472,7 +477,8 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
 
         self.c1.ooc('/globalic {}, {}'.format(1, 5))
         self.c1.assert_ooc('Your IC messages will now be sent to areas {} through {}.'
-                           .format(self.a1_name, self.a5_name), over=True)
+                           .format(self.a1_name, self.a5_name))
+        self.c1.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
         self.c1.ooc('/globalic_pre {}'.format('>>>'))
         self.c1.assert_ooc('You have set your global IC prefix to >>>', over=True)
 
@@ -492,4 +498,3 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
         self.c4.assert_no_ic()
-

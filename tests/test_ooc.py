@@ -172,7 +172,7 @@ class TestOOC_02_PM(_TestOOC):
         """
 
         mes = ('Not enough arguments. Use /pm <target> <message>. Target should be '
-               'char-name, custom showname, ID or OOC-name or char-name.')
+               'ID, char-name, edited-to character, custom showname or OOC-name.')
 
         # No target
         self.c0.ooc('/pm')
@@ -190,7 +190,7 @@ class TestOOC_02_PM(_TestOOC):
 
         # No target
         self.c0.ooc('/pm 100 Test')
-        self.c0.assert_ooc('No targets found.', over=True)
+        self.c0.assert_ooc('No targets with identifier `100 Test` found.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -207,12 +207,12 @@ class TestOOC_02_PM(_TestOOC):
                 if c_a.area == c_b.area:
                     targets.extend([c_b.name, c_b.displayname])
 
-                target = random.choice(targets)
-                sent = 'PM sent to {}. Message: '.format(target)
-                message = '{}-->{}'.format(c_a.name, c_b.name)
-                c_a.ooc('/pm {} {}'.format(target, message))
-                c_a.assert_ooc(sent + message, over=(c_a!=c_b))
-                c_b.assert_ooc(receipt + message, over=True)
+                for target in targets:
+                    sent = 'PM sent to {}. Message: '.format(target)
+                    message = '{}-->{}'.format(c_a.name, c_b.name)
+                    c_a.ooc('/pm {} {}'.format(target, message))
+                    c_a.assert_ooc(sent + message, over=(c_a!=c_b))
+                    c_b.assert_ooc(receipt + message, over=True)
 
     def test_03_otherareapm(self):
         """
@@ -231,14 +231,16 @@ class TestOOC_02_PM(_TestOOC):
 
         message = 'Does not work with charname.'
         self.c0.ooc('/pm {} {}'.format(self.c2.get_char_name(), message))
-        self.c0.assert_ooc('No targets found.', over=True)
+        self.c0.assert_ooc('No targets with identifier `Maki Harukawa_HD Does not work with '
+                           'charname.` found.', over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
         message = 'Does not work with OOC name.'
         self.c0.ooc('/pm {} {}'.format(self.c2.name, message))
-        self.c0.assert_ooc('No targets found.', over=True)
+        self.c0.assert_ooc('No targets with identifier `user2 Does not work with OOC name.` found.',
+                           over=True)
         self.c1.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()

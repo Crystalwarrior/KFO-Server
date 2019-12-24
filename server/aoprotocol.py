@@ -20,7 +20,6 @@ import asyncio
 import re
 
 from time import localtime, strftime
-from enum import Enum
 
 from server import logger
 from server.constants import ArgType, Clients, Constants

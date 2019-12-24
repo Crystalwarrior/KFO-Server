@@ -31,29 +31,29 @@ Requires Python 3.6-3.8 and PyYAML (follow instructions below to install).
 
 * Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:
 
-\[2019-12-09T10:20:20\]: Starting...  
-\[2019-12-09T10:20:20\]: Launching TsuserverDR 4.2.1 (191209a)...  
-\[2019-12-09T10:20:20\]: Loading server configurations...  
-\[2019-12-09T10:20:20\]: Server configurations loaded successfully!  
-\[2019-12-09T10:20:20\]: Starting a nonlocal server...  
-\[2019-12-09T10:20:20\]: Server started successfully!  
-\[2019-12-09T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
+\[2019-12-24T10:20:20\]: Starting...  
+\[2019-12-24T10:20:20\]: Launching TsuserverDR 4.2.2 (191224a)...  
+\[2019-12-24T10:20:20\]: Loading server configurations...  
+\[2019-12-24T10:20:20\]: Server configurations loaded successfully!  
+\[2019-12-24T10:20:20\]: Starting a nonlocal server...  
+\[2019-12-24T10:20:20\]: Server started successfully!  
+\[2019-12-24T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
 
 * If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:
 
-\[2019-12-09T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
-\[2019-12-09T10:20:21\]: *Server name: My First DR Server  
-\[2019-12-09T10:20:21\]: *Server description: This is my flashy new DR server  
-\[2019-12-09T10:20:22\]: Connected to the master server.  
+\[2019-12-24T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
+\[2019-12-24T10:20:21\]: *Server name: My First DR Server  
+\[2019-12-24T10:20:21\]: *Server description: This is my flashy new DR server  
+\[2019-12-24T10:20:22\]: Connected to the master server.  
 
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If during launch you get  `urllib.error.URLError` or `socket.gaierror`, there is probably something wrong with your internet connection.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
-\[2019-12-09T22:23:04\]: You have initiated a server shut down.  
-\[2019-12-09T22:23:04\]: Kicking 12 remaining clients.  
-\[2019-12-09T22:23:04\]: Server has successfully shut down.  
+\[2019-12-24T22:23:04\]: You have initiated a server shut down.  
+\[2019-12-24T22:23:04\]: Kicking 12 remaining clients.  
+\[2019-12-24T22:23:04\]: Server has successfully shut down.  
 
 * If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
@@ -107,7 +107,7 @@ Additional notes are listed at the end of the command list.
     - Displays the invite link of the server's Discord server.
 * **doc** "url"
     - Gives the doc url if blank, updates the doc url otherwise.
-* **files** "ID"
+* **files** "ID/char name/edited-to character/showname/OOC name"
     - Gives a download link set by the target that links to their files, or gives your own download link if not given an argument.
 * **files_set** "url"
     - Sets a download link for the user's files, or clears it if not given an argument.
@@ -117,6 +117,8 @@ Additional notes are listed at the end of the command list.
     - Shows the current characters in your area.
 * **getareas**
     - Shows all characters in all areas reachable from your own.
+* **invite** "ID/char name/edited-to character/showname/OOC name"
+    - Adds target to the invite list of your locked area so they may join.
 * **kickself**
     - Removes all of of the user's clients except the one that used the command.
 * **knock** "area"
@@ -151,17 +153,17 @@ Additional notes are listed at the end of the command list.
     - Disbands your party.
 * **party_id**
     - Returns your party ID.
-* **party_invite** "ID"
+* **party_invite** "ID/char name/edited-to character/showname/OOC name"
     - Invites a player in the same area to your party.
 * **party_join** "party ID"
     - Makes you join a party you were invited to.
-* **party_kick** "ID"
+* **party_kick** "ID/char name/edited-to character/showname/OOC name"
     - Kicks a player off your party.
 * **party_lead**
     - Makes you a leader of your party.
 * **party_members**
     - Lists the leaders and regular members of your party.
-* **party_uninvite** "ID"
+* **party_uninvite** "ID/char name/edited-to character/showname/OOC name"
     - Revokes an invitation sent to a player to join your player.
 * **party_unlead**
     - Removes your party leader role.
@@ -169,7 +171,7 @@ Additional notes are listed at the end of the command list.
     - Returns "Pong", used to check for server connection.
 * **play** "song.mp3"
     - Plays a song, provided the area you are in allows non-staff members to run this command.
-* **pm** "ID/IPID/char name/OOC name" "message"
+* **pm** "ID/char name/edited-to character/showname/OOC name" "message"
     - PMs the target.
 * **pos** "position"
     - Changes your position in the court.
@@ -203,7 +205,7 @@ Additional notes are listed at the end of the command list.
 * **timer_cancel** "timer name"
     - Cancels the timer by name, provided it is yours.
 * **timer_get** "timer name"
-    - Obtain the remaining time of the given timer by name, provided it is public, or list all remaining times in all public timers if not given a name.
+    - Obtains the remaining time of the given timer by name, provided it is public, or list all remaining times in all public timers if not given a name.
 * **ToD**
     - Chooses "Truth" or "Dare" for Truth or Dare minigames.
 * **toggle_fp**
@@ -216,16 +218,19 @@ Additional notes are listed at the end of the command list.
     - Changes your setting to have the IC messages you receive to include the sender's custom showname. By default it is on.
 * **unilock** "area number/name"
     - Changes the passage status (locked/unlocked) from the current area to the given one.
-* **uninvite** "ID/IPID"
+* **uninvite** "ID/char name/edited-to character/showname/OOC name"
     - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**
     - Unlocks your area, provided the lock came as a result of /lock.
 * **version**
     - Obtains the current version of the server software.
+* **whisper** "ID/char name/edited-to character/showname/OOC name" "message"
+	- Sends an IC private message to the target, provided they are in the area.
+	- Other people in the area are warned that a whisper has taken place (but not the message content). However, staff members do get message contents, so this command should only be used in RP settings.
 * **zone_global**
     - Sends a message to all players in the zone you are in.
 * **8ball**
-    - Gain insight from the magic 8 ball.
+    - Gains insight from the magic 8 ball.
 
 ### GM Commands
 
@@ -294,6 +299,9 @@ GMs can:
     - Locks your area. Prevents CMs and normal users from entering.
 * **gmself**
     - Logs all opened multiclients as GM.
+* **guide** "ID/char name/edited-to character/showname/OOC name" "message"
+	- Sends an IC private 'guiding' message to the target.
+	- Unlike /whisper, other people in the area are not warned that a whisper has taken place. However, staff members do get message contents, so this command should only be used in RP settings.
 * **handicap** "ID/IPID" "length" "name" "announce if over"
     - Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of
     time in seconds between changing areas.
@@ -302,8 +310,8 @@ GMs can:
 * **iclock**
     - Changes the IC lock status of the current area.
     - If the area has an IC lock, only GMs and above will be able to send IC messages.
-* **invite** "ID/IPID"
-    - Adds target in invite list of your area.
+* **invite** "IPID/ID/char name/edited-to character/showname/OOC name"
+    - Adds target to the invite list of your area.
 * **judgelog** "area"
     - Lists the last 20 judge actions performed in the given area (or current area if not given).
     - Each entry includes the time of execution, client ID, character name, client IPID and the judge action performed.
@@ -362,6 +370,8 @@ GMs can:
     - Removes movement handicaps on a target.
 * **unilock** "area 1", "area 2"
     - Changes the passage status (locked/unlocked) from area 1 to area 2.
+* **uninvite** "IPID/ID/char name/edited-to character/showname/OOC name"
+    - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**
     - Unlocks an area, provided the lock came as a result of /gmlock or /lock.
 * **whereis** "ID/IPID"

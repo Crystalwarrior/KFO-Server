@@ -9,6 +9,7 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
 
         self.c1.ooc('/zone 3, 5')
         self.c1.discard_all()
+        self.c2.discard_all()
 
         self.c4.move_area(4, discard_trivial=True)
         self.c0.assert_no_packets()
@@ -79,7 +80,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('You have left zone `{}`.'.format('z0'), over=True)
+        self.c5.assert_ooc('(X) You have left zone `{}`. To stop receiving its notifications, stop '
+                           'watching it with /zone_unwatch'.format('z0'), over=True)
 
     def test_06_leavezoneAenterzoneB(self):
         """
@@ -90,6 +92,7 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
         self.c5.ooc('/zone_unwatch')
         self.c5.ooc('/zone')
         self.c1.discard_all()
+        self.c2.discard_all()
         self.c5.discard_all()
 
         self.c2.move_area(5, discard_trivial=True)
@@ -97,7 +100,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
         self.c1.assert_ooc('(X) Client {} ({}) has entered your zone ({}).'
                            .format(2, self.c2_dname, 5), over=True)
         self.c2.assert_ooc('You have left zone `z1`.')
-        self.c2.assert_ooc('You have entered zone `z0`.', over=True)
+        self.c2.assert_ooc('(X) You have entered zone `z0`. To be able to receive its '
+                           'notifications, start watching it with /zone_watch z0', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_ooc('(X) Client {} ({}) has left your zone ({}).'
@@ -126,8 +130,10 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
         # One multiclient
         self.c1.move_area(7, discard_trivial=True)
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('You have left zone `z0`.')
-        self.c1.assert_ooc('You have entered zone `z1`.', over=True)
+        self.c1.assert_ooc('(X) You have left zone `z0`. To stop receiving its notifications, stop '
+                           'watching it with /zone_unwatch')
+        self.c1.assert_ooc('(X) You have entered zone `z1`. To be able to receive its '
+                           'notifications, start watching it with /zone_watch z1', over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -142,7 +148,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
         self.c1.assert_ooc('(X) Client {} ({}) has left your zone ({}).'
                            .format(2, self.c2_dname, 7), over=True)
         self.c2.assert_ooc('You have left zone `z0`.')
-        self.c2.assert_ooc('You have entered zone `z1`.', over=True)
+        self.c2.assert_ooc('(X) You have entered zone `z1`. To be able to receive its '
+                           'notifications, start watching it with /zone_watch z1', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_ooc('(X) Client {} ({}) has entered your zone ({}).'

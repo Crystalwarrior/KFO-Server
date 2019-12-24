@@ -30,7 +30,7 @@ class ArgType(Enum):
     INT = 3
 
 class TargetType(Enum):
-    #possible keys: ip, OOC, id, cname, ipid, hdid
+    #possible keys: ip, OOC, id, cname, ipid, hdid, showname, charfolder (for iniediting)
     IP = 0
     OOC_NAME = 1
     ID = 2
@@ -38,7 +38,8 @@ class TargetType(Enum):
     IPID = 4
     HDID = 5
     SHOWNAME = 6
-    ALL = 7
+    CHAR_FOLDER = 7
+    ALL = 8
 
 class Effects(Enum):
     B = ('Blindness', 'blinded', lambda client, value: client.change_blindness(value))
