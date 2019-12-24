@@ -211,6 +211,15 @@ class ClientManager:
             if not cond(self):
                 return
 
+            # Remove None values from pargs, which could have happened while setting default values
+            # from the function call
+            to_pop = list()
+            for (key, value) in pargs.items():
+                if pargs[key] is None:
+                    to_pop.append(key)
+            for key in to_pop:
+                pargs.pop(key)
+
             def pop_if_there(dictionary, argument):
                 if argument in dictionary:
                     dictionary.pop(argument)
