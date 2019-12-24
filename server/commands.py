@@ -6205,9 +6205,9 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
     """
     Sends an IC personal message to a specified user by some ID. The messages have the showname
     of the sender and their message, but does not include their sprite.
-    Elevated notifications are sent to zone watchers/staff members on whispers, which include the
-    message content, so this is not meant to act as a private means of communication between
-    players, for which /pm is recommended.
+    Elevated notifications are sent to zone watchers/staff members on whispers to other people,
+    which include the message content, so this is not meant to act as a private means of
+    communication between players, for which /pm is recommended.
     Whispers sent by sneaked players include an empty showname so as to not reveal their identity.
     Whispers sent to sneaked players will succeed only if the sender is sneaking and both the sender
     and recipient are part of the same party. If the attempt fails but the player is staff member,
@@ -6215,7 +6215,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
     Deafened recipients will receive a nerfed message if whispered to.
     Non-zone watchers/non-staff players in the same area as the whisperer will be notified that
     they whispered to their target (but will not receive the content of the message), provided they
-    are not blind (in which case no notification is sent).
+    are not blind (in which case no notification is sent) and that this was not a self-whisper.
     Returns an error if the user could not be found, if the message is empty or if the sender is
     gagged or IC-muted.
 
@@ -6246,17 +6246,22 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
 
     final_sender = client.displayname
     final_rec_sender = 'Someone' if (target.is_deaf and target.is_blind) else client.displayname
-    final_st_sender = client.name
+    final_st_sender = client.displayname
     final_target = target.displayname
     final_message = msg
 
-    if not (client.is_visible ^ target.is_visible):
+    if client == target:
+        # Player whispered to themselves. Why? Dunno, ask them, not me
+        client.send_ooc('You whispered `{}` to yourself.'.format(final_message))
+        client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
+                       bypass_deafened_starters=True)
+    elif not (client.is_visible ^ target.is_visible):
         # Either both client and target are visible
         # Or they are both not, where cm.get_target_public already handles removing sneaked targets
         # if they are not part of the same party as the client (or the client is not staff)
         client.send_ooc('You whispered `{}` to {}.'.format(final_message, final_target))
         client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
-                       bypass_replace=False)
+                       bypass_replace=False, bypass_deafened_starters=True)
 
         target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
         target.send_ooc('{} seemed to whisper something to you, but you could not make it out.'
@@ -6282,7 +6287,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
     elif target.is_visible:
         client.send_ooc('You spooked {} by whispering `{}` to them while sneaking.'
                         .format(final_target, final_message))
-        client.send_ic(msg=msg, pos='jud', showname='???', bypass_replace=False)
+        client.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
         # Note this uses pos='jud' instead of pos=client.pos. This is to mask the position of the
         # sender, so that the target cannot determine who it is based on knowing usual positions
         # of people.
@@ -6290,7 +6295,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         target.send_ooc('You heard a whisper and you think it was directed at you, but you could '
                         'not seem to tell where it came from.'.format(final_sender), to_deaf=False)
         target.send_ooc('Your ears seemed to pick up something.', to_deaf=True)
-        target.send_ic(msg=msg, pos='jud', showname='???') # send_ic handles nerfing for deafened
+        target.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
 
         client.send_ooc_others('(X) {} whispered `{}` to {} while sneaking ({}).'
                                .format(final_st_sender, final_message, final_target,
@@ -6314,8 +6319,8 @@ def ooc_cmd_guide(client: ClientManager.Client, arg: str):
     players, for which /pm is recommended.
     As this is meant to act as a "subconscious/guider/personal narrator" command, deafened players
     are not affected and receive the message as is.
-    Returns an error if the user could not be found, if the message is empty or if the sender is
-    IC-muted.
+    Returns an error if the user could not be found, if the message is empty, if the sender is
+    IC-muted, or if the user attempts to guide themselves.
 
     SYNTAX
     /guide <user_ID> <message>
@@ -6339,6 +6344,8 @@ def ooc_cmd_guide(client: ClientManager.Client, arg: str):
 
     cm = client.server.client_manager
     target, _, msg = cm.get_target_public(client, arg)
+    if client == target:
+        raise ClientError('You cannot guide yourself.')
 
     client.send_ooc('You gave the following guidance to {}: `{}`.'
                     .format(target.displayname, msg))
@@ -6347,7 +6354,7 @@ def ooc_cmd_guide(client: ClientManager.Client, arg: str):
     target.send_ic(msg=msg, bypass_replace=True)
 
     client.send_ooc_others('(X) {} gave the following guidance to {}: `{}` ({}).'
-                           .format(client.name, target.displayname, msg, client.area.id),
+                           .format(client.displayname, target.displayname, msg, client.area.id),
                            is_zstaff_flex=target.area, not_to={target})
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
