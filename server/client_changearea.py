@@ -299,13 +299,15 @@ class ClientChangeArea:
         ###########
         # Check if exiting a zone
         if old_area.in_zone and area.in_zone != old_area.in_zone:
-            client.send_ooc_others('(X) Client {} ({}) has left your zone ({}).'
-                                   .format(client.id, old_dname, area.id), is_zstaff=old_area)
+            client.send_ooc_others('(X) Client {} ({}) has left your zone ({}->{}).'
+                                   .format(client.id, old_dname, old_area.id, area.id),
+                                   is_zstaff=old_area)
 
         # Check if entering a zone
         if area.in_zone and area.in_zone != old_area.in_zone:
-            client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}).'
-                                   .format(client.id, new_dname, area.id), is_zstaff=area)
+            client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}->{}).'
+                                   .format(client.id, new_dname, old_area.id, area.id),
+                                   is_zstaff=area)
             # Note that this is not an off-by-one error, as the incoming client is technically
             # still not in an area within the zone, so only one client being in the zone is
             # necessary and sufficient to trigger the multiclienting warning.

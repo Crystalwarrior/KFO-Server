@@ -13,8 +13,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
 
         self.c4.move_area(4, discard_trivial=True)
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) Client {} ({}) has entered your zone ({}).'
-                           .format(4, self.c4_dname, 4), over=True)
+        self.c1.assert_ooc('(X) Client {} ({}) has entered your zone ({}->{}).'
+                           .format(4, self.c4_dname, 6, 4), over=True)
         self.c2.assert_no_packets() # C2 is not watching zone
         self.c3.assert_no_packets()
         self.c4.assert_ooc('You have entered zone `{}`.'.format('z0'), over=True)
@@ -32,8 +32,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
 
         self.c5.move_area(3, discard_trivial=True)
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) Client {} ({}) has entered your zone ({}).'
-                           .format(5, self.c5_dname, 3), over=True)
+        self.c1.assert_ooc('(X) Client {} ({}) has entered your zone ({}->{}).'
+                           .format(5, self.c5_dname, 7, 3), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -59,13 +59,13 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
 
         self.c2.move_area(7, discard_trivial=True)
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) Client {} ({}) has left your zone ({}).'
-                           .format(2, self.c2_dname, 7), over=True)
+        self.c1.assert_ooc('(X) Client {} ({}) has left your zone ({}->{}).'
+                           .format(2, self.c2_dname, 5, 7), over=True)
         self.c2.assert_ooc('You have left zone `{}`.'.format('z0'), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('(X) Client {} ({}) has left your zone ({}).'
-                           .format(2, self.c2_dname, 7), over=True)
+        self.c5.assert_ooc('(X) Client {} ({}) has left your zone ({}->{}).'
+                           .format(2, self.c2_dname, 5, 7), over=True)
 
     def test_05_watcherleaveszone(self):
         """
@@ -75,8 +75,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
 
         self.c5.move_area(7, discard_trivial=True)
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) Client {} ({}) has left your zone ({}).'
-                           .format(5, self.c5_dname, 7), over=True)
+        self.c1.assert_ooc('(X) Client {} ({}) has left your zone ({}->{}).'
+                           .format(5, self.c5_dname, 4, 7), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -97,15 +97,15 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
 
         self.c2.move_area(5, discard_trivial=True)
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) Client {} ({}) has entered your zone ({}).'
-                           .format(2, self.c2_dname, 5), over=True)
+        self.c1.assert_ooc('(X) Client {} ({}) has entered your zone ({}->{}).'
+                           .format(2, self.c2_dname, 7, 5), over=True)
         self.c2.assert_ooc('You have left zone `z1`.')
         self.c2.assert_ooc('(X) You have entered zone `z0`. To be able to receive its '
                            'notifications, start watching it with /zone_watch z0', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('(X) Client {} ({}) has left your zone ({}).'
-                           .format(2, self.c2_dname, 5), over=True)
+        self.c5.assert_ooc('(X) Client {} ({}) has left your zone ({}->{}).'
+                           .format(2, self.c2_dname, 7, 5), over=True)
 
     def test_07_multiclientsenterzone(self):
         """
@@ -119,13 +119,13 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
         self.c0.move_area(7, discard_trivial=True)
         self.c0.assert_ooc('You have left zone `z0`.')
         self.c0.assert_ooc('You have entered zone `z1`.', over=True)
-        self.c1.assert_ooc('(X) Client {} ({}) has left your zone ({}).'
-                           .format(0, self.c0_dname, 7), over=True)
+        self.c1.assert_ooc('(X) Client {} ({}) has left your zone ({}->{}).'
+                           .format(0, self.c0_dname, 4, 7), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('(X) Client {} ({}) has entered your zone ({}).'
-                           .format(0, self.c0_dname, 7), over=True)
+        self.c5.assert_ooc('(X) Client {} ({}) has entered your zone ({}->{}).'
+                           .format(0, self.c0_dname, 4, 7), over=True)
 
         # One multiclient
         self.c1.move_area(7, discard_trivial=True)
@@ -137,23 +137,23 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('(X) Client {} ({}) has entered your zone ({}).'
-                           .format(1, self.c1_dname, 7))
+        self.c5.assert_ooc('(X) Client {} ({}) has entered your zone ({}->{}).'
+                           .format(1, self.c1_dname, 4, 7))
         self.c5.assert_ooc('(X) Warning: Client {} is multiclienting in your zone. Do '
                            '/multiclients {} to take a look.'.format(1, 1), over=True)
 
         # >1 multiclient
         self.c2.move_area(7, discard_trivial=True)
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) Client {} ({}) has left your zone ({}).'
-                           .format(2, self.c2_dname, 7), over=True)
+        self.c1.assert_ooc('(X) Client {} ({}) has left your zone ({}->{}).'
+                           .format(2, self.c2_dname, 5, 7), over=True)
         self.c2.assert_ooc('You have left zone `z0`.')
         self.c2.assert_ooc('(X) You have entered zone `z1`. To be able to receive its '
                            'notifications, start watching it with /zone_watch z1', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('(X) Client {} ({}) has entered your zone ({}).'
-                           .format(2, self.c2_dname, 7))
+        self.c5.assert_ooc('(X) Client {} ({}) has entered your zone ({}->{}).'
+                           .format(2, self.c2_dname, 5, 7))
         self.c5.assert_ooc('(X) Warning: Client {} is multiclienting in your zone. Do '
                            '/multiclients {} to take a look.'.format(2, 2), over=True)
 
