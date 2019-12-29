@@ -308,19 +308,20 @@ class ClientChangeArea:
             client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}->{}).'
                                    .format(client.id, new_dname, old_area.id, area.id),
                                    is_zstaff=area)
-            # Note that this is not an off-by-one error, as the incoming client is technically
-            # still not in an area within the zone, so only one client being in the zone is
-            # necessary and sufficient to trigger the multiclienting warning.
+            # Raise multiclienting warning to the watchers of the new zone if needed
+            # Note that this implementation does not have an off-by-one error, as the incoming
+            # client is technically still not in an area within the zone, so only one client being
+            # in the zone is necessary and sufficient to correctly trigger the multiclienting
+            # warning.
             if [c for c in client.get_multiclients() if c.area.in_zone == area.in_zone]:
                 client.send_ooc_others('(X) Warning: Client {} is multiclienting in your zone. '
                                        'Do /multiclients {} to take a look.'
                                        .format(client.id, client.id), is_zstaff=area)
 
         # Assuming this is not a spectator...
-        # If autopassing, send OOC messages, provided the lights are on. If lights are off,
-        # send nerfed announcements regardless. Keep track of who is blind and/or deaf as well.
+        # If autopassing, send OOC messages
 
-        if not client.char_id < 0 and client.is_visible:
+        if not client.char_id < 0:
             self.notify_others_moving(client, old_area,
                                       '{} has left to the {}'.format(old_dname, area.name),
                                       'You hear footsteps going out of the room.')
@@ -351,9 +352,14 @@ class ClientChangeArea:
             ybnd = blind_mes
             nbyd = autopass_mes
         if not area.lights:
-            staff = blind_mes if not client.is_staff() else '(X) {}'.format(autopass_mes) # Staff
+            staff = '(X) {} while the lights were out.'.format(autopass_mes)
             nbnd = blind_mes
             ybnd = blind_mes
+            nbyd = ''
+        if not client.is_visible: # This should be the last statement
+            staff = '(X) {} while sneaking.'.format(autopass_mes)
+            nbnd = ''
+            ybnd = ''
             nbyd = ''
 
         client.send_ooc_others(staff, in_area=area, is_zstaff_flex=True)
