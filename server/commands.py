@@ -858,7 +858,8 @@ def ooc_cmd_bloodtrail_smear(client: ClientManager.Client, arg: str):
                 mes = 'There is no blood in area {}.'.format(area.name)
             client.send_ooc(mes)
             continue
-        elif area.blood_smeared:
+
+        if area.blood_smeared:
             client.send_ooc('Area {} already has its blood trails smeared.'.format(area.name))
         else:
             client.send_ooc_others('{} smeared the blood trail in your area.'
@@ -1764,26 +1765,25 @@ def ooc_cmd_files(client: ClientManager.Client, arg: str):
     """
 
     if arg:
-       target, match, _ = client.server.client_manager.get_target_public(client, arg)
+        target, match, _ = client.server.client_manager.get_target_public(client, arg)
 
-       if target.files:
-           if match.isdigit():
-               match = 'client {}'.format(match)
-           client.send_ooc('Files set by {} for `{}`: {}'
-                           .format(match, target.files[0], target.files[1]))
-           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
-       else:
-           if match.isdigit():
-               match = 'Client {}'.format(match)
-           raise ClientError('{} has not provided a download link for their files.'.format(match))
+        if target.files:
+            if match.isdigit():
+                match = 'client {}'.format(match)
+            client.send_ooc('Files set by {} for `{}`: {}'
+                            .format(match, target.files[0], target.files[1]))
+            client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
+        else:
+            if match.isdigit():
+                match = 'Client {}'.format(match)
+            raise ClientError('{} has not provided a download link for their files.'.format(match))
     else:
-       if client.files:
-           client.send_ooc('Files set by yourself for `{}`: {}'
-                           .format(client.files[0], client.files[1]))
-           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
-       else:
-           raise ClientError('You have not provided a download link for your files.'
-                             .format(client.id))
+        if client.files:
+            client.send_ooc('Files set by yourself for `{}`: {}'
+                            .format(client.files[0], client.files[1]))
+            client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
+        else:
+            raise ClientError('You have not provided a download link for your files.')
 
 def ooc_cmd_files_set(client: ClientManager.Client, arg: str):
     """
@@ -1810,7 +1810,7 @@ def ooc_cmd_files_set(client: ClientManager.Client, arg: str):
     else:
         if client.files:
             client.send_ooc('You have removed the download link for the files of `{}`.'
-                            .format(client.files[0], arg))
+                            .format(client.files[0]))
             client.files = None
         else:
             raise ClientError('You have not provided a download link for your files.')
@@ -4999,7 +4999,7 @@ def ooc_cmd_timer_get(client: ClientManager.Client, arg: str):
 
         # Non-staff initiated public timers can only be consulted by all staff and
         # clients in the same area as the timer initiator
-        elif (is_public and not timer_client.is_staff() and not
+        if (is_public and not timer_client.is_staff() and not
               (client.is_staff() or client == timer_client or client.area == timer_client.area)):
             continue
 
@@ -6073,7 +6073,7 @@ def ooc_cmd_zone_remove(client: ClientManager.Client, arg: str):
         for c in area.clients:
             if c.is_staff() and c != client and c in backup_watchers:
                 c.send_ooc('(X) Your area has been removed from your zone. To stop receiving its '
-                           'notifications, stop watching it with /zone_unwatch'.format(zone_id))
+                           'notifications, stop watching it with /zone_unwatch')
 
 def ooc_cmd_zone_unwatch(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
@@ -6327,7 +6327,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         # of people.
         # If target is deafened, behavior is different
         target.send_ooc('You heard a whisper and you think it was directed at you, but you could '
-                        'not seem to tell where it came from.'.format(final_sender), to_deaf=False)
+                        'not seem to tell where it came from.', to_deaf=False)
         target.send_ooc('Your ears seemed to pick up something.', to_deaf=True)
         target.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
 
@@ -6339,10 +6339,9 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
             msg = ('Your target {} is sneaking and whispering to them would reveal them. Instead, '
                    'use /guide'.format(target.displayname))
             raise ClientError(msg)
-        else:
-            # Normal clients should never get here except if get_target_public is wrong
-            # which would be very sad.
-            raise ValueError('Never should have come here!')
+        # Normal clients should never get here except if get_target_public is wrong
+        # which would be very sad.
+        raise ValueError('Never should have come here!')
 
 def ooc_cmd_guide(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)

@@ -547,40 +547,40 @@ class ZoneManager:
 
         # 1.
         assert len(self._zones.keys()) < self._zone_limit, (
-                'Expected the server cap of {} to be enforced, found the server linked to '
-                '{} zones instead.'.format(self._zone_limit, len(self._zones.keys())))
+            'Expected the server cap of {} to be enforced, found the server linked to '
+            '{} zones instead.'.format(self._zone_limit, len(self._zones.keys())))
 
         # 2.
         for zone_id, zone in self._zones.items():
             assert zone._zone_id == zone_id, (
-                    'Expected zone {} associated with ID {} to have the same ID, found it had ID '
-                    '{} instead.'.format(zone, zone_id, zone._zone_id))
+                'Expected zone {} associated with ID {} to have the same ID, found it had ID '
+                '{} instead.'.format(zone, zone_id, zone._zone_id))
 
         for zone in self._zones.values():
             # 3.
             conflicting_areas = [area for area in zone._areas if area in areas_so_far]
             assert not conflicting_areas, (
-                    'Expected no conflicting areas, but zone {} introduces repeated areas {}.'
-                    .format(zone, conflicting_areas))
+                'Expected no conflicting areas, but zone {} introduces repeated areas {}.'
+                .format(zone, conflicting_areas))
 
             # 4.
             for area in zone._areas:
                 assert area.in_zone == zone, (
-                        'Expected area {} to recognize it being a part of zone {}, found it '
-                        'recognized {} instead.'.format(area, zone, area.in_zone))
+                    'Expected area {} to recognize it being a part of zone {}, found it '
+                    'recognized {} instead.'.format(area, zone, area.in_zone))
                 areas_so_far.add(area)
 
             # 5.
             conflicting_watchers = [watch for watch in zone._watchers if watch in watchers_so_far]
             assert not conflicting_watchers, (
-                    'Expected no conflicting watchers, but zone {} introduces conflicting watchers '
-                    '{}.'.format(zone, conflicting_watchers))
+                'Expected no conflicting watchers, but zone {} introduces conflicting watchers '
+                '{}.'.format(zone, conflicting_watchers))
 
             # 6.
             for watcher in zone._watchers:
                 assert watcher.zone_watched == zone, (
-                        'Expected watcher {} to recognize it is watching zone {}, found it '
-                        'recognized {} instead.'.format(watcher, zone, watcher.zone_watched))
+                    'Expected watcher {} to recognize it is watching zone {}, found it '
+                    'recognized {} instead.'.format(watcher, zone, watcher.zone_watched))
                 watchers_so_far.add(watcher)
 
         # 7.
@@ -588,13 +588,13 @@ class ZoneManager:
             if area in areas_so_far:
                 continue
             assert area.in_zone is None, (
-                    'Expected area {} not part of a zone to recognize it not being in a zone, '
-                    'found it recognized {} instead.'.format(area, area.in_zone))
+                'Expected area {} not part of a zone to recognize it not being in a zone, '
+                'found it recognized {} instead.'.format(area, area.in_zone))
 
         # 8.
         for watcher in self._server.client_manager.clients:
             if watcher in watchers_so_far:
                 continue
             assert watcher.zone_watched is None, (
-                    'Expected watcher {} to recognize that it is not watching a zone, found it '
-                    'recognized it watched {} instead.'.format(watcher, watcher.zone_watched))
+                'Expected watcher {} to recognize that it is not watching a zone, found it '
+                'recognized it watched {} instead.'.format(watcher, watcher.zone_watched))

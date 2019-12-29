@@ -45,8 +45,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 3
-        self.segment_version = 'a1'
-        self.internal_version = '191229a'
+        self.segment_version = 'a2'
+        self.internal_version = '191229b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -310,16 +310,16 @@ class TsuserverDR:
             lines = [x.rstrip() for x in readme.readlines()]
 
         self.linetorank = {
-                '### User Commands': 'normie',
-                '### GM Commands': 'gm',
-                '### Community Manager Commands': 'cm',
-                '### Moderator Commands': 'mod'}
+            '### User Commands': 'normie',
+            '### GM Commands': 'gm',
+            '### Community Manager Commands': 'cm',
+            '### Moderator Commands': 'mod'}
 
         self.commandhelp = {
-                'normie': dict(),
-                'gm': dict(),
-                'cm': dict(),
-                'mod': dict()}
+            'normie': dict(),
+            'gm': dict(),
+            'cm': dict(),
+            'mod': dict()}
 
         # Look for the start of the command list
         try:
@@ -501,7 +501,7 @@ class TsuserverDR:
         prepared_area_list = list()
         for area in self.area_manager.areas:
             if need_to_check or area.name in from_area.reachable_areas:
-                    prepared_area_list.append("{}-{}".format(area.id, area.name))
+                prepared_area_list.append("{}-{}".format(area.id, area.name))
 
         return prepared_area_list
 

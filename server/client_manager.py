@@ -1029,7 +1029,7 @@ class ClientManager:
 
             if new_zone_value is None and self._zone_watched is None:
                 raise ClientError('This client is already not watching a zone.')
-            elif new_zone_value is not None and self._zone_watched is not None:
+            if new_zone_value is not None and self._zone_watched is not None:
                 raise ClientError('This client is already watching a zone.')
 
             self._zone_watched = new_zone_value
@@ -1282,7 +1282,7 @@ class ClientManager:
                 # Covers both the case where no targets were found (at which case no targets will
                 # be found later on)
                 break
-            elif len(targets) == 1:
+            if len(targets) == 1:
                 # Covers the case where exactly one target is found. As the algorithm is meant to
                 # produce a greedy result, the for loop will continue in case a larger selection of
                 # `identifier` can be matched to a single target.
