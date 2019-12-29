@@ -99,8 +99,8 @@ Additional notes are listed at the end of the command list.
     - Lists all characters that are restricted in the current area.
 * **cleardoc**
     - Clears the doc url of the current area.
-* **coinflip**
-    - Flips a coin.
+* **coinflip** "call"
+    - Flips a coin and returns its result, as well as whatever it is called with (e.g. a prediction, consequences for heads/tails, etc.) if given.
 * **currentmusic**
     - Displays the current music and who played it.
 * **discord**
@@ -229,8 +229,8 @@ Additional notes are listed at the end of the command list.
 	- Other people in the area are warned that a whisper has taken place (but not the message content). However, staff members do get message contents, so this command should only be used in RP settings.
 * **zone_global**
     - Sends a message to all players in the zone you are in.
-* **8ball**
-    - Gains insight from the magic 8 ball.
+* **8ball** "question"
+    - Gains insight from the magic 8 ball in response to a question if given any.
 
 ### GM Commands
 

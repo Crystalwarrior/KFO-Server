@@ -1413,24 +1413,27 @@ def ooc_cmd_clock_unpause(client: ClientManager.Client, arg: str):
 
 def ooc_cmd_coinflip(client: ClientManager.Client, arg: str):
     """
-    Flips a coin and returns the result.
+    Flips a coin and returns the result. If given a call, it includes the call with the result.
 
     SYNTAX
-    /coinflip
+    /coinflip {call}
 
-    PARAMETERS
-    None
+    OPTIONAL PARAMETERS
+    {call}: A call to the coin flip
 
     EXAMPLES
-    /coinflip
+    If Phantom is running the following...
+    /coinflip           :: May return something like "Phantom flipped a coin and got tails."
+    /coinflip `heads`   :: May return something like "Phantom called `heads`, flipped a coin and got heads"
     """
-
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
 
     coin = ['heads', 'tails']
     flip = random.choice(coin)
-    client.area.broadcast_ooc('{} flipped a coin and got {}.'.format(client.displayname, flip))
+    if arg:
+        mes = '{} called `{}`, flipped a coin and got {}.'.format(client.displayname, arg, flip)
+    else:
+        mes = '{} flipped a coin and got {}.'.format(client.displayname, flip)
+    client.area.broadcast_ooc(mes)
     logger.log_server('[{}][{}]Used /coinflip and got {}.'
                       .format(client.area.id, client.get_char_name(), flip), client)
 
@@ -6140,26 +6143,57 @@ def ooc_cmd_zone_watch(client: ClientManager.Client, arg: str):
 def ooc_cmd_8ball(client: ClientManager.Client, arg: str):
     """
     Calls upon the wisdom of a magic 8 ball. The result is sent to all clients in the sender's area.
+    If given a question, it is included as part of the result.
 
     SYNTAX
-    /8ball
+    /8ball {question}
 
-    PARAMETERS
-    None
+    OPTIONAL PARAMETERS
+    {question}: Question to ask the magic 8 ball.
 
     EXAMPLES
-    /8ball              :: May return something like "The magic 8 ball says You shouldn't ask that."
+    If Phantom is using the magic 8 ball.
+    /8ball              :: May return something like "In response to Phantom, the magic 8 ball says `It is certain`."
+    /8ball Am I bae?    :: May return something like "In response to Phantom's question `Am I bae?`, the magic 8 ball says `My sources say no`."
     """
 
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+    responses = ['It is certain',
+                 'It is decidedly so',
+                 'Without a doubt',
+                 'Yes - definitely',
+                 'You may rely on it',
+                 'As I see it, yes',
+                 'Most likely',
+                 'Outlook good',
+                 'Yes',
+                 'Signs point to yes',
+                 'Reply hazy, try again',
+                 'Ask again later',
+                 'Better not tell you now',
+                 'Cannot predict now',
+                 'Concentrate and ask again',
+                 "Don't count on it",
+                 'My reply is no',
+                 'My sources say no',
+                 'Outlook not so good',
+                 'Very doubtful',
+                 'No',
+                 'As I see it, no',
+                 'Unlikely',
+                 'Absolutely not',
+                 'Certainly not']
+    response = random.choice(responses)
 
-    coin = ['yes', 'no', 'maybe', "I don't know", 'perhaps', 'please do not', 'try again',
-            "you shouldn't ask that"]
-    flip = random.choice(coin)
-    client.area.broadcast_ooc('The magic 8 ball says {}.'.format(flip))
+    if arg:
+        output = ("In response to {}'s question `{}`, the magic 8 ball says `{}`."
+                  .format(client.displayname, arg, response))
+    else:
+        output = ("In response to {}, the magic 8 ball says `{}`."
+                  .format(client.displayname, response))
+    client.area.broadcast_ooc(output)
+
     logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'
-                      .format(client.area.id, client.get_char_name(), flip), client)
+                      .format(client.area.id, client.get_char_name(), response), client)
 
 def ooc_cmd_narrate(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)

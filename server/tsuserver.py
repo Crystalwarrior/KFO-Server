@@ -44,9 +44,9 @@ class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.release = 4
         self.major_version = 2
-        self.minor_version = 2
-        self.segment_version = ''
-        self.internal_version = '191224a'
+        self.minor_version = 3
+        self.segment_version = 'a1'
+        self.internal_version = '191229a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
