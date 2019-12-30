@@ -327,18 +327,9 @@ class AOProtocol(asyncio.Protocol):
         AM#%
 
         """
-        # Force the server to rebuild the music list, so that clients who just
-        # join get the correct music list (as well as every time they request
-        # an updated music list directly).
+        # Force the server to rebuild the music list, so that clients who just join get the correct
+        # music list (as well as every time they request an updated music list directly).
 
-        # Deal with KFO client compatibility
-#        if self.client.packet_handler == Clients.ClientKFO2d8:
-#            area_list = self.server.build_music_list_ao2(include_areas=True, include_music=False)
-#            music_list = self.server.build_music_list_ao2(include_areas=False, include_music=True)
-#            self.client.send_command('FA', *area_list)
-#            self.client.send_command('FM', *music_list)
-#        # Every other client gets the full music list
-#        else:
         full_music_list = self.server.build_music_list_ao2(include_areas=True,
                                                            include_music=True)
         self.client.send_command('SM', *full_music_list)
@@ -402,7 +393,7 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_ooc("Iniswap is blocked in this area.")
                 return
         if pargs['folder'] in self.client.area.restricted_chars and not self.client.is_staff():
-            self.client.send_ooc('Your character is restricted in the current area.')
+            self.client.send_ooc('Your character is restricted in this area.')
             return
         if pargs['msg_type'] not in ('chat', '0', '1'):
             return
@@ -413,6 +404,9 @@ class AOProtocol(asyncio.Protocol):
         if pargs['sfx_delay'] < 0:
             return
         if pargs['button'] not in (0, 1, 2, 3, 4, 5, 6, 7): # Shouts
+            return
+        if pargs['button'] > 0 and not self.client.area.bullet and not self.client.is_staff():
+            self.client.send_ooc('Bullets are disabled in this area.')
             return
         if pargs['evidence'] < 0:
             return
