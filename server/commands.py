@@ -1888,7 +1888,7 @@ def ooc_cmd_gag(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
-    status = {False: 'ungagged', True: 'gagged'}
+    status = {False: 'ungagged', True: 'gagged' }
     new_gagged = not target.is_gagged
 
     client.send_ooc('You have {} {}.'.format(status[new_gagged], target.displayname))
@@ -5284,20 +5284,23 @@ def ooc_cmd_transient(client: ClientManager.Client, arg: str):
 def ooc_cmd_unban(client: ClientManager.Client, arg: str):
     """ (MOD ONLY)
     Removes given user from the server banlist, allowing them to rejoin the server.
-    Returns an error if given IPID does not correspond to a banned user.
+    Returns an error if given identifier does not correspond to a banned user.
 
     SYNTAX
     /unban <client_ipid>
+    /unban <client_ip>
 
     PARAMETERS
     <client_ipid>: IPID for the client (number in parentheses in /getarea)
+    <client_ip>: user IP
 
     EXAMPLES
-    /unban 1234567890           :: Unbans user whose IPID is 1234567890
+    /unban 1234567890             :: Unbans the user whose IPID is 1234567890
+    /unban 127.0.0.1              :: Unbans the user whose IP is 127.0.0.1
     """
 
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
+    arg = arg.strip()
+    Constants.assert_command(client, arg, parameters='>0', is_mod=True)
 
     if arg.isdigit():
         # IPID

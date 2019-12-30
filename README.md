@@ -467,9 +467,9 @@ GMs can:
 * **area_lists**
     - Lists all available area lists as established in `config/area_lists.yaml`.
 * **ban** "IPID"/"IP"
-    - Bans the IPID/IP (hdid is linked to ipid so all bans happen at the same time).
+    - Bans the specified IPID/IP (hdid is linked to ipid so all bans happen at the same time).
 * **banhdid** "HDID"
-    - Bans the HDID (hdid is linked to ipid so all bans happen at the same time).
+    - Bans the specified HDID (hdid is linked to ipid so all bans happen at the same time).
 * **bglock**
     - Toggles the background lock in the current area.
 * **can_iniswap**
@@ -499,8 +499,8 @@ GMs can:
     - Clears all shownames from non-staff members.
 * **showname_set** "ID/IPID" "showname"
     - Sets a target's showname to be the given one, or clears it if not given one.
-* **unban** "IPID"
-    - Unbans the specified IPID.
+* **unban** "IPID/IP"
+    - Unbans the specified IPID/IP.
 * **unbanhdid** "HDID"
     - Unbans the specified HDID.
 * **undisemvowel/undisemconsonant/ungimp/unremove_h** "ID/IPID"

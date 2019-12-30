@@ -342,9 +342,11 @@
 * Added /toggle_allpasses to be able to receive autopass notifications from players that do not have autopass on
 * Added optional argument to /coinflip to call coin flip results
 * Added optional argument to /8ball to directly ask questions to the magic 8 ball
+* Added optional argument to /getarea and /showname_area to obtain details from a particular area
 * Added source and destination areas to zone entry/exit notification sent to watchers when a player enters/leaves a zone
 * Added anti-bullet tag as an area parameter
 * Allowed /whois to take HDID as an identifier (CM and mod only)
 * Removed leftover ability of GMs to use commands with IPID
 * Reworked responses of the magic 8 ball so it now chooses from a pool of 25 answers as opposed to 8
 * Fixed GMs not receiving privileged staff notifications for autopass when players leave/enter an area whose lights are off or they enter/leave an area while sneaking
+* Fixed documentation of /unban not listing it can unban by IP address.
