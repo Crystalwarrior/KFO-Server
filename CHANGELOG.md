@@ -339,6 +339,7 @@
 * Fixed normal players being able to use /uninvite with IPID.
 
 ### (4.2.3)
+* Added /toggle_allpasses to be able to receive autopass notifications from players that do not have autopass on
 * Added optional argument to /coinflip to call coin flip results
 * Added optional argument to /8ball to directly ask questions to the magic 8 ball
 * Added source and destination areas to zone entry/exit notification sent to watchers when a player enters/leaves a zone

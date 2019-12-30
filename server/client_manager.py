@@ -95,6 +95,7 @@ class ClientManager:
             self.dicelog = list()
             self._zone_watched = None
             self.files = None
+            self.get_nonautopass_autopass = False
 
             # Pairing stuff
             self.charid_pair = -1

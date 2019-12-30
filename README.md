@@ -355,6 +355,8 @@ GMs can:
     - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
 * **st** "message"
     - Sends a message to all active staff members.
+* **toggle_allpasses*
+	- Changes your ability to receive autopass notifications from players that do not have autopass on. By default it is off.
 * **toggle_allrolls**
     - Changes your ability to receive /roll and /rollp results from other areas. By default it is off.
 * **transient** "ID"

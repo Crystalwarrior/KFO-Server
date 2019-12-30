@@ -351,6 +351,9 @@ class ClientChangeArea:
             nbnd = autopass_mes
             ybnd = blind_mes
             nbyd = autopass_mes
+        else:
+            staff = '(X) {} (no autopass)'.format(autopass_mes)
+
         if not area.lights:
             staff = '(X) {} while the lights were out.'.format(autopass_mes)
             nbnd = blind_mes
@@ -362,7 +365,14 @@ class ClientChangeArea:
             ybnd = ''
             nbyd = ''
 
-        client.send_ooc_others(staff, in_area=area, is_zstaff_flex=True)
+        if client.autopass:
+            client.send_ooc_others(staff, in_area=area, is_zstaff_flex=True)
+        else:
+            client.send_ooc_others(staff, in_area=area, is_zstaff_flex=True,
+                                   pred=lambda c: c.get_nonautopass_autopass)
+            client.send_ooc_others(nbnd, in_area=area, is_zstaff_flex=True,
+                                   pred=lambda c: not c.get_nonautopass_autopass)
+
         client.send_ooc_others(nbnd, in_area=area, is_zstaff_flex=False, to_blind=False,
                                to_deaf=False)
         client.send_ooc_others(ybnd, in_area=area, is_zstaff_flex=False, to_blind=True,
