@@ -1900,27 +1900,39 @@ def ooc_cmd_gag(client: ClientManager.Client, arg: str):
     target.change_gagged(new_gagged)
 
 def ooc_cmd_getarea(client: ClientManager.Client, arg: str):
-    """
-    List the characters (and associated client IDs) in the current area.
-    Returns an error if the user is subject to RP mode and is in an area that disables /getarea, or
-    if they are blind and not staff.
+    """ (VARYING REQUIREMENTS)
+    Lists the characters (and associated client IDs) in the current area
+    OR (STAFF ONLY) lists the character (and associated client IDs) in the given area by ID or name.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getarea, if
+    they are blind and not staff, or if the given identifier does not correspond to an area.
 
     SYNTAX
     /getarea
+    /getarea <target_area>
 
     PARAMETERS
-    None
+    <target_area>: The area whose characters will be listed. By default it is the user's area.
 
     EXAMPLE
-    /getarea
+    If Phantom is a staff member in area 0
+    /getarea            :: Lists characters in area 0
+    /getarea 1          :: Lists characters in area 1.
+    /getarea Basement   :: Lists characters in area Basement.
     """
 
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+    if arg:
+        if not client.is_staff():
+            raise ClientError.UnauthorizedError('You must be authorized to use the one-parameter '
+                                                'version of this command.')
+        else:
+            area_id = Constants.parse_area_names(client, [arg])[0].id
+    else:
+        area_id = client.area.id
+
     if not client.is_staff() and client.is_blind:
         raise ClientError('You are blind, so you cannot see anything.')
 
-    client.send_area_info(client.area, client.area.id, False)
+    client.send_area_info(client.area, area_id, False)
 
 def ooc_cmd_getareas(client: ClientManager.Client, arg: str):
     """
@@ -1980,6 +1992,7 @@ def ooc_cmd_globalic(client: ClientManager.Client, arg: str):
     Send client's subsequent IC messages to users only in specified areas. Can take either area IDs
     or area names. If current user is not in intended destination range, it will NOT send messages
     to their area. Requires /unglobalic to undo.
+    Returns an error if the given identifier does not correspond to an area.
 
     If given two areas, it will send the IC messages to all areas between the given ones inclusive.
     If given one area, it will send the IC messages only to the given area.
@@ -4553,28 +4566,46 @@ def ooc_cmd_showname_area(client: ClientManager.Client, arg: str):
     """
     List the characters (and associated client IDs) in the current area, as well as their custom
     shownames if they have one in parentheses.
-    Returns an error if the user is subject to RP mode and is in an area that disables /getarea or
-    if they are blind.
+    OR (STAFF ONLY) lists the character (and associated client IDs) in the given area by ID or name.
+    as well as their custom shownames if they have one in parentheses.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getarea, if
+    they are blind and not staff, or if the given identifier does not correspond to an area.
 
     SYNTAX
     /showname_area
+    /showname_area <target_area>
 
     PARAMETERS
-    None
+    <target_area>: The area whose characters will be listed. By default it is the user's area.
 
     EXAMPLE
+    If Phantom is in area 0
     /showname_area          :: May list something like this
 
     == Area 0: Basement ==
     [0] Phantom_HD
     [1] Spam_HD (Spam, Spam, Spam...)
+
+    /showname_area Courtroom    :: May list something like this
+
+    == Area 8: Courtroom ==
+    [2] Eggs_HD (Eggy Egg)
+    [3] Judge_HD (Gavel Guy)
     """
 
-    Constants.assert_command(client, arg, parameters='=0')
+    if arg:
+        if not client.is_staff():
+            raise ClientError.UnauthorizedError('You must be authorized to use the one-parameter '
+                                                'version of this command.')
+        else:
+            area_id = Constants.parse_area_names(client, [arg])[0].id
+    else:
+        area_id = client.area.id
+
     if not client.is_staff() and client.is_blind:
         raise ClientError('You are blind, so you cannot see anything.')
 
-    client.send_area_info(client.area, client.area.id, False, include_shownames=True)
+    client.send_area_info(client.area, area_id, False, include_shownames=True)
 
 def ooc_cmd_showname_areas(client: ClientManager.Client, arg: str):
     """

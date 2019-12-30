@@ -776,9 +776,11 @@ class ClientManager:
                         if num:
                             info += '\r\n{}'.format(ainfo)
             else:
-                _, info = self.get_area_info(area_id, mods,
-                                             include_shownames=include_shownames,
-                                             include_ipid=include_ipid)
+                num, info = self.get_area_info(area_id, mods,
+                                               include_shownames=include_shownames,
+                                               include_ipid=include_ipid)
+                if num == 0:
+                    info += '\r\n*No players in this area.'
 
             return info
 

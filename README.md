@@ -291,6 +291,8 @@ GMs can:
 * **gag** "ID"
     - Changes the gagged status of a target.
     - Gagged players will be unable to talk IC properly or use other talking features such as /scream.
+* **getarea** "area"
+    - Shows the current characters in the given area, or your area if not given any.
 * **globalic** "area range start", "area range end"
     - Sends subsequence IC messages to the area range described above. Can take either area IDs or area names.
 * **globalic_pre** "prefix"
@@ -350,6 +352,8 @@ GMs can:
 * **shoutlog** "area"
     - Lists the last 20 shouts sent in the given area, or from the current area if not given.
     - Each entry includes the time of execution, client ID, character name, client IPID, the shout ID and the IC message sent alongside.
+* **showname_area** "area"
+    - Similar to /getarea, but lists shownames along with character names.
 * **sneak** "ID"
     - Sets a target to be sneaking if they were visible.
     - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
