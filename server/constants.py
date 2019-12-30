@@ -788,9 +788,11 @@ class Constants():
             return targets
 
         # Otherwise, try and match by IPID
-        targets = client.server.client_manager.get_targets(client, TargetType.IPID, idnt, False)
-        if targets:
-            return targets
+        # PROVIDED the client is CM or mod
+        if client.is_cm or client.is_mod:
+            targets = client.server.client_manager.get_targets(client, TargetType.IPID, idnt, False)
+            if targets:
+                return targets
 
         raise ArgumentError('No targets found.')
 

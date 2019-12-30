@@ -96,11 +96,12 @@ def ooc_cmd_area(client: ClientManager.Client, arg: str):
         raise ArgumentError('Too many arguments. Use /area <id>.')
 
 def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Kicks a player by client ID or IPID to a given area by ID or name, or the default area if not
     given an area. GMs cannot perform this command on users in lobby areas.
     If given IPID, it will kick all clients opened by the user. Otherwise, it will just kick the
     given client.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user, or if there was some
     sort of error in the process of kicking the user to the area (e.g. full area).
 
@@ -1043,7 +1044,7 @@ def ooc_cmd_can_rpgetareas(client: ClientManager.Client, arg: str):
                               status[client.area.rp_getareas_allowed].capitalize()), client)
 
 def ooc_cmd_charselect(client: ClientManager.Client, arg: str):
-    """
+    """ (VARYING REQUIREMENTS)
     Opens the character selection screen for the current user
     OR (MOD ONLY) forces another user by identifier to have that screen open, freeing up their
     character in the process.
@@ -2132,7 +2133,7 @@ def ooc_cmd_gmself(client: ClientManager.Client, arg: str):
                             Constants.cjoin([target.id for target in targets])))
 
 def ooc_cmd_handicap(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of
     time between changing areas. This will override any previous handicaps the client(s) may have
     had, including custom ones and server ones (such as through sneak). Server handicaps will
@@ -2140,6 +2141,7 @@ def ooc_cmd_handicap(client: ClientManager.Client, arg: str):
     handicap is over, it will recover the old custom handicap.
     If given IPID, it will set the movement handicap on all the clients opened by the user.
     Otherwise, it will just do it to the given client.
+    Search by IPID can only be performed by CMs and mods.
     Requires /unhandicap to undo.
     Returns an error if the given identifier does not correspond to a user, or if given a
     non-positive length of time.
@@ -2321,6 +2323,7 @@ def ooc_cmd_invite(client: ClientManager.Client, arg: str):
     Adds a client based on some ID to the area's invite list. Only staff members can invite based
     on IPID. Invites are IPID based, so anyone with the same IPID becomes part of the area's invite
     list.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user or if target is already
     invited.
 
@@ -2343,7 +2346,7 @@ def ooc_cmd_invite(client: ClientManager.Client, arg: str):
         raise ClientError('Area is not locked.')
 
     targets = list() # Start with empty list
-    if client.is_staff() and arg.isdigit():
+    if (client.is_cm or client.is_mod) and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
         if targets:
             some_target = targets[0]
@@ -3044,8 +3047,9 @@ def ooc_cmd_motd(client: ClientManager.Client, arg: str):
     client.send_motd()
 
 def ooc_cmd_multiclients(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Lists all clients and the areas they are opened by a player by client ID or IPID.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -4031,11 +4035,12 @@ def ooc_cmd_remove_h(client: ClientManager.Client, arg: str):
         client.area.broadcast_ooc("Removed h from {}.".format(c.displayname))
 
 def ooc_cmd_reveal(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Sets given user based on client ID or IPID to no longer be sneaking so that they are visible
     through /getarea(s).
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
     the given client.
+    Search by IPID can only be performed by CMs and mods.
     Requires /sneak to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -4723,11 +4728,12 @@ def ooc_cmd_showname_set(client: ClientManager.Client, arg: str):
         logger.log_server(l_message, client)
 
 def ooc_cmd_sneak(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Sets given user based on client ID or IPID to be sneaking so that they are invisible through
     /getarea(s), /showname_list and /area.
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
     the given client.
+    Search by IPID can only be performed by CMs and mods.
     Requires /reveal to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -5163,11 +5169,12 @@ def ooc_cmd_toggle_shownames(client: ClientManager.Client, arg: str):
     client.send_ooc('Shownames turned {}.'.format(status[client.show_shownames]))
 
 def ooc_cmd_transient(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Toggles a client by IP or IPID being transient or not to passage locks (i.e. can access all
     areas or only reachable areas)
     If given IPID, it will invert the transient status of all the clients opened by the user.
     Otherwise, it will just do it to the given client.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -5433,13 +5440,14 @@ def ooc_cmd_unglobalic(client: ClientManager.Client, arg: str):
     client.send_ooc('Your IC messages will now be only sent to your current area.')
 
 def ooc_cmd_unhandicap(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Removes movement handicaps on a client by ID or IPID so that they no longer need to wait a set
     amount of time between changing areas. This will also remove server handicaps, if any (such as
     automatic sneak handicaps).
     If given IPID, it will remove the movement handicap on all the clients opened by the user.
     Otherwise, it will just do it to the given client.
     Requires /handicap to undo.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -5532,6 +5540,7 @@ def ooc_cmd_uninvite(client: ClientManager.Client, arg: str):
     Removes a client based on some ID to the area's invite list. Only staff members can invite based
     on IPID. Invites are IPID based, so anyone with the same IPID is no longer part of the area's
     invite list.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user or if target is already
     not invited.
 
@@ -5554,7 +5563,7 @@ def ooc_cmd_uninvite(client: ClientManager.Client, arg: str):
         raise ClientError('Area is not locked.')
 
     targets = list() # Start with empty list
-    if client.is_staff() and arg.isdigit():
+    if (client.is_mod or client.is_cm) and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
         if targets:
             some_target = targets[0]
@@ -5698,11 +5707,12 @@ def ooc_cmd_version(client: ClientManager.Client, arg: str):
     client.send_ooc('This server is running {}.'.format(client.server.version))
 
 def ooc_cmd_whereis(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Obtains the current area of a player by client ID (number in brackets) or IPID (number in
     parentheses).
     If given IPID, it will obtain the area info for all clients opened by the user. Otherwise, it
     will just obtain the one from the given client.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -5727,10 +5737,11 @@ def ooc_cmd_whereis(client: ClientManager.Client, arg: str):
                         .format(c.id, c.ipid, c.area.name, c.area.id))
 
 def ooc_cmd_whois(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Lists A LOT of a client properties. CMs and mods additionally get access to a client's HDID.
-    The player can be filtered by either client ID, IPID, OOC username (in the same area),
+    The player can be filtered by either client ID, IPID, HDID, OOC username (in the same area),
     character name (in the same area) or custom showname (in the same area).
+    However, only CMs and mods can search through IPID or HDID.
     If multiple clients match the given identifier, only one of them will be returned.
     For best results, use client ID (number in brackets), as this is the only tag that is
     guaranteed to be unique.
@@ -5744,9 +5755,10 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
     <target_id>: Either client ID, IPID, OOC username or character name
 
     EXAMPLES
-    For player with client ID 1, IPID 1234567890, OOC username Phantom, character name Phantom_HD, and showname The phantom, all of these do the same
+    For player with client ID 1, IPID 1234567890, HDID abb0011, OOC username Phantom, character name Phantom_HD, and showname The phantom, all of these do the same
     /whois 1            :: Returns client info.
     /whois 1234567890   :: Returns client info.
+    /whois abb0011      :: Returns client info.
     /whois Phantom      :: Returns client info.
     /whois The Phantom  :: Returns client info.
     /whois Phantom_HD   :: Returns client info.
@@ -5763,9 +5775,13 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
     if not targets and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
 
-    # If still needed, pretend the identifier is a client IPID
-    if not targets and arg.isdigit():
+    # If still needed, pretend the identifier is a client IPID (only CM and mod)
+    if not targets and arg.isdigit() and (client.is_mod or client.is_cm):
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+
+    # If still needed, pretend the identifier is a client IPID (only CM and mod)
+    if not targets and arg.isdigit() and (client.is_mod or client.is_cm):
+        targets = client.server.client_manager.get_targets(client, TargetType.HDID, arg, False)
 
     # If still needed, pretend the identifier is an OOC username
     if not targets:

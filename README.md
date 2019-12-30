@@ -230,7 +230,7 @@ Additional notes are listed at the end of the command list.
 * **zone_global**
     - Sends a message to all players in the zone you are in.
 * **8ball** "question"
-    - Gains insight from the magic 8 ball in response to a question if given any.
+    - Gains insight from the magic 8 ball in response to a question if given one.
 
 ### GM Commands
 
@@ -238,7 +238,7 @@ GMs can:
   - Bypass area passages and locks.
   - Receive special RP notifications.
   - Use GM commands.
-* **area_kick** "ID/IPID" "area number"
+* **area_kick** "ID" "area number"
     - Kicks target from your area to the intended area and remove them from its invite-list.
     - If not given a target area, it will use the server's default area (usually area 0).
 * **bilock** "area 1", "area 2"
@@ -302,16 +302,13 @@ GMs can:
 * **guide** "ID/char name/edited-to character/showname/OOC name" "message"
 	- Sends an IC private 'guiding' message to the target.
 	- Unlike /whisper, other people in the area are not warned that a whisper has taken place. However, staff members do get message contents, so this command should only be used in RP settings.
-* **handicap** "ID/IPID" "length" "name" "announce if over"
-    - Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of
-    time in seconds between changing areas.
+* **handicap** "ID" "length" "name" "announce if over"
+    - Sets a movement handicap on a client by ID so that they need to wait a set amount of time in seconds between changing areas.
     - If name is given, the handicap announcement will use it as the name of the handicap.
     - If announce if over is set to any of "False, false, 0, No, no", no announcements will be sent to the player indicating that they may now move areas.
 * **iclock**
     - Changes the IC lock status of the current area.
     - If the area has an IC lock, only GMs and above will be able to send IC messages.
-* **invite** "IPID/ID/char name/edited-to character/showname/OOC name"
-    - Adds target to the invite list of your area.
 * **judgelog** "area"
     - Lists the last 20 judge actions performed in the given area (or current area if not given).
     - Each entry includes the time of execution, client ID, character name, client IPID and the judge action performed.
@@ -321,7 +318,7 @@ GMs can:
     - Lists all areas that have custom descriptions.
 * **look_set** "description"
     - Sets the area's description to the given one, or restores the default one if not given.
-* **multiclients** "ID/IPID"
+* **multiclients** "ID"
     - Lists all the clients opened by a target and the areas they are in.
 * **party_disband** "party ID"
     - Disbands a party.
@@ -337,7 +334,7 @@ GMs can:
     - Plays a song, even if not in the server music list.
 * **poison** "ID" "initials of effects" "length"
     - Applies a poison to the target that will inflict them in the given length of time in seconds the given effects.
-* **reveal** "ID/IPID"
+* **reveal** "ID"
     - Reveals a target if they were previously sneaking.
     - Also restores their formerly assigned handicap if they had one that was shorter than the server's automatic sneaking handicap.
 * **rplay** "song.mp3"
@@ -353,30 +350,30 @@ GMs can:
 * **shoutlog** "area"
     - Lists the last 20 shouts sent in the given area, or from the current area if not given.
     - Each entry includes the time of execution, client ID, character name, client IPID, the shout ID and the IC message sent alongside.
-* **sneak** "ID/IPID"
+* **sneak** "ID"
     - Sets a target to be sneaking if they were visible.
     - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
 * **st** "message"
     - Sends a message to all active staff members.
 * **toggle_allrolls**
     - Changes your ability to receive /roll and /rollp results from other areas. By default it is off.
-* **transient** "ID/IPID"
+* **transient** "ID"
     - Changes a player's ability to ignore passage locks and thus access all areas from any given area. By default it is off.
 * **unfollow**
     - Stops following whoever you were following.
 * **unglobalic**
     - Stops sending subsequent IC messages to the area range specified in a previous /globalic command.
-* **unhandicap** "ID/IPID"
+* **unhandicap** "ID"
     - Removes movement handicaps on a target.
 * **unilock** "area 1", "area 2"
     - Changes the passage status (locked/unlocked) from area 1 to area 2.
-* **uninvite** "IPID/ID/char name/edited-to character/showname/OOC name"
+* **uninvite** "ID/char name/edited-to character/showname/OOC name"
     - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**
     - Unlocks an area, provided the lock came as a result of /gmlock or /lock.
-* **whereis** "ID/IPID"
+* **whereis** "ID"
     - Obtains the area a target is.
-* **whois** "ID/IPID"
+* **whois** "ID/char name/showname/OOC name"
     - Obtains a lot of properties of the target.
 * **zone** "area range start", "area range end"
     - Creates a zone involving the area range given above, just the given area if given one parameter, or just the current area if not given a parameter.
@@ -398,6 +395,9 @@ GMs can:
 
 ### Community Manager Commands
 
+* **area_kick** "ID/IPID" "area number"
+    - Kicks target from your area to the intended area and remove them from its invite-list.
+    - If not given a target area, it will use the server's default area (usually area 0).
 * **blockdj** "ID/IPID"
     - Mutes the target from changing music.
 * **cleargm**
@@ -406,25 +406,47 @@ GMs can:
     - Shows the current characters in your area as well as their IPIDs.
 * **getareas**
     - Shows all characters in all areas of the server as well as their IPIDs.
+* **handicap** "ID/IPID" "length" "name" "announce if over"
+    - Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of time in seconds between changing areas.
+    - If name is given, the handicap announcement will use it as the name of the handicap.
+    - If announce if over is set to any of "False, false, 0, No, no", no announcements will be sent to the player indicating that they may now move areas.
+* **invite** "ID/IPID/char name/edited-to character/showname/OOC name"
+    - Adds target to the invite list of your area.
 * **kick** "ID/IPID"
     - Kicks the target from the server.
 * **make_gm** "ID"
     - Makes the target a GM.
+* **multiclients** "ID/IPID"
+    - Lists all the clients opened by a target and the areas they are in.
 * **mute** "ID/IPID"
     - Mutes the target from all IC actions.
 * **ooc_mute** "OOC name"
     - Mutes the target from all OOC actions.
 * **ooc_unmute** "OOC name"
     - Unmutes the target.
+* **reveal** "ID/IPID"
+    - Reveals a target if they were previously sneaking.
+    - Also restores their formerly assigned handicap if they had one that was shorter than the server's automatic sneaking handicap.
 * **showname_area**
     - Similar to /getarea, but lists shownames along with character names as well as their IPIDs.
 * **showname_areas**
     - Similar to /getareas, but lists shownames along with character names as well as their IPIDs.
-* **unblockdj** "target"
+* **sneak** "ID/IPID"
+    - Sets a target to be sneaking if they were visible.
+    - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
+* **transient** "ID/IPID"
+    - Changes a player's ability to ignore passage locks and thus access all areas from any given area. By default it is off.
+* **unblockdj** "ID/IPID"
     - Allows the target to change music again.
+* **unhandicap** "ID/IPID"
+    - Removes movement handicaps on a target.
+* **uninvite** "ID/IPID/char name/edited-to character/showname/OOC name"
+    - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unmute** "ID/IPID"
     - Unmutes the target from the IC chat.
-* **whois** "ID/IPID"
+* **whereis** "ID/IPID"
+    - Obtains the area a target is.
+* **whois** "ID/IPID/char name/showname/OOC name"
     - Obtains a lot of properties of the target, including HDID and IPID.
 * **zone_delete** "zone"
     - Deletes a zone by its ID, or the zone you are watching if not given a zone.
