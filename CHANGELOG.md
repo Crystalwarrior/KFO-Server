@@ -350,4 +350,5 @@
 * Reworked responses of the magic 8 ball so it now chooses from a pool of 25 answers as opposed to 8
 * Fixed documentation of /unban not listing it can unban by IP address
 * Fixed GMs not receiving privileged staff notifications for autopass when players leave/enter an area whose lights are off or they enter/leave an area while sneaking
+* Fixed unsupported webAO clients lingering for too long and taking server spots away
 * Fixed wrong messages being sent when a client is bleeding and they are sneaking or the area lights are out

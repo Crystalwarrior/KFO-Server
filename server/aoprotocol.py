@@ -72,7 +72,9 @@ class AOProtocol(asyncio.Protocol):
 
         if len(self.buffer) > 8192:
             self.client.disconnect()
+        found_message = False
         for msg in self.get_messages():
+            found_message = True
             if len(msg) < 2:
                 self.client.disconnect()
                 return
@@ -88,6 +90,10 @@ class AOProtocol(asyncio.Protocol):
                 self.net_cmd_dispatcher[cmd](self, args)
             except Exception as ex:
                 self.server.send_error_report(self.client, cmd, args, ex)
+        if not found_message:
+            # This immediatelly kills webAO or any client that does not even try to follow the
+            # standalone client protocol
+            self.client.disconnect()
 
     def connection_made(self, transport, my_protocol=None):
         """ Called upon a new client connecting
