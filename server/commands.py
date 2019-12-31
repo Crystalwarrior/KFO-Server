@@ -5969,7 +5969,7 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
 
     # If still needed, pretend the identifier is a client IPID (only CM and mod)
-    if not targets and arg.isdigit() and (client.is_mod or client.is_cm):
+    if not targets and (client.is_mod or client.is_cm):
         targets = client.server.client_manager.get_targets(client, TargetType.HDID, arg, False)
 
     # If still needed, pretend the identifier is an OOC username
