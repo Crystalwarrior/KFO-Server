@@ -96,11 +96,12 @@ def ooc_cmd_area(client: ClientManager.Client, arg: str):
         raise ArgumentError('Too many arguments. Use /area <id>.')
 
 def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Kicks a player by client ID or IPID to a given area by ID or name, or the default area if not
     given an area. GMs cannot perform this command on users in lobby areas.
     If given IPID, it will kick all clients opened by the user. Otherwise, it will just kick the
     given client.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user, or if there was some
     sort of error in the process of kicking the user to the area (e.g. full area).
 
@@ -858,7 +859,8 @@ def ooc_cmd_bloodtrail_smear(client: ClientManager.Client, arg: str):
                 mes = 'There is no blood in area {}.'.format(area.name)
             client.send_ooc(mes)
             continue
-        elif area.blood_smeared:
+
+        if area.blood_smeared:
             client.send_ooc('Area {} already has its blood trails smeared.'.format(area.name))
         else:
             client.send_ooc_others('{} smeared the blood trail in your area.'
@@ -1042,7 +1044,7 @@ def ooc_cmd_can_rpgetareas(client: ClientManager.Client, arg: str):
                               status[client.area.rp_getareas_allowed].capitalize()), client)
 
 def ooc_cmd_charselect(client: ClientManager.Client, arg: str):
-    """
+    """ (VARYING REQUIREMENTS)
     Opens the character selection screen for the current user
     OR (MOD ONLY) forces another user by identifier to have that screen open, freeing up their
     character in the process.
@@ -1413,24 +1415,27 @@ def ooc_cmd_clock_unpause(client: ClientManager.Client, arg: str):
 
 def ooc_cmd_coinflip(client: ClientManager.Client, arg: str):
     """
-    Flips a coin and returns the result.
+    Flips a coin and returns the result. If given a call, it includes the call with the result.
 
     SYNTAX
-    /coinflip
+    /coinflip {call}
 
-    PARAMETERS
-    None
+    OPTIONAL PARAMETERS
+    {call}: A call to the coin flip
 
     EXAMPLES
-    /coinflip
+    If Phantom is running the following...
+    /coinflip           :: May return something like "Phantom flipped a coin and got tails."
+    /coinflip `heads`   :: May return something like "Phantom called `heads`, flipped a coin and got heads"
     """
-
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
 
     coin = ['heads', 'tails']
     flip = random.choice(coin)
-    client.area.broadcast_ooc('{} flipped a coin and got {}.'.format(client.displayname, flip))
+    if arg:
+        mes = '{} called `{}`, flipped a coin and got {}.'.format(client.displayname, arg, flip)
+    else:
+        mes = '{} flipped a coin and got {}.'.format(client.displayname, flip)
+    client.area.broadcast_ooc(mes)
     logger.log_server('[{}][{}]Used /coinflip and got {}.'
                       .format(client.area.id, client.get_char_name(), flip), client)
 
@@ -1761,26 +1766,25 @@ def ooc_cmd_files(client: ClientManager.Client, arg: str):
     """
 
     if arg:
-       target, match, _ = client.server.client_manager.get_target_public(client, arg)
+        target, match, _ = client.server.client_manager.get_target_public(client, arg)
 
-       if target.files:
-           if match.isdigit():
-               match = 'client {}'.format(match)
-           client.send_ooc('Files set by {} for `{}`: {}'
-                           .format(match, target.files[0], target.files[1]))
-           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
-       else:
-           if match.isdigit():
-               match = 'Client {}'.format(match)
-           raise ClientError('{} has not provided a download link for their files.'.format(match))
+        if target.files:
+            if match.isdigit():
+                match = 'client {}'.format(match)
+            client.send_ooc('Files set by {} for `{}`: {}'
+                            .format(match, target.files[0], target.files[1]))
+            client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
+        else:
+            if match.isdigit():
+                match = 'Client {}'.format(match)
+            raise ClientError('{} has not provided a download link for their files.'.format(match))
     else:
-       if client.files:
-           client.send_ooc('Files set by yourself for `{}`: {}'
-                           .format(client.files[0], client.files[1]))
-           client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
-       else:
-           raise ClientError('You have not provided a download link for your files.'
-                             .format(client.id))
+        if client.files:
+            client.send_ooc('Files set by yourself for `{}`: {}'
+                            .format(client.files[0], client.files[1]))
+            client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
+        else:
+            raise ClientError('You have not provided a download link for your files.')
 
 def ooc_cmd_files_set(client: ClientManager.Client, arg: str):
     """
@@ -1807,7 +1811,7 @@ def ooc_cmd_files_set(client: ClientManager.Client, arg: str):
     else:
         if client.files:
             client.send_ooc('You have removed the download link for the files of `{}`.'
-                            .format(client.files[0], arg))
+                            .format(client.files[0]))
             client.files = None
         else:
             raise ClientError('You have not provided a download link for your files.')
@@ -1896,27 +1900,39 @@ def ooc_cmd_gag(client: ClientManager.Client, arg: str):
     target.change_gagged(new_gagged)
 
 def ooc_cmd_getarea(client: ClientManager.Client, arg: str):
-    """
-    List the characters (and associated client IDs) in the current area.
-    Returns an error if the user is subject to RP mode and is in an area that disables /getarea, or
-    if they are blind and not staff.
+    """ (VARYING REQUIREMENTS)
+    Lists the characters (and associated client IDs) in the current area
+    OR (STAFF ONLY) lists the character (and associated client IDs) in the given area by ID or name.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getarea, if
+    they are blind and not staff, or if the given identifier does not correspond to an area.
 
     SYNTAX
     /getarea
+    /getarea <target_area>
 
     PARAMETERS
-    None
+    <target_area>: The area whose characters will be listed. By default it is the user's area.
 
     EXAMPLE
-    /getarea
+    If Phantom is a staff member in area 0
+    /getarea            :: Lists characters in area 0
+    /getarea 1          :: Lists characters in area 1.
+    /getarea Basement   :: Lists characters in area Basement.
     """
 
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+    if arg:
+        if not client.is_staff():
+            raise ClientError.UnauthorizedError('You must be authorized to use the one-parameter '
+                                                'version of this command.')
+        else:
+            area_id = Constants.parse_area_names(client, [arg])[0].id
+    else:
+        area_id = client.area.id
+
     if not client.is_staff() and client.is_blind:
         raise ClientError('You are blind, so you cannot see anything.')
 
-    client.send_area_info(client.area, client.area.id, False)
+    client.send_area_info(client.area, area_id, False)
 
 def ooc_cmd_getareas(client: ClientManager.Client, arg: str):
     """
@@ -1976,6 +1992,7 @@ def ooc_cmd_globalic(client: ClientManager.Client, arg: str):
     Send client's subsequent IC messages to users only in specified areas. Can take either area IDs
     or area names. If current user is not in intended destination range, it will NOT send messages
     to their area. Requires /unglobalic to undo.
+    Returns an error if the given identifier does not correspond to an area.
 
     If given two areas, it will send the IC messages to all areas between the given ones inclusive.
     If given one area, it will send the IC messages only to the given area.
@@ -2128,8 +2145,55 @@ def ooc_cmd_gmself(client: ClientManager.Client, arg: str):
                     .format('s' if len(targets) > 1 else '',
                             Constants.cjoin([target.id for target in targets])))
 
-def ooc_cmd_handicap(client: ClientManager.Client, arg: str):
+def ooc_cmd_guide(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
+    Sends an IC personal message to a specified user by some ID. Unlike /whisper, the messages do
+    not have the showname of the sender nor do they send notifications to other players in the area.
+    Elevated notifications are sent to zone watchers/staff members on /guide, which include the
+    message content, so this is not meant to act as a private means of communication between
+    players, for which /pm is recommended.
+    As this is meant to act as a "subconscious/guider/personal narrator" command, deafened players
+    are not affected and receive the message as is.
+    Returns an error if the user could not be found, if the message is empty, if the sender is
+    IC-muted, or if the user attempts to guide themselves.
+
+    SYNTAX
+    /guide <user_ID> <message>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
+    <message>: Message to be sent.
+
+    EXAMPLES
+    /guide 1 Hey, is that blood?        :: Sends that message to player with client ID 1.
+    /guide 0 Check out his clothes!     :: Sends that message to player with client ID 0.
+    """
+
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='>1')
+    except ArgumentError:
+        raise ArgumentError('Not enough arguments. Use /guide <target> <message>. Target should '
+                            'be ID, char-name, edited-to character, custom showname or OOC-name.')
+    if client.is_muted:
+        raise ClientError('You have been muted by a moderator.')
+
+    cm = client.server.client_manager
+    target, _, msg = cm.get_target_public(client, arg)
+    if client == target:
+        raise ClientError('You cannot guide yourself.')
+
+    client.send_ooc('You gave the following guidance to {}: `{}`.'
+                    .format(target.displayname, msg))
+
+    target.send_ooc('You hear a guiding voice in your head.')
+    target.send_ic(msg=msg, bypass_replace=True)
+
+    client.send_ooc_others('(X) {} gave the following guidance to {}: `{}` ({}).'
+                           .format(client.displayname, target.displayname, msg, client.area.id),
+                           is_zstaff_flex=target.area, not_to={target})
+
+def ooc_cmd_handicap(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of
     time between changing areas. This will override any previous handicaps the client(s) may have
     had, including custom ones and server ones (such as through sneak). Server handicaps will
@@ -2137,6 +2201,7 @@ def ooc_cmd_handicap(client: ClientManager.Client, arg: str):
     handicap is over, it will recover the old custom handicap.
     If given IPID, it will set the movement handicap on all the clients opened by the user.
     Otherwise, it will just do it to the given client.
+    Search by IPID can only be performed by CMs and mods.
     Requires /unhandicap to undo.
     Returns an error if the given identifier does not correspond to a user, or if given a
     non-positive length of time.
@@ -2318,6 +2383,7 @@ def ooc_cmd_invite(client: ClientManager.Client, arg: str):
     Adds a client based on some ID to the area's invite list. Only staff members can invite based
     on IPID. Invites are IPID based, so anyone with the same IPID becomes part of the area's invite
     list.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user or if target is already
     invited.
 
@@ -2340,7 +2406,7 @@ def ooc_cmd_invite(client: ClientManager.Client, arg: str):
         raise ClientError('Area is not locked.')
 
     targets = list() # Start with empty list
-    if client.is_staff() and arg.isdigit():
+    if (client.is_cm or client.is_mod) and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
         if targets:
             some_target = targets[0]
@@ -3041,8 +3107,9 @@ def ooc_cmd_motd(client: ClientManager.Client, arg: str):
     client.send_motd()
 
 def ooc_cmd_multiclients(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Lists all clients and the areas they are opened by a player by client ID or IPID.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -4028,11 +4095,12 @@ def ooc_cmd_remove_h(client: ClientManager.Client, arg: str):
         client.area.broadcast_ooc("Removed h from {}.".format(c.displayname))
 
 def ooc_cmd_reveal(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Sets given user based on client ID or IPID to no longer be sneaking so that they are visible
     through /getarea(s).
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
     the given client.
+    Search by IPID can only be performed by CMs and mods.
     Requires /sneak to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -4498,28 +4566,46 @@ def ooc_cmd_showname_area(client: ClientManager.Client, arg: str):
     """
     List the characters (and associated client IDs) in the current area, as well as their custom
     shownames if they have one in parentheses.
-    Returns an error if the user is subject to RP mode and is in an area that disables /getarea or
-    if they are blind.
+    OR (STAFF ONLY) lists the character (and associated client IDs) in the given area by ID or name.
+    as well as their custom shownames if they have one in parentheses.
+    Returns an error if the user is subject to RP mode and is in an area that disables /getarea, if
+    they are blind and not staff, or if the given identifier does not correspond to an area.
 
     SYNTAX
     /showname_area
+    /showname_area <target_area>
 
     PARAMETERS
-    None
+    <target_area>: The area whose characters will be listed. By default it is the user's area.
 
     EXAMPLE
+    If Phantom is in area 0
     /showname_area          :: May list something like this
 
     == Area 0: Basement ==
     [0] Phantom_HD
     [1] Spam_HD (Spam, Spam, Spam...)
+
+    /showname_area Courtroom    :: May list something like this
+
+    == Area 8: Courtroom ==
+    [2] Eggs_HD (Eggy Egg)
+    [3] Judge_HD (Gavel Guy)
     """
 
-    Constants.assert_command(client, arg, parameters='=0')
+    if arg:
+        if not client.is_staff():
+            raise ClientError.UnauthorizedError('You must be authorized to use the one-parameter '
+                                                'version of this command.')
+        else:
+            area_id = Constants.parse_area_names(client, [arg])[0].id
+    else:
+        area_id = client.area.id
+
     if not client.is_staff() and client.is_blind:
         raise ClientError('You are blind, so you cannot see anything.')
 
-    client.send_area_info(client.area, client.area.id, False, include_shownames=True)
+    client.send_area_info(client.area, area_id, False, include_shownames=True)
 
 def ooc_cmd_showname_areas(client: ClientManager.Client, arg: str):
     """
@@ -4720,11 +4806,12 @@ def ooc_cmd_showname_set(client: ClientManager.Client, arg: str):
         logger.log_server(l_message, client)
 
 def ooc_cmd_sneak(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Sets given user based on client ID or IPID to be sneaking so that they are invisible through
     /getarea(s), /showname_list and /area.
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
     the given client.
+    Search by IPID can only be performed by CMs and mods.
     Requires /reveal to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -4996,7 +5083,7 @@ def ooc_cmd_timer_get(client: ClientManager.Client, arg: str):
 
         # Non-staff initiated public timers can only be consulted by all staff and
         # clients in the same area as the timer initiator
-        elif (is_public and not timer_client.is_staff() and not
+        if (is_public and not timer_client.is_staff() and not
               (client.is_staff() or client == timer_client or client.area == timer_client.area)):
             continue
 
@@ -5160,11 +5247,12 @@ def ooc_cmd_toggle_shownames(client: ClientManager.Client, arg: str):
     client.send_ooc('Shownames turned {}.'.format(status[client.show_shownames]))
 
 def ooc_cmd_transient(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Toggles a client by IP or IPID being transient or not to passage locks (i.e. can access all
     areas or only reachable areas)
     If given IPID, it will invert the transient status of all the clients opened by the user.
     Otherwise, it will just do it to the given client.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -5196,20 +5284,23 @@ def ooc_cmd_transient(client: ClientManager.Client, arg: str):
 def ooc_cmd_unban(client: ClientManager.Client, arg: str):
     """ (MOD ONLY)
     Removes given user from the server banlist, allowing them to rejoin the server.
-    Returns an error if given IPID does not correspond to a banned user.
+    Returns an error if given identifier does not correspond to a banned user.
 
     SYNTAX
     /unban <client_ipid>
+    /unban <client_ip>
 
     PARAMETERS
     <client_ipid>: IPID for the client (number in parentheses in /getarea)
+    <client_ip>: user IP
 
     EXAMPLES
-    /unban 1234567890           :: Unbans user whose IPID is 1234567890
+    /unban 1234567890             :: Unbans the user whose IPID is 1234567890
+    /unban 127.0.0.1              :: Unbans the user whose IP is 127.0.0.1
     """
 
-    if not client.is_mod:
-        raise ClientError('You must be authorized to do that.')
+    arg = arg.strip()
+    Constants.assert_command(client, arg, parameters='>0', is_mod=True)
 
     if arg.isdigit():
         # IPID
@@ -5430,13 +5521,14 @@ def ooc_cmd_unglobalic(client: ClientManager.Client, arg: str):
     client.send_ooc('Your IC messages will now be only sent to your current area.')
 
 def ooc_cmd_unhandicap(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Removes movement handicaps on a client by ID or IPID so that they no longer need to wait a set
     amount of time between changing areas. This will also remove server handicaps, if any (such as
     automatic sneak handicaps).
     If given IPID, it will remove the movement handicap on all the clients opened by the user.
     Otherwise, it will just do it to the given client.
     Requires /handicap to undo.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -5529,6 +5621,7 @@ def ooc_cmd_uninvite(client: ClientManager.Client, arg: str):
     Removes a client based on some ID to the area's invite list. Only staff members can invite based
     on IPID. Invites are IPID based, so anyone with the same IPID is no longer part of the area's
     invite list.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user or if target is already
     not invited.
 
@@ -5551,7 +5644,7 @@ def ooc_cmd_uninvite(client: ClientManager.Client, arg: str):
         raise ClientError('Area is not locked.')
 
     targets = list() # Start with empty list
-    if client.is_staff() and arg.isdigit():
+    if (client.is_mod or client.is_cm) and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
         if targets:
             some_target = targets[0]
@@ -5695,11 +5788,12 @@ def ooc_cmd_version(client: ClientManager.Client, arg: str):
     client.send_ooc('This server is running {}.'.format(client.server.version))
 
 def ooc_cmd_whereis(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Obtains the current area of a player by client ID (number in brackets) or IPID (number in
     parentheses).
     If given IPID, it will obtain the area info for all clients opened by the user. Otherwise, it
     will just obtain the one from the given client.
+    Search by IPID can only be performed by CMs and mods.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
@@ -5723,11 +5817,120 @@ def ooc_cmd_whereis(client: ClientManager.Client, arg: str):
         client.send_ooc("Client {} ({}) is in {} ({})."
                         .format(c.id, c.ipid, c.area.name, c.area.id))
 
+def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
+    """
+    Sends an IC personal message to a specified user by some ID. The messages have the showname
+    of the sender and their message, but does not include their sprite.
+    Elevated notifications are sent to zone watchers/staff members on whispers to other people,
+    which include the message content, so this is not meant to act as a private means of
+    communication between players, for which /pm is recommended.
+    Whispers sent by sneaked players include an empty showname so as to not reveal their identity.
+    Whispers sent to sneaked players will succeed only if the sender is sneaking and both the sender
+    and recipient are part of the same party. If the attempt fails but the player is staff member,
+    they will get a friendly suggestion to use /guide instead.
+    Deafened recipients will receive a nerfed message if whispered to.
+    Non-zone watchers/non-staff players in the same area as the whisperer will be notified that
+    they whispered to their target (but will not receive the content of the message), provided they
+    are not blind (in which case no notification is sent) and that this was not a self-whisper.
+    Returns an error if the user could not be found, if the message is empty or if the sender is
+    gagged or IC-muted.
+
+    SYNTAX
+    /whisper <user_ID> <message>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
+    <message>: Message to be sent.
+
+    EXAMPLES
+    /whisper 1 Hey, client 1!   :: Sends that message to player with client ID 1.
+    /whisper 0 Yo               :: Sends that message to player with client ID 0.
+    """
+
+    try:
+        Constants.assert_command(client, arg, parameters='>1')
+    except ArgumentError:
+        raise ArgumentError('Not enough arguments. Use /whisper <target> <message>. Target should '
+                            'be ID, char-name, edited-to character, custom showname or OOC-name.')
+    if client.is_muted:
+        raise ClientError('You have been muted by a moderator.')
+    if client.is_gagged:
+        raise ClientError('Your attempt at whispering failed because you are gagged.')
+
+    cm = client.server.client_manager
+    target, _, msg = cm.get_target_public(client, arg, only_in_area=True)
+
+    final_sender = client.displayname
+    final_rec_sender = 'Someone' if (target.is_deaf and target.is_blind) else client.displayname
+    final_st_sender = client.displayname
+    final_target = target.displayname
+    final_message = msg
+
+    if client == target:
+        # Player whispered to themselves. Why? Dunno, ask them, not me
+        client.send_ooc('You whispered `{}` to yourself.'.format(final_message))
+        client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
+                       bypass_deafened_starters=True)
+    elif not (client.is_visible ^ target.is_visible):
+        # Either both client and target are visible
+        # Or they are both not, where cm.get_target_public already handles removing sneaked targets
+        # if they are not part of the same party as the client (or the client is not staff)
+        client.send_ooc('You whispered `{}` to {}.'.format(final_message, final_target))
+        client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
+                       bypass_replace=False, bypass_deafened_starters=True)
+
+        target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
+        target.send_ooc('{} seemed to whisper something to you, but you could not make it out.'
+                        .format(final_rec_sender), to_deaf=True)
+        target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
+                       bypass_deafened_starters=True) # send_ic handles nerfing for deafened
+
+        if not client.is_visible:
+            # This code should run if client and target are sneaked and part of same party
+            client.send_ooc_others('(X) {} whispered `{}` to {} while both were sneaking and part '
+                                   'of the same party ({}).'
+                                   .format(final_st_sender, final_message, final_target,
+                                           client.area.id), is_zstaff_flex=True, not_to={target})
+        else:
+            # Otherwise, announce it to everyone
+            client.send_ooc_others('(X) {} whispered `{}` to {} ({}).'
+                                   .format(final_st_sender, final_message, final_target,
+                                           client.area.id), is_zstaff_flex=True, not_to={target})
+            client.send_ooc_others('{} whispered something to {}.'
+                                   .format(final_sender, final_target),
+                                   is_zstaff_flex=False, in_area=True, not_to={target},
+                                   to_blind=False)
+    elif target.is_visible:
+        client.send_ooc('You spooked {} by whispering `{}` to them while sneaking.'
+                        .format(final_target, final_message))
+        client.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
+        # Note this uses pos='jud' instead of pos=client.pos. This is to mask the position of the
+        # sender, so that the target cannot determine who it is based on knowing usual positions
+        # of people.
+        # If target is deafened, behavior is different
+        target.send_ooc('You heard a whisper and you think it was directed at you, but you could '
+                        'not seem to tell where it came from.', to_deaf=False)
+        target.send_ooc('Your ears seemed to pick up something.', to_deaf=True)
+        target.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
+
+        client.send_ooc_others('(X) {} whispered `{}` to {} while sneaking ({}).'
+                               .format(final_st_sender, final_message, final_target,
+                                       client.area.id), is_zstaff_flex=True, not_to={target})
+    else: # Sender is not sneaked, target is
+        if client.is_staff():
+            msg = ('Your target {} is sneaking and whispering to them would reveal them. Instead, '
+                   'use /guide'.format(target.displayname))
+            raise ClientError(msg)
+        # Normal clients should never get here except if get_target_public is wrong
+        # which would be very sad.
+        raise ValueError('Never should have come here!')
+
 def ooc_cmd_whois(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
     Lists A LOT of a client properties. CMs and mods additionally get access to a client's HDID.
-    The player can be filtered by either client ID, IPID, OOC username (in the same area),
+    The player can be filtered by either client ID, IPID, HDID, OOC username (in the same area),
     character name (in the same area) or custom showname (in the same area).
+    However, only CMs and mods can search through IPID or HDID.
     If multiple clients match the given identifier, only one of them will be returned.
     For best results, use client ID (number in brackets), as this is the only tag that is
     guaranteed to be unique.
@@ -5741,9 +5944,10 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
     <target_id>: Either client ID, IPID, OOC username or character name
 
     EXAMPLES
-    For player with client ID 1, IPID 1234567890, OOC username Phantom, character name Phantom_HD, and showname The phantom, all of these do the same
+    For player with client ID 1, IPID 1234567890, HDID abb0011, OOC username Phantom, character name Phantom_HD, and showname The phantom, all of these do the same
     /whois 1            :: Returns client info.
     /whois 1234567890   :: Returns client info.
+    /whois abb0011      :: Returns client info.
     /whois Phantom      :: Returns client info.
     /whois The Phantom  :: Returns client info.
     /whois Phantom_HD   :: Returns client info.
@@ -5760,9 +5964,13 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
     if not targets and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
 
-    # If still needed, pretend the identifier is a client IPID
-    if not targets and arg.isdigit():
+    # If still needed, pretend the identifier is a client IPID (only CM and mod)
+    if not targets and arg.isdigit() and (client.is_mod or client.is_cm):
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
+
+    # If still needed, pretend the identifier is a client IPID (only CM and mod)
+    if not targets and arg.isdigit() and (client.is_mod or client.is_cm):
+        targets = client.server.client_manager.get_targets(client, TargetType.HDID, arg, False)
 
     # If still needed, pretend the identifier is an OOC username
     if not targets:
@@ -6070,7 +6278,7 @@ def ooc_cmd_zone_remove(client: ClientManager.Client, arg: str):
         for c in area.clients:
             if c.is_staff() and c != client and c in backup_watchers:
                 c.send_ooc('(X) Your area has been removed from your zone. To stop receiving its '
-                           'notifications, stop watching it with /zone_unwatch'.format(zone_id))
+                           'notifications, stop watching it with /zone_unwatch')
 
 def ooc_cmd_zone_unwatch(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
@@ -6140,26 +6348,57 @@ def ooc_cmd_zone_watch(client: ClientManager.Client, arg: str):
 def ooc_cmd_8ball(client: ClientManager.Client, arg: str):
     """
     Calls upon the wisdom of a magic 8 ball. The result is sent to all clients in the sender's area.
+    If given a question, it is included as part of the result.
 
     SYNTAX
-    /8ball
+    /8ball {question}
 
-    PARAMETERS
-    None
+    OPTIONAL PARAMETERS
+    {question}: Question to ask the magic 8 ball.
 
     EXAMPLES
-    /8ball              :: May return something like "The magic 8 ball says You shouldn't ask that."
+    If Phantom is using the magic 8 ball.
+    /8ball              :: May return something like "In response to Phantom, the magic 8 ball says `It is certain`."
+    /8ball Am I bae?    :: May return something like "In response to Phantom's question `Am I bae?`, the magic 8 ball says `My sources say no`."
     """
 
-    if len(arg) != 0:
-        raise ArgumentError('This command has no arguments.')
+    responses = ['It is certain',
+                 'It is decidedly so',
+                 'Without a doubt',
+                 'Yes - definitely',
+                 'You may rely on it',
+                 'As I see it, yes',
+                 'Most likely',
+                 'Outlook good',
+                 'Yes',
+                 'Signs point to yes',
+                 'Reply hazy, try again',
+                 'Ask again later',
+                 'Better not tell you now',
+                 'Cannot predict now',
+                 'Concentrate and ask again',
+                 "Don't count on it",
+                 'My reply is no',
+                 'My sources say no',
+                 'Outlook not so good',
+                 'Very doubtful',
+                 'No',
+                 'As I see it, no',
+                 'Unlikely',
+                 'Absolutely not',
+                 'Certainly not']
+    response = random.choice(responses)
 
-    coin = ['yes', 'no', 'maybe', "I don't know", 'perhaps', 'please do not', 'try again',
-            "you shouldn't ask that"]
-    flip = random.choice(coin)
-    client.area.broadcast_ooc('The magic 8 ball says {}.'.format(flip))
+    if arg:
+        output = ("In response to {}'s question `{}`, the magic 8 ball says `{}`."
+                  .format(client.displayname, arg, response))
+    else:
+        output = ("In response to {}, the magic 8 ball says `{}`."
+                  .format(client.displayname, response))
+    client.area.broadcast_ooc(output)
+
     logger.log_server('[{}][{}]called upon the magic 8 ball and it said {}.'
-                      .format(client.area.id, client.get_char_name(), flip), client)
+                      .format(client.area.id, client.get_char_name(), response), client)
 
 def ooc_cmd_narrate(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
@@ -6201,161 +6440,29 @@ def ooc_cmd_mod_narrate(client: ClientManager.Client, arg: str):
     for c in client.area.clients:
         c.send_ic(msg=arg, color=5, bypass_replace=True)
 
-def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
-    """
-    Sends an IC personal message to a specified user by some ID. The messages have the showname
-    of the sender and their message, but does not include their sprite.
-    Elevated notifications are sent to zone watchers/staff members on whispers to other people,
-    which include the message content, so this is not meant to act as a private means of
-    communication between players, for which /pm is recommended.
-    Whispers sent by sneaked players include an empty showname so as to not reveal their identity.
-    Whispers sent to sneaked players will succeed only if the sender is sneaking and both the sender
-    and recipient are part of the same party. If the attempt fails but the player is staff member,
-    they will get a friendly suggestion to use /guide instead.
-    Deafened recipients will receive a nerfed message if whispered to.
-    Non-zone watchers/non-staff players in the same area as the whisperer will be notified that
-    they whispered to their target (but will not receive the content of the message), provided they
-    are not blind (in which case no notification is sent) and that this was not a self-whisper.
-    Returns an error if the user could not be found, if the message is empty or if the sender is
-    gagged or IC-muted.
-
-    SYNTAX
-    /whisper <user_ID> <message>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
-    <message>: Message to be sent.
-
-    EXAMPLES
-    /whisper 1 Hey, client 1!   :: Sends that message to player with client ID 1.
-    /whisper 0 Yo               :: Sends that message to player with client ID 0.
-    """
-
-    try:
-        Constants.assert_command(client, arg, parameters='>1')
-    except ArgumentError:
-        raise ArgumentError('Not enough arguments. Use /whisper <target> <message>. Target should '
-                            'be ID, char-name, edited-to character, custom showname or OOC-name.')
-    if client.is_muted:
-        raise ClientError('You have been muted by a moderator.')
-    if client.is_gagged:
-        raise ClientError('Your attempt at whispering failed because you are gagged.')
-
-    cm = client.server.client_manager
-    target, _, msg = cm.get_target_public(client, arg, only_in_area=True)
-
-    final_sender = client.displayname
-    final_rec_sender = 'Someone' if (target.is_deaf and target.is_blind) else client.displayname
-    final_st_sender = client.displayname
-    final_target = target.displayname
-    final_message = msg
-
-    if client == target:
-        # Player whispered to themselves. Why? Dunno, ask them, not me
-        client.send_ooc('You whispered `{}` to yourself.'.format(final_message))
-        client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
-                       bypass_deafened_starters=True)
-    elif not (client.is_visible ^ target.is_visible):
-        # Either both client and target are visible
-        # Or they are both not, where cm.get_target_public already handles removing sneaked targets
-        # if they are not part of the same party as the client (or the client is not staff)
-        client.send_ooc('You whispered `{}` to {}.'.format(final_message, final_target))
-        client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
-                       bypass_replace=False, bypass_deafened_starters=True)
-
-        target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
-        target.send_ooc('{} seemed to whisper something to you, but you could not make it out.'
-                        .format(final_rec_sender), to_deaf=True)
-        target.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
-                       bypass_deafened_starters=True) # send_ic handles nerfing for deafened
-
-        if not client.is_visible:
-            # This code should run if client and target are sneaked and part of same party
-            client.send_ooc_others('(X) {} whispered `{}` to {} while both were sneaking and part '
-                                   'of the same party ({}).'
-                                   .format(final_st_sender, final_message, final_target,
-                                           client.area.id), is_zstaff_flex=True, not_to={target})
-        else:
-            # Otherwise, announce it to everyone
-            client.send_ooc_others('(X) {} whispered `{}` to {} ({}).'
-                                   .format(final_st_sender, final_message, final_target,
-                                           client.area.id), is_zstaff_flex=True, not_to={target})
-            client.send_ooc_others('{} whispered something to {}.'
-                                   .format(final_sender, final_target),
-                                   is_zstaff_flex=False, in_area=True, not_to={target},
-                                   to_blind=False)
-    elif target.is_visible:
-        client.send_ooc('You spooked {} by whispering `{}` to them while sneaking.'
-                        .format(final_target, final_message))
-        client.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
-        # Note this uses pos='jud' instead of pos=client.pos. This is to mask the position of the
-        # sender, so that the target cannot determine who it is based on knowing usual positions
-        # of people.
-        # If target is deafened, behavior is different
-        target.send_ooc('You heard a whisper and you think it was directed at you, but you could '
-                        'not seem to tell where it came from.'.format(final_sender), to_deaf=False)
-        target.send_ooc('Your ears seemed to pick up something.', to_deaf=True)
-        target.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
-
-        client.send_ooc_others('(X) {} whispered `{}` to {} while sneaking ({}).'
-                               .format(final_st_sender, final_message, final_target,
-                                       client.area.id), is_zstaff_flex=True, not_to={target})
-    else: # Sender is not sneaked, target is
-        if client.is_staff():
-            msg = ('Your target {} is sneaking and whispering to them would reveal them. Instead, '
-                   'use /guide'.format(target.displayname))
-            raise ClientError(msg)
-        else:
-            # Normal clients should never get here except if get_target_public is wrong
-            # which would be very sad.
-            raise ValueError('Never should have come here!')
-
-def ooc_cmd_guide(client: ClientManager.Client, arg: str):
+def ooc_cmd_toggle_allpasses(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
-    Sends an IC personal message to a specified user by some ID. Unlike /whisper, the messages do
-    not have the showname of the sender nor do they send notifications to other players in the area.
-    Elevated notifications are sent to zone watchers/staff members on /guide, which include the
-    message content, so this is not meant to act as a private means of communication between
-    players, for which /pm is recommended.
-    As this is meant to act as a "subconscious/guider/personal narrator" command, deafened players
-    are not affected and receive the message as is.
-    Returns an error if the user could not be found, if the message is empty, if the sender is
-    IC-muted, or if the user attempts to guide themselves.
+    Toggles receiving autopass notifications from players who do not have autopass on. Note this
+    does not toggle autopass for everyone.
+    Receiving such notifications is turned off by default.
 
     SYNTAX
-    /guide <user_ID> <message>
+    /toggle_allpasses
 
     PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
-    <message>: Message to be sent.
+    None
 
-    EXAMPLES
-    /guide 1 Hey, is that blood?        :: Sends that message to player with client ID 1.
-    /guide 0 Check out his clothes!     :: Sends that message to player with client ID 0.
+    EXAMPLE
+    /toggle_allpasses
     """
 
-    try:
-        Constants.assert_command(client, arg, is_staff=True, parameters='>1')
-    except ArgumentError:
-        raise ArgumentError('Not enough arguments. Use /guide <target> <message>. Target should '
-                            'be ID, char-name, edited-to character, custom showname or OOC-name.')
-    if client.is_muted:
-        raise ClientError('You have been muted by a moderator.')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
-    cm = client.server.client_manager
-    target, _, msg = cm.get_target_public(client, arg)
-    if client == target:
-        raise ClientError('You cannot guide yourself.')
+    client.get_nonautopass_autopass = not client.get_nonautopass_autopass
+    status = {False: 'no longer', True: 'now'}
 
-    client.send_ooc('You gave the following guidance to {}: `{}`.'
-                    .format(target.displayname, msg))
-
-    target.send_ooc('You hear a guiding voice in your head.')
-    target.send_ic(msg=msg, bypass_replace=True)
-
-    client.send_ooc_others('(X) {} gave the following guidance to {}: `{}` ({}).'
-                           .format(client.displayname, target.displayname, msg, client.area.id),
-                           is_zstaff_flex=target.area, not_to={target})
+    client.send_ooc('You are {} receiving autopass notifications from players without autopass.'
+                    .format(status[client.get_nonautopass_autopass]))
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

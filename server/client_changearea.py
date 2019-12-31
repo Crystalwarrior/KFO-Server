@@ -299,26 +299,29 @@ class ClientChangeArea:
         ###########
         # Check if exiting a zone
         if old_area.in_zone and area.in_zone != old_area.in_zone:
-            client.send_ooc_others('(X) Client {} ({}) has left your zone ({}).'
-                                   .format(client.id, old_dname, area.id), is_zstaff=old_area)
+            client.send_ooc_others('(X) Client {} ({}) has left your zone ({}->{}).'
+                                   .format(client.id, old_dname, old_area.id, area.id),
+                                   is_zstaff=old_area)
 
         # Check if entering a zone
         if area.in_zone and area.in_zone != old_area.in_zone:
-            client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}).'
-                                   .format(client.id, new_dname, area.id), is_zstaff=area)
-            # Note that this is not an off-by-one error, as the incoming client is technically
-            # still not in an area within the zone, so only one client being in the zone is
-            # necessary and sufficient to trigger the multiclienting warning.
+            client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}->{}).'
+                                   .format(client.id, new_dname, old_area.id, area.id),
+                                   is_zstaff=area)
+            # Raise multiclienting warning to the watchers of the new zone if needed
+            # Note that this implementation does not have an off-by-one error, as the incoming
+            # client is technically still not in an area within the zone, so only one client being
+            # in the zone is necessary and sufficient to correctly trigger the multiclienting
+            # warning.
             if [c for c in client.get_multiclients() if c.area.in_zone == area.in_zone]:
                 client.send_ooc_others('(X) Warning: Client {} is multiclienting in your zone. '
                                        'Do /multiclients {} to take a look.'
                                        .format(client.id, client.id), is_zstaff=area)
 
         # Assuming this is not a spectator...
-        # If autopassing, send OOC messages, provided the lights are on. If lights are off,
-        # send nerfed announcements regardless. Keep track of who is blind and/or deaf as well.
+        # If autopassing, send OOC messages
 
-        if not client.char_id < 0 and client.is_visible:
+        if not client.char_id < 0:
             self.notify_others_moving(client, old_area,
                                       '{} has left to the {}'.format(old_dname, area.name),
                                       'You hear footsteps going out of the room.')
@@ -348,13 +351,28 @@ class ClientChangeArea:
             nbnd = autopass_mes
             ybnd = blind_mes
             nbyd = autopass_mes
+        else:
+            staff = '(X) {} (no autopass)'.format(autopass_mes)
+
         if not area.lights:
-            staff = blind_mes if not client.is_staff() else '(X) {}'.format(autopass_mes) # Staff
+            staff = '(X) {} while the lights were out.'.format(autopass_mes)
             nbnd = blind_mes
             ybnd = blind_mes
             nbyd = ''
+        if not client.is_visible: # This should be the last statement
+            staff = '(X) {} while sneaking.'.format(autopass_mes)
+            nbnd = ''
+            ybnd = ''
+            nbyd = ''
 
-        client.send_ooc_others(staff, in_area=area, is_zstaff_flex=True)
+        if client.autopass:
+            client.send_ooc_others(staff, in_area=area, is_zstaff_flex=True)
+        else:
+            client.send_ooc_others(staff, in_area=area, is_zstaff_flex=True,
+                                   pred=lambda c: c.get_nonautopass_autopass)
+            client.send_ooc_others(nbnd, in_area=area, is_zstaff_flex=True,
+                                   pred=lambda c: not c.get_nonautopass_autopass)
+
         client.send_ooc_others(nbnd, in_area=area, is_zstaff_flex=False, to_blind=False,
                                to_deaf=False)
         client.send_ooc_others(ybnd, in_area=area, is_zstaff_flex=False, to_blind=True,
@@ -367,9 +385,10 @@ class ClientChangeArea:
         # Assume client's bleeding status is worth announcing (for example, it changed or lights on)
         # If bleeding, send reminder, and notify everyone in the area if not sneaking
         # (otherwise, just send vague message).
+        others_bleeding = len([c for c in area.clients if c.is_bleeding and c != client])
 
-        if client.is_bleeding:
-            area_had_bleeding = (len([c for c in area.clients if c.is_bleeding]) > 0)
+        if client.is_bleeding and (status == 'stay' or status == 'arrived'):
+            discriminant = (others_bleeding > 0) # Check if someone was bleeding already
 
             dsh = {True: 'You start hearing more drops of blood.',
                    False: 'You faintly start hearing drops of blood.'}
@@ -378,12 +397,10 @@ class ClientChangeArea:
             dss = {True: 'You start smelling more blood.',
                    False: 'You faintly start smelling blood.'}
 
-            h_mes = dsh[area_had_bleeding] # hearing message
-            s_mes = dss[area_had_bleeding] # smelling message
-            hs_mes = dshs[area_had_bleeding] # hearing and smelling message
             vis_status = 'now'
-        else:
-            area_sole_bleeding = (len([c for c in area.clients if c.is_bleeding]) == 1)
+        elif ((client.is_bleeding and status == 'left')
+              or (not client.is_bleeding and status == 'stay')):
+            discriminant = (others_bleeding == 0) # Check if no one else in area was bleeding
             dsh = {True: 'You stop hearing drops of blood.',
                    False: 'You start hearing less drops of blood.'}
             dshs = {True: 'You stop hearing and smelling drops of blood.',
@@ -391,11 +408,16 @@ class ClientChangeArea:
             dss = {True: 'You stop smelling blood.',
                    False: 'You start smelling less blood.'}
 
-            h_mes = dsh[area_sole_bleeding] # hearing message
-            s_mes = dss[area_sole_bleeding] # smelling message
-            hs_mes = dshs[area_sole_bleeding] # hearing and smelling message
             vis_status = 'no longer'
+        else:
+            # Case client is not bleeding and status is left or arrived (or anything but 'stay')
+            # Boring cases for which the function should not be called
+            raise KeyError('Invalid call of notify_others_blood with client {}. Bleeding: {}.'
+                           'Status: {}'.format(client, client.is_bleeding, status))
 
+        h_mes = dsh[discriminant] # hearing message
+        s_mes = dss[discriminant] # smelling message
+        hs_mes = dshs[discriminant] # hearing and smelling message
         ybyd = hs_mes
         darkened = 'darkened ' if not area.lights else ''
 

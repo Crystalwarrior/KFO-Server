@@ -108,6 +108,7 @@ class AreaManager:
             self.has_lights = parameters['has_lights']
             self.cbg_allowed = parameters['cbg_allowed']
             self.song_switch_allowed = parameters['song_switch_allowed']
+            self.bullet = parameters['bullet']
 
             # Store the current description separately from the default description
             self.description = self.default_description
@@ -122,7 +123,7 @@ class AreaManager:
             self.staffset_reachable_areas = self.reachable_areas.copy()
 
             if '<ALL>' not in self.reachable_areas:
-                self.reachable_areas.add(self.name) #Safety feature, yay sets
+                self.reachable_areas.add(self.name) # Safety feature, yay sets
 
             # Make sure only characters that exist are part of the restricted char set
             try:
@@ -887,7 +888,8 @@ class AreaManager:
             'default_description': self.server.config['default_area_description'],
             'has_lights': True,
             'cbg_allowed': False,
-            'song_switch_allowed': False
+            'song_switch_allowed': False,
+            'bullet': True
             }
 
         # Create the areas

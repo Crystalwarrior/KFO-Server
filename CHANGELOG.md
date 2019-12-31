@@ -218,7 +218,7 @@
 * Gagged messages are now randomly generated 
 * Staff get new messages when using /bloodtrail, with privilege marks added where needed
 
-## TsuserverDR 4.2 (The DRO 2nd Anniversary Update)
+## TsuserverDR 4.2 (The DRO 2nd Anniversary Update/The Zone and Poison Update)
 
 ### 191031 (4.2)
 * Added zones. Zones are groups of areas such that any privileged server notifications that come from a player action within the zone will be sent only to "watchers", who are people who watch the zone. They come with the following commands:
@@ -233,7 +233,7 @@
   - /zone_watch
 * Zones will send notifications to all zone watchers for standard RP notifications as well as the following:
   - Players coming IN and OUT of the zone (with their shownames)
-  - Players coming in a zone while having other clients open in the zone.
+  - Players coming in a zone while having other clients open in the zone
   - Players in the zone disconnecting
   - Players in the zone changing character
   - Players in the zone changing showname
@@ -312,12 +312,12 @@
 * Fixed /area_kick'ing someone off a locked area under special circumstances allowing the target to rejoin the locked area
 * Fixed /help not showing extended syntax (/help "command name") when running /help help
 * Fixed /narrate messages being replaced for deafened players
-* Fixed /poison effects kicking in being notified to all players in the server as opposed to zone watchers or staff members if taget is in an area not in a zone
+* Fixed /poison effects kicking in being notified to all players in the server as opposed to zone watchers or staff members if target is in an area not in a zone
 
 ### 191224a (4.2.2)
-* Added /whisper for IC private communications between players (meant to be used for RPs, as staff members can read the contents of the message).
-* Added /guide for providing personalized guidance specific to a particular player.
-* Made /invite be a public command as opposed to GM+.
+* Added /whisper for IC private communications between players (meant to be used for RPs, as staff members can read the contents of the message)
+* Added /guide for providing personalized guidance specific to a particular player
+* Made /invite be a public command as opposed to GM+
 * Added helpful commands-to-run-next suggestions for the following actions
   - Setting files.
   - Setting up global IC messages
@@ -326,7 +326,7 @@
   - Logging in in an area part of a zone.
   - Being in an area when a zone is created involving that area, or that area is added to a zone.
   - Being in an area that is removed from the player's zone.
-* The following commands can now take character name, edited-to character, showname or OOC name as identifiers, provided they are in the same area
+* The following commands can now take character name, edited-to character, showname or OOC name as identifiers, provided the target is in the same area
   - /files
   - /guide
   - /invite
@@ -337,3 +337,18 @@
   - /uninvite
   - /whisper
 * Fixed normal players being able to use /uninvite with IPID.
+
+### 191231a (4.2.3)
+* Added /toggle_allpasses to be able to receive autopass notifications from players that do not have autopass on
+* Added optional argument to /coinflip to call coin flip results
+* Added optional argument to /8ball to directly ask questions to the magic 8 ball
+* Added optional argument to /getarea and /showname_area to obtain details from a particular area
+* Added source and destination areas to zone entry/exit notification sent to watchers when a player enters/leaves a zone
+* Added anti-bullet tag as an area parameter
+* Allowed /whois to take HDID as an identifier (CM and mod only)
+* Removed leftover ability of GMs to use commands with IPID
+* Reworked responses of the magic 8 ball so it now chooses from a pool of 25 answers as opposed to 8
+* Fixed documentation of /unban not listing it can unban by IP address
+* Fixed GMs not receiving privileged staff notifications for autopass when players leave/enter an area whose lights are off or they enter/leave an area while sneaking
+* Fixed unsupported webAO clients lingering for too long and taking server spots away
+* Fixed wrong messages being sent when a client is bleeding and they are sneaking or the area lights are out

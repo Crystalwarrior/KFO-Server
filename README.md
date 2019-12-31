@@ -31,29 +31,29 @@ Requires Python 3.6-3.8 and PyYAML (follow instructions below to install).
 
 * Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:
 
-\[2019-12-24T10:20:20\]: Starting...  
-\[2019-12-24T10:20:20\]: Launching TsuserverDR 4.2.2 (191224a)...  
-\[2019-12-24T10:20:20\]: Loading server configurations...  
-\[2019-12-24T10:20:20\]: Server configurations loaded successfully!  
-\[2019-12-24T10:20:20\]: Starting a nonlocal server...  
-\[2019-12-24T10:20:20\]: Server started successfully!  
-\[2019-12-24T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
+\[2019-12-31T10:20:20\]: Starting...  
+\[2019-12-31T10:20:20\]: Launching TsuserverDR 4.2.3 (191231a)...  
+\[2019-12-31T10:20:20\]: Loading server configurations...  
+\[2019-12-31T10:20:20\]: Server configurations loaded successfully!  
+\[2019-12-31T10:20:20\]: Starting a nonlocal server...  
+\[2019-12-31T10:20:20\]: Server started successfully!  
+\[2019-12-31T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
 
 * If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:
 
-\[2019-12-24T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
-\[2019-12-24T10:20:21\]: *Server name: My First DR Server  
-\[2019-12-24T10:20:21\]: *Server description: This is my flashy new DR server  
-\[2019-12-24T10:20:22\]: Connected to the master server.  
+\[2019-12-31T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
+\[2019-12-31T10:20:21\]: *Server name: My First DR Server  
+\[2019-12-31T10:20:21\]: *Server description: This is my flashy new DR server  
+\[2019-12-31T10:20:22\]: Connected to the master server.  
 
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If during launch you get  `urllib.error.URLError` or `socket.gaierror`, there is probably something wrong with your internet connection.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
-\[2019-12-24T22:23:04\]: You have initiated a server shut down.  
-\[2019-12-24T22:23:04\]: Kicking 12 remaining clients.  
-\[2019-12-24T22:23:04\]: Server has successfully shut down.  
+\[2019-12-31T22:23:04\]: You have initiated a server shut down.  
+\[2019-12-31T22:23:04\]: Kicking 12 remaining clients.  
+\[2019-12-31T22:23:04\]: Server has successfully shut down.  
 
 * If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
@@ -99,8 +99,8 @@ Additional notes are listed at the end of the command list.
     - Lists all characters that are restricted in the current area.
 * **cleardoc**
     - Clears the doc url of the current area.
-* **coinflip**
-    - Flips a coin.
+* **coinflip** "call"
+    - Flips a coin and returns its result, as well as whatever it is called with (e.g. a prediction, consequences for heads/tails, etc.) if given.
 * **currentmusic**
     - Displays the current music and who played it.
 * **discord**
@@ -229,8 +229,8 @@ Additional notes are listed at the end of the command list.
 	- Other people in the area are warned that a whisper has taken place (but not the message content). However, staff members do get message contents, so this command should only be used in RP settings.
 * **zone_global**
     - Sends a message to all players in the zone you are in.
-* **8ball**
-    - Gains insight from the magic 8 ball.
+* **8ball** "question"
+    - Gains insight from the magic 8 ball in response to a question if given one.
 
 ### GM Commands
 
@@ -238,7 +238,7 @@ GMs can:
   - Bypass area passages and locks.
   - Receive special RP notifications.
   - Use GM commands.
-* **area_kick** "ID/IPID" "area number"
+* **area_kick** "ID" "area number"
     - Kicks target from your area to the intended area and remove them from its invite-list.
     - If not given a target area, it will use the server's default area (usually area 0).
 * **bilock** "area 1", "area 2"
@@ -291,6 +291,8 @@ GMs can:
 * **gag** "ID"
     - Changes the gagged status of a target.
     - Gagged players will be unable to talk IC properly or use other talking features such as /scream.
+* **getarea** "area"
+    - Shows the current characters in the given area, or your area if not given any.
 * **globalic** "area range start", "area range end"
     - Sends subsequence IC messages to the area range described above. Can take either area IDs or area names.
 * **globalic_pre** "prefix"
@@ -302,16 +304,13 @@ GMs can:
 * **guide** "ID/char name/edited-to character/showname/OOC name" "message"
 	- Sends an IC private 'guiding' message to the target.
 	- Unlike /whisper, other people in the area are not warned that a whisper has taken place. However, staff members do get message contents, so this command should only be used in RP settings.
-* **handicap** "ID/IPID" "length" "name" "announce if over"
-    - Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of
-    time in seconds between changing areas.
+* **handicap** "ID" "length" "name" "announce if over"
+    - Sets a movement handicap on a client by ID so that they need to wait a set amount of time in seconds between changing areas.
     - If name is given, the handicap announcement will use it as the name of the handicap.
     - If announce if over is set to any of "False, false, 0, No, no", no announcements will be sent to the player indicating that they may now move areas.
 * **iclock**
     - Changes the IC lock status of the current area.
     - If the area has an IC lock, only GMs and above will be able to send IC messages.
-* **invite** "IPID/ID/char name/edited-to character/showname/OOC name"
-    - Adds target to the invite list of your area.
 * **judgelog** "area"
     - Lists the last 20 judge actions performed in the given area (or current area if not given).
     - Each entry includes the time of execution, client ID, character name, client IPID and the judge action performed.
@@ -321,7 +320,7 @@ GMs can:
     - Lists all areas that have custom descriptions.
 * **look_set** "description"
     - Sets the area's description to the given one, or restores the default one if not given.
-* **multiclients** "ID/IPID"
+* **multiclients** "ID"
     - Lists all the clients opened by a target and the areas they are in.
 * **party_disband** "party ID"
     - Disbands a party.
@@ -337,7 +336,7 @@ GMs can:
     - Plays a song, even if not in the server music list.
 * **poison** "ID" "initials of effects" "length"
     - Applies a poison to the target that will inflict them in the given length of time in seconds the given effects.
-* **reveal** "ID/IPID"
+* **reveal** "ID"
     - Reveals a target if they were previously sneaking.
     - Also restores their formerly assigned handicap if they had one that was shorter than the server's automatic sneaking handicap.
 * **rplay** "song.mp3"
@@ -353,30 +352,34 @@ GMs can:
 * **shoutlog** "area"
     - Lists the last 20 shouts sent in the given area, or from the current area if not given.
     - Each entry includes the time of execution, client ID, character name, client IPID, the shout ID and the IC message sent alongside.
-* **sneak** "ID/IPID"
+* **showname_area** "area"
+    - Similar to /getarea, but lists shownames along with character names.
+* **sneak** "ID"
     - Sets a target to be sneaking if they were visible.
     - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
 * **st** "message"
     - Sends a message to all active staff members.
+* **toggle_allpasses*
+	- Changes your ability to receive autopass notifications from players that do not have autopass on. By default it is off.
 * **toggle_allrolls**
     - Changes your ability to receive /roll and /rollp results from other areas. By default it is off.
-* **transient** "ID/IPID"
+* **transient** "ID"
     - Changes a player's ability to ignore passage locks and thus access all areas from any given area. By default it is off.
 * **unfollow**
     - Stops following whoever you were following.
 * **unglobalic**
     - Stops sending subsequent IC messages to the area range specified in a previous /globalic command.
-* **unhandicap** "ID/IPID"
+* **unhandicap** "ID"
     - Removes movement handicaps on a target.
 * **unilock** "area 1", "area 2"
     - Changes the passage status (locked/unlocked) from area 1 to area 2.
-* **uninvite** "IPID/ID/char name/edited-to character/showname/OOC name"
+* **uninvite** "ID/char name/edited-to character/showname/OOC name"
     - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**
     - Unlocks an area, provided the lock came as a result of /gmlock or /lock.
-* **whereis** "ID/IPID"
+* **whereis** "ID"
     - Obtains the area a target is.
-* **whois** "ID/IPID"
+* **whois** "ID/char name/showname/OOC name"
     - Obtains a lot of properties of the target.
 * **zone** "area range start", "area range end"
     - Creates a zone involving the area range given above, just the given area if given one parameter, or just the current area if not given a parameter.
@@ -398,6 +401,9 @@ GMs can:
 
 ### Community Manager Commands
 
+* **area_kick** "ID/IPID" "area number"
+    - Kicks target from your area to the intended area and remove them from its invite-list.
+    - If not given a target area, it will use the server's default area (usually area 0).
 * **blockdj** "ID/IPID"
     - Mutes the target from changing music.
 * **cleargm**
@@ -406,25 +412,47 @@ GMs can:
     - Shows the current characters in your area as well as their IPIDs.
 * **getareas**
     - Shows all characters in all areas of the server as well as their IPIDs.
+* **handicap** "ID/IPID" "length" "name" "announce if over"
+    - Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of time in seconds between changing areas.
+    - If name is given, the handicap announcement will use it as the name of the handicap.
+    - If announce if over is set to any of "False, false, 0, No, no", no announcements will be sent to the player indicating that they may now move areas.
+* **invite** "ID/IPID/char name/edited-to character/showname/OOC name"
+    - Adds target to the invite list of your area.
 * **kick** "ID/IPID"
     - Kicks the target from the server.
 * **make_gm** "ID"
     - Makes the target a GM.
+* **multiclients** "ID/IPID"
+    - Lists all the clients opened by a target and the areas they are in.
 * **mute** "ID/IPID"
     - Mutes the target from all IC actions.
 * **ooc_mute** "OOC name"
     - Mutes the target from all OOC actions.
 * **ooc_unmute** "OOC name"
     - Unmutes the target.
+* **reveal** "ID/IPID"
+    - Reveals a target if they were previously sneaking.
+    - Also restores their formerly assigned handicap if they had one that was shorter than the server's automatic sneaking handicap.
 * **showname_area**
     - Similar to /getarea, but lists shownames along with character names as well as their IPIDs.
 * **showname_areas**
     - Similar to /getareas, but lists shownames along with character names as well as their IPIDs.
-* **unblockdj** "target"
+* **sneak** "ID/IPID"
+    - Sets a target to be sneaking if they were visible.
+    - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
+* **transient** "ID/IPID"
+    - Changes a player's ability to ignore passage locks and thus access all areas from any given area. By default it is off.
+* **unblockdj** "ID/IPID"
     - Allows the target to change music again.
+* **unhandicap** "ID/IPID"
+    - Removes movement handicaps on a target.
+* **uninvite** "ID/IPID/char name/edited-to character/showname/OOC name"
+    - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unmute** "ID/IPID"
     - Unmutes the target from the IC chat.
-* **whois** "ID/IPID"
+* **whereis** "ID/IPID"
+    - Obtains the area a target is.
+* **whois** "ID/IPID/char name/showname/OOC name"
     - Obtains a lot of properties of the target, including HDID and IPID.
 * **zone_delete** "zone"
     - Deletes a zone by its ID, or the zone you are watching if not given a zone.
@@ -439,9 +467,9 @@ GMs can:
 * **area_lists**
     - Lists all available area lists as established in `config/area_lists.yaml`.
 * **ban** "IPID"/"IP"
-    - Bans the IPID/IP (hdid is linked to ipid so all bans happen at the same time).
+    - Bans the specified IPID/IP (hdid is linked to ipid so all bans happen at the same time).
 * **banhdid** "HDID"
-    - Bans the HDID (hdid is linked to ipid so all bans happen at the same time).
+    - Bans the specified HDID (hdid is linked to ipid so all bans happen at the same time).
 * **bglock**
     - Toggles the background lock in the current area.
 * **can_iniswap**
@@ -471,8 +499,8 @@ GMs can:
     - Clears all shownames from non-staff members.
 * **showname_set** "ID/IPID" "showname"
     - Sets a target's showname to be the given one, or clears it if not given one.
-* **unban** "IPID"
-    - Unbans the specified IPID.
+* **unban** "IPID/IP"
+    - Unbans the specified IPID/IP.
 * **unbanhdid** "HDID"
     - Unbans the specified HDID.
 * **undisemvowel/undisemconsonant/ungimp/unremove_h** "ID/IPID"
