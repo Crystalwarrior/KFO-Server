@@ -1888,7 +1888,7 @@ def ooc_cmd_gag(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, is_staff=True)
     target = Constants.parse_id(client, arg)
 
-    status = {False: 'ungagged', True: 'gagged' }
+    status = {False: 'ungagged', True: 'gagged'}
     new_gagged = not target.is_gagged
 
     client.send_ooc('You have {} {}.'.format(status[new_gagged], target.displayname))
