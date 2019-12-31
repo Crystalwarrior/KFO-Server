@@ -385,9 +385,10 @@ class ClientChangeArea:
         # Assume client's bleeding status is worth announcing (for example, it changed or lights on)
         # If bleeding, send reminder, and notify everyone in the area if not sneaking
         # (otherwise, just send vague message).
+        others_bleeding = len([c for c in area.clients if c.is_bleeding and c != client])
 
-        if client.is_bleeding:
-            area_had_bleeding = (len([c for c in area.clients if c.is_bleeding]) > 0)
+        if client.is_bleeding and (status == 'stay' or status == 'arrived'):
+            discriminant = (others_bleeding > 0) # Check if someone was bleeding already
 
             dsh = {True: 'You start hearing more drops of blood.',
                    False: 'You faintly start hearing drops of blood.'}
@@ -396,12 +397,10 @@ class ClientChangeArea:
             dss = {True: 'You start smelling more blood.',
                    False: 'You faintly start smelling blood.'}
 
-            h_mes = dsh[area_had_bleeding] # hearing message
-            s_mes = dss[area_had_bleeding] # smelling message
-            hs_mes = dshs[area_had_bleeding] # hearing and smelling message
             vis_status = 'now'
-        else:
-            area_sole_bleeding = (len([c for c in area.clients if c.is_bleeding]) == 1)
+        elif ((client.is_bleeding and status == 'left')
+              or (not client.is_bleeding and status == 'stay')):
+            discriminant = (others_bleeding == 0) # Check if no one else in area was bleeding
             dsh = {True: 'You stop hearing drops of blood.',
                    False: 'You start hearing less drops of blood.'}
             dshs = {True: 'You stop hearing and smelling drops of blood.',
@@ -409,11 +408,16 @@ class ClientChangeArea:
             dss = {True: 'You stop smelling blood.',
                    False: 'You start smelling less blood.'}
 
-            h_mes = dsh[area_sole_bleeding] # hearing message
-            s_mes = dss[area_sole_bleeding] # smelling message
-            hs_mes = dshs[area_sole_bleeding] # hearing and smelling message
             vis_status = 'no longer'
+        else:
+            # Case client is not bleeding and status is left or arrived (or anything but 'stay')
+            # Boring cases for which the function should not be called
+            raise KeyError('Invalid call of notify_others_blood with client {}. Bleeding: {}.'
+                           'Status: {}'.format(client, client.is_bleeding, status))
 
+        h_mes = dsh[discriminant] # hearing message
+        s_mes = dss[discriminant] # smelling message
+        hs_mes = dshs[discriminant] # hearing and smelling message
         ybyd = hs_mes
         darkened = 'darkened ' if not area.lights else ''
 

@@ -338,7 +338,7 @@
   - /whisper
 * Fixed normal players being able to use /uninvite with IPID.
 
-### (4.2.3)
+### 191231a (4.2.3)
 * Added /toggle_allpasses to be able to receive autopass notifications from players that do not have autopass on
 * Added optional argument to /coinflip to call coin flip results
 * Added optional argument to /8ball to directly ask questions to the magic 8 ball
@@ -348,5 +348,6 @@
 * Allowed /whois to take HDID as an identifier (CM and mod only)
 * Removed leftover ability of GMs to use commands with IPID
 * Reworked responses of the magic 8 ball so it now chooses from a pool of 25 answers as opposed to 8
+* Fixed documentation of /unban not listing it can unban by IP address
 * Fixed GMs not receiving privileged staff notifications for autopass when players leave/enter an area whose lights are off or they enter/leave an area while sneaking
-* Fixed documentation of /unban not listing it can unban by IP address.
+* Fixed wrong messages being sent when a client is bleeding and they are sneaking or the area lights are out
