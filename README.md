@@ -198,6 +198,8 @@ Additional notes are listed at the end of the command list.
     - Displays the server's local time.
 * **time12**
     - Displays the server's local time in 12 hour format.
+* **time_est**
+    - Displays the local time in EST in 12 hour format.
 * **timer** "length" "timer name" "public"
     - Starts a timer of the given length in seconds, which will send a notification to people in the area once it expires.
     - If given a timer name, it will override the default timer name (OOCNameTimer).
