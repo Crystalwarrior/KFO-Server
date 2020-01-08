@@ -1001,6 +1001,7 @@ class ClientManager:
             info += '\n*Following: {}'.format(self.following.id if self.following else "-")
             info += '\n*Followed by: {}'.format(", ".join([str(c.id) for c in self.followedby])
                                                 if self.followedby else "-")
+            info += '\n*Is Using: {0[0]} {0[1]}'.format(self.version)
             info += ('\n*Online for: {}. Last active: {}'
                      .format(Constants.time_elapsed(self.joined), self.last_active))
             return info
