@@ -288,17 +288,23 @@ class ClientManager:
 
             # Done modifying IC message
             # Now send it
-            if sender != self:
-                self.last_ic_notme = self.area.id, pargs
 
             # This step also takes care of filtering out the packet arguments that the client
-            # cannot parse, and also make sure they are in the correct oder.
+            # cannot parse, and also make sure they are in the correct order.
+            final_pargs = dict()
             to_send = list()
-            for x in self.packet_handler.MS_OUTBOUND.value:
+            for (field, default_value) in self.packet_handler.MS_OUTBOUND.value:
                 try:
-                    to_send.append(pargs[x[0]])
+                    value = pargs[field]
                 except KeyError: # Case the key was popped (e.g. in pair code), use defaults then
-                    to_send.append(x[1])
+                    value = default_value
+                to_send.append(value)
+                final_pargs[field] = value
+
+            # Keep track of packet details in case this was sent by someone else
+            # This is used, for example, for first person mode
+            if sender != self:
+                self.last_ic_notme = self.area.id, final_pargs
 
             self.send_command('MS', *to_send)
 

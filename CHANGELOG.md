@@ -355,3 +355,7 @@
 
 ### 191231b (4.2.3-post1)
 * Fixed non-numerical HDIDs not being recognized with /whois
+
+### 200110a (4.2.3-post2)
+* Fixed players in first person mode being unable to talk after a server-initiated IC message
+
