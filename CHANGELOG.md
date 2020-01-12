@@ -359,3 +359,6 @@
 ### 200110a (4.2.3-post2)
 * Fixed players in first person mode being unable to talk after a server-initiated IC message
 
+### 200112a (4.2.3-post3)
+* Aligned wording of music list loading outputs with the ones from area list loading outputs
+* Fixed players/server being able to load music lists with invalid syntax. An informative error message will be returned to assist in fixing the music list

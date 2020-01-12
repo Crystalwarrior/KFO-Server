@@ -410,12 +410,10 @@ class ClientManager:
             reachable areas+music. Useful when moving areas/logging in or out.
             """
 
-            # Check if a new music file has been chosen, and if so, parse it and set it as the
-            # client's own music list.
+            # Check if a new music file has been chosen, and if so, parse it
             if new_music_file:
                 raw_music_list = self.server.load_music(music_list_file=new_music_file,
                                                         server_music_list=False)
-                self.music_list = raw_music_list
             else:
                 raw_music_list = None
 
@@ -438,6 +436,13 @@ class ClientManager:
                     music_list = self.server.prepare_music_list(c=self,
                                                                 specific_music_list=raw_music_list)
                     self.send_command('FM', *music_list)
+
+            # Update the new music list of the client once everything is done, if a new music list
+            # was indeed loaded. Doing this only now prevents setting the music list to something
+            # broken, as build_music_list_ao2 checks for syntax and raises an error if bad syntax
+            # so if the code makes it here, the loaded music list is good.
+            if raw_music_list:
+                self.music_list = raw_music_list
 
         def check_change_area(self, area, override_passages=False, override_effects=False,
                               more_unavail_chars=None):

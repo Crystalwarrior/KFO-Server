@@ -45,8 +45,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 3
-        self.segment_version = 'post2'
-        self.internal_version = '200110a'
+        self.segment_version = 'post3'
+        self.internal_version = '200112a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -452,12 +452,22 @@ class TsuserverDR:
             self.music_pages_ao1.append('{}#{}'.format(index, area.name))
             index += 1
         # then add music
-        for item in self.music_list:
-            self.music_pages_ao1.append('{}#{}'.format(index, item['category']))
-            index += 1
-            for song in item['songs']:
-                self.music_pages_ao1.append('{}#{}'.format(index, song['name']))
+        try:
+            for item in self.music_list:
+                self.music_pages_ao1.append('{}#{}'.format(index, item['category']))
                 index += 1
+                for song in item['songs']:
+                    self.music_pages_ao1.append('{}#{}'.format(index, song['name']))
+                    index += 1
+        except KeyError as err:
+            msg = ("The music list expected key '{}' for item {}, but could not find it."
+                   .format(err.args[0], item))
+            raise ServerError.MusicInvalid(msg)
+        except TypeError:
+            msg = ("The music list expected songs to be listed for item {}, but could not find any."
+                   .format(item))
+            raise ServerError.MusicInvalid(msg)
+
         self.music_pages_ao1 = [self.music_pages_ao1[x:x + 10] for x in range(0, len(self.music_pages_ao1), 10)]
 
     def build_music_list_ao2(self, from_area=None, c=None, music_list=None, include_areas=True,
@@ -534,11 +544,19 @@ class TsuserverDR:
                 specific_music_list = c.music_list
 
         prepared_music_list = list()
-        for item in specific_music_list:
-            prepared_music_list.append(item['category'])
-            for song in item['songs']:
-                prepared_music_list.append(song['name'])
-
+        try:
+            for item in specific_music_list:
+                prepared_music_list.append(item['category'])
+                for song in item['songs']:
+                    prepared_music_list.append(song['name'])
+        except KeyError as err:
+            msg = ("The music list expected key '{}' for item {}, but could not find it."
+                   .format(err.args[0], item))
+            raise ServerError.MusicInvalid(msg)
+        except TypeError:
+            msg = ("The music list expected songs to be listed for item {}, but could not find any."
+                   .format(item))
+            raise ServerError.MusicInvalid(msg)
         return prepared_music_list
 
     def is_valid_char_id(self, char_id):

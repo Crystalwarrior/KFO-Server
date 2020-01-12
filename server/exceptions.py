@@ -43,6 +43,9 @@ class ServerError(TsuserverException):
     class MusicNotFoundError(TsuserverException):
         pass
 
+    class MusicInvalid(TsuserverException):
+        pass
+
 class PartyError(TsuserverException):
     pass
 

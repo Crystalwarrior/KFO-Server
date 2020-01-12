@@ -3161,18 +3161,24 @@ def ooc_cmd_music_list(client: ClientManager.Client, arg: str):
     /music_list             :: Reset the music list to its default value.
     """
 
-    if len(arg) == 0:
+    if not arg:
         client.music_list = None
         client.reload_music_list()
-        client.send_ooc('Restored music list to its default value.')
+        client.send_ooc('You have restored the original music list of the server.')
     else:
         try:
             new_music_file = 'config/music_lists/{}.yaml'.format(arg)
             client.reload_music_list(new_music_file=new_music_file)
-        except ServerError:
-            raise ArgumentError('Could not find music list file: {}'.format(arg))
+        except ServerError.MusicInvalid as exc:
+            raise ArgumentError('The music list {} returned the following error when loading: `{}`.'
+                                .format(new_music_file, exc))
+        except ServerError as exc:
+            if exc.code == 'FileNotFound':
+                raise ArgumentError('Could not find the music list file `{}`.'
+                                    .format(new_music_file))
+            raise # Weird exception, reraise it
 
-        client.send_ooc('Loaded music list: {}'.format(arg))
+        client.send_ooc('You have loaded the music list {}.'.format(arg))
 
 def ooc_cmd_music_lists(client: ClientManager.Client, arg: str):
     """
