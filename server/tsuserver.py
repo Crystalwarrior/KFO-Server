@@ -45,8 +45,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 3
-        self.segment_version = 'post3'
-        self.internal_version = '200112a'
+        self.segment_version = 'post4'
+        self.internal_version = '200112b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -205,13 +205,13 @@ class TsuserverDR:
 
     def reload(self):
         with Constants.fopen('config/characters.yaml', 'r') as chars:
-            self.char_list = yaml.safe_load(chars)
+            self.char_list = Constants.yaml_load(chars)
         with Constants.fopen('config/music.yaml', 'r') as music:
-            self.music_list = yaml.safe_load(music)
+            self.music_list = Constants.yaml_load(music)
         self.build_music_pages_ao1()
         self.build_music_list_ao2()
         with Constants.fopen('config/backgrounds.yaml', 'r') as bgs:
-            self.backgrounds = yaml.safe_load(bgs)
+            self.backgrounds = Constants.yaml_load(bgs)
 
     def reload_commands(self):
         try:
@@ -239,11 +239,11 @@ class TsuserverDR:
 
     def load_backgrounds(self):
         with Constants.fopen('config/backgrounds.yaml', 'r', encoding='utf-8') as bgs:
-            self.backgrounds = yaml.safe_load(bgs)
+            self.backgrounds = Constants.yaml_load(bgs)
 
     def load_config(self):
         with Constants.fopen('config/config.yaml', 'r', encoding='utf-8') as cfg:
-            self.config = yaml.safe_load(cfg)
+            self.config = Constants.yaml_load(cfg)
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
 
         for i in range(1, 8):
@@ -302,7 +302,7 @@ class TsuserverDR:
 
     def load_characters(self):
         with Constants.fopen('config/characters.yaml', 'r', encoding='utf-8') as chars:
-            self.char_list = yaml.safe_load(chars)
+            self.char_list = Constants.yaml_load(chars)
         self.build_char_pages_ao1()
 
     def load_commandhelp(self):
@@ -403,7 +403,7 @@ class TsuserverDR:
     def load_iniswaps(self):
         try:
             with Constants.fopen('config/iniswaps.yaml', 'r', encoding='utf-8') as iniswaps:
-                self.allowed_iniswaps = yaml.safe_load(iniswaps)
+                self.allowed_iniswaps = Constants.yaml_load(iniswaps)
         except Exception as ex:
             message = 'WARNING: Error loading config/iniswaps.yaml. Will assume empty values.\n'
             message += '{}: {}'.format(type(ex).__name__, ex)
@@ -412,7 +412,7 @@ class TsuserverDR:
 
     def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
         with Constants.fopen(music_list_file, 'r', encoding='utf-8') as music:
-            music_list = yaml.safe_load(music)
+            music_list = Constants.yaml_load(music)
 
         if server_music_list:
             self.music_list = music_list

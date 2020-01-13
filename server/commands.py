@@ -3169,7 +3169,7 @@ def ooc_cmd_music_list(client: ClientManager.Client, arg: str):
         try:
             new_music_file = 'config/music_lists/{}.yaml'.format(arg)
             client.reload_music_list(new_music_file=new_music_file)
-        except ServerError.MusicInvalid as exc:
+        except ServerError.MusicInvalidError as exc:
             raise ArgumentError('The music list {} returned the following error when loading: `{}`.'
                                 .format(new_music_file, exc))
         except ServerError as exc:

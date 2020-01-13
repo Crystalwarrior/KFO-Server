@@ -866,7 +866,7 @@ class AreaManager:
 
         # Check if valid area list file
         with Constants.fopen(area_list_file, 'r') as chars:
-            areas = yaml.safe_load(chars)
+            areas = Constants.yaml_load(chars)
 
         def_param = {
             'bglock': False,
