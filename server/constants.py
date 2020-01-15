@@ -20,6 +20,7 @@ import random
 import re
 import time
 import warnings
+import yaml
 
 from enum import Enum
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
@@ -163,6 +164,19 @@ class Constants():
             raise ServerError(info, code="FileNotFound")
         except OSError as ex:
             raise ServerError(str(ex))
+
+    @staticmethod
+    def yaml_load(file):
+        try:
+            return yaml.safe_load(file)
+        except yaml.YAMLError as exc:
+            # Extract the name of the yaml
+            separator = max(file.name.rfind('\\'), file.name.rfind('/'))
+            file_name = file.name[separator+1:]
+            # Then raise the exception
+            msg = ('File {} returned the following YAML error when loading: `{}`.'
+                   .format(file_name, exc))
+            raise ServerError.YAMLInvalidError(msg)
 
     @staticmethod
     def get_time():

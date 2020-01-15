@@ -40,7 +40,23 @@ class ArgumentError(TsuserverException):
     pass
 
 class ServerError(TsuserverException):
+    class ServerFileNotFoundError(TsuserverException):
+        pass
+
     class MusicNotFoundError(TsuserverException):
+        pass
+
+    class MusicInvalid(TsuserverException):
+        # Remove, kept for backwards compatibility
+        pass
+
+    class MusicInvalidError(TsuserverException):
+        pass
+
+    class YAMLNotFoundError(TsuserverException):
+        pass
+
+    class YAMLInvalidError(TsuserverException):
         pass
 
 class PartyError(TsuserverException):

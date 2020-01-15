@@ -288,17 +288,23 @@ class ClientManager:
 
             # Done modifying IC message
             # Now send it
-            if sender != self:
-                self.last_ic_notme = self.area.id, pargs
 
             # This step also takes care of filtering out the packet arguments that the client
-            # cannot parse, and also make sure they are in the correct oder.
+            # cannot parse, and also make sure they are in the correct order.
+            final_pargs = dict()
             to_send = list()
-            for x in self.packet_handler.MS_OUTBOUND.value:
+            for (field, default_value) in self.packet_handler.MS_OUTBOUND.value:
                 try:
-                    to_send.append(pargs[x[0]])
+                    value = pargs[field]
                 except KeyError: # Case the key was popped (e.g. in pair code), use defaults then
-                    to_send.append(x[1])
+                    value = default_value
+                to_send.append(value)
+                final_pargs[field] = value
+
+            # Keep track of packet details in case this was sent by someone else
+            # This is used, for example, for first person mode
+            if sender != self:
+                self.last_ic_notme = self.area.id, final_pargs
 
             self.send_command('MS', *to_send)
 
@@ -404,12 +410,10 @@ class ClientManager:
             reachable areas+music. Useful when moving areas/logging in or out.
             """
 
-            # Check if a new music file has been chosen, and if so, parse it and set it as the
-            # client's own music list.
+            # Check if a new music file has been chosen, and if so, parse it
             if new_music_file:
                 raw_music_list = self.server.load_music(music_list_file=new_music_file,
                                                         server_music_list=False)
-                self.music_list = raw_music_list
             else:
                 raw_music_list = None
 
@@ -432,6 +436,13 @@ class ClientManager:
                     music_list = self.server.prepare_music_list(c=self,
                                                                 specific_music_list=raw_music_list)
                     self.send_command('FM', *music_list)
+
+            # Update the new music list of the client once everything is done, if a new music list
+            # was indeed loaded. Doing this only now prevents setting the music list to something
+            # broken, as build_music_list_ao2 checks for syntax and raises an error if bad syntax
+            # so if the code makes it here, the loaded music list is good.
+            if raw_music_list:
+                self.music_list = raw_music_list
 
         def check_change_area(self, area, override_passages=False, override_effects=False,
                               more_unavail_chars=None):

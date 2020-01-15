@@ -45,8 +45,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a2'
-        self.internal_version = '200107a'
+        self.segment_version = 'a3'
+        self.internal_version = '200115a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -205,13 +205,13 @@ class TsuserverDR:
 
     def reload(self):
         with Constants.fopen('config/characters.yaml', 'r') as chars:
-            self.char_list = yaml.safe_load(chars)
+            self.char_list = Constants.yaml_load(chars)
         with Constants.fopen('config/music.yaml', 'r') as music:
-            self.music_list = yaml.safe_load(music)
+            self.music_list = Constants.yaml_load(music)
         self.build_music_pages_ao1()
         self.build_music_list_ao2()
         with Constants.fopen('config/backgrounds.yaml', 'r') as bgs:
-            self.backgrounds = yaml.safe_load(bgs)
+            self.backgrounds = Constants.yaml_load(bgs)
 
     def reload_commands(self):
         try:
@@ -239,11 +239,11 @@ class TsuserverDR:
 
     def load_backgrounds(self):
         with Constants.fopen('config/backgrounds.yaml', 'r', encoding='utf-8') as bgs:
-            self.backgrounds = yaml.safe_load(bgs)
+            self.backgrounds = Constants.yaml_load(bgs)
 
     def load_config(self):
         with Constants.fopen('config/config.yaml', 'r', encoding='utf-8') as cfg:
-            self.config = yaml.safe_load(cfg)
+            self.config = Constants.yaml_load(cfg)
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
 
         for i in range(1, 8):
@@ -302,7 +302,7 @@ class TsuserverDR:
 
     def load_characters(self):
         with Constants.fopen('config/characters.yaml', 'r', encoding='utf-8') as chars:
-            self.char_list = yaml.safe_load(chars)
+            self.char_list = Constants.yaml_load(chars)
         self.build_char_pages_ao1()
 
     def load_commandhelp(self):
@@ -403,7 +403,7 @@ class TsuserverDR:
     def load_iniswaps(self):
         try:
             with Constants.fopen('config/iniswaps.yaml', 'r', encoding='utf-8') as iniswaps:
-                self.allowed_iniswaps = yaml.safe_load(iniswaps)
+                self.allowed_iniswaps = Constants.yaml_load(iniswaps)
         except Exception as ex:
             message = 'WARNING: Error loading config/iniswaps.yaml. Will assume empty values.\n'
             message += '{}: {}'.format(type(ex).__name__, ex)
@@ -412,7 +412,7 @@ class TsuserverDR:
 
     def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
         with Constants.fopen(music_list_file, 'r', encoding='utf-8') as music:
-            music_list = yaml.safe_load(music)
+            music_list = Constants.yaml_load(music)
 
         if server_music_list:
             self.music_list = music_list
@@ -452,12 +452,22 @@ class TsuserverDR:
             self.music_pages_ao1.append('{}#{}'.format(index, area.name))
             index += 1
         # then add music
-        for item in self.music_list:
-            self.music_pages_ao1.append('{}#{}'.format(index, item['category']))
-            index += 1
-            for song in item['songs']:
-                self.music_pages_ao1.append('{}#{}'.format(index, song['name']))
+        try:
+            for item in self.music_list:
+                self.music_pages_ao1.append('{}#{}'.format(index, item['category']))
                 index += 1
+                for song in item['songs']:
+                    self.music_pages_ao1.append('{}#{}'.format(index, song['name']))
+                    index += 1
+        except KeyError as err:
+            msg = ("The music list expected key '{}' for item {}, but could not find it."
+                   .format(err.args[0], item))
+            raise ServerError.MusicInvalid(msg)
+        except TypeError:
+            msg = ("The music list expected songs to be listed for item {}, but could not find any."
+                   .format(item))
+            raise ServerError.MusicInvalid(msg)
+
         self.music_pages_ao1 = [self.music_pages_ao1[x:x + 10] for x in range(0, len(self.music_pages_ao1), 10)]
 
     def build_music_list_ao2(self, from_area=None, c=None, music_list=None, include_areas=True,
@@ -534,11 +544,19 @@ class TsuserverDR:
                 specific_music_list = c.music_list
 
         prepared_music_list = list()
-        for item in specific_music_list:
-            prepared_music_list.append(item['category'])
-            for song in item['songs']:
-                prepared_music_list.append(song['name'])
-
+        try:
+            for item in specific_music_list:
+                prepared_music_list.append(item['category'])
+                for song in item['songs']:
+                    prepared_music_list.append(song['name'])
+        except KeyError as err:
+            msg = ("The music list expected key '{}' for item {}, but could not find it."
+                   .format(err.args[0], item))
+            raise ServerError.MusicInvalid(msg)
+        except TypeError:
+            msg = ("The music list expected songs to be listed for item {}, but could not find any."
+                   .format(item))
+            raise ServerError.MusicInvalid(msg)
         return prepared_music_list
 
     def is_valid_char_id(self, char_id):
