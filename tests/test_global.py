@@ -42,35 +42,6 @@ class TestGlobal_01_ToggleGlobal(_TestOOC):
         self.assertFalse(self.c2.muted_global)
         self.assertFalse(self.c3.muted_global)
 
-    def test_03_deprecatedname(self):
-        """
-        Situation: Client uses /toggleglobal (deprecated name). It works... for now.
-        """
-
-        self.c0.ooc('/toggleglobal')
-        self.c0.assert_ooc('This command is deprecated and pending removal in 4.3. Please use '
-                           '/toggle_global next time.')
-        self.c0.assert_ooc('You will no longer receive global messages.', over=True)
-        self.c1.assert_no_ooc()
-        self.c2.assert_no_ooc()
-        self.c3.assert_no_ooc()
-        self.assertTrue(self.c0.muted_global)
-        self.assertFalse(self.c1.muted_global)
-        self.assertFalse(self.c2.muted_global)
-        self.assertFalse(self.c3.muted_global)
-
-        self.c0.ooc('/toggleglobal')
-        self.c0.assert_ooc('This command is deprecated and pending removal in 4.3. Please use '
-                           '/toggle_global next time.')
-        self.c0.assert_ooc('You will now receive global messages.', over=True)
-        self.c1.assert_no_ooc()
-        self.c2.assert_no_ooc()
-        self.c3.assert_no_ooc()
-        self.assertFalse(self.c0.muted_global)
-        self.assertFalse(self.c1.muted_global)
-        self.assertFalse(self.c2.muted_global)
-        self.assertFalse(self.c3.muted_global)
-
 class TestGlobal_02_Announce(_TestOOC):
     def test_01_wrongarguments(self):
         """

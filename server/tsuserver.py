@@ -24,9 +24,6 @@ import ssl
 import sys
 import traceback
 import urllib.request
-import warnings
-import yaml
-
 from server import logger
 from server.aoprotocol import AOProtocol
 from server.area_manager import AreaManager
@@ -45,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a3'
-        self.internal_version = '200115a'
+        self.segment_version = 'a4'
+        self.internal_version = '200115b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -88,7 +85,6 @@ class TsuserverDR:
         self.ipid_list = {}
         self.hdid_list = {}
         self.music_list = None
-        self._music_list_ao2 = None # Pending deprecation in 4.3
         self.music_pages_ao1 = None
         self.backgrounds = None
         self.load_music()
@@ -98,8 +94,6 @@ class TsuserverDR:
         self.ms_client = None
         self.rp_mode = False
         self.user_auth_req = False
-        # self.client_tasks = dict() # KEPT FOR BACKWARDS COMPATIBILITY
-        # self.active_timers = dict() # KEPT FOR BACKWARDS COMPATIBILITY
         self.showname_freeze = False
         self.commands = importlib.import_module('server.commands')
         self.commands_alt = importlib.import_module('server.commands_alt')
@@ -123,15 +117,16 @@ class TsuserverDR:
             server_name = self.config['masterserver_name']
             logger.log_print('Starting a nonlocal server...')
 
-        ao_server_crt = self.loop.create_server(lambda: self.protocol(self), bound_ip, self.config['port'])
-        ao_server = self.loop.run_until_complete(ao_server_crt)
+        server = self.loop.create_server(lambda: self.protocol(self), bound_ip, self.config['port'])
+        ao_server = self.loop.run_until_complete(server)
 
         logger.log_pserver('Server started successfully!')
 
         if self.config['local']:
             host_ip = '127.0.0.1'
         else:
-            host_ip = urllib.request.urlopen('https://api.ipify.org', context=ssl.SSLContext()).read().decode('utf8')
+            request = urllib.request.urlopen('https://api.ipify.org', context=ssl.SSLContext())
+            host_ip = request.read().decode('utf8')
 
         logger.log_pdebug('Server should be now accessible from {}:{}:{}'
                           .format(host_ip, self.config['port'], server_name))
@@ -141,14 +136,16 @@ class TsuserverDR:
 
         if self.config['use_district']:
             self.district_client = DistrictClient(self)
-            self.district_connection = asyncio.ensure_future(self.district_client.connect(), loop=self.loop)
+            self.district_connection = asyncio.ensure_future(self.district_client.connect(),
+                                                             loop=self.loop)
             print(' ')
             logger.log_print('Attempting to connect to district at {}:{}.'
                              .format(self.config['district_ip'], self.config['district_port']))
 
         if self.config['use_masterserver']:
             self.ms_client = MasterServerClient(self)
-            self.masterserver_connection = asyncio.ensure_future(self.ms_client.connect(), loop=self.loop)
+            self.masterserver_connection = asyncio.ensure_future(self.ms_client.connect(),
+                                                                 loop=self.loop)
             print(' ')
             logger.log_print('Attempting to connect to the master server at {}:{} with the '
                              'following details:'.format(self.config['masterserver_ip'],
@@ -482,7 +479,6 @@ class TsuserverDR:
         if include_music:
             built_music_list.extend(self.prepare_music_list(c=c, specific_music_list=music_list))
 
-        self._music_list_ao2 = built_music_list # Backwards compatibility
         return built_music_list
 
     def prepare_area_list(self, c=None, from_area=None):
@@ -643,7 +639,7 @@ class TsuserverDR:
         logger.log_error(info, server=self, errortype='C')
 
         if self.in_test:
-            raise
+            raise ex
 
     def broadcast_global(self, client, msg, as_mod=False,
                          mtype="<dollar>G", condition=lambda x: not x.muted_global):
@@ -653,8 +649,8 @@ class TsuserverDR:
             ooc_name += '[M]'
         self.send_all_cmd_pred('CT', ooc_name, msg, pred=condition)
         if self.config['use_district']:
-            self.district_client.send_raw_message(
-                'GLOBAL#{}#{}#{}#{}'.format(int(as_mod), client.area.id, username, msg))
+            msg = 'GLOBAL#{}#{}#{}#{}'.format(int(as_mod), client.area.id, username, msg)
+            self.district_client.send_raw_message(msg)
 
     def broadcast_need(self, client, msg):
         char_name = client.displayname
@@ -662,88 +658,8 @@ class TsuserverDR:
         area_id = client.area.id
         self.send_all_cmd_pred('CT', '{}'.format(self.config['hostname']),
                                '=== Advert ===\r\n{} in {} [{}] needs {}\r\n==============='
-                               .format(char_name, area_name, area_id, msg), pred=lambda x: not x.muted_adverts)
+                               .format(char_name, area_name, area_id, msg),
+                               pred=lambda x: not x.muted_adverts)
         if self.config['use_district']:
-            self.district_client.send_raw_message('NEED#{}#{}#{}#{}'.format(char_name, area_name, area_id, msg))
-
-    """
-    OLD CODE.
-    KEPT FOR BACKWARDS COMPATIBILITY WITH PRE 4.2 TSUSERVERDR.
-    """
-
-    def create_task(self, client, args):
-        self.task_deprecation_warning()
-        self.tasker.create_task(client, args)
-
-    def cancel_task(self, task):
-        """ Cancels current task and sends order to await cancellation """
-        self.task_deprecation_warning()
-        self.tasker.cancel_task(task)
-
-    def remove_task(self, client, args):
-        """ Given client and task name, removes task from server.client_tasks, and cancels it """
-        self.task_deprecation_warning()
-        self.tasker.remove_task(client, args)
-
-    def get_task(self, client, args):
-        """ Returns actual task instance """
-        self.task_deprecation_warning()
-        return self.tasker.get_task(client, args)
-
-    def get_task_args(self, client, args):
-        """ Returns input arguments of task """
-        self.task_deprecation_warning()
-        return self.tasker.get_task_args(client, args)
-
-    def get_task_attr(self, client, args, attr):
-        """ Returns task attribute """
-        self.task_deprecation_warning()
-        return self.tasker.get_task_attr(client, args, attr)
-
-    def set_task_attr(self, client, args, attr, value):
-        """ Sets task attribute """
-        self.task_deprecation_warning()
-        self.tasker.set_task_attr(client, args, attr, value)
-
-    @property
-    def active_timers(self):
-        self.task_deprecation_warning()
-        return self.tasker.active_timers
-
-    @property
-    def client_tasks(self):
-        self.task_deprecation_warning()
-        return self.tasker.client_tasks
-
-    @active_timers.setter
-    def active_timers(self, value):
-        self.task_deprecation_warning()
-        self.tasker.active_timers = value
-
-    @client_tasks.setter
-    def client_tasks(self, value):
-        self.task_deprecation_warning()
-        self.tasker.client_tasks = value
-
-    @property
-    def music_list_ao2(self):
-        self.music_list_ao2_deprecation_warning()
-        return self._music_list_ao2
-
-    @music_list_ao2.setter
-    def music_list_ao2(self, value):
-        self.music_list_ao2_deprecation_warning()
-        self._music_list_ao2 = value
-
-    def task_deprecation_warning(self):
-        message = ('Code is using old task syntax (assuming it is a server property/method). '
-                   'Please change it (or ask your server developer) so that it uses '
-                   'server.tasker instead (pending removal in 4.3).')
-        warnings.warn(message, category=UserWarning, stacklevel=3)
-
-    def music_list_ao2_deprecation_warning(self):
-        message = ('Code is currently using old music_list_ao2_syntax (assuming it is a server '
-                   'property/method). Please change it (or ask your server develop) so that it '
-                   'uses the return value of self.build_music_list_ao2() instead (pending removal '
-                   'in 4.3).')
-        warnings.warn(message, category=UserWarning, stacklevel=3)
+            msg = 'NEED#{}#{}#{}#{}'.format(char_name, area_name, area_id, msg)
+            self.district_client.send_raw_message(msg)

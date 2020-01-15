@@ -18,7 +18,6 @@
 
 import datetime
 import time
-import warnings
 
 from server import client_changearea
 from server import fantacrypt
@@ -164,8 +163,8 @@ class ClientManager:
             self.server.make_all_clients_do("send_ooc", msg, pred=cond, allow_empty=allow_empty,
                                             username=username)
 
-        def send_ic(self, ic_params=None, params=None, sender=None, pred=None, not_to=None,
-                    gag_replaced=False, is_staff=None, in_area=None, to_blind=None, to_deaf=None,
+        def send_ic(self, params=None, sender=None, pred=None, not_to=None, gag_replaced=False,
+                    is_staff=None, in_area=None, to_blind=None, to_deaf=None,
                     bypass_replace=False, bypass_deafened_starters=False,
                     msg=None, pos=None, cid=None, ding=None, color=None, showname=None):
 
@@ -173,24 +172,16 @@ class ClientManager:
             # self is who is receiving the IC message at this particular moment
 
             # Assert correct call to the function
-            if ic_params is None and params is None and msg is None:
+            if params is None and msg is None:
                 raise ValueError('Expected message.')
-
-            if ic_params is not None and params is not None:
-                raise ValueError('Conflicting ic_params and params')
-
-            if ic_params is not None:
-                self.ic_params_deprecation_warning()
-                params = {self.packet_handler.MS_OUTBOUND.value[i][0]: ic_params[i]
-                          for i in range(len(ic_params))}
 
             # Fill in defaults
             # Expected behavior is as follows:
-            #  If ic_params is None, then the sent IC message will only include custom details
+            #  If params is None, then the sent IC message will only include custom details
             #  about the ding and the message, everything else is fixed. However, sender details
             #  are considered when replacing the parameters based on sender/receiver's properties
-            #  If ic_params is not None, then the sent IC message will use the parameters given in
-            #  ic_params, and use the properties of sender to replace the parameters if needed.
+            #  If params is not None, then the sent IC message will use the parameters given in
+            #  params, and use the properties of sender to replace the parameters if needed.
 
             pargs = {x: y for (x, y) in self.packet_handler.MS_OUTBOUND.value}
             if params is None:
@@ -308,20 +299,19 @@ class ClientManager:
 
             self.send_command('MS', *to_send)
 
-        def send_ic_others(self, ic_params=None, params=None, sender=None, bypass_replace=False,
-                           pred=None, not_to=None, gag_replaced=False, is_staff=None, in_area=None,
+        def send_ic_others(self, params=None, sender=None, bypass_replace=False, pred=None,
+                           not_to=None, gag_replaced=False, is_staff=None, in_area=None,
                            to_blind=None, to_deaf=None,
                            msg=None, pos=None, cid=None, ding=None, color=None, showname=None):
-            if ic_params is not None:
-                self.ic_params_deprecation_warning()
+
             if not_to is None:
                 not_to = {self}
             else:
                 not_to = not_to.union({self})
 
             for c in self.server.client_manager.clients:
-                c.send_ic(ic_params=None, params=None, sender=sender, bypass_replace=bypass_replace,
-                          pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
+                c.send_ic(params=None, sender=sender, bypass_replace=bypass_replace, pred=pred,
+                          not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
                           msg=msg, pos=pos, cid=cid, ding=ding, color=color, showname=showname)
 
@@ -1054,12 +1044,6 @@ class ClientManager:
                     .format(self.id, self.ipid, self.name, self.get_char_name(), self.showname,
                             self.is_staff(), self.area.id))
 
-        def ic_params_deprecation_warning(self):
-            message = ('Code is using old IC params syntax (using ic_params as an argument). '
-                       'Please change it (or ask your server developer) so that it uses '
-                       'params instead (pending removal in 4.2).')
-            warnings.warn(message, category=UserWarning, stacklevel=3)
-
     def __init__(self, server, client_obj=None):
         if client_obj is None:
             self.client_obj = self.Client
@@ -1231,7 +1215,7 @@ class ClientManager:
         """
 
         split_identifier = identifier.split(' ')
-        multiple_match_message = ''
+        multiple_match_mes = ''
         valid_targets = list()
 
         def _discard_sneaked_if_needed(targets):
@@ -1278,10 +1262,10 @@ class ClientManager:
             # Otherwise, other identifiers may not be unique, so consider all possibilities
             # Pretend the identity is a character name, iniswapped to folder, a showname or OOC name
             possibilities = [
-                    (TargetType.CHAR_NAME, lambda target: target.get_char_name()),
-                    (TargetType.CHAR_FOLDER, lambda target: target.char_folder),
-                    (TargetType.SHOWNAME, lambda target: target.showname),
-                    (TargetType.OOC_NAME, lambda target: target.name)]
+                (TargetType.CHAR_NAME, lambda target: target.get_char_name()),
+                (TargetType.CHAR_FOLDER, lambda target: target.char_folder),
+                (TargetType.SHOWNAME, lambda target: target.showname),
+                (TargetType.OOC_NAME, lambda target: target.name)]
             targets = set()
 
             # Match against everything
@@ -1307,19 +1291,19 @@ class ClientManager:
             else:
                 # Otherwise, our identity guess was not precise enough, so keep track of that
                 # for later and continue with the for loop
-                multiple_match_message = 'Multiple targets match identifier `{}`'.format(identity)
+                multiple_match_mes = 'Multiple targets match identifier `{}`'.format(identity)
                 for target in sorted(list(targets), key=lambda c: c.id):
                     char = target.get_char_name()
                     if target.char_folder and target.char_folder != char: # Show iniswap if needed
                         char = '{}/{}'.format(char, target.char_folder)
 
-                    multiple_match_message += ('\r\n*[{}] {} ({}) (OOC: {})'
-                            .format(target.id, char, target.showname, target.name))
+                    multiple_match_mes += ('\r\n*[{}] {} ({}) (OOC: {})'
+                                           .format(target.id, char, target.showname, target.name))
 
         if not valid_targets or len(valid_targets) > 1:
             # If was able to match more than one at some point, return that
-            if multiple_match_message:
-                raise ClientError(multiple_match_message)
+            if multiple_match_mes:
+                raise ClientError(multiple_match_mes)
             # Otherwise, show that no match was ever found
             raise ClientError('No targets with identifier `{}` found.'.format(identifier))
 
