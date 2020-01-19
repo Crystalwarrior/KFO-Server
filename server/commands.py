@@ -191,6 +191,9 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
     if not client.is_mod:
         raise ClientError('You must be authorized to do that.')
 
+    # lists which areas are locked before the reload
+    old_locked_areas = [area.name for area in client.server.area_manager.areas if area.is_locked]
+    
     if not arg:
         client.server.area_manager.load_areas()
         client.send_ooc('You have restored the original area list of the server.')
@@ -210,10 +213,22 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
             raise ArgumentError('The area list {} returned the following error when loading: `{}`.'
                                 .format(new_area_file, exc))
 
+
         client.send_ooc('You have loaded the area list {}.'.format(arg))
         client.send_ooc_others('The area list {} has been loaded.'.format(arg), is_staff=False)
         client.send_ooc_others('{} has loaded the area list {}.'.format(client.name, arg),
                                is_staff=True)
+
+    # Every area that was locked before the reload gets warned that their areas were unlocked.
+    for area_name in old_locked_areas:
+        try:
+            area = client.server.area_manager.get_area_by_name(area_name)
+            area.broadcast_ooc('This area became unlocked after the area reload. Relock it using '
+			                   '/lock.')
+        # if no area is found with that name, then an old locked area does not exist anymore, so 
+        # we do not need to do anything.
+        except AreaError:
+            pass
 
 def ooc_cmd_area_lists(client: ClientManager.Client, arg: str):
     """ (MOD ONLY)
