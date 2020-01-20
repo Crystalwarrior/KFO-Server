@@ -292,6 +292,8 @@ class _TestClientManager(ClientManager):
             assert self.area.id == area_id, (self.area.id, area_id, as_command)
 
             if discard_trivial:
+                # Discard the trivial packets
+                # Note we use somewhere because MS usually comes between LE and FM
                 packets_to_discard = (
                                     ['HP', None],
                                     ['HP', None],
@@ -300,7 +302,13 @@ class _TestClientManager(ClientManager):
                                     ['FM', None]
                                     )
                 for packet in packets_to_discard:
-                    self.discard_packet(packet)
+                    self.discard_packet(packet, somewhere=True)
+
+                # Discard IC blankpost and OOC standard notification
+                _, x = self.search_match(['MS', None],
+                                          self.received_packets, somewhere=True, remove_match=True,
+                                          allow_partial_match=True)
+                self.discard_ic(x[1])
 
                 _, x = self.search_match(['CT', ('<dollar>H', 'Changed area to')],
                                           self.received_packets, somewhere=True, remove_match=True,
@@ -645,9 +653,15 @@ class _TestClientManager(ClientManager):
             except AssertionError:
                 pass
 
-        def discard_ooc(self, ooc):
+        def discard_ic(self, message):
             try:
-                self.search_match(ooc, self.received_ooc, somewhere=True, remove_match=True)
+                self.search_match(message, self.received_ic, somewhere=True, remove_match=True)
+            except AssertionError:
+                pass
+
+        def discard_ooc(self, message):
+            try:
+                self.search_match(message, self.received_ooc, somewhere=True, remove_match=True)
             except AssertionError:
                 pass
 
@@ -712,7 +726,8 @@ class _TestClientManager(ClientManager):
                 # 15 = showname
                 if not (len(args) == 16):
                     raise ValueError('Malformed MS packet for an IC message {}'.format(args))
-                if args[2] != self.last_ic[0] or args[4] != self.last_ic[1]:
+                # AO/DRO Client discards repetitions, except when it comes from a system IC message
+                if (args[8] == -1) or (args[2] != self.last_ic[0] or args[4] != self.last_ic[1]):
                     self.received_ic.append(args)
                     self.last_ic = args[2], args[4]
                 else:

@@ -92,7 +92,7 @@ class Clients():
             ('pos', 'jud'), #5
             ('sfx', 0), #6
             ('anim_type', 0), #7
-            ('cid', 0), #8
+            ('cid', -1), #8
             ('sfx_delay', 0), #9
             ('button', 0), #10
             ('evidence', 0), #11

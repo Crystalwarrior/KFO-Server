@@ -256,10 +256,10 @@ class TestZoneEffect_02_Play(_TestZone):
         self.c2.discard_all()
 
         self.c1.ooc('/zone_play Hello.mp3')
-        self.c0.assert_packet('MC', ('Hello.mp3', 1), over=True)
-        self.c1.assert_packet('MC', ('Hello.mp3', 1), over=True)
-        self.c2.assert_packet('MC', ('Hello.mp3', 1), over=True)
-        self.c3.assert_packet('MC', ('Hello.mp3', 1), over=True)
+        self.c0.assert_packet('MC', ('Hello.mp3', 1, ''), over=True)
+        self.c1.assert_packet('MC', ('Hello.mp3', 1, ''), over=True)
+        self.c2.assert_packet('MC', ('Hello.mp3', 1, ''), over=True)
+        self.c3.assert_packet('MC', ('Hello.mp3', 1, ''), over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
@@ -268,11 +268,11 @@ class TestZoneEffect_02_Play(_TestZone):
         self.c1.discard_all() # Discard C3 moving out of zone and C5 moving into zone notifications
 
         self.c1.ooc('/zone_play Is it you.mp3')
-        self.c0.assert_packet('MC', ('Is it you.mp3', 1), over=True)
-        self.c1.assert_packet('MC', ('Is it you.mp3', 1), over=True)
-        self.c2.assert_packet('MC', ('Is it you.mp3', 1), over=True)
+        self.c0.assert_packet('MC', ('Is it you.mp3', 1, ''), over=True)
+        self.c1.assert_packet('MC', ('Is it you.mp3', 1, ''), over=True)
+        self.c2.assert_packet('MC', ('Is it you.mp3', 1, ''), over=True)
         self.c3.assert_no_packets()
-        self.c5.assert_packet('MC', ('Is it you.mp3', 1), over=True)
+        self.c5.assert_packet('MC', ('Is it you.mp3', 1, ''), over=True)
         self.c4.assert_no_packets()
 
 class TestZoneEffect_03_RPNotifications(_TestZone):
