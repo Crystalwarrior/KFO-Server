@@ -25,7 +25,6 @@ all necessary actions in order to simulate different rooms.
 
 import asyncio
 import time
-import yaml
 
 from server import logger
 from server.constants import Constants
@@ -83,6 +82,7 @@ class AreaManager:
             self.last_ic_messages = list()
             self.parties = set()
             self.dicelog = list()
+            self.lurk_length = 0
             self._in_zone = None
 
             self.name = parameters['area']
@@ -605,7 +605,7 @@ class AreaManager:
                     raise
                 name, length = name, -1
 
-            self.play_music(name, client.char_id, length)
+            self.play_music(name, client.char_id, length, showname=client.showname)
             self.add_music_playing(client, name)
 
             logger.log_server('[{}][{}]Changed music to {}.'
@@ -617,7 +617,7 @@ class AreaManager:
                 client.send_ooc_others('(X) {} revealed themselves by playing music ({}).'
                                        .format(client.displayname, client.area.id), is_zstaff=True)
 
-        def play_music(self, name, cid, length=-1):
+        def play_music(self, name, cid, length=-1, showname=''):
             """
             Start playing a music track in an area.
 
@@ -632,7 +632,7 @@ class AreaManager:
                 Defaults to -1 (no looping).
             """
 
-            self.send_command('MC', name, cid)
+            self.send_command('MC', name, cid, showname)
 
             if self.music_looper:
                 self.music_looper.cancel()

@@ -193,7 +193,7 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
 
     # lists which areas are locked before the reload
     old_locked_areas = [area.name for area in client.server.area_manager.areas if area.is_locked]
-    
+
     if not arg:
         client.server.area_manager.load_areas()
         client.send_ooc('You have restored the original area list of the server.')
@@ -225,7 +225,7 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
             area = client.server.area_manager.get_area_by_name(area_name)
             area.broadcast_ooc('This area became unlocked after the area reload. Relock it using '
 			                   '/lock.')
-        # if no area is found with that name, then an old locked area does not exist anymore, so 
+        # if no area is found with that name, then an old locked area does not exist anymore, so
         # we do not need to do anything.
         except AreaError:
             pass
@@ -4874,7 +4874,7 @@ def ooc_cmd_sneak(client: ClientManager.Client, arg: str):
                                .format(client.name, c.displayname, c.area.id), not_to={c},
                                is_zstaff=True)
 
-def ooc_cmd_spectate(client: ClientManager.Client, arg):
+def ooc_cmd_spectate(client: ClientManager.Client, arg: str):
     """
     Switches user's current character to the SPECTATOR character.
     Returns an error if their character is already a SPECTATOR.
@@ -4886,22 +4886,18 @@ def ooc_cmd_spectate(client: ClientManager.Client, arg):
     None
 
     EXAMPLES
-    /spectate                       ::Returns "You are now spectating."
-					or "You are already spectating."
+    /spectate                       :: Returns "You are now spectating."
     """
 
-    if len(arg) != 0:
-        client.send_ooc('This command has no arguments.')
+    Constants.assert_command(client, arg, parameters='=0')
 
     # If user is already SPECTATOR, no need to change.
     if client.char_id == -1:
         raise ClientError('You are already spectating.')
-    
+
     # Change the character to SPECTATOR
     client.change_character(-1)
     client.send_ooc('You are now spectating.')
-
-
 
 def ooc_cmd_st(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
