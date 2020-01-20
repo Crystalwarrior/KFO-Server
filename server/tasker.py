@@ -243,7 +243,7 @@ class Tasker:
                         c.send_ooc('{} was AFK kicked from your party.'.format(original_name))
 
     async def as_day_cycle(self, client, args):
-        time_start, area_1, area_2, hour_length, hour_start, send_first_hour = args
+        _, area_1, area_2, hour_length, hour_start, send_first_hour = args
         hour = hour_start
         minute_at_interruption = 0
         hour_paused_at = time.time() # Does not need initialization, but PyLint complains otherwise
@@ -272,8 +272,10 @@ class Tasker:
                       self.get_task_attr(client, ['as_day_cycle'], 'just_unpaused')):
                     client.send_ooc('Your day cycle in areas {} through {} has been unpaused.'
                                     .format(area_1, area_2))
-                    client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through {} has been unpaused.'
-                                           .format(client.name, area_1, area_2), is_zstaff_flex=True)
+                    client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through '
+                                           '{} has been unpaused.'
+                                           .format(client.name, area_1, area_2),
+                                           is_zstaff_flex=True)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_unpaused', False)
 
@@ -306,8 +308,10 @@ class Tasker:
                 if not is_paused:
                     client.send_ooc('Your day cycle in areas {} through {} has been canceled.'
                                     .format(area_1, area_2))
-                    client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through {} has been canceled.'
-                                           .format(client.name, area_1, area_2), is_zstaff_flex=True)
+                    client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through '
+                                           '{} has been canceled.'
+                                           .format(client.name, area_1, area_2),
+                                           is_zstaff_flex=True)
                     targets = [c for c in self.server.client_manager.clients if c == client or
                                area_1 <= c.area.id <= area_2]
                     for c in targets:
@@ -321,7 +325,8 @@ class Tasker:
                                                    '{0:02d}'.format(int(minute)))
                     client.send_ooc('Your day cycle in areas {} through {} has been paused at {}.'
                                     .format(area_1, area_2, time_at_pause))
-                    client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through {} has been paused at {}.'
+                    client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through '
+                                           '{} has been paused at {}.'
                                            .format(client.name, area_1, area_2, time_at_pause),
                                            is_zstaff_flex=True)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_paused', True)
@@ -333,7 +338,7 @@ class Tasker:
                 send_first_hour = True
 
     async def as_effect(self, client, args):
-        start, length, effect, new_value = args # Length in seconds, already converted
+        _, length, effect, new_value = args # Length in seconds, already converted
 
         try:
             await asyncio.sleep(length)
@@ -397,3 +402,30 @@ class Tasker:
                                                           (is_public and c.area == client.area)))
         finally:
             del self.active_timers[name]
+
+    async def as_lurk(self, client, args):
+        length, = args
+        # The lurk callout timer once it finishes will restart itself except if cancelled
+        while True:
+            try:
+                await asyncio.sleep(length)
+            except asyncio.CancelledError:
+                break # Cancellation messages via send_oocs must be sent manually
+            else:
+                if client.is_gagged:
+                    client.send_ooc_others('(X) Gagged player {} has not attempted to speak in the '
+                                           'past {} seconds'.format(client.displayname, length),
+                                           is_zstaff_flex=True, in_area=True)
+                    client.send_ooc_others('You see {} not speaking, but they seem to not be able '
+                                           'speak.'.format(client.displayname),
+                                           is_zstaff_flex=False, in_area=True, is_blind=False)
+                else:
+                    client.send_ooc_others('(X) {} has not spoken in the past {} seconds.'
+                                           .format(client.displayname, length),
+                                           is_zstaff_flex=True, in_area=True)
+                    # Only deaf and blind players would not be able to automatically tell someone
+                    # had not been talking for a while.
+                    client.send_ooc_others('{} is being tightlipped.'.format(client.displayname),
+                                           is_zstaff_flex=False, in_area=True,
+                                           pred=lambda c: not (c.is_blind and c.is_deaf))
+

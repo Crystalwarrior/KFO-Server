@@ -359,6 +359,17 @@ class ClientManager:
                 # Now bound by AFK rules
                 self.server.tasker.create_task(self, ['as_afk_kick', self.area.afk_delay,
                                                       self.area.afk_sendto])
+                # And to lurk callouts, if any, provided not staff member
+                if self.area.lurk_length > 0 and not self.is_staff():
+                    self.server.tasker.create_task(client, ['as_lurk', self.area.lurk_length])
+            elif self.char_id >= 0 and char_id < 0: # Now a spectator?
+                # No longer bound to AFK rules
+                # Nor lurk callouts
+                for task in ['as_afk_kick', 'as_lurk']:
+                    try:
+                        self.server.tasker.remove_task(self, [task])
+                    except KeyError:
+                        pass
 
             old_char = self.get_char_name()
             self.char_id = char_id
@@ -885,6 +896,14 @@ class ClientManager:
                 self.send_ooc('(X) You are in an area part of zone `{}`. To be able to receive its '
                               'notifications, start watching it with /zone_watch {}'
                               .format(zone_id, zone_id))
+
+            # No longer bound to AFK rules
+            # Nor lurk callouts
+            for task in ['as_afk_kick', 'as_lurk']:
+                try:
+                    self.server.tasker.remove_task(self, [task])
+                except KeyError:
+                    pass
 
         def auth_mod(self, password):
             if self.is_mod:
