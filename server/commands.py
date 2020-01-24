@@ -2820,8 +2820,7 @@ def ooc_cmd_logout(client: ClientManager.Client, arg: str):
     client.reload_music_list()
     client.server.tasker.create_task(client, ['as_afk_kick', client.area.afk_delay,
                                               client.area.afk_sendto])
-    if client.area.lurk_length > 0 and client.char_id >= 0:
-        client.server.tasker.create_task(client, ['as_lurk', client.area.lurk_length])
+    client.check_lurk()
 
     # If using a character restricted in the area, switch out
     if client.get_char_name() in client.area.restricted_chars:
@@ -4372,6 +4371,7 @@ def ooc_cmd_scream(client: ClientManager.Client, arg: str):
                                .format(client.displayname, arg, client.area.id),
                                is_zstaff_flex=True, pred=lambda c: not c.muted_global)
 
+    client.check_lurk()
     logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg),
                       client)
 
@@ -5951,6 +5951,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         client.send_ooc('You whispered `{}` to {}.'.format(final_message, final_target))
         client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
                        bypass_replace=False, bypass_deafened_starters=True)
+        client.check_lurk()
 
         target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
         target.send_ooc('{} seemed to whisper something to you, but you could not make it out.'
@@ -5977,6 +5978,8 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         client.send_ooc('You spooked {} by whispering `{}` to them while sneaking.'
                         .format(final_target, final_message))
         client.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
+        client.check_lurk()
+
         # Note this uses pos='jud' instead of pos=client.pos. This is to mask the position of the
         # sender, so that the target cannot determine who it is based on knowing usual positions
         # of people.
@@ -6545,9 +6548,8 @@ def ooc_cmd_lurk(client: ClientManager.Client, arg: str):
     lurk_length = Constants.parse_time_length(arg) # Also internally validates
     client.area.lurk_length = lurk_length
 
-    targets = [c for c in client.area.clients if not c.is_staff() and c.char_id >= 0]
-    for target in targets:
-        client.server.tasker.create_task(target, ['as_lurk', lurk_length])
+    for c in client.area.clients:
+        c.check_lurk()
 
     client.send_ooc('(X) You have enabled a lurk callout timer of length {} seconds in this area.'
                     .format(lurk_length))
@@ -6565,6 +6567,11 @@ def ooc_cmd_lurk_cancel(client: ClientManager.Client, arg: str):
     if client.area.lurk_length == 0:
         raise ClientError('This area has no active lurk callout timer.')
 
+    client.area.lurk_length = 0
+    # Cancel all clients who have active lurk callout timers in the area
+    for c in client.area.clients:
+        c.check_lurk()
+
     client.send_ooc('(X) You have canceled the lurk callout timer in this area.')
     client.send_ooc_others('(X) {} has canceled the lurk callout timer in your area.'
                            .format(client.name), is_zstaff_flex=True, in_area=True)
@@ -6572,12 +6579,6 @@ def ooc_cmd_lurk_cancel(client: ClientManager.Client, arg: str):
                            .format(client.name, client.area.name, client.area.id),
                            is_zstaff_flex=True, in_area=False)
 
-    # Cancel all clients who have active lurk callout timers in the area
-    for target in client.area.clients:
-        try:
-            client.server.tasker.remove_task(client, ['as_lurk'])
-        except KeyError:
-            pass
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

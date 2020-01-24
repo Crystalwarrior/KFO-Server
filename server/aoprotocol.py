@@ -555,19 +555,11 @@ class AOProtocol(asyncio.Protocol):
                                         is_zstaff=True)
 
         # Restart AFK kick timer and lurk callout timers, if needed
-        if (self.client.area.lurk_length > 0 and not self.client.is_staff()
-        and self.client.char_id >= 0):
-            self.server.tasker.create_task(self.client,
-                                           ['as_lurk', self.client.area.lurk_length])
-        else: # Otherwise, cancel any existing lurk, if there exists
-            try:
-                self.client.server.tasker.remove_task(self.client, ['as_lurk'])
-            except KeyError:
-                pass
-
         self.server.tasker.create_task(self.client,
                                        ['as_afk_kick', self.client.area.afk_delay,
                                         self.client.area.afk_sendto])
+        self.client.check_lurk()
+
         if self.client.area.is_recording:
             self.client.area.recorded_messages.append(args)
 

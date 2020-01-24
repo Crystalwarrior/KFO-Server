@@ -127,16 +127,24 @@ class ClientManager:
             else:
                 self.send_raw_message('{}#%'.format(command))
 
-        def send_ooc(self, msg, username=None, allow_empty=False, is_staff=None, is_officer=None,
-                     in_area=None, not_to=None, to_blind=None, to_deaf=None, pred=None):
+        def send_ooc(self, msg, username=None, allow_empty=False,
+                     is_staff=None, is_officer=None, in_area=None, not_to=None, part_of=None,
+                     to_blind=None, to_deaf=None, is_zstaff=None, is_zstaff_flex=None,
+                     pred=None):
+            if pred is None:
+                pred = lambda x: True
+            if not_to is None:
+                not_to = set()
             if not allow_empty and not msg:
                 return
             if username is None:
                 username = self.server.config['hostname']
 
             cond = Constants.build_cond(self, is_staff=is_staff, is_officer=is_officer,
-                                        in_area=in_area, not_to=not_to, to_blind=to_blind,
-                                        to_deaf=to_deaf, pred=pred)
+                                        in_area=in_area, not_to=not_to, part_of=part_of,
+                                        to_blind=to_blind, to_deaf=to_deaf,
+                                        is_zstaff=is_zstaff, is_zstaff_flex=is_zstaff_flex,
+                                        pred=pred)
 
             if cond(self):
                 self.send_command('CT', username, msg)
@@ -360,16 +368,16 @@ class ClientManager:
                 self.server.tasker.create_task(self, ['as_afk_kick', self.area.afk_delay,
                                                       self.area.afk_sendto])
                 # And to lurk callouts, if any, provided not staff member
-                if self.area.lurk_length > 0 and not self.is_staff():
-                    self.server.tasker.create_task(client, ['as_lurk', self.area.lurk_length])
+                self.check_lurk()
+
             elif self.char_id >= 0 and char_id < 0: # Now a spectator?
                 # No longer bound to AFK rules
-                # Nor lurk callouts
-                for task in ['as_afk_kick', 'as_lurk']:
-                    try:
-                        self.server.tasker.remove_task(self, [task])
-                    except KeyError:
-                        pass
+                try:
+                    self.server.tasker.remove_task(self, ['as_afk_kick'])
+                except KeyError:
+                    pass
+                # And to lurk callouts
+                self.check_lurk()
 
             old_char = self.get_char_name()
             self.char_id = char_id
@@ -456,6 +464,15 @@ class ClientManager:
         def notify_change_area(self, area, old_char, ignore_bleeding=False, just_me=False):
             notifier = self.area_changer.notify_change_area
             notifier(area, old_char, ignore_bleeding=ignore_bleeding, just_me=just_me)
+
+        def check_lurk(self):
+            if self.area.lurk_length > 0 and not self.is_staff() and self.char_id >= 0:
+                self.server.tasker.create_task(self, ['as_lurk', self.area.lurk_length])
+            else: # Otherwise, cancel any existing lurk, if there exists
+                try:
+                    self.server.tasker.remove_task(self, ['as_lurk'])
+                except KeyError:
+                    pass
 
         def change_area(self, area, override_all=False, override_passages=False,
                         override_effects=False, ignore_bleeding=False, ignore_followers=False,
