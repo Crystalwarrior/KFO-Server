@@ -6541,6 +6541,34 @@ def ooc_cmd_toggle_allpasses(client: ClientManager.Client, arg: str):
                     .format(status[client.get_nonautopass_autopass]))
 
 def ooc_cmd_lurk(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Initiates an area lurk callout timer in the area so that non-spectator regular players who do
+    not speak IC after a set amount of seconds are called out in OOC to other players in the area
+    (but not themselves).
+    Actions that reset a player's personal callout timer are: speaking IC (even if gagged), using
+    /whisper or /guide, changing character, changing area and switching to spectator.
+    Actions that start a player's personal callout timer are: moving to an area with an active lurk
+    callout timer, switching from spectator to a character, or logging out from a ranked position.
+    Deaf and blind players in the area do not receive callout notifications from other players.
+    If a called out player is gagged, a special message is sent instead.
+    If an area had an active lurk callout timer and all players leave the area, the lurk callout
+    timer is deactivated and no players will be subject to one when moving to the area until a new
+    area lurk callout timer is started.
+    If an active area lurk callout timer is present when running the command, it will overwrite
+    the existing area lurk callout timer and reset all valid targets' callout timers.
+    Returns an error if the lurk callout length is non-positive or exceeds the server limit (6
+    hours).
+
+    SYNTAX
+    /lurk <length>
+
+    PARAMETERS
+    <length>: Area lurk callout time length (in seconds)
+
+    EXAMPLES
+    /lurk 60    :: Sets a 60-second area lurk callout timer, players who remain silent for a minute will be called out
+    /lurk 2     :: Sets a 2-second area lurk callout timer, players who remain silent for 2 seconds will be called out
+    """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
@@ -6562,6 +6590,22 @@ def ooc_cmd_lurk(client: ClientManager.Client, arg: str):
                            is_zstaff_flex=True, in_area=False)
 
 def ooc_cmd_lurk_cancel(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Cancels an existing area lurk callout timer in the area, and all non-spectator regular players'
+    personal lurk callout timers in the area.
+    Returns an error if no area lurk callout timer is active in the area.
+
+    SYNTAX
+    /lurk_cancel
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    For current area with an active 10-second area lurk callout timer
+    /lurk_cancel    :: Cancels the area lurk callout timer, players may now remain silent for 10 seconds and not be called out.
+    """
+
     Constants.assert_command(client, arg, is_staff=True)
 
     if client.area.lurk_length == 0:

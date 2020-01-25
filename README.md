@@ -324,6 +324,10 @@ GMs can:
     - Lists all areas that have custom descriptions.
 * **look_set** "description"
     - Sets the area's description to the given one, or restores the default one if not given.
+* **lurk** "length"
+    - Sets the area's lurk callout timer to the given length, so players who remain silent for that long are called out in OOC.
+* **lurk_cancel**
+    - Cancels the area's lurk callout timer if there is one active.
 * **multiclients** "ID"
     - Lists all the clients opened by a target and the areas they are in.
 * **party_disband** "party ID"
