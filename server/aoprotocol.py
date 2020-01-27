@@ -187,7 +187,8 @@ class AOProtocol(asyncio.Protocol):
                 self.client.disconnect()
                 return
 
-        logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
+        if self.client.hdid != 'ms2-prober' or self.server.config['show_ms2-prober']:
+            logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
         self.client.send_command('ID', self.client.id, self.server.software,
                                  self.server.get_version_string())
         self.client.send_command('PN', self.server.get_player_count(),

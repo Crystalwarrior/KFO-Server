@@ -7,11 +7,13 @@
 # port: port that the players connect through (it must be open/forwarded for them to be able to connect)
 # timeout: timeout for automatic client disconnection in seconds (keep above 60)
 # local: if only people in the host machine should be able to connect (i.e. you), ideal if testing setup
+# show_ms2-prober: muffles ms2-prober connections, which will happen regularly if your server is public
 
 playerlimit: 100
 port: 50000
 timeout: 250
 local: false
+show_ms2-prober: true
 
 # Master server advertisement configuration
 # use_masterserver: if server should be listed on the master server list

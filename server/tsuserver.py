@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a12'
-        self.internal_version = '200124a'
+        self.segment_version = 'a13'
+        self.internal_version = '200127a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -260,6 +260,7 @@ class TsuserverDR:
                              'blackout_background': 'Blackout_HD',
                              'default_area_description': 'No description.',
                              'party_lights_timeout': 10,
+                             'show_ms2-prober': True,
                              'showname_max_length': 30,
                              'sneak_handicap': 5,
                              'spectator_name': 'SPECTATOR',
