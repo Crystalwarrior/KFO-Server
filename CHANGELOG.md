@@ -365,3 +365,6 @@
 
 ### 200112b (4.2.3-post4)
 * Fixed players/server being able to load any YAML files with invalid YAML syntax. An informative error message will be returned to assist in fixing said file
+
+### 200201a (4.2.3-post5)
+* Fixed /showname_freeze and /showname_nuke causing errors when notifying other users

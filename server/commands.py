@@ -4671,9 +4671,9 @@ def ooc_cmd_showname_freeze(client: ClientManager.Client, arg: str):
 
     client.send_ooc('You have {} all shownames.'.format(status[client.server.showname_freeze]))
     client.send_ooc_others('A mod has {} all shownames.'
-                           .format(status[client.server.showname_freeze]), is_mod=False)
+                           .format(status[client.server.showname_freeze]), is_staff=False)
     client.send_ooc_others('{} has {} all shownames.'
-                           .format(client.name, status[client.server.showname_freeze]), is_mod=True)
+                           .format(client.name, status[client.server.showname_freeze]), is_staff=True)
     logger.log_server('{} has {} all shownames.'
                       .format(client.name, status[client.server.showname_freeze]), client)
 
@@ -4740,8 +4740,8 @@ def ooc_cmd_showname_nuke(client: ClientManager.Client, arg: str):
             c.change_showname('')
 
     client.send_ooc('You have nuked all shownames.')
-    client.send_ooc_others('A mod has nuked all shownames.', is_mod=False)
-    client.send_ooc_others('{} has nuked all shownames.'.format(client.name), is_mod=True)
+    client.send_ooc_others('A mod has nuked all shownames.', is_staff=False)
+    client.send_ooc_others('{} has nuked all shownames.'.format(client.name), is_staff=True)
     logger.log_server('{} has nuked all shownames.'.format(client.name), client)
 
 def ooc_cmd_showname_set(client: ClientManager.Client, arg: str):
