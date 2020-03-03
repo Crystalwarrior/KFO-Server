@@ -422,7 +422,7 @@ class TestZoneEffect_03_RPNotifications(_TestZone):
         * C5 does not receive message (staff not in zone not watching zone)
         """
 
-        self.c2.make_normie(over=False)
+        self.c2.make_normie(over=False, other_over=lambda c: c not in self.zm.get_zone('z0').get_watchers())
         self.c2.discard_all()
 
         self.c5.ooc('/zone_unwatch')

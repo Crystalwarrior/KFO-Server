@@ -76,7 +76,9 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         """
 
         self.c0.make_mod(over=False)
+        self.c0.discard_all() # Discard all messages related to the zone that might clog the next line
         self.c4.make_mod(over=False)
+        self.c4.discard_all()
         self.c0.ooc('/zone {}, {}'.format(1, 3))
         self.c0.discard_all() # Discard notification for logging in while in zone
         self.c1.discard_all() # Discard notification for zone creation
@@ -349,7 +351,7 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         watcher, C1, is notified.
         """
 
-        self.c2.make_normie(over=False)
+        self.c2.make_normie(over=False, other_over=lambda c: c not in self.zm.get_zone('z0').get_watchers())
         self.c0.assert_no_packets()
         self.c1.assert_ooc('(X) {} is no longer watching your zone.'.format(self.c2.name),
                            over=True)
