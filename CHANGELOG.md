@@ -368,3 +368,6 @@
 
 ### 200201a (4.2.3-post5)
 * Fixed /showname_freeze and /showname_nuke causing errors when notifying other users
+
+### 200320a (4.2.3-post6)
+* Fixed /bg turning on lights in previously dark rooms.

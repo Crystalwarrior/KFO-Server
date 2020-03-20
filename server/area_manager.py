@@ -224,7 +224,11 @@ class AreaManager:
             if validate and bg.lower() not in [name.lower() for name in self.server.backgrounds]:
                 raise AreaError('Invalid background name.')
 
-            self.background = bg
+            if self.lights:
+                self.background = bg
+            else:
+                self.background = self.server.config['blackout_background']
+                self.background_backup = bg
             for c in self.clients:
                 if c.is_blind and not override_blind:
                     c.send_command('BN', self.server.config['blackout_background'])
@@ -518,8 +522,8 @@ class AreaManager:
                     self.background_backup = self.background
                 intended_background = self.server.config['blackout_background']
 
-            self.change_background(intended_background, validate=False) # Allow restoring custom bg.
             self.lights = new_lights
+            self.change_background(intended_background, validate=False) # Allow restoring custom bg.
 
             # Announce light status change
             if initiator: # If a player initiated the change light sequence, send targeted messages
