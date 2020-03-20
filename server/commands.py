@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-19 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -127,7 +127,7 @@ def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, is_staff=True, parameters='&1-2', split_spaces=True)
     arg = arg.split(' ')
-    
+
     if not client.is_mod and not client.is_cm and client.area.lobby_area:
         raise ClientError('You must be authorized to kick clients in lobby areas.')
 
@@ -1251,7 +1251,7 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
 
     # Inputs already validated, move on
     pre_area_1, pre_area_2, pre_hour_length, pre_hour_start = arg.split(' ')
-    
+
     areas = Constants.parse_two_area_names(client, [pre_area_1, pre_area_2], check_valid_range=True)
     area_1, area_2 = areas[0].id, areas[1].id
 
@@ -3718,7 +3718,7 @@ def ooc_cmd_passage_restore(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, is_staff=True, parameters='<3', split_commas=True)
     areas = arg.split(', ')
-    
+
     areas = Constants.parse_two_area_names(client, areas)
 
     for i in range(areas[0].id, areas[1].id+1):
@@ -3965,7 +3965,7 @@ def ooc_cmd_refresh(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_mod=True, parameters='=0')
-    
+
     client.server.reload()
     client.send_ooc('You have reloaded the server.')
 
@@ -5026,10 +5026,10 @@ def ooc_cmd_timer_get(client: ClientManager.Client, arg: str):
     /timer_get P    :: Spam, Phantom and Eggs would get the remaining time of P.
     /timer_get E    :: Spam, Phantom and Eggs would get the remaining time of E.
     """
-    
+
     Constants.assert_command(client, arg, parameters='<2')
     arg = arg.split(' ') if arg else list()
-    
+
     string_of_timers = ""
 
     if len(arg) == 1:
@@ -5235,7 +5235,7 @@ def ooc_cmd_transient(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True)
-    
+
     # Invert current transient status of matching targets
     status = {False: 'no longer', True: 'now'}
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -5447,7 +5447,7 @@ def ooc_cmd_ungimp(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_mod=True)
-    
+
     # Ungimp matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
         c.gimp = False
@@ -5843,7 +5843,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
                                            client.area.id), is_zstaff_flex=True, not_to={target})
         else:
             # Otherwise, announce it to everyone
-            # If the area is private, zone watchers and staff get normal whisper reports if in the same 
+            # If the area is private, zone watchers and staff get normal whisper reports if in the same
             # area
             if public_area:
                 client.send_ooc_others('(X) {} whispered `{}` to {} ({}).'
@@ -5851,7 +5851,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
                                            client.area.id), is_zstaff_flex=True, not_to={target})
             client.send_ooc_others('{} whispered something to {}.'
                                    .format(final_sender, final_target),
-                                   is_zstaff_flex=False if public_area else None, in_area=True, 
+                                   is_zstaff_flex=False if public_area else None, in_area=True,
 				   not_to={target}, to_blind=False)
     elif target.is_visible:
         client.send_ooc('You spooked {} by whispering `{}` to them while sneaking.'
@@ -6117,7 +6117,7 @@ def ooc_cmd_zone_global(client: ClientManager.Client, arg: str):
         Constants.assert_command(client, arg, parameters='>0')
     except ArgumentError:
         raise ArgumentError('You cannot send an empty message.')
-    
+
     if client.zone_watched:
         target_zone = client.zone_watched
     elif client.area.in_zone:
