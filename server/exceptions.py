@@ -62,6 +62,31 @@ class ServerError(TsuserverException):
 class PartyError(TsuserverException):
     pass
 
+class PlayerGroupError(TsuserverException):
+    class PlayerAlreadyMemberError(TsuserverException):
+        pass
+
+    class PlayerAlreadyLeaderError(TsuserverException):
+        pass
+
+    class PlayerInAnotherGroupError(TsuserverException):
+        pass
+
+    class PlayerInNoGroupError(TsuserverException):
+        pass
+
+    class PlayerNotMemberError(TsuserverException):
+        pass
+
+    class PlayerNotLeaderError(TsuserverException):
+        pass
+
+    class ManagerTooManyGroupsError(TsuserverException):
+        pass
+
+    class ManagerDoesNotManageGroupError(TsuserverException):
+        pass
+
 class ZoneError(TsuserverException):
     class AreaConflictError(TsuserverException):
         pass

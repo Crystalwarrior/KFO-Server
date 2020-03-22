@@ -46,7 +46,7 @@ class ZoneManager:
             ----------
             server: TsuserverDR
                 Server the zone belongs to
-            zone_id: string
+            zone_id: str
                 Identifier of zone.
             areas: set of AreaManager.Area
                 Set of areas the zone covers.

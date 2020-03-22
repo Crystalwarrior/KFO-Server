@@ -16,13 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-
 import asyncio
 import random
 
 from server.exceptions import AreaError, ClientError, PartyError
 
 class PartyManager:
+    # This class and related functions will be rewritten for 4.4.
     class Party:
         #tc=True means the target called the party function to do something on themselves
         def __init__(self, server, pid, area, player_limit, leaders):
