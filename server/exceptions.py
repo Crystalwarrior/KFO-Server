@@ -17,7 +17,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 class TsuserverException(Exception):
-    def __init__(self, message, code=None):
+    def __init__(self, message='', code=None):
         self.message = message
         if code:
             self.code = code
@@ -79,6 +79,12 @@ class PlayerGroupError(TsuserverException):
         pass
 
     class PlayerNotLeaderError(TsuserverException):
+        pass
+
+    class GroupIsEmptyError(TsuserverException):
+        pass
+
+    class GroupIsFullError(TsuserverException):
         pass
 
     class ManagerTooManyGroupsError(TsuserverException):
