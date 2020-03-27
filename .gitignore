@@ -8,3 +8,5 @@
 /server/ideas.py
 /server/ideas.MD
 /.coverage
+/.pylint.d/
+/server/.pylint.d/

@@ -45,8 +45,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 3
-        self.segment_version = 'post6'
-        self.internal_version = '200320a'
+        self.segment_version = 'post7'
+        self.internal_version = '200327a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -548,7 +548,16 @@ class TsuserverDR:
             for item in specific_music_list:
                 prepared_music_list.append(item['category'])
                 for song in item['songs']:
-                    prepared_music_list.append(song['name'])
+                    name, length = song['name'], song['length']
+
+                    # Check that length is a number, and if not, abort.
+                    if not isinstance(length, (int, float)):
+                        msg = ("The music list expected a numerical length for track '{}', but "
+                               "found it had length '{}'.").format(song['name'], song['length'])
+                        raise ServerError.MusicInvalidError(msg)
+
+                    prepared_music_list.append(name)
+
         except KeyError as err:
             msg = ("The music list expected key '{}' for item {}, but could not find it."
                    .format(err.args[0], item))
@@ -557,6 +566,7 @@ class TsuserverDR:
             msg = ("The music list expected songs to be listed for item {}, but could not find any."
                    .format(item))
             raise ServerError.MusicInvalid(msg)
+
         return prepared_music_list
 
     def is_valid_char_id(self, char_id):

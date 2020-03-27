@@ -371,3 +371,8 @@
 
 ### 200320a (4.2.3-post6)
 * Fixed /bg turning on lights in previously dark rooms.
+
+### 200327a (4.2.3-post7)
+* Fixed players/server being able to load music lists with non-numerical track lengths. An informative error message will be returned to assist in fixing the music list
+* Fixed duplicate /look_set output messages being sent to other zone watchers in the same area
+* Fixed typo in /passage_restore: 'statue'->'state'
