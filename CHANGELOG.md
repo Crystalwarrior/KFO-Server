@@ -376,3 +376,7 @@
 * Fixed players/server being able to load music lists with non-numerical track lengths. An informative error message will be returned to assist in fixing the music list
 * Fixed duplicate /look_set output messages being sent to other zone watchers in the same area
 * Fixed typo in /passage_restore: 'statue'->'state'
+
+### 200410a (4.2.3-post8)
+* Fixed clients who do not/cannot update their music list crashing when they attempt to join an area that no longer exists.
+* Readded description of /login to README.md

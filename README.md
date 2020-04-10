@@ -129,6 +129,8 @@ Additional notes are listed at the end of the command list.
 * **lock**
     - Locks your area. Prevents normal users from entering.
     - People in the area, including yourself, at the time the area is locked are free to come and go regardless of their status.
+* **login** "password"
+    - Makes you a Moderator.
 * **logincm** "password"
     - Makes you a Community Manager.
 * **loginrp** "password"

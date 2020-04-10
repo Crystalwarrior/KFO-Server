@@ -16,8 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# This whole class will be rewritten for 4.3
+
 class TsuserverException(Exception):
-    def __init__(self, message, code=None):
+    def __init__(self, message='', code=None):
         self.message = message
         if code:
             self.code = code
@@ -29,6 +31,29 @@ class TsuserverException(Exception):
             return False
         return True
 
+    @classmethod
+    def subexceptions(cls):
+        return [item for item in cls.__dict__.keys() if not item.startswith('__')]
+
+    @classmethod
+    def reset_subexceptions(cls):
+
+        for subexception_name in cls.subexceptions():
+            setattr(cls, subexception_name, type(subexception_name, (cls, ), dict()))
+
+def recreate_subexceptions(cls):
+    """
+    Recreate all subexceptions so that their parent is the exception class itself, rather
+    than TsuserverException.
+
+    """
+    subexceptions = [item for item in cls.__dict__.keys() if not item.startswith('__')]
+    for subexception_name in subexceptions:
+        fullname = '{}.{}'.format(cls.__name__, subexception_name)
+        setattr(cls, subexception_name, type(fullname, (cls, ), dict()))
+    return cls
+
+@recreate_subexceptions
 class ClientError(TsuserverException):
     class UnauthorizedError(TsuserverException):
         pass
@@ -39,6 +64,7 @@ class AreaError(TsuserverException):
 class ArgumentError(TsuserverException):
     pass
 
+@recreate_subexceptions
 class ServerError(TsuserverException):
     class ServerFileNotFoundError(TsuserverException):
         pass
@@ -46,11 +72,11 @@ class ServerError(TsuserverException):
     class MusicNotFoundError(TsuserverException):
         pass
 
-    class MusicInvalid(TsuserverException):
-        # Remove, kept for backwards compatibility
+    class MusicInvalidError(TsuserverException):
         pass
 
-    class MusicInvalidError(TsuserverException):
+    class MusicInvalid(TsuserverException):
+        # Remove, kept for backwards compatibility
         pass
 
     class YAMLNotFoundError(TsuserverException):
@@ -62,6 +88,7 @@ class ServerError(TsuserverException):
 class PartyError(TsuserverException):
     pass
 
+@recreate_subexceptions
 class ZoneError(TsuserverException):
     class AreaConflictError(TsuserverException):
         pass

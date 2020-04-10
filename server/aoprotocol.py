@@ -660,6 +660,8 @@ class AOProtocol(asyncio.Protocol):
             try:
                 self.client.area.play_track(args[0], self.client, raise_if_not_found=True,
                                             reveal_sneaked=True)
+            except ServerError.MusicNotFoundError:
+                self.client.send_ooc('Unrecognized area or music `{}`.'.format(args[0]))
             except ServerError:
                 return
         except (ClientError, PartyError) as ex:
