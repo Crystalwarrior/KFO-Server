@@ -461,6 +461,12 @@ class AOProtocol(asyncio.Protocol):
                                             .format(self.client.displayname, raw_msg),
                                             is_zstaff_flex=True, in_area=True)
 
+        # Censor passwords if login command accidentally typed in IC
+        for password in self.server.config['passwords']:
+            for login in ['login ', 'logincm ', 'loginrp ']:
+                if login + password in msg:
+                    msg = msg.replace(password, '[CENSORED]')
+
         if pargs['evidence']:
             evidence_position = self.client.evi_list[pargs['evidence']] - 1
             if self.client.area.evi_list.evidences[evidence_position].pos != 'all':
@@ -617,12 +623,18 @@ class AOProtocol(asyncio.Protocol):
                 except TsuserverException as ex:
                     self.client.send_ooc(ex)
         else:
+            # Censor passwords if accidentally said without a slash in OOC
+            for password in self.server.config['passwords']:
+                for login in ['login ', 'logincm ', 'loginrp ']:
+                    if login + password in args[1]:
+                        args[1] = args[1].replace(password, '[CENSORED]')
             if self.client.disemvowel: #If you are disemvoweled, replace string.
                 args[1] = Constants.disemvowel_message(args[1])
             if self.client.disemconsonant: #If you are disemconsonanted, replace string.
                 args[1] = Constants.disemconsonant_message(args[1])
             if self.client.remove_h: #If h is removed, replace string.
                 args[1] = Constants.remove_h_message(args[1])
+
 
             self.client.area.send_command('CT', self.client.name, args[1])
             self.client.last_ooc_message = args[1]

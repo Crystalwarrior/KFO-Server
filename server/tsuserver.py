@@ -42,8 +42,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a23'
-        self.internal_version = 'M200327a'
+        self.segment_version = 'a24'
+        self.internal_version = 'M200410a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -242,6 +242,12 @@ class TsuserverDR:
         with Constants.fopen('config/config.yaml', 'r', encoding='utf-8') as cfg:
             self.config = Constants.yaml_load(cfg)
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
+            self.config['passwords'] = []
+            passwords = ['modpass', 'cmpass', 'gmpass']
+            for i in range(1, 8):
+                passwords.append('gmpass{}'.format(i))
+            for password in passwords:
+                self.config['passwords'].append(self.config[password])
 
         for i in range(1, 8):
             daily_gmpass = 'gmpass{}'.format(i)
