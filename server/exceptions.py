@@ -93,6 +93,9 @@ class PlayerGroupError(TsuserverException):
     class ManagerDoesNotManageGroupError(TsuserverException):
         pass
 
+    class ManagerInvalidIDError(TsuserverException):
+        pass
+
 class StepTimerError(TsuserverException):
     class InvalidStepTimerValueError(TsuserverException):
         pass
@@ -113,6 +116,15 @@ class StepTimerError(TsuserverException):
         pass
 
     class AlreadyCanceledStepTimerError(TsuserverException):
+        pass
+
+    class ManagerTooManyStepTimersError(TsuserverException):
+        pass
+
+    class ManagerDoesNotManageStepTimerError(TsuserverException):
+        pass
+
+    class ManagerInvalidIDError(TsuserverException):
         pass
 
 class ZoneError(TsuserverException):

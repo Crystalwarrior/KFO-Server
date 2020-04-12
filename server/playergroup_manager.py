@@ -53,12 +53,12 @@ class PlayerGroupManager:
 
     Invariants
     ----------
-    1. If `self._playergroup_limit` is an int, then `len(self._playergroups) <=
+    1. If `self._playergroup_limit` is an int, then `len(self._id_to_group) <=
        self._playergroup_limit`.
     2. For every player group `(playergroup_id, playergroup)` in `self._id_to_group.items()`
         a. `playergroup._manager = self`.
         b. `playergroup._playergroup_id = playergroup_id`.
-    3. For every pair of distinct player groups `group1` and `group2` in `self._playergroups`:
+    3. For every pair of distinct player groups `group1` and `group2` in `self._id_to_group`:
         a. `group1._playergroup_id != group2._playergroup_id`.
         b. `group1._members` and `group2._members` are disjoint.
     4. `self._player_to_group.values()` is a subset of `self._id_to_group.values()`.
@@ -728,8 +728,8 @@ class PlayerGroupManager:
         if self._playergroup_limit is not None:
             err = (f'For player group manager {self}, expected that it managed at most '
                    f'{self._playergroup_limit} player groups, but found it managed '
-                   f'{len(self._id_to_groups.keys())} player groups. || {self}')
-            assert len(self._members) <= self._member_limit, err
+                   f'{len(self._id_to_group)} player groups. || {self}')
+            assert len(self._id_to_group) <= self._playergroup_limit, err
 
         # 2.
         for (playergroup_id, playergroup) in self._id_to_group.items():
