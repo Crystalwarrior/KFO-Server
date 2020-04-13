@@ -115,7 +115,7 @@ class StepTimerError(TsuserverException):
     class NotPausedStepTimerError(TsuserverException):
         pass
 
-    class AlreadyCanceledStepTimerError(TsuserverException):
+    class AlreadyTerminatedStepTimerError(TsuserverException):
         pass
 
     class ManagerTooManyStepTimersError(TsuserverException):
