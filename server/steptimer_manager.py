@@ -372,6 +372,16 @@ class StepTimerManager:
             self._check_structure()
 
         def get(self):
+            """
+            Get current apparent timer, even considering how much of the step has currently passed.
+
+            Returns
+            -------
+            float
+                Current apparent timer.
+
+            """
+
             return self._timer_value + self._get_subtimestep_elapsed()
 
         def _refresh(self):
@@ -430,7 +440,7 @@ class StepTimerManager:
             """
 
             # 1.
-            if not 0 <= self._min_timer_value:
+            if not self._min_timer_value >= 0:
                 err = (f'Expected the steptimer minimum timer value be a non-negative number, '
                        f'found it was {self._min_timer_value} instead.')
                 raise AssertionError(err)
@@ -444,12 +454,12 @@ class StepTimerManager:
                 raise AssertionError(err)
 
             # 2.
-            if not 0 < self._firing_interval:
+            if not self._firing_interval > 0:
                 err = (f'Expected the firing interval be a positive number, found it was '
                        '{self._firing_interval} instead.')
                 raise AssertionError(err)
 
-        async def _no_action():
+        async def _no_action(self):
             """
             Dummy function that does nothing.
 
@@ -569,7 +579,6 @@ class StepTimerManager:
             """
 
             log_print('Timer {} min-ended at {}'.format(self._steptimer_id, self._timer_value))
-            pass
 
         async def _cb_end_max_fn(self, *args):
             """
@@ -588,7 +597,6 @@ class StepTimerManager:
             """
 
             log_print('Timer {} max-ended at {}'.format(self._steptimer_id, self._timer_value))
-            pass
 
         async def _cb_terminate_fn(self, *args):
             """
@@ -606,7 +614,6 @@ class StepTimerManager:
             """
 
             log_print('Timer {} terminated at {}'.format(self._steptimer_id, self._timer_value))
-            pass
 
         async def _as_timer(self):
             """
@@ -652,7 +659,7 @@ class StepTimerManager:
                     if self._was_terminated:
                         await self._cb_terminate_fn(*self._cb_terminate_args)
                         break
-                    elif self._just_unpaused:
+                    if self._just_unpaused:
                         pass
                         # The unpause code is deliberately left within the try to simplify logic
                         # With the pass we immediately go to the unpause code.

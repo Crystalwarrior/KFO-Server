@@ -88,6 +88,8 @@ class PlayerGroupManager:
             Members of the player group.
         _leaders : set of ClientManager.Client
             Leaders of the player group.
+        _invitations : set of clientManager.Client
+            Players invited to (but not part of of) the player group.
         _require_members : bool
             If True, the group will disassemble automatically if it loses all its members (but it
             may start with no members).
@@ -106,11 +108,12 @@ class PlayerGroupManager:
         6. If `self._require_members` is True, then `len(self._members) >= 1`.
         7. If `self._require_leaders` is True and `len(self._members) >= 1`, then
            `len(self._leaders) >= 1`.
+        8. `self._invitations` and `self._members` are disjoint sets.
 
         """
 
-        def __init__(self, server, manager, playergroup_id, member_limit=None, members=None,
-                     leaders=None, require_members=True, require_leaders=True):
+        def __init__(self, server, manager, playergroup_id, member_limit=None,
+                     require_invitations=False, require_members=True, require_leaders=True):
             """
             Create a new player group.
 
@@ -124,6 +127,9 @@ class PlayerGroupManager:
                 Identifier of the player group.
             member_limit : int, optional.
                 Maximum number of players the group supports. Defaults to None (no limit).
+            require_invitation : bool, optional
+                If True, members can only be added to the group if they were previously invited. If
+                False, no checking for invitations is performed. The default is False.
             require_members : bool, optional
                 If True, if at any point the group has no members left, the group will
                 automatically be disassembled. If False, no such automatic deletion will happen.
@@ -147,11 +153,13 @@ class PlayerGroupManager:
             self._manager = manager
             self._playergroup_id = playergroup_id
             self._member_limit = member_limit
+            self._require_invitations = require_invitations
             self._require_members = require_members
             self._require_leaders = require_leaders
 
             self._members = set()
             self._leaders = set()
+            self._invitations = set()
             self._ever_had_members = False
 
             self._manager._check_structure()
@@ -171,12 +179,14 @@ class PlayerGroupManager:
 
         def get_members(self, cond=None):
             """
-            Return (a shallow copy of) the set of members of this player group that satisfy a condition if given.
+            Return (a shallow copy of) the set of members of this player group that satisfy a
+            condition if given.
 
             Parameters
             ----------
             cond : types.LambdaType: ClientManager.Client -> bool, optional
-                Condition that all members returned satisfy. Defaults to None (no checked conditions).
+                Condition that all members returned satisfy. Defaults to None (no checked
+                conditions).
 
             Returns
             -------
@@ -221,13 +231,19 @@ class PlayerGroupManager:
 
             Raises
             ------
+            PlayerGroupError.PlayerNotInvitedError
+                If the group requires players be invited to be added and the player is not invited.
             PlayerGroupError.PlayerAlreadyMemberError
                 If the player to add is already a member of the player group.
             PlayerGroupError.PlayerInAnotherGroupError
                 If the player is already in another group managed by this manager.
+            PlayerGroupError.GroupIsFullError
+                If the group reached its membership limit.
 
             """
 
+            if self._require_invitations and player not in self._invitations:
+                raise PlayerGroupError.PlayerNotInvitedError
             if player in self._members:
                 raise PlayerGroupError.PlayerAlreadyMemberError
             if player in self._manager._player_to_group:
@@ -238,6 +254,9 @@ class PlayerGroupManager:
             self._ever_had_members = True
             self._members.add(player)
             self._manager._player_to_group[player] = self
+            if self._require_invitations:
+                self._invitations.remove(player)
+
             self._choose_leader_if_needed()
 
             self._manager._check_structure()
@@ -269,18 +288,128 @@ class PlayerGroupManager:
             self._choose_leader_if_needed()
             # Check if no members, and disassemble if appropriate
             if self._require_members and not self._members:
-                self._manager.disassemble_group(self)
+                self._manager.delete_group(self)
+
+            self._manager._check_structure()
+
+        def get_invitations(self, cond=None):
+            """
+            Return (a shallow copy of) the set of invited players of this player group that satisfy
+            a condition if given.
+
+            Parameters
+            ----------
+            cond : types.LambdaType: ClientManager.Client -> bool, optional
+                Condition that all invited players returned satisfy. Defaults to None (no checked
+                conditions).
+
+            Returns
+            -------
+            set of ClientManager.Client
+                The (filtered) invited players of this player group.
+
+            """
+
+            if cond is None:
+                cond = lambda c: True
+
+            filtered_invited = {invited for invited in self._invitations if cond(invited)}
+            return filtered_invited
+
+        def is_invited(self, player):
+            """
+            Decide if a non-member player is invited to the player group.
+
+            Parameters
+            ----------
+            player : ClientManager.Client
+                Player to test.
+
+            Raises
+            ------
+            PlayerGroupError.PlayerAlreadyMemberError
+                If the player to test is a member of this group.
+
+            Returns
+            -------
+            bool
+                True if the player is invited, False otherwise.
+
+            """
+
+            if player in self._members:
+                raise PlayerGroupError.PlayerAlreadyMemberError
+
+            return player in self._invitations
+
+        def add_invitation(self, player):
+            """
+            Mark a player as invited to this player group.
+
+            Parameters
+            ----------
+            player : ClientManager.Client
+                Player to invite to the player group.
+
+            Raises
+            ------
+            PlayerGroupError.GroupDoesNotTakeInvitations
+                If the group does not require players be invited to the player group.
+            PlayerGroupError.PlayerAlreadyInvitedError
+                If the player to invite is already invited to the player group.
+            PlayerGroupError.PlayerAlreadyMemberError
+                If the player to invite is already a member of the player group.
+
+            """
+
+            if not self._require_invitations: # By design check if invitations are required first
+                raise PlayerGroupError.GroupDoesNotTakeInvitations
+            if player in self._invitations:
+                raise PlayerGroupError.PlayerAlreadyInvitedError
+            if player in self._members:
+                raise PlayerGroupError.PlayerAlreadyMemberError
+
+            self._invitations.add(player)
+
+            self._manager._check_structure()
+
+        def remove_invitation(self, player):
+            """
+            Mark a player as no longer invited to this player group (uninvite).
+
+            Parameters
+            ----------
+            player : ClientManager.Client
+                Player to uninvite.
+
+            Raises
+            ------
+            PlayerGroupError.GroupDoesNotTakeInvitations
+                If the group does not require players be invited to the player group.
+            PlayerGroupError.PlayerNotInvitedError
+                If the player to uninvite is already not invited to this group.
+
+            """
+
+            if not self._require_invitations: # By design check if invitations are required first
+                raise PlayerGroupError.GroupDoesNotTakeInvitations
+            if player not in self._invitations:
+                raise PlayerGroupError.PlayerNotInvitedError
+
+            self._invitations.remove(player)
 
             self._manager._check_structure()
 
         def get_leaders(self, cond=None):
             """
-            Return (a shallow copy of) the set of leaders of this player group that satisfy a condition if given.
+            Return (a shallow copy of) the set of leaders of this player group that satisfy a
+            condition if given.
 
             Parameters
             ----------
             cond : types.LambdaType: ClientManager.Client -> bool, optional
-                Condition that all leaders returned satisfy. Defaults to None (no checked conditions).
+                Condition that all leaders returned satisfy. Defaults to None (no checked
+                conditions).
 
             Returns
             -------
@@ -307,7 +436,7 @@ class PlayerGroupManager:
             Raises
             ------
             PlayerGroupError.PlayerNotMemberError
-                If the player to promote is not a member of this group.
+                If the player to test is not a member of this group.
 
             Returns
             -------
@@ -321,7 +450,7 @@ class PlayerGroupManager:
 
             return player in self._leaders
 
-        def promote_leader(self, player):
+        def add_leader(self, player):
             """
             Set a member as leader of this group.
 
@@ -348,7 +477,7 @@ class PlayerGroupManager:
             self._leaders.add(player)
             self._manager._check_structure()
 
-        def demote_leader(self, player):
+        def remove_leader(self, player):
             """
             Make a member no longer leader of this group.
 
@@ -392,7 +521,7 @@ class PlayerGroupManager:
                 return
 
             new_leader = random.choice(list(self.get_members()))
-            self.promote_leader(new_leader)
+            self.add_leader(new_leader)
 
         def _check_structure(self):
             """
@@ -450,6 +579,13 @@ class PlayerGroupManager:
                        f'was a leader, but found it had no leaders. || {self}')
                 assert not self._members or self._leaders, err
 
+            # 8.
+            members_also_invited = self._members.intersection(self._invitations)
+            err = (f'For group {self._playergroup_id}, expected that all players in the invitation '
+                   'list of the group were not members, but found the following members who were '
+                   'in the invitation list: {members_also_invited}. || {self}')
+            assert not members_also_invited, err
+
         def __repr__(self):
             """
             Return a printable representation of this player group.
@@ -486,8 +622,8 @@ class PlayerGroupManager:
 
         self._check_structure()
 
-    def assemble_group(self, creator=None, member_limit=None, require_members=True,
-                       require_leaders=True):
+    def new_group(self, creator=None, member_limit=None, require_invitations=False,
+                  require_members=True, require_leaders=True):
         """
         Create a new player group managed by this manager.
 
@@ -498,6 +634,9 @@ class PlayerGroupManager:
             possible. The default is None.
         member_limit : int, optional
             The maximum number of players the group may have. The default is None (no limit).
+        require_invitations : bool, optional
+            If True, members can only be added to the group if they were previously invited. If
+            False, no checking for invitations is performed. The default is False.
         require_members : bool, optional
             If True, if at any point the group has no members left, the group will automatically
             be disassembled. If False, no such automatic deletion will happen. The default is True.
@@ -526,9 +665,10 @@ class PlayerGroupManager:
             raise PlayerGroupError.PlayerInAnotherGroupError
 
         # Generate a playergroup ID and the new group
-        playergroup_id = self.make_new_group_id()
+        playergroup_id = self._make_new_group_id()
         playergroup = self.PlayerGroup(self._server, self, playergroup_id,
                                        member_limit=member_limit,
+                                       require_invitations=require_invitations,
                                        require_members=require_members,
                                        require_leaders=require_leaders)
         self._id_to_group[playergroup_id] = playergroup
@@ -539,7 +679,7 @@ class PlayerGroupManager:
         self._check_structure()
         return playergroup
 
-    def disassemble_group(self, playergroup):
+    def delete_group(self, playergroup):
         """
         Disband a player group managed by this manager, so all its members no longer belong to any
         player group.
@@ -688,7 +828,7 @@ class PlayerGroupManager:
         # Every other case
         raise PlayerGroupError.ManagerInvalidIDError
 
-    def make_new_group_id(self):
+    def _make_new_group_id(self):
         """
         Generate a player group ID that no other player group managed by this manager has.
 

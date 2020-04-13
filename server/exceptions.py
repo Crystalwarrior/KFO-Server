@@ -66,6 +66,9 @@ class PlayerGroupError(TsuserverException):
     class PlayerAlreadyMemberError(TsuserverException):
         pass
 
+    class PlayerAlreadyInvitedError(TsuserverException):
+        pass
+
     class PlayerAlreadyLeaderError(TsuserverException):
         pass
 
@@ -73,6 +76,9 @@ class PlayerGroupError(TsuserverException):
         pass
 
     class PlayerInNoGroupError(TsuserverException):
+        pass
+
+    class PlayerNotInvitedError(TsuserverException):
         pass
 
     class PlayerNotMemberError(TsuserverException):
@@ -85,6 +91,9 @@ class PlayerGroupError(TsuserverException):
         pass
 
     class GroupIsFullError(TsuserverException):
+        pass
+
+    class GroupDoesNotTakeInvitations(TsuserverException):
         pass
 
     class ManagerTooManyGroupsError(TsuserverException):
