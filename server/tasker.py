@@ -19,6 +19,7 @@
 import asyncio
 import time
 
+from server.constants import Constants
 from server.exceptions import ServerError
 
 class Tasker:
@@ -28,7 +29,7 @@ class Tasker:
         ----------
         server: tsuserver.TsuserverDR
             Server of the tasker.
-        loop: asyncio.<OS_event>.ProactorEventLoop
+        loop: asyncio.<OS_event>.ProactorEventLoop [DEPRECATED]
             Loop of the server's asyncio call.
         """
 
@@ -57,9 +58,8 @@ class Tasker:
         except KeyError:
             pass
 
-        # Start new task
         async_function = getattr(self, args[0])(client, args[1:])
-        async_future = asyncio.ensure_future(async_function, loop=self.loop)
+        async_future = Constants.create_fragile_task(async_function)
         self.client_tasks[client.id][args[0]] = (async_future, args[1:], dict())
 
     def cancel_task(self, task):
@@ -183,7 +183,7 @@ class Tasker:
     async def do_nothing(self):
         while True:
             try:
-                await asyncio.sleep(1)
+                await asyncio.sleep(100)
             except KeyboardInterrupt:
                 raise
 

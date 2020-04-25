@@ -817,15 +817,11 @@ class _TestAOProtocol(AOProtocol):
 class _TestTsuserverDR(TsuserverDR):
     def __init__(self):
         """ Overwrites tsuserver.TsuserverDR.__init__ """
+        self.loop = asyncio.get_event_loop()
 
         super().__init__(client_manager=_TestClientManager, in_test=True)
         self.ao_protocol = _TestAOProtocol
         self.client_list = [None] * self.config['playerlimit']
-
-        try:
-            self.loop = asyncio.get_event_loop()
-        except RuntimeError:
-            self.loop = asyncio.new_event_loop()
 
         self.tasker = Tasker(self, self.loop)
 

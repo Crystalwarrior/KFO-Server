@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import asyncio
+import functools
 import random
 import re
 import time
@@ -24,6 +26,7 @@ import yaml
 
 from enum import Enum
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
+from server.exceptions import TsuserverException
 
 class ArgType(Enum):
     STR = 1
@@ -918,3 +921,53 @@ class Constants():
     def remove_letters(message, target):
         message = re.sub("[{}]".format(target), "", message, flags=re.IGNORECASE)
         return re.sub(r"\s+", " ", message)
+
+    @staticmethod
+    def create_fragile_task(coro_or_future, client=None, exception_cleanup=None):
+        """
+        Schedule the execution of a coroutine object in a spawned task with a done callback that
+        checks if an exception was raised after the coroutine finished.
+        If yes, reraise the exception in the callback.
+
+        Parameters
+        ----------
+        coro : coroutine
+            Coroutine to schedule.
+        client : ClientManager.Client, optional
+            Client to notify in the callback if a caught exception during the coroutine was of type
+            server.exceptions.TsuserverException. If such notification happens, the exception is
+            not further propagated. Defaults to None.
+        exception_cleanup : typing.types.FunctionType, optional
+            Function to execute an exception is retrieved, but before it is propagated.
+            Defaults to None.
+
+        Raises
+        ------
+        exception
+            The exception raised by `coro`, if any was raised.
+
+        Returns
+        -------
+        task : Task.
+            Task where the coroutine object is scheduled to be executed.
+
+        """
+
+        def check_exception(_client, _future):
+            exception = _future.exception()
+            if not exception:
+                return
+
+            try:
+                if not (_client and isinstance(exception, TsuserverException)):
+                    raise exception
+
+                _client.send_ooc(exception)
+            finally:
+                 if exception_cleanup:
+                     exception_cleanup()
+
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(coro_or_future)
+        task.add_done_callback(functools.partial(check_exception, client))
+        return task

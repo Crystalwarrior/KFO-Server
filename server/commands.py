@@ -24,11 +24,12 @@ import string
 import time
 import datetime
 import traceback
+import asyncio
 
 from server import logger
 from server.constants import Constants, TargetType
 from server.exceptions import ArgumentError, AreaError, ClientError, ServerError
-from server.exceptions import PartyError, ZoneError
+from server.exceptions import PartyError, ZoneError, StepTimerError
 from server.client_manager import ClientManager
 
 """ <parameter_name>: required parameter
@@ -126,7 +127,7 @@ def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='&1-2', split_spaces=True)
-    arg = arg.split(' ')
+    #arg = arg.split(' ')
 
     if not client.is_mod and not client.is_cm and client.area.lobby_area:
         raise ClientError('You must be authorized to kick clients in lobby areas.')
@@ -6505,6 +6506,72 @@ def ooc_cmd_lurk_cancel(client: ClientManager.Client, arg: str):
                            .format(client.name, client.area.name, client.area.id),
                            is_zstaff_flex=True, in_area=False)
 
+def ooc_cmd_sts(client: ClientManager.Client, arg: str):
+    async def _start():
+        t = client.server._b
+        try:
+            await asyncio.gather(t.start())
+        except StepTimerError.AlreadyTerminatedStepTimerError:
+            raise ClientError('Steptimer already terminated.')
+        except StepTimerError.AlreadyStartedStepTimerError:
+            raise ClientError('Steptimer already started.')
+        else:
+            client.send_ooc('Started steptimer.')
+
+    Constants.create_fragile_task(_start(), client=client)
+
+def ooc_cmd_stp(client: ClientManager.Client, arg: str):
+    async def _pause():
+        t = client.server._b
+        try:
+            await asyncio.gather(t.pause())
+        except StepTimerError.AlreadyTerminatedStepTimerError:
+            raise ClientError('Steptimer already terminated.')
+        except StepTimerError.NotStartedStepTimerError:
+            raise ClientError('Steptimer not started.')
+        except StepTimerError.AlreadyPausedStepTimerError:
+            raise ClientError('Steptimer already paused.')
+        else:
+            client.send_ooc('Paused steptimer.')
+
+    Constants.create_fragile_task(_pause(), client=client)
+
+def ooc_cmd_stu(client: ClientManager.Client, arg: str):
+    async def _unpause():
+        t = client.server._b
+        try:
+            await asyncio.gather(t.unpause())
+        except StepTimerError.AlreadyTerminatedStepTimerError:
+            raise ClientError('Steptimer already terminated.')
+        except StepTimerError.NotStartedStepTimerError:
+            raise ClientError('Steptimer not started.')
+        except StepTimerError.NotPausedStepTimerError:
+            raise ClientError('Steptimer already not paused.')
+        else:
+            client.send_ooc('Unpaused steptimer.')
+
+    Constants.create_fragile_task(_unpause(), client=client)
+
+def ooc_cmd_stt(client: ClientManager.Client, arg: str):
+    async def _terminate():
+        t = client.server._b
+        try:
+            await asyncio.gather(t.terminate())
+        except StepTimerError.AlreadyTerminatedStepTimerError:
+            raise ClientError('Steptimer already terminated.')
+        else:
+            client.send_ooc('Terminated steptimer.')
+
+    Constants.create_fragile_task(_terminate(), client=client)
+
+def ooc_cmd_stg(client: ClientManager.Client, arg: str):
+    async def _get():
+        t = client.server._b
+        time = (await asyncio.gather(t.get()))[0]
+        formatted_time = "{:.3f}".format(time)
+        client.send_ooc('Current steptimer time: {}.'.format(formatted_time))
+
+    Constants.create_fragile_task(_get(), client=client)
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

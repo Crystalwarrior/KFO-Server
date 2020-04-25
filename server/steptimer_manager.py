@@ -46,9 +46,11 @@ following events:
 """
 
 import asyncio
+import functools
 import time
 
-from server.exceptions import StepTimerError
+from server.constants import Constants
+from server.exceptions import ClientError, StepTimerError
 from server.logger import log_print
 
 class StepTimerManager:
@@ -122,19 +124,21 @@ class StepTimerManager:
         _max_timer_value : float
             Maximum value the apparent timer may take. If the timer ticks above this, it will end
             automatically.
-        _cb_start_args : tuple
+        cb_start_args : tuple
             Arguments to the function called on steptimer start.
-        _cb_firing_args : tuple
+        cb_firing_args : tuple
             Arguments to the function called on steptimer ticking.
-        _cb_pause_args : tuple
+        cb_get_args : tuple
+            Arguments to the function called on steptimer poll.
+        cb_pause_args : tuple
             Arguments to the function called on steptimer pause.
-        _cb_unpause_args : tuple
+        cb_unpause_args : tuple
             Arguments to the function called on steptimer unpause.
-        _cb_end_min_args : tuple
+        cb_end_min_args : tuple
             Arguments to the function called on steptimer ticking down below _min_timer_value.
-        _cb_end_max_args : tuple
+        cb_end_max_args : tuple
             Arguments to the function called on steptimer ticking up above _max_timer_value.
-        _cb_terminate_args : tuple
+        cb_terminate_args : tuple
             Arguments to the function called on steptimer terminated externally.
         _was_started : bool
             True if the apparent timer was ever started, False otherwise.
@@ -164,7 +168,7 @@ class StepTimerManager:
 
         def __init__(self, server, manager, steptimer_id, timer_value, timestep_length,
                      firing_interval, min_timer_value, max_timer_value, cb_start_args,
-                     cb_firing_args, cb_pause_args, cb_unpause_args, cb_end_min_args,
+                     cb_firing_args, cb_get_args, cb_pause_args, cb_unpause_args, cb_end_min_args,
                      cb_end_max_args, cb_terminate_args):
             """
             Create a new steptimer.
@@ -183,33 +187,30 @@ class StepTimerManager:
                 Number of seconds that tick from the apparent timer every step. Must be a non-
                 negative number at least `min_timer_value` and `max_timer_value`. Defaults to
                 _FRAME_LENGTH.
-            firing_interval : float, optional
-                Number of seconds that must elapse for the apparent timer to tick. Defaults to
-                None (and converted to abs(timestep_length))
-            min_timer_value : float, optional
+            firing_interval : float
+                Number of seconds that must elapse for the apparent timer to tick.
+            min_timer_value : float
                 Minimum value the apparent timer may take. If the timer ticks below this, it will
-                end automatically. It must be a non-negative number. Defaults to
-                _DEF_MIN_TIMER_VALUE.
+                end automatically. It must be a non-negative number.
             max_timer_value : float, optional
                 Maximum value the apparent timer may take. If the timer ticks above this, it will
-                end automatically. Defaults to _DEF_MAX_TIMER_VALUE.
+                end automatically.
             cb_start_args : tuple
-                Arguments to the function called on steptimer start. Defaults to an empty tuple.
+                Arguments to the function called on steptimer start.
             cb_firing_args : tuple
-                Arguments to the function called on steptimer ticking. Defaults to an empty tuple.
+                Arguments to the function called on steptimer ticking.
+            cb_get_args : tuple
+                Arguments to the function called on steptimer poll.
             cb_pause_args : tuple
-                Arguments to the function called on steptimer pause. Defaults to an empty tuple.
+                Arguments to the function called on steptimer pause.
             cb_unpause_args : tuple
-                Arguments to the function called on steptimer unpause. Defaults to an empty tuple.
+                Arguments to the function called on steptimer unpause.
             cb_end_min_args : tuple
                 Arguments to the function called on steptimer ticking down below _min_timer_value.
-                Defaults to an empty tuple.
             cb_end_max_args : tuple
                 Arguments to the function called on steptimer ticking up above _max_timer_value.
-                Defaults to an empty tuple.
             cb_terminate_args : tuple
-                Arguments to the function called on steptimer terminated externally. Defaults to an
-                empty tuple.
+                Arguments to the function called on steptimer terminated externally.
 
             Returns
             -------
@@ -229,9 +230,6 @@ class StepTimerManager:
             if min_timer_value < 0:
                 raise StepTimerError.InvalidMinTimerValueError
 
-            if firing_interval is None:
-                firing_interval = abs(timestep_length)
-
             self._server = server
             self._manager = manager
             self._steptimer_id = steptimer_id
@@ -241,13 +239,15 @@ class StepTimerManager:
             self._firing_interval = firing_interval
             self._min_timer_value = min_timer_value
             self._max_timer_value = max_timer_value
-            self._cb_start_args = cb_start_args
-            self._cb_firing_args = cb_firing_args
-            self._cb_pause_args = cb_pause_args
-            self._cb_unpause_args = cb_unpause_args
-            self._cb_end_min_args = cb_end_min_args
-            self._cb_end_max_args = cb_end_max_args
-            self._cb_terminate_args = cb_terminate_args
+
+            self.cb_start_args = cb_start_args
+            self.cb_firing_args = cb_firing_args
+            self.cb_get_args = cb_get_args
+            self.cb_pause_args = cb_pause_args
+            self.cb_unpause_args = cb_unpause_args
+            self.cb_end_min_args = cb_end_min_args
+            self.cb_end_max_args = cb_end_max_args
+            self.cb_terminate_args = cb_terminate_args
 
             self._was_started = False
             self._was_terminated = False
@@ -264,7 +264,13 @@ class StepTimerManager:
             # timer ticking up beyond its maximum or down beyond its minimum, or via .terminate()
             self._task = None
 
-        def start(self):
+            self._operation_lock = asyncio.Lock()
+            self._update_lock = asyncio.Lock()
+
+            self._next_operation_ready = asyncio.Queue(maxsize=1)
+            self._next_operation_ready.put_nowait(1)
+
+        async def start(self, client=None):
             """
             Start the steptimer. Requires the timer was not started and is not terminated.
 
@@ -274,24 +280,54 @@ class StepTimerManager:
 
             Raises
             ------
-            StepTimerError.AlreadyStartedStepTimerError:
-                If the steptimer was already started.
             StepTimerError.AlreadyTerminatedStepTimerError:
-                If the steptimer was already terminated.
+                If the steptimer has already been terminated.
+            StepTimerError.AlreadyStartedStepTimerError:
+                If the steptimer has not been terminated yet but already has started.
 
             """
 
-            if self._was_started:
-                raise StepTimerError.AlreadyStartedStepTimerError
-            if self._was_terminated:
-                raise StepTimerError.AlreadyTerminatedStepTimerError
+            await self._next_operation_ready.get()
+
+            try:
+                if self._was_terminated:
+                    raise StepTimerError.AlreadyTerminatedStepTimerError
+                if self._was_started:
+                    raise StepTimerError.AlreadyStartedStepTimerError
+            except Exception as exception:
+                self._next_operation_ready.put_nowait(1)
+                raise exception
 
             self._was_started = True
             async_function = self._as_timer()
-            self._task = asyncio.ensure_future(async_function)
+            self._task = Constants.create_fragile_task(async_function)
             self._check_structure()
 
-        def pause(self):
+        async def get(self):
+            """
+            Get current apparent timer
+
+            Returns
+            -------
+            float
+                Current apparent timer.
+
+            """
+
+            await self._next_operation_ready.get()
+            try:
+                self._gather_next_operation_ready(self.cb_get_fn(*self.cb_get_args))
+            finally:
+                value = self._timer_value
+                self._next_operation_ready.put_nowait(1)
+            # Note that we are not using self._gather_next_operation_ready and then returning
+            # the timer value here.
+            # That is because we want to make sure we return the current self._timer_value, and
+            # with that approach it is not guaranteed that another coroutine will not run and
+            # update self._timer_value.
+            return value
+
+        async def pause(self):
             """
             Pause the steptimer. Requires the timer was started, is not terminated nor paused.
 
@@ -301,27 +337,33 @@ class StepTimerManager:
 
             Raises
             ------
-            StepTimerError.NotStartedStepTimerError:
-                If the steptimer was not started yet.
             StepTimerError.AlreadyTerminatedStepTimerError:
-                If the steptimer was already terminated.
+                If the steptimer has been already terminated.
+            StepTimerError.NotStartedStepTimerError:
+                If the steptimer has not been terminated nor started yet.
             StepTimerError.AlreadyPausedStepTimerError:
-                If the steptimer was already paused.
+                If the steptimer has not been terminated, has been started and is currently paused.
 
             """
 
-            if not self._was_started:
-                raise StepTimerError.NotStartedStepTimerError
-            if self._was_terminated:
-                raise StepTimerError.AlreadyTerminatedStepTimerError
-            if self._is_paused:
-                raise StepTimerError.AlreadyPausedStepTimerError
+            await self._next_operation_ready.get()
+
+            try:
+                if self._was_terminated:
+                    raise StepTimerError.AlreadyTerminatedStepTimerError
+                if not self._was_started:
+                    raise StepTimerError.NotStartedStepTimerError
+                if self._is_paused:
+                    raise StepTimerError.AlreadyPausedStepTimerError
+            except Exception as exception:
+                self._next_operation_ready.put_nowait(1)
+                raise exception
 
             self._is_paused = True
             self._refresh()
             self._check_structure()
 
-        def unpause(self):
+        async def unpause(self):
             """
             Unpause the steptimer. Requires the timer was started, is not terminated and is paused.
 
@@ -331,28 +373,35 @@ class StepTimerManager:
 
             Raises
             ------
-            StepTimerError.NotStartedStepTimerError:
-                If the steptimer was not started yet.
             StepTimerError.AlreadyTerminatedStepTimerError:
-                If the steptimer was already terminated.
+                If the steptimer has been already terminated.
+            StepTimerError.NotStartedStepTimerError:
+                If the steptimer has not been terminated nor started yet.
             StepTimerError.NotPausedStepTimerError:
-                If the steptimer was not paused.
+                If the steptimer has not been terminated, has been started and is currently not
+                paused.
 
             """
 
-            if not self._was_started:
-                raise StepTimerError.NotStartedStepTimerError
-            if self._was_terminated:
-                raise StepTimerError.AlreadyTerminatedStepTimerError
-            if not self._is_paused:
-                raise StepTimerError.NotPausedStepTimerError
+            await self._next_operation_ready.get()
+
+            try:
+                if not self._was_started:
+                    raise StepTimerError.NotStartedStepTimerError
+                if self._was_terminated:
+                    raise StepTimerError.AlreadyTerminatedStepTimerError
+                if not self._is_paused:
+                    raise StepTimerError.NotPausedStepTimerError
+            except Exception as exception:
+                self._next_operation_ready.put_nowait(1)
+                raise exception
 
             self._is_paused = False
             self._just_unpaused = True
             self._refresh()
             self._check_structure()
 
-        def terminate(self):
+        async def terminate(self):
             """
             Terminate the steptimer. Requires the timer not be terminated already.
 
@@ -367,22 +416,18 @@ class StepTimerManager:
 
             """
 
+            await self._next_operation_ready.get()
+
+            try:
+                if self._was_terminated:
+                    raise StepTimerError.AlreadyTerminatedStepTimerError
+            except Exception as exception:
+                self._next_operation_ready.put_nowait(1)
+                raise exception
+
             self._was_terminated = True
             self._refresh()
             self._check_structure()
-
-        def get(self):
-            """
-            Get current apparent timer, even considering how much of the step has currently passed.
-
-            Returns
-            -------
-            float
-                Current apparent timer.
-
-            """
-
-            return self._timer_value + self._get_subtimestep_elapsed()
 
         def _refresh(self):
             """
@@ -396,10 +441,11 @@ class StepTimerManager:
             """
 
             if not self._task:
+                self._next_operation_ready.put_nowait(1)
                 return
 
             self._task.cancel()
-            asyncio.ensure_future(self.await_cancellation(self._task))
+            Constants.create_fragile_task(self._await_cancellation(self._task))
 
         def _get_subtimestep_elapsed(self):
             """
@@ -421,8 +467,9 @@ class StepTimerManager:
             # Otherwise, this is constantly changing
             # so find real time elapsed since last update to subtimestep_elapsed,
             # then adapt to step length
+            # We need to use the absolute value of the timestep length, as it may be negative
             subtimestep = (time.time() - self._last_timestep_time)
-            subtimestep *= self._firing_interval/self._timestep_length
+            subtimestep *= self._firing_interval/abs(self._timestep_length)
             return self._subtimestep_elapsed + subtimestep
 
         def _check_structure(self):
@@ -471,7 +518,7 @@ class StepTimerManager:
 
             await asyncio.sleep(0)
 
-        async def await_cancellation(self, old_task):
+        async def _await_cancellation(self, old_task):
             """
             Async function that waits until it is able to properly retrieve the cancellation
             exception from `old_task`. This function assumes the task was ordered to be canceled,
@@ -493,7 +540,7 @@ class StepTimerManager:
             except asyncio.CancelledError:
                 pass
 
-        async def _cb_start_fn(self, *args):
+        async def cb_start_fn(self, *args):
             """
             Async function that is executed once: when the steptimer is started.
 
@@ -510,7 +557,7 @@ class StepTimerManager:
 
             log_print('Started timer {}'.format(self._steptimer_id))
 
-        async def _cb_firing_fn(self, *args):
+        async def cb_firing_fn(self, *args):
             """
             Async function that is executed every time the steptimer is updated due to its firing
             interval elapsing.
@@ -528,7 +575,25 @@ class StepTimerManager:
 
             log_print('Timer {} ticked to {}'.format(self._steptimer_id, self._timer_value))
 
-        async def _cb_pause_fn(self, *args):
+        async def cb_get_fn(self, *args):
+            """
+            Async function that is executed every time the steptimer is polled to get its current
+            time.
+
+            Parameters
+            ----------
+            *args : Any
+                Optional arguments to pass to the firing async function.
+
+            Returns
+            -------
+            None.
+
+            """
+
+            log_print('Timer {} is currently at {}'.format(self._steptimer_id, self._timer_value))
+
+        async def cb_pause_fn(self, *args):
             """
             Async function that is executed every time the steptimer is paused.
 
@@ -545,7 +610,7 @@ class StepTimerManager:
 
             log_print('Timer {} paused at {}'.format(self._steptimer_id, self._timer_value))
 
-        async def _cb_unpause_fn(self, *args):
+        async def cb_unpause_fn(self, *args):
             """
             Async function that is executed every time the steptimer is unpaused.
 
@@ -562,7 +627,7 @@ class StepTimerManager:
 
             log_print('Timer {} unpaused from {}'.format(self._steptimer_id, self._timer_value))
 
-        async def _cb_end_min_fn(self, *args):
+        async def cb_end_min_fn(self, *args):
             """
             Async function that is executed once: once the steptimer time ticks DOWN to at most the
             steptimer minimum timer value.
@@ -580,7 +645,7 @@ class StepTimerManager:
 
             log_print('Timer {} min-ended at {}'.format(self._steptimer_id, self._timer_value))
 
-        async def _cb_end_max_fn(self, *args):
+        async def cb_end_max_fn(self, *args):
             """
             Async function that is executed once: once the steptimer time ticks UP to at least the
             steptimer maximum timer value.
@@ -598,7 +663,7 @@ class StepTimerManager:
 
             log_print('Timer {} max-ended at {}'.format(self._steptimer_id, self._timer_value))
 
-        async def _cb_terminate_fn(self, *args):
+        async def cb_terminate_fn(self, *args):
             """
             Async function that is executed once: once the steptimer is terminated.
 
@@ -615,6 +680,12 @@ class StepTimerManager:
 
             log_print('Timer {} terminated at {}'.format(self._steptimer_id, self._timer_value))
 
+        async def _gather_next_operation_ready(self, awaitable):
+            try:
+                await asyncio.gather(awaitable)
+            finally:
+                self._next_operation_ready.put_nowait(1)
+
         async def _as_timer(self):
             """
             Async function rerpresenting the steptimer visible timer.
@@ -630,7 +701,7 @@ class StepTimerManager:
             self._is_paused = False
             self._just_paused = False
             self._just_unpaused = False
-            await self._cb_start_fn(*self._cb_start_args)
+            await self._gather_next_operation_ready(self.cb_start_fn(*self.cb_start_args))
 
             while True:
                 try:
@@ -639,14 +710,17 @@ class StepTimerManager:
                     if (not self._is_paused and not self._just_unpaused):
                         self._last_timestep_time = time.time()
                         self._subtimestep_elapsed = 0
-                        await self._cb_firing_fn(*self._cb_firing_args)
+
+                        await self.cb_firing_fn(*self.cb_firing_args)
                         await asyncio.sleep(self._firing_interval)
                     # If a timestep was just unpaused
                     elif (not self._is_paused and self._just_unpaused):
                         self._just_unpaused = False
                         adapted_interval = max(0, self._firing_interval-self._subtimestep_elapsed)
                         self._last_timestep_time = time.time()
-                        await self._cb_unpause_fn(*self._cb_unpause_args)
+
+                        await self._gather_next_operation_ready(
+                            self.cb_unpause_fn(*self.cb_unpause_args))
                         await asyncio.sleep(adapted_interval)
                     # Otherwise, timer is paused, wait timestep miliseconds again
                     else:
@@ -657,7 +731,8 @@ class StepTimerManager:
                     # 2. The timer was just unpaused
                     # 3. The timer was just paused
                     if self._was_terminated:
-                        await self._cb_terminate_fn(*self._cb_terminate_args)
+                        await self._gather_next_operation_ready(
+                            self.cb_terminate_fn(*self.cb_terminate_args))
                         break
                     if self._just_unpaused:
                         pass
@@ -666,7 +741,9 @@ class StepTimerManager:
                     else:
                         self._just_paused = True
                         self._subtimestep_elapsed += self._get_subtimestep_elapsed()
-                        await self._cb_pause_fn(*self._cb_pause_args)
+
+                        await self._gather_next_operation_ready(
+                            self.cb_pause_fn(*self.cb_pause_args))
                 else:
                     # If we made it here, we made it hrough a timestep without an order to pause,
                     # unpause or terminate in it.
@@ -677,13 +754,24 @@ class StepTimerManager:
                         if self._timer_value <= self._min_timer_value:
                             self._timer_value = self._min_timer_value
                             if self._timestep_length < 0:
-                                await self._cb_end_min_fn(*self._cb_end_min_args)
+                                self._was_terminated = True
+                                await self.cb_end_min_fn(*self.cb_end_min_args)
                                 break
                         elif self._timer_value >= self._max_timer_value:
                             self._timer_value = self._max_timer_value
                             if self._timestep_length > 0:
-                                await self._cb_end_max_fn(*self._cb_end_max_args)
+                                self._was_terminated = True
+                                await self.cb_end_max_fn(*self.cb_end_max_args)
                                 break
+
+                # Note that instead of notifying coroutines waiting on self._next_operation_ready
+                # in a finally block we do it in each "operation end" (namely, after all code is
+                # run and the only remaining code is sleeping until the next timer tickover).
+                # This is to ensure that we only notify coroutines at the end of operations
+                # For example, .unpause() only runs code here after it has gone through the try
+                # loop once (namely, it catches CancelledError, lets it go and then reruns the try
+                # block). Notifying in a finally would notify other coroutines too early that
+                # the unpause is done.
 
     def __init__(self, server, steptimer_limit=None):
         """
@@ -706,7 +794,7 @@ class StepTimerManager:
     def new_steptimer(self, timer_value=_DEF_START_TIMER_VALUE,
                       timestep_length=_FRAME_LENGTH, firing_interval=None,
                       min_timer_value=_DEF_MIN_TIMER_VALUE, max_timer_value=_DEF_MAX_TIMER_VALUE,
-                      cb_start_args=tuple(), cb_firing_args=tuple(),
+                      cb_start_args=tuple(), cb_firing_args=tuple(), cb_get_args=tuple(),
                       cb_pause_args=tuple(), cb_unpause_args=tuple(),
                       cb_end_min_args=tuple(), cb_end_max_args=tuple(),
                       cb_terminate_args=tuple()):
@@ -735,6 +823,8 @@ class StepTimerManager:
             Arguments to the function called on steptimer start. Defaults to an empty tuple.
         cb_firing_args : tuple
             Arguments to the function called on steptimer ticking. Defaults to an empty tuple.
+        cb_get_args : tuple
+            Arguments to the function called on steptimer poll. Defaults to an empty tuple.
         cb_pause_args : tuple
             Arguments to the function called on steptimer pause. Defaults to an empty tuple.
         cb_unpause_args : tuple
@@ -764,12 +854,15 @@ class StepTimerManager:
             if len(self._id_to_steptimer) >= self._steptimer_limit:
                 raise StepTimerError.ManagerTooManyStepTimersError
 
+        if firing_interval is None:
+            firing_interval = abs(timestep_length)
+
         # Generate a steptimer ID and the new steptimer
         steptimer_id = self._make_new_steptimer_id()
         steptimer = self.StepTimer(self._server, self, steptimer_id, timer_value, timestep_length,
                                    firing_interval, min_timer_value, max_timer_value, cb_start_args,
-                                   cb_firing_args, cb_pause_args, cb_unpause_args, cb_end_min_args,
-                                   cb_end_max_args, cb_terminate_args)
+                                   cb_firing_args, cb_get_args, cb_pause_args, cb_unpause_args,
+                                   cb_end_min_args, cb_end_max_args, cb_terminate_args)
         self._id_to_steptimer[steptimer_id] = steptimer
 
         self._check_structure()

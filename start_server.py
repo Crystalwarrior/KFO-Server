@@ -18,30 +18,59 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-import sys
+import asyncio
 import traceback
-import server.logger
 
+from server import logger
 from server.tsuserver import TsuserverDR
 
 def main():
-    server.logger.log_print('Starting...')
-    my_server = None
-    try:
-        my_server = TsuserverDR()
-        my_server.start()
-    except KeyboardInterrupt:
-        raise
-    except Exception:
+    def handle_exception(loop, context):
+        exception = context.get('exception')
+        server.error_queue.put_nowait(exception)
+        server.error_queue.put_nowait(exception)
+        # An exception is put twice, because it is pulled twice: once by the server object itself
+        # (so that it leaves its main loop) and once by this main() function (so that it can
+        # print traceback)
+
+    async def abnormal_shutdown(exception, server=None):
         # Print complete traceback to console
-        etype, evalue, etraceback = sys.exc_info()
-        info = 'TSUSERVERDR HAS ENCOUNTERED A PYTHON ERROR.'
+        etype, evalue, etraceback = (type(exception), exception, exception.__traceback__)
+        info = 'TSUSERVERDR HAS ENCOUNTERED A FATAL PYTHON ERROR.'
         info += "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
-        server.logger.log_print(info)
-        server.logger.log_error(info, server=my_server, errortype='P')
-        server.logger.log_print('Server is shutting down.')
-        server.logger.log_server('Server is shutting down due to an unhandled exception.')
-        input("Press Enter to continue... ")
+        logger.log_print(info)
+        logger.log_error(info, server=server, errortype='P')
+
+        logger.log_server('Server is shutting down due to an unhandled exception.')
+        logger.log_print('Attempting a graceful shutdown.')
+        try:
+            await server.normal_shutdown()
+        except Exception as exception2:
+            logger.log_print('Unable to gracefully shut down. Forcing a shutdown.')
+            decision = input('Press Enter to continue (or input s to see reason for ungraceful '
+                             'shutdown)...')
+            if decision == 's':
+                etype, evalue, etraceback = (type(exception2), exception2, exception2.__traceback__)
+                info = "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
+
+                logger.log_print(info)
+                logger.log_error(info, server=server, errortype='P')
+                input('Press Enter to continue...')
+
+    server = None
+    loop = asyncio.get_event_loop()
+    loop.set_exception_handler(handle_exception)
+
+    try:
+        server = TsuserverDR()
+        loop.run_until_complete(server.start())
+        raise server.error_queue.get_nowait()
+    except KeyboardInterrupt:
+        print('') # Lame
+        logger.log_pdebug('You have initiated a server shut down.')
+        loop.run_until_complete(server.normal_shutdown())
+    except Exception as exception:
+        loop.run_until_complete(abnormal_shutdown(exception, server=server))
 
 if __name__ == '__main__':
     main()

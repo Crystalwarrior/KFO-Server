@@ -24,6 +24,7 @@ import ssl
 import sys
 import traceback
 import urllib.request
+
 from server import logger
 from server.aoprotocol import AOProtocol
 from server.area_manager import AreaManager
@@ -34,6 +35,7 @@ from server.districtclient import DistrictClient
 from server.exceptions import ServerError
 from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
+from server.steptimer_manager import StepTimerManager
 from server.tasker import Tasker
 from server.zone_manager import ZoneManager
 
@@ -42,8 +44,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a28'
-        self.internal_version = 'M200413b'
+        self.segment_version = 'a29'
+        self.internal_version = 'M200425a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -101,11 +103,15 @@ class TsuserverDR:
 
         logger.log_print('Server configurations loaded successfully!')
 
-    def start(self):
-        try:
-            self.loop = asyncio.get_event_loop()
-        except RuntimeError:
-            self.loop = asyncio.new_event_loop()
+        self.error_queue = None
+        self._server = None
+
+        self._steptimermanager = StepTimerManager(self)
+        self._b = self._steptimermanager.new_steptimer(timer_value=10, timestep_length=-0.1)
+
+    async def start(self):
+        self.loop = asyncio.get_event_loop()
+        self.error_queue = asyncio.Queue()
 
         self.tasker = Tasker(self, self.loop)
         bound_ip = '0.0.0.0'
@@ -117,8 +123,10 @@ class TsuserverDR:
             server_name = self.config['masterserver_name']
             logger.log_print('Starting a nonlocal server...')
 
-        server = self.loop.create_server(lambda: self.protocol(self), bound_ip, self.config['port'])
-        ao_server = self.loop.run_until_complete(server)
+        self._server = await self.loop.create_server(lambda: self.protocol(self),
+                                                     bound_ip, self.config['port'],
+                                                     start_serving=False)
+        asyncio.create_task(self._server.serve_forever())
 
         logger.log_pserver('Server started successfully!')
 
@@ -154,37 +162,26 @@ class TsuserverDR:
             logger.log_print('*Server description: {}'
                              .format(self.config['masterserver_description']))
 
-        try:
-            self.loop.run_forever()
-        except KeyboardInterrupt:
-            pass
+        raise await self.error_queue.get()
 
-        print('') # Lame
-        logger.log_pdebug('You have initiated a server shut down.')
-        self.shutdown()
+    async def normal_shutdown(self):
 
-        ao_server.close()
-        self.loop.run_until_complete(ao_server.wait_closed())
-        self.loop.close()
-        logger.log_pserver('Server has successfully shut down.')
-
-    def shutdown(self):
         # Cleanup operations
         self.shutting_down = True
 
         # Cancel further polling for district/master server
         if self.local_connection:
             self.local_connection.cancel()
-            self.loop.run_until_complete(self.tasker.await_cancellation(self.local_connection))
+            await self.tasker.await_cancellation(self.local_connection)
 
         if self.district_connection:
             self.district_connection.cancel()
-            self.loop.run_until_complete(self.tasker.await_cancellation(self.district_connection))
+            await self.tasker.await_cancellation(self.district_connection)
 
         if self.masterserver_connection:
             self.masterserver_connection.cancel()
-            self.loop.run_until_complete(self.tasker.await_cancellation(self.masterserver_connection))
-            self.loop.run_until_complete(self.tasker.await_cancellation(self.ms_client.shutdown()))
+            await self.tasker.await_cancellation(self.masterserver_connection)
+            await self.tasker.await_cancellation(self.ms_client.shutdown())
 
         # Cancel pending client tasks and cleanly remove them from the areas
         players = self.get_player_count()
@@ -193,6 +190,11 @@ class TsuserverDR:
 
         for client in self.client_manager.clients:
             client.disconnect()
+
+        self._server.close()
+        await self._server.wait_closed()
+        logger.log_pserver('Server has successfully shut down.')
+        input("Press Enter to continue... ")
 
     def get_version_string(self):
         mes = '{}.{}.{}'.format(self.release, self.major_version, self.minor_version)
