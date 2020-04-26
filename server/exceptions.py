@@ -105,32 +105,41 @@ class PlayerGroupError(TsuserverException):
     class ManagerInvalidIDError(TsuserverException):
         pass
 
-class StepTimerError(TsuserverException):
-    class InvalidStepTimerValueError(TsuserverException):
+class SteptimerError(TsuserverException):
+    class TimerTooLowError(TsuserverException):
+        pass
+
+    class TimerTooHighError(TsuserverException):
         pass
 
     class InvalidMinTimerValueError(TsuserverException):
         pass
 
-    class AlreadyStartedStepTimerError(TsuserverException):
+    class InvalidFiringIntervalError(TsuserverException):
         pass
 
-    class NotStartedStepTimerError(TsuserverException):
+    class InvalidTimestepLengthError(TsuserverException):
         pass
 
-    class AlreadyPausedStepTimerError(TsuserverException):
+    class AlreadyStartedSteptimerError(TsuserverException):
         pass
 
-    class NotPausedStepTimerError(TsuserverException):
+    class NotStartedSteptimerError(TsuserverException):
         pass
 
-    class AlreadyTerminatedStepTimerError(TsuserverException):
+    class AlreadyPausedSteptimerError(TsuserverException):
         pass
 
-    class ManagerTooManyStepTimersError(TsuserverException):
+    class NotPausedSteptimerError(TsuserverException):
         pass
 
-    class ManagerDoesNotManageStepTimerError(TsuserverException):
+    class AlreadyTerminatedSteptimerError(TsuserverException):
+        pass
+
+    class ManagerTooManySteptimersError(TsuserverException):
+        pass
+
+    class ManagerDoesNotManageSteptimerError(TsuserverException):
         pass
 
     class ManagerInvalidIDError(TsuserverException):

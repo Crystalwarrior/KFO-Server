@@ -35,7 +35,7 @@ from server.districtclient import DistrictClient
 from server.exceptions import ServerError
 from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
-from server.steptimer_manager import StepTimerManager
+from server.steptimer_manager import SteptimerManager
 from server.tasker import Tasker
 from server.zone_manager import ZoneManager
 
@@ -44,8 +44,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a29'
-        self.internal_version = 'M200425a'
+        self.segment_version = 'a30'
+        self.internal_version = 'M200426a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -106,8 +106,8 @@ class TsuserverDR:
         self.error_queue = None
         self._server = None
 
-        self._steptimermanager = StepTimerManager(self)
-        self._b = self._steptimermanager.new_steptimer(timer_value=10, timestep_length=-0.1)
+        self._steptimermanager = SteptimerManager(self)
+        self._b = self._steptimermanager.new_steptimer(timer_value=40, timestep_length=-1)
 
     async def start(self):
         self.loop = asyncio.get_event_loop()
