@@ -18,13 +18,12 @@
 
 # possible keys: ip, OOC, id, cname, ipid, hdid
 
-import random
+import datetime
 import hashlib
+import random
 import string
 import time
-import datetime
 import traceback
-import asyncio
 
 from server import logger
 from server.constants import Constants, TargetType
@@ -6510,7 +6509,7 @@ def ooc_cmd_sts(client: ClientManager.Client, arg: str):
     async def _start():
         t = client.server._b
         try:
-            await asyncio.gather(t.start_timer())
+            await t.start_timer()
         except SteptimerError.AlreadyTerminatedSteptimerError:
             raise ClientError('Steptimer already terminated.')
         except SteptimerError.AlreadyStartedSteptimerError:
@@ -6524,7 +6523,7 @@ def ooc_cmd_stp(client: ClientManager.Client, arg: str):
     async def _pause():
         t = client.server._b
         try:
-            await asyncio.gather(t.pause_timer())
+            await t.pause_timer()
         except SteptimerError.AlreadyTerminatedSteptimerError:
             raise ClientError('Steptimer already terminated.')
         except SteptimerError.NotStartedSteptimerError:
@@ -6540,7 +6539,7 @@ def ooc_cmd_stu(client: ClientManager.Client, arg: str):
     async def _unpause():
         t = client.server._b
         try:
-            await asyncio.gather(t.unpause_timer())
+            await t.unpause_timer()
         except SteptimerError.AlreadyTerminatedSteptimerError:
             raise ClientError('Steptimer already terminated.')
         except SteptimerError.NotStartedSteptimerError:
@@ -6556,7 +6555,7 @@ def ooc_cmd_stt(client: ClientManager.Client, arg: str):
     async def _terminate():
         t = client.server._b
         try:
-            await asyncio.gather(t.terminate_timer())
+            await t.terminate_timer()
         except SteptimerError.AlreadyTerminatedSteptimerError:
             raise ClientError('Steptimer already terminated.')
         else:
@@ -6567,7 +6566,7 @@ def ooc_cmd_stt(client: ClientManager.Client, arg: str):
 def ooc_cmd_stg(client: ClientManager.Client, arg: str):
     async def _get():
         t = client.server._b
-        time = (await asyncio.gather(t.get_time()))[0]
+        time = await t.get_time()
         formatted_time = "{:.3f}".format(time)
         client.send_ooc('Current steptimer time: {}.'.format(formatted_time))
 
@@ -6578,7 +6577,7 @@ def ooc_cmd_stsf(client: ClientManager.Client, arg: str):
         t = client.server._b
         x = float(arg)
         try:
-            await asyncio.gather(t.set_firing_interval(x))
+            await t.set_firing_interval(x)
         except SteptimerError.InvalidFiringIntervalError:
             raise ClientError('Invalid firing interval {}'.format(x))
         else:
@@ -6591,7 +6590,7 @@ def ooc_cmd_stst(client: ClientManager.Client, arg: str):
         t = client.server._b
         x = float(arg)
         try:
-            await asyncio.gather(t.set_timestep_length(x))
+            await t.set_timestep_length(x)
         except SteptimerError.InvalidTimestepLengthError:
             raise ClientError('Invalid timestep length {}'.format(x))
         else:
@@ -6603,16 +6602,19 @@ def ooc_cmd_stss(client: ClientManager.Client, arg: str):
     async def _set_time():
         t = client.server._b
         x = float(arg)
-        try:
-            await asyncio.gather(t.set_time(x))
-        except SteptimerError.TimerTooLowError:
-            raise ClientError('Time {} too low.'.format(x))
-        except SteptimerError.TimerTooHighError:
-            raise ClientError('Time {} too high.'.format(x))
-        else:
-            client.send_ooc('Updated time to {}'.format(x))
+        await t.set_time(x)
+        client.send_ooc('Updated time to {}'.format(x))
 
     Constants.create_fragile_task(_set_time(), client=client)
+
+def ooc_cmd_stcb(client: ClientManager.Client, arg: str):
+    async def _change_by():
+        t = client.server._b
+        x = float(arg)
+        await t.change_time_by(x)
+        client.send_ooc('Changed time by {}'.format(x))
+
+    Constants.create_fragile_task(_change_by(), client=client)
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

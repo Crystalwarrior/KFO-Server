@@ -19,28 +19,32 @@
 """
 Module that contains the SteptimerManager class, which itself contains the Steptimer class.
 
-A steptimer is a timer with an apparent timer value that ticks up/down a fixed length of time once
-every fixed interval (a step). This allows timers that simulate slow downs or fast forwarding (for
-example, a timer that ticks down one second once every real 5 seconds).
+A steptimer is a timer with an apparent timer value that ticks up/down a fixed length of time (the
+timestep length) once every fixed interval (the firing interval). This allows timers that simulate
+slow downs or fast forwarding (for example, a timer that ticks down one second once every real
+5 seconds).
+A steptimer ticks up in one step if at that step the timestep length is positive. A steptimer ticks
+down in one step instead if at that step the timestep length is negative.
 A steptimer when initialized does not start automatically, but once it starts, it will tick up/down
 as described previously.
 A steptimer can be paused, so that the apparent timer will stop changing. It can also be unpaused,
 so the apparent timer will start changing again by the previously described interval rules.
 the interval rules). The length of the first step after unpausing is set to be the current fixed
 interval length minus the elapsed time in that step.
-A steptimer can also be manually refreshed to obtain (an approximation of) the current timer
-modified by however much of the current step happened.
 Once the apparent timer ticks down below some specified minimum or ticks up above some specified
-maximum, it will end automatically and be deleted. If the timer is updated above the specified
-maximum but the timer is set to tick down, the timer will not end but will be set to the maximum
-(a similar behavior occurs for updating to below the specified minimum for a tick up timer).
+maximum, it will end automatically and be deleted. If the apparent timer is updated above the
+specified maximum but the timer is set to tick down, the timer will not end but will be set to the
+maximum (a similar behavior occurs for updating to below the specified minimum for a tick up timer).
 A steptimer can also be terminated before it automatically ends.
 
 A steptimer allows the implementation different callback functions that will be executed on the
 following events:
-* When the steptimer ticks up/down once the firing interval elapses.
-* When the steptimer ends automatically by ticking DOWN below some specified minimum timer value.
-* When the steptimer ends automatically by ticking UP some specified maximum timer value.
+* When the steptimer ends automatically by ticking DOWN to or below some specified minimum timer
+  value.
+* When the steptimer ends automatically by ticking UP to or above some specified maximum timer
+  value.
+* When the steptimer ticks up/down once the firing interval elapses, but is not due to end
+  automatically (see previous two points)
 """
 
 import asyncio
@@ -55,6 +59,15 @@ class SteptimerManager:
     A mutable data type for a manager for steptimers in a server.
     Contains the steptimer object definition, as well as a mapping of steptimer IDs to their
     associated steptimers.
+    The class (with its default implementation) is coroutine-safe as the default steptimer class
+    is coroutine-safe and the only public method of the manager that schedules asynchronous code
+    (steptimer deletion) can only be successfully executed once by construction.
+    The class is NOT thread-safe.
+
+    Overwritable Methods
+    --------------------
+    _make_new_steptimer_id :
+        Generate a new steptimer ID. Can be modified to provide different steptimer ID formats.
 
     Class Attributes
     ----------------
@@ -67,15 +80,15 @@ class SteptimerManager:
     _DEF_MAX_TIMER_VALUE : float
         Default maximum value the apparent timer of all managed steptimers may take.
 
-    Attributes
-    ----------
+    (Private) Attributes
+    --------------------
     _server : TsuserverDR
         Server the steptimer manager belongs to.
     _id_to_steptimer : dict of str to self.Steptimer
         Mapping of steptiomer IDs to steptimers that this manager manages.
     _steptimer_limit : int or None
         If an int, it is the maximum number of steptimers this manager supports. If None, the
-        manager may manage an arbitrary number of steptimer.
+        manager may manage an arbitrary number of steptimers.
 
     Invariants
     ----------
@@ -99,6 +112,22 @@ class SteptimerManager:
         A mutable data type representing steptimers.
         A steptimer is a timer with an apparent timer value that ticks up/down a fixed period of
         time once every fixed interval (a step).
+        The class is coroutine-safe as it employs a strict monitor pattern on its asynchronous
+        public methods: any scheduled public method will wait until a running public method is
+        done if there is any before it launches.
+        However, the class itself is NOT thread-safe, as it only uses asyncio methods that
+        themselves are not thread-safe.
+
+        Overwritable Methods
+        --------------------
+        _cb_timestep_end_fn :
+            Callback function to be executed every time a timestep ends normally.
+        _cb_end_min_fn :
+            Callback function to be executed if the steptimer's apparent timer ticks down to or
+            below its minimum timer value.
+        _cb_end_max_fn :
+            Callback function to be executed if the steptimer's apparent timer ticks up to or
+            above its maximum timer value.
 
         (Private) Attributes
         --------------------
@@ -130,18 +159,25 @@ class SteptimerManager:
         _just_paused : bool
             True briefly after the apparent timer is paused, False otherwise.
         _just_unpaused : bool
-            True the step the apparent timer is unpaused, False otherwise.
+            True briefly after the apparent timer is unpaused, False otherwise.
+        _just_refreshed : bool
+            True briefly after the apparent timer is refreshed, False otherwise.
         _last_timestep_update : float
-            Time (as per time.time()) when the apparent timer last ticked or last paused, whichever
-            happened later.
-        _subttimestep_elapsed : float
-            Computed every time the apparent timer is paused, amount of time elapsed between
-            _last_timestep_update and the timer being paused.
-        _task : asyncio.Task
-            Actual timer task.
+            Time (as per time.time()) when the apparent timer last ticked or was last refreshed,
+            whichever happened later.
+        _time_spent_in_timestep : float
+            Time in seconds the steptimer's current timestep has run, ignoring time paused.
+        _task : asyncio.Task or None
+            Actual timer task. _task is None as long as the steptimer is not started.
+        _next_operation_ready : asyncio.queues.Queue
+            Queue of maxsize=1, typically only holding the int 1. If a public method is scheduled
+            to start running, it must be able to extract this int, otherwise it will wait. Once
+            that public method is done running or the current action of the timer task is sleeping,
+            the queue is refilled with the int 1.
 
         Invariants
         ----------
+        After every public operation, the following statements are true:
         1. `0 <= self._min_timer_value <= self._timer_value <= self._max_timer_value`
         2. `self._firing_interval > 0`
         3. `self._timestep_length != 0`
@@ -170,11 +206,11 @@ class SteptimerManager:
             firing_interval : float
                 Number of seconds that must elapse for the apparent timer to tick.
             min_timer_value : float
-                Minimum value the apparent timer may take. If the timer ticks below this, it will
-                end automatically. It must be a non-negative number.
+                Minimum value the apparent timer may take. If the apparent timer ticks below this,
+                it will end automatically. It must be a non-negative number.
             max_timer_value : float, optional
-                Maximum value the apparent timer may take. If the timer ticks above this, it will
-                end automatically.
+                Maximum value the apparent timer may take. If the apparent timer ticks above this,
+                it will end automatically.
 
             Returns
             -------
@@ -192,6 +228,7 @@ class SteptimerManager:
                 If `firing_interval <= 0`
             SteptimerError.InvalidTimestepLengthError
                 If `timestep_length == 0`
+
             """
 
             if timer_value < min_timer_value:
@@ -220,20 +257,33 @@ class SteptimerManager:
             self._is_paused = False
             self._just_paused = False
             self._just_unpaused = False
-            self._was_refreshed = False
+            self._just_refreshed = False
             self._last_timestep_update = time.time()
             self._time_spent_in_timestep = 0
 
             # This task will be an _as_timer coroutine that is meant to emulate the apparent timer.
             # This task will frequently be canceled for the purposes of updating the timer on user
-            # request, or for the purposes of pausing and unpausing, and thus terminations will be
-            # supprosed. The only way asyncio.CancelledError will not be ignored is via the apparent
-            # timer ticking up beyond its maximum or down beyond its minimum, or via
+            # request, or for the purposes of pausing or refreshed, and thus terminations will be
+            # suppresed. The only way asyncio.CancelledError will not be ignored is via the
+            # apparent timer ticking up beyond its maximum or down beyond its minimum, or via
             # .terminate_timer()
             self._task = None
 
             self._next_operation_ready = asyncio.Queue(maxsize=1)
             self._next_operation_ready.put_nowait(1)
+
+        def get_id(self):
+            """
+            Return the ID of this steptimer.
+
+            Returns
+            -------
+            str
+                The ID of this steptimer.
+
+            """
+
+            return self._steptimer_id
 
         async def start_timer(self):
             """
@@ -368,7 +418,7 @@ class SteptimerManager:
                 raise exception
 
             self._is_paused = False
-            self._was_refreshed = True
+            self._just_refreshed = True
             self._just_unpaused = True
             self._update_subtimestep_elapsed()
             self._refresh()
@@ -436,18 +486,15 @@ class SteptimerManager:
             Set the apparent timer of the steptimer to `new_time`. This will also interrupt the
             current running timestep (if there is one) without calling the steptimer's firing
             callback function and start a new one.
+            If `new_time` is less than the steptimer's minimum timer value, the timer will be
+            adapted to take this minimum value instead. Similarly, if `new_time` is more than the
+            steptimer's maximum timer value, the timer will be adapted to take this maximum value
+            instead.
 
             Parameters
             ----------
             new_time : float
                 New apparent timer of the steptimer.
-
-            Raises
-            ------
-            SteptimerError.TimerTooLowError
-                If new_time is less than the steptimer's minimum timer value.
-            SteptimerError.TimerTooHighError
-                If new_time is more than the steptimer's maximum timer value.
 
             Returns
             -------
@@ -457,18 +504,15 @@ class SteptimerManager:
 
             await self._next_operation_ready.get()
 
-            try:
-                if new_time < self._min_timer_value:
-                    raise SteptimerError.TimerTooLowError
-                if new_time > self._max_timer_value:
-                    raise SteptimerError.TimerTooHighError
-            except Exception as exception:
-                self._next_operation_ready.put_nowait(1)
-                raise exception
-
             self._last_timestep_update = time.time()
             self._time_spent_in_timestep = 0
+
             self._timer_value = float(new_time)
+            if self._timer_value < self._min_timer_value:
+                self._timer_value = self._min_timer_value
+            elif self._timer_value > self._max_timer_value:
+                self._timer_value = self._max_timmer_value
+
             self._refresh()
             self._check_structure()
 
@@ -545,6 +589,41 @@ class SteptimerManager:
             self._refresh()
             self._check_structure()
 
+        async def change_time_by(self, time_difference):
+            """
+            Change the apparent timer of the steptimer by `time_difference`. This will also
+            nterrupt the current running timestep (if there is one) without calling the
+            steptimer's firing callback function and start a new one.
+            If the new apparent timer time is less than the steptimer's minimum timer value, the
+            timer will be adapted to take this minimum value instead. Similarly, if the new
+            apparent timer time is more than steptimer's maximum timer value, the timer will be
+            adapted to take this maximum value instead.
+
+            Parameters
+            ----------
+            time_difference : float
+                Amount of time to change the apparent timer by (possibly zero or negative).
+
+            Returns
+            -------
+            None.
+
+            """
+
+            await self._next_operation_ready.get()
+
+            self._last_timestep_update = time.time()
+            self._time_spent_in_timestep = 0
+
+            self._timer_value += float(time_difference)
+            if self._timer_value < self._min_timer_value:
+                self._timer_value = self._min_timer_value
+            elif self._timer_value > self._max_timer_value:
+                self._timer_value = self._max_timmer_value
+
+            self._refresh()
+            self._check_structure()
+
         def _refresh(self):
             """
             Interrupt the current timestep with a cancellation order.
@@ -562,7 +641,7 @@ class SteptimerManager:
                 self._next_operation_ready.put_nowait(1)
                 return
 
-            self._was_refreshed = True
+            self._just_refreshed = True
             self._task.cancel()
             Constants.create_fragile_task(self._await_cancellation(self._task))
 
@@ -693,10 +772,27 @@ class SteptimerManager:
             self._time_spent_in_timestep = 0
             self._is_paused = False
             self._just_paused = False
-            self._was_refreshed = False
+            self._just_refreshed = False
             self._next_operation_ready.put_nowait(1)
 
             while True:
+                # Check if the timer is due to end immediately before starting to execute the
+                # timestep.
+                if self._timer_value <= self._min_timer_value:
+                    self._timer_value = self._min_timer_value
+                    if self._timestep_length < 0:
+                        self._was_terminated = True
+                        await self._cb_end_min_fn()
+                        return
+                elif self._timer_value >= self._max_timer_value:
+                    self._timer_value = self._max_timer_value
+                    if self._timestep_length > 0:
+                        self._was_terminated = True
+                        await self._cb_end_max_fn()
+                        return
+
+                # Otherwise, the timer is not due to end yet, so we start a new timestep or
+                # proceed to continue the current one (whichever is appropriate).
                 try:
                     # This moment represents the instant a timestep resumes from pausing/refreshing
                     # or the very beginning of one.
@@ -708,7 +804,7 @@ class SteptimerManager:
                         await asyncio.sleep(self._firing_interval)
 
                     # Else, if a timestep just finished without any interruptions
-                    elif not self._was_refreshed:
+                    elif not self._just_refreshed:
                         self._reset_subtimestep_elapsed()
 
                         await self._cb_timestep_end_fn()
@@ -716,9 +812,10 @@ class SteptimerManager:
 
                     # Otherwise, a timestep was just continued because of a refresh
                     else:
-                        adapted_interval = max(0,
-                                               self._firing_interval-self._time_spent_in_timestep)
-                        self._was_refreshed = False
+                        adapted_interval = self._firing_interval-self._time_spent_in_timestep
+                        if adapted_interval < 0:
+                            adapted_interval = 0
+                        self._just_refreshed = False
 
                         self._next_operation_ready.put_nowait(1)
                         await asyncio.sleep(adapted_interval)
@@ -730,12 +827,12 @@ class SteptimerManager:
                     # 3. The timer was just refreshed
                     if self._was_terminated:
                         self._next_operation_ready.put_nowait(1)
-                        break
+                        return
                     elif self._is_paused:
                         self._next_operation_ready.put_nowait(1)
                         # The asynchronous waiting due to pauses is deliberately left within the
                         # try block to simplify logic, and is executed immediately after this part.
-                    elif self._was_refreshed:
+                    elif self._just_refreshed:
                         # The asynchronous refresh code is deliberately left within the try to
                         # simplify logic, and is executed immediately after this part.
                         pass
@@ -745,22 +842,10 @@ class SteptimerManager:
                 else:
                     # If we made it here, we made it hrough a timestep without an order to pause,
                     # refresh or terminate in it.
-                    if (not self._is_paused and not self._was_refreshed):
+                    # Only update the timer if it not paused.
+                    if not self._is_paused:
                         self._timer_value += self._timestep_length
 
-                        # Check if timer has gone beyond limits, and end or bound it appropriately
-                        if self._timer_value <= self._min_timer_value:
-                            self._timer_value = self._min_timer_value
-                            if self._timestep_length < 0:
-                                self._was_terminated = True
-                                await self._cb_end_min_fn()
-                                break
-                        elif self._timer_value >= self._max_timer_value:
-                            self._timer_value = self._max_timer_value
-                            if self._timestep_length > 0:
-                                self._was_terminated = True
-                                await self._cb_end_max_fn()
-                                break
 
                 # Note that instead of notifying coroutines waiting on self._next_operation_ready
                 # in a finally block we do it in each "operation end" (namely, after all code is
@@ -825,7 +910,7 @@ class SteptimerManager:
 
         self._id_to_steptimer = dict()
 
-    def new_steptimer(self, timer_value=_DEF_START_TIMER_VALUE,
+    def new_steptimer(self, steptimer_type=None, timer_value=_DEF_START_TIMER_VALUE,
                       timestep_length=_FRAME_LENGTH, firing_interval=None,
                       min_timer_value=_DEF_MIN_TIMER_VALUE, max_timer_value=_DEF_MAX_TIMER_VALUE):
         """
@@ -833,7 +918,10 @@ class SteptimerManager:
 
         Parameters
         ----------
-        timer_value : float
+        steptimer_type : SteptimerManager.Steptimer, optional
+            Class of steptimer that will be produced. Defaults to None (and converted to
+            self.Steptimer)
+        timer_value : float, optional
             Number of seconds the apparent timer the steptimer will initially have. Defaults to
             _DEF_START_TIMER_VALUE.
         timestep_length : float, optional
@@ -859,18 +947,23 @@ class SteptimerManager:
         ------
         SteptimerError.ManagerTooManySteptimersError
             If the manager is already managing its maximum number of steptimers.
+
         """
 
+        # Check if adding a new steptimer to manage would be one too many
         if self._steptimer_limit is not None:
             if len(self._id_to_steptimer) >= self._steptimer_limit:
                 raise SteptimerError.ManagerTooManySteptimersError
 
+        # Fill in default values
+        if steptimer_type is None:
+            steptimer_type = self.Steptimer
         if firing_interval is None:
             firing_interval = abs(timestep_length)
 
         # Generate a steptimer ID and the new steptimer
         steptimer_id = self._make_new_steptimer_id()
-        steptimer = self.Steptimer(self._server, self, steptimer_id, timer_value, timestep_length,
+        steptimer = steptimer_type(self._server, self, steptimer_id, timer_value, timestep_length,
                                    firing_interval, min_timer_value, max_timer_value)
         self._id_to_steptimer[steptimer_id] = steptimer
 
@@ -879,11 +972,11 @@ class SteptimerManager:
 
     def delete_steptimer(self, steptimer):
         """
-        Delete a steptimer managed by this manager, terminateing it first if needed.
+        Delete a steptimer managed by this manager, terminating it first if needed.
 
         Parameters
         ----------
-        steptimer : self.Steptimer
+        steptimer : SteptimerManager.Steptimer
             The steptimer to delete.
 
         Returns
@@ -898,23 +991,34 @@ class SteptimerManager:
 
         """
 
-        steptimer_id = self.get_steptimer_id(steptimer) # Assert steptimer is managed by manager
+        # Assert steptimer is managed by manager.
+        steptimer_id = self.get_steptimer_id(steptimer)
+        # Pop the steptimer. By doing this now, it helps guard the class' only call to an
+        # asynchronous function. In particular, once .delete_steptimer() is called on a managed
+        # steptimer, these two lines will always execute, which will prevent the steptimer to
+        # terminate from influencing other public method calls.
         self._id_to_steptimer.pop(steptimer_id)
-        try:
-            steptimer.terminate()
-        except SteptimerError.AlreadyTerminatedSteptimerError:
-            pass
 
+        async def _terminate():
+            try:
+                await steptimer.terminate()
+            except SteptimerError.AlreadyTerminatedSteptimerError:
+                pass
+
+        Constants.create_fragile_task(_terminate())
+
+        # As the steptimer is popped, it will no longer be referred to in the internal structure
+        # check function.
         self._check_structure()
         return steptimer_id
 
     def get_managed_steptimers(self):
         """
-        Return (a shallow copy of) the steptimer this manager manages.
+        Return (a shallow copy of) the steptimers this manager manages.
 
         Returns
         -------
-        set of self.Steptimer
+        set of SteptimerManager.Steptimer
             Steptimers this manager manages.
 
         """
@@ -924,12 +1028,17 @@ class SteptimerManager:
     def get_steptimer(self, steptimer_tag):
         """
         If `steptimer_tag` is a steptimer managed by this manager, return it.
-        If it is a string and the ID of a steptimer managed by this manager, return that.
+        If it is a string and the ID of a steptimer managed by this manager, return that steptimer.
 
         Parameters
         ----------
-        steptimer_tag: self.Steptimer or str
+        steptimer_tag: SteptimerManager.Steptimer or str
             Steptimers this manager manages.
+
+        Returns
+        -------
+        SteptimerManager.Steptimer
+            The steptimer that matches the given tag.
 
         Raises
         ------
@@ -937,11 +1046,6 @@ class SteptimerManager:
             If `steptimer_tag` is a steptimer this manager does not manage.
         SteptimerError.ManagerInvalidIDError:
             If `steptimer_tag` is a str and it is not the ID of a steptimer this manager manages.
-
-        Returns
-        -------
-        Steptimer
-            The steptimer that matches the given tag.
 
         """
 
@@ -968,8 +1072,13 @@ class SteptimerManager:
 
         Parameters
         ----------
-        steptimer_tag : Steptimer or str
+        steptimer_tag : SteptimerManager.Steptimer or str
             Steptimer this manager manages.
+
+        Returns
+        -------
+        str
+            The ID of the steptimer that matches the given tag.
 
         Raises
         ------
@@ -977,11 +1086,6 @@ class SteptimerManager:
             If `steptimer_tag` is a steptimer this manager does not manage.
         SteptimerError.ManagerInvalidIDError:
             If `steptimer_tag` is a str and it is not the ID of a steptimer this manager manages.
-
-        Returns
-        -------
-        Steptimer
-            The ID of the steptimer that matches the given tag.
 
         """
 
@@ -1005,15 +1109,15 @@ class SteptimerManager:
         """
         Generate a steptimer ID that no other steptimer managed by this manager has.
 
-        Raises
-        ------
-        SteptimerError.ManagerTooManySteptimersError
-            If the manager is already managing its maximum number of steptimers.
-
         Returns
         -------
         str
             A unique steptimer ID.
+
+        Raises
+        ------
+        SteptimerError.ManagerTooManySteptimersError
+            If the manager is already managing its maximum number of steptimers.
 
         """
 
