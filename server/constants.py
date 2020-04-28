@@ -166,7 +166,7 @@ class Constants():
             info = 'File not found: {}'.format(file)
             raise ServerError(info, code="FileNotFound")
         except OSError as ex:
-            raise ServerError(str(ex))
+            raise ServerError(ex, code="FileNotFound")
 
     @staticmethod
     def yaml_load(file):
@@ -927,7 +927,10 @@ class Constants():
         """
         Schedule the execution of a coroutine object in a spawned task with a done callback that
         checks if an exception was raised after the coroutine finished.
-        If yes, reraise the exception in the callback.
+        If there was no exception, do no further actions.
+        If there was an exception other than asyncio.CancelledError, reraise the exception in
+        the callback accordingly.
+        If there was an asyncio.CancelledError, do no further actions.
 
         Parameters
         ----------
@@ -944,7 +947,7 @@ class Constants():
         Raises
         ------
         exception
-            The exception raised by `coro`, if any was raised.
+            The exception raised by `coro_or_future`, if any was raised.
 
         Returns
         -------
@@ -954,10 +957,13 @@ class Constants():
         """
 
         def check_exception(_client, _future):
-            exception = _future.exception()
-            if not exception:
+            try:
+                exception = _future.exception()
+            except asyncio.CancelledError:
                 return
 
+            if not exception:
+                return
             try:
                 if not (_client and isinstance(exception, TsuserverException)):
                     raise exception

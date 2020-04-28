@@ -26,6 +26,7 @@ from server.tsuserver import TsuserverDR
 
 def main():
     def handle_exception(loop, context):
+        breakpoint()
         exception = context.get('exception')
         server.error_queue.put_nowait(exception)
         server.error_queue.put_nowait(exception)
@@ -43,6 +44,12 @@ def main():
 
         logger.log_server('Server is shutting down due to an unhandled exception.')
         logger.log_print('Attempting a graceful shutdown.')
+
+        if not server:
+            logger.log_pserver('Server has successfully shut down.')
+            input("Press Enter to continue... ")
+            return
+
         try:
             await server.normal_shutdown()
         except Exception as exception2:
@@ -69,6 +76,8 @@ def main():
         print('') # Lame
         logger.log_pdebug('You have initiated a server shut down.')
         loop.run_until_complete(server.normal_shutdown())
+        logger.log_pserver('Server has successfully shut down.')
+        input("Press Enter to continue... ")
     except Exception as exception:
         loop.run_until_complete(abnormal_shutdown(exception, server=server))
 

@@ -60,8 +60,7 @@ class SteptimerManager:
     Contains the steptimer object definition, as well as a mapping of steptimer IDs to their
     associated steptimers.
     The class (with its default implementation) is coroutine-safe as the default steptimer class
-    is coroutine-safe and the only public method of the manager that schedules asynchronous code
-    (steptimer deletion) can only be successfully executed once by construction.
+    is coroutine-safe and every other public method of the manager is synchronous.
     The class is NOT thread-safe.
 
     Overwritable Methods
@@ -112,9 +111,9 @@ class SteptimerManager:
         A mutable data type representing steptimers.
         A steptimer is a timer with an apparent timer value that ticks up/down a fixed period of
         time once every fixed interval (a step).
-        The class is coroutine-safe as it employs a strict monitor pattern on its asynchronous
-        public methods: any scheduled public method will wait until a running public method is
-        done if there is any before it launches.
+        The class is coroutine-safe as the only points where public method execution yields to a
+        coroutine is after all writes were performed and the only missing step is structural
+        integrity tests, which only involve reads.
         However, the class itself is NOT thread-safe, as it only uses asyncio methods that
         themselves are not thread-safe.
 
@@ -169,11 +168,6 @@ class SteptimerManager:
             Time in seconds the steptimer's current timestep has run, ignoring time paused.
         _task : asyncio.Task or None
             Actual timer task. _task is None as long as the steptimer is not started.
-        _next_operation_ready : asyncio.queues.Queue
-            Queue of maxsize=1, typically only holding the int 1. If a public method is scheduled
-            to start running, it must be able to extract this int, otherwise it will wait. Once
-            that public method is done running or the current action of the timer task is sleeping,
-            the queue is refilled with the int 1.
 
         Invariants
         ----------
@@ -257,7 +251,7 @@ class SteptimerManager:
             self._is_paused = False
             self._just_paused = False
             self._just_unpaused = False
-            self._just_refreshed = False
+            self._due_continue_timestep_progress = False
             self._last_timestep_update = time.time()
             self._time_spent_in_timestep = 0
 
@@ -268,9 +262,6 @@ class SteptimerManager:
             # apparent timer ticking up beyond its maximum or down beyond its minimum, or via
             # .terminate_timer()
             self._task = None
-
-            self._next_operation_ready = asyncio.Queue(maxsize=1)
-            self._next_operation_ready.put_nowait(1)
 
         def get_id(self):
             """
@@ -285,7 +276,7 @@ class SteptimerManager:
 
             return self._steptimer_id
 
-        async def start_timer(self):
+        def start_timer(self):
             """
             Start the steptimer. Requires the timer was not started and is not terminated.
 
@@ -302,23 +293,20 @@ class SteptimerManager:
 
             """
 
-            await self._next_operation_ready.get()
-
-            try:
-                if self._was_terminated:
-                    raise SteptimerError.AlreadyTerminatedSteptimerError
-                if self._was_started:
-                    raise SteptimerError.AlreadyStartedSteptimerError
-            except Exception as exception:
-                self._next_operation_ready.put_nowait(1)
-                raise exception
+            if self._was_terminated:
+                raise SteptimerError.AlreadyTerminatedSteptimerError
+            if self._was_started:
+                raise SteptimerError.AlreadyStartedSteptimerError
 
             self._was_started = True
-            async_function = self._as_timer()
-            self._task = Constants.create_fragile_task(async_function)
+            self._is_paused = False
+            self._just_paused = False
+            self._due_continue_timestep_progress = False
+
+            self._continue_timestep()
             self._check_structure()
 
-        async def terminate_timer(self):
+        def terminate_timer(self):
             """
             Terminate the steptimer. Requires the timer not be terminated already.
 
@@ -333,20 +321,14 @@ class SteptimerManager:
 
             """
 
-            await self._next_operation_ready.get()
-
-            try:
-                if self._was_terminated:
-                    raise SteptimerError.AlreadyTerminatedSteptimerError
-            except Exception as exception:
-                self._next_operation_ready.put_nowait(1)
-                raise exception
+            if self._was_terminated:
+                raise SteptimerError.AlreadyTerminatedSteptimerError
 
             self._was_terminated = True
             self._refresh()
             self._check_structure()
 
-        async def pause_timer(self):
+        def pause_timer(self):
             """
             Pause the steptimer. Requires the timer was started, is not terminated nor paused.
 
@@ -365,18 +347,12 @@ class SteptimerManager:
 
             """
 
-            await self._next_operation_ready.get()
-
-            try:
-                if self._was_terminated:
-                    raise SteptimerError.AlreadyTerminatedSteptimerError
-                if not self._was_started:
-                    raise SteptimerError.NotStartedSteptimerError
-                if self._is_paused:
-                    raise SteptimerError.AlreadyPausedSteptimerError
-            except Exception as exception:
-                self._next_operation_ready.put_nowait(1)
-                raise exception
+            if self._was_terminated:
+                raise SteptimerError.AlreadyTerminatedSteptimerError
+            if not self._was_started:
+                raise SteptimerError.NotStartedSteptimerError
+            if self._is_paused:
+                raise SteptimerError.AlreadyPausedSteptimerError
 
             self._is_paused = True
             self._just_paused = True
@@ -384,7 +360,7 @@ class SteptimerManager:
             self._refresh()
             self._check_structure()
 
-        async def unpause_timer(self):
+        def unpause_timer(self):
             """
             Unpause the steptimer. Requires the timer was started, is not terminated and is paused.
 
@@ -404,27 +380,21 @@ class SteptimerManager:
 
             """
 
-            await self._next_operation_ready.get()
-
-            try:
-                if not self._was_started:
-                    raise SteptimerError.NotStartedSteptimerError
-                if self._was_terminated:
-                    raise SteptimerError.AlreadyTerminatedSteptimerError
-                if not self._is_paused:
-                    raise SteptimerError.NotPausedSteptimerError
-            except Exception as exception:
-                self._next_operation_ready.put_nowait(1)
-                raise exception
+            if not self._was_started:
+                raise SteptimerError.NotStartedSteptimerError
+            if self._was_terminated:
+                raise SteptimerError.AlreadyTerminatedSteptimerError
+            if not self._is_paused:
+                raise SteptimerError.NotPausedSteptimerError
 
             self._is_paused = False
-            self._just_refreshed = True
+            self._due_continue_timestep_progress = True
             self._just_unpaused = True
             self._update_subtimestep_elapsed()
-            self._refresh()
+            self._continue_timestep()
             self._check_structure()
 
-        async def get_time(self):
+        def get_time(self):
             """
             Get current apparent timer.
 
@@ -435,15 +405,9 @@ class SteptimerManager:
 
             """
 
-            await self._next_operation_ready.get()
+            return self._timer_value
 
-            value = self._timer_value
-            self._next_operation_ready.put_nowait(1)
-            # Note that we are storing the result in a temporary variable. This is to prevent a
-            # write-after-read race
-            return value
-
-        async def get_firing_interval(self):
+        def get_firing_interval(self):
             """
             Get current firing interval.
 
@@ -454,13 +418,7 @@ class SteptimerManager:
 
             """
 
-            await self._next_operation_ready.get()
-
-            value = self._firing_interval
-            self._next_operation_ready.put_nowait(1)
-            # Note that we are storing the result in a temporary variable. This is to prevent a
-            # write-after-read race
-            return value
+            return self._firing_interval
 
         async def get_timestep_length(self):
             """
@@ -473,15 +431,9 @@ class SteptimerManager:
 
             """
 
-            await self._next_operation_ready.get()
+            return self._timestep_length
 
-            value = self._timestep_length
-            self._next_operation_ready.put_nowait(1)
-            # Note that we are storing the result in a temporary variable. This is to prevent a
-            # write-after-read race
-            return value
-
-        async def set_time(self, new_time):
+        def set_time(self, new_time):
             """
             Set the apparent timer of the steptimer to `new_time`. This will also interrupt the
             current running timestep (if there is one) without calling the steptimer's firing
@@ -502,10 +454,6 @@ class SteptimerManager:
 
             """
 
-            await self._next_operation_ready.get()
-
-            self._last_timestep_update = time.time()
-            self._time_spent_in_timestep = 0
 
             self._timer_value = float(new_time)
             if self._timer_value < self._min_timer_value:
@@ -514,9 +462,10 @@ class SteptimerManager:
                 self._timer_value = self._max_timmer_value
 
             self._refresh()
+            self._continue_timestep()
             self._check_structure()
 
-        async def set_firing_interval(self, new_interval):
+        def set_firing_interval(self, new_interval):
             """
             Update the firing interval of the steptimer for all future timesteps. If a timestep
             has started when this function is scheduled to run, the current timestep will be
@@ -540,21 +489,16 @@ class SteptimerManager:
 
             """
 
-            await self._next_operation_ready.get()
-
-            try:
-                if new_interval <= 0:
-                    raise SteptimerError.InvalidFiringIntervalError
-            except Exception as exception:
-                self._next_operation_ready.put_nowait(1)
-                raise exception
+            if new_interval <= 0:
+                raise SteptimerError.InvalidFiringIntervalError
 
             self._update_subtimestep_elapsed() # Update before updating new firing interval
             self._firing_interval = float(new_interval)
             self._refresh()
+            self._continue_timestep()
             self._check_structure()
 
-        async def set_timestep_length(self, new_length):
+        def set_timestep_length(self, new_length):
             """
             Update the timestep length of the steptimer for all future timesteps and the current
             one if one has started by the time this function is scheduled to run.
@@ -575,21 +519,16 @@ class SteptimerManager:
 
             """
 
-            await self._next_operation_ready.get()
-
-            try:
-                if new_length == 0:
-                    raise SteptimerError.InvalidTimestepLengthError
-            except Exception as exception:
-                self._next_operation_ready.put_nowait(1)
-                raise exception
+            if new_length == 0:
+                raise SteptimerError.InvalidTimestepLengthError
 
             self._update_subtimestep_elapsed() # Update before updating new timestep length
             self._timestep_length = float(new_length)
             self._refresh()
+            self._continue_timestep()
             self._check_structure()
 
-        async def change_time_by(self, time_difference):
+        def change_time_by(self, time_difference):
             """
             Change the apparent timer of the steptimer by `time_difference`. This will also
             nterrupt the current running timestep (if there is one) without calling the
@@ -610,8 +549,6 @@ class SteptimerManager:
 
             """
 
-            await self._next_operation_ready.get()
-
             self._last_timestep_update = time.time()
             self._time_spent_in_timestep = 0
 
@@ -622,14 +559,54 @@ class SteptimerManager:
                 self._timer_value = self._max_timmer_value
 
             self._refresh()
+            self._continue_timestep()
             self._check_structure()
+
+        def _continue_timestep(self):
+            if self._timer_value <= self._min_timer_value:
+                self._timer_value = self._min_timer_value
+                if self._timestep_length < 0:
+                    self._was_terminated = True
+                    self._cb_end_min_fn()
+                    return
+            elif self._timer_value >= self._max_timer_value:
+                self._timer_value = self._max_timer_value
+                if self._timestep_length > 0:
+                    self._was_terminated = True
+                    self._cb_end_max_fn()
+                    return
+
+            # This moment represents the instant a timestep resumes from pausing/refreshing
+            # or the very beginning of one.
+            self._just_paused = False
+            self._just_unpaused = False
+
+            # If the timer is paused, wait _firing_interval seconds again
+            if self._is_paused:
+                return
+
+            # Else, if a timestep just finished without any interruptions
+            # Reset time spent in timestep and last update to timestep
+            if not self._due_continue_timestep_progress:
+                self._reset_subtimestep_elapsed()
+                self._cb_timestep_end_fn()
+
+            adapted_interval = self._firing_interval-self._time_spent_in_timestep
+            if adapted_interval < 0:
+                adapted_interval = 0
+
+            self._due_continue_timestep_progress = False
+            self._task = Constants.create_fragile_task(self._wait_timestep_end(adapted_interval))
+
+        async def _wait_timestep_end(self, time_to_end):
+            await asyncio.sleep(time_to_end)
+            self._timer_value += self._timestep_length
+            self._continue_timestep()
 
         def _refresh(self):
             """
             Interrupt the current timestep with a cancellation order.
-            The caller of this function is assumed to control self._next_operation_ready's item.
-            Code in _as_timer will refill self._next_operation_ready's queue once it is done.
-            If the steptimer was not started or was already terminated, this function does nothing.
+            If the steptimer is not currently running, this function does nothing.
 
             Returns
             -------
@@ -638,18 +615,14 @@ class SteptimerManager:
             """
 
             if not self._task:
-                self._next_operation_ready.put_nowait(1)
                 return
 
-            self._just_refreshed = True
-            self._task.cancel()
-            Constants.create_fragile_task(self._await_cancellation(self._task))
+            self._due_continue_timestep_progress = True
+            Constants.create_fragile_task(self._cancel_and_await(self._task))
 
         def _reset_subtimestep_elapsed(self):
             """
             Reset the timestep's sub indicators so as to indicate the start of a new timestep.
-            The caller of this method is assumed to control self._next_operation_ready's item.
-            This method does not reset the status of self._next_operation_ready.
 
             Returns
             -------
@@ -663,8 +636,6 @@ class SteptimerManager:
         def _update_subtimestep_elapsed(self):
             """
             Update the timestep's sub indicators with the time spent since the last update.
-            The caller of this method is assumed to control self._next_operation_ready's item.
-            This method does not reset the status of self._next_operation_ready.
 
             Returns
             -------
@@ -687,7 +658,6 @@ class SteptimerManager:
         async def _no_action(self):
             """
             Dummy function that does nothing, but allows other coroutines to start running.
-            It is agnostic to self._next_operation_ready's status.
 
             Returns
             -------
@@ -697,16 +667,16 @@ class SteptimerManager:
 
             await asyncio.sleep(0)
 
-        async def _await_cancellation(self, old_task):
+        async def _cancel_and_await(self, old_task):
             """
-            Async function that waits until it is able to properly retrieve the cancellation
-            exception from `old_task`. This function assumes the task was ordered to be canceled,
-            but has not yet been canceled.
+            Async function that cancels `old_task` and awaits until it is able to properly retrieve
+            the cancellation exception from `old_task`. This function assumes the task has not been
+            cancelled yet.
 
             Parameters
             ----------
             old_task : asyncio.Task
-                Task whose cancellation exception will be awaited.
+                Task to cancel
 
             Returns
             -------
@@ -715,11 +685,12 @@ class SteptimerManager:
             """
 
             try:
+                old_task.cancel()
                 await old_task
-            except asyncio.CancelledError:
+            except asyncio.exceptions.CancelledError:
                 pass
 
-        async def _cb_timestep_end_fn(self):
+        def _cb_timestep_end_fn(self):
             """
             Callback function that is executed every time the steptimer is updated due to its
             firing interval elapsing.
@@ -732,7 +703,7 @@ class SteptimerManager:
 
             log_print('Timer {} ticked to {}'.format(self._steptimer_id, self._timer_value))
 
-        async def _cb_end_min_fn(self):
+        def _cb_end_min_fn(self):
             """
             Callback function that is executed once: once the steptimer time ticks DOWN to at most
             the steptimer minimum timer value.
@@ -745,7 +716,7 @@ class SteptimerManager:
 
             log_print('Timer {} min-ended at {}'.format(self._steptimer_id, self._timer_value))
 
-        async def _cb_end_max_fn(self):
+        def _cb_end_max_fn(self):
             """
             Callback function that is executed once: once the steptimer time ticks UP to at least
             the steptimer maximum timer value.
@@ -757,104 +728,6 @@ class SteptimerManager:
             """
 
             log_print('Timer {} max-ended at {}'.format(self._steptimer_id, self._timer_value))
-
-        async def _as_timer(self):
-            """
-            Async function rerpresenting the steptimer visible timer.
-
-            Returns
-            -------
-            None.
-
-            """
-
-            self._last_timestep_update = time.time()
-            self._time_spent_in_timestep = 0
-            self._is_paused = False
-            self._just_paused = False
-            self._just_refreshed = False
-            self._next_operation_ready.put_nowait(1)
-
-            while True:
-                # Check if the timer is due to end immediately before starting to execute the
-                # timestep.
-                if self._timer_value <= self._min_timer_value:
-                    self._timer_value = self._min_timer_value
-                    if self._timestep_length < 0:
-                        self._was_terminated = True
-                        await self._cb_end_min_fn()
-                        return
-                elif self._timer_value >= self._max_timer_value:
-                    self._timer_value = self._max_timer_value
-                    if self._timestep_length > 0:
-                        self._was_terminated = True
-                        await self._cb_end_max_fn()
-                        return
-
-                # Otherwise, the timer is not due to end yet, so we start a new timestep or
-                # proceed to continue the current one (whichever is appropriate).
-                try:
-                    # This moment represents the instant a timestep resumes from pausing/refreshing
-                    # or the very beginning of one.
-                    self._just_paused = False
-                    self._just_unpaused = False
-
-                    # If the timer is paused, wait _firing_interval seconds again
-                    if self._is_paused:
-                        await asyncio.sleep(self._firing_interval)
-
-                    # Else, if a timestep just finished without any interruptions
-                    elif not self._just_refreshed:
-                        self._reset_subtimestep_elapsed()
-
-                        await self._cb_timestep_end_fn()
-                        await asyncio.sleep(self._firing_interval)
-
-                    # Otherwise, a timestep was just continued because of a refresh
-                    else:
-                        adapted_interval = self._firing_interval-self._time_spent_in_timestep
-                        if adapted_interval < 0:
-                            adapted_interval = 0
-                        self._just_refreshed = False
-
-                        self._next_operation_ready.put_nowait(1)
-                        await asyncio.sleep(adapted_interval)
-
-                except asyncio.CancelledError:
-                    # Code can run here for one of the following reasons
-                    # 1. The timer was terminated
-                    # 2. The timer was just paused
-                    # 3. The timer was just refreshed
-                    if self._was_terminated:
-                        self._next_operation_ready.put_nowait(1)
-                        return
-                    elif self._is_paused:
-                        self._next_operation_ready.put_nowait(1)
-                        # The asynchronous waiting due to pauses is deliberately left within the
-                        # try block to simplify logic, and is executed immediately after this part.
-                    elif self._just_refreshed:
-                        # The asynchronous refresh code is deliberately left within the try to
-                        # simplify logic, and is executed immediately after this part.
-                        pass
-                    else:
-                        # Cancelled for some weird reason that was not considered.
-                        raise AssertionError('Never should have come here.')
-                else:
-                    # If we made it here, we made it hrough a timestep without an order to pause,
-                    # refresh or terminate in it.
-                    # Only update the timer if it not paused.
-                    if not self._is_paused:
-                        self._timer_value += self._timestep_length
-
-
-                # Note that instead of notifying coroutines waiting on self._next_operation_ready
-                # in a finally block we do it in each "operation end" (namely, after all code is
-                # run and the only remaining code is sleeping until the next timer tickover).
-                # This is to ensure that we only notify coroutines at the end of operations
-                # For example, .unpause() only runs code here after it has gone through the try
-                # loop once (namely, it catches CancelledError, lets it go and then reruns the try
-                # block). Notifying in a finally would notify other coroutines too early that
-                # the unpause is done.
 
         def _check_structure(self):
             """
@@ -996,16 +869,13 @@ class SteptimerManager:
         # Pop the steptimer. By doing this now, it helps guard the class' only call to an
         # asynchronous function. In particular, once .delete_steptimer() is called on a managed
         # steptimer, these two lines will always execute, which will prevent the steptimer to
-        # terminate from influencing other public method calls.
+        # terminate from influencing other public method calls of the manager.
         self._id_to_steptimer.pop(steptimer_id)
 
-        async def _terminate():
-            try:
-                await steptimer.terminate()
-            except SteptimerError.AlreadyTerminatedSteptimerError:
-                pass
-
-        Constants.create_fragile_task(_terminate())
+        try:
+            steptimer.terminate_timer()
+        except SteptimerError.AlreadyTerminatedSteptimerError:
+            pass
 
         # As the steptimer is popped, it will no longer be referred to in the internal structure
         # check function.

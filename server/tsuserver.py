@@ -44,8 +44,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a31'
-        self.internal_version = 'M200427a'
+        self.segment_version = 'a32'
+        self.internal_version = 'M200428a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -193,8 +193,6 @@ class TsuserverDR:
 
         self._server.close()
         await self._server.wait_closed()
-        logger.log_pserver('Server has successfully shut down.')
-        input("Press Enter to continue... ")
 
     def get_version_string(self):
         mes = '{}.{}.{}'.format(self.release, self.major_version, self.minor_version)
