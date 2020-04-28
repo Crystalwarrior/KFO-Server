@@ -202,8 +202,16 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
             new_area_file = 'config/area_lists/{}.yaml'.format(arg)
             client.server.area_manager.load_areas(area_list_file=new_area_file)
         except ServerError as exc:
-            if exc.code == 'FileNotFound':
+            try:
+                code = exc.code
+            except AttributeError:
+                code = None
+
+            if code == 'FileNotFound':
                 raise ArgumentError('Could not find the area list file `{}`.'.format(new_area_file))
+            elif code == 'OSError':
+                raise ArgumentError('Unable to open area list file `{}`: `{}`.'
+                                    .format(new_area_file, exc.message))
             raise # Weird exception, reraise it
         except AreaError as exc:
             raise ArgumentError('The area list {} returned the following error when loading: `{}`.'
@@ -3176,9 +3184,17 @@ def ooc_cmd_music_list(client: ClientManager.Client, arg: str):
             raise ArgumentError('The music list {} returned the following error when loading: `{}`.'
                                 .format(new_music_file, exc))
         except ServerError as exc:
-            if exc.code == 'FileNotFound':
+            try:
+                code = exc.code
+            except AttributeError:
+                code = None
+
+            if code == 'FileNotFound':
                 raise ArgumentError('Could not find the music list file `{}`.'
                                     .format(new_music_file))
+            elif code == 'OSError':
+                raise ArgumentError('Unable to open music list file `{}`: `{}`.'
+                                    .format(new_music_file, exc.message))
             raise # Weird exception, reraise it
 
         client.send_ooc('You have loaded the music list {}.'.format(arg))

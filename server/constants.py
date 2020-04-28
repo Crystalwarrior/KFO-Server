@@ -163,7 +163,7 @@ class Constants():
             info = 'File not found: {}'.format(file)
             raise ServerError(info, code="FileNotFound")
         except OSError as ex:
-            raise ServerError(str(ex))
+            raise ServerError(str(ex), code="OSError")
 
     @staticmethod
     def yaml_load(file):
