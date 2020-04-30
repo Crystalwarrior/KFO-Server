@@ -383,3 +383,6 @@
 
 ### 200428a (4.2.3-post9)
 * Fixed incorrect error messages being sent in case the server's system fails to open an area list or music list file.
+
+### 200430a (4.2.3-post10)
+* Reverted backwards incompatible change that prevented music lists that did not list length for a track (meaning they did not want them to be looped) from being loaded.
