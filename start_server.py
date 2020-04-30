@@ -26,13 +26,19 @@ from server.tsuserver import TsuserverDR
 
 def main():
     def handle_exception(loop, context):
-        breakpoint()
         exception = context.get('exception')
         server.error_queue.put_nowait(exception)
         server.error_queue.put_nowait(exception)
         # An exception is put twice, because it is pulled twice: once by the server object itself
         # (so that it leaves its main loop) and once by this main() function (so that it can
         # print traceback)
+
+    async def normal_shutdown(server=None):
+        if not server:
+            logger.log_pserver('Server has successfully shut down.')
+            return
+
+        await server.normal_shutdown()
 
     async def abnormal_shutdown(exception, server=None):
         # Print complete traceback to console
@@ -47,22 +53,17 @@ def main():
 
         if not server:
             logger.log_pserver('Server has successfully shut down.')
-            input("Press Enter to continue... ")
             return
 
         try:
             await server.normal_shutdown()
         except Exception as exception2:
-            logger.log_print('Unable to gracefully shut down. Forcing a shutdown.')
-            decision = input('Press Enter to continue (or input s to see reason for ungraceful '
-                             'shutdown)...')
-            if decision == 's':
-                etype, evalue, etraceback = (type(exception2), exception2, exception2.__traceback__)
-                info = "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
+            logger.log_print('Unable to gracefully shut down: Forcing a shutdown.')
+            etype, evalue, etraceback = (type(exception2), exception2, exception2.__traceback__)
+            info = "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
 
-                logger.log_print(info)
-                logger.log_error(info, server=server, errortype='P')
-                input('Press Enter to continue...')
+            logger.log_print(info)
+            logger.log_error(info, server=server, errortype='P')
 
     server = None
     loop = asyncio.get_event_loop()
@@ -71,15 +72,21 @@ def main():
     try:
         server = TsuserverDR()
         loop.run_until_complete(server.start())
+        # If we are done with this coroutine, that means an error was raised
         raise server.error_queue.get_nowait()
     except KeyboardInterrupt:
         print('') # Lame
         logger.log_pdebug('You have initiated a server shut down.')
-        loop.run_until_complete(server.normal_shutdown())
-        logger.log_pserver('Server has successfully shut down.')
-        input("Press Enter to continue... ")
+        loop.run_until_complete(normal_shutdown(server=server))
     except Exception as exception:
         loop.run_until_complete(abnormal_shutdown(exception, server=server))
-
+    finally:
+        try:
+            input("Press Enter to continue... ")
+        except:
+            # Only errors that could realistically happen are just a bunch of Ctrl+C/Z leaking
+            # in the input message and those being sent. We don't really care what happens now,
+            # everything has shut down by this point.
+            pass
 if __name__ == '__main__':
     main()
