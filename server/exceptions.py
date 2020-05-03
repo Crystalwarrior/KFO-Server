@@ -63,28 +63,28 @@ class PartyError(TsuserverException):
     pass
 
 class PlayerGroupError(TsuserverException):
-    class PlayerAlreadyMemberError(TsuserverException):
+    class UserAlreadyPlayerError(TsuserverException):
         pass
 
-    class PlayerAlreadyInvitedError(TsuserverException):
+    class UserAlreadyInvitedError(TsuserverException):
         pass
 
-    class PlayerAlreadyLeaderError(TsuserverException):
+    class UserAlreadyLeaderError(TsuserverException):
         pass
 
-    class PlayerInAnotherGroupError(TsuserverException):
+    class UserInAnotherGroupError(TsuserverException):
         pass
 
-    class PlayerInNoGroupError(TsuserverException):
+    class UserInNoGroupError(TsuserverException):
         pass
 
-    class PlayerNotInvitedError(TsuserverException):
+    class UserNotInvitedError(TsuserverException):
         pass
 
-    class PlayerNotMemberError(TsuserverException):
+    class UserNotPlayerError(TsuserverException):
         pass
 
-    class PlayerNotLeaderError(TsuserverException):
+    class UserNotLeaderError(TsuserverException):
         pass
 
     class GroupIsEmptyError(TsuserverException):
@@ -93,7 +93,7 @@ class PlayerGroupError(TsuserverException):
     class GroupIsFullError(TsuserverException):
         pass
 
-    class GroupDoesNotTakeInvitations(TsuserverException):
+    class GroupDoesNotTakeInvitationsError(TsuserverException):
         pass
 
     class ManagerTooManyGroupsError(TsuserverException):
@@ -156,4 +156,47 @@ class ZoneError(TsuserverException):
         pass
 
     class WatcherNotInZoneError(TsuserverException):
+        pass
+
+class GameError(TsuserverException):
+    class UserAlreadyPlayerError(TsuserverException):
+        pass
+
+    class UserAlreadyInvitedError(TsuserverException):
+        pass
+
+    class UserAlreadyLeaderError(TsuserverException):
+        pass
+
+    class UserInAnotherGameError(TsuserverException):
+        pass
+
+    class UserInNoGameError(TsuserverException):
+        pass
+
+    class UserNotInvitedError(TsuserverException):
+        pass
+
+    class UserNotPlayerError(TsuserverException):
+        pass
+
+    class UserNotLeaderError(TsuserverException):
+        pass
+
+    class GameIsEmptyError(TsuserverException):
+        pass
+
+    class GameIsFullError(TsuserverException):
+        pass
+
+    class GameDoesNotTakeInvitationsError(TsuserverException):
+        pass
+
+    class ManagerTooManyGameError(TsuserverException):
+        pass
+
+    class ManagerDoesNotManageGameError(TsuserverException):
+        pass
+
+    class ManagerInvalidIDError(TsuserverException):
         pass
