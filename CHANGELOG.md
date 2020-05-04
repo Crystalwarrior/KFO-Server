@@ -386,3 +386,6 @@
 
 ### 200430a (4.2.3-post10)
 * Reverted backwards incompatible change that prevented music lists that did not list length for a track (meaning they did not want them to be looped) from being loaded.
+
+### 200503a (4.2.3-post11)
+* Fixed lights staying off if they were turned on again without changing the background.

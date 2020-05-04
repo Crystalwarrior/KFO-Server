@@ -233,7 +233,7 @@ class AreaManager:
                 if c.is_blind and not override_blind:
                     c.send_command('BN', self.server.config['blackout_background'])
                 else:
-                    c.send_command('BN', bg)
+                    c.send_command('BN', self.background)
 
         def get_chars_unusable(self, allow_restricted=False, more_unavail_chars=None):
             """
@@ -520,7 +520,7 @@ class AreaManager:
             else:
                 if self.background != self.server.config['blackout_background']:
                     self.background_backup = self.background
-                intended_background = self.server.config['blackout_background']
+                intended_background = self.background
 
             self.lights = new_lights
             self.change_background(intended_background, validate=False) # Allow restoring custom bg.
