@@ -346,12 +346,156 @@ class GameManager(PlayerGroupManager):
             except PlayerGroupError.UserNotLeaderError as exception:
                 raise GameError.UserNotLeaderError from exception
 
-        def _check_structure(self):
-            if not self._init_ready:
-                return
-            self._team_manager._check_structure()
-            self._timer_manager._check_structure()
-            self._game.PlayerGroup._check_structure()
+        def new_steptimer(self, steptimer_type=None, start_timer_value=None, timestep_length=None,
+                          firing_interval=None, min_timer_value=None, max_timer_value=None):
+            """
+            Create a new steptimer with given parameters managed by this game.
+
+            Parameters
+            ----------
+            steptimer_type : SteptimerManager.Steptimer, optional
+                Class of steptimer that will be produced. Defaults to None (and converted to
+                SteptimerManager.Steptimer)
+            start_timer_value : float, optional
+                Number of seconds the apparent timer the steptimer will initially have. Defaults
+                to None (will use the default from `steptimer_type`).
+            timestep_length : float, optional
+                Number of seconds that tick from the apparent timer every step. Must be a non-
+                negative number at least `min_timer_value` and `max_timer_value`. Defaults to
+                None (will use the default from `steptimer_type`).
+            firing_interval : float, optional
+                Number of seconds that must elapse for the apparent timer to tick. Defaults to None
+                (and converted to abs(timestep_length))
+            min_timer_value : float, optional
+                Minimum value the apparent timer may take. If the timer ticks below this, it will
+                end automatically. It must be a non-negative number. Defaults to None (will use the
+                default from `steptimer_type`.)
+            max_timer_value : float, optional
+                Maximum value the apparent timer may take. If the timer ticks above this, it will
+                end automatically. Defaults to None (will use the default from `steptimer_type`).
+
+            Returns
+            -------
+            SteptimerManager.Steptimer
+                The created steptimer.
+
+            Raises
+            ------
+            GameError.GameTooManyTimersError
+                If the game is already managing its maximum number of steptimers.
+
+            """
+
+            try:
+                return self._timer_manager.new_steptimer(steptimer_type=steptimer_type,
+                                                         start_timer_value=start_timer_value,
+                                                         timestep_length=timestep_length,
+                                                         firing_interval=firing_interval,
+                                                         min_timer_value=min_timer_value,
+                                                         max_timer_value=max_timer_value)
+            except SteptimerError.ManagerTooManySteptimersError as exception:
+                raise GameError.GameTooManyTimersError from exception
+
+        def delete_steptimer(self, steptimer):
+            """
+            Delete a steptimer managed by this game, terminating it first if needed.
+
+            Parameters
+            ----------
+            steptimer : SteptimerManager.Steptimer
+                The steptimer to delete.
+
+            Returns
+            -------
+            str
+                The ID of the steptimer that was deleted.
+
+            Raises
+            ------
+            GameError.GameDoesNotManageSteptimerError
+                If the game does not manage the target steptimer.
+
+            """
+
+            try:
+                return self._timer_manager.delete_steptimer(steptimer)
+            except SteptimerError.ManagerDoesNotManageSteptimerError as exception:
+                raise GameError.GameDoesNotManageSteptimerError from exception
+
+        def get_managed_steptimers(self):
+            """
+            Return (a shallow copy of) the steptimers this game manages.
+
+            Returns
+            -------
+            set of SteptimerManager.Steptimer
+                Steptimers this game manages.
+
+            """
+
+            return self._timer_manager.get_managed_steptimers()
+
+        def get_steptimer(self, steptimer_tag):
+            """
+            If `steptimer_tag` is a steptimer managed by this game, return it.
+            If it is a string and the ID of a steptimer managed by this game, return that steptimer.
+
+            Parameters
+            ----------
+            steptimer_tag: SteptimerManager.Steptimer or str
+                Steptimer this game manages.
+
+            Returns
+            -------
+            SteptimerManager.Steptimer
+                The steptimer that matches the given tag.
+
+            Raises
+            ------
+            GameError.GameDoesNotManageSteptimerError:
+                If `steptimer_tag` is a steptimer this game does not manage.
+            GameError.GameInvalidTimerIDError:
+                If `steptimer_tag` is a str and it is not the ID of a steptimer this game manages.
+
+            """
+
+            try:
+                return self._timer_manager.get_steptimer_id(steptimer_tag)
+            except SteptimerError.ManagerDoesNotManageSteptimerError as exception:
+                raise GameError.GameDoesNotManageSteptimerError from exception
+            except SteptimerError.ManagerInvalidIDError as exception:
+                raise GameError.GameInvalidTimerIDError from exception
+
+        def get_steptimer_id(self, steptimer_tag):
+            """
+            If `steptimer_tag` is the ID of a steptimer managed by this game, return it.
+            If it is a steptimer managed by this game, return its ID.
+
+            Parameters
+            ----------
+            steptimer_tag : SteptimerManager.Steptimer or str
+                Steptimer this game manages.
+
+            Returns
+            -------
+            str
+                The ID of the steptimer that matches the given tag.
+
+            Raises
+            ------
+            GameError.GameDoesNotManageSteptimerError:
+                If `steptimer_tag` is a steptimer this game does not manage.
+            GameError.GameInvalidTimerIDError:
+                If `steptimer_tag` is a str and it is not the ID of a steptimer this game manages.
+
+            """
+
+            try:
+                return self._timer_manager.get_steptimer_id(steptimer_tag)
+            except SteptimerError.ManagerDoesNotManageSteptimerError as exception:
+                raise GameError.GameDoesNotManageSteptimerError from exception
+            except SteptimerError.ManagerInvalidIDError as exception:
+                raise GameError.GameInvalidTimerIDError from exception
 
         def __str__(self):
             return (f"Game::"

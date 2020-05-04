@@ -44,8 +44,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a34'
-        self.internal_version = 'M200503a'
+        self.segment_version = 'a35'
+        self.internal_version = 'M200504a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -107,7 +107,7 @@ class TsuserverDR:
         self._server = None
 
         self._steptimermanager = SteptimerManager(self)
-        self._b = self._steptimermanager.new_steptimer(timer_value=40, timestep_length=-1)
+        self._b = self._steptimermanager.new_steptimer(start_timer_value=40, timestep_length=-1)
 
     async def start(self):
         self.loop = asyncio.get_event_loop()

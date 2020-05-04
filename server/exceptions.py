@@ -192,6 +192,15 @@ class GameError(TsuserverException):
     class GameDoesNotTakeInvitationsError(TsuserverException):
         pass
 
+    class GameTooManyTimersError(TsuserverException):
+        pass
+
+    class GameDoesNotManageSteptimerError(TsuserverException):
+        pass
+
+    class GameInvalidTimerIDError(TsuserverException):
+        pass
+
     class ManagerTooManyGameError(TsuserverException):
         pass
 

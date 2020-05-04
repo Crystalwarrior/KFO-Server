@@ -68,17 +68,6 @@ class SteptimerManager:
     _make_new_steptimer_id :
         Generate a new steptimer ID. Can be modified to provide different steptimer ID formats.
 
-    Class Attributes
-    ----------------
-    _FRAME_LENGTH : float
-        Length of one frame in seconds assuming 60 FPS.
-    _DEF_START_TIMER_VALUE : float
-        Default start value the apparent timer of all managed steptimers will take.
-    _DEF_MIN_TIMER_VALUE : float
-        Default minimum value the apparent timer of all managed steptimers may take.
-    _DEF_MAX_TIMER_VALUE : float
-        Default maximum value the apparent timer of all managed steptimers may take.
-
     (Private) Attributes
     --------------------
     _server : TsuserverDR
@@ -100,11 +89,6 @@ class SteptimerManager:
        `self._id_to_steptimer.values()`:
         a. `steptimer1._steptimer_id != steptimer1._steptimer_id`.
     """
-
-    _FRAME_LENGTH = 1/60 # Length of one frame in seconds assuming 60 FPS
-    _DEF_START_TIMER_VALUE = 0
-    _DEF_MIN_TIMER_VALUE = 0
-    _DEF_MAX_TIMER_VALUE = 60*60*6 # 6 hours in seconds
 
     class Steptimer:
         """
@@ -128,8 +112,21 @@ class SteptimerManager:
             Callback function to be executed if the steptimer's apparent timer ticks up to or
             above its maximum timer value.
 
-        (Private) Attributes
-        --------------------
+        Class Attributes
+        ----------------
+        _FRAME_LENGTH : float
+            Length of one frame in seconds assuming 60 FPS.
+        DEF_TIMESTEP_LENGTH : float
+            Default timestep length of all steptimers of this type.
+        DEF_START_TIMER_VALUE : float
+            Default start value the apparent timer of all steptimers of this type.
+        DEF_MIN_TIMER_VALUE : float
+            Default minimum value the apparent timer of all steptimers of this type.
+        DEF_MAX_TIMER_VALUE : float
+            Default maximum value the apparent timer of all steptimers of this type.
+
+        (Private) Instance Attributes
+        -----------------------------
         _server : TsuserverDR
             Server the steptimer belongs to.
         _manager : SteptimerManager
@@ -175,11 +172,20 @@ class SteptimerManager:
         1. `0 <= self._min_timer_value <= self._timer_value <= self._max_timer_value`
         2. `self._firing_interval > 0`
         3. `self._timestep_length != 0`
+        4. `0 <= self.DEF_MIN_TIMER_VALUE <= self.DEF_START_TIMER_VALUE <= self.DEF_MAX_TIMER_VALUE`
+        5. `self.DEF_TIMESTEP_LENGTH != 0`
 
         """
 
-        def __init__(self, server, manager, steptimer_id, timer_value, timestep_length,
-                     firing_interval, min_timer_value, max_timer_value):
+        _FRAME_LENGTH = 1/60 # Length of one frame in seconds assuming 60 FPS
+        DEF_TIMESTEP_LENGTH = _FRAME_LENGTH
+        DEF_START_TIMER_VALUE = 0
+        DEF_MIN_TIMER_VALUE = 0
+        DEF_MAX_TIMER_VALUE = 60*60*6 # 6 hours in seconds
+
+        def __init__(self, server, manager, steptimer_id, start_timer_value=None,
+                     timestep_length=None, firing_interval=None,
+                     min_timer_value=None, max_timer_value=None):
             """
             Create a new steptimer.
 
@@ -191,20 +197,24 @@ class SteptimerManager:
                 Manager for this steptimer.
             steptimer_id : str
                 Identifier for this steptimer.
-            timer_value : float
-                Number of seconds in the apparent steptimer.
+            start_timer_value : float, optional
+                Number of seconds in the apparent steptimer when it is created. Defaults to None
+                (and then set to self.DEF_START_TIMER_VALUE)
             timestep_length : float, optional
                 Number of seconds that tick from the apparent timer every step. Must be a non-
-                negative number at least `min_timer_value` and `max_timer_value`. Defaults to
-                _FRAME_LENGTH.
-            firing_interval : float
-                Number of seconds that must elapse for the apparent timer to tick.
-            min_timer_value : float
+                negative number at least `min_timer_value` and `max_timer_value`. Defaults to None,
+                (and then set to self.DEF_TIMESTEP_LENGTH).
+            firing_interval : float, optional
+                Number of seconds that must elapse for the apparent timer to tick. Defaults to
+                None (and then set to abs(timestep_length)).
+            min_timer_value : float, optional
                 Minimum value the apparent timer may take. If the apparent timer ticks below this,
-                it will end automatically. It must be a non-negative number.
+                it will end automatically. It must be a non-negative number. Defaults to None
+                (and then set to self.DEF_MIN_TIMER_VALUE).
             max_timer_value : float, optional
                 Maximum value the apparent timer may take. If the apparent timer ticks above this,
-                it will end automatically.
+                it will end automatically. Defaults to None (and then set to
+                self.DEF_MAX_TIMER_VALUE).
 
             Returns
             -------
@@ -225,9 +235,20 @@ class SteptimerManager:
 
             """
 
-            if timer_value < min_timer_value:
+            if start_timer_value is None:
+                start_timer_value = self.DEF_START_TIMER_VALUE
+            if min_timer_value is None:
+                min_timer_value = self.DEF_MIN_TIMER_VALUE
+            if max_timer_value is None:
+                max_timer_value = self.DEF_MAX_TIMER_VALUE
+            if timestep_length is None:
+                timestep_length = self.DEF_TIMESTEP_LENGTH
+            if firing_interval is None:
+                firing_interval = abs(timestep_length)
+
+            if start_timer_value < min_timer_value:
                 raise SteptimerError.TimerTooLowError
-            if timer_value > max_timer_value:
+            if start_timer_value > max_timer_value:
                 raise SteptimerError.TimerTooHighError
             if min_timer_value < 0:
                 raise SteptimerError.InvalidMinTimerValueError
@@ -239,7 +260,7 @@ class SteptimerManager:
             self._server = server
             self._manager = manager
             self._steptimer_id = steptimer_id
-            self._timer_value = timer_value
+            self._timer_value = start_timer_value
 
             self._timestep_length = float(timestep_length)
             self._firing_interval = float(firing_interval)
@@ -262,6 +283,7 @@ class SteptimerManager:
             # apparent timer ticking up beyond its maximum or down beyond its minimum, or via
             # .terminate_timer()
             self._task = None
+            self._check_structure()
 
         def get_id(self):
             """
@@ -563,6 +585,11 @@ class SteptimerManager:
             self._check_structure()
 
         def _continue_timestep(self):
+            if self._was_terminated:
+                # This code should only run if it takes longer for the timer to be terminated than
+                # the firing interval.
+                return
+
             if self._timer_value <= self._min_timer_value:
                 self._timer_value = self._min_timer_value
                 if self._timestep_length < 0:
@@ -687,7 +714,7 @@ class SteptimerManager:
             try:
                 old_task.cancel()
                 await old_task
-            except asyncio.exceptions.CancelledError:
+            except asyncio.CancelledError:
                 pass
 
         def _cb_timestep_end_fn(self):
@@ -765,6 +792,25 @@ class SteptimerManager:
             err = f'Expected the timestep length be non-zero, found it was zero.'
             assert self._timestep_length != 0, err
 
+            # 4.
+            err = (f'Expected the default steptimer minimum timer value be a non-negative number, '
+                   f'found it was {self.DEF_MIN_TIMER_VALUE} instead.')
+            assert self.DEF_MIN_TIMER_VALUE >= 0, err
+
+            err = (f'Expected the default steptimer timer value be at least the default minimum '
+                   f'timer value {self.DEF_MIN_TIMER_VALUE}, found it was '
+                   f'{self.DEF_START_TIMER_VALUE}.')
+            assert self.DEF_START_TIMER_VALUE >= self.DEF_MIN_TIMER_VALUE, err
+
+            err = (f'Expected the default steptimer timer value be at most the default maximum '
+                   f'timer value {self.DEF_MAX_TIMER_VALUE}, found it was '
+                   f'{self.DEF_START_TIMER_VALUE} instead.')
+            assert self.DEF_START_TIMER_VALUE <= self.DEF_MAX_TIMER_VALUE, err
+
+            # 5.
+            err = f'Expected the default timestep length be non-zero, found it was zero.'
+            assert self.DEF_TIMESTEP_LENGTH != 0, err
+
     def __init__(self, server, steptimer_limit=None):
         """
         Create a steptimer manager object.
@@ -783,33 +829,33 @@ class SteptimerManager:
 
         self._id_to_steptimer = dict()
 
-    def new_steptimer(self, steptimer_type=None, timer_value=_DEF_START_TIMER_VALUE,
-                      timestep_length=_FRAME_LENGTH, firing_interval=None,
-                      min_timer_value=_DEF_MIN_TIMER_VALUE, max_timer_value=_DEF_MAX_TIMER_VALUE):
+    def new_steptimer(self, steptimer_type=None, start_timer_value=None, timestep_length=None,
+                      firing_interval=None, min_timer_value=None, max_timer_value=None):
         """
-        Create a new steptimer with given parameters.
+        Create a new steptimer with given parameters managed by this manager.
 
         Parameters
         ----------
         steptimer_type : SteptimerManager.Steptimer, optional
             Class of steptimer that will be produced. Defaults to None (and converted to
             self.Steptimer)
-        timer_value : float, optional
+        start_timer_value : float, optional
             Number of seconds the apparent timer the steptimer will initially have. Defaults to
-            _DEF_START_TIMER_VALUE.
+            None (will use the default from `steptimer_type`).
         timestep_length : float, optional
             Number of seconds that tick from the apparent timer every step. Must be a non-
             negative number at least `min_timer_value` and `max_timer_value`. Defaults to
-            _FRAME_LENGTH.
+            None (will use the default from `steptimer_type`).
         firing_interval : float, optional
             Number of seconds that must elapse for the apparent timer to tick. Defaults to None
             (and converted to abs(timestep_length))
         min_timer_value : float, optional
             Minimum value the apparent timer may take. If the timer ticks below this, it will end
-            automatically. It must be a non-negative number. Defaults to _DEF_MIN_TIMER_VALUE.
+            automatically. It must be a non-negative number. Defaults to None (will use the
+            default from `steptimer_type`.)
         max_timer_value : float, optional
             Maximum value the apparent timer may take. If the timer ticks above this, it will end
-            automatically. Defaults to _DEF_MAX_TIMER_VALUE.
+            automatically. Defaults to None (will use the default from `steptimer_type`).
 
         Returns
         -------
@@ -831,13 +877,17 @@ class SteptimerManager:
         # Fill in default values
         if steptimer_type is None:
             steptimer_type = self.Steptimer
-        if firing_interval is None:
+        if firing_interval is None and timestep_length is not None:
             firing_interval = abs(timestep_length)
 
         # Generate a steptimer ID and the new steptimer
         steptimer_id = self._make_new_steptimer_id()
-        steptimer = steptimer_type(self._server, self, steptimer_id, timer_value, timestep_length,
-                                   firing_interval, min_timer_value, max_timer_value)
+        steptimer = steptimer_type(self._server, self, steptimer_id,
+                                   start_timer_value=start_timer_value,
+                                   timestep_length=timestep_length,
+                                   firing_interval=firing_interval,
+                                   min_timer_value=min_timer_value,
+                                   max_timer_value=max_timer_value)
         self._id_to_steptimer[steptimer_id] = steptimer
 
         self._check_structure()
@@ -855,12 +905,12 @@ class SteptimerManager:
         Returns
         -------
         str
-            The ID of the steptimer that was disbanded.
+            The ID of the steptimer that was deleted.
 
         Raises
         ------
         SteptimerError.ManagerDoesNotManageSteptimerError
-            If the manager does not manage the target steptimer
+            If the manager does not manage the target steptimer.
 
         """
 
@@ -903,7 +953,7 @@ class SteptimerManager:
         Parameters
         ----------
         steptimer_tag: SteptimerManager.Steptimer or str
-            Steptimers this manager manages.
+            Steptimer this manager manages.
 
         Returns
         -------
