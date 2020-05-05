@@ -964,7 +964,7 @@ class SteptimerManager:
         ------
         SteptimerError.ManagerDoesNotManageSteptimerError:
             If `steptimer_tag` is a steptimer this manager does not manage.
-        SteptimerError.ManagerInvalidIDError:
+        SteptimerError.ManagerInvalidSteptimerIDError:
             If `steptimer_tag` is a str and it is not the ID of a steptimer this manager manages.
 
         """
@@ -980,10 +980,10 @@ class SteptimerManager:
             try:
                 return self._id_to_steptimer[steptimer_tag]
             except KeyError:
-                raise SteptimerError.ManagerInvalidIDError
+                raise SteptimerError.ManagerInvalidSteptimerIDError
 
         # Every other case
-        raise SteptimerError.ManagerInvalidIDError
+        raise SteptimerError.ManagerInvalidSteptimerIDError
 
     def get_steptimer_id(self, steptimer_tag):
         """
@@ -1004,7 +1004,7 @@ class SteptimerManager:
         ------
         SteptimerError.ManagerDoesNotManageSteptimerError:
             If `steptimer_tag` is a steptimer this manager does not manage.
-        SteptimerError.ManagerInvalidIDError:
+        SteptimerError.ManagerInvalidSteptimerIDError:
             If `steptimer_tag` is a str and it is not the ID of a steptimer this manager manages.
 
         """
@@ -1020,10 +1020,10 @@ class SteptimerManager:
             try:
                 return self._id_to_steptimer[steptimer_tag]._steptimer_id
             except KeyError:
-                raise SteptimerError.ManagerInvalidIDError
+                raise SteptimerError.ManagerInvalidSteptimerIDError
 
         # Every other case
-        raise SteptimerError.ManagerInvalidIDError
+        raise SteptimerError.ManagerInvalidSteptimerIDError
 
     def _make_new_steptimer_id(self):
         """

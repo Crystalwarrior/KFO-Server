@@ -87,6 +87,9 @@ class PlayerGroupError(TsuserverException):
     class UserNotLeaderError(TsuserverException):
         pass
 
+    class UserDoesNotSatisfyConditionsError(TsuserverException):
+        pass
+
     class GroupIsEmptyError(TsuserverException):
         pass
 
@@ -102,7 +105,7 @@ class PlayerGroupError(TsuserverException):
     class ManagerDoesNotManageGroupError(TsuserverException):
         pass
 
-    class ManagerInvalidIDError(TsuserverException):
+    class ManagerInvalidGroupIDError(TsuserverException):
         pass
 
 class SteptimerError(TsuserverException):
@@ -142,7 +145,7 @@ class SteptimerError(TsuserverException):
     class ManagerDoesNotManageSteptimerError(TsuserverException):
         pass
 
-    class ManagerInvalidIDError(TsuserverException):
+    class ManagerInvalidSteptimerIDError(TsuserverException):
         pass
 
 class ZoneError(TsuserverException):
@@ -174,6 +177,12 @@ class GameError(TsuserverException):
     class UserInNoGameError(TsuserverException):
         pass
 
+    class UserInAnotherTeamError(TsuserverException):
+        pass
+
+    class UserInNoTeamError(TsuserverException):
+        pass
+
     class UserNotInvitedError(TsuserverException):
         pass
 
@@ -181,6 +190,9 @@ class GameError(TsuserverException):
         pass
 
     class UserNotLeaderError(TsuserverException):
+        pass
+
+    class UserDoesNotSatisfyConditionsError(TsuserverException):
         pass
 
     class GameIsEmptyError(TsuserverException):
@@ -201,11 +213,20 @@ class GameError(TsuserverException):
     class GameInvalidTimerIDError(TsuserverException):
         pass
 
-    class ManagerTooManyGameError(TsuserverException):
+    class GameTooManyTeamsError(TsuserverException):
+        pass
+
+    class GameDoesNotManageTeamError(TsuserverException):
+        pass
+
+    class GameInvalidTeamIDError(TsuserverException):
+        pass
+
+    class ManagerTooManyGamesError(TsuserverException):
         pass
 
     class ManagerDoesNotManageGameError(TsuserverException):
         pass
 
-    class ManagerInvalidIDError(TsuserverException):
+    class ManagerInvalidGameIDError(TsuserverException):
         pass

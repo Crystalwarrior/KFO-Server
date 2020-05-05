@@ -43,13 +43,16 @@ class PlayerGroupManager:
     ----------
     _server : TsuserverDR
         Server the player group manager belongs to.
+    _playergroup_limit : int or None
+        If an int, it is the maximum number of player groups this manager supports. If None, the
+        manager may manage an arbitrary number of groups.
+    _playergroup_type : PlayerGroupManager.PlayerGroup
+        The type of player groups this player group manager will create by default when ordered to
+        create a new one.
     _user_to_group : dict of ClientManager.Client to PlayerGroupManager.PlayerGroup
         Mapping of users to the player group managed by this manager they belong to.
     _id_to_group : dict of str to PlayerGroupManager.PlayerGroup
         Mapping of player group IDs to player groups that this manager manages.
-    _playergroup_limit : int or None
-        If an int, it is the maximum number of player groups this manager supports. If None, the
-        manager may manage an arbitrary number of groups.
 
     Invariants
     ----------
@@ -139,13 +142,6 @@ class PlayerGroupManager:
                 leader among any remaining players left; if no players are left, the next player
                 added will be made leader. If False, no such automatic assignment will happen.
                 Defaults to True.
-
-            Raises
-            ------
-            PlayerGroupError.GroupIsEmptyError
-                If the group has no players but `require_players` is True.
-            PlayerGroupError.UserAlreadyPlayerError
-                If any player in the group is part of another group managed by this manager.
 
             """
 
@@ -600,7 +596,7 @@ class PlayerGroupManager:
                     f"leaders={self._leaders}, require_players={self._require_players}, "
                     f"require_leaders={self._require_leaders})")
 
-    def __init__(self, server, playergroup_limit=None):
+    def __init__(self, server, playergroup_limit=None, playergroup_type=None):
         """
         Create a player group manager object.
 
@@ -608,25 +604,34 @@ class PlayerGroupManager:
         ----------
         server : TsuserverDR
             The server this player group manager belongs to.
+        playergroup_type : PlayerGroupManager.PlayerGroup, optional
+            The default type of player group this manager will create. Defaults to None (and then
+            converted to self.PlayerGroup).
         playergroup_limit : int, optional
-            The maximum number of groups this manager can handle. Defaults to None (no limit)
-
+            The maximum number of groups this manager can handle. Defaults to None (no limit).
         """
 
+        if playergroup_type is None:
+            playergroup_type = self.PlayerGroup
+
         self._server = server
+        self._playergroup_type = playergroup_type
         self._playergroup_limit = playergroup_limit
         self._id_to_group = dict()
         self._user_to_group = dict()
 
         self._check_structure()
 
-    def new_group(self, creator=None, player_limit=None, require_invitations=False,
-                  require_players=True, require_leaders=True):
+    def new_group(self, playergroup_type=None, creator=None, player_limit=None,
+                  require_invitations=False, require_players=True, require_leaders=True):
         """
         Create a new player group managed by this manager.
 
         Parameters
         ----------
+        group_type : PlayerGroupManager.PlayerGroup
+            Class of player group that will be produced. Defaults to None (and converted to the
+            default player group created by this player group).
         creator : ClientManager.Client, optional
             The player who created this group. If set, they will also be added to the group if
             possible. Defaults to None.
@@ -650,6 +655,8 @@ class PlayerGroupManager:
 
         Raises
         ------
+        PlayerGroupError.ManagerTooManyGroupsError
+            If the manager is already managing its maximum number of groups.
         PlayerGroupError.UserInAnotherGroupError
             If `creator` is not None and already part of a group managed by this manager.
 
@@ -661,9 +668,12 @@ class PlayerGroupManager:
         if creator and creator in self._user_to_group.keys():
             raise PlayerGroupError.UserInAnotherGroupError
 
+        if playergroup_type is None:
+            playergroup_type = self.PlayerGroup
+
         # Generate a playergroup ID and the new group
         playergroup_id = self._make_new_group_id()
-        playergroup = self.PlayerGroup(self._server, self, playergroup_id,
+        playergroup = playergroup_type(self._server, self, playergroup_id,
                                        player_limit=player_limit,
                                        require_invitations=require_invitations,
                                        require_players=require_players,
@@ -685,13 +695,13 @@ class PlayerGroupManager:
 
         Parameters
         ----------
-        playergroup : PlayerGroup
+        playergroup : PlayerGroupManager.PlayerGroup
             The player group to delete.
 
         Returns
         -------
         (str, set of ClientManager.Client)
-            The ID and players of the playergroup that was disbanded.
+            The ID and players of the player group that was deleted.
 
         Raises
         ------
@@ -714,7 +724,7 @@ class PlayerGroupManager:
 
         Returns
         -------
-        set of PlayerGroup
+        set of PlayerGroupManager.PlayerGroup
             Player groups this manager manages.
 
         """
@@ -743,7 +753,7 @@ class PlayerGroupManager:
         """
 
         try:
-            return self._id_to_group[user]
+            return self._user_to_group[user]
         except KeyError:
             raise PlayerGroupError.UserInNoGroupError
 
@@ -754,7 +764,7 @@ class PlayerGroupManager:
 
         Parameters
         ----------
-        playergroup_tag : PlayerGroup or str
+        playergroup_tag : PlayerGroupManager.PlayerGroup or str
             Player group this manager manages.
 
         Returns
@@ -766,7 +776,7 @@ class PlayerGroupManager:
         ------
         PlayerGroupError.ManagerDoesNotManageGroupError:
             If `playergroup_tag` is a group this manager does not manage.
-        PlayerGroupError.ManagerInvalidIDError:
+        PlayerGroupError.ManagerInvalidGroupIDError:
             If `playergroup_tag` is a str and it is not the ID of a group this manager manages.
 
         """
@@ -782,10 +792,10 @@ class PlayerGroupManager:
             try:
                 return self._id_to_group[playergroup_tag]
             except KeyError:
-                raise PlayerGroupError.ManagerInvalidIDError
+                raise PlayerGroupError.ManagerInvalidGroupIDError
 
         # Every other case
-        raise PlayerGroupError.ManagerInvalidIDError
+        raise PlayerGroupError.ManagerInvalidGroupIDError
 
     def get_group_id(self, playergroup_tag):
         """
@@ -794,19 +804,19 @@ class PlayerGroupManager:
 
         Parameters
         ----------
-        playergroup_tag : PlayerGroup or str
+        playergroup_tag : PlayerGroupManager.PlayerGroup or str
             Player group this manager manages.
 
         Returns
         -------
-        PlayerGroup
+        str
             The ID of the player group that matches the given tag.
 
         Raises
         ------
         PlayerGroupError.ManagerDoesNotManageGroupError:
             If `playergroup_tag` is a group this manager does not manage.
-        PlayerGroupError.ManagerInvalidIDError:
+        PlayerGroupError.ManagerInvalidGroupIDError:
             If `playergroup_tag` is a str and it is not the ID of a group this manager manages.
 
         """
@@ -822,10 +832,10 @@ class PlayerGroupManager:
             try:
                 return self._id_to_group[playergroup_tag]._playergroup_id
             except KeyError:
-                raise PlayerGroupError.ManagerInvalidIDError
+                raise PlayerGroupError.ManagerInvalidGroupIDError
 
         # Every other case
-        raise PlayerGroupError.ManagerInvalidIDError
+        raise PlayerGroupError.ManagerInvalidGroupIDError
 
     def _make_new_group_id(self):
         """
