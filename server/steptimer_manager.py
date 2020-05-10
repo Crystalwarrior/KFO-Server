@@ -481,7 +481,7 @@ class SteptimerManager:
             if self._timer_value < self._min_timer_value:
                 self._timer_value = self._min_timer_value
             elif self._timer_value > self._max_timer_value:
-                self._timer_value = self._max_timmer_value
+                self._timer_value = self._max_timer_value
 
             self._refresh()
             self._continue_timestep()
@@ -578,7 +578,7 @@ class SteptimerManager:
             if self._timer_value < self._min_timer_value:
                 self._timer_value = self._min_timer_value
             elif self._timer_value > self._max_timer_value:
-                self._timer_value = self._max_timmer_value
+                self._timer_value = self._max_timer_value
 
             self._refresh()
             self._continue_timestep()

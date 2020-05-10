@@ -16,23 +16,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+"""
+Module that contains the GameManager class, which itself contains the Game and Team subclasses.
+
+Games maintain a PlayerGroup-like structure and methods, but also allow the creation of teams with
+thier players. Teams are proper PlayerGroups, and no player of a game can be part of two teams
+managed by the same game. Players of a game need not be part of a team managed by the game, but a
+team can only have players of the game as players of the team. Removing a player from a game
+also removes them from their team if they were in any.
+
+Games also maintain a SteptimerManager-like structure, allowing the creation of stpetimers
+managed by the game.
+
+Each game is managed by a game manager, which iself is a player group manager. Unless specified
+otherwise in the games, a player may be part of two or more games managed by the same game manager.
+"""
+
 from server.exceptions import GameError, PlayerGroupError, SteptimerError
 from server.playergroup_manager import PlayerGroupManager
 from server.steptimer_manager import SteptimerManager
 
-"""
-Module that contains the GameManager class, which itself contains the Game subclass.
-
-Games are player groups that maintain first-in-first-out queues of arbitrary many TsuserverDR
-packets to send to its players.
-
-Each game is managed by a game manager, which iself are player group managers.
-"""
-
 class GameManager(PlayerGroupManager):
     class Team(PlayerGroupManager.PlayerGroup):
         def __init__(self, server, manager, playergroup_id, player_limit=None,
-                     require_invitations=False, require_players=True, require_leaders=True):
+                     concurrent_limit=None, require_invitations=False, require_players=True,
+                     require_leaders=True):
             """
             Create a new player group.
 
@@ -46,8 +54,15 @@ class GameManager(PlayerGroupManager):
                 Identifier of the player group.
             game : GameManager.Game
                 Game of this player group.
-            player_limit : int, optional.
-                Maximum number of players the group supports. Defaults to None (no limit).
+            player_limit : int or None, optional
+                If an int, it is the maximum number of players the player group supports. If None,
+                it indicates the player group has no player limit. Defaults to None.
+            concurrent_limit : int or None, optional
+                If an int, it is the maximum number of player groups managed by `manager` that any
+                player of this group may belong to, including this group. If None, it indicates
+                that this group does not care about how many other player groups managed by
+                `manager` each of its players belongs to. It is always overwritten by 1 (a player
+                may not be in another group managed by `manager` while in this group).
             require_invitation : bool, optional
                 If True, players can only be added to the group if they were previously invited. If
                 False, no checking for invitations is performed. Defaults to False.
@@ -64,6 +79,7 @@ class GameManager(PlayerGroupManager):
             """
 
             super().__init__(server, manager, playergroup_id, player_limit=player_limit,
+                             concurrent_limit=1, # Teams shall only allow 1 concurrent membership
                              require_invitations=require_invitations,
                              require_players=require_players, require_leaders=require_leaders)
             self._game = None
@@ -87,30 +103,72 @@ class GameManager(PlayerGroupManager):
                 If the group requires players be invited to be added and the user is not invited.
             PlayerGroupError.UserAlreadyPlayerError
                 If the user to add is already a user of the player group.
-            PlayerGroupError.UserInAnotherGroupError
-                If the player is already in another group managed by this manager.
             PlayerGroupError.GroupIsFullError
                 If the group reached its player limit.
-            PlayerGroupError.UserDoesNotSatisfyConditionsError
+            PlayerGroupError.UserHitGroupConcurrentLimitError.
+                If the player has reached any of the groups it belongs to managed by this player
+                group's manager concurrent membership limit, or by virtue of joining this group
+                will violate this group's concurrent membership limit.
+            PlayerGroupError.UserNotPlayerError
                 If the user to add is not a player of the game.
 
             """
 
             if not self._game.is_player(user):
-                raise PlayerGroupError.UserDoesNotSatisfyConditionsError
+                raise PlayerGroupError.UserNotPlayerError
 
             super().add_player(user)
 
     class Game():
         def __init__(self, server, manager, game_id, player_limit=None,
-                     require_invitations=False, require_players=True, require_leaders=True,
-                     team_limit=None, timer_limit=None):
+                     concurrent_limit=None, require_invitations=False, require_players=True,
+                     require_leaders=True, team_limit=None, timer_limit=None):
+            """
+            Create a new game.
+
+            Parameters
+            ----------
+            server : TsuserverDR
+                Server the game belongs to.
+            manager : GameManager
+                Manager for this game.
+            game_id : str
+                Identifier of the game.
+            player_limit : int or None, optional
+                If an int, it is the maximum number of players the game supports. If None, it
+                indicates the game has no player limit. Defaults to None.
+            concurrent_limit : int or None, optional
+                If an int, it is the maximum number of games managed by `manager` that any
+                player of this game may belong to, including this game. If None, it indicates
+                that this game does not care about how many other games managed by `manager` each
+                of its players belongs to. Defaults to None.
+            require_invitation : bool, optional
+                If True, players can only be added to the game if they were previously invited. If
+                False, no checking for invitations is performed. Defaults to False.
+            require_players : bool, optional
+                If True, if at any point the game has no players left, the game will
+                automatically be deleted. If False, no such automatic deletion will happen.
+                Defaults to True.
+            require_leaders : bool, optional
+                If True, if at any point the game has no leaders left, the game will choose a
+                leader among any remaining players left; if no players are left, the next player
+                added will be made leader. If False, no such automatic assignment will happen.
+                Defaults to True.
+            team_limit : int or None, optional
+                If an int, it is the maximum number of teams the game supports. If None, it
+                indicates the game has no team limit. Defaults to None.
+            timer_limit : int or None, optional
+                If an int, it is the maximum number of steptimers the game supports. If None, it
+                indicates the game has no steptimer limit. Defaults to None.
+            """
+
             self._init_ready = False
             self._team_manager = PlayerGroupManager(server, playergroup_limit=team_limit,
                                                     playergroup_type=GameManager.Team)
             self._timer_manager = SteptimerManager(server, steptimer_limit=timer_limit)
             self._game = PlayerGroupManager.PlayerGroup(server, manager, game_id,
                                                         player_limit=player_limit,
+                                                        concurrent_limit=concurrent_limit,
                                                         require_invitations=require_invitations,
                                                         require_players=require_players,
                                                         require_leaders=require_leaders)
@@ -182,8 +240,10 @@ class GameManager(PlayerGroupManager):
                 If the game requires players be invited to be added and the user is not invited.
             GameError.UserAlreadyPlayerError
                 If the user to add is already a user of the game.
-            GameError.UserInAnotherGameError
-                If the player is already in another game managed by this manager.
+            GameError.UserHitGameConcurrentLimitError
+                If the player has reached any of the games it belongs to managed by this game's
+                manager concurrent membership limit, or by virtue of joining this game they
+                will violate this game's concurrent membership limit.
             GameError.GroupIsFullError
                 If the game reached its playership limit.
 
@@ -195,8 +255,8 @@ class GameManager(PlayerGroupManager):
                 raise GameError.UserNotInvitedError from exception
             except PlayerGroupError.UserAlreadyPlayerError as exception:
                 raise GameError.UserAlreadyPlayerError from exception
-            except PlayerGroupError.UserInAnotherGroupError as exception:
-                raise GameError.UserInAnotherGameError from exception
+            except PlayerGroupError.UserHitGroupConcurrentLimitError as exception:
+                raise GameError.UserHitGameConcurrentLimitError from exception
             except PlayerGroupError.GroupIsFullError as exception:
                 raise GameError.GameIsFullError from exception
 
@@ -247,7 +307,7 @@ class GameManager(PlayerGroupManager):
 
             """
 
-            return self._game.get_invitations(cond=None)
+            return self._game.get_invitations(cond=cond)
 
         def is_invited(self, user):
             """
@@ -577,7 +637,7 @@ class GameManager(PlayerGroupManager):
                 raise GameError.GameInvalidTimerIDError from exception
 
         def new_team(self, team_type=None, creator=None, player_limit=None,
-                      require_invitations=False, require_players=True, require_leaders=True):
+                     require_invitations=False, require_players=True, require_leaders=True):
             """
             Create a new team managed by this game.
 
@@ -623,6 +683,7 @@ class GameManager(PlayerGroupManager):
             try:
                 team = self._team_manager.new_group(playergroup_type=team_type, creator=creator,
                                                     player_limit=player_limit,
+                                                    concurrent_limit=1,
                                                     require_invitations=require_invitations,
                                                     require_players=require_players,
                                                     require_leaders=require_leaders)
@@ -630,7 +691,7 @@ class GameManager(PlayerGroupManager):
                 return team
             except PlayerGroupError.ManagerTooManyGroupsError as exception:
                 raise GameError.GameTooManyTeamsError from exception
-            except PlayerGroupError.UserInAnotherGroupError as exception:
+            except PlayerGroupError.UserHitGroupConcurrentLimitError as exception:
                 raise GameError.UserInAnotherTeamError from exception
 
         def delete_team(self, team):
@@ -670,7 +731,7 @@ class GameManager(PlayerGroupManager):
 
             """
 
-            return set(self._id_to_group.values())
+            return set(self._team_manager._id_to_group.values())
 
         def get_team_of_user(self, user):
             """
@@ -694,7 +755,7 @@ class GameManager(PlayerGroupManager):
             """
 
             try:
-                return self._team_manager.get_group_of_user(user)
+                return self._team_manager.get_groups_of_user(user).pop()
             except PlayerGroupError.UserInNoGroupError as exception:
                 raise GameError.UserInNoTeamError from exception
 
@@ -762,15 +823,26 @@ class GameManager(PlayerGroupManager):
 
         def __str__(self):
             return (f"Game::"
-                    f"{self._team_manager._id_to_group}:{self._team_manager._user_to_group}:"
+                    f"{self._team_manager._id_to_group}:{self._team_manager._user_to_groups}:"
                     f"{self._timer_manager._id_to_steptimer}:"
-                    f"{self._game_.playergroup_id}:{self._game._players}:{self._game._leaders}")
+                    f"{self._game._playergroup_id}:{self._game._players}:{self._game._leaders}")
 
         def __repr__(self):
+            """
+            Return a representation of this game.
+
+            Returns
+            -------
+            str
+                Printable representation.
+
+            """
             return (f"GameManager.Game(server, manager, '{self._game._playergroup_id}', "
-                    f"player_limit={self._game._player_limit}, "
-                    f"require_invitations={self._game._require_invitations}, "
+                    f"concurrent_limit={self._game._concurrent_limit}, "
+                    f"player_limit={self._game._player_limit}, players={self._game._players}, "
+                    f"invitations={self._game._invitations}, leaders={self._game._leaders}, "
                     f"require_players={self._game._require_players}, "
+                    f"require_invitations={self._game._require_invitations}, "
                     f"require_leaders={self._game._require_leaders}, "
                     f"team_limit={self._team_manager._playergroup_limit}, "
                     F"timer_limit={self._timer_manager._steptimer_limit})")

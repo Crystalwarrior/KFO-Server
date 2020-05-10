@@ -72,7 +72,7 @@ class PlayerGroupError(TsuserverException):
     class UserAlreadyLeaderError(TsuserverException):
         pass
 
-    class UserInAnotherGroupError(TsuserverException):
+    class UserHitGroupConcurrentLimitError(TsuserverException):
         pass
 
     class UserInNoGroupError(TsuserverException):
@@ -87,9 +87,6 @@ class PlayerGroupError(TsuserverException):
     class UserNotLeaderError(TsuserverException):
         pass
 
-    class UserDoesNotSatisfyConditionsError(TsuserverException):
-        pass
-
     class GroupIsEmptyError(TsuserverException):
         pass
 
@@ -97,6 +94,9 @@ class PlayerGroupError(TsuserverException):
         pass
 
     class GroupDoesNotTakeInvitationsError(TsuserverException):
+        pass
+
+    class GroupIsUnmanagedError(TsuserverException):
         pass
 
     class ManagerTooManyGroupsError(TsuserverException):
@@ -171,7 +171,7 @@ class GameError(TsuserverException):
     class UserAlreadyLeaderError(TsuserverException):
         pass
 
-    class UserInAnotherGameError(TsuserverException):
+    class UserHitGameConcurrentLimitError(TsuserverException):
         pass
 
     class UserInNoGameError(TsuserverException):
