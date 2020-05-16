@@ -151,6 +151,65 @@ class Clients():
             ('nonint_pre', 0), #22
             ]
 
+    class ClientAO2d7(Enum):
+        MS_INBOUND = [
+            ('msg_type', ArgType.STR), #0
+            ('pre', ArgType.STR_OR_EMPTY), #1
+            ('folder', ArgType.STR), #2
+            ('anim', ArgType.STR), #3
+            ('text', ArgType.STR), #4
+            ('pos', ArgType.STR), #5
+            ('sfx', ArgType.STR), #6
+            ('anim_type', ArgType.INT), #7
+            ('cid', ArgType.INT), #8
+            ('sfx_delay', ArgType.INT), #9
+            ('button', ArgType.INT), #10
+            ('evidence', ArgType.INT), #11
+            ('flip', ArgType.INT), #12
+            ('ding', ArgType.INT), #13
+            ('color', ArgType.INT), #14
+            ('showname', ArgType.STR_OR_EMPTY), #15
+            ('charid_pair', ArgType.INT), #16
+            ('offset_pair', ArgType.INT), #17
+            ('nonint_pre', ArgType.INT), #18
+            ('looping_sfx', ArgType.INT), #19
+            ('screenshake', ArgType.INT), #20
+            ('frame_screenshake', ArgType.STR_OR_EMPTY), #21
+            ('frame_realization', ArgType.STR_OR_EMPTY), #22
+            ('frame_sfx', ArgType.STR_OR_EMPTY), #23
+            ]
+
+        MS_OUTBOUND = [
+            ('msg_type', 0), #0
+            ('pre', '-'), #1
+            ('folder', '<NOCHAR>'), #2
+            ('anim', '../../misc/blank'), #3
+            ('msg', ''), #4
+            ('pos', 'jud'), #5
+            ('sfx', 0), #6
+            ('anim_type', 0), #7
+            ('cid', 0), #8
+            ('sfx_delay', 0), #9
+            ('button', 0), #10
+            ('evidence', 0), #11
+            ('flip', 0), #12
+            ('ding', -1), #13
+            ('color', 0), #14
+            ('showname', ' '), #15
+            ('charid_pair', -1), #16
+            ('other_folder', ''), #17
+            ('other_emote', ''), #18
+            ('offset_pair', 0), #19
+            ('other_offset', 0), #20
+            ('other_flip', 0), #21
+            ('nonint_pre', 0), #22
+            ('looping_sfx', 0), #23
+            ('screenshake', 0), #24
+            ('frame_screenshake', ''), #25
+            ('frame_realization', ''), #26
+            ('frame_sfx', ''), #27
+            ]
+
     ClientKFO2d8 = Enum('ClientKFO2d8', [(m.name, m.value) for m in ClientAO2d6])
 
 class Constants():

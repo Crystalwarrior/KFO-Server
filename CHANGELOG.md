@@ -388,4 +388,31 @@
 * Reverted backwards incompatible change that prevented music lists that did not list length for a track (meaning they did not want them to be looped) from being loaded.
 
 ### 200503a (4.2.3-post11)
-* Fixed lights staying off if they were turned on again without changing the background.
+* Fixed /lights not turning lights back on if the background wasn't changed
+
+### 200516a (4.2.4)
+* Enforced Python 3.6+ requirement on server launch.
+* Server owners running Python 3.6 will now be warned on server launch of pending deprecation of support for Python 3.6 with the upcoming major release of TsuserverDR
+* Added /cid to get your (or someone else's) client ID.
+* Added /spectate to switch to spectator
+* Added client version to /whois
+* Warnings are now sent to players in once-locked rooms that were reloaded via /area_list
+* /whisper messages from private rooms are no longer sent to staff members
+* GMs may now /make_gm their multiclients, and their multiclients only
+* Login/logout notifications are now sent to other staff members
+* Staff login+passwords messages are now censored both in IC and OOC
+* Added /zone_lights to turn the lights of every area in your zone on or off
+* Added command aliases:
+  - /sa (Alias for /showname_area)
+  - /sas (Alias for /showname_areas)
+  - /shout (Alias for /scream)
+  - /unsneak (Alias for /reveal)
+  - /yell (Alias for /scream)
+* Added server configuration setting to disable ms2-prober connections being logged in server logs
+* Added server configuration setting to set a custom UTC offset to use for the output of /time and /time12
+* Public servers now properly reject webAO connections, and log any other  abnormal connections.
+* Fixed potential DoS attack on clients
+* Fixed /toggle_allrolls giving roll results from outside watched zones if the roller was in an area not part of a zone
+* Fixed /multiclients failing to output results if target client was not staff and their area did not satisfy criteria for being printed in /getareas from the perspective of the /muloticlients sender
+* Undeprecated /showname_list in favor of making it a command alias
+* Added best-effort support for (upcoming) Attorney Online 2.7

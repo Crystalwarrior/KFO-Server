@@ -101,8 +101,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
         self.assertFalse(self.good_rank(self.c0))
 
         self.c0.ooc('/logout')
-        self.c0.assert_ooc('You are no longer logged in.', ooc_over=True)
-        self.c0.assert_packet('FM', None, over=True)
+        self.c0.assert_ooc('You must be authorized to do that.', over=True)
         self.assertFalse(self.good_rank(self.c0))
 
         # Make sure no one is randomly logged in either
@@ -144,8 +143,8 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
 
     def test_06_TwoSimultaneousSameRank(self):
         """
-        Situation: Two players attempt to log in and log out using a combination of passwords 1
-        and 2 in a variety of orders.
+        Situation: Two players attempt to log in and log out to the same rank using a combination
+        of passwords 1 and 2 in a variety of orders.
         """
 
         pass_pos = ([self.correct_pass1, self.correct_pass1],
@@ -168,6 +167,15 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
                 self.assertTrue(self.good_rank(a1))
                 self.assertTrue(self.good_rank(a2))
 
+                # Assert the login message a1 got from a2 logging in
+                # Also log the state of a1 for later use
+                if a1.is_mod:
+                    a1.assert_ooc('{} [{}] logged in as a moderator.'
+                                  .format(a2.name, a2.id), over=True)
+                elif a1.is_cm:
+                    a1.assert_ooc('{} [{}] logged in as a community manager.'
+                                  .format(a2.name, a2.id), over=True)
+
                 # Make sure no one is randomly logged in either
                 for c in self.clients[:3]:
                     self.assertFalse(self.good_rank(c)) if c == self.c2 else None
@@ -179,6 +187,12 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
                 b1.assert_packet('FM', None, over=True)
                 self.assertFalse(self.good_rank(b1))
                 self.assertTrue(self.good_rank(b2))
+                if b2.is_mod:
+                    b2.assert_ooc('{} [{}] is no longer a moderator.'
+                                  .format(b1.name, b1.id), over=True)
+                elif b2.is_cm:
+                    b2.assert_ooc('{} [{}] is no longer a community manager.'
+                                  .format(b1.name, b1.id), over=True)
                 b2.ooc('/logout')
                 b2.assert_ooc('You are no longer logged in.', ooc_over=True)
                 b2.assert_packet('FM', None, over=True)
@@ -213,24 +227,38 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
                 a2.assert_ooc('Invalid password.', over=True)
                 self.assertTrue(self.good_rank(a1))
                 self.assertFalse(self.good_rank(a2))
+                if a1.is_mod:
+                    a1.assert_ooc('{} [{}] failed to login as a moderator.'
+                                  .format(a2.name, a2.id), over=True)
+                elif a1.is_cm:
+                    a1.assert_ooc('{} [{}] failed to login as a community manager.'
+                                  .format(a2.name, a2.id), over=True)
 
                 # Make sure no one is randomly logged in either
                 for c in self.clients[:3]:
                     self.assertFalse(self.good_rank(c)) if c == self.c2 else None
                     self.assertFalse(self.bad_rank1(c))
                     self.assertFalse(self.bad_rank2(c))
+                if self.good_rank(b1):
+                    b1.ooc('/logout')
+                    b1.assert_ooc('You are no longer logged in.', ooc_over=True)
+                    b1.assert_packet('FM', None, over=True)
+                else:
+                    b1.ooc('/logout')
+                    b1.assert_ooc('You must be authorized to do that.', ooc_over=True)
 
-                b1.ooc('/logout')
-                b1.assert_ooc('You are no longer logged in.', ooc_over=True)
-                b1.assert_packet('FM', None, over=True)
                 if a1 == b1:
                     self.assertFalse(self.good_rank(a1))
                 else:
                     self.assertTrue(self.good_rank(a1))
                 self.assertFalse(self.good_rank(a2))
-                b2.ooc('/logout')
-                b2.assert_ooc('You are no longer logged in.', ooc_over=True)
-                b2.assert_packet('FM', None, over=True)
+                if self.good_rank(b2):
+                    b2.ooc('/logout')
+                    b2.assert_ooc('You are no longer logged in.', ooc_over=True)
+                    b2.assert_packet('FM', None, over=True)
+                else:
+                    b2.ooc('/logout')
+                    b2.assert_ooc('You must be authorized to do that.', ooc_over=True)
                 self.assertFalse(self.good_rank(b1))
                 self.assertFalse(self.good_rank(b2))
 
@@ -341,6 +369,8 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         self.c0.ooc('/loginrp {}'.format(self.gmpass))
         self.c0.assert_packet('FM', None)
         self.c0.assert_ooc('Logged in as a game master.', over=True)
+        self.c1.assert_ooc('{} [{}] logged in as a game master with the global pass.'
+                           .format(self.c0.name, self.c0.id), over=True)
         self.assertTrue(self.c0.is_gm)
 
         self.c0.ooc('/loginrp {}'.format(self.gmpass))
@@ -350,6 +380,8 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         self.c2.ooc('/login {}'.format(self.modpass))
         self.c2.assert_packet('FM', None)
         self.c2.assert_ooc('Logged in as a moderator.', over=True)
+        self.c1.assert_ooc('{} [{}] logged in as a moderator.'
+                           .format(self.c2.name, self.c2.id), over=True)
         self.assertTrue(self.c2.is_mod)
 
         self.c2.ooc('/login {}'.format(self.modpass))
@@ -372,13 +404,16 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         self.c0.ooc('/logout')
         self.c0.assert_ooc('You are no longer logged in.', ooc_over=True)
         self.c0.assert_packet('FM', None, over=True)
+        self.c1.assert_ooc('{} [{}] is no longer a game master.'
+                           .format(self.c0.name, self.c0.id), over=True)
+        self.c2.assert_ooc('{} [{}] is no longer a game master.'
+                           .format(self.c0.name, self.c0.id), over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertTrue(self.c1.is_cm)
         self.assertTrue(self.c2.is_mod)
 
         self.c0.ooc('/logout')
-        self.c0.assert_ooc('You are no longer logged in.', ooc_over=True)
-        self.c0.assert_packet('FM', None, over=True)
+        self.c0.assert_ooc('You must be authorized to do that.', ooc_over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertTrue(self.c1.is_cm)
         self.assertTrue(self.c2.is_mod)
@@ -392,6 +427,8 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         self.c1.ooc('/logout')
         self.c1.assert_ooc('You are no longer logged in.', ooc_over=True)
         self.c1.assert_packet('FM', None, over=True)
+        self.c2.assert_ooc('{} [{}] is no longer a community manager.'
+                           .format(self.c1.name, self.c1.id), over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertFalse(self.c1.is_cm)
         self.assertTrue(self.c2.is_mod)
@@ -404,7 +441,8 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         self.assertFalse(self.c2.is_mod)
 
         self.c1.ooc('/logout {}'.format(self.wrong)) # Some argument
-        self.c1.assert_ooc('This command has no arguments.', over=True)
+         # Staff restriction is checked before arguments
+        self.c1.assert_ooc('You must be authorized to do that.', over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertFalse(self.c1.is_cm)
         self.assertFalse(self.c2.is_mod)

@@ -706,14 +706,15 @@ class ClientManager:
                 # * Client is not in the server selection screen and,
                 # * Any of the four
                 # 1. Client is yourself.
-                # 2. You are a staff member.
+                # 2. self is a staff member (or acting as mod).
                 # 3. Client is visible.
                 # 4. Client is a mod when requiring only mods be printed.
 
                 # If only_my_multiclients is set to True, only the clients opened by the current
                 # user will be listed. Useful for /multiclients.
                 if c.char_id is not None:
-                    cond = (c == self or self.is_staff() or c.is_visible or (mods and c.is_mod))
+                    cond = (c == self or self.is_staff() or as_mod or c.is_visible
+                            or (mods and c.is_mod))
                     multiclient_cond = not only_my_multiclients or c in self.get_multiclients()
 
                     if cond and multiclient_cond:
@@ -769,7 +770,7 @@ class ClientManager:
                 unrestricted_access_area = '<ALL>' in current_area.reachable_areas
                 for (i, area) in enumerate(self.server.area_manager.areas):
                     # Get area i details...
-                    # If staff and there are clients in the area OR
+                    # If staff (or acting as mod) and there are clients in the area OR
                     # If not staff, there are visible clients in the area, and one of the following
                     # 1. The area has no passage restrictions.
                     # 2. The area is reachable from the current one
@@ -778,8 +779,8 @@ class ClientManager:
                                   and (unrestricted_access_area or self.is_transient
                                        or area.name in current_area.reachable_areas))
 
-                    if (self.is_staff() and len(area.clients) > 0) or \
-                    (not self.is_staff() and norm_check):
+                    if (((self.is_staff() or as_mod) and len(area.clients) > 0)
+                        or (not self.is_staff() and norm_check)):
                         num, ainfo = self.get_area_info(i, mods, as_mod=as_mod,
                                                         include_shownames=include_shownames,
                                                         include_ipid=include_ipid,
@@ -874,13 +875,13 @@ class ClientManager:
             """
             return self.is_mod or self.is_cm or self.is_gm
 
-        def login(self, arg, auth_command, role):
+        def login(self, arg, auth_command, role, announce_to_officers=True):
             """
             Wrapper function for the login method for all roles (GM, CM, Mod)
             """
             if len(arg) == 0:
                 raise ClientError('You must specify the password.')
-            auth_command(arg)
+            auth_command(arg, announce_to_officers=announce_to_officers)
 
             # The following actions are true for all logged in roles
             if self.area.evidence_mod == 'HiddenCM':
@@ -888,6 +889,10 @@ class ClientManager:
             self.reload_music_list() # Update music list to show all areas
 
             self.send_ooc('Logged in as a {}.'.format(role))
+            # Filter out messages about GMs because they were called earlier in auth_gm
+            if not self.is_gm and announce_to_officers:
+                self.send_ooc_others('{} [{}] logged in as a {}.'.format(self.name, self.id, role),
+                                     is_officer=True)
             logger.log_server('Logged in as a {}.'.format(role), self)
 
             if self.area.in_zone and self.area.in_zone != self.zone_watched:
@@ -896,7 +901,7 @@ class ClientManager:
                               'notifications, start watching it with /zone_watch {}'
                               .format(zone_id, zone_id))
 
-        def auth_mod(self, password):
+        def auth_mod(self, password, announce_to_officers=True):
             if self.is_mod:
                 raise ClientError('Already logged in.')
             if password == self.server.config['modpass']:
@@ -905,9 +910,12 @@ class ClientManager:
                 self.is_gm = False
                 self.in_rp = False
             else:
+                if announce_to_officers:
+                    self.send_ooc_others('{} [{}] failed to login as a moderator.'
+                                         .format(self.name, self.id), is_officer=True)
                 raise ClientError('Invalid password.')
 
-        def auth_cm(self, password):
+        def auth_cm(self, password, announce_to_officers=True):
             if self.is_cm:
                 raise ClientError('Already logged in.')
             if password == self.server.config['cmpass']:
@@ -916,9 +924,12 @@ class ClientManager:
                 self.is_gm = False
                 self.in_rp = False
             else:
+                if announce_to_officers:
+                    self.send_ooc_others('{} [{}] failed to login as a community manager.'
+                                         .format(self.name, self.id), is_officer=True)
                 raise ClientError('Invalid password.')
 
-        def auth_gm(self, password):
+        def auth_gm(self, password, announce_to_officers=True):
             if self.is_gm:
                 raise ClientError('Already logged in.')
 
@@ -931,11 +942,21 @@ class ClientManager:
                 valid_passwords.append(daily_gmpass)
 
             if password in valid_passwords:
+                if password == daily_gmpass:
+                    g_or_daily = 'daily pass'
+                else:
+                    g_or_daily = 'global pass'
+                if announce_to_officers:
+                    self.send_ooc_others('{} [{}] logged in as a game master with the {}.'
+                                         .format(self.name, self.id, g_or_daily), is_officer=True)
                 self.is_gm = True
                 self.is_mod = False
                 self.is_cm = False
                 self.in_rp = False
             else:
+                if announce_to_officers:
+                    self.send_ooc_others('{} [{}] failed to login as a game master.'
+                                         .format(self.name, self.id), is_officer=True)
                 raise ClientError('Invalid password.')
 
         def get_hdid(self):
@@ -1012,6 +1033,7 @@ class ClientManager:
             info += '\n*Following: {}'.format(self.following.id if self.following else "-")
             info += '\n*Followed by: {}'.format(", ".join([str(c.id) for c in self.followedby])
                                                 if self.followedby else "-")
+            info += '\n*Is Using: {0[0]} {0[1]}'.format(self.version)
             info += ('\n*Online for: {}. Last active: {}'
                      .format(Constants.time_elapsed(self.joined), self.last_active))
             return info
@@ -1313,7 +1335,8 @@ class ClientManager:
                         char = '{}/{}'.format(char, target.char_folder)
 
                     multiple_match_message += ('\r\n*[{}] {} ({}) (OOC: {})'
-                            .format(target.id, char, target.showname, target.name))
+                                               .format(target.id, char, target.showname,
+                                                       target.name))
 
         if not valid_targets or len(valid_targets) > 1:
             # If was able to match more than one at some point, return that

@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# WARNING!
+# This class will be fully reworked for 4.3
 
 import asyncio
 import random

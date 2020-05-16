@@ -13,8 +13,10 @@ Requires Python 3.6-3.8 and PyYAML (follow instructions below to install).
   - You can download Python from its official website [here](https://www.python.org/downloads/).
   - If your system supports it, it is recommended that you use a separate virtual environment, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python).
   - If prompted during the installation to add `python` as a PATH environment variable, accept this option.
-* Open Command Prompt or your terminal, and change to the directory where you downloaded TsuserverDR to. You can do this in two ways:
-  - Go up one folder above the TsuserverDR folder, Shift + right click the TsuserverDR folder, and click `Open command window here`. This is the easiest method.
+  - If you have Python 3.5 or earlier, you must update to a working version to run TsuserverDR. Follow instructions on updating.
+  - If you have Python 3.6, you will be prompted on server launch to update to a newer version of Python. That is because an upcoming major release will require Python 3.7 or higher. Follow instructions on updating.
+* Open Command Prompt, PowerShell or your preferred terminal, and change to the directory where you downloaded TsuserverDR to. You can do this in two ways:
+  - Go up one folder above the TsuserverDR folder, Shift + right click the TsuserverDR folder, and click `Open PowerShell window here`. This is the easiest method.
   - Copy the path of the TsuserverDR folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackets, but including the quotation marks if the path contains spaces.
 * To install PyYAML and dependencies, type in the following:
   ```bash
@@ -31,29 +33,29 @@ Requires Python 3.6-3.8 and PyYAML (follow instructions below to install).
 
 * Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:
 
-\[2019-12-31T10:20:20\]: Starting...  
-\[2019-12-31T10:20:20\]: Launching TsuserverDR 4.2.3 (191231a)...  
-\[2019-12-31T10:20:20\]: Loading server configurations...  
-\[2019-12-31T10:20:20\]: Server configurations loaded successfully!  
-\[2019-12-31T10:20:20\]: Starting a nonlocal server...  
-\[2019-12-31T10:20:20\]: Server started successfully!  
-\[2019-12-31T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
+\[2020-05-16T10:20:20\]: Starting...  
+\[2020-05-16T10:20:20\]: Launching TsuserverDR 4.2.4 (200516a)...  
+\[2020-05-16T10:20:20\]: Loading server configurations...  
+\[2020-05-16T10:20:20\]: Server configurations loaded successfully!  
+\[2020-05-16T10:20:20\]: Starting a nonlocal server...  
+\[2020-05-16T10:20:20\]: Server started successfully!  
+\[2020-05-16T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
 
 * If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:
 
-\[2019-12-31T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
-\[2019-12-31T10:20:21\]: *Server name: My First DR Server  
-\[2019-12-31T10:20:21\]: *Server description: This is my flashy new DR server  
-\[2019-12-31T10:20:22\]: Connected to the master server.  
+\[2020-05-16T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
+\[2020-05-16T10:20:21\]: *Server name: My First DR Server  
+\[2020-05-16T10:20:21\]: *Server description: This is my flashy new DR server  
+\[2020-05-16T10:20:22\]: Connected to the master server.  
 
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If during launch you get  `urllib.error.URLError` or `socket.gaierror`, there is probably something wrong with your internet connection.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
-\[2019-12-31T22:23:04\]: You have initiated a server shut down.  
-\[2019-12-31T22:23:04\]: Kicking 12 remaining clients.  
-\[2019-12-31T22:23:04\]: Server has successfully shut down.  
+\[2020-05-16T22:23:04\]: You have initiated a server shut down.  
+\[2020-05-16T22:23:04\]: Kicking 12 remaining clients.  
+\[2020-05-16T22:23:04\]: Server has successfully shut down.  
 
 * If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
@@ -63,7 +65,7 @@ Requires Python 3.6-3.8 and PyYAML (follow instructions below to install).
 
 ### Updating
 
-* If you already have a version of TsuserverDR or tsuserver installed and wish to update to a new version, you can download the new version and then overwrite your previously existing files. Do note that you do not need to shut down your server before overwriting the files, but you must restart it from console in order for changes to take effect.
+* If you already have a version of TsuserverDR or tsuserver3 installed and wish to update to a new version, you can download the new version and then overwrite your previously existing files. Do note that you do not need to shut down your server before overwriting the files, but you must restart it from console in order for changes to take effect.
 
   - This process will not overwrite your server configurations inside the `config` folder, your existing logs inside the `logs` folder, or the user information inside the `storage` folder. However, it will overwrite other files including the Python files inside the `server` folder. Therefore, make sure to save backups of those files before overwriting in case you have modified them and wish to keep an archive of your changes.
 
@@ -99,6 +101,8 @@ Additional notes are listed at the end of the command list.
     - Lists all characters that are restricted in the current area.
 * **cleardoc**
     - Clears the doc url of the current area.
+* **cid** "ID/char name/edited-to character/showname/OOC name"
+    - Gives you the client ID of the target, or your own client ID if not given an argument.
 * **coinflip** "call"
     - Flips a coin and returns its result, as well as whatever it is called with (e.g. a prediction, consequences for heads/tails, etc.) if given.
 * **currentmusic**
@@ -194,6 +198,8 @@ Additional notes are listed at the end of the command list.
     - Similar to /getarea, but lists shownames along with character names.
 * **showname_areas**
     - Similar to /getareas, but lists shownames along with character names.
+* **spectate**
+    - Switches you to a SPECTATOR character.
 * **switch** "character name"
     - Switches you to the given character.
 * **time**
@@ -227,8 +233,8 @@ Additional notes are listed at the end of the command list.
 * **version**
     - Obtains the current version of the server software.
 * **whisper** "ID/char name/edited-to character/showname/OOC name" "message"
-	- Sends an IC private message to the target, provided they are in the area.
-	- Other people in the area are warned that a whisper has taken place (but not the message content). However, staff members do get message contents, so this command should only be used in RP settings.
+    - Sends an IC private message to the target, provided they are in the area.
+    - Other people in the area are warned that a whisper has taken place (but not the message content). However, staff members do get message contents, so this command should only be used in RP settings.
 * **zone_global**
     - Sends a message to all players in the zone you are in.
 * **8ball** "question"
@@ -304,8 +310,8 @@ GMs can:
 * **gmself**
     - Logs all opened multiclients as GM.
 * **guide** "ID/char name/edited-to character/showname/OOC name" "message"
-	- Sends an IC private 'guiding' message to the target.
-	- Unlike /whisper, other people in the area are not warned that a whisper has taken place. However, staff members do get message contents, so this command should only be used in RP settings.
+    - Sends an IC private 'guiding' message to the target.
+    - Unlike /whisper, other people in the area are not warned that a whisper has taken place. However, staff members do get message contents, so this command should only be used in RP settings.
 * **handicap** "ID" "length" "name" "announce if over"
     - Sets a movement handicap on a client by ID so that they need to wait a set amount of time in seconds between changing areas.
     - If name is given, the handicap announcement will use it as the name of the handicap.
@@ -322,6 +328,8 @@ GMs can:
     - Lists all areas that have custom descriptions.
 * **look_set** "description"
     - Sets the area's description to the given one, or restores the default one if not given.
+* **make_gm** "ID"
+    - Makes the target a GM, provided the target is a multiclient of the player.
 * **multiclients** "ID"
     - Lists all the clients opened by a target and the areas they are in.
 * **party_disband** "party ID"
@@ -390,6 +398,8 @@ GMs can:
     - Adds an area by name or ID to the zone you are watching.
 * **zone_delete**
     - Deletes the zone you are watching.
+* **zone_lights** "on/off"
+    - Changes the light status of every area in a zone you are watching to on or off.
 * **zone_list**
     - Lists all active zones in the server, as well as some of their details.
 * **zone_play**
@@ -528,7 +538,12 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 
 * **mutepm** (D: Aug.19.19): Same as /toggle_pm.
 * **toggleglobal** (D: Jul.15.19): Same as /toggle_global.
-* **showname_list** (D: Aug.19.19): Same as /showname_areas.
+* **showname_list**: Same as /showname_areas.
+* **sa**: Same as /showname_area.
+* **sas**: Same as /showname_areas.
+* **shout**: Same as /scream.
+* **unsneak**: Same as /reveal.
+* **yell**: Same as /scream.
 * **zg**: Same as /zone_global.
 
 #### GM+
@@ -548,7 +563,7 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 
 * **Note 1**: the commands may refer to the following identifiers for a player:
     - **Character Name**: the folder name of the character the player is using, also the name that appears in /getarea.
-    - **HDID**: the hard drive ID of the player, accessible through /whois (requires community manager rank)
+    - **HDID**: the hard drive ID of the player, accessible through /whois (requires community manager rank).
     - **ID**: number in brackets [] in /getarea.
     - **IPID**: number in parentheses () in /getarea (requires community manager rank).
     - **IP**: the IP address of the player.

@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# WARNING!
+# This class will suffer major reworkings for 4.3
+
 import asyncio
 import importlib
 import json
@@ -25,7 +28,6 @@ import sys
 import traceback
 import urllib.request
 import warnings
-import yaml
 
 from server import logger
 from server.aoprotocol import AOProtocol
@@ -44,9 +46,9 @@ class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.release = 4
         self.major_version = 2
-        self.minor_version = 3
-        self.segment_version = 'post11'
-        self.internal_version = '200503a'
+        self.minor_version = 4
+        self.segment_version = ''
+        self.internal_version = '200516a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -245,6 +247,12 @@ class TsuserverDR:
         with Constants.fopen('config/config.yaml', 'r', encoding='utf-8') as cfg:
             self.config = Constants.yaml_load(cfg)
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
+            self.config['passwords'] = []
+            passwords = ['modpass', 'cmpass', 'gmpass']
+            for i in range(1, 8):
+                passwords.append('gmpass{}'.format(i))
+            for password in passwords:
+                self.config['passwords'].append(self.config[password])
 
         for i in range(1, 8):
             daily_gmpass = 'gmpass{}'.format(i)
@@ -252,23 +260,26 @@ class TsuserverDR:
                 self.config[daily_gmpass] = None
 
         # Default values to fill in config.yaml if not present
-        defaults_for_tags = {'discord_link': None,
-                             'max_numdice': 20,
-                             'max_numfaces': 11037,
-                             'max_modifier_length': 12,
-                             'max_acceptable_term': 22074,
-                             'def_numdice': 1,
-                             'def_numfaces': 6,
-                             'def_modifier': '',
-                             'blackout_background': 'Blackout_HD',
-                             'default_area_description': 'No description.',
-                             'party_lights_timeout': 10,
-                             'showname_max_length': 30,
-                             'sneak_handicap': 5,
-                             'spectator_name': 'SPECTATOR',
-                             'music_change_floodguard': {'times_per_interval': 1,
-                                                         'interval_length': 0,
-                                                         'mute_length': 0}}
+        defaults_for_tags = {
+            'utc_offset': 'local',
+            'discord_link': None,
+            'max_numdice': 20,
+            'max_numfaces': 11037,
+            'max_modifier_length': 12,
+            'max_acceptable_term': 22074,
+            'def_numdice': 1,
+            'def_numfaces': 6,
+            'def_modifier': '',
+            'blackout_background': 'Blackout_HD',
+            'default_area_description': 'No description.',
+            'party_lights_timeout': 10,
+            'show_ms2-prober': True,
+            'showname_max_length': 30,
+            'sneak_handicap': 5,
+            'spectator_name': 'SPECTATOR',
+            'music_change_floodguard': {'times_per_interval': 1,
+                                        'interval_length': 0,
+                                        'mute_length': 0}}
 
         for (tag, value) in defaults_for_tags.items():
             if tag not in self.config:

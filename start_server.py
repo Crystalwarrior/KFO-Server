@@ -18,6 +18,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# WARNING!
+# This class will suffer major reworkings for 4.3
+
 import sys
 import traceback
 import server.logger
@@ -26,8 +29,24 @@ from server.tsuserver import TsuserverDR
 
 def main():
     server.logger.log_print('Starting...')
+
     my_server = None
     try:
+        current_python_tuple = sys.version_info
+        current_python_simple = 'Python {}.{}.{}'.format(*current_python_tuple[:3])
+        if current_python_tuple < (3, 6):
+            # This deliberately uses .format() because f-strings were not available prior to
+            # Python 3.6
+            msg = ('This version of TsuserverDR requires at least Python 3.6. You currently have '
+                   '{}. Please refer to README.md for instructions on updating.'
+                   .format(current_python_simple))
+            raise RuntimeError(msg)
+        if current_python_tuple < (3, 7):
+            msg = (f'WARNING: The upcoming major release of TsuserverDR (4.3.0) will be requiring '
+                   f'at least Python 3.7. You currently have {current_python_simple}. '
+                   f'Please consider upgrading to at least Python 3.7 soon. You may find '
+                   f'additional instructions on updating in README.md')
+            server.logger.log_print(msg)
         my_server = TsuserverDR()
         my_server.start()
     except KeyboardInterrupt:
@@ -35,7 +54,7 @@ def main():
     except Exception:
         # Print complete traceback to console
         etype, evalue, etraceback = sys.exc_info()
-        info = 'TSUSERVERDR HAS ENCOUNTERED A PYTHON ERROR.'
+        info = 'TSUSERVERDR HAS ENCOUNTERED A FATAL PYTHON ERROR.'
         info += "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
         server.logger.log_print(info)
         server.logger.log_error(info, server=my_server, errortype='P')

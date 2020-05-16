@@ -11,7 +11,8 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (0, None, None))
         c.assert_packet('FL', ('yellowtext', 'customobjections', 'flipping', 'fastloading',
-                               'noencryption', 'deskmod', 'evidence', 'cccc_ic_support'))
+                               'noencryption', 'deskmod', 'evidence', 'cccc_ic_support',
+                               'looping_sfx'))
         c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -25,7 +26,8 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (1, None, None))
         c.assert_packet('FL', ('yellowtext', 'customobjections', 'flipping', 'fastloading',
-                               'noencryption', 'deskmod', 'evidence', 'cccc_ic_support'))
+                               'noencryption', 'deskmod', 'evidence', 'cccc_ic_support',
+                               'looping_sfx'))
         c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -70,7 +72,8 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (0, None, None))
         c.assert_packet('FL', ('yellowtext', 'customobjections', 'flipping', 'fastloading',
-                               'noencryption', 'deskmod', 'evidence', 'cccc_ic_support'))
+                               'noencryption', 'deskmod', 'evidence', 'cccc_ic_support',
+                               'looping_sfx'))
         c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -118,7 +121,8 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (1, None, None))
         c.assert_packet('FL', ('yellowtext', 'customobjections', 'flipping', 'fastloading',
-                               'noencryption', 'deskmod', 'evidence', 'cccc_ic_support'))
+                               'noencryption', 'deskmod', 'evidence', 'cccc_ic_support',
+                               'looping_sfx'))
         c.assert_packet('PN', (1, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -172,7 +176,8 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (2, None, None))
         c.assert_packet('FL', ('yellowtext', 'customobjections', 'flipping', 'fastloading',
-                               'noencryption', 'deskmod', 'evidence', 'cccc_ic_support'))
+                               'noencryption', 'deskmod', 'evidence', 'cccc_ic_support',
+                               'looping_sfx'))
         c.assert_packet('PN', (2, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 

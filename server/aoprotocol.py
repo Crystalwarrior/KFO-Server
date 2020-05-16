@@ -71,7 +71,12 @@ class AOProtocol(asyncio.Protocol):
         self.buffer = self.buffer.translate({ord(c): None for c in '\0'})
 
         if len(self.buffer) > 8192:
+            msg = self.buffer if len(self.buffer) < 128 else self.buffer[:128] + '...'
+            logger.log_server('Terminated {}: sent {} ({} bytes)'.format(self.client.get_ipreal(),
+                                                                         msg, len(self.buffer)))
             self.client.disconnect()
+            return
+
         found_message = False
         for msg in self.get_messages():
             found_message = True
@@ -91,8 +96,11 @@ class AOProtocol(asyncio.Protocol):
             except Exception as ex:
                 self.server.send_error_report(self.client, cmd, args, ex)
         if not found_message:
-            # This immediatelly kills webAO or any client that does not even try to follow the
-            # standalone client protocol
+            # This immediatelly kills any client that does not even try to follow the proper
+            # client protocol
+            msg = self.buffer if len(self.buffer) < 128 else self.buffer[:128] + '...'
+            logger.log_server('Terminated {}: sent {} ({} bytes)'.format(self.client.get_ipreal(),
+                                                                         msg, len(self.buffer)))
             self.client.disconnect()
 
     def connection_made(self, transport, my_protocol=None):
@@ -187,7 +195,8 @@ class AOProtocol(asyncio.Protocol):
                 self.client.disconnect()
                 return
 
-        logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
+        if self.client.hdid != 'ms2-prober' or self.server.config['show_ms2-prober']:
+            logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
         self.client.send_command('ID', self.client.id, self.server.software,
                                  self.server.get_version_string())
         self.client.send_command('PN', self.server.get_player_count(),
@@ -231,12 +240,15 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.is_ao2 = True
         self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping', 'fastloading',
-                                 'noencryption', 'deskmod', 'evidence', 'cccc_ic_support')
+                                 'noencryption', 'deskmod', 'evidence', 'cccc_ic_support',
+                                 'looping_sfx')
 
         if release == 2 and major >= 8: # KFO
             self.client.packet_handler = Clients.ClientKFO2d8
-        elif release == 2 and major >= 6: # AO 2.6
+        elif release == 2 and major == 6: # AO 2.6
             self.client.packet_handler = Clients.ClientAO2d6
+        elif release == 2 and major == 7: # AO 2.7
+            self.client.packet_handler = Clients.ClientAO2d7
         else:
             # Not really needed, added here for the sake of completeness
             # As this is the default packet_handler
@@ -460,6 +472,12 @@ class AOProtocol(asyncio.Protocol):
                                             .format(self.client.displayname, raw_msg),
                                             is_zstaff_flex=True, in_area=True)
 
+        # Censor passwords if login command accidentally typed in IC
+        for password in self.server.config['passwords']:
+            for login in ['login ', 'logincm ', 'loginrp ']:
+                if login + password in msg:
+                    msg = msg.replace(password, '[CENSORED]')
+
         if pargs['evidence']:
             evidence_position = self.client.evi_list[pargs['evidence']] - 1
             if self.client.area.evi_list.evidences[evidence_position].pos != 'all':
@@ -613,6 +631,11 @@ class AOProtocol(asyncio.Protocol):
                 except TsuserverException as ex:
                     self.client.send_ooc(ex)
         else:
+            # Censor passwords if accidentally said without a slash in OOC
+            for password in self.server.config['passwords']:
+                for login in ['login ', 'logincm ', 'loginrp ']:
+                    if login + password in args[1]:
+                        args[1] = args[1].replace(password, '[CENSORED]')
             if self.client.disemvowel: #If you are disemvoweled, replace string.
                 args[1] = Constants.disemvowel_message(args[1])
             if self.client.disemconsonant: #If you are disemconsonanted, replace string.

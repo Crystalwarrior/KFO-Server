@@ -255,6 +255,11 @@ class _TestClientManager(ClientManager):
             self.ooc('/login {}'.format(self.server.config['modpass']))
             self.assert_packet('FM', None)
             self.assert_ooc('Logged in as a moderator.', over=over)
+            # Look for all officers and assert messages of this client's login
+            for c in self.server.client_manager.clients:
+                if (c.is_mod or c.is_cm) and c != self:
+                    c.assert_ooc('{} [{}] logged in as a moderator.'
+                                 .format(self.name, self.id), over=True)
             assert self.is_mod
 
         def make_cm(self, over=True):
@@ -263,6 +268,11 @@ class _TestClientManager(ClientManager):
             self.ooc('/logincm {}'.format(self.server.config['cmpass']))
             self.assert_packet('FM', None)
             self.assert_ooc('Logged in as a community manager.', over=over)
+            # Look for all officers and assert messages of this client's login
+            for c in self.server.client_manager.clients:
+                if (c.is_mod or c.is_cm) and c != self:
+                    c.assert_ooc('{} [{}] logged in as a community manager.'
+                                 .format(self.name, self.id), over=True)
             assert self.is_cm
 
         def make_gm(self, over=True):
@@ -271,12 +281,32 @@ class _TestClientManager(ClientManager):
             self.ooc('/loginrp {}'.format(self.server.config['gmpass']))
             self.assert_packet('FM', None)
             self.assert_ooc('Logged in as a game master.', over=over)
+            # Look for all officers and assert messages of this client's login
+            for c in self.server.client_manager.clients:
+                if (c.is_mod or c.is_cm) and c != self:
+                    c.assert_ooc('{} [{}] logged in as a game master with the global pass.'
+                                 .format(self.name, self.id), over=True)
             assert self.is_gm
 
-        def make_normie(self, over=True):
+        def make_normie(self, over=True, other_over=lambda c: True):
+            if not self.is_staff():
+                return
+            # Find rank before logging out to assert their logout message to other officers
+            if self.is_gm:
+                role = 'game master'
+            elif self.is_cm:
+                role = 'community manager'
+            elif self.is_mod:
+                role = 'moderator'
             self.ooc('/logout')
             self.assert_ooc('You are no longer logged in.', ooc_over=over)
             self.assert_packet('FM', None, over=over)
+            # Assert command for any officers of this client's logout
+            for c in self.server.client_manager.clients:
+                if (c.is_mod or c.is_cm) and c != self:
+                    c.assert_ooc('{} [{}] is no longer a {}.'.format(self.name, self.id, role),
+                                 over=other_over(c))
+            assert not self.is_staff()
             assert not (self.is_mod and self.is_cm and self.is_gm)
 
         def move_area(self, area_id, discard_packets=True, discard_trivial=False):
