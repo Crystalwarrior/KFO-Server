@@ -104,6 +104,14 @@ class ClientManager:
             self.flip = 0
             self.claimed_folder = ''
 
+            # Anti IC-flood-with-copy stuff
+            self.last_ic_raw_message = None # The last IC message they tried to send, without any
+            # modifications that it may have undergone afterwards (say, via gimp, gag, etc.)
+            self.last_ic_char = '' # The char they used to send their last IC message, not
+            # necessarily equivalent to self.get_char_name()
+            self.last_ic_received_mine = False # True if the last IC message this player received
+            # came from their doing, false otherwise.
+
             #music flood-guard stuff
             self.mus_counter = 0
             self.mute_time = 0
@@ -306,6 +314,8 @@ class ClientManager:
             if sender != self:
                 self.last_ic_notme = self.area.id, final_pargs
 
+            # Update the last IC received status being true or false
+            self.last_ic_received_mine = (sender == self)
             self.send_command('MS', *to_send)
 
         def send_ic_others(self, ic_params=None, params=None, sender=None, bypass_replace=False,

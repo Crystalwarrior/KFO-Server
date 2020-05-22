@@ -391,9 +391,10 @@
 * Fixed /lights not turning lights back on if the background wasn't changed
 
 ### 200516a (4.2.4)
-* Enforced Python 3.6+ requirement on server launch.
+* Enforced Python 3.6+ requirement on server launch
 * Server owners running Python 3.6 will now be warned on server launch of pending deprecation of support for Python 3.6 with the upcoming major release of TsuserverDR
-* Added /cid to get your (or someone else's) client ID.
+* All asset files in `config_sample` now come with instructions as to how to use them and what parameters they recognize
+* Added /cid to get your (or someone else's) client ID
 * Added /spectate to switch to spectator
 * Added client version to /whois
 * Warnings are now sent to players in once-locked rooms that were reloaded via /area_list
@@ -410,9 +411,14 @@
   - /yell (Alias for /scream)
 * Added server configuration setting to disable ms2-prober connections being logged in server logs
 * Added server configuration setting to set a custom UTC offset to use for the output of /time and /time12
-* Public servers now properly reject webAO connections, and log any other  abnormal connections.
+* Public servers now properly reject webAO connections, and log any other abnormal connections.
 * Fixed potential DoS attack on clients
 * Fixed /toggle_allrolls giving roll results from outside watched zones if the roller was in an area not part of a zone
-* Fixed /multiclients failing to output results if target client was not staff and their area did not satisfy criteria for being printed in /getareas from the perspective of the /muloticlients sender
+* Fixed /multiclients failing to output results if target client was not staff and their area did not satisfy criteria for being printed in /getareas from the perspective of the /multiclients sender
 * Undeprecated /showname_list in favor of making it a command alias
 * Added best-effort support for (upcoming) Attorney Online 2.7
+
+### 200522a (4.2.4-post1)
+* Fixed server not discarding repeated messages
+* Increased length of abnormal connection log for better inspection
+* Fixed compatibility with the KFO client

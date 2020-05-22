@@ -210,7 +210,7 @@ class Clients():
             ('frame_sfx', ''), #27
             ]
 
-    ClientKFO2d8 = Enum('ClientKFO2d8', [(m.name, m.value) for m in ClientAO2d6])
+    ClientKFO2d8 = Enum('ClientKFO2d8', [(m.name, m.value) for m in ClientAO2d7])
 
 class Constants():
     @staticmethod

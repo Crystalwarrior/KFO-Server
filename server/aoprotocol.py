@@ -71,7 +71,7 @@ class AOProtocol(asyncio.Protocol):
         self.buffer = self.buffer.translate({ord(c): None for c in '\0'})
 
         if len(self.buffer) > 8192:
-            msg = self.buffer if len(self.buffer) < 128 else self.buffer[:128] + '...'
+            msg = self.buffer if len(self.buffer) < 512 else self.buffer[:512] + '...'
             logger.log_server('Terminated {}: sent {} ({} bytes)'.format(self.client.get_ipreal(),
                                                                          msg, len(self.buffer)))
             self.client.disconnect()
@@ -98,7 +98,7 @@ class AOProtocol(asyncio.Protocol):
         if not found_message:
             # This immediatelly kills any client that does not even try to follow the proper
             # client protocol
-            msg = self.buffer if len(self.buffer) < 128 else self.buffer[:128] + '...'
+            msg = self.buffer if len(self.buffer) < 512 else self.buffer[:512] + '...'
             logger.log_server('Terminated {}: sent {} ({} bytes)'.format(self.client.get_ipreal(),
                                                                          msg, len(self.buffer)))
             self.client.disconnect()
@@ -392,6 +392,7 @@ class AOProtocol(asyncio.Protocol):
         Refer to the implementation for details.
 
         """
+
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You have been muted by a moderator.")
             return
@@ -403,6 +404,14 @@ class AOProtocol(asyncio.Protocol):
 
         pargs = self.process_arguments('ms', args)
         if not pargs:
+            return
+
+        # First, check if the player just sent the same message with the same character and did
+        # not receive any other messages in the meantime.
+        # This helps prevent record these messages and retransmit it to clients who may want to
+        # filter these out
+        if (pargs['text'] == self.client.last_ic_raw_message and self.client.last_ic_received_mine
+            and self.client.get_char_name() == self.client.last_ic_char):
             return
 
         if not self.client.area.iniswap_allowed:
@@ -448,6 +457,12 @@ class AOProtocol(asyncio.Protocol):
             if pargs['pos']  not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
         self.client.pos = pargs['pos']
+
+        # At this point, the message is guaranteed to be sent
+        # First, update last raw message sent *before* any transformations. That is so that the
+        # server can accurately ignore client sending the same message over and over again
+        self.client.last_ic_raw_message = pargs['text']
+        self.client.last_ic_char = self.client.get_char_name()
 
         # Truncate and alter message if message effect is in place
         raw_msg = pargs['text'][:256]

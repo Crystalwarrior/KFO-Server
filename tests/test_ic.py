@@ -65,13 +65,12 @@ class TestIC_01_Basic(_TestIC):
 
     def test_04_repeatedmessages(self):
         """
-        Situation: C2 attempts to send the exact same message with the same character. While they
-        still receive the MS packet, they don't actually show the message in IC.
+        Situation: C2 attempts to send the exact same message with the same character. The server
+        filters it out, so they do not receive the MS packet and they don't show the message in IC.
         """
 
         self.c3.sic('Anyone in here?')
-        self.c3.assert_packet('MS', None, over=True)
-        self.c3.assert_no_ic()
+        self.c3.assert_no_packets()
 
 class TestIC_02_GlobalIC(_TestIC):
     def test_01_wrongarguments(self):
