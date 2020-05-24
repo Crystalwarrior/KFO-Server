@@ -422,3 +422,6 @@
 * Fixed server not discarding repeated messages
 * Increased length of abnormal connection log for better inspection
 * Fixed compatibility with the KFO client
+
+### 200524a (4.2.4-post2)
+* Fixed turning lights on in an area before a party disbands raising a silent error
