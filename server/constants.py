@@ -970,10 +970,62 @@ class Constants():
 
                 _client.send_ooc(exception)
             finally:
-                 if exception_cleanup:
-                     exception_cleanup()
+                if exception_cleanup:
+                    exception_cleanup()
 
         loop = asyncio.get_event_loop()
         task = loop.create_task(coro_or_future)
         task.add_done_callback(functools.partial(check_exception, client))
         return task
+
+    @staticmethod
+    def complete_partial_arguments(original_partial, *overwriting_args, **overwriting_keywords):
+        # breakpoint()
+        if isinstance(original_partial, functools.partial):
+            new_func = original_partial.func
+            new_args = overwriting_args#original_partial.args
+            new_keywords = overwriting_keywords.copy()#original_partial.keywords.copy()
+        else:
+            new_func = original_partial
+            new_args = tuple()
+            new_keywords = dict()
+        if original_partial.args:
+            new_args = original_partial.args
+        new_keywords.update(original_partial.keywords)
+        return functools.partial(new_func, *new_args, **new_keywords)
+
+    @staticmethod
+    def make_partial_from(current_type, default_type, *args, **kwargs):
+        """
+        Make a merged functools.partial function based on current_type if it is also a partial
+        function by returning self.complete_partial_arguments(current_type, *args, **kwargs).
+        If current_type is None or the default type, create a partial function with a default type
+        by returning self.complete_partial_arguments(default_type, *args, **kwargs).
+
+        Parameters
+        ----------
+        current_type : functools.partial, type(default_type) or None
+            Function or class to base the merged functions upon.
+        default_type : type
+            Default type to build a partial function upon.
+        *args : iterable of Any
+            Positional arguments to pass to self.complete_partial_arguments.
+        **kwargs : TYPE
+            Keywords arguments to pass to self.complete_partial_arguments.
+
+        Raises
+        ------
+        ValueError
+            If current_type is not a partial function, default_type or None.
+
+        Returns
+        -------
+        functools.partial
+            Merged partial function.
+
+        """
+        if isinstance(current_type, functools.partial):
+            return Constants.complete_partial_arguments(current_type, *args, **kwargs)
+        if current_type in [None, default_type]:
+            return functools.partial(default_type, *args, **kwargs)
+        raise ValueError(current_type, type(current_type))

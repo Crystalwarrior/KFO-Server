@@ -23,14 +23,18 @@ A steptimer is a timer with an apparent timer value that ticks up/down a fixed l
 timestep length) once every fixed interval (the firing interval). This allows timers that simulate
 slow downs or fast forwarding (for example, a timer that ticks down one second once every real
 5 seconds).
+
 A steptimer ticks up in one step if at that step the timestep length is positive. A steptimer ticks
 down in one step instead if at that step the timestep length is negative.
+
 A steptimer when initialized does not start automatically, but once it starts, it will tick up/down
 as described previously.
+
 A steptimer can be paused, so that the apparent timer will stop changing. It can also be unpaused,
 so the apparent timer will start changing again by the previously described interval rules.
 the interval rules). The length of the first step after unpausing is set to be the current fixed
 interval length minus the elapsed time in that step.
+
 Once the apparent timer ticks down below some specified minimum or ticks up above some specified
 maximum, it will end automatically and be deleted. If the apparent timer is updated above the
 specified maximum but the timer is set to tick down, the timer will not end but will be set to the
@@ -57,10 +61,13 @@ from server.logger import log_print
 class SteptimerManager:
     """
     A mutable data type for a manager for steptimers in a server.
+
     Contains the steptimer object definition, as well as a mapping of steptimer IDs to their
     associated steptimers.
+
     The class (with its default implementation) is coroutine-safe as the default steptimer class
     is coroutine-safe and every other public method of the manager is synchronous.
+
     The class is NOT thread-safe.
 
     Overwritable Methods
@@ -80,24 +87,28 @@ class SteptimerManager:
 
     Invariants
     ----------
-    1. If `self._steptimer_limit` is an int, then `len(self._id_to_steptimer) <=
-       self._steptimer_limit`.
-    2. For every tuple `(steptimer_id, steptimer)` in `self._id_to_group.items()`
-        a. `steptimer._manager = self`.
-        b. `steptimer._steptimer_id = steptimer_id`.
+    1. If `self._steptimer_limit` is an int, then `len(self._id_to_steptimer) <=`
+    `self._steptimer_limit`.\\
+    2. For every tuple `(steptimer_id, steptimer)` in `self._id_to_group.items()`:\\
+        a. `steptimer._manager = self`.\\
+        b. `steptimer._steptimer_id = steptimer_id`.\\
     3. For every pair of distinct steptimers `steptimer1` and `steptimer2` in
-       `self._id_to_steptimer.values()`:
-        a. `steptimer1._steptimer_id != steptimer1._steptimer_id`.
+    `self._id_to_steptimer.values()`:\\
+        a. `steptimer1._steptimer_id != steptimer1._steptimer_id`.\\
+
     """
 
     class Steptimer:
         """
         A mutable data type representing steptimers.
+
         A steptimer is a timer with an apparent timer value that ticks up/down a fixed period of
         time once every fixed interval (a step).
+
         The class is coroutine-safe as the only points where public method execution yields to a
         coroutine is after all writes were performed and the only missing step is structural
         integrity tests, which only involve reads.
+
         However, the class itself is NOT thread-safe, as it only uses asyncio methods that
         themselves are not thread-safe.
 
@@ -168,12 +179,12 @@ class SteptimerManager:
 
         Invariants
         ----------
-        After every public operation, the following statements are true:
-        1. `0 <= self._min_timer_value <= self._timer_value <= self._max_timer_value`
-        2. `self._firing_interval > 0`
-        3. `self._timestep_length != 0`
-        4. `0 <= self.DEF_MIN_TIMER_VALUE <= self.DEF_START_TIMER_VALUE <= self.DEF_MAX_TIMER_VALUE`
-        5. `self.DEF_TIMESTEP_LENGTH != 0`
+        1. `0 <= self._min_timer_value <= self._timer_value <= self._max_timer_value`\\
+        2. `self._firing_interval > 0`\\
+        3. `self._timestep_length != 0`\\
+        4. `0 <= self.DEF_MIN_TIMER_VALUE <= self.DEF_START_TIMER_VALUE
+        <= self.DEF_MAX_TIMER_VALUE`\\
+        5. `self.DEF_TIMESTEP_LENGTH != 0`\\
 
         """
 
@@ -785,11 +796,11 @@ class SteptimerManager:
 
             # 2.
             err = (f'Expected the firing interval be a positive number, found it was '
-                   '{self._firing_interval} instead.')
+                   f'{self._firing_interval} instead.')
             assert self._firing_interval > 0, err
 
             # 3.
-            err = f'Expected the timestep length be non-zero, found it was zero.'
+            err = 'Expected the timestep length be non-zero, found it was zero.'
             assert self._timestep_length != 0, err
 
             # 4.
@@ -808,7 +819,7 @@ class SteptimerManager:
             assert self.DEF_START_TIMER_VALUE <= self.DEF_MAX_TIMER_VALUE, err
 
             # 5.
-            err = f'Expected the default timestep length be non-zero, found it was zero.'
+            err = 'Expected the default timestep length be non-zero, found it was zero.'
             assert self.DEF_TIMESTEP_LENGTH != 0, err
 
     def __init__(self, server, steptimer_limit=None):
@@ -881,7 +892,7 @@ class SteptimerManager:
             firing_interval = abs(timestep_length)
 
         # Generate a steptimer ID and the new steptimer
-        steptimer_id = self._make_new_steptimer_id()
+        steptimer_id = self.get_available_steptimer_id()
         steptimer = steptimer_type(self._server, self, steptimer_id,
                                    start_timer_value=start_timer_value,
                                    timestep_length=timestep_length,
@@ -915,7 +926,10 @@ class SteptimerManager:
         """
 
         # Assert steptimer is managed by manager.
-        steptimer_id = self.get_steptimer_id(steptimer)
+        if not self.manages_steptimer(steptimer):
+            raise SteptimerError.ManagerDoesNotManageSteptimerError
+
+        steptimer_id = steptimer.get_id()
         # Pop the steptimer. By doing this now, it helps guard the class' only call to an
         # asynchronous function. In particular, once .delete_steptimer() is called on a managed
         # steptimer, these two lines will always execute, which will prevent the steptimer to
@@ -932,7 +946,25 @@ class SteptimerManager:
         self._check_structure()
         return steptimer_id
 
-    def get_managed_steptimers(self):
+    def manages_steptimer(self, steptimer):
+        """
+        Return True if the steptimer is managed by this manager, False otherwise.
+
+        Parameters
+        ----------
+        steptimer : SteptimerManager.StepTimer
+            The steptimer to check.
+
+        Returns
+        -------
+        bool
+            True if the manager manages this steptimer, False otherwise.
+
+        """
+
+        return steptimer in self._id_to_steptimer.values()
+
+    def get_steptimers(self):
         """
         Return (a shallow copy of) the steptimers this manager manages.
 
@@ -945,89 +977,48 @@ class SteptimerManager:
 
         return set(self._id_to_steptimer.values())
 
-    def get_steptimer(self, steptimer_tag):
+    def get_steptimer_by_id(self, steptimer_id):
         """
-        If `steptimer_tag` is a steptimer managed by this manager, return it.
-        If it is a string and the ID of a steptimer managed by this manager, return that steptimer.
+        If `steptimer_tag` is the ID of a steptimer managed by this manager, return that steptimer.
 
         Parameters
         ----------
-        steptimer_tag: SteptimerManager.Steptimer or str
-            Steptimer this manager manages.
+        steptimer_id: str
+            ID of steptimer this manager manages.
 
         Returns
         -------
         SteptimerManager.Steptimer
-            The steptimer that matches the given tag.
+            The steptimer whose ID matches the given ID.
 
         Raises
         ------
-        SteptimerError.ManagerDoesNotManageSteptimerError:
-            If `steptimer_tag` is a steptimer this manager does not manage.
         SteptimerError.ManagerInvalidSteptimerIDError:
-            If `steptimer_tag` is a str and it is not the ID of a steptimer this manager manages.
+            If `steptimer_id` is not the ID of a steptimer this manager manages.
 
         """
 
-        # Case Steptimer
-        if isinstance(steptimer_tag, self.Steptimer):
-            if steptimer_tag not in self._id_to_steptimer.values():
-                raise SteptimerError.ManagerDoesNotManageSteptimerError
-            return steptimer_tag
+        try:
+            return self._id_to_steptimer[steptimer_id]
+        except KeyError:
+            raise SteptimerError.ManagerInvalidSteptimerIDError
 
-        # Case Steptimer ID
-        if isinstance(steptimer_tag, str):
-            try:
-                return self._id_to_steptimer[steptimer_tag]
-            except KeyError:
-                raise SteptimerError.ManagerInvalidSteptimerIDError
-
-        # Every other case
-        raise SteptimerError.ManagerInvalidSteptimerIDError
-
-    def get_steptimer_id(self, steptimer_tag):
+    def get_steptimer_ids(self):
         """
-        If `steptimer_tag` is the ID of a steptimer managed by this manager, return it.
-        If it is a steptimer managed by this manager, return its ID.
-
-        Parameters
-        ----------
-        steptimer_tag : SteptimerManager.Steptimer or str
-            Steptimer this manager manages.
+        Return (a shallow copy of) the IDs of all steptimers managed by this manager.
 
         Returns
         -------
-        str
-            The ID of the steptimer that matches the given tag.
-
-        Raises
-        ------
-        SteptimerError.ManagerDoesNotManageSteptimerError:
-            If `steptimer_tag` is a steptimer this manager does not manage.
-        SteptimerError.ManagerInvalidSteptimerIDError:
-            If `steptimer_tag` is a str and it is not the ID of a steptimer this manager manages.
+        set of str
+            The IDs of all managed steptimers.
 
         """
 
-        # Case Steptimer
-        if isinstance(steptimer_tag, self.Steptimer):
-            if steptimer_tag not in self._id_to_steptimer.values():
-                raise SteptimerError.ManagerDoesNotManageSteptimerError
-            return steptimer_tag._steptimer_id
+        return set(self._id_to_steptimer.keys())
 
-        # Case Steptimer ID
-        if isinstance(steptimer_tag, str):
-            try:
-                return self._id_to_steptimer[steptimer_tag]._steptimer_id
-            except KeyError:
-                raise SteptimerError.ManagerInvalidSteptimerIDError
-
-        # Every other case
-        raise SteptimerError.ManagerInvalidSteptimerIDError
-
-    def _make_new_steptimer_id(self):
+    def get_available_steptimer_id(self):
         """
-        Generate a steptimer ID that no other steptimer managed by this manager has.
+        Get a steptimer ID that no other steptimer managed by this manager has.
 
         Returns
         -------
@@ -1079,7 +1070,7 @@ class SteptimerManager:
             err = (f'For steptimer manager {self}, expected that steptimer {steptimer} '
                    f'that appears in the ID to steptimer mapping has the same ID as in the '
                    f'mapping, but found it did not. || {self}')
-            assert steptimer._steptimer_id == steptimer_id, err
+            assert steptimer.get_id() == steptimer_id, err
 
         # 3.
         for steptimer1 in self._id_to_steptimer.values():
@@ -1091,7 +1082,7 @@ class SteptimerManager:
                 err = (f'For steptimer manager {self}, expected that its two managed steptimers '
                        f'{steptimer1}, {steptimer2} had unique steptimer IDS, but found '
                        f'they did not. || {self}')
-                assert steptimer1._steptimer_id != steptimer2._steptimer_id, err
+                assert steptimer1.get_id() != steptimer2.get_id(), err
 
         # Last.
         for steptimer in self._id_to_steptimer.values():

@@ -204,6 +204,9 @@ class GameError(TsuserverException):
     class GameDoesNotTakeInvitationsError(TsuserverException):
         pass
 
+    class GameIsUnmanagedError(TsuserverException):
+        pass
+
     class GameTooManyTimersError(TsuserverException):
         pass
 
