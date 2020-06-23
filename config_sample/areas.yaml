@@ -1,3 +1,68 @@
+# A sample area list document
+# Each item in an area list is an area. Areas have parameters you may tweak, and will be used when loading the area list.
+# Start each area item with a - (and only the area item, for every other parameter use spaces)
+# Yes, this has a lot of introductory text. This is because areas have lots of parameters that can be tweaked.
+# If you want to go to the actual areas part, scroll beyond all the text that starts with #.
+
+# ----------
+# Parameters
+# ----------
+# *area: Name of the area.
+# *background: Default background of the area.
+# *afk_delay: If a positive number, the number of seconds that must pass to mark an inactive player as AFK and kick them to `afk_sendto`. If 0, no such AFK kicks take place.
+# *afk_sendto: The ID of the area to kick an AFK player to.
+# *bglock: If false, only moderators can lock the area background; if true, no one can lock it.
+# *bullet: If false, only GM+ can send IC messages with bullets/shouts. If true, no such restriction is imposed.
+# *cbg_allowed: If false, only GM+ can set the area's background to one not in the server's list. If true, no such restriction is imposed.
+# *change_reachability_allowed: If false, only GM+ may /unilock or /bilock passages affecting this area. If true, no such restriction is imposed.
+# *default_description: Output of /look in the area if no custom description is in place via /look_set
+# *evidence_mod: Unused (do not include)
+# *gm_iclock_allowed: If false, only CM+ may /iclock the area. If true, GMs may also /iclock.
+# *iniswap_allowed: If false, everyone can send IC messages while iniswapped/iniedited; if true, no one can send IC messages while iniswapped/iniedited.
+# *has_lights: If false, the area cannot have its lights turned off via /light or similar. If true, no such restriction is imposed.
+# *lobby_area: If true, the area is marked as lobby (which disallows non-GMs+ from sneaking or /knock'ing from or to the area). If false, no such restriction is placed.
+# *locking_allowed: If false, everyone can lock the area; if true, no one can lock it.
+# *private_area: If true, the area is marked as private (which disallows everyone from sneaking and GMs+ reading /whisper messages).
+# *reachable_areas: If <ALL>, a passage will be created from this area to every other area. If it is a comma-separated list of areas (by name), a passage will be created from this area only to the listed areas.
+# *restricted_chars: If a list of folder names, it prevents non-GMs using said characters from joining the area, and prompts them to choose another one if they are kicked to the area, they attempt to switch to that character while in the area, or their character is marked as restricted while they are in the area.
+# *rollp_allowed: If false, only GM+ may /rollp. If true, everyone can /rollp.
+# *rp_getarea_allowed: If false, if the server is in RP mode, only GM+ can /getarea and similar. If true, no such restriction is imposed.
+# *rp_getareas_allowed: If false, if the server is in RP mode, only GM+ can /getareas and similar. If true, no such restriction is imposed.
+# *scream_range: If <ALL>, all areas can receive a /scream message sent from this area. If it is a comma-separated list of areas (by name), only said areas can receive /scream messages.
+# *song_switch_allowed: If false, only GM+ can do /play. If true, no such restriction is imposed.
+
+# --------
+# Mandatory parameters (the area list will not load if a section does not contain the following)
+# --------
+# area
+# background
+
+# --------
+# Optional parameters and their default values (will be assumed if not present)
+# --------
+#
+# afk_delay: 0
+# afk_sendto: 0
+# bglock: false
+# bullet: true
+# cbg_allowed: false
+# change_reachability_allowed: true
+# default_description: `default_area_description` in config.yaml
+# evidence_mod: FFA
+# gm_iclock_allowed: true
+# has_lights: true
+# iniswap_allowed: false
+# lobby_area: false
+# locking_allowed: false
+# private_area: false
+# reachable_areas: <ALL>
+# restricted_chars: NO RESTRICTED CHARACTERS
+# rollp_allowed: true
+# rp_getarea_allowed: true
+# rp_getareas_allowed: true
+# scream_range: NO AREAS OTHER THAN THIS ONE
+# song_switch_allowed: false
+            
 - area: Basement
   background: Class Trial Debate Room V3-1_HD
   bglock: true
@@ -5,7 +70,7 @@
   locking_allowed: false
   iniswap_allowed: true
   reachable_areas: Class Trial Room 1, Class Trial Room 3, Test 1, Test 2, Test 3, Test 4
-  lobby_area: True
+  lobby_area: true
   scream_range: Class Trial Room 1
   default_description: The basement and default area.
 - area: Class Trial Room 1
@@ -18,12 +83,12 @@
   rp_getarea_allowed: false
   gm_iclock_allowed: false
   afk_delay: 5
-  private_area: True
+  private_area: true
   scream_range: Basement
   restricted_chars: Shuichi Saihara_HD
   default_description: A class trial room that does not like Shuichi.
-  cbg_allowed: True
-  bullet: True
+  cbg_allowed: true
+  bullet: true
 - area: Class Trial Room, 2
   background: Class Trial Debate Room V3-1_HD
   bglock: false
@@ -35,15 +100,15 @@
   gm_iclock_allowed: true
   afk_delay: 10
   afk_sendto: 3
-  lobby_area: False
-  private_area: False
+  lobby_area: false
+  private_area: false
   scream_range: Class Trial Room 3
   restricted_chars: Kaede Akamatsu_HD, Monokuma_HD
-  has_lights: True
+  has_lights: true
   default_description: A class trial room that does not like bullets.
-  song_switch_allowed: True
-  cbg_allowed: False
-  bullet: False
+  song_switch_allowed: true
+  cbg_allowed: false
+  bullet: false
 - area: Class Trial Room 3
   background: Class Trial Debate Room V3-1_HD
   bglock: false
@@ -54,11 +119,11 @@
   change_reachability_allowed: true
   afk_delay: 5
   afk_sendto: 1
-  lobby_area: True
-  private_area: True
-  has_lights: False
-  song_switch_allowed: True
-  cbg_allowed: True
+  lobby_area: true
+  private_area: true
+  has_lights: false
+  song_switch_allowed: true
+  cbg_allowed: true
 - area: Test 1
   background: Class Trial Debate Room V3-1_HD
   bglock: false

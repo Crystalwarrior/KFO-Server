@@ -236,9 +236,7 @@ class AreaManager:
                 if c.is_blind and not override_blind:
                     c.send_command('BN', self.server.config['blackout_background'])
                 else:
-                    c.send_command('BN', bg)
-
-
+                    c.send_command('BN', self.background)
 
         def get_chars_unusable(self, allow_restricted=False, more_unavail_chars=None):
             """
@@ -493,7 +491,7 @@ class AreaManager:
                     info += '\r\n*{}'.format(log)
             return info
 
-        def change_lights(self, new_lights, initiator=None):
+        def change_lights(self, new_lights, initiator=None, area=None):
             """
             Change the light status of the area and send related announcements.
 
@@ -505,6 +503,11 @@ class AreaManager:
                 New light status
             initiator: server.ClientManager.Client, optional
                 Client who triggered the light status change.
+            area: server.AreaManager.Area, optional
+                Broadcasts light change messages to chosen area. Used if
+                the initiator is elsewhere, such as in /zone_lights.
+                If not None, the initiator will receive no notifications of
+                light status changes.
 
             Raises
             ------
@@ -525,27 +528,28 @@ class AreaManager:
             else:
                 if self.background != self.server.config['blackout_background']:
                     self.background_backup = self.background
-                intended_background = self.server.config['blackout_background']
+                intended_background = self.background
 
             self.lights = new_lights
             self.change_background(intended_background, validate=False) # Allow restoring custom bg.
 
             # Announce light status change
             if initiator: # If a player initiated the change light sequence, send targeted messages
-                if not initiator.is_blind:
-                    initiator.send_ooc('You turned the lights {}.'.format(status[new_lights]))
-                elif not initiator.is_deaf:
-                    initiator.send_ooc('You hear a flicker.')
-                else:
-                    initiator.send_ooc('You feel a light switch was flipped.')
+                if area is None:
+                    if not initiator.is_blind:
+                        initiator.send_ooc('You turned the lights {}.'.format(status[new_lights]))
+                    elif not initiator.is_deaf:
+                        initiator.send_ooc('You hear a flicker.')
+                    else:
+                        initiator.send_ooc('You feel a light switch was flipped.')
 
                 initiator.send_ooc_others('The lights were turned {}.'.format(status[new_lights]),
-                                          is_zstaff_flex=False, in_area=True, to_blind=False)
-                initiator.send_ooc_others('You hear a flicker.', is_zstaff_flex=False, in_area=True,
+                                          is_zstaff_flex=False, in_area=area if area else True, to_blind=False)
+                initiator.send_ooc_others('You hear a flicker.', is_zstaff_flex=False, in_area=area if area else True,
                                           to_blind=True, to_deaf=False)
                 initiator.send_ooc_others('(X) {} turned the lights {}.'
                                           .format(initiator.displayname, status[new_lights]),
-                                          is_zstaff_flex=True, in_area=True)
+                                          is_zstaff_flex=True, in_area=area if area else True)
             else: # Otherwise, send generic message
                 self.broadcast_ooc('The lights were turned {}.'.format(status[new_lights]))
 
@@ -890,27 +894,27 @@ class AreaManager:
             areas = Constants.yaml_load(chars)
 
         def_param = {
-            'bglock': False,
-            'evidence_mod': 'FFA',
-            'locking_allowed': False,
-            'iniswap_allowed': False,
-            'rp_getarea_allowed': True,
-            'rp_getareas_allowed': True,
-            'rollp_allowed': True,
-            'reachable_areas': '<ALL>',
-            'change_reachability_allowed': True,
-            'gm_iclock_allowed': True,
             'afk_delay': 0,
             'afk_sendto': 0,
-            'lobby_area': False,
-            'private_area': False,
-            'scream_range': '',
-            'restricted_chars': '',
-            'default_description': self.server.config['default_area_description'],
-            'has_lights': True,
+            'bglock': False,
+            'bullet': True,
             'cbg_allowed': False,
+            'change_reachability_allowed': True,
+            'default_description': self.server.config['default_area_description'],
+            'evidence_mod': 'FFA',
+            'gm_iclock_allowed': True,
+            'has_lights': True,
+            'iniswap_allowed': False,
+            'lobby_area': False,
+            'locking_allowed': False,
+            'private_area': False,
+            'reachable_areas': '<ALL>',
+            'restricted_chars': '',
+            'rollp_allowed': True,
+            'rp_getarea_allowed': True,
+            'rp_getareas_allowed': True,
+            'scream_range': '',
             'song_switch_allowed': False,
-            'bullet': True
             }
 
         # Create the areas

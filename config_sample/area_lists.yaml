@@ -1,2 +1,5 @@
+# A sample area lists document
+# List your area lists as you want them output via /area_lists, one per line
+# Do not include - or any other YAML indicator that indicates items.
 default_aa
 old

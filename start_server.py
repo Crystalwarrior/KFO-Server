@@ -18,8 +18,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# WARNING!
+# This class will suffer major reworkings for 4.3
+
 import asyncio
 import traceback
+import sys
 
 from server import logger
 from server.tsuserver import TsuserverDR
@@ -70,6 +74,16 @@ def main():
     loop.set_exception_handler(handle_exception)
 
     try:
+        current_python_tuple = sys.version_info
+        current_python_simple = 'Python {}.{}.{}'.format(*current_python_tuple[:3])
+        if current_python_tuple < (3, 7):
+            # This deliberately uses .format() because f-strings were not available prior to
+            # Python 3.6
+            msg = ('This version of TsuserverDR requires at least Python 3.7. You currently have '
+                   '{}. Please refer to README.md for instructions on updating.'
+                   .format(current_python_simple))
+            raise RuntimeError(msg)
+
         server = TsuserverDR()
         loop.run_until_complete(server.start())
         # If we are done with this coroutine, that means an error was raised

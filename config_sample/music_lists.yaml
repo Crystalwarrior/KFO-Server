@@ -1,3 +1,6 @@
+# A sample music lists document
+# List your music lists as you want them output via /music_lists, one per line
+# Do not include - or any other YAML indicator that indicates items.
 deadly_life
 dr1
 dr2

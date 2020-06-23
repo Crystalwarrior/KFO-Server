@@ -365,3 +365,69 @@
 
 ### 200112b (4.2.3-post4)
 * Fixed players/server being able to load any YAML files with invalid YAML syntax. An informative error message will be returned to assist in fixing said file
+
+### 200201a (4.2.3-post5)
+* Fixed /showname_freeze and /showname_nuke causing errors when notifying other users
+
+### 200320a (4.2.3-post6)
+* Fixed /bg turning on lights in previously dark rooms.
+
+### 200327a (4.2.3-post7)
+* Fixed players/server being able to load music lists with non-numerical track lengths. An informative error message will be returned to assist in fixing the music list
+* Fixed duplicate /look_set output messages being sent to other zone watchers in the same area
+* Fixed typo in /passage_restore: 'statue'->'state'
+
+### 200410a (4.2.3-post8)
+* Fixed clients who do not/cannot update their music list crashing when they attempt to join an area that no longer exists.
+* Readded description of /login to README.md
+
+### 200428a (4.2.3-post9)
+* Fixed incorrect error messages being sent in case the server's system fails to open an area list or music list file.
+
+### 200430a (4.2.3-post10)
+* Reverted backwards incompatible change that prevented music lists that did not list length for a track (meaning they did not want them to be looped) from being loaded.
+
+### 200503a (4.2.3-post11)
+* Fixed /lights not turning lights back on if the background wasn't changed
+
+### 200516a (4.2.4)
+* Enforced Python 3.6+ requirement on server launch
+* Server owners running Python 3.6 will now be warned on server launch of pending deprecation of support for Python 3.6 with the upcoming major release of TsuserverDR
+* All asset files in `config_sample` now come with instructions as to how to use them and what parameters they recognize
+* Added /cid to get your (or someone else's) client ID
+* Added /spectate to switch to spectator
+* Added client version to /whois
+* Warnings are now sent to players in once-locked rooms that were reloaded via /area_list
+* /whisper messages from private rooms are no longer sent to staff members
+* GMs may now /make_gm their multiclients, and their multiclients only
+* Login/logout notifications are now sent to other staff members
+* Staff login+passwords messages are now censored both in IC and OOC
+* Added /zone_lights to turn the lights of every area in your zone on or off
+* Added command aliases:
+  - /sa (Alias for /showname_area)
+  - /sas (Alias for /showname_areas)
+  - /shout (Alias for /scream)
+  - /unsneak (Alias for /reveal)
+  - /yell (Alias for /scream)
+* Added server configuration setting to disable ms2-prober connections being logged in server logs
+* Added server configuration setting to set a custom UTC offset to use for the output of /time and /time12
+* Public servers now properly reject webAO connections, and log any other abnormal connections.
+* Fixed potential DoS attack on clients
+* Fixed /toggle_allrolls giving roll results from outside watched zones if the roller was in an area not part of a zone
+* Fixed /multiclients failing to output results if target client was not staff and their area did not satisfy criteria for being printed in /getareas from the perspective of the /multiclients sender
+* Undeprecated /showname_list in favor of making it a command alias
+* Added best-effort support for (upcoming) Attorney Online 2.7
+
+### 200522a (4.2.4-post1)
+* Fixed server not discarding repeated messages
+* Increased length of abnormal connection log for better inspection
+* Fixed compatibility with the KFO client
+
+### 200524a (4.2.4-post2)
+* Fixed turning lights on in an area before a party disbands raising a silent error
+
+### (4.3.0)
+* Dropped Python 3.6 support
+* Added lurk callouts to name players who have been idle some amount of time
+* Changed wording of GM login notifications
+* Removed deprecated AO commands

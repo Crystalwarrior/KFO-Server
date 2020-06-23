@@ -71,7 +71,12 @@ class AOProtocol(asyncio.Protocol):
         self.buffer = self.buffer.translate({ord(c): None for c in '\0'})
 
         if len(self.buffer) > 8192:
+            msg = self.buffer if len(self.buffer) < 512 else self.buffer[:512] + '...'
+            logger.log_server('Terminated {}: sent {} ({} bytes)'.format(self.client.get_ipreal(),
+                                                                         msg, len(self.buffer)))
             self.client.disconnect()
+            return
+
         found_message = False
         for msg in self.get_messages():
             found_message = True
@@ -91,8 +96,11 @@ class AOProtocol(asyncio.Protocol):
             except Exception as ex:
                 self.server.send_error_report(self.client, cmd, args, ex)
         if not found_message:
-            # This immediatelly kills webAO or any client that does not even try to follow the
-            # standalone client protocol
+            # This immediatelly kills any client that does not even try to follow the proper
+            # client protocol
+            msg = self.buffer if len(self.buffer) < 512 else self.buffer[:512] + '...'
+            logger.log_server('Terminated {}: sent {} ({} bytes)'.format(self.client.get_ipreal(),
+                                                                         msg, len(self.buffer)))
             self.client.disconnect()
 
     def connection_made(self, transport, my_protocol=None):
@@ -232,12 +240,15 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.is_ao2 = True
         self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping', 'fastloading',
-                                 'noencryption', 'deskmod', 'evidence', 'cccc_ic_support')
+                                 'noencryption', 'deskmod', 'evidence', 'cccc_ic_support',
+                                 'looping_sfx')
 
         if release == 2 and major >= 8: # KFO
             self.client.packet_handler = Clients.ClientKFO2d8
-        elif release == 2 and major >= 6: # AO 2.6
+        elif release == 2 and major == 6: # AO 2.6
             self.client.packet_handler = Clients.ClientAO2d6
+        elif release == 2 and major == 7: # AO 2.7
+            self.client.packet_handler = Clients.ClientAO2d7
         else:
             # Not really needed, added here for the sake of completeness
             # As this is the default packet_handler
@@ -381,6 +392,7 @@ class AOProtocol(asyncio.Protocol):
         Refer to the implementation for details.
 
         """
+
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You have been muted by a moderator.")
             return
@@ -392,6 +404,14 @@ class AOProtocol(asyncio.Protocol):
 
         pargs = self.process_arguments('ms', args)
         if not pargs:
+            return
+
+        # First, check if the player just sent the same message with the same character and did
+        # not receive any other messages in the meantime.
+        # This helps prevent record these messages and retransmit it to clients who may want to
+        # filter these out
+        if (pargs['text'] == self.client.last_ic_raw_message and self.client.last_ic_received_mine
+            and self.client.get_char_name() == self.client.last_ic_char):
             return
 
         if not self.client.area.iniswap_allowed:
@@ -446,6 +466,12 @@ class AOProtocol(asyncio.Protocol):
             return
 
         self.client.pos = pargs['pos']
+
+        # At this point, the message is guaranteed to be sent
+        # First, update last raw message sent *before* any transformations. That is so that the
+        # server can accurately ignore client sending the same message over and over again
+        self.client.last_ic_raw_message = pargs['text']
+        self.client.last_ic_char = self.client.get_char_name()
 
         # Truncate and alter message if message effect is in place
         raw_msg = pargs['text'][:256]
@@ -649,7 +675,6 @@ class AOProtocol(asyncio.Protocol):
             if self.client.remove_h: #If h is removed, replace string.
                 args[1] = Constants.remove_h_message(args[1])
 
-
             self.client.area.send_command('CT', self.client.name, args[1])
             self.client.last_ooc_message = args[1]
             logger.log_server('[OOC][{}][{}][{}]{}'
@@ -690,6 +715,8 @@ class AOProtocol(asyncio.Protocol):
             try:
                 self.client.area.play_track(args[0], self.client, raise_if_not_found=True,
                                             reveal_sneaked=True)
+            except ServerError.MusicNotFoundError:
+                self.client.send_ooc('Unrecognized area or music `{}`.'.format(args[0]))
             except ServerError:
                 return
         except (ClientError, PartyError) as ex:

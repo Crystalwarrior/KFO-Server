@@ -7,7 +7,7 @@
 # port: port that the players connect through (it must be open/forwarded for them to be able to connect)
 # timeout: timeout for automatic client disconnection in seconds (keep above 60)
 # local: if only people in the host machine should be able to connect (i.e. you), ideal if testing setup
-# show_ms2-prober: muffles ms2-prober connections, which will happen regularly if your server is public
+# show_ms2-prober: log ms2-prober connections in the server log, which will happen regularly if your server is public
 
 playerlimit: 100
 port: 50000
@@ -40,22 +40,24 @@ modpass: Mod
 cmpass: Community Manager
 
 gmpass: Universal
-gmpass1: Sunday-Monday
-gmpass2: Monday-Tuesday
-gmpass3: Tuesday-Wednesday
-gmpass4: Wednesday-Thursday
-gmpass5: Thursday-Friday
-gmpass6: Friday-Saturday
-gmpass7: Saturday-Sunday
+gmpass1: Monday
+gmpass2: Tuesday
+gmpass3: Wednesday
+gmpass4: Thursday
+gmpass5: Friday
+gmpass6: Saturday
+gmpass7: Sunday
 
 # OOC configurations
 # motd: message sent to OOC on connection
 # hostname: 'username' of the server (precedes all OOC messages sent by the server)
 # discord_link: Discord invite link for the server, accessible through /discord
+# utc_offset: To print /time or /time12, use either local time (put local) or UTC offset to use (put +0, +2.5, -3, etc.) 
 
 motd: Welcome to my server!
 hostname: <dollar>H
 discord_link: None
+utc_offset: local
 
 # Roll configurations
 

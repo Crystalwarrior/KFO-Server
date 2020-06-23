@@ -19,9 +19,9 @@
 # possible keys: ip, OOC, id, cname, ipid, hdid
 
 import datetime
+import random
 import functools
 import hashlib
-import random
 import string
 import time
 import traceback
@@ -129,7 +129,8 @@ def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='&1-2', split_spaces=True)
-    #arg = arg.split(' ')
+
+    arg = arg.split(' ')
 
     if not client.is_mod and not client.is_cm and client.area.lobby_area:
         raise ClientError('You must be authorized to kick clients in lobby areas.')
@@ -208,13 +209,20 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
             new_area_file = 'config/area_lists/{}.yaml'.format(arg)
             client.server.area_manager.load_areas(area_list_file=new_area_file)
         except ServerError as exc:
-            if exc.code == 'FileNotFound':
+            try:
+                code = exc.code
+            except AttributeError:
+                code = None
+
+            if code == 'FileNotFound':
                 raise ArgumentError('Could not find the area list file `{}`.'.format(new_area_file))
+            elif code == 'OSError':
+                raise ArgumentError('Unable to open area list file `{}`: `{}`.'
+                                    .format(new_area_file, exc.message))
             raise # Weird exception, reraise it
         except AreaError as exc:
             raise ArgumentError('The area list {} returned the following error when loading: `{}`.'
                                 .format(new_area_file, exc))
-
 
         client.send_ooc('You have loaded the area list {}.'.format(arg))
         client.send_ooc_others('The area list {} has been loaded.'.format(arg), is_staff=False)
@@ -575,7 +583,7 @@ def ooc_cmd_blockdj(client: ClientManager.Client, arg: str):
 
 def ooc_cmd_bloodtrail(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
-    Toggles a client by IPID leaving a blood trail wherever they go or not. OOC announcements are
+    Toggles a client by client ID leaving a blood trail wherever they go or not. OOC announcements are
     made to players joining an area regarding the existence of a blood trail and where it leads to.
     Turning off a player leaving a blood trail does not clean the blood in the area. For that,
     use /bloodtrail_clean.
@@ -588,7 +596,7 @@ def ooc_cmd_bloodtrail(client: ClientManager.Client, arg: str):
     <client_id>: Client identifier (number in brackets in /getarea)
 
     EXAMPLE
-    Assuming a player with client ID 0 and IPID 1234567890 starts as not being leaving a blood trail
+    Assuming a player with client ID 0 starts without leaving a blood trail
     /bloodtrail 0            :: This player will now leave a blood trail wherever they go.
     """
 
@@ -1198,7 +1206,7 @@ def ooc_cmd_cleargm(client: ClientManager.Client, arg: str):
     gm_list = ''
     for area in client.server.area_manager.areas:
         for c in [x for x in area.clients if x.is_gm]:
-            gm_list += (': ' if gm_list == '' else ', ') + c.name
+            gm_list += '{} {} [{}]'.format((':' if not gm_list else ','), c.name, c.id)
             c.is_gm = False
             if client.server.rp_mode:
                 c.in_rp = True
@@ -1226,7 +1234,8 @@ def ooc_cmd_cleargm(client: ClientManager.Client, arg: str):
 
     client.send_ooc('All GMs logged out.')
     if len(gm_list) > 0:
-        client.send_ooc_others('The following GMs have been logged out by {}{}.'.format(client.name, gm_list), is_officer=True)
+        client.send_ooc_others('The following GMs have been logged out by {} [{}]{}.'
+                               .format(client.name, client.id, gm_list), is_officer=True)
 
 def ooc_cmd_clock(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
@@ -1311,6 +1320,7 @@ def ooc_cmd_clock_cancel(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True)
+
     if len(arg) == 0:
         arg = str(client.id)
 
@@ -1342,6 +1352,7 @@ def ooc_cmd_clock_pause(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True)
+
     if len(arg) == 0:
         arg = str(client.id)
 
@@ -1380,6 +1391,7 @@ def ooc_cmd_clock_unpause(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True)
+
     if len(arg) == 0:
         arg = str(client.id)
 
@@ -1452,7 +1464,7 @@ def ooc_cmd_cure(client: ClientManager.Client, arg: str):
     Assuming client 1 is blind, deafened and gagged and these are run immediately one after the other:
     /cure 1 b      :: Cures client 1 of blindness.
     /cure 1 Bd     :: Cures client 1 of deafedness (note they were not blind).
-    /cure 1 gDB    :: Cures client 1 of being gagged (noe they were neither deafened or blind).
+    /cure 1 gDB    :: Cures client 1 of being gagged (note they were neither deafened or blind).
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=2')
@@ -1568,7 +1580,7 @@ def ooc_cmd_defaultarea(client: ClientManager.Client, arg: str):
 
 def ooc_cmd_dicelog(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
-    Obtains the last 20 roll resuls from the target by ID or the user if not given any.
+    Obtains the last 20 roll results from the target by client ID or the user if not given any.
     Returns an error if the identifier does not correspond to a user.
 
     SYNTAX
@@ -1599,7 +1611,7 @@ def ooc_cmd_dicelog_area(client: ClientManager.Client, arg: str):
     Returns an error if the identifier does not correspond to an area.
 
     SYNTAX
-    /dicelog
+    /dicelog_area
     /dicelog_area <target_area>
 
     PARAMETERS
@@ -1815,6 +1827,7 @@ def ooc_cmd_follow(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True)
+
     if client.party:
         raise PartyError('You cannot follow someone while in a party.')
 
@@ -1931,6 +1944,7 @@ def ooc_cmd_getareas(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, parameters='=0')
+
     if not client.is_staff() and client.is_blind:
         raise ClientError('You are blind, so you cannot see anything.')
 
@@ -2114,7 +2128,8 @@ def ooc_cmd_gmself(client: ClientManager.Client, arg: str):
         raise ClientError('All opened clients are logged in as game master.')
 
     for target in targets:
-        target.login(client.server.config['gmpass'], target.auth_gm, 'game master', announce_to_officers=False)
+        target.login(client.server.config['gmpass'], target.auth_gm, 'game master',
+                     announce_to_officers=False)
 
     client.send_ooc('Logged in client{} {} as game master.'
                     .format('s' if len(targets) > 1 else '',
@@ -2204,6 +2219,7 @@ def ooc_cmd_handicap(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='&2-4', split_spaces=True)
+
     args = arg.split(' ')
 
     # Obtain targets
@@ -2584,8 +2600,10 @@ def ooc_cmd_lasterror(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_mod=True, parameters='=0')
+
     if not client.server.last_error:
-        raise ClientError('No error messages have been raised and not been caught since server bootup.')
+        raise ClientError('No error messages have been raised and not been caught since server '
+                          'bootup.')
 
     pre_info, etype, evalue, etraceback = client.server.last_error
     final_trace = "".join(traceback.format_exception(etype, evalue, etraceback))
@@ -2732,7 +2750,7 @@ def ooc_cmd_loginrp(client: ClientManager.Client, arg: str):
     client.login(arg, client.auth_gm, 'game master')
 
 def ooc_cmd_logout(client: ClientManager.Client, arg: str):
-    """
+    """ (STAFF ONLY)
     Logs out the current user from all staff roles and puts them in RP mode if needed.
 
     SYNTAX
@@ -2754,11 +2772,12 @@ def ooc_cmd_logout(client: ClientManager.Client, arg: str):
     else:
         role = 'game master'
 
-    client.send_ooc_others('{} is no longer a {}.'.format(client.name, role), is_officer=True)
     client.is_mod = False
     client.is_gm = False
     client.is_cm = False
     client.send_ooc('You are no longer logged in.')
+    client.send_ooc_others('{} [{}] is no longer a {}.'
+                           .format(client.name, client.id, role), is_officer=True)
 
     # Clean-up operations
     if client.server.rp_mode:
@@ -2825,6 +2844,7 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, parameters='=0')
+
     if not client.is_staff() and client.is_blind:
         raise ClientError('You are blind, so you cannot see anything.')
     if not client.is_staff() and not client.area.lights:
@@ -2959,8 +2979,10 @@ def ooc_cmd_look_set(client: ClientManager.Client, arg: str):
                           .format(client.area.id, client.get_char_name(), arg), client)
 
 def ooc_cmd_make_gm(client: ClientManager.Client, arg: str):
-    """ (MOD AND CM ONLY)
+    """ (VARYING REQUIREMENTS)
     Makes a player by ID a GM without them needing to put in a GM password.
+    Returns an error if the target is already a GM, or if the player is not community manager or
+    moderator and tries to GM a client that is not a multiclient of them.
 
     SYNTAX
     /make_gm <client_id>
@@ -2972,15 +2994,21 @@ def ooc_cmd_make_gm(client: ClientManager.Client, arg: str):
     /make_gm 3      :: Makes the client with ID 3 a GM
     """
 
-    Constants.assert_command(client, arg, is_officer=True)
+    Constants.assert_command(client, arg, is_staff=True)
+
     target = Constants.parse_id(client, arg)
 
+    if not (client.is_cm or client.is_mod) and target not in client.get_multiclients():
+        raise ClientError('You must be authorized to login as game masters players other than your '
+                          'multiclients.')
     if target.is_gm:
         raise ClientError('Client {} is already a GM.'.format(target.id))
 
-    target.login(client.server.config['gmpass'], target.auth_gm, 'game master', announce_to_officers=False)
+    target.login(client.server.config['gmpass'], target.auth_gm, 'game master',
+                 announce_to_officers=False)
     client.send_ooc('Logged client {} as a GM.'.format(target.id))
-    client.send_ooc_others('{} has been logged in as a game master by {}.'.format(target.name, client.name), is_officer=True)
+    client.send_ooc_others('{} [{}] has been logged in as a game master by {} [{}].'
+                           .format(target.name, target.id, client.name, client.id), is_officer=True)
 
 def ooc_cmd_minimap(client: ClientManager.Client, arg: str):
     """
@@ -3135,9 +3163,17 @@ def ooc_cmd_music_list(client: ClientManager.Client, arg: str):
             raise ArgumentError('The music list {} returned the following error when loading: `{}`.'
                                 .format(new_music_file, exc))
         except ServerError as exc:
-            if exc.code == 'FileNotFound':
+            try:
+                code = exc.code
+            except AttributeError:
+                code = None
+
+            if code == 'FileNotFound':
                 raise ArgumentError('Could not find the music list file `{}`.'
                                     .format(new_music_file))
+            elif code == 'OSError':
+                raise ArgumentError('Unable to open music list file `{}`: `{}`.'
+                                    .format(new_music_file, exc.message))
             raise # Weird exception, reraise it
 
         client.send_ooc('You have loaded the music list {}.'.format(arg))
@@ -3684,9 +3720,8 @@ def ooc_cmd_passage_clear(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='<3', split_commas=True)
-    areas = arg.split(', ')
 
-    areas = Constants.parse_two_area_names(client, areas)
+    areas = Constants.parse_two_area_names(client, arg.split(', '))
 
     for i in range(areas[0].id, areas[1].id+1):
         area = client.server.area_manager.get_area_by_id(i)
@@ -3720,9 +3755,8 @@ def ooc_cmd_passage_restore(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='<3', split_commas=True)
-    areas = arg.split(', ')
 
-    areas = Constants.parse_two_area_names(client, areas)
+    areas = Constants.parse_two_area_names(client, arg.split(', '))
 
     for i in range(areas[0].id, areas[1].id+1):
         area = client.server.area_manager.get_area_by_id(i)
@@ -3734,7 +3768,6 @@ def ooc_cmd_passage_restore(client: ClientManager.Client, arg: str):
     else:
         client.send_ooc('Passages in areas {} through {} have been restored to their original '
                         'state.'.format(areas[0].name, areas[1].name))
-
 
 def ooc_cmd_ping(client: ClientManager.Client, arg: str):
     """
@@ -3806,7 +3839,6 @@ def ooc_cmd_pm(client: ClientManager.Client, arg: str):
                             'ID, char-name, edited-to character, custom showname or OOC-name.')
     if client.pm_mute:
         raise ClientError('You have muted all PM conversations.')
-    args = arg.split()
 
     cm = client.server.client_manager
     target, recipient, msg = cm.get_target_public(client, arg)
@@ -4121,7 +4153,7 @@ def ooc_cmd_roll(client: ClientManager.Client, arg: str):
     client.send_ooc_others('{} {}.'.format(client.displayname, roll_message), in_area=True)
     client.send_ooc_others('(X) {} {} in {} ({}).'
                            .format(client.displayname, roll_message, client.area.name,
-                                   client.area.id), is_zstaff_flex=True, in_area=False,
+                                   client.area.id), is_zstaff_flex=client.area, in_area=False,
                                    pred=lambda c: c.get_foreign_rolls)
     client.add_to_dicelog(roll_message + '.')
     client.area.add_to_dicelog(client, roll_message + '.')
@@ -4166,7 +4198,7 @@ def ooc_cmd_rollp(client: ClientManager.Client, arg: str):
                            is_zstaff_flex=True, in_area=True)
     client.send_ooc_others('(X) {} {} in {} ({}).'
                            .format(client.displayname, roll_message, client.area.name,
-                                   client.area.id), is_zstaff_flex=True, in_area=False,
+                                   client.area.id), is_zstaff_flex=client.area, in_area=False,
                                    pred=lambda c: c.get_foreign_rolls)
     client.add_to_dicelog(roll_message + '.')
     client.area.add_to_dicelog(client, roll_message + '.')
@@ -4611,7 +4643,8 @@ def ooc_cmd_showname_freeze(client: ClientManager.Client, arg: str):
     client.send_ooc_others('A mod has {} all shownames.'
                            .format(status[client.server.showname_freeze]), is_staff=False)
     client.send_ooc_others('{} has {} all shownames.'
-                           .format(client.name, status[client.server.showname_freeze]), is_staff=True)
+                           .format(client.name, status[client.server.showname_freeze]),
+                           is_staff=True)
     logger.log_server('{} has {} all shownames.'
                       .format(client.name, status[client.server.showname_freeze]), client)
 
@@ -4799,7 +4832,7 @@ def ooc_cmd_spectate(client: ClientManager.Client, arg: str):
     None
 
     EXAMPLES
-    /spectate                       :: Returns "You are now spectating."
+    /spectate                       :: Returns "You are now spectating." or "You are already spectating."
     """
 
     Constants.assert_command(client, arg, parameters='=0')
@@ -4861,7 +4894,8 @@ def ooc_cmd_switch(client: ClientManager.Client, arg: str):
 
 def ooc_cmd_time(client: ClientManager.Client, arg: str):
     """
-    Return the current server date and time.
+    Return the current server date and time. If the server specified a UTC time offset, it will use
+    that offset instead (and also include it).
 
     SYNTAX
     /time
@@ -4870,17 +4904,25 @@ def ooc_cmd_time(client: ClientManager.Client, arg: str):
     None
 
     EXAMPLES
-    /time           :: May return something like "Sat Apr 27 09:04:17 2019"
+    /time           :: May return something like "Sat Apr 27 19:04:17 2019"
     """
 
     Constants.assert_command(client, arg, parameters='=0')
 
-    client.send_ooc(Constants.get_time())
+    offset = client.server.config['utc_offset']
+    if offset == 'local':
+        current_time = time.strftime('%a %b %e %H:%M:%S %Y')
+    else:
+        offset_str = offset if float(offset) < 0 else '+{}'.format(offset)
+        current_time_str = datetime.datetime.utcnow() + datetime.timedelta(hours=float(offset))
+        current_time = current_time_str.strftime('%a %b %e %H:%M:%S (UTC{}) %Y'.format(offset_str))
+    client.send_ooc(current_time)
 
 def ooc_cmd_time12(client: ClientManager.Client, arg: str):
     """
     Return the current server date and time in 12 hour format.
-    Also includes the server timezone.
+    Also includes the server timezone. If the server specified a UTC time offset, it will use
+    that offset.
 
     SYNTAX
     /time12
@@ -4889,12 +4931,20 @@ def ooc_cmd_time12(client: ClientManager.Client, arg: str):
     None
 
     EXAMPLES
-    /time12         :: May return something like "Sat Apr 27 09:04:47 AM (EST) 2019"
+    /time12         :: May return something like "Sat Apr 27 07:04:47 PM (+0200) 2019"
     """
 
     Constants.assert_command(client, arg, parameters='=0')
 
-    client.send_ooc(time.strftime('%a %b %e %I:%M:%S %p (%z) %Y'))
+    offset = client.server.config['utc_offset']
+    if offset == 'local':
+        current_time = time.strftime('%a %b %e %I:%M:%S %p (%z) %Y')
+    else:
+        offset_str = offset if float(offset) < 0 else '+{}'.format(offset)
+        current_time_str = datetime.datetime.utcnow() + datetime.timedelta(hours=float(offset))
+        current_time = current_time_str.strftime('%a %b %e %I:%M:%S %p (UTC{}) %Y'
+                                                 .format(offset_str))
+    client.send_ooc(current_time)
 
 def ooc_cmd_time_est(client, arg):
     """
@@ -4947,6 +4997,7 @@ def ooc_cmd_timer(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, parameters='&1-3', split_spaces=True)
+
     arg = arg.split(' ')
 
     # Check if valid length and convert to seconds
@@ -4995,6 +5046,7 @@ def ooc_cmd_timer_cancel(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, parameters='=1', split_spaces=True)
+
     arg = arg.split(' ')
 
     timer_name = arg[0]
@@ -5551,9 +5603,11 @@ def ooc_cmd_unilock(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, parameters='&1-2', split_commas=True)
+
     areas = arg.split(', ')
     if len(areas) == 2 and not client.is_staff():
-        raise ClientError('You must be authorized to use the two-parameter version of this command.')
+        raise ClientError('You must be authorized to use the two-parameter version of this '
+                          'command.')
 
     areas = Constants.parse_two_area_names(client, areas, area_duplicate=False,
                                            check_valid_range=False)
@@ -5593,7 +5647,7 @@ def ooc_cmd_uninvite(client: ClientManager.Client, arg: str):
     /uninvite 1234567890          :: Uninvites all clients opened by the player whose IPID is 1234567890.
     """
 
-    Constants.assert_command(client, arg, parameters='>0')
+    Constants.assert_command(client, arg, parameters='=1')
 
     if not client.area.is_locked and not client.area.is_modlocked and not client.area.is_gmlocked:
         raise ClientError('Area is not locked.')
@@ -5845,17 +5899,17 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
                                    .format(final_st_sender, final_message, final_target,
                                            client.area.id), is_zstaff_flex=True, not_to={target})
         else:
-            # Otherwise, announce it to everyone
-            # If the area is private, zone watchers and staff get normal whisper reports if in the same
-            # area
+            # Otherwise, announce it to everyone. If the area is private, zone watchers and staff
+            # get normal whisper reports if in the same area.
             if public_area:
                 client.send_ooc_others('(X) {} whispered `{}` to {} ({}).'
                                        .format(final_st_sender, final_message, final_target,
-                                           client.area.id), is_zstaff_flex=True, not_to={target})
+                                               client.area.id),
+                                       is_zstaff_flex=True, not_to={target})
             client.send_ooc_others('{} whispered something to {}.'
                                    .format(final_sender, final_target),
                                    is_zstaff_flex=False if public_area else None, in_area=True,
-				   not_to={target}, to_blind=False)
+                                   not_to={target}, to_blind=False)
     elif target.is_visible:
         client.send_ooc('You spooked {} by whispering `{}` to them while sneaking.'
                         .format(final_target, final_message))
@@ -5873,8 +5927,8 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
 
         if not client.area.private_area:
             client.send_ooc_others('(X) {} whispered `{}` to {} while sneaking ({}).'
-                               .format(final_st_sender, final_message, final_target,
-                                       client.area.id), is_zstaff_flex=True, not_to={target})
+                                   .format(final_st_sender, final_message, final_target,
+                                           client.area.id), is_zstaff_flex=True, not_to={target})
     else: # Sender is not sneaked, target is
         if client.is_staff():
             msg = ('Your target {} is sneaking and whispering to them would reveal them. Instead, '
@@ -6107,13 +6161,13 @@ def ooc_cmd_zone_global(client: ClientManager.Client, arg: str):
     not part of a zone.
 
     SYNTAX
-    /zone_glabal <message>
+    /zone_global <message>
 
     PARAMETERS
     <message>: Message to be sent
 
     EXAMPLE
-    /zone_glabal Hello World      :: Sends Hello World to global chat.
+    /zone_global Hello World      :: Sends Hello World to global chat.
     """
 
     try:
@@ -6136,6 +6190,49 @@ def ooc_cmd_zone_global(client: ClientManager.Client, arg: str):
         target.send_ooc(arg, username='<dollar>ZG[{}][{}]'
                         .format(client.area.id, client.displayname),
                         pred=lambda c: not c.muted_global)
+
+def ooc_cmd_zone_lights(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Toggles lights on or off in the background for every area in a zone. If turned off,
+    the background will change to the server's blackout background. If turned on,
+    the background will revert to the background before the blackout one.
+    If an area already has the requested light status, has a locked background, or
+    has no lights to change, the area is left alone.
+    Returns an error if the user is not watching a zone.
+
+    SYNTAX
+    /zone_lights
+
+    PARAMETERS
+    <new_status>: 'on' or 'off'
+
+    EXAMPLES
+    Assuming the user is watching z0, with areas 1-4
+    /zone_lights off    :: Turns every light off in areas 1-4.
+    """
+
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+    except ArgumentError:
+        raise ArgumentError('You must specify either on or off.')
+    if arg not in ['off', 'on']:
+        raise ClientError('Expected on or off.')
+
+    if client.zone_watched:
+        target_zone = client.zone_watched.get_areas()
+        new_lights = (arg == 'on')
+    else:
+        raise ZoneError('You are not watching a zone.')
+
+    for area in target_zone:
+        if area.bg_lock or not area.has_lights:
+            continue
+        try:
+            area.change_lights(new_lights, initiator=client, area=area)
+        except AreaError:
+            pass
+
+    client.send_ooc('You have turned the lights in zone {} {}.'.format(client.zone_watched.get_id(), arg))
 
 def ooc_cmd_zone_list(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
@@ -6424,6 +6521,36 @@ def ooc_cmd_toggle_allpasses(client: ClientManager.Client, arg: str):
 
     client.send_ooc('You are {} receiving autopass notifications from players without autopass.'
                     .format(status[client.get_nonautopass_autopass]))
+
+def ooc_cmd_cid(client: ClientManager.Client, arg: str):
+    """
+    Returns the client ID of the given target (number in brackets in /getarea), or the player's if
+    not given a target.
+    Returns an error if, given a target identifier, it does not match any identifiers visible to
+    the player among players in the same area.
+
+    SYNTAX
+    /cid <user_ID>
+
+    PARAMETERS
+    <user_id>: Either the client ID, character name, edited-to character, custom showname or OOC name of the intended recipient.
+
+    EXAMPLES
+    If Phantom_HD is in the same area as the player, iniswapped to Spam_HD, has client ID 3, has showname Phantom and OOC Name ThePhantom
+    /cid Phantom_HD     :: Returns 'The client ID of Phantom_HD is 3.'
+    /cid Spam_HD        :: Returns 'The client ID of Spam_HD is 3.'
+    /cid 3              :: Returns 'The client ID of 3 is 3.'
+    /cid Phantom        :: Returns 'The client ID of Phantom is 3.'
+    /cid ThePhantom     :: Returns 'The client ID of ThePhantom is 3.'
+    /cid                :: Returns 'Your client ID is 0.' (assuming your client ID is actually 0)
+    """
+
+    if not arg:
+        client.send_ooc('Your client ID is {}.'.format(client.id))
+    else:
+        cm = client.server.client_manager
+        target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+        client.send_ooc('The client ID of {} is {}.'.format(arg, target.id))
 
 def ooc_cmd_lurk(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)

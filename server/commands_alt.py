@@ -38,6 +38,48 @@ def do_command_deprecated(command, client, arg):
                     'Please use /{} next time.'.format(command))
     do_command(command, client, arg)
 
+def ooc_cmd_sa(client, arg):
+    """
+    Alias for /showname_area.
+    """
+
+    do_command('showname_area', client, arg)
+
+def ooc_cmd_sas(client, arg):
+    """
+    Alias for /showname_areas.
+    """
+
+    do_command('showname_areas', client, arg)
+
+def ooc_cmd_shout(client, arg):
+    """
+    Alias for /scream.
+    """
+
+    do_command('scream', client, arg)
+
+def ooc_cmd_unsneak(client, arg):
+    """
+    Alias for /reveal.
+    """
+
+    do_command('reveal', client, arg)
+
+def ooc_cmd_yell(client, arg):
+    """
+    Alias for /scream.
+    """
+
+    do_command('scream', client, arg)
+
+def ooc_cmd_zg(client, arg):
+    """
+    Alias for /zone_global.
+    """
+
+    do_command('zone_global', client, arg)
+
 def ooc_cmd_showname_list(client, arg):
     """
     Alias for /showname_areas.

@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# WARNING!
+# This class will be fully reworked for 4.3
+
 import asyncio
 import random
 
@@ -145,16 +148,17 @@ class PartyManager:
 
         def check_lights(self):
             # Only call this when you are sure you want to cancel potential light timeout timers.
-
-            loop = asyncio.get_event_loop()
             # Restart light timer
             if self.lights_timeout is not None:
                 self.server.tasker.cancel_task(self.lights_timeout)
             self.lights_timeout = None
 
             if not self.area.lights:
-                self.lights_timeout = loop.call_later(self.server.config['party_lights_timeout'],
-                                                      self.check_lights_timeout)
+                async def _lights_timeout():
+                    await asyncio.sleep(self.server.config['party_lights_timeout'])
+                    self.check_lights_timeout()
+
+                self.lights_timeout = asyncio.ensure_future(_lights_timeout())
 
         def check_lights_timeout(self):
             if not self.area.lights:

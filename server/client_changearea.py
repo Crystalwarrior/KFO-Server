@@ -596,7 +596,7 @@ class ClientChangeArea:
                                              ['as_handicap', time.time(), length, name,
                                               announce_if_over])
 
-        # For old alrea, check if there are no remaining clients, and if so, cancel any existing
+        # For old area, check if there are no remaining clients, and if so, cancel any existing
         # lurk callout timer that may have been imposed on the area
         if not old_area.clients and old_area.lurk_length > 0:
             old_area.lurk_length = 0

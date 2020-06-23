@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# WARNING!
+# This class will suffer major reworkings for 4.3
+
 import asyncio
 import importlib
 import json
@@ -24,6 +27,7 @@ import ssl
 import sys
 import traceback
 import urllib.request
+import warnings
 
 from server import logger
 from server.aoprotocol import AOProtocol
@@ -261,24 +265,26 @@ class TsuserverDR:
                 self.config[daily_gmpass] = None
 
         # Default values to fill in config.yaml if not present
-        defaults_for_tags = {'discord_link': None,
-                             'max_numdice': 20,
-                             'max_numfaces': 11037,
-                             'max_modifier_length': 12,
-                             'max_acceptable_term': 22074,
-                             'def_numdice': 1,
-                             'def_numfaces': 6,
-                             'def_modifier': '',
-                             'blackout_background': 'Blackout_HD',
-                             'default_area_description': 'No description.',
-                             'party_lights_timeout': 10,
-                             'show_ms2-prober': True,
-                             'showname_max_length': 30,
-                             'sneak_handicap': 5,
-                             'spectator_name': 'SPECTATOR',
-                             'music_change_floodguard': {'times_per_interval': 1,
-                                                         'interval_length': 0,
-                                                         'mute_length': 0}}
+        defaults_for_tags = {
+            'utc_offset': 'local',
+            'discord_link': None,
+            'max_numdice': 20,
+            'max_numfaces': 11037,
+            'max_modifier_length': 12,
+            'max_acceptable_term': 22074,
+            'def_numdice': 1,
+            'def_numfaces': 6,
+            'def_modifier': '',
+            'blackout_background': 'Blackout_HD',
+            'default_area_description': 'No description.',
+            'party_lights_timeout': 10,
+            'show_ms2-prober': True,
+            'showname_max_length': 30,
+            'sneak_handicap': 5,
+            'spectator_name': 'SPECTATOR',
+            'music_change_floodguard': {'times_per_interval': 1,
+                                        'interval_length': 0,
+                                        'mute_length': 0}}
 
         for (tag, value) in defaults_for_tags.items():
             if tag not in self.config:
@@ -557,7 +563,19 @@ class TsuserverDR:
             for item in specific_music_list:
                 prepared_music_list.append(item['category'])
                 for song in item['songs']:
-                    prepared_music_list.append(song['name'])
+                    if 'length' not in song:
+                        name, length = song['name'], -1
+                    else:
+                        name, length = song['name'], song['length']
+
+                    # Check that length is a number, and if not, abort.
+                    if not isinstance(length, (int, float)):
+                        msg = ("The music list expected a numerical length for track '{}', but "
+                               "found it had length '{}'.").format(song['name'], song['length'])
+                        raise ServerError.MusicInvalidError(msg)
+
+                    prepared_music_list.append(name)
+
         except KeyError as err:
             msg = ("The music list expected key '{}' for item {}, but could not find it."
                    .format(err.args[0], item))
@@ -566,6 +584,7 @@ class TsuserverDR:
             msg = ("The music list expected songs to be listed for item {}, but could not find any."
                    .format(item))
             raise ServerError.MusicInvalid(msg)
+
         return prepared_music_list
 
     def is_valid_char_id(self, char_id):

@@ -1,3 +1,9 @@
+# A sample music list document
+# Each item in a music list is a music category, under which you may list songs.
+# Each song has (and requires) a name field, and an optional length in seconds field. If given length, the track will automatically loop after length seconds.
+# To make a track not loop, do not include the length field.
+# Start each music category with a -
+
 - category: --Deadly Life--
   songs: 
     - name: "BOX 15.mp3"

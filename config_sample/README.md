@@ -1,7 +1,7 @@
 # Server configuration files
 
 ## Before you get started...
-With your copy of this software, you should check that you have the following files stored in `\config_sample\`:
+With your copy of this software, you should check that you have the following files in `\config_sample\`:
 
 * `config.yaml`  
 * `area_lists.yaml`  
@@ -17,15 +17,15 @@ As well as two folders:
 * `area_lists`  
 * `music_lists`  
 
-Make sure you have all of the above inside this folder (otherwise, the server may hang while starting).
+Make sure you have all of the above inside this folder (otherwise, the server may hang or crash while starting).
 
-In order to customize your server, you would be modifying the files in this configuration folder. You should be able to edit these files with any text editor, including Notepad, Nano, Vim, etc. 
+In order to customize your server, you would be modifying the files in this configuration folder. You should be able to edit these files with any text editor, including Notepad, Notepad++, Nano, Vim, etc. 
 
 ### YAML
 
-* The configuration files follow YAML syntax. YAML is a human-readable markup language, so you should be able to pick up the syntax rather quickly. However, if you feel like a short tutorial could come handy, the guide from [Rollout](https://rollout.io/blog/yaml-tutorial-everything-you-need-get-started/) is a great starting guide. You can also use external YAML linters such as the one [here](https://codebeautify.org/yaml-validator) in order to check if your YAML syntax is valid. 
+* The configuration files follow YAML syntax. YAML is a human-readable markup language, so you should be able to pick up the syntax rather quickly. However, if you feel like a short tutorial could come handy, the guide from [Rollout](https://rollout.io/blog/yaml-tutorial-everything-you-need-get-started/) is a great starting point. You can also use external YAML linters such as the one [here](https://codebeautify.org/yaml-validator) in order to check if your YAML syntax is valid. 
 * By convention, TsuserverDR uses two spaces to indent (not tabulations).
-* **As long as some configuration files have invalid YAML syntax or attributes TsuserverDR does not like, your server will very likely not start.**
+* **As long as some configuration files have invalid YAML syntax or attributes TsuserverDR does not like, your server will very likely not start.** The server will try its best to let you know what is wrong, but this is not guaranteed.
 
 ## Files
 

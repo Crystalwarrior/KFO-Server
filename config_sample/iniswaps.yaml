@@ -1,3 +1,31 @@
+# A sample allowed iniswaps document
+# Allowed iniswaps for a player are only enforced for them if their area restricts iniswaps.
+# List mutually permissible swaps all as part of the same item
+
+# For example, if your iniswap document is just this
+# -
+#    - Phantom_HD
+#    - Spam_HD
+#    - Persona1
+# -
+#    - Persona2
+#    - Eggs_HD
+# These are the only permisible iniswaps in an area that restricts iniswaps
+#
+# Original Character | Iniswapped to Character
+# --------------------------------------------
+# Phantom_HD         | Spam_HD
+# Phantom_HD         | Persona1
+# Spam_HD            | Phantom_HD
+# Spam_HD            | Persona1
+# Persona1           | Phantom_HD
+# Persona1           | Spam_HD
+# Persona2           | Eggs_HD
+# Eggs_HD            | Persona2
+# 
+# and a player whose iniswap combination is not in this list will not be allowed to talk IC.
+# Indicate mutually permissible swaps all as part of the same item.
+
 -
   - Apollo
   - Apollo Leg
