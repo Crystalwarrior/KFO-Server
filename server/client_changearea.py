@@ -554,6 +554,18 @@ class ClientChangeArea:
                 #                      client.area.name, client.area.id), client)
 
                 client.notify_change_area(area, old_dname, ignore_bleeding=ignore_bleeding)
+                old_area.publisher.publish('area_client_left', {
+                    'client': client,
+                    'new_area': area,
+                    'old_displayname': old_dname,
+                    'ignore_bleeding': ignore_bleeding,
+                    })
+                area.publisher.publish('area_client_entered', {
+                    'client': client,
+                    'old_area': old_area,
+                    'old_displayname': old_dname,
+                    'ignore_bleeding': ignore_bleeding,
+                    })
 
         old_area.remove_client(client)
         client.area = area

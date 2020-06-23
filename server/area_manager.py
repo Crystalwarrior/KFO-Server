@@ -28,8 +28,9 @@ import time
 
 from server import logger
 from server.constants import Constants
-from server.exceptions import AreaError, ServerError
 from server.evidence import EvidenceList
+from server.exceptions import AreaError, ServerError
+from server.subscriber import Publisher
 
 class AreaManager:
     """
@@ -55,9 +56,11 @@ class AreaManager:
             """
 
             self.clients = set()
-            self.invite_list = {}
             self.id = area_id
             self.server = server
+            self.publisher = Publisher(self)
+
+            self.invite_list = {}
             self.music_looper = None
             self.next_message_time = 0
             self.hp_def = 10
@@ -817,6 +820,18 @@ class AreaManager:
 
             self._in_zone = new_zone_value
 
+        def destroy(self):
+            """
+            Emit destruction signal.
+
+            Returns
+            -------
+            None.
+
+            """
+
+            self.publisher.publish('area_destroyed', dict())
+
         def __repr__(self):
             """
             Return a string representation of the area.
@@ -1010,6 +1025,11 @@ class AreaManager:
             for party in area.parties.copy():
                 party.area = new_area
                 new_area.add_party(party)
+
+        # Once that is done, indicate old areas to emit destruction signals
+        # This is done separately
+        for area in old_areas:
+            area.destroy()
 
         # Update the server's area list only once everything is successful
         self.server.old_area_list = self.server.area_list

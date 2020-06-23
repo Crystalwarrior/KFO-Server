@@ -19,17 +19,20 @@
 # possible keys: ip, OOC, id, cname, ipid, hdid
 
 import datetime
+import functools
 import hashlib
 import random
 import string
 import time
 import traceback
 
+
 from server import logger
 from server.constants import Constants, TargetType
 from server.exceptions import ArgumentError, AreaError, ClientError, ServerError
 from server.exceptions import PartyError, ZoneError, SteptimerError
 from server.client_manager import ClientManager
+from server.gamewithareas import GameWithAreas
 
 """ <parameter_name>: required parameter
 {parameter_name}: optional parameter
@@ -6588,6 +6591,10 @@ def ooc_cmd_stcb(client: ClientManager.Client, arg: str):
     x = float(arg)
     t.change_time_by(x)
     client.send_ooc('Changed time by {}'.format(x))
+
+def ooc_cmd_game(client: ClientManager.Client, arg: str):
+    game_with_areas = functools.partial(GameWithAreas, areas={client.area}, require_character=True)
+    client.server.game_manager.new_game(game_with_areas, creator=client)
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

@@ -37,38 +37,38 @@ class PlayerGroupManager:
     Contains the player group object definition, methods for creating and deleting them, as well as
     some observer methods.
 
-    Attributes
-    ----------
-    _server : TsuserverDR
-        Server the player group manager belongs to.
-    _playergroup_limit : int or None
-        If an int, it is the maximum number of player groups this manager supports. If None, the
-        manager may manage an arbitrary number of groups.
-    _default_playergroup_type : PlayerGroupManager.PlayerGroup or functools.partial
-        The type of player groups this player group manager will create by default when ordered to
-        create a new one.
-    _user_to_groups : dict of ClientManager.Client to set of PlayerGroupManager.PlayerGroup
-        Mapping of users to the player groups managed by this manager they belong to.
-    _id_to_group : dict of str to PlayerGroupManager.PlayerGroup
-        Mapping of player group IDs to player groups that this manager manages.
-
-    Invariants
-    ----------
-    1. If `self._playergroup_limit` is an int, then `len(self._id_to_group) <=
-       self._playergroup_limit`.\\
-    2. For every player group `(playergroup_id, playergroup)` in `self._id_to_group.items()`:\\
-        a. `playergroup._playergroup_id == playergroup_id`.\\
-        b. `playergroup._players` is a subset of `self._user_to_groups.keys()`.\\
-        c. `playergroup.is_unmanaged()` is False.\\
-    3. For all pairs of distinct groups `group1` and `group2` in `self._id_to_group.values()`:\\
-        a. `group1._playergroup_id != group2._playergroup_id`.\\
-    4. For every player `player` in `self._user_to_groups.keys()`:\\
-        a. `self._user_to_groups[player]` is a non-empty set.\\
-        b. `self._user_to_groups[player]` is a subset of `self._id_to_group.values()`.\\
-        c. For every group `group` in `self._user_to_groups[player]`, `player` belongs to `group`.\\
-    5. Each player group it manages also satisfies its structural invariants.\\
-
     """
+
+    # (Private) Attributes
+    # --------------------
+    # _server : TsuserverDR
+    #     Server the player group manager belongs to.
+    # _playergroup_limit : int or None
+    #     If an int, it is the maximum number of player groups this manager supports. If None, the
+    #     manager may manage an arbitrary number of groups.
+    # _default_playergroup_type : PlayerGroupManager.PlayerGroup or functools.partial
+    #     The type of player groups this player group manager will create by default when ordered
+    #     to create a new one.
+    # _user_to_groups : dict of ClientManager.Client to set of PlayerGroupManager.PlayerGroup
+    #     Mapping of users to the player groups managed by this manager they belong to.
+    # _id_to_group : dict of str to PlayerGroupManager.PlayerGroup
+    #     Mapping of player group IDs to player groups that this manager manages.
+
+    # Invariants
+    # ----------
+    # 1. If `self._playergroup_limit` is an int, then `len(self._id_to_group) <=
+    #    self._playergroup_limit`.
+    # 2. For every player group `(playergroup_id, playergroup)` in `self._id_to_group.items()`:
+    #     a. `playergroup._playergroup_id == playergroup_id`.
+    #     b. `playergroup._players` is a subset of `self._user_to_groups.keys()`.
+    #     c. `playergroup.is_unmanaged()` is False.
+    # 3. For all pairs of distinct groups `group1` and `group2` in `self._id_to_group.values()`:
+    #     a. `group1._playergroup_id != group2._playergroup_id`.
+    # 4. For every player `player` in `self._user_to_groups.keys()`:
+    #     a. `self._user_to_groups[player]` is a non-empty set.
+    #     b. `self._user_to_groups[player]` is a subset of `self._id_to_group.values()`.
+    #     c. For every group `group` in `self._user_to_groups[player]`, `player` belongs to `group`.
+    # 5. Each player group it manages also satisfies its structural invariants.
 
     class PlayerGroup:
         """
@@ -87,55 +87,56 @@ class PlayerGroupManager:
         it is managing (it will unmanage it), so no further mutator public method calls would be
         allowed on the player group.
 
-        (Private) Attributes
-        --------------------
-        _server : TsuserverDR
-            Server the player group belongs to.
-        _manager : PlayerGroupManager
-            Manager for this player group.
-        _playergroup_id : str
-            Identifier for this player group.
-        _player_limit : int or None.
-            If an int, it is the maximum number of players the group supports. If None, the group
-            may have an arbitrary number of players.
-        _concurrent_limit : int or None.
-            If an int, it is the maximum number of player groups managed by the same manager as
-            this group that any player part of this player group may belong to, including this
-            player group. If None, no such restriction is considered.
-        _players : set of ClientManager.Client
-            Players of the player group.
-        _leaders : set of ClientManager.Client
-            Leaders of the player group.
-        _invitations : set of clientManager.Client
-            Users invited to (but not part of of) the player group.
-        _require_players : bool
-            If True, the group will disassemble automatically if it loses all its players (but it
-            may start with no players).
-        _require_leaders : bool
-            If True and the group has no leaders but at least one player, it will randomly choose
-            one player to be a leader.
-        _unmanaged : bool
-            If True, the manager this group claims is its manager no longer recognizes it is
-            managing this group, thus no further mutator public method calls would be allowed.
-
-        Invariants
-        ----------
-        1. `self._unmanaged` is False if and only if `self` is in
-           `self._manager._id_to_group.values()`.\\
-        2. If `self._unmanaged`, then `self._players`, `self._invitations`, `self._leaders` are
-           all empty sets.\\
-        3. For every player `player` in `self._players`, `self._manager._user_to_groups[player]`
-           exists and contains `self`.\\
-        4. If `self._player_limit` is not None, then `len(self._players) <= player_limit`.\\
-        5. For every player in `self._leaders`, they also belong in `self._players`.\\
-        6. If `len(self._players) >= 1`, then `self._ever_had_players is True`.\\
-        7. If `self._require_players` is True, then `len(self._players) >= 1 or self._unmanaged`.\\
-        8. If `self._require_leaders` is True and `len(self._players) >= 1`, then
-           `len(self._leaders) >= 1`.\\
-        9. `self._invitations` and `self._players` are disjoint sets.\\
-        10. If `self._require_invitations` is False, then `self._invitations` is the empty set.\\
-
         """
+
+        # (Private) Attributes
+        # --------------------
+        # _server : TsuserverDR
+        #     Server the player group belongs to.
+        # _manager : PlayerGroupManager
+        #     Manager for this player group.
+        # _playergroup_id : str
+        #     Identifier for this player group.
+        # _player_limit : int or None.
+        #     If an int, it is the maximum number of players the group supports. If None, the group
+        #     may have an arbitrary number of players.
+        # _concurrent_limit : int or None.
+        #     If an int, it is the maximum number of player groups managed by the same manager as
+        #     this group that any player part of this player group may belong to, including this
+        #     player group. If None, no such restriction is considered.
+        # _players : set of ClientManager.Client
+        #     Players of the player group.
+        # _leaders : set of ClientManager.Client
+        #     Leaders of the player group.
+        # _invitations : set of clientManager.Client
+        #     Users invited to (but not part of of) the player group.
+        # _require_players : bool
+        #     If True, the group will disassemble automatically if it loses all its players (but it
+        #     may start with no players).
+        # _require_leaders : bool
+        #     If True and the group has no leaders but at least one player, it will randomly choose
+        #     one player to be a leader.
+        # _unmanaged : bool
+        #     If True, the manager this group claims is its manager no longer recognizes it is
+        #     managing this group, thus no further mutator public method calls would be allowed.
+
+        # Invariants
+        # ----------
+        # 1. Each player is a client of the server.
+        # 2. `self._unmanaged` is False if and only if `self` is in
+        #    `self._manager._id_to_group.values()`.
+        # 3. If `self._unmanaged`, then `self._players`, `self._invitations`, `self._leaders` are
+        #    all empty sets.
+        # 4. For every player `player` in `self._players`, `self._manager._user_to_groups[player]`
+        #    exists and contains `self`.
+        # 5. If `self._player_limit` is not None, then `len(self._players) <= player_limit`.
+        # 6. For every player in `self._leaders`, they also belong in `self._players`.
+        # 7. If `len(self._players) >= 1`, then `self._ever_had_players is True`.
+        # 8. If `self._require_players` is True, then `len(self._players) >= 1 or self._unmanaged`.
+        # 9. If `self._require_leaders` is True and `len(self._players) >= 1`, then
+        #    `len(self._leaders) >= 1`.
+        # 10. `self._invitations` and `self._players` are disjoint sets.
+        # 11. If `self._require_invitations` is False, then `self._invitations` is the empty set.
 
         def __init__(self, server, manager, playergroup_id, player_limit=None,
                      concurrent_limit=1, require_invitations=False, require_players=True,
@@ -668,6 +669,13 @@ class PlayerGroupManager:
             """
 
             # 1.
+            for player in self._players:
+                err = (f'For group {self._playergroup_id}, expected that player {player} was a '
+                       f'client of its server {self._server}, but found that was not the case. '
+                       f'|| {self}')
+                assert self._server.is_client(player), err
+
+            # 2.
             err = (f'For group {self._playergroup_id} that is not unmanaged that also claims that '
                    f'it is managed by manager {self._manager}, expected that it recognized that '
                    f'it managed it, but found it did not. || {self}')
@@ -680,7 +688,7 @@ class PlayerGroupManager:
             if self._unmanaged:
                 assert self not in self._manager.get_groups(), err
 
-            # 2.
+            # 3.
             if self._unmanaged:
                 err = (f'For group {self._playergroup_id} that is unmanaged, expected that it had '
                        f'no players, but found it had these players: {self._players} || {self}')
@@ -695,7 +703,7 @@ class PlayerGroupManager:
                        f'no leaders, but found it had these leaders: {self._leaders} || {self}')
                 assert not self._leaders, err
 
-            # 3.
+            # 4.
             for player in self._players:
                 err = (f'For group {self._playergroup_id}, expected that its player {player} is '
                        f'properly recognized in the player to group mapping of the manager of the '
@@ -703,45 +711,45 @@ class PlayerGroupManager:
                 assert (player in self._manager.get_users_in_groups()
                         and self in self._manager.get_groups_of_user(player)), err
 
-            # 4.
+            # 5.
             if self._player_limit is not None:
                 err = (f'For group {self._playergroup_id}, expected that there were at most '
                        f'{self._player_limit} players, but found it had {len(self._players)} '
                        f'players. || {self}')
                 assert len(self._players) <= self._player_limit, err
 
-            # 5.
+            # 6.
             for leader in self._leaders:
                 err = (f'For group {self._playergroup_id}, expected that leader {leader} was a '
                        f'player of it too, but found it was not. || {self}')
                 assert leader in self._players, err
 
-            # 6.
+            # 7.
             if self._players:
                 err = (f'For group {self._playergroup_id}, expected it knew it ever had some '
                        f'players, but found it did not. || {self}')
                 assert self._ever_had_players, err
 
-            # 7.
+            # 8.
             if self._require_players and self._ever_had_players:
                 err = (f'For group {self._playergroup_id}, expected that it was scheduled for '
                        f'deletion after losing all its players, but found it was not. || {self}')
                 assert self._players or self._unmanaged, err
 
-            # 8.
+            # 9.
             if self._require_leaders:
                 err = (f'For group {self._playergroup_id} with some players, expected that there '
                        f'was a leader, but found it had none. || {self}')
                 assert not self._players or self._leaders, err
 
-            # 9.
+            # 10.
             players_also_invited = self._players.intersection(self._invitations)
             err = (f'For group {self._playergroup_id}, expected that all users in the invitation '
                    f'list of the group were not players, but found the following players who were '
                    f'in the invitation list: {players_also_invited}. || {self}')
             assert not players_also_invited, err
 
-            # 10.
+            # 11.
             err = (f'For group {self._playergroup_id} that does not require invitations, expected '
                    f'that no player was invited to the group, but found the following users who '
                    f'were in the invitation list: {self._invitations}. || {self}')

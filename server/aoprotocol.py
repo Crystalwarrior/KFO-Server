@@ -436,6 +436,15 @@ class AOProtocol(asyncio.Protocol):
         else:
             if pargs['pos']  not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
+
+        try:
+            self.client.publisher.publish('client_send_ic_check', {
+                'contents': pargs,
+                })
+        except TsuserverException as ex:
+            self.client.send_ooc(ex)
+            return
+
         self.client.pos = pargs['pos']
 
         # Truncate and alter message if message effect is in place
@@ -537,6 +546,8 @@ class AOProtocol(asyncio.Protocol):
                 # There are no clients who want to pair with this client
                 pargs['charid_pair'] = -1
 
+        self.client.publisher.publish('client_send_ic', {'contents': pargs.copy()})
+
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
             for c in target_area.clients:
@@ -621,7 +632,10 @@ class AOProtocol(asyncio.Protocol):
                 try:
                     function(self.client, arg)
                 except TsuserverException as ex:
-                    self.client.send_ooc(ex)
+                    if ex.message:
+                        self.client.send_ooc(ex)
+                    else:
+                        self.client.send_ooc(type(ex).__name__)
         else:
             # Censor passwords if accidentally said without a slash in OOC
             for password in self.server.config['passwords']:

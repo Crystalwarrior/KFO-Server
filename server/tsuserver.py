@@ -33,6 +33,7 @@ from server.constants import Constants
 from server.client_manager import ClientManager
 from server.districtclient import DistrictClient
 from server.exceptions import ServerError
+from server.game_manager import GameManager
 from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
 from server.steptimer_manager import SteptimerManager
@@ -44,8 +45,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a38'
-        self.internal_version = 'M200615a'
+        self.segment_version = 'a39'
+        self.internal_version = 'M200622a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -79,6 +80,7 @@ class TsuserverDR:
         self.load_characters()
         self.load_commandhelp()
         self.client_manager = client_manager(self)
+        self.game_manager = GameManager(self)
         self.zone_manager = ZoneManager(self)
         self.area_manager = AreaManager(self)
         self.ban_manager = BanManager(self)
@@ -229,6 +231,10 @@ class TsuserverDR:
     def remove_client(self, client):
         client.area.remove_client(client)
         self.client_manager.remove_client(client)
+
+    def is_client(self, client):
+        # This should only be False for clients that have been disconnected.
+        return self.client_manager.is_client(client)
 
     def get_player_count(self):
         # Ignore players in the server selection screen.

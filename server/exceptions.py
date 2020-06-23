@@ -195,6 +195,9 @@ class GameError(TsuserverException):
     class UserDoesNotSatisfyConditionsError(TsuserverException):
         pass
 
+    class UserHasNoCharacterError(TsuserverException):
+        pass
+
     class GameIsEmptyError(TsuserverException):
         pass
 
@@ -233,3 +236,14 @@ class GameError(TsuserverException):
 
     class ManagerInvalidGameIDError(TsuserverException):
         pass
+
+class GameWithAreasError(GameError):
+    class UserNotInAreaError(GameError):
+        pass
+
+    class AreaAlreadyInGameError(GameError):
+        pass
+
+    class AreaNotInGameError(GameError):
+        pass
+

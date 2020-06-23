@@ -72,31 +72,31 @@ class SteptimerManager:
 
     Overwritable Methods
     --------------------
-    _make_new_steptimer_id :
+    get_available_steptimer_id :
         Generate a new steptimer ID. Can be modified to provide different steptimer ID formats.
 
-    (Private) Attributes
-    --------------------
-    _server : TsuserverDR
-        Server the steptimer manager belongs to.
-    _id_to_steptimer : dict of str to self.Steptimer
-        Mapping of steptiomer IDs to steptimers that this manager manages.
-    _steptimer_limit : int or None
-        If an int, it is the maximum number of steptimers this manager supports. If None, the
-        manager may manage an arbitrary number of steptimers.
-
-    Invariants
-    ----------
-    1. If `self._steptimer_limit` is an int, then `len(self._id_to_steptimer) <=`
-    `self._steptimer_limit`.\\
-    2. For every tuple `(steptimer_id, steptimer)` in `self._id_to_group.items()`:\\
-        a. `steptimer._manager = self`.\\
-        b. `steptimer._steptimer_id = steptimer_id`.\\
-    3. For every pair of distinct steptimers `steptimer1` and `steptimer2` in
-    `self._id_to_steptimer.values()`:\\
-        a. `steptimer1._steptimer_id != steptimer1._steptimer_id`.\\
-
     """
+
+    # (Private) Attributes
+    # --------------------
+    # _server : TsuserverDR
+    #     Server the steptimer manager belongs to.
+    # _id_to_steptimer : dict of str to self.Steptimer
+    #     Mapping of steptiomer IDs to steptimers that this manager manages.
+    # _steptimer_limit : int or None
+    #     If an int, it is the maximum number of steptimers this manager supports. If None, the
+    #     manager may manage an arbitrary number of steptimers.
+
+    # Invariants
+    # ----------
+    # 1. If `self._steptimer_limit` is an int, then `len(self._id_to_steptimer) <=`
+    # `self._steptimer_limit`.
+    # 2. For every tuple `(steptimer_id, steptimer)` in `self._id_to_group.items()`:
+    #     a. `steptimer._manager = self`.
+    #     b. `steptimer._steptimer_id = steptimer_id`.
+    # 3. For every pair of distinct steptimers `steptimer1` and `steptimer2` in
+    # `self._id_to_steptimer.values()`:
+    #     a. `steptimer1._steptimer_id != steptimer1._steptimer_id`.
 
     class Steptimer:
         """
@@ -125,7 +125,7 @@ class SteptimerManager:
 
         Class Attributes
         ----------------
-        _FRAME_LENGTH : float
+        FRAME_LENGTH : float
             Length of one frame in seconds assuming 60 FPS.
         DEF_TIMESTEP_LENGTH : float
             Default timestep length of all steptimers of this type.
@@ -136,60 +136,60 @@ class SteptimerManager:
         DEF_MAX_TIMER_VALUE : float
             Default maximum value the apparent timer of all steptimers of this type.
 
-        (Private) Instance Attributes
-        -----------------------------
-        _server : TsuserverDR
-            Server the steptimer belongs to.
-        _manager : SteptimerManager
-            Manager for this steptimer.
-        _steptimer_id : str
-            Identifier for this steptimer.
-        _timer_value : float
-            Number of seconds in the apparent steptimer.
-        _timestep_length : float
-            Number of seconds that tick from the apparent timer every step.
-        _firing_interval : float
-            Number of seconds that must elapse for the apparent timer to tick. It must be a
-            positive number.
-        _min_timer_value : float
-            Minimum value the apparent timer may take. If the timer ticks below this, it will end
-            automatically.
-        _max_timer_value : float
-            Maximum value the apparent timer may take. If the timer ticks above this, it will end
-            automatically.
-        _was_started : bool
-            True if the apparent timer was ever started, False otherwise.
-        _was_terminated : bool
-            True if the steptimer was terminated, False otherwise.
-        _is_paused : bool
-            True if the apparent timer is paused, False otherwise.
-        _just_paused : bool
-            True briefly after the apparent timer is paused, False otherwise.
-        _just_unpaused : bool
-            True briefly after the apparent timer is unpaused, False otherwise.
-        _just_refreshed : bool
-            True briefly after the apparent timer is refreshed, False otherwise.
-        _last_timestep_update : float
-            Time (as per time.time()) when the apparent timer last ticked or was last refreshed,
-            whichever happened later.
-        _time_spent_in_timestep : float
-            Time in seconds the steptimer's current timestep has run, ignoring time paused.
-        _task : asyncio.Task or None
-            Actual timer task. _task is None as long as the steptimer is not started.
-
-        Invariants
-        ----------
-        1. `0 <= self._min_timer_value <= self._timer_value <= self._max_timer_value`\\
-        2. `self._firing_interval > 0`\\
-        3. `self._timestep_length != 0`\\
-        4. `0 <= self.DEF_MIN_TIMER_VALUE <= self.DEF_START_TIMER_VALUE
-        <= self.DEF_MAX_TIMER_VALUE`\\
-        5. `self.DEF_TIMESTEP_LENGTH != 0`\\
-
         """
 
-        _FRAME_LENGTH = 1/60 # Length of one frame in seconds assuming 60 FPS
-        DEF_TIMESTEP_LENGTH = _FRAME_LENGTH
+        # (Private) Attributes
+        # --------------------
+        # _server : TsuserverDR
+        #     Server the steptimer belongs to.
+        # _manager : SteptimerManager
+        #     Manager for this steptimer.
+        # _steptimer_id : str
+        #     Identifier for this steptimer.
+        # _timer_value : float
+        #     Number of seconds in the apparent steptimer.
+        # _timestep_length : float
+        #     Number of seconds that tick from the apparent timer every step.
+        # _firing_interval : float
+        #     Number of seconds that must elapse for the apparent timer to tick. It must be a
+        #     positive number.
+        # _min_timer_value : float
+        #     Minimum value the apparent timer may take. If the timer ticks below this, it will end
+        #     automatically.
+        # _max_timer_value : float
+        #     Maximum value the apparent timer may take. If the timer ticks above this, it will end
+        #     automatically.
+        # _was_started : bool
+        #     True if the apparent timer was ever started, False otherwise.
+        # _was_terminated : bool
+        #     True if the steptimer was terminated, False otherwise.
+        # _is_paused : bool
+        #     True if the apparent timer is paused, False otherwise.
+        # _just_paused : bool
+        #     True briefly after the apparent timer is paused, False otherwise.
+        # _just_unpaused : bool
+        #     True briefly after the apparent timer is unpaused, False otherwise.
+        # _just_refreshed : bool
+        #     True briefly after the apparent timer is refreshed, False otherwise.
+        # _last_timestep_update : float
+        #     Time (as per time.time()) when the apparent timer last ticked or was last refreshed,
+        #     whichever happened later.
+        # _time_spent_in_timestep : float
+        #     Time in seconds the steptimer's current timestep has run, ignoring time paused.
+        # _task : asyncio.Task or None
+        #     Actual timer task. _task is None as long as the steptimer is not started.
+
+        # Invariants
+        # ----------
+        # 1. `0 <= self._min_timer_value <= self._timer_value <= self._max_timer_value`
+        # 2. `self._firing_interval > 0`
+        # 3. `self._timestep_length != 0`
+        # 4. `0 <= self.DEF_MIN_TIMER_VALUE <= self.DEF_START_TIMER_VALUE
+        # <= self.DEF_MAX_TIMER_VALUE`
+        # 5. `self.DEF_TIMESTEP_LENGTH != 0`
+
+        FRAME_LENGTH = 1/60 # Length of one frame in seconds assuming 60 FPS
+        DEF_TIMESTEP_LENGTH = FRAME_LENGTH
         DEF_START_TIMER_VALUE = 0
         DEF_MIN_TIMER_VALUE = 0
         DEF_MAX_TIMER_VALUE = 60*60*6 # 6 hours in seconds

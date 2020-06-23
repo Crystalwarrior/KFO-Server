@@ -24,6 +24,7 @@ from server import fantacrypt
 from server import logger
 from server.exceptions import ClientError, PartyError
 from server.constants import TargetType, Constants, Clients
+from server.subscriber import Publisher
 
 class ClientManager:
     class Client:
@@ -35,6 +36,7 @@ class ClientManager:
             self.can_askchaa = True # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined') # AO version used, established through ID pack
             self.packet_handler = Clients.ClientDRO
+            self.publisher = Publisher(self)
 
             self.hdid = ''
             self.ipid = ipid
@@ -379,7 +381,7 @@ class ClientManager:
                 # And to lurk callouts
                 self.check_lurk()
 
-            old_char = self.get_char_name()
+            old_char, old_char_id = self.get_char_name(), self.char_id
             self.char_id = char_id
             self.char_folder = self.get_char_name() # Assumes players are not iniswapped initially
             self.pos = ''
@@ -390,6 +392,11 @@ class ClientManager:
                                      'your zone ({}).'
                                      .format(self.id, old_char, self.char_folder, self.area.id),
                                      is_zstaff=target_area)
+
+            self.publisher.publish('client_change_character', {
+                'old_char_id': old_char_id,
+                'new_char_id': char_id,
+                })
             logger.log_server('[{}]Changed character from {} to {}.'
                               .format(self.area.id, old_char, self.get_char_name()), self)
 
@@ -998,6 +1005,9 @@ class ClientManager:
                 return 'SERVER_SELECT'
             return self.server.char_list[char_id]
 
+        def has_character(self):
+            return self.char_id not in [-1, None]
+
         def get_showname_history(self):
             info = '== Showname history of client {} =='.format(self.id)
 
@@ -1173,7 +1183,11 @@ class ClientManager:
                                    .format(client.id, client.displayname, client.area.id),
                                    is_zstaff=True)
 
+        client.publisher.publish('client_destroyed', {})
         self.clients.remove(client)
+
+    def is_client(self, client):
+        return client in self.clients
 
     def get_targets(self, client, key, value, local=False):
         #possible keys: ip, OOC, id, cname, ipid, hdid, showname
