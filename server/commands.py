@@ -1065,6 +1065,7 @@ def ooc_cmd_charselect(client: ClientManager.Client, arg: str):
 
     # Open for current user case
     if not arg:
+        client.send_ooc('You opened the character select screen.')
         client.char_select()
 
     # Force open for different user
@@ -1073,6 +1074,11 @@ def ooc_cmd_charselect(client: ClientManager.Client, arg: str):
             raise ClientError('You must be authorized to do that.')
 
         for c in Constants.parse_id_or_ipid(client, arg):
+            client.send_ooc(f'You forced {c.displayname} to open the character select screen.')
+            if client != c:
+                c.send_ooc('You were forced to open the character select screen.')
+            client.send_ooc_others(f'{c.name} forced {c.displayname} to open the character '
+                                   f'select screen ({c.area.id})', not_to={c}, is_officer=True)
             c.char_select()
 
 def ooc_cmd_char_restrict(client: ClientManager.Client, arg: str):

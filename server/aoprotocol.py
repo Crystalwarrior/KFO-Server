@@ -72,8 +72,8 @@ class AOProtocol(asyncio.Protocol):
 
         if len(self.buffer) > 8192:
             msg = self.buffer if len(self.buffer) < 512 else self.buffer[:512] + '...'
-            logger.log_server('Terminated {}: sent {} ({} bytes)'.format(self.client.get_ipreal(),
-                                                                         msg, len(self.buffer)))
+            logger.log_server('Terminated {} (packet too long): sent {} ({} bytes)'
+                              .format(self.client.get_ipreal(), msg, len(self.buffer)))
             self.client.disconnect()
             return
 
@@ -81,6 +81,11 @@ class AOProtocol(asyncio.Protocol):
         for msg in self.get_messages():
             found_message = True
             if len(msg) < 2:
+                # This immediatelly kills any client that does not even try to follow the proper
+                # client protocol
+                msg = self.buffer if len(self.buffer) < 512 else self.buffer[:512] + '...'
+                logger.log_server('Terminated {} (packet too short): sent {} ({} bytes)'
+                                  .format(self.client.get_ipreal(), msg, len(self.buffer)))
                 self.client.disconnect()
                 return
             # general netcode structure is not great
@@ -91,6 +96,7 @@ class AOProtocol(asyncio.Protocol):
                 msg = '#'.join([fanta_decrypt(spl[0])] + spl[1:])
                 logger.log_debug('[INC][RAW]{}'.format(msg), self.client)
             try:
+                # print(f'> {self.client.id}: {msg}')
                 cmd, *args = msg.split('#')
                 self.net_cmd_dispatcher[cmd](self, args)
             except Exception as ex:
@@ -99,8 +105,8 @@ class AOProtocol(asyncio.Protocol):
             # This immediatelly kills any client that does not even try to follow the proper
             # client protocol
             msg = self.buffer if len(self.buffer) < 512 else self.buffer[:512] + '...'
-            logger.log_server('Terminated {}: sent {} ({} bytes)'.format(self.client.get_ipreal(),
-                                                                         msg, len(self.buffer)))
+            logger.log_server('Terminated {} (packet syntax unrecognized): sent {} ({} bytes)'
+                              .format(self.client.get_ipreal(), msg, len(self.buffer)))
             self.client.disconnect()
 
     def connection_made(self, transport, my_protocol=None):
@@ -157,14 +163,20 @@ class AOProtocol(asyncio.Protocol):
                     return False
         return True
 
-    def process_arguments(self, identifier, args, needs_auth=True):
-        expected_pairs = self.client.packet_handler['{}_INBOUND'.format(identifier.upper())].value
-        expected_argument_names = [x[0] for x in expected_pairs]
-        expected_types = [x[1] for x in expected_pairs]
-        if not self.validate_net_cmd(args, *expected_types, needs_auth=needs_auth):
-            return None
+    def process_arguments(self, identifier, args, needs_auth=True, fallback_protocols=None):
+        if fallback_protocols is None:
+            fallback_protocols = list()
 
-        return dict(zip(expected_argument_names, args))
+        packet_type = '{}_INBOUND'.format(identifier.upper())
+        for protocol in [self.client.packet_handler]+fallback_protocols:
+            expected_pairs = protocol[packet_type].value
+            expected_argument_names = [x[0] for x in expected_pairs]
+            expected_types = [x[1] for x in expected_pairs]
+            if not self.validate_net_cmd(args, *expected_types, needs_auth=needs_auth):
+                continue
+
+            return dict(zip(expected_argument_names, args))
+        return None
 
     def net_cmd_hi(self, args):
         """ Handshake.
@@ -209,50 +221,78 @@ class AOProtocol(asyncio.Protocol):
         ID#<pv:int>#<software:string>#<version:string>#%
 
         """
+
         self.client.can_join += 1 # One of two conditions to allow joining
-        self.client.is_ao2 = False
-        self.client.version = (args[0], args[1])
+        def check_client_version():
+            self.client.is_ao2 = False
 
-        if len(args) < 2:
-            return
+            if len(args) < 2:
+                self.client.version = ('AO2', '2.4.x')
+                return False
+            self.client.version = (args[0], args[1])
 
-        version_list = args[1].split('.')
+            version_list = args[1].split('.')
+            if len(version_list) < 3:
+                # Only such version recognized now is CC
+                # CC has args[1] == 'CC - Update (\d+\.)*\d+'
+                if args[1].startswith('CC'):
+                    release = 'CC'
+                    major = float(args[1].split(' ')[-1])
+                    minor = 0
+                else:
+                    return False
+            else:
+                release = int(version_list[0])
+                major = int(version_list[1])
+                minor = int(version_list[2])
 
-        if len(version_list) < 3:
-            return
+                # Versions of Attorney Online prior to 2.2.5 should not receive the new client
+                # instructions implemented in 2.2.5
+                if args[0] != 'AO2':
+                    return False
+                if release < 2:
+                    return False
+                if release == 2:
+                    if major < 2:
+                        return False
+                    if major == 2:
+                        if minor < 5:
+                            return False
 
-        release = int(version_list[0])
-        major = int(version_list[1])
-        minor = int(version_list[2])
+            self.client.is_ao2 = True
+            self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping',
+                                     'fastloading', 'noencryption', 'deskmod', 'evidence',
+                                     'cccc_ic_support', 'looping_sfx', 'additive', 'effects')
 
-        # Versions of Attorney Online prior to 2.2.5 should not receive the new client instructions
-        # implemented in 2.2.5
-        if args[0] != 'AO2':
-            return
-        if release < 2:
-            return
-        if release == 2:
-            if major < 2:
-                return
-            if major == 2:
-                if minor < 5:
-                    return
+            if release == 2:
+                if major >= 8 and major >= 4:
+                    self.client.packet_handler = Clients.ClientAO2d8d4
+                elif major >= 8: # KFO
+                    self.client.packet_handler = Clients.ClientKFO2d8
+                elif major == 7: # AO 2.7
+                    self.client.packet_handler = Clients.ClientAO2d7
+                elif major == 6: # AO 2.6
+                    self.client.packet_handler = Clients.ClientAO2d6
+                elif major == 4 and minor >= 8: # DRO
+                    self.client.packet_handler = Clients.ClientDRO
+                else:
+                    return False # Unrecognized
+            elif release == 'CC':
+                if major >= 24:
+                    self.client.packet_handler = Clients.ClientCC24
+                elif major >= 22:
+                    self.client.packet_handler = Clients.ClientCC22
+                else:
+                    return False # Unrecognized
+            # The only way to make it here is if we have not returned False
+            # If that is the case, we have successfully found a version
+            return True
 
-        self.client.is_ao2 = True
-        self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping', 'fastloading',
-                                 'noencryption', 'deskmod', 'evidence', 'cccc_ic_support',
-                                 'looping_sfx')
-
-        if release == 2 and major >= 8: # KFO
-            self.client.packet_handler = Clients.ClientKFO2d8
-        elif release == 2 and major == 6: # AO 2.6
-            self.client.packet_handler = Clients.ClientAO2d6
-        elif release == 2 and major == 7: # AO 2.7
-            self.client.packet_handler = Clients.ClientAO2d7
-        else:
-            # Not really needed, added here for the sake of completeness
-            # As this is the default packet_handler
+        if not check_client_version():
+            # Warn player they are using an unknown client.
+            # Assume a DRO client instruction set.
             self.client.packet_handler = Clients.ClientDRO
+            self.client.bad_version = True
 
     def net_cmd_ch(self, _):
         """ Periodically checks the connection.
@@ -401,7 +441,6 @@ class AOProtocol(asyncio.Protocol):
             return
         if not self.client.area.can_send_message():
             return
-
         pargs = self.process_arguments('ms', args)
         if not pargs:
             return
@@ -524,7 +563,24 @@ class AOProtocol(asyncio.Protocol):
 
         # Compute pairs
         # Based on tsuserver3.3 code
-        # Only do this if character is paired, which would only happen for AO 2.6 clients
+        # Only do this if character is paired, which would only happen for AO 2.6+ clients
+
+        # Handle AO 2.8 logic
+        # AO 2.8 sends their charid_pair in slightly longer format (\d+\^\d+)
+        # The first bit corresponds to the proper charid_pair, the latter one to whether
+        # the character should appear in front or behind the pair. We still want to extract
+        # charid_pair so pre-AO 2.8 still see the pair; but make it so that AO 2.6 can send pair
+        # messages. Thus, we 'invent' the missing arguments based on available info.
+        if 'charid_pair_pair_order' in pargs:
+            # AO 2.8 sender
+            pargs['charid_pair'] = int(pargs['charid_pair_pair_order'].split('^')[0])
+        elif 'charid_pair' in pargs:
+            # AO 2.6 sender
+            pargs['charid_pair_pair_order'] = f'{pargs["charid_pair"]}^0'
+        else:
+            # E.g. DRO
+            pargs['charid_pair'] = -1
+            pargs['charid_pair_pair_order'] = -1
 
         self.client.charid_pair = pargs['charid_pair'] if 'charid_pair' in pargs else -1
         self.client.offset_pair = pargs['offset_pair'] if 'offset_pair' in pargs else 0
@@ -540,6 +596,7 @@ class AOProtocol(asyncio.Protocol):
         pargs['other_folder'] = ''
         if 'charid_pair' not in pargs or pargs['charid_pair'] < -1:
             pargs['charid_pair'] = -1
+            pargs['charid_pair_pair_order'] = -1
 
         if pargs['charid_pair'] > -1:
             for target in self.client.area.clients:
@@ -562,6 +619,8 @@ class AOProtocol(asyncio.Protocol):
             else:
                 # There are no clients who want to pair with this client
                 pargs['charid_pair'] = -1
+                pargs['offset_pair'] = 0
+                pargs['charid_pair_pair_order'] = -1
 
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
@@ -686,9 +745,14 @@ class AOProtocol(asyncio.Protocol):
             if not self.client.is_dj:
                 self.client.send_ooc('You were blockdj\'d by a moderator.')
                 return
-            if not self.validate_net_cmd(args, ArgType.STR, ArgType.INT):
+            # We have to use fallback protocols for AO2d6 like clients, because if for whatever
+            # reason if they don't set an in-client showname, they send less arguments. In
+            # particular, they behave like DRO.
+            pargs = self.process_arguments('MC', args, fallback_protocols=[Clients.ClientDRO])
+            if not pargs:
                 return
-            if args[1] != self.client.char_id:
+
+            if 'cid' not in pargs or int(pargs['cid']) != self.client.char_id:
                 return
             if self.client.change_music_cd():
                 self.client.send_ooc('You changed song too many times recently. Please try again '
@@ -696,8 +760,8 @@ class AOProtocol(asyncio.Protocol):
                 return
 
             try:
-                self.client.area.play_track(args[0], self.client, raise_if_not_found=True,
-                                            reveal_sneaked=True)
+                self.client.area.play_track(pargs['name'], self.client, raise_if_not_found=True,
+                                            reveal_sneaked=True, pargs=pargs)
             except ServerError.MusicNotFoundError:
                 self.client.send_ooc('Unrecognized area or music `{}`.'.format(args[0]))
             except ServerError:

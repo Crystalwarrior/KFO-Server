@@ -129,8 +129,9 @@ class AreaManager:
                 for char_name in self.restricted_chars:
                     self.server.char_list.index(char_name)
             except ValueError:
-                info = ('Area {} has an unrecognized character {} as a restricted character. '
-                        'Please make sure this character exists and try again.'
+                info = ('Area `{}` has a character `{}` not in the character list of the server '
+                        'listed as a restricted character. Please make sure this character exists '
+                        'and try again.'
                         .format(self.name, char_name))
                 raise AreaError(info)
 
@@ -230,9 +231,9 @@ class AreaManager:
                 self.background_backup = bg
             for c in self.clients:
                 if c.is_blind and not override_blind:
-                    c.send_command('BN', self.server.config['blackout_background'])
+                    c.send_background(name=self.server.config['blackout_background'])
                 else:
-                    c.send_command('BN', self.background)
+                    c.send_background(name=self.background)
 
         def get_chars_unusable(self, allow_restricted=False, more_unavail_chars=None):
             """
@@ -583,22 +584,30 @@ class AreaManager:
 
             return (time.time() * 1000.0 - self.next_message_time) > 0
 
-        def play_track(self, name, client, raise_if_not_found=False, reveal_sneaked=False):
+        def play_track(self, name, client, raise_if_not_found=False, reveal_sneaked=False,
+                       pargs=None):
             """
             Wrapper function to play a music track in an area.
 
             Parameters
             ----------
-            name: str
+            name : str
                 Name of the track to play
-            client: ClientManager.Client
+            client : ClientManager.Client
                 Client who initiated the track change request.
-            raise_if_not_found: boolean, optional
+            effect : int, optional
+                Accompanying effect to the track (only used by AO 2.8.4+). Defaults to 0.
+            raise_if_not_found : boolean, optional
                 If True, it will raise ServerError if the track name is not in the server's music
-                list nor the client's music list. If False, it will not care about it.
-            reveal_sneaked: boolean, optional
+                list nor the client's music list. If False, it will not care about it. Defaults to
+                False.
+            reveal_sneaked : boolean, optional
                 If True, it will change the visibility status of the sender client to True (reveal
-                them). If False, it will keep their visibility as it was.
+                them). If False, it will keep their visibility as it was. Defaults to False.
+            pargs : dict of str to Any
+                If given, they are arguments to an MC packet that was given when the track was
+                requested, and will override any other arguments given. If not, this is ignored.
+                Defaults to None (and converted to an empty dictionary).
 
             Raises
             ------
@@ -607,6 +616,9 @@ class AreaManager:
                 `raise_if_not_found` is True.
             """
 
+            if not pargs:
+                pargs = dict()
+
             try:
                 name, length = self.server.get_song_data(name, c=client)
             except ServerError.MusicNotFoundError:
@@ -614,8 +626,38 @@ class AreaManager:
                     raise
                 name, length = name, -1
 
-            self.play_music(name, client.char_id, length)
-            self.add_music_playing(client, name)
+            if 'name' not in pargs:
+                pargs['name'] = name
+            if 'cid' not in pargs:
+                pargs['cid'] = client.char_id
+            # if 'showname' not in pargs:
+            #     pargs['showname'] = client.displayname
+            pargs['showname'] = client.displayname # Ignore AO shownames
+            if 'loop' not in pargs:
+                pargs['loop'] = -1
+            if 'channel' not in pargs:
+                pargs['channel'] = 0
+            if 'effects' not in pargs:
+                pargs['effects'] = 0
+
+            # self.play_music(name, client.char_id, length, effect=effect)
+            def loop(cid):
+                for client in self.clients:
+                    loop_pargs = pargs.copy()
+                    loop_pargs['cid'] = cid # Overwrite in case cid changed (e.g., server looping)
+                    _, to_send = client.prepare_command('MC', loop_pargs)
+                    client.send_command('MC', *to_send)
+
+                if self.music_looper:
+                    self.music_looper.cancel()
+                if length > 0:
+                    f = lambda: loop(-1) # Server should loop now
+                    self.music_looper = asyncio.get_event_loop().call_later(length, f)
+            loop(pargs['cid'])
+
+            # Record the character name and the track they played.
+            self.current_music_player = client.displayname
+            self.current_music = name
 
             logger.log_server('[{}][{}]Changed music to {}.'
                               .format(self.id, client.get_char_name(), name), client)
@@ -648,21 +690,6 @@ class AreaManager:
             if length > 0:
                 f = lambda: self.play_music(name, -1, length)
                 self.music_looper = asyncio.get_event_loop().call_later(length, f)
-
-        def add_music_playing(self, client, name):
-            """
-            Record the character name and the track they played.
-
-            Parameters
-            ----------
-            client: server.ClientManager.Client
-                Client to record.
-            name: str
-                Track name to record.
-            """
-
-            self.current_music_player = client.displayname
-            self.current_music = name
 
         def add_to_shoutlog(self, client, msg):
             """
@@ -949,8 +976,9 @@ class AreaManager:
 
         unrecognized_areas = temp_reachable_area_names-temp_area_names-{'<ALL>'}
         if unrecognized_areas != set():
-            info = ('Unrecognized area names defined as reachable areas in area list file: {}. '
-                    'Please rename the affected areas and try again.'.format(unrecognized_areas))
+            info = ('The following areas were defined as reachable areas of some areas in the '
+                    'area list file, but were not actually defined as areas: {}. Please rename the '
+                    'affected areas and try again.'.format(unrecognized_areas))
             raise AreaError(info)
 
         # Only once all areas have been created, actually set the corresponding values

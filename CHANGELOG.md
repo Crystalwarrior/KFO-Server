@@ -425,3 +425,11 @@
 
 ### 200524a (4.2.4-post2)
 * Fixed turning lights on in an area before a party disbands raising a silent error
+
+### 200704a (4.2.4-post3)
+* Fixed /toggle_allpasses and /gmlock having broken documentation in README.md (/gmlock is now pending deprecation and should not be used anymore)
+* Improved server error messages for the following situations: missing config folder, unrecognized characters/reachable areas
+* For non-local servers, console now indicates alternative IP to join to if attempting to join the server from the host machine
+* All use cases of /charselect now display status messages
+* Improved client termination messages for abnormal connections and packets
+* Added best-effort support for (upcoming) Attorney Online 2.8 and similar clients. Unrecognized clients will now be warned in OOC when they join

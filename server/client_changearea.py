@@ -560,7 +560,7 @@ class ClientChangeArea:
 
         client.send_command('HP', 1, client.area.hp_def)
         client.send_command('HP', 2, client.area.hp_pro)
-        client.send_command('BN', client.area.background)
+        client.send_background(name=client.area.background)
         client.send_command('LE', *client.area.get_evidence_list(client))
 
         if client.followedby and not ignore_followers and not override_all:

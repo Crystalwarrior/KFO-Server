@@ -36,6 +36,7 @@ class ClientManager:
             self.can_askchaa = True # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined') # AO version used, established through ID pack
             self.packet_handler = Clients.ClientDRO
+            self.bad_version = False
 
             self.hdid = ''
             self.ipid = ipid
@@ -121,6 +122,7 @@ class ClientManager:
             self.mus_change_time = [x * self.mflood_interval for x in range(self.mflood_times)]
 
         def send_raw_message(self, msg):
+            # print(f'< {self.id} {msg}')
             self.transport.write(msg.encode('utf-8'))
 
         def send_command(self, command, *args):
@@ -135,6 +137,42 @@ class ClientManager:
                 self.send_raw_message('{}#{}#%'.format(command, '#'.join([str(x) for x in args])))
             else:
                 self.send_raw_message('{}#%'.format(command))
+
+        def prepare_command(self, identifier, pargs):
+            """
+            Prepare a packet so that the client's specific protocol can recognize it.
+
+            Parameters
+            ----------
+            identifier : str
+                ID of the packet to send.
+            pargs : dict of str to Any
+                Original packet arguments, which will be modified to satisfy the client's protocol.
+                Map is of argument name to argument value.
+
+            Returns
+            -------
+            final_pargs : dict of str to Any
+                Modified packet arguments. Map is of argument name to argument value.
+            to_send : list of str
+                Packet argument values listed in the order the client protocol expects.
+
+            """
+
+            final_pargs = dict()
+            to_send = list()
+
+            outbound_args = self.packet_handler['{}_OUTBOUND'.format(identifier.upper())].value
+
+            for (field, default_value) in outbound_args:
+                try:
+                    value = pargs[field]
+                except KeyError: # If the key was popped/is missing, use defaults then
+                    value = default_value
+                to_send.append(value)
+                final_pargs[field] = value
+
+            return final_pargs, to_send
 
         def send_ooc(self, msg, username=None, allow_empty=False, is_staff=None, is_officer=None,
                      in_area=None, not_to=None, to_blind=None, to_deaf=None, pred=None):
@@ -238,7 +276,7 @@ class ClientManager:
                 # Change "character" parts of IC port
                 if self.is_blind:
                     pargs['anim'] = '../../misc/blank'
-                    self.send_command('BN', self.server.config['blackout_background'])
+                    self.send_background(name=self.server.config['blackout_background'])
                 elif sender == self and self.first_person:
                     last_area, last_args = self.last_ic_notme
                     # Check that the last received message exists and comes from the current area
@@ -299,15 +337,7 @@ class ClientManager:
 
             # This step also takes care of filtering out the packet arguments that the client
             # cannot parse, and also make sure they are in the correct order.
-            final_pargs = dict()
-            to_send = list()
-            for (field, default_value) in self.packet_handler.MS_OUTBOUND.value:
-                try:
-                    value = pargs[field]
-                except KeyError: # Case the key was popped (e.g. in pair code), use defaults then
-                    value = default_value
-                to_send.append(value)
-                final_pargs[field] = value
+            final_pargs, to_send = self.prepare_command('ms', pargs)
 
             # Keep track of packet details in case this was sent by someone else
             # This is used, for example, for first person mode
@@ -334,6 +364,38 @@ class ClientManager:
                           pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
                           msg=msg, pos=pos, cid=cid, ding=ding, color=color, showname=showname)
+
+        def send_background(self, name=None, pos=None):
+            """
+            Send a background packet to a client.
+
+            Parameters
+            ----------
+            name : str, optional
+                Background name. The default is None, and converted to the background of the
+                client's area.
+            pos : str, optional
+                Position of the background to send. The default is None, and converted to the
+                position of the client.
+
+            Returns
+            -------
+            None.
+
+            """
+
+            if name is None:
+                name = self.area.background
+            if pos is None:
+                pos = self.pos
+
+            pargs = {
+                'name': name,
+                'pos': pos
+                }
+
+            _, to_send = self.prepare_command('BN', pargs)
+            self.send_command('BN', *to_send)
 
         def disconnect(self):
             self.transport.close()
@@ -482,9 +544,9 @@ class ClientManager:
             self.is_blind = blind
 
             if self.is_blind:
-                self.send_command('BN', self.server.config['blackout_background'])
+                self.send_background(name=self.server.config['blackout_background'])
             else:
-                self.send_command('BN', self.area.background)
+                self.send_background(name=self.area.background)
 
             self.area_changer.notify_me_blood(self.area, changed_visibility=changed,
                                               changed_hearing=False)
@@ -845,13 +907,17 @@ class ClientManager:
             self.send_command('CharsCheck', *char_list)
             self.send_command('HP', 1, self.area.hp_def)
             self.send_command('HP', 2, self.area.hp_pro)
-            self.send_command('BN', self.area.background)
+            self.send_background(name=self.area.background)
             self.send_command('LE', *self.area.get_evidence_list(self))
             self.send_command('MM', 1)
             self.send_command('OPPASS', fantacrypt.fanta_encrypt(self.server.config['guardpass']))
             if self.char_id is None:
                 self.char_id = -1 # Set to a valid ID if still needed
             self.send_command('DONE')
+
+            if self.bad_version:
+                self.send_ooc(f'Unknown client detected {self.version}. '
+                              f'Assuming standard DRO client protocol.')
 
         def char_select(self):
             self.char_id = -1
@@ -1003,6 +1069,7 @@ class ClientManager:
                 raise ClientError('Invalid position. '
                                   'Possible values: def, pro, hld, hlp, jud, wit.')
             self.pos = pos
+            self.send_command('SP', self.pos) # Send a "Set Position" packet
 
         def set_mod_call_delay(self):
             self.mod_call_time = round(time.time() * 1000.0 + 30000)

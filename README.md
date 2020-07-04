@@ -306,7 +306,7 @@ GMs can:
 * **globalic_pre** "prefix"
     - Ensures only IC messages that start with the prefix are sent to the preestablished area range through /globalic (otherwise, just to the current area), or removes the need for a prefix if not given one.
 * **gmlock**
-    - Locks your area. Prevents CMs and normal users from entering.
+    - Locks your area. Prevents CMs and normal users from entering. WARNING: Pending deprecation.
 * **gmself**
     - Logs all opened multiclients as GM.
 * **guide** "ID/char name/edited-to character/showname/OOC name" "message"
@@ -369,7 +369,7 @@ GMs can:
     - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
 * **st** "message"
     - Sends a message to all active staff members.
-* **toggle_allpasses*
+* **toggle_allpasses**
 	- Changes your ability to receive autopass notifications from players that do not have autopass on. By default it is off.
 * **toggle_allrolls**
     - Changes your ability to receive /roll and /rollp results from other areas. By default it is off.
