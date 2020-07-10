@@ -26,13 +26,15 @@ import string
 import time
 import traceback
 
-
 from server import logger
 from server.constants import Constants, TargetType
 from server.exceptions import ArgumentError, AreaError, ClientError, ServerError
-from server.exceptions import PartyError, ZoneError, SteptimerError
+from server.exceptions import PartyError, ZoneError, SteptimerError, TrialError, NonStopDebateError
 from server.client_manager import ClientManager
+
 from server.gamewithareas import GameWithAreas
+from server.trial_manager import TrialManager
+from server.nonstopdebate import NonStopDebate
 
 """ <parameter_name>: required parameter
 {parameter_name}: optional parameter
@@ -6723,6 +6725,333 @@ def ooc_cmd_game(client: ClientManager.Client, arg: str):
     game_with_areas = functools.partial(GameWithAreas, areas={client.area}, require_character=True)
     client.server.game_manager.new_game(game_with_areas, creator=client)
 
+def ooc_cmd_trial(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.new_trial(creator=client, add_players=False)
+    except TrialError.ManagerTooManyGamesError:
+        raise ClientError('The server has reached its trial limit.')
+    except TrialError.UserHitConcurrentLimitError:
+        raise ClientError('You are already part of another trial.')
+    except TrialError.UserHasNoCharacterError:
+        raise ClientError('You must have a character to create a trial.')
+
+    client.send_ooc(f'You have created trial `{trial.get_id()}` in area {client.area.name}.')
+    trial.add_leader(client)
+
+    for user in client.area.clients:
+        if user == client:
+            continue
+        try:
+            trial.add_player(user)
+        except TrialError.UserHitConcurrentLimitError:
+            client.send_ooc(f'Unable to add player {user.displayname}: they are already part of '
+                            f'another trial.')
+        except TrialError.UserHasNoCharacterError:
+            client.send_ooc(f'Unable to add player {user.displayname}: they must have a '
+                            f'character to join this trial.')
+
+    player_list = '\n'.join([
+        f'[{player.id}] {player.displayname}' for player in trial.get_players()
+        ])
+
+    client.send_ooc(f'These players were automatically added to your trial: \n{player_list}')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] created trial '
+                           f'`{trial.get_id()}` in area {client.area.name} [{client.area.id}].',
+                           is_zstaff_flex=True)
+    client.send_ooc_others(f'You were added to trial `{trial.get_id()}`.',
+                           pred=lambda c: c in trial.get_players())
+
+def ooc_cmd_trial_add(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if client not in trial.get_leaders():
+        raise ClientError('You are not a leader of your trial.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+
+    try:
+        trial.add_player(target)
+    except TrialError.UserNotInAreaError:
+        raise ClientError('This player is not part of an area part of this trial.')
+    except TrialError.UserHasNoCharacterError:
+        raise ClientError('This player must have a character to join this trial.')
+    except TrialError.UserHitConcurrentLimitError:
+        raise ClientError('This player is already part of another trial.')
+    except TrialError.UserAlreadyPlayerError:
+        raise ClientError('This player is already part of this trial.')
+    else:
+        client.send_ooc(f'You added {target.displayname} [{target.id}] to your trial.')
+        client.send_ooc_others(f'(X) added {target.displayname} [{target.id}] to your trial.',
+                               pred=lambda c: c in trial.get_leaders())
+        target.send_ooc(f'You were added to trial `{trial.get_id()}`.')
+
+def ooc_cmd_trial_info(client: ClientManager, arg: str):
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    tid = trial.get_id()
+    area = next(iter(trial.get_areas()))
+    leaders = trial.get_leaders()
+    regulars = trial.get_players(cond=lambda c: c not in leaders)
+
+    num_members = len(leaders.union(regulars))
+    leaders = ', '.join([f'{c.displayname} [{c.id}]' for c in leaders]) if leaders else 'None'
+    regulars = ', '.join([f'{c.displayname} [{c.id}]' for c in regulars]) if regulars else 'None'
+    info = (f'Trial {tid} [{num_members}/-] ({area.id}). '
+            f'Leaders: {leaders}. Regular members: {regulars}.')
+    client.send_ooc(info)
+
+def ooc_cmd_trial_lead(client: ClientManager, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    try:
+        trial.add_leader(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not a player of this trial.')
+    except TrialError.UserAlreadyLeaderError:
+        raise ClientError('You are already a leader of this trial.')
+
+    client.send_ooc('You are now a leader of your trial.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
+                           f'trial.', pred=lambda c: trial.is_leader(client))
+
+def ooc_cmd_trial_kick(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if client not in trial.get_leaders():
+        raise ClientError('You are not a leader of your trial.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+    if client == target:
+        raise PartyError('You cannot kick yourself off your trial.')
+
+    try:
+        trial.remove_player(target)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('This player is not part of your trial.')
+
+    client.send_ooc(f'You have kicked {target.displayname} [{target.id}] off your trial.')
+    target.send_ooc(f'You were kicked off your trial.')
+    client.send_ooc_others(f'(X) {client.name} [{client.id}] has kicked {target.displayname} '
+                           f'[{target.id}] off your trial.',
+                           pred=lambda c: c != target and c in trial.get_leaders())
+
+def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+    except ArgumentError:
+        seconds = 300
+    else:
+        seconds = Constants.parse_time_length(arg) # Also internally validates
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if client not in trial.get_leaders():
+        raise ClientError('You are not a leader of your trial.')
+
+    try:
+        nsd = trial.new_nsd(creator=client, add_players=False, timer_start_value=seconds)
+    except TrialError.ManagerTooManyGamesError:
+        raise ClientError('The trial has reached its NSD limit.')
+    except NonStopDebateError.UserHitConcurrentLimitError:
+        raise ClientError('You are already part of another minigame of your trial.')
+    except NonStopDebateError.UserHasNoCharacterError:
+        raise ClientError('You must have a character to create a trial.')
+
+    client.send_ooc(f'You have created non-stop debate `{nsd.get_id()}` in area '
+                    f'{client.area.name}.')
+    nsd.add_leader(client)
+
+    for user in client.area.clients:
+        if user == client:
+            continue
+        try:
+            nsd.add_player(user)
+        except NonStopDebateError.UserNotPlayerError:
+            client.send_ooc(f'Unable to add player {user.displayname}: they are not part of your '
+                            f'trial.')
+        except NonStopDebateError.UserHitConcurrentLimitError:
+            client.send_ooc(f'Unable to add player {user.displayname}: they are already part of '
+                            f'another minigame.')
+        except NonStopDebateError.UserHasNoCharacterError:
+            client.send_ooc(f'Unable to add player {user.displayname}: they must have a '
+                            f'character to join this minigame.')
+
+    player_list = '\n'.join([
+        f'[{player.id}] {player.displayname}' for player in trial.get_players()
+        ])
+
+    client.send_ooc(f'These players were automatically added to your non-stop debate: '
+                    f'\n{player_list}')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] created a non-stop debate '
+                           f'`{nsd.get_id()}` in area {client.area.name} [{client.area.id}].',
+                           is_zstaff_flex=True)
+    client.send_ooc_others(f'You were added to non-stop debate `{nsd.get_id()}`.',
+                           pred=lambda c: c in trial.get_players())
+
+def ooc_cmd_nsd_add(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a non-stop debate.')
+    if client not in nsd.get_leaders():
+        raise ClientError('You are not a leader of your non-stop debate.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+
+    try:
+        nsd.add_player(target)
+    except NonStopDebateError.UserNotPlayerError:
+        raise ClientError('This player is not part of your trial.')
+    except NonStopDebateError.UserNotInAreaError:
+        raise ClientError('This player is not part of an area part of this non-stop debate.')
+    except NonStopDebateError.UserHasNoCharacterError:
+        raise ClientError('This player must have a character to join this non-stop debate.')
+    except NonStopDebateError.UserHitConcurrentLimitError:
+        raise ClientError('This player is already part of another non-stop debate.')
+    except NonStopDebateError.UserAlreadyPlayerError:
+        raise ClientError('This player is already part of this non-stop debate.')
+    else:
+        client.send_ooc(f'You added {target.displayname} [{target.id}] to your non-stop debate.')
+        client.send_ooc_others(f'(X) added {target.displayname} [{target.id}] to your non-stop '
+                               f'debate.', pred=lambda c: c in trial.get_leaders())
+        target.send_ooc(f'You were added to the non-stop debate `{nsd.get_id()}`.')
+
+def ooc_cmd_nsd_info(client: ClientManager, arg: str):
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a non-stop debate.')
+
+    nid = nsd.get_id()
+    area = next(iter(nsd.get_areas()))
+    leaders = nsd.get_leaders()
+    regulars = nsd.get_players(cond=lambda c: c not in leaders)
+
+    num_members = len(leaders.union(regulars))
+    leaders = ', '.join([f'{c.displayname} [{c.id}]' for c in leaders]) if leaders else 'None'
+    regulars = ', '.join([f'{c.displayname} [{c.id}]' for c in regulars]) if regulars else 'None'
+    info = (f'Non-stop debate {nid} [{num_members}/-] ({area.id}). '
+            f'Leaders: {leaders}. Regular members: {regulars}.')
+    client.send_ooc(info)
+
+def ooc_cmd_nsd_lead(client: ClientManager, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a non-stop debate.')
+
+    try:
+        nsd.add_leader(client)
+    except NonStopDebateError.UserNotPlayerError:
+        raise ClientError('You are not a player of this non-stop debate.')
+    except NonStopDebateError.UserAlreadyLeaderError:
+        raise ClientError('You are already a leader of this non-stop debate.')
+
+    client.send_ooc('You are now a leader of your non-stop debate.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
+                           f'non-stop debate.', pred=lambda c: nsd.is_leader(client))
+
+def ooc_cmd_nsd_kick(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a non-stop debate.')
+    if client not in nsd.get_leaders():
+        raise ClientError('You are not a leader of your non-stop debate.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+    if client == target:
+        raise PartyError('You cannot kick yourself off your non-stop debate.')
+
+    try:
+        nsd.remove_player(target)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('This player is not part of your non-stop debate.')
+
+    client.send_ooc(f'You have kicked {target.displayname} [{target.id}] off your non-stop debate.')
+    target.send_ooc(f'You were kicked off your non-stop debate.')
+    client.send_ooc_others(f'(X) {client.name} [{client.id}] has kicked {target.displayname} '
+                           f'[{target.id}] off your non-stop debate.',
+                           pred=lambda c: c != target and c in trial.get_leaders())
+
+def ooc_cmd_nsd_pause(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a non-stop debate.')
+
+    nsd.set_intermission()
+
+def ooc_cmd_nsd_loop(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a non-stop debate.')
+
+    nsd.set_looping()
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
@@ -6754,7 +7083,11 @@ def ooc_cmd_exec(client: ClientManager.Client, arg: str):
 
     # IF YOU WANT TO DISABLE /exec: SET debug TO 0 (debug = 0)
     # IF YOU WANT TO ENABLE /exec: SET debug TO 1 (debug = 1)
-    debug = 0
+    try:
+        Constants.assert_command(client, arg, is_staff=True)
+    except:
+        return None
+    debug = 1
     if not debug:
         return None
 

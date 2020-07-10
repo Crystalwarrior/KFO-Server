@@ -42,6 +42,7 @@ from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
 from server.steptimer_manager import SteptimerManager
 from server.tasker import Tasker
+from server.trial_manager import TrialManager
 from server.zone_manager import ZoneManager
 
 class TsuserverDR:
@@ -49,8 +50,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a39'
-        self.internal_version = 'M200622a'
+        self.segment_version = 'a41'
+        self.internal_version = 'M200709a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -85,6 +86,7 @@ class TsuserverDR:
         self.load_commandhelp()
         self.client_manager = client_manager(self)
         self.game_manager = GameManager(self)
+        self.trial_manager = TrialManager(self)
         self.zone_manager = ZoneManager(self)
         self.area_manager = AreaManager(self)
         self.ban_manager = BanManager(self)

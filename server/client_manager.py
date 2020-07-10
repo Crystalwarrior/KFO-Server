@@ -29,7 +29,9 @@ from server.subscriber import Publisher
 class ClientManager:
     class Client:
         def __init__(self, server, transport, user_id, ipid, my_protocol=None, ip=None):
-            self.server = server
+            from server.tsuserver import TsuserverDR
+
+            self.server: TsuserverDR = server
             self.transport = transport
             self.area_changer = client_changearea.ClientChangeArea(self)
             self.can_join = 0 # Needs to be 2 to actually connect
@@ -122,6 +124,7 @@ class ClientManager:
             self.mus_change_time = [x * self.mflood_interval for x in range(self.mflood_times)]
 
         def send_raw_message(self, msg):
+            print(f'< {self.id} {msg}')
             self.transport.write(msg.encode('utf-8'))
 
         def send_command(self, command, *args):
@@ -294,6 +297,13 @@ class ClientManager:
                     pargs['showname'] = '???'
                 elif self.show_shownames and sender:
                     pargs['showname'] = sender.showname
+
+            # Apply any custom functions
+            proper_attributes = {attribute for attribute in pargs
+                                 if not attribute.startswith('PER_CLIENT')}
+            for proper_attribute in proper_attributes:
+                if 'PER_CLIENT_'+proper_attribute in pargs:
+                    pargs[proper_attribute] = pargs['PER_CLIENT_'+proper_attribute](self)
 
             # Done modifying IC message
             # Now send it

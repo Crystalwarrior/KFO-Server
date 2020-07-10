@@ -116,6 +116,9 @@ class PlayerGroupManager:
         # _require_leaders : bool
         #     If True and the group has no leaders but at least one player, it will randomly choose
         #     one player to be a leader.
+        # _ever_had_players : bool
+        #    If True, at least once has a player been added successfully the the player group;
+        #    otherwise False.
         # _unmanaged : bool
         #     If True, the manager this group claims is its manager no longer recognizes it is
         #     managing this group, thus no further mutator public method calls would be allowed.
@@ -766,19 +769,20 @@ class PlayerGroupManager:
 
             """
 
-            return (f"PlayerGroupManager.PlayerGroup(server, {self._manager}, "
+            return (f"PlayerGroupManager.PlayerGroup(server, {self._manager.get_id()}, "
                     f"'{self._playergroup_id}', "
                     f"player_limit={self._player_limit}, "
                     f"concurrent_limit={self._concurrent_limit}, "
                     f"require_players={self._require_players}, "
                     f"require_invitations={self._require_invitations}, "
-                    f"require_leaders={self._require_leaders}, "
+                    f"require_leaders={self._require_leaders}) "
                     f"|| "
                     f"players={self._players}, invitations={self._invitations}, "
-                    f"leaders={self._leaders}, unmanaged={self._unmanaged})"
+                    f"leaders={self._leaders}, unmanaged={self._unmanaged}"
                     )
 
-    def __init__(self, server, playergroup_limit=None, default_playergroup_type=None):
+    def __init__(self, server, playergroup_limit=None, default_playergroup_type=None,
+                 available_id_producer=None):
         """
         Create a player group manager object.
 
@@ -791,11 +795,18 @@ class PlayerGroupManager:
         playergroup_type : PlayerGroupManager.PlayerGroup, optional
             The default type of player group this manager will create. Defaults to None (and then
             converted to self.PlayerGroup).
+        available_id_producer : typing.types.FunctionType, optional
+            Function to produce available group IDs. It will override the built-in class method
+            get_available_group_id. Defaults to None (and then converted to the built-in
+            get_available_group_id).
 
         """
 
         if default_playergroup_type is None:
             default_playergroup_type = self.PlayerGroup
+        if available_id_producer is None:
+            available_id_producer = self.get_available_group_id
+        self.get_available_group_id = available_id_producer
 
         self._server = server
         self._default_playergroup_type = default_playergroup_type
@@ -817,8 +828,8 @@ class PlayerGroupManager:
             Class of player group that will be produced. Defaults to None (and converted to the
             default player group created by this player group manager).
         creator : ClientManager.Client, optional
-            The player who created this group. If set, they will also be added to the group if
-            possible. Defaults to None.
+            The player who created this group. If set, they will also be added to the group.
+            Defaults to None.
         player_limit : int or None, optional
             If an int, it is the maximum number of players the player group supports. If None, it
             indicates the player group has no player limit. Defaults to None.
@@ -1078,6 +1089,20 @@ class PlayerGroupManager:
                 return new_group_id
             group_number += 1
         raise PlayerGroupError.ManagerTooManyGroupsError
+
+    def get_id(self):
+        """
+        Return the ID of this manager. This ID is guaranteed to be unique among
+        simultaneously existing managers.
+
+        Returns
+        -------
+        str
+            ID.
+
+        """
+
+        return hex(id(self))
 
     def _find_concurrent_limiting_group(self, user):
         """

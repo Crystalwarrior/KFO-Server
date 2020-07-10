@@ -91,6 +91,7 @@ class AOProtocol(asyncio.Protocol):
                 msg = '#'.join([fanta_decrypt(spl[0])] + spl[1:])
                 logger.log_debug('[INC][RAW]{}'.format(msg), self.client)
             try:
+                print(f'> {self.client.id}: {msg}')
                 cmd, *args = msg.split('#')
                 self.net_cmd_dispatcher[cmd](self, args)
             except Exception as ex:
@@ -430,7 +431,7 @@ class AOProtocol(asyncio.Protocol):
             return
         if pargs['sfx_delay'] < 0:
             return
-        if pargs['button'] not in (0, 1, 2, 3, 4, 5, 6, 7): # Shouts
+        if pargs['button'] not in (0, 1, 2, 3, 4, 5, 6, 7, 8): # Shouts
             return
         if pargs['button'] > 0 and not self.client.area.bullet and not self.client.is_staff():
             self.client.send_ooc('Bullets are disabled in this area.')

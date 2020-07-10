@@ -1,0 +1,663 @@
+# TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
+#
+# Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
+# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+"""
+Module that contains the non-stop debate game.
+
+"""
+
+from enum import Enum, auto
+
+from server.exceptions import ClientError, NonStopDebateError
+from server.trialminigame import TrialMinigame
+
+class NSDMode(Enum):
+    """
+    Modes for a non-stop debate.
+    """
+
+    PRERECORDING = auto()
+    RECORDING = auto()
+    LOOPING = auto()
+    INTERMISSION = auto()
+
+class NonStopDebate(TrialMinigame):
+    """
+    A non-stop debate is a trial game based in its Danganronpa counterpart.
+
+    Attributes
+    ----------
+    listener : Listener
+        Standard listener of the game.
+
+    Callback Methods
+    ----------------
+    _on_area_client_left
+        Method to perform once a client left an area of the game.
+    _on_area_client_entered
+        Method to perform once a client entered an area of the game.
+    _on_area_destroyed
+        Method to perform once an area of the game is marked for destruction.
+    _on_client_send_ic_check
+        Method to perform once a player of the game wants to send an IC message.
+    _on_client_send_ic
+        Method to perform once a player of the game sends an IC message.
+    _on_client_change_character
+        Method to perform once a player of the game has changed character.
+    _on_client_destroyed
+        Method to perform once a player of the game is destroyed.
+
+    """
+
+    # (Private) Attributes
+    # --------------------
+    # _mode : NSDMode
+    #   Current mode of the NSD.
+    # _messages : List of Dict of str to Any
+    #   Recorded messages to loop
+    #
+    # Invariants
+    # ----------
+    # 1. The invariants from the parent class TrialMinigame are satisfied.
+
+    def __init__(self, server, manager, NSD_id, player_limit=None,
+                 concurrent_limit=None, require_invitations=False, require_players=True,
+                 require_leaders=True, require_character=False, team_limit=None,
+                 timer_limit=None, areas=None, trial=None, timer_start_value=300,
+                 playergroup_manager=None):
+        """
+        Create a new non-stop debate (NSD) game. An NSD should not be fully initialized anywhere
+        else other than some manager code, as otherwise the manager will not recognize the NSD.
+
+        Parameters
+        ----------
+        server : TsuserverDR
+            Server the NSD belongs to.
+        manager : GameManager
+            Manager for this NSD.
+        NSD_id : str
+            Identifier of the NSD.
+        player_limit : int or None, optional
+            If an int, it is the maximum number of players the NSD supports. If None, it
+            indicates the NSD has no player limit. Defaults to None.
+        concurrent_limit : int or None, optional
+            If an int, it is the maximum number of games managed by `manager` that any
+            player of this NSD may belong to, including this NSD. If None, it indicates
+            that this NSD does not care about how many other games managed by `manager` each
+            of its players belongs to. Defaults to None.
+        require_invitation : bool, optional
+            If True, players can only be added to the NSD if they were previously invited. If
+            False, no checking for invitations is performed. Defaults to False.
+        require_players : bool, optional
+            If True, if at any point the NSD has no players left, the NSD will
+            automatically be deleted. If False, no such automatic deletion will happen.
+            Defaults to True.
+        require_leaders : bool, optional
+            If True, if at any point the NSD has no leaders left, the NSD will choose a
+            leader among any remaining players left; if no players are left, the next player
+            added will be made leader. If False, no such automatic assignment will happen.
+            Defaults to True.
+        require_character : bool, optional
+            If False, players without a character will not be allowed to join the NSD, and players
+            that switch to something other than a character will be automatically removed from the
+            NSD. If False, no such checks are made. A player without a character is considered
+            one where player.has_character() returns False. Defaults to False.
+        team_limit : int or None, optional
+            If an int, it is the maximum number of teams the NSD supports. If None, it
+            indicates the NSD has no team limit. Defaults to None.
+        timer_limit : int or None, optional
+            If an int, it is the maximum number of steptimers the NSD supports. If None, it
+            indicates the NSD has no steptimer limit. Defaults to None.
+        areas : set of AreaManager.Area, optional
+            Areas the NSD starts with. Defaults to None.
+        trial : TrialManager.Trial, optional
+            Trial the non-stop debate is a part of. Defaults to None.
+        timer_start_value : float, optional
+            In seconds, the length of time the main timer of this non-stop debate will have at the
+            start. It must be a positive number. Defaults to 300 (5 minutes).
+        playergroup_manager : PlayerGroupManager, optional
+            The internal playergroup manager of the game manager. Access to this value is
+            limited exclusively to this __init__, and is only to initialize the internal
+            player group of the NSD.
+
+        Raises
+        ------
+        GameError.ManagerTooManyGamesError
+            If the manager is already managing its maximum number of NSDs.
+
+        """
+
+        self._mode = NSDMode.PRERECORDING
+        self._messages = list()
+        self._message_index = -1
+
+        super().__init__(server, manager, NSD_id, player_limit=player_limit,
+                         concurrent_limit=concurrent_limit, require_invitations=require_invitations,
+                         require_players=require_players, require_leaders=require_leaders,
+                         require_character=require_character, team_limit=team_limit,
+                         timer_limit=timer_limit, areas=areas,
+                         trial=trial, playergroup_manager=playergroup_manager)
+
+        self._timer = None
+        self._message_timer = None
+        self._player_refresh_timer = None
+
+        self._timer_start_value = timer_start_value
+        self._message_refresh_rate = 5
+        self._client_timer_id = 0
+        # To consider: somehow keep spectators in the loop so they get variants/timer updates
+
+    def get_mode(self):
+        """
+        Return the current mode of the non-stop debate.
+
+        Returns
+        -------
+        NSDMode
+            Current mode.
+
+        """
+
+        return self._mode
+
+    def set_recording(self):
+        """
+        Set the NSD to be in recording mode.
+
+        Raises
+        ------
+        NonStopDebateError.NSDAlreadyInModeError
+            If the non-stop debate is already in recording mode.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if self._mode == NSDMode.RECORDING:
+            raise NonStopDebateError.NSDAlreadyInModeError('Non-stop debate is already in this '
+                                                           'mode.')
+
+        self._mode = NSDMode.RECORDING
+        self._timer.unpause_timer()
+        for player in self.get_players():
+            player.send_command('TR', self._client_timer_id)
+        self._player_refresh_timer.unpause_timer()
+
+    def set_intermission(self, delay_variant=0, blankpost=True):
+        """
+        Set the NSD to be in intermission mode. This will pause the NSD timer, terminate the
+        current message timer and order all players to pause their timers and switch to a
+        trial variant.
+
+        Parameters
+        ----------
+        delay_variant : int, optional
+            Time (in seconds) after this method is executed before a change to trial variant order
+            is sent to all players of the NSD. Any number less than 0.016 (length of one frame at
+            60 FPS) is converted to 0.016. The default is 0.
+        blankpost : bool, optional
+            If True, it will send a blank system IC message to every player so that they clear
+            their screens.
+
+        Raises
+        ------
+        NonStopDebateError.NSDAlreadyInModeError
+            If the non-stop debate is already in intermission mode.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if self._mode == NSDMode.INTERMISSION:
+            raise NonStopDebateError.NSDAlreadyInModeError('Non-stop debate is already in this '
+                                                           'mode.')
+        self._mode = NSDMode.INTERMISSION
+
+        if self._timer and not self._timer.is_paused():
+            self._timer.pause_timer()
+        if self._message_timer and not self._message_timer.is_paused():
+            self._message_timer.pause_timer()
+        if self._player_refresh_timer and not self._player_refresh_timer.is_paused():
+            self._player_refresh_timer.pause_timer()
+
+        for player in self.get_players():
+            player.send_command('TP', self._client_timer_id)
+            if blankpost:
+                player.send_ic(msg='', bypass_replace=True) # Blankpost
+
+        def _variant():
+            for player in self.get_players():
+                player.send_command('VA', 'trial')
+
+        variant_timer = self.new_steptimer(start_timer_value=1, timestep_length=-1,
+                                           firing_interval=max(delay_variant, 0.016),
+                                           min_timer_value=0)
+        variant_timer._on_min_end = _variant
+        variant_timer.start_timer()
+
+    def set_looping(self):
+        """
+        Set the NSD to be in looping mode. This will unpause the NSD timer, order all players
+        to switch to an NSD variant and resume their timer, display the first message in the loop
+        and set up a message timer so the messages transition automatically.
+
+        Raises
+        ------
+        NonStopDebateError.NSDAlreadyInModeError
+            If the non-stop debate is already in looping mode.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if self._mode == NSDMode.LOOPING:
+            raise NonStopDebateError.NSDAlreadyInModeError('Non-stop debate is already in this '
+                                                           'mode.')
+
+        self._mode = NSDMode.LOOPING
+        self._message_index = 0
+
+        self._timer.unpause_timer()
+        self._player_refresh_timer.unpause_timer()
+        self._message_timer.unpause_timer()
+
+        for player in self.get_players():
+            player.send_command('VA', 'nsd')
+            player.send_command('TR', self._client_timer_id)
+        self._display_next_message()
+
+    def add_player(self, user):
+        """
+        Make a user a player of the game. By default this player will not be a leader. It will
+        also subscribe the game ot the player so it can listen to its updates.
+
+        It will also send a variant change order to the new player that aligns with the current
+        mode of the NSD.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to add to the game. They must be in an area part of the game.
+
+        Raises
+        ------
+        GameError.GameIsUnmanagedError
+            If the game was scheduled for deletion and thus does not accept any mutator
+            public method calls.
+        GameWithAreasError.UserNotInAreaError
+            If the user is not in an area part of the game.
+        GameError.UserHasNoCharacterError
+            If the user has no character but the game requires that all players have characters.
+        GameError.UserNotInvitedError
+            If the game requires players be invited to be added and the user is not invited.
+        GameError.UserAlreadyPlayerError
+            If the user to add is already a user of the game.
+        GameError.UserHitConcurrentLimitError
+            If the player has reached any of the games it belongs to managed by this game's
+            manager concurrent membership limit, or by virtue of joining this game they
+            will violate this game's concurrent membership limit.
+        GameError.GameIsFullError
+            If the game reached its player limit.
+
+        """
+
+        print('NSD adding', user)
+        super().add_player(user)
+
+        if not self._timer:
+            self._setup_timers()
+        self._update_player_timer(user)
+        if self._timer.is_paused():
+            user.send_command('TP', self._client_timer_id)
+
+        if self._mode in [NSDMode.LOOPING, NSDMode.RECORDING, NSDMode.PRERECORDING]:
+            user.send_command('VA', 'nsd')
+            user.send_command('RT', 'testimony4')
+        elif self._mode == NSDMode.INTERMISSION:
+            user.send_command('VA', 'trial')
+        else:
+            raise RuntimeError(f'Unrecognized mode {self._mode}')
+
+    def remove_player(self, user):
+        """
+        Make a user be no longer a player of this game. If they were part of a team managed by
+        this game, they will also be removed from said team. It will also unsubscribe the game
+        from the player so it will no longer listen to its updates. It will also send an order to
+        the player to go back to its default theme variant.
+
+        If the game required that there it always had players and by calling this method the
+        game had no more players, the game will automatically be scheduled for deletion.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to remove.
+
+        Raises
+        ------
+        GameError.GameIsUnmanagedError
+            If the game was scheduled for deletion and thus does not accept any mutator
+            public method calls.
+        GameError.UserNotPlayerError
+            If the user to remove is already not a player of this game.
+
+        """
+
+        super().remove_player(user)
+        user.send_command('VA', 'trial')
+
+    def _setup_timers(self):
+        """
+        Setup the internal timers.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        self._timer = self.new_steptimer(start_timer_value=self._timer_start_value,
+                                         timestep_length=-0.016,
+                                         firing_interval=0.016, min_timer_value=0)
+        self._timer.start_timer()
+        self._timer.pause_timer()
+
+        PLAYER_REFRESH_RATE = 5
+        self._player_refresh_timer = self.new_steptimer(start_timer_value=0,
+                                                        timestep_length=0.016,
+                                                        firing_interval=0.016,
+                                                        max_timer_value=0.016)
+        def _refresh():
+            for player in self.get_players():
+                self._update_player_timer(player)
+            self.delete_steptimer(self._player_refresh_timer)
+            self._player_refresh_timer = self.new_steptimer(start_timer_value=0,
+                                                            timestep_length=PLAYER_REFRESH_RATE,
+                                                            firing_interval=PLAYER_REFRESH_RATE,
+                                                            max_timer_value=PLAYER_REFRESH_RATE)
+            self._player_refresh_timer._on_max_end = _refresh
+            self._player_refresh_timer.start_timer()
+
+        self._player_refresh_timer._on_max_end = _refresh
+        self._player_refresh_timer.start_timer()
+        self._player_refresh_timer.pause_timer()
+
+        self._message_timer = self.new_steptimer(start_timer_value=0,
+                                                 timestep_length=0.016,
+                                                 firing_interval=0.016,
+                                                 max_timer_value=self._message_refresh_rate)
+
+        self._message_timer._on_max_end = self._display_next_message
+        self._message_timer.start_timer()
+        self._message_timer.pause_timer()
+
+    def _update_player_timer(self, player):
+        player.send_command('TST', self._client_timer_id,
+                            round(self._timer.get_time()*1000))
+        player.send_command('TSS', self._client_timer_id,
+                            round(self._timer.get_timestep_length()*1000))
+        player.send_command('TSF', self._client_timer_id,
+                            round(self._timer.get_firing_interval()*1000))
+
+    def _on_client_send_ic_check(self, player, contents=None):
+        """
+        Check if any of the following situations occur:
+        * If they want to send a message with a bullet other than consent/counter at any point.
+        * If they want to send a message with a bullet before any messages were recorded.
+        * If they want to send a message with a bullet during intermission mode.
+        * If they want to send a message without a bullet during looping mode.
+
+        If none of the above is true, allow the IC message as is.
+
+        Parameters
+        ----------
+        player : ClientManager.Client
+            Player that wants to send the IC message.
+        contents : dict of str to Any
+            Arguments of the IC message as indicated in AOProtocol.
+
+        Raises
+        ------
+        ClientError
+            If any of the above disquaLifying situations is true.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        # Trying to do anything other than counter/consent
+        if contents['button'] not in {0, 1, 2, 7, 8}:
+            raise ClientError('You may not perform that action during a non-stop debate.')
+        # Before a message was even sent
+        if contents['button'] in {1, 2, 7, 8} and self._message_index == -1:
+            raise ClientError('You may not use a bullet now.')
+        # Trying to bullet during intermission
+        if contents['button'] != 0 and self._mode == NSDMode.INTERMISSION:
+            raise ClientError('You may not use a bullet now.')
+        # Trying to talk during looping mode
+        if contents['button'] == 0 and self._mode == NSDMode.LOOPING:
+            raise ClientError('You may not speak now except if using a bullet.')
+        # For perjury
+        if contents['button'] == 8:
+            func = lambda c: 8 if c in {player}.union(self.get_leaders()) else 7
+            contents['PER_CLIENT_button'] = func
+
+    def _on_client_send_ic(self, player, contents=None):
+        """
+        Add message of player to record of messages.
+
+        Parameters
+        ----------
+        player : ClientManager.Client
+            Player that signaled it has sent an IC message.
+        contents : dict of str to Any
+            Arguments of the IC message as indicated in AOProtocol.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if self._mode == NSDMode.PRERECORDING:
+            self.set_recording()
+
+        # Not an elif!
+        if self._mode == NSDMode.RECORDING:
+            # Check if player bulleted during recording mode, and whether it makes sense to do that
+            if contents['button'] > 0:
+                self._break_loop(player, contents)
+            else:
+                self._add_message(player, contents=contents)
+        elif self._mode == NSDMode.INTERMISSION:
+            # Nothing particular
+            pass
+        elif self._mode == NSDMode.LOOPING:
+            # NSD already verified the IC message should go through
+            # This is a break!
+            self._break_loop(player, contents)
+        else:
+            raise RuntimeError(f'Unrecognized mode {self._mode}')
+
+    def _add_message(self, player, contents=None):
+        """
+        Add a message to the log of messages of the NSD. If the NSD timer is paused, it will also
+        resume the timer.
+
+        Parameters
+        ----------
+        player : ClientManager.Client
+            Player who spoke.
+        contents : dict of str to Any
+            Arguments of the IC message as indicated in AOProtocol.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        self._messages.append([player, contents])
+        self._message_index += 1
+        if self._timer.is_paused():
+            self._timer.unpause_timer()
+            for player in self.get_players():
+                player.send_command('TR', self._client_timer_id)
+
+    def _display_next_message(self):
+        """
+        If there are still messages pending in the next NSD loop, send the next one to every player.
+        Otherwise, enter intermission mode.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        self.delete_steptimer(self._message_timer)
+        self._message_timer = self.new_steptimer(start_timer_value=0,
+                                                 timestep_length=0.016,
+                                                 firing_interval=0.016,
+                                                 max_timer_value=self._message_refresh_rate)
+        self._message_timer._on_max_end = self._display_next_message
+        self._message_timer.start_timer()
+
+        if self._message_index < len(self._messages):
+            sender, contents = self._messages[self._message_index]
+            for player in self.get_players():
+                player.send_ic(params=contents, sender=sender)
+                # player.send_command('TST', 0, round(self._timer.get_time()*1000))
+                # player.send_command('TSS', 0, round(self._timer.get_timestep_length()*1000))
+                # player.send_command('TSF', 0, round(self._timer.get_firing_interval()*1000))
+            self._message_index += 1
+        else:
+            self.set_intermission()
+
+    def _break_loop(self, player, contents):
+        """
+        Handle 'break' logic. It will send OOC messages to the breaker and the leaders of the NSD
+        indicating of this event, and set the NSD mode to intermission with a 3 second delay.
+
+        Parameters
+        ----------
+        player : ClientManager.Client
+            Player who 'broke'.
+        contents : dict of str to Any
+            Arguments of the IC message as indicated in AOProtocol.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        bullet_actions = {
+            1: 'consented with',
+            2: 'countered',
+            # 3: 'argued',
+            # 4: 'mc'd',
+            # 5: 'got it',
+            # 6: 'cut',
+            7: 'countered',
+            8: 'committed perjury by countering',
+            }
+        regular_bullet_actions = bullet_actions.copy()
+        regular_bullet_actions[8] = 'countered'
+
+        broken_player, broken_ic = self._messages[self._message_index]
+        action = bullet_actions[contents['button']]
+        regular_action = regular_bullet_actions[contents['button']]
+
+        player.send_ooc(f"You {action} {broken_player.displayname}'s statement "
+                        f"`{broken_ic['text']}`")
+        for leader in self.get_leaders():
+            leader.send_ooc(f"{player.displayname} {action} {broken_player.displayname}'s "
+                            f"statement `{broken_ic['text']}`")
+        for regular_player in self.get_players(cond=lambda c: c != player):
+            regular_player.send_ooc(f"{player.displayname} {regular_action} "
+                                    f"{broken_player.displayname}'s statement "
+                                    f"`{broken_ic['text']}`")
+        self.set_intermission(delay_variant=3, blankpost=False)
+
+    def _check_structure(self):
+        """
+        Assert that all invariants specified in the class description are maintained.
+
+        Raises
+        ------
+        AssertionError
+            If any of the invariants are not maintained.
+
+        """
+
+        # 1.
+        super()._check_structure()
+
+    def __str__(self):
+        """
+        Return a string representation of this non-stop debate.
+
+        Returns
+        -------
+        str
+            Representation.
+
+        """
+
+        return (f"NonStopDebate::{self.get_id()}:{self.get_trial()}"
+                f"{self.get_players()}:{self.get_leaders()}:{self.get_invitations()}"
+                f"{self.get_steptimers()}:"
+                f"{self.get_teams()}:"
+                f"{self.get_areas()}")
+
+    def __repr__(self):
+        """
+        Return a representation of this game.
+
+        Returns
+        -------
+        str
+            Printable representation.
+
+        """
+
+        return (f'NonStopDebate(server, {self._manager.get_id()}, "{self.get_id()}", '
+                f'player_limit={self._playergroup._player_limit}, '
+                f'concurrent_limit={self.get_concurrent_limit()}, '
+                f'require_players={self._playergroup._require_players}, '
+                f'require_invitations={self._playergroup._require_invitations}, '
+                f'require_leaders={self._playergroup._require_leaders}, '
+                f'require_character={self._require_character}, '
+                f'team_limit={self._team_manager._playergroup_limit}, '
+                f'timer_limit={self._timer_manager._steptimer_limit}, '
+                f'areas={self.get_areas()}, '
+                f'trial={self.get_trial().get_id()}) || '
+                f'players={self.get_players()}, '
+                f'invitations={self.get_invitations()}, '
+                f'leaders={self.get_leaders()}, '
+                f'timers={self.get_steptimers()}, '
+                f'teams={self.get_teams()}')

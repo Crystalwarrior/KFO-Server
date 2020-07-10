@@ -114,12 +114,12 @@ class SteptimerManager:
 
         Overwritable Methods
         --------------------
-        _cb_timestep_end_fn :
+        _on_timestep_end :
             Callback function to be executed every time a timestep ends normally.
-        _cb_end_min_fn :
+        _on_min_end :
             Callback function to be executed if the steptimer's apparent timer ticks down to or
             below its minimum timer value.
-        _cb_end_max_fn :
+        _on_max_end :
             Callback function to be executed if the steptimer's apparent timer ticks up to or
             above its maximum timer value.
 
@@ -309,6 +309,21 @@ class SteptimerManager:
 
             return self._steptimer_id
 
+        def was_started(self):
+            """
+            Return True if the apparent timer has been started already, False otherwise.
+
+            Once a steptimer was started, this always returns True, even if it is eventually paused
+            or terminated.
+
+            Returns
+            -------
+            bool
+                True if it was ever started, False otherwise.
+            """
+
+            return self._was_started
+
         def start_timer(self):
             """
             Start the steptimer. Requires the timer was not started and is not terminated.
@@ -339,6 +354,21 @@ class SteptimerManager:
             self._continue_timestep()
             self._check_structure()
 
+        def was_terminated(self):
+            """
+            Return True if the apparent timer has been terminated already, False otherwise.
+
+            A steptimer can be terminated by either manually terminating it via the .terminate_timer
+            method, or by it min-ending or max-ending.
+
+            Returns
+            -------
+            bool
+                True if it was terminated, False otherwise.
+            """
+
+            return self._was_terminated
+
         def terminate_timer(self):
             """
             Terminate the steptimer. Requires the timer not be terminated already.
@@ -360,6 +390,21 @@ class SteptimerManager:
             self._was_terminated = True
             self._refresh()
             self._check_structure()
+
+        def is_paused(self):
+            """
+            Return True if the apparent timer is paused, False otherwise.
+
+            This returns False if the timer was not started!
+
+            Returns
+            -------
+            bool
+                True if paused, False otherwise.
+
+            """
+
+            return self._is_paused
 
         def pause_timer(self):
             """
@@ -429,7 +474,7 @@ class SteptimerManager:
 
         def get_time(self):
             """
-            Get current apparent timer.
+            Get current apparent timer (in seconds).
 
             Returns
             -------
@@ -442,7 +487,7 @@ class SteptimerManager:
 
         def get_firing_interval(self):
             """
-            Get current firing interval.
+            Get current firing interval (in seconds).
 
             Returns
             -------
@@ -453,9 +498,9 @@ class SteptimerManager:
 
             return self._firing_interval
 
-        async def get_timestep_length(self):
+        def get_timestep_length(self):
             """
-            Get current timestep length.
+            Get current timestep length (in seconds).
 
             Returns
             -------
@@ -486,7 +531,6 @@ class SteptimerManager:
             None.
 
             """
-
 
             self._timer_value = float(new_time)
             if self._timer_value < self._min_timer_value:
@@ -605,13 +649,13 @@ class SteptimerManager:
                 self._timer_value = self._min_timer_value
                 if self._timestep_length < 0:
                     self._was_terminated = True
-                    self._cb_end_min_fn()
+                    self._on_min_end()
                     return
             elif self._timer_value >= self._max_timer_value:
                 self._timer_value = self._max_timer_value
                 if self._timestep_length > 0:
                     self._was_terminated = True
-                    self._cb_end_max_fn()
+                    self._on_max_end()
                     return
 
             # This moment represents the instant a timestep resumes from pausing/refreshing
@@ -627,7 +671,7 @@ class SteptimerManager:
             # Reset time spent in timestep and last update to timestep
             if not self._due_continue_timestep_progress:
                 self._reset_subtimestep_elapsed()
-                self._cb_timestep_end_fn()
+                self._on_timestep_end()
 
             adapted_interval = self._firing_interval-self._time_spent_in_timestep
             if adapted_interval < 0:
@@ -637,7 +681,14 @@ class SteptimerManager:
             self._task = Constants.create_fragile_task(self._wait_timestep_end(adapted_interval))
 
         async def _wait_timestep_end(self, time_to_end):
-            await asyncio.sleep(time_to_end)
+            start_time = time.perf_counter()
+            async def _wait():
+                while time.perf_counter() < start_time+time_to_end:
+                    await asyncio.sleep(0)
+            await _wait()
+            # await asyncio.sleep(time_to_end)
+            # b = time.perf_counter()
+            # print(b-a)
             self._timer_value += self._timestep_length
             self._continue_timestep()
 
@@ -728,7 +779,7 @@ class SteptimerManager:
             except asyncio.CancelledError:
                 pass
 
-        def _cb_timestep_end_fn(self):
+        def _on_timestep_end(self):
             """
             Callback function that is executed every time the steptimer is updated due to its
             firing interval elapsing.
@@ -739,9 +790,9 @@ class SteptimerManager:
 
             """
 
-            log_print('Timer {} ticked to {}'.format(self._steptimer_id, self._timer_value))
+            # log_print('Timer {} ticked to {}'.format(self._steptimer_id, self._timer_value))
 
-        def _cb_end_min_fn(self):
+        def _on_min_end(self):
             """
             Callback function that is executed once: once the steptimer time ticks DOWN to at most
             the steptimer minimum timer value.
@@ -752,9 +803,9 @@ class SteptimerManager:
 
             """
 
-            log_print('Timer {} min-ended at {}'.format(self._steptimer_id, self._timer_value))
+            # log_print('Timer {} min-ended at {}'.format(self._steptimer_id, self._timer_value))
 
-        def _cb_end_max_fn(self):
+        def _on_max_end(self):
             """
             Callback function that is executed once: once the steptimer time ticks UP to at least
             the steptimer maximum timer value.
@@ -765,7 +816,7 @@ class SteptimerManager:
 
             """
 
-            log_print('Timer {} max-ended at {}'.format(self._steptimer_id, self._timer_value))
+            # log_print('Timer {} max-ended at {}'.format(self._steptimer_id, self._timer_value))
 
         def _check_structure(self):
             """

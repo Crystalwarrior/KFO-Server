@@ -21,9 +21,9 @@ Module that contains the base game with areas class.
 """
 
 from server.exceptions import GameWithAreasError, GameError
-from server.game_manager import GameManager
+from server.game_manager import _Game
 
-class GameWithAreas(GameManager.Game):
+class GameWithAreas(_Game):
     """
     A game with areas is a game that manages and subscribes to its areas' updates.
     Any player of such a game must be in an area of the game. If a player of the game goes to an
@@ -44,8 +44,15 @@ class GameWithAreas(GameManager.Game):
         Method to perform once a client entered an area of the game.
     _on_area_destroyed
         Method to perform once an area of the game is marked for destruction.
-    on_client_send_ic
+    _on_client_send_ic_check
+        Method to perform once a player of the game wants to send an IC message.
+    _on_client_send_ic
         Method to perform once a player of the game sends an IC message.
+    _on_client_change_character
+        Method to perform once a player of the game has changed character.
+    _on_client_destroyed
+        Method to perform once a player of the game is destroyed.
+
     """
 
     # (Private) Attributes
@@ -60,7 +67,7 @@ class GameWithAreas(GameManager.Game):
 
     def __init__(self, server, manager, game_id, player_limit=None,
                  concurrent_limit=None, require_invitations=False, require_players=True,
-                 require_leaders=True, require_character=False, creator=None, team_limit=None,
+                 require_leaders=True, require_character=False, team_limit=None,
                  timer_limit=None, areas=None, playergroup_manager=None):
         """
         Create a new game. A game should not be fully initialized anywhere else other than
@@ -99,9 +106,6 @@ class GameWithAreas(GameManager.Game):
             that switch to something other than a character will be automatically removed from the
             game. If False, no such checks are made. A player without a character is considered
             one where player.has_character() returns False. Defaults to False.
-        creator : ClientManager.Client, optional
-            The player who created this group. If set, they will also be added to the group if
-            possible. Defaults to None (and no player is automatically added).
         team_limit : int or None, optional
             If an int, it is the maximum number of teams the game supports. If None, it
             indicates the game has no team limit. Defaults to None.
@@ -117,15 +121,8 @@ class GameWithAreas(GameManager.Game):
 
         Raises
         ------
-        GameError.UserHasNoCharacterError
-            If the game requires all its players have characters, and the given creator of the game
-            has no character.
-        PlayerGroupError.ManagerTooManyGroupsError
+        GameError.ManagerTooManyGamesError
             If the manager is already managing its maximum number of games.
-        PlayerGroupError.UserHitGroupConcurrentLimitError.
-            If `creator` has reached the concurrent membership limit of any of the games it
-            belongs to managed by this manager, or by virtue of joining this game the creator
-            they will violate this game's concurrent membership limit.
 
         """
 
@@ -134,17 +131,19 @@ class GameWithAreas(GameManager.Game):
         super().__init__(server, manager, game_id, player_limit=player_limit,
                          concurrent_limit=concurrent_limit, require_invitations=require_invitations,
                          require_players=require_players, require_leaders=require_leaders,
-                         require_character=require_character, creator=creator,
+                         require_character=require_character,
                          team_limit=team_limit, timer_limit=timer_limit,
                          playergroup_manager=playergroup_manager)
+
+        for area in areas:
+            self.add_area(area)
+
         self.listener.update_events({
             'area_client_left': self._on_area_client_left,
             'area_client_entered': self._on_area_client_entered,
             'area_destroyed': self._on_area_destroyed,
             })
 
-        for area in areas:
-            self.add_area(area)
 
     def add_player(self, user):
         """
@@ -169,7 +168,7 @@ class GameWithAreas(GameManager.Game):
             If the game requires players be invited to be added and the user is not invited.
         GameError.UserAlreadyPlayerError
             If the user to add is already a user of the game.
-        GameError.UserHitGameConcurrentLimitError
+        GameError.UserHitConcurrentLimitError
             If the player has reached any of the games it belongs to managed by this game's
             manager concurrent membership limit, or by virtue of joining this game they
             will violate this game's concurrent membership limit.
@@ -188,8 +187,7 @@ class GameWithAreas(GameManager.Game):
 
     def add_area(self, area):
         """
-        Add an area to this game's set of areas. If the area is already a part of the game, do
-        nothing.
+        Add an area to this game's set of areas.
 
         Parameters
         ----------
@@ -337,7 +335,7 @@ class GameWithAreas(GameManager.Game):
 
         """
 
-        return (f'GameWithAreas(server, {self._manager}, "{self.get_id()}", '
+        return (f'GameWithAreas(server, {self._manager.get_id()}, "{self.get_id()}", '
                 f'player_limit={self._playergroup._player_limit}, '
                 f'concurrent_limit={self.get_concurrent_limit()}, '
                 f'require_players={self._playergroup._require_players}, '
@@ -345,13 +343,13 @@ class GameWithAreas(GameManager.Game):
                 f'require_leaders={self._playergroup._require_leaders}, '
                 f'require_character={self._require_character}, '
                 f'team_limit={self._team_manager._playergroup_limit}, '
-                f'timer_limit={self._timer_manager._steptimer_limit}, || '
+                f'timer_limit={self._timer_manager._steptimer_limit}, '
+                f'areas={self.get_areas()}) || '
                 f'players={self.get_players()}, '
                 f'invitations={self.get_invitations()}, '
                 f'leaders={self.get_leaders()}, '
                 f'timers={self.get_steptimers()}, '
-                f'teams={self.get_teams()}, '
-                f'areas={self.get_areas()})')
+                f'teams={self.get_teams()}')
 
     def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
                              ignore_bleeding=False):
@@ -381,7 +379,7 @@ class GameWithAreas(GameManager.Game):
         """
 
         print('Received LEFT', area, client, new_area, old_displayname, ignore_bleeding)
-        if new_area not in self._areas:
+        if client in self.get_players() and new_area not in self._areas:
             self.remove_player(client)
 
         self._check_structure()

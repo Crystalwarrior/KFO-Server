@@ -201,7 +201,7 @@ class GameError(TsuserverException):
     class UserAlreadyLeaderError(TsuserverException):
         pass
 
-    class UserHitGameConcurrentLimitError(TsuserverException):
+    class UserHitConcurrentLimitError(TsuserverException):
         pass
 
     class UserInNoGameError(TsuserverException):
@@ -278,3 +278,12 @@ class GameWithAreasError(GameError):
     class AreaNotInGameError(GameError):
         pass
 
+@recreate_subexceptions
+class TrialError(GameWithAreasError):
+    class UserNotInMinigameError(GameWithAreasError):
+        pass
+
+@recreate_subexceptions
+class NonStopDebateError(GameWithAreasError):
+    class NSDAlreadyInModeError(GameWithAreasError):
+        pass
