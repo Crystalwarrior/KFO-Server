@@ -50,8 +50,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a41'
-        self.internal_version = 'M200709a'
+        self.segment_version = 'a42'
+        self.internal_version = 'M200710a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -146,6 +146,10 @@ class TsuserverDR:
 
         logger.log_pdebug('Server should be now accessible from {}:{}:{}'
                           .format(host_ip, self.config['port'], server_name))
+        if not self.config['local']:
+            logger.log_pdebug('If you want to join your server from this device, you may need to '
+                              'join with this IP instead: 127.0.0.1:{}:localhost'
+                              .format(self.config['port']))
 
         if self.config['local']:
             self.local_connection = asyncio.ensure_future(self.tasker.do_nothing(), loop=self.loop)

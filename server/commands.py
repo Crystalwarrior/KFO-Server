@@ -131,7 +131,7 @@ def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='&1-2', split_spaces=True)
-
+    
     arg = arg.split(' ')
 
     if not client.is_mod and not client.is_cm and client.area.lobby_area:
@@ -1071,6 +1071,7 @@ def ooc_cmd_charselect(client: ClientManager.Client, arg: str):
 
     # Open for current user case
     if not arg:
+        client.send_ooc('You opened the character select screen.')
         client.char_select()
 
     # Force open for different user
@@ -1079,6 +1080,11 @@ def ooc_cmd_charselect(client: ClientManager.Client, arg: str):
             raise ClientError('You must be authorized to do that.')
 
         for c in Constants.parse_id_or_ipid(client, arg):
+            client.send_ooc(f'You forced {c.displayname} to open the character select screen.')
+            if client != c:
+                c.send_ooc('You were forced to open the character select screen.')
+            client.send_ooc_others(f'{c.name} forced {c.displayname} to open the character '
+                                   f'select screen ({c.area.id})', not_to={c}, is_officer=True)
             c.char_select()
 
 def ooc_cmd_char_restrict(client: ClientManager.Client, arg: str):
@@ -2997,7 +3003,7 @@ def ooc_cmd_make_gm(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True)
-
+    
     target = Constants.parse_id(client, arg)
 
     if not (client.is_cm or client.is_mod) and target not in client.get_multiclients():
@@ -4947,26 +4953,7 @@ def ooc_cmd_time12(client: ClientManager.Client, arg: str):
         current_time = current_time_str.strftime('%a %b %e %I:%M:%S %p (UTC{}) %Y'
                                                  .format(offset_str))
     client.send_ooc(current_time)
-
-def ooc_cmd_time_est(client, arg):
-    """
-    Return the current server date and time in Eastern Standard Time.
-
-    SYNTAX
-    /time_est
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /time_est         :: May return something like "Sat Apr 27 09:04:47 AM 2019"
-    """
-
-    Constants.assert_command(client, arg, parameters='=0')
-
-    est = datetime.datetime.utcnow() - datetime.timedelta(hours=5)
-    client.send_ooc(est.strftime("%a %b %e %I:%M:%S %p %Y"))
-
+    
 def ooc_cmd_timer(client: ClientManager.Client, arg: str):
     """
     Start a timer.
@@ -7051,7 +7038,7 @@ def ooc_cmd_nsd_loop(client: ClientManager.Client, arg: str):
         raise ClientError('You are not part of a non-stop debate.')
 
     nsd.set_looping()
-
+    
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

@@ -21,6 +21,8 @@
 # WARNING!
 # This class will suffer major reworkings for 4.3
 
+import os
+import sys
 import asyncio
 import traceback
 import sys
@@ -74,6 +76,19 @@ def main():
     loop.set_exception_handler(handle_exception)
 
     try:
+        # Check that config folder exists
+        if not os.path.exists('config'):
+            # If not, check if config_sample folder exists (common setup mistake)
+            if os.path.exists('config_sample'):
+                msg = ('Unable to locate the `config` folder. However, a `config_sample` folder '
+                       'was found. Please rename `config_sample` to `config` as instructed in the '
+                       'README and try again.')
+                raise RuntimeError(msg)
+            # Otherwise, something went wrong.
+            msg = ('Unable to locate the `config` folder. Please make sure the folder exists and '
+                   'is named correctly and try again.')
+            raise RuntimeError(msg)
+            
         current_python_tuple = sys.version_info
         current_python_simple = 'Python {}.{}.{}'.format(*current_python_tuple[:3])
         if current_python_tuple < (3, 7):

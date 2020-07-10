@@ -77,9 +77,9 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
 
         self.c0.make_mod(over=False)
         self.c0.discard_all() # Discard all messages related to the zone that might clog next line
-
         self.c4.make_mod(over=False)
         self.c4.discard_all()
+        
         self.c0.ooc('/zone {}, {}'.format(1, 3))
         self.c0.discard_all() # Discard notification for logging in while in zone
         self.c1.discard_all() # Discard notification for zone creation

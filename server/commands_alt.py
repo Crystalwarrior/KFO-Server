@@ -86,10 +86,3 @@ def ooc_cmd_showname_list(client, arg):
     """
 
     do_command('showname_areas', client, arg)
-
-def ooc_cmd_zg(client, arg):
-    """
-    Alias for /zone_global.
-    """
-
-    do_command('zone_global', client, arg)

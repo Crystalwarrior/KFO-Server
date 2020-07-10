@@ -13,7 +13,6 @@ Requires Python 3.7-3.8 and PyYAML (follow instructions below to install).
   - You can download Python from its official website [here](https://www.python.org/downloads/).
   - If your system supports it, it is recommended that you use a separate virtual environment, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python).
   - If prompted during the installation to add `python` as a PATH environment variable, accept this option.
-  - If you have Python 3.5 or earlier, you must update to a working version to run TsuserverDR. Follow instructions on updating.
   - If you have Python 3.6 or lower, you will be prompted on server launch to update to a newer version of Python. That is because the server requires Python 3.7 or higher. Follow instructions under Updating to update your Python version.
 * Open Command Prompt, PowerShell or your preferred terminal, and change to the directory where you downloaded TsuserverDR to. You can do this in two ways:
   - Go up one folder above the TsuserverDR folder, Shift + right click the TsuserverDR folder, and click `Open PowerShell window here`. This is the easiest method.
@@ -306,7 +305,7 @@ GMs can:
 * **globalic_pre** "prefix"
     - Ensures only IC messages that start with the prefix are sent to the preestablished area range through /globalic (otherwise, just to the current area), or removes the need for a prefix if not given one.
 * **gmlock**
-    - Locks your area. Prevents CMs and normal users from entering.
+    - Locks your area. Prevents CMs and normal users from entering. WARNING: Pending deprecation.
 * **gmself**
     - Logs all opened multiclients as GM.
 * **guide** "ID/char name/edited-to character/showname/OOC name" "message"
@@ -373,7 +372,7 @@ GMs can:
     - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
 * **st** "message"
     - Sends a message to all active staff members.
-* **toggle_allpasses*
+* **toggle_allpasses**
 	- Changes your ability to receive autopass notifications from players that do not have autopass on. By default it is off.
 * **toggle_allrolls**
     - Changes your ability to receive /roll and /rollp results from other areas. By default it is off.
@@ -544,6 +543,7 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 * **sa**: Same as /showname_area.
 * **sas**: Same as /showname_areas.
 * **shout**: Same as /scream.
+* **unsneak**: Same as /reveal.
 * **yell**: Same as /scream.
 * **zg**: Same as /zone_global.
 
