@@ -433,3 +433,7 @@
 * All use cases of /charselect now display status messages
 * Improved client termination messages for abnormal connections and packets
 * Added best-effort support for (upcoming) Attorney Online 2.8 and similar clients. Unrecognized clients will now be warned in OOC when they join
+
+### 200712a (4.2.4-post4)
+* Fixed servers not launching if they did not set some daily gmpasses
+* config.yaml now shows instructions on how to make daily gmpasses optional, as well as indications on password requirements.

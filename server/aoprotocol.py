@@ -527,7 +527,7 @@ class AOProtocol(asyncio.Protocol):
                                             is_zstaff_flex=True, in_area=True)
 
         # Censor passwords if login command accidentally typed in IC
-        for password in self.server.config['passwords']:
+        for password in self.server.all_passwords:
             for login in ['login ', 'logincm ', 'loginrp ']:
                 if login + password in msg:
                     msg = msg.replace(password, '[CENSORED]')
@@ -706,7 +706,7 @@ class AOProtocol(asyncio.Protocol):
                     self.client.send_ooc(ex)
         else:
             # Censor passwords if accidentally said without a slash in OOC
-            for password in self.server.config['passwords']:
+            for password in self.server.all_passwords:
                 for login in ['login ', 'logincm ', 'loginrp ']:
                     if login + password in args[1]:
                         args[1] = args[1].replace(password, '[CENSORED]')
