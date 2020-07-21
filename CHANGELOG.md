@@ -436,4 +436,7 @@
 
 ### 200712a (4.2.4-post4)
 * Fixed servers not launching if they did not set some daily gmpasses
-* config.yaml now shows instructions on how to make daily gmpasses optional, as well as indications on password requirements.
+* config.yaml now shows instructions on how to make daily gmpasses optional, as well as indications on password requirements
+
+### 200720a (4.2.4-post5)
+* Fixed situation where players that started a clock, paused it and disconnected did not have the clocks properly cleared

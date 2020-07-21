@@ -1208,8 +1208,8 @@ class ClientManager:
         if client.id >= 0: # Avoid having pre-clients do this (before they are granted a cID)
             self.cur_id[client.id] = False
             # Cancel client's pending tasks
-            for task_id in self.server.tasker.client_tasks[client.id].keys():
-                self.server.tasker.get_task(client, [task_id]).cancel()
+            for task_id in self.server.tasker.client_tasks[client.id].copy():
+                self.server.tasker.remove_task(client, [task_id])
 
         # If the client was part of a party, remove them from the party
         if client.party:
