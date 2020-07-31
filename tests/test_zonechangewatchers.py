@@ -47,7 +47,8 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
 
         self.c2.ooc('/zone_watch {}'.format('z0'))
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} is now watching your zone.'.format(self.c2.name), over=True)
+        self.c1.assert_ooc('(X) {} [{}] is now watching your zone.'
+                           .format(self.c2_dname, 2), over=True)
         self.c2.assert_ooc('You are now watching zone `{}`.'.format('z0'), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -62,8 +63,10 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
 
         self.c5.ooc('/zone_watch {}'.format('z0'))
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} is now watching your zone.'.format(self.c5.name), over=True)
-        self.c2.assert_ooc('(X) {} is now watching your zone.'.format(self.c5.name), over=True)
+        self.c1.assert_ooc('(X) {} [{}] is now watching your zone.'
+                           .format(self.c5_dname, 5), over=True)
+        self.c2.assert_ooc('(X) {} [{}] is now watching your zone.'
+                           .format(self.c5_dname, 5), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_ooc('You are now watching zone `{}`.'.format('z0'), over=True)
@@ -86,7 +89,8 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         self.c4.discard_all() # Discard notification for logging in while in zone & zone creation
 
         self.c4.ooc('/zone_watch {}'.format('z1'))
-        self.c0.assert_ooc('(X) {} is now watching your zone.'.format(self.c4.name), over=True)
+        self.c0.assert_ooc('(X) {} [{}] is now watching your zone.'
+                           .format(self.c4_dname, 4), over=True)
         self.c1.assert_no_packets() # In other zone
         self.c2.assert_no_packets() # In other zone
         self.c3.assert_no_packets()
@@ -163,13 +167,13 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
 
         self.c2.ooc('/zone_unwatch')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} is no longer watching your zone.'.format(self.c2.name),
-                           over=True)
+        self.c1.assert_ooc('(X) {} [{}] is no longer watching your zone.'
+                           .format(self.c2_dname, 2), over=True)
         self.c2.assert_ooc('You are no longer watching zone `{}`.'.format('z0'), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('(X) {} is no longer watching your zone.'.format(self.c2.name),
-                           over=True)
+        self.c5.assert_ooc('(X) {} [{}] is no longer watching your zone.'
+                           .format(self.c2_dname, 2), over=True)
         self.assertEquals(1, len(self.zm.get_zones()))
         self.assertEquals({self.c1, self.c5}, self.zm.get_zone('z0').get_watchers())
 
@@ -227,8 +231,8 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('(X) {} is no longer watching your zone.'.format(self.c1.name),
-                           over=True)
+        self.c5.assert_ooc('(X) {} [{}] is no longer watching your zone.'
+                           .format(self.c1_dname, 1), over=True)
         self.assertEquals(2, len(self.zm.get_zones()))
         self.assertEquals({self.c5}, self.zm.get_zone('z0').get_watchers())
         self.assertEquals({self.c2}, self.zm.get_zone('z1').get_watchers())
@@ -253,8 +257,8 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c1.ooc('/zone_unwatch')
         self.c0.assert_no_packets()
         self.c1.assert_ooc('You are no longer watching zone `{}`.'.format('z1'), over=True)
-        self.c2.assert_ooc('(X) {} is no longer watching your zone.'.format(self.c1.name),
-                           over=True)
+        self.c2.assert_ooc('(X) {} [{}] is no longer watching your zone.'
+                           .format(self.c1_dname, 1), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
@@ -303,10 +307,10 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
 
         self.c5.disconnect()
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) Client {} ({}) disconnected while watching your zone ({}).'
-                           .format(5, self.c5_dname, self.c5.area.id), over=True)
-        self.c2.assert_ooc('(X) Client {} ({}) disconnected while watching your zone ({}).'
-                           .format(5, self.c5_dname, self.c5.area.id), over=True)
+        self.c1.assert_ooc('(X) {} [{}] disconnected while watching your zone ({}).'
+                           .format(self.c5_dname, 5, self.c5.area.id), over=True)
+        self.c2.assert_ooc('(X) {} [{}] disconnected while watching your zone ({}).'
+                           .format(self.c5_dname, 5, self.c5.area.id), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
@@ -336,10 +340,10 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         self.c4.disconnect()
         self.c1.assert_ooc('Zone `{}` was automatically deleted as no one was watching it anymore.'
                            .format('z1'))
-        self.c1.assert_ooc('(X) Client {} ({}) disconnected in your zone ({}).'
-                           .format(4, self.c4_dname, self.c4.area.id), over=True)
-        self.c2.assert_ooc('(X) Client {} ({}) disconnected in your zone ({}).'
-                           .format(4, self.c4_dname, self.c4.area.id), over=True)
+        self.c1.assert_ooc('(X) {} [{}] disconnected in your zone ({}).'
+                           .format(self.c4_dname, 4, self.c4.area.id), over=True)
+        self.c2.assert_ooc('(X) {} [{}] disconnected in your zone ({}).'
+                           .format(self.c4_dname, 4, self.c4.area.id), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
 
@@ -355,8 +359,8 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         self.c2.make_normie(over=False,
                             other_over=lambda c: c not in self.zm.get_zone('z0').get_watchers())
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} is no longer watching your zone.'.format(self.c2.name),
-                           over=True)
+        self.c1.assert_ooc('(X) {} [{}] is no longer watching your zone.'
+                           .format(self.c2_dname, 2), over=True)
         self.c2.assert_ooc('You are no longer watching zone `{}`.'.format('z0'), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -375,7 +379,8 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
 
         self.c1.ooc('/cleargm')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} is no longer watching your zone.'.format(self.c2.name))
+        self.c1.assert_ooc('(X) {} [{}] is no longer watching your zone.'
+                           .format(self.c2_dname, 2))
         self.c1.assert_ooc('All GMs logged out.', over=True)
         self.c2.assert_packet('FM', None)
         self.c2.assert_ooc('You are no longer a GM.')

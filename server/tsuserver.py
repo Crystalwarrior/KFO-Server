@@ -26,7 +26,7 @@ import random
 import ssl
 import sys
 import traceback
-import urllib.request
+import urllib.request, urllib.error
 import warnings
 
 from server import logger
@@ -46,9 +46,9 @@ class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.release = 4
         self.major_version = 2
-        self.minor_version = 4
-        self.segment_version = 'post5'
-        self.internal_version = '200720a'
+        self.minor_version = 5
+        self.segment_version = ''
+        self.internal_version = '200731a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -126,7 +126,8 @@ class TsuserverDR:
             server_name = self.config['masterserver_name']
             logger.log_print('Starting a nonlocal server...')
 
-        ao_server_crt = self.loop.create_server(lambda: self.protocol(self), bound_ip, self.config['port'])
+        ao_server_crt = self.loop.create_server(lambda: self.protocol(self), bound_ip,
+                                                self.config['port'])
         ao_server = self.loop.run_until_complete(ao_server_crt)
 
         logger.log_pserver('Server started successfully!')
@@ -134,10 +135,19 @@ class TsuserverDR:
         if self.config['local']:
             host_ip = '127.0.0.1'
         else:
-            host_ip = urllib.request.urlopen('https://api.ipify.org', context=ssl.SSLContext()).read().decode('utf8')
-
-        logger.log_pdebug('Server should be now accessible from {}:{}:{}'
-                          .format(host_ip, self.config['port'], server_name))
+            try:
+                host_ip = (urllib.request.urlopen('https://api.ipify.org',
+                                                  context=ssl.SSLContext())
+                           .read().decode('utf8'))
+            except urllib.error.URLError as ex:
+                host_ip = None
+                logger.log_pdebug('Unable to obtain personal IP from https://api.ipify.org\n'
+                                  '{}: {}\n'
+                                  'Players may be unable to join.'
+                                  .format(type(ex).__name__, ex.reason))
+        if host_ip is not None:
+            logger.log_pdebug('Server should be now accessible from {}:{}:{}'
+                              .format(host_ip, self.config['port'], server_name))
         if not self.config['local']:
             logger.log_pdebug('If you want to join your server from this device, you may need to '
                               'join with this IP instead: 127.0.0.1:{}:localhost'
@@ -148,14 +158,16 @@ class TsuserverDR:
 
         if self.config['use_district']:
             self.district_client = DistrictClient(self)
-            self.district_connection = asyncio.ensure_future(self.district_client.connect(), loop=self.loop)
+            self.district_connection = asyncio.ensure_future(self.district_client.connect(),
+                                                             loop=self.loop)
             print(' ')
             logger.log_print('Attempting to connect to district at {}:{}.'
                              .format(self.config['district_ip'], self.config['district_port']))
 
         if self.config['use_masterserver']:
             self.ms_client = MasterServerClient(self)
-            self.masterserver_connection = asyncio.ensure_future(self.ms_client.connect(), loop=self.loop)
+            self.masterserver_connection = asyncio.ensure_future(self.ms_client.connect(),
+                                                                 loop=self.loop)
             print(' ')
             logger.log_print('Attempting to connect to the master server at {}:{} with the '
                              'following details:'.format(self.config['masterserver_ip'],

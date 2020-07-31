@@ -21,6 +21,7 @@
 # WARNING!
 # This class will suffer major reworkings for 4.3
 
+import pathlib
 import os
 import sys
 import traceback
@@ -34,19 +35,6 @@ def main():
         server.logger.log_print('Starting...')
         my_server = None
 
-        # Check that config folder exists
-        if not os.path.exists('config'):
-            # If not, check if config_sample folder exists (common setup mistake)
-            if os.path.exists('config_sample'):
-                msg = ('Unable to locate the `config` folder. However, a `config_sample` folder '
-                       'was found. Please rename `config_sample` to `config` as instructed in the '
-                       'README and try again.')
-                raise RuntimeError(msg)
-            # Otherwise, something went wrong.
-            msg = ('Unable to locate the `config` folder. Please make sure the folder exists and '
-                   'is named correctly and try again.')
-            raise RuntimeError(msg)
-
         current_python_tuple = sys.version_info
         current_python_simple = 'Python {}.{}.{}'.format(*current_python_tuple[:3])
         if current_python_tuple < (3, 6):
@@ -56,6 +44,21 @@ def main():
                    '{}. Please refer to README.md for instructions on updating.'
                    .format(current_python_simple))
             raise RuntimeError(msg)
+
+        current = os.getcwd()
+        # Check that config folder exists
+        if not os.path.exists('config'):
+            # If not, check if config_sample folder exists (common setup mistake)
+            if os.path.exists('config_sample'):
+                msg = (f'Unable to locate the `config` folder in {current}. However, a '
+                       '`config_sample` folder was found. Please rename `config_sample` to '
+                       '`config` as instructed in the README and try again.')
+                raise RuntimeError(msg)
+            # Otherwise, something went wrong.
+            msg = (f'Unable to locate the `config` folder in {current}. Please make sure the '
+                    'folder exists and is named correctly and try again.')
+            raise RuntimeError(msg)
+
         if current_python_tuple < (3, 7):
             msg = (f'WARNING: The upcoming major release of TsuserverDR (4.3.0) will be requiring '
                    f'at least Python 3.7. You currently have {current_python_simple}. '
@@ -75,7 +78,16 @@ def main():
         server.logger.log_error(info, server=my_server, errortype='P')
         server.logger.log_print('Server is shutting down.')
         server.logger.log_server('Server is shutting down due to an unhandled exception.')
-        input("Press Enter to continue... ")
+        raise
 
 if __name__ == '__main__':
-    main()
+    # Make launching via python.exe and python start_server.py possible
+    path_to_this = pathlib.Path(__file__).absolute()
+    os.chdir(os.path.dirname(path_to_this))
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
+    except:
+        input("Press Enter to continue... ")

@@ -91,10 +91,10 @@ class TestBloodSmear_01_Basic(_TestBlood):
         # Non-staff smear
         self.c3.ooc('/bloodtrail_smear')
         self.c0.assert_no_ooc()
-        self.c1.assert_ooc('(X) {} smeared the blood trail in area {}.'
-                           .format(self.c3_dname, self.a4_name), over=True)
-        self.c2.assert_ooc('{} smeared the blood trail in your area.'
-                           .format(self.c3_dname), over=True)
+        self.c1.assert_ooc('(X) {} [{}] smeared the blood trail in area {}.'
+                           .format(self.c3_dname, 3, self.a4_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] smeared the blood trail in your area.'
+                           .format(self.c3_dname, 3), over=True)
         self.c3.assert_ooc('You smeared the blood trail in your area.', over=True)
 
         self.c1.ooc('/bloodtrail_list')
@@ -117,8 +117,8 @@ class TestBloodSmear_01_Basic(_TestBlood):
 
         self.c2.ooc('/bloodtrail_smear')
         self.c0.assert_no_ooc()
-        self.c1.assert_ooc('(X) {} smeared the blood trail in area {}.'
-                           .format(self.c2.name, self.a4_name), over=True)
+        self.c1.assert_ooc('(X) {} [{}] smeared the blood trail in area {}.'
+                           .format(self.c2_dname, 2, self.a4_name), over=True)
         self.c2.assert_ooc('You smeared the blood trail in your area.', over=True)
         self.c3.assert_ooc('{} smeared the blood trail in your area.'
                            .format(self.c2_dname), over=True)
@@ -176,8 +176,8 @@ class TestBloodSmear_01_Basic(_TestBlood):
                     .format(self.a0_name, self.area6.id))
         self.c1.assert_ooc('You smeared the blood trails in areas {} and {}.'
                            .format(self.a0_name, self.a6_name), over=True)
-        self.c2.assert_ooc('(X) {} smeared the blood trails in areas {} and {}.'
-                           .format(self.c1.name, self.a0_name, self.a6_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] smeared the blood trails in areas {} and {}.'
+                           .format(self.c1_dname, 1, self.a0_name, self.a6_name), over=True)
 
         self.c1.ooc('/bloodtrail_list')
         self.mes = ('{}'
@@ -215,10 +215,10 @@ class TestBloodSmear_01_Basic(_TestBlood):
         self.c0.ooc('/bloodtrail_smear')
         self.c0.assert_ooc('You smeared the blood trail in your area.',
                            over=True)
-        self.c1.assert_ooc('(X) {} smeared the blood trail in area {}.'
-                           .format(self.c0_dname, self.a7_name), over=True)
-        self.c2.assert_ooc('(X) {} smeared the blood trail in area {}.'
-                           .format(self.c0_dname, self.a7_name), over=True)
+        self.c1.assert_ooc('(X) {} [{}] smeared the blood trail in area {}.'
+                           .format(self.c0_dname, 0, self.a7_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] smeared the blood trail in area {}.'
+                           .format(self.c0_dname, 0, self.a7_name), over=True)
 
         self.c1.ooc('/bloodtrail_list')
         self.c1.assert_ooc(self.mes, over=True)
@@ -250,8 +250,8 @@ class TestBloodSmear_01_Basic(_TestBlood):
         self.c1.ooc('/bloodtrail_clean {}'.format(self.a6_name))
         self.c1.assert_ooc('You cleaned the blood trail in area {}.'
                            .format(self.a6_name), over=True)
-        self.c2.assert_ooc('(X) {} cleaned the blood trail in area {}.'
-                           .format(self.c1.name, self.a6_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] cleaned the blood trail in area {}.'
+                           .format(self.c1_dname, 1, self.a6_name), over=True)
         self.assertFalse(self.area6.blood_smeared)
 
 class TestBloodSmear_02_NoLights(_TestSituation5Mc1Gc2):
@@ -288,10 +288,10 @@ class TestBloodSmear_02_NoLights(_TestSituation5Mc1Gc2):
 
         self.c0.ooc('/bloodtrail_smear')
         self.c0.assert_ooc('You smeared the blood trail in your area.', over=True)
-        self.c1.assert_ooc('(X) {} smeared the blood trail in area {}.'
-                           .format(self.c0_dname, self.a4_name), over=True)
-        self.c2.assert_ooc('(X) {} smeared the blood trail in your area.'
-                           .format(self.c0_dname, self.a4_name), over=True)
+        self.c1.assert_ooc('(X) {} [{}] smeared the blood trail in area {}.'
+                           .format(self.c0_dname, 0, self.a4_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] smeared the blood trail in your area.'
+                           .format(self.c0_dname, 0), over=True)
         self.c3.assert_no_ooc() # No message because no lights
         self.assertEqual(self.area4.bleeds_to, {self.area0.name})
         self.assertTrue(self.area4.blood_smeared)
@@ -364,10 +364,10 @@ class TestBloodSmear_03_Blind(_TestSituation5Mc1Gc2):
 
         self.c0.ooc('/bloodtrail_smear')
         self.c0.assert_ooc('You smeared the blood trail in your area.', over=True)
-        self.c1.assert_ooc('(X) {} smeared the blood trail in area {}.' # Different area
-                           .format(self.c0_dname, self.a4_name), over=True)
-        self.c2.assert_ooc('{} smeared the blood trail in your area.'
-                           .format(self.c0_dname), over=True)
+        self.c1.assert_ooc('(X) {} [{}] smeared the blood trail in area {}.' # Different area
+                           .format(self.c0_dname, 0, self.a4_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] smeared the blood trail in your area.'
+                           .format(self.c0_dname, 0), over=True)
         self.c3.assert_ooc('{} smeared the blood trail in your area.'
                            .format(self.c0_dname), over=True)
         self.assertEqual(self.area4.bleeds_to, {self.area0.name})
@@ -381,10 +381,10 @@ class TestBloodSmear_03_Blind(_TestSituation5Mc1Gc2):
 
         self.c0.ooc('/bloodtrail_smear')
         self.c0.assert_ooc('You smeared the blood trail in your area.', over=True)
-        self.c1.assert_ooc('(X) {} smeared the blood trail in area {}.' # Different area
-                           .format(self.c0_dname, self.a4_name), over=True)
-        self.c2.assert_ooc('(X) {} smeared the blood trail in your area.' # No lights
-                           .format(self.c0_dname, self.a4_name), over=True)
+        self.c1.assert_ooc('(X) {} [{}] smeared the blood trail in area {}.' # Different area
+                           .format(self.c0_dname, 0, self.a4_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] smeared the blood trail in your area.' # No lights
+                           .format(self.c0_dname, 0), over=True)
         self.c3.assert_no_ooc() # No lights
         self.assertEqual(self.area4.bleeds_to, {self.area0.name})
         self.assertTrue(self.area4.blood_smeared)

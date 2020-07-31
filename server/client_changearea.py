@@ -299,14 +299,14 @@ class ClientChangeArea:
         ###########
         # Check if exiting a zone
         if old_area.in_zone and area.in_zone != old_area.in_zone:
-            client.send_ooc_others('(X) Client {} ({}) has left your zone ({}->{}).'
-                                   .format(client.id, old_dname, old_area.id, area.id),
+            client.send_ooc_others('(X) {} [{}] has left your zone ({}->{}).'
+                                   .format(old_dname, client.id, old_area.id, area.id),
                                    is_zstaff=old_area)
 
         # Check if entering a zone
         if area.in_zone and area.in_zone != old_area.in_zone:
-            client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}->{}).'
-                                   .format(client.id, new_dname, old_area.id, area.id),
+            client.send_ooc_others('(X) {} [{}] has entered your zone ({}->{}).'
+                                   .format(new_dname, client.id, old_area.id, area.id),
                                    is_zstaff=area)
             # Raise multiclienting warning to the watchers of the new zone if needed
             # Note that this implementation does not have an off-by-one error, as the incoming
@@ -492,6 +492,7 @@ class ClientChangeArea:
         """
 
         client = self.client
+        old_area = client.area
 
         if not override_all:
             # All the code that could raise errors goes here
@@ -546,15 +547,15 @@ class ClientChangeArea:
             if not ignore_notifications:
                 client.send_ooc('Changed area to {}.[{}]'.format(area.name, area.status))
                 logger.log_server('[{}]Changed area from {} ({}) to {} ({}).'
-                                  .format(client.get_char_name(), client.area.name, client.area.id,
+                                  .format(client.get_char_name(), old_area.name, old_area.id,
                                           area.name, area.id), client)
                 #logger.log_rp('[{}]Changed area from {} ({}) to {} ({}).'
                 #              .format(client.get_char_name(), old_area.name, old_area.id,
-                #                      client.area.name, client.area.id), client)
+                #                      old_area.name, old_area.id), client)
 
                 client.notify_change_area(area, old_dname, ignore_bleeding=ignore_bleeding)
 
-        client.area.remove_client(client)
+        old_area.remove_client(client)
         client.area = area
         area.new_client(client)
 

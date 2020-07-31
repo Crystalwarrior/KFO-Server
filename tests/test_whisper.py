@@ -168,9 +168,9 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
             for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-                recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
-                staff_ooc = ('(X) {} whispered `{}` to {} ({}).'
-                             .format(sender.displayname, message, recipient.displayname,
+                recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} ({}).'
+                             .format(sender.displayname, sender.id, message, recipient.displayname,
                                      sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
@@ -197,9 +197,9 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
             for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-                recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
-                staff_ooc = ('(X) {} whispered `{}` to {} ({}).'
-                             .format(sender.displayname, message, recipient.displayname,
+                recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} ({}).'
+                             .format(sender.displayname, sender.id, message, recipient.displayname,
                                      sender.area.id))
                 nonstaff_ooc = ('{} whispered something to {}.'
                                  .format(sender.displayname, recipient.displayname))
@@ -228,9 +228,9 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
             for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-                recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
-                staff_ooc = ('(X) {} whispered `{}` to {} ({}).'
-                             .format(sender.displayname, message, recipient.displayname,
+                recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} ({}).'
+                             .format(sender.displayname, sender.id, message, recipient.displayname,
                                      sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
@@ -267,8 +267,8 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                             .format(recipient.displayname, message))
                 recipient_ooc = ('You heard a whisper and you think it was directed at you, but '
                                  'you could not seem to tell where it came from.')
-                staff_ooc = ('(X) {} whispered `{}` to {} while sneaking ({}).'
-                             .format(sender.displayname, message, recipient.displayname,
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} while sneaking ({}).'
+                             .format(sender.displayname, sender.id, message, recipient.displayname,
                                      sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
@@ -342,10 +342,10 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
             for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-                recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
-                staff_ooc = ('(X) {} whispered `{}` to {} while both were sneaking and part of the '
-                             'same party ({}).'
-                             .format(sender.displayname, message, recipient.displayname,
+                recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} while both were sneaking and part '
+                             'of the same party ({}).'
+                             .format(sender.displayname, sender.id, message, recipient.displayname,
                                      sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
@@ -415,8 +415,8 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = ('{} seemed to whisper something to you, but you could not make it '
                                  'out.'.format(sender.displayname))
-                staff_ooc = ('(X) {} whispered `{}` to {} ({}).'
-                             .format(sender.displayname, message, recipient.displayname,
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} ({}).'
+                             .format(sender.displayname, sender.id, message, recipient.displayname,
                                      sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
@@ -445,9 +445,9 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
         for identifier in self.get_identifiers(recipient):
             message = '{} with {} to {}'.format(sender, identifier, recipient)
             sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-            recipient_ooc = '{} whispered something to you.'.format(sender.displayname, message)
-            staff_ooc = ('(X) {} whispered `{}` to {} ({}).'
-                         .format(sender.displayname, message, recipient.displayname,
+            recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
+            staff_ooc = ('(X) {} [{}] whispered `{}` to {} ({}).'
+                         .format(sender.displayname, sender.id, message, recipient.displayname,
                                  sender.area.id))
             nonstaff_ooc = ('{} whispered something to {}.'
                              .format(sender.displayname, recipient.displayname))
@@ -486,8 +486,8 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
                 sent_ooc = ('You spooked {} by whispering `{}` to them while sneaking.'
                             .format(recipient.displayname, message))
                 recipient_ooc = 'Your ears seemed to pick up something.'
-                staff_ooc = ('(X) {} whispered `{}` to {} while sneaking ({}).'
-                             .format(sender.displayname, message, recipient.displayname,
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} while sneaking ({}).'
+                             .format(sender.displayname, sender.id, message, recipient.displayname,
                                      sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
@@ -564,10 +564,10 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = ('{} seemed to whisper something to you, but you could not make it '
-                                 'out.'.format(sender.displayname, message))
-                staff_ooc = ('(X) {} whispered `{}` to {} while both were sneaking and part of the '
-                             'same party ({}).'
-                             .format(sender.displayname, message, recipient.displayname,
+                                 'out.'.format(sender.displayname))
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} while both were sneaking and part '
+                             'of the same party ({}).'
+                             .format(sender.displayname, sender.id, message, recipient.displayname,
                                      sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
@@ -677,8 +677,8 @@ class TestWhisper_04_Guide(_TestWhisper):
                 sent_ooc = ('You gave the following guidance to {}: `{}`.'
                             .format(target.displayname, message))
                 target_ooc = 'You hear a guiding voice in your head.'
-                staff_ooc = ('(X) {} gave the following guidance to {}: `{}` ({}).'
-                             .format(sender.displayname, target.displayname, message,
+                staff_ooc = ('(X) {} [{}] gave the following guidance to {}: `{}` ({}).'
+                             .format(sender.displayname, sender.id, target.displayname, message,
                                      sender.area.id))
 
                 sender.ooc('/guide {} {}'.format(identifier, message))
@@ -695,8 +695,9 @@ class TestWhisper_04_Guide(_TestWhisper):
         sent_ooc = ('You gave the following guidance to {}: `{}`.'
                     .format(target.displayname, message))
         target_ooc = 'You hear a guiding voice in your head.'
-        staff_ooc = ('(X) {} gave the following guidance to {}: `{}` ({}).'
-                     .format(sender.displayname, target.displayname, message, sender.area.id))
+        staff_ooc = ('(X) {} [{}] gave the following guidance to {}: `{}` ({}).'
+                     .format(sender.displayname, sender.id, target.displayname, message,
+                             sender.area.id))
 
         sender.ooc('/guide {} {}'.format(identifier, message))
         sender.assert_ooc(sent_ooc, over=True)
@@ -719,8 +720,9 @@ class TestWhisper_04_Guide(_TestWhisper):
             sent_ooc = ('You gave the following guidance to {}: `{}`.'
                         .format(target.displayname, message))
             target_ooc = 'You hear a guiding voice in your head.'
-            staff_ooc = ('(X) {} gave the following guidance to {}: `{}` ({}).'
-                         .format(sender.displayname, target.displayname, message, sender.area.id))
+            staff_ooc = ('(X) {} [{}] gave the following guidance to {}: `{}` ({}).'
+                         .format(sender.displayname, sender.id, target.displayname, message,
+                                 sender.area.id))
 
             sender.ooc('/guide {} {}'.format(identifier, message))
             sender.assert_ooc(sent_ooc, over=True)

@@ -38,6 +38,27 @@ def do_command_deprecated(command, client, arg):
                     'Please use /{} next time.'.format(command))
     do_command(command, client, arg)
 
+def ooc_cmd_pw(client, arg):
+    """
+    Alias for /party_whisper.
+    """
+
+    do_command('party_whisper', client, arg)
+
+def ooc_cmd_huddle(client, arg):
+    """
+    Alias for /party_whisper.
+    """
+
+    do_command('party_whisper', client, arg)
+
+def ooc_cmd_logingm(client, arg):
+    """
+    Alias for /loginrp.
+    """
+
+    do_command('loginrp', client, arg)
+
 def ooc_cmd_sa(client, arg):
     """
     Alias for /showname_area.
@@ -79,6 +100,13 @@ def ooc_cmd_zg(client, arg):
     """
 
     do_command('zone_global', client, arg)
+
+def ooc_cmd_zi(client, arg):
+    """
+    Alias for /zone_info.
+    """
+
+    do_command('zone_info', client, arg)
 
 def ooc_cmd_allow_iniswap(client, arg):
     """

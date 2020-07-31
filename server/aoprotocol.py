@@ -522,8 +522,9 @@ class AOProtocol(asyncio.Protocol):
                 gag_replaced = True
                 msg = Constants.gagged_message()
             if msg != raw_msg:
-                self.client.send_ooc_others('(X) {} tried to say `{}` but is currently gagged.'
-                                            .format(self.client.displayname, raw_msg),
+                self.client.send_ooc_others('(X) {} [{}] tried to say `{}` but is currently gagged.'
+                                            .format(self.client.displayname, self.client.id,
+                                                    raw_msg),
                                             is_zstaff_flex=True, in_area=True)
 
         # Censor passwords if login command accidentally typed in IC
@@ -549,13 +550,13 @@ class AOProtocol(asyncio.Protocol):
             end_area = self.server.area_manager.get_area_by_id(end-1)
             area_range = range(start, end)
 
-            msg = msg.replace(self.client.multi_ic_pre, '', 1)
+            truncated_msg = msg.replace(self.client.multi_ic_pre, '', 1)
             if start != end-1:
                 self.client.send_ooc('Sent global IC message "{}" to areas {} through {}.'
-                                     .format(msg, start_area.name, end_area.name))
+                                     .format(truncated_msg, start_area.name, end_area.name))
             else:
                 self.client.send_ooc('Sent global IC message "{}" to area {}.'
-                                     .format(msg, start_area.name))
+                                     .format(truncated_msg, start_area.name))
 
         pargs['msg'] = msg
         pargs['evidence'] = self.client.evi_list[pargs['evidence']]
@@ -642,8 +643,9 @@ class AOProtocol(asyncio.Protocol):
         # Sending IC messages reveals sneaked players
         if not self.client.is_staff() and not self.client.is_visible:
             self.client.change_visibility(True)
-            self.client.send_ooc_others('(X) {} revealed themselves by talking ({}).'
-                                        .format(self.client.displayname, self.client.area.id),
+            self.client.send_ooc_others('(X) {} [{}] revealed themselves by talking ({}).'
+                                        .format(self.client.displayname, self.client.id,
+                                                self.client.area.id),
                                         is_zstaff=True)
 
         self.server.tasker.create_task(self.client,
@@ -687,7 +689,7 @@ class AOProtocol(asyncio.Protocol):
             cmd = spl[0]
             arg = ''
             if len(spl) == 2:
-                arg = spl[1][:256]
+                arg = spl[1][:1024]
             try:
                 called_function = 'ooc_cmd_{}'.format(cmd)
                 function = None # Double assignment to check if it matched to a function later

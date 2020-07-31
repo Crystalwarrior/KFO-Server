@@ -440,3 +440,20 @@
 
 ### 200720a (4.2.4-post5)
 * Fixed situation where players that started a clock, paused it and disconnected did not have the clocks properly cleared
+
+### 200731a (4.2.5)
+* Added /party_whisper (aliases /pw and /huddle) so players in the same party may whisper to one another
+* Added /zone_info (alias /zi) so zone watchers may quickly obtain details about their zone and a list of players in their zone.
+* Added /logingm, alias to /loginrp.
+* /play, /rplay, /zone_lights and /zone_play now send status messages to both the player executing the command as well as any player watching the zone if appropriate
+* /play, /rplay and /zone_play now warn the player executing the command if the track name is not a recognized one and that it will not loop
+* /scream now displays the scream in IC to the screamer
+* Raised character limit in commands from 256 to 1024, except for IC-related commands (these remain at 256)
+* (Temporarily) patched /globalic_pre so that GMs using /globalic with prefixes would have their client IC chatboxes and effects cleared once their message was sent
+* All staff-privileged commands now send displayname and client ID rather than some combination of names
+* /party_members and /zone_list now list client ID of members and zone watchers respectively
+* Servers no longer stop launch if they are unable to obtain their public IP
+* Improved wording in README
+* Fixed /rplay failing if the reachable areas of an area was just the keyword '<ALL>'
+* Fixed launching servers via double clicking start_server.py being unable to find configuration files and crashing immediately afterwards
+* Fixed Attorney Online 2.8 not handling music and area list updates

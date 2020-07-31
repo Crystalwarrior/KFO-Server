@@ -255,11 +255,12 @@ class TestZoneEffect_02_Play(_TestZone):
         self.c1.discard_all()
         self.c2.discard_all()
 
-        self.c1.ooc('/zone_play Hello.mp3')
-        self.c0.assert_packet('MC', ('Hello.mp3', 1), over=True)
-        self.c1.assert_packet('MC', ('Hello.mp3', 1), over=True)
-        self.c2.assert_packet('MC', ('Hello.mp3', 1), over=True)
-        self.c3.assert_packet('MC', ('Hello.mp3', 1), over=True)
+        self.c1.ooc('/zone_play BOX 15.mp3')
+        self.c0.assert_packet('MC', ('BOX 15.mp3', 1), over=True)
+        self.c1.assert_packet('MC', ('BOX 15.mp3', 1))
+        self.c1.assert_ooc('You have played track `BOX 15.mp3` in your zone.', over=True)
+        self.c2.assert_packet('MC', ('BOX 15.mp3', 1), over=True)
+        self.c3.assert_packet('MC', ('BOX 15.mp3', 1), over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
@@ -267,9 +268,13 @@ class TestZoneEffect_02_Play(_TestZone):
         self.c5.move_area(5)
         self.c1.discard_all() # Discard C3 moving out of zone and C5 moving into zone notifications
 
+        # Check invalid music name warning
         self.c1.ooc('/zone_play Is it you.mp3')
         self.c0.assert_packet('MC', ('Is it you.mp3', 1), over=True)
-        self.c1.assert_packet('MC', ('Is it you.mp3', 1), over=True)
+        self.c1.assert_packet('MC', ('Is it you.mp3', 1))
+        self.c1.assert_ooc('You have played track `Is it you.mp3` in your zone.')
+        self.c1.assert_ooc('(X) Warning: `Is it you.mp3` is not a recognized track name, so it '
+                           'will not loop.', over=True)
         self.c2.assert_packet('MC', ('Is it you.mp3', 1), over=True)
         self.c3.assert_no_packets()
         self.c5.assert_packet('MC', ('Is it you.mp3', 1), over=True)
@@ -306,10 +311,10 @@ class TestZoneEffect_03_RPNotifications(_TestZone):
         super().setUp()
         self.mes_a = 'You locked the IC chat in this area.'
         self.mes_b = 'The IC chat has been locked in this area.'
-        self.mes_c = ('(X) {} has locked the IC chat in area {} ({}).'
-                      .format(self.c1.name, self.c1.area.name, self.c1.area.id))
-        self.mes_d = ('(X) {} has locked the IC chat in area {} ({}).'
-                      .format(self.c5.name, self.c5.area.name, self.c5.area.id))
+        self.mes_c = ('(X) {} [{}] has locked the IC chat in area {} ({}).'
+                      .format(self.c1_dname, 1, self.c1.area.name, self.c1.area.id))
+        self.mes_d = ('(X) {} [{}] has locked the IC chat in area {} ({}).'
+                      .format(self.c5_dname, 5, self.c5.area.name, self.c5.area.id))
         self.c1.area.ic_lock = False
         self.c5.area.ic_lock = False
 

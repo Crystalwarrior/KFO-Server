@@ -73,10 +73,10 @@ class _TestRoll_FixedRNG(_TestRoll):
         self.server.random = self.randomer(expected_rolls=expected_rolls)
         self.c0.ooc('/rollp {}'.format(arg))
         self.c0.assert_ooc('You {}.'.format(expected_message), over=True)
-        self.c1.assert_ooc('(X) {} {}.'.format(self.c0_dname, expected_message), over=True)
+        self.c1.assert_ooc('(X) {} [{}] {}.'.format(self.c0_dname, 0, expected_message), over=True)
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
-        self.c4.assert_ooc('Someone rolled.'.format(self.c0_dname, expected_message), over=True)
+        self.c4.assert_ooc('Someone rolled.', over=True)
 
     def test01_nomodifiers(self):
         """

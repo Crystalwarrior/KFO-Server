@@ -78,7 +78,8 @@ class TestLights_01_Basic(_TestLights):
         self.c0.assert_ooc('The lights were turned off.', over=True)
         self.c1.assert_no_packets()
         self.c2.assert_packet('BN', self.blackout_background)
-        self.c2.assert_ooc('(X) {} turned the lights off.'.format(self.c3_dname), over=True)
+        self.c2.assert_ooc('(X) {} [{}] turned the lights off.'
+                           .format(self.c3_dname, 3), over=True)
         self.c3.assert_packet('BN', self.blackout_background)
         self.c3.assert_ooc('You turned the lights off.', over=True)
         self.assert_lights(1, {self.area4})
@@ -88,7 +89,8 @@ class TestLights_01_Basic(_TestLights):
         self.c0.assert_ooc('The lights were turned on.', over=True)
         self.c1.assert_no_packets()
         self.c2.assert_packet('BN', self.area4.background)
-        self.c2.assert_ooc('(X) {} turned the lights on.'.format(self.c3_dname), over=True)
+        self.c2.assert_ooc('(X) {} [{}] turned the lights on.'
+                           .format(self.c3_dname, 3), over=True)
         self.c3.assert_packet('BN', self.area4.background)
         self.c3.assert_ooc('You turned the lights on.', over=True)
         self.assert_lights(1, 0)
@@ -157,7 +159,8 @@ class TestLights_01_Basic(_TestLights):
         self.c0.assert_ooc('You turned the lights on.', over=True)
         self.c1.assert_no_packets()
         self.c2.assert_packet('BN', self.area4.background)
-        self.c2.assert_ooc('(X) {} turned the lights on.'.format(self.c0_dname), over=True)
+        self.c2.assert_ooc('(X) {} [{}] turned the lights on.'
+                           .format(self.c0_dname, 0), over=True)
         self.c3.assert_packet('BN', self.area4.background)
         self.c3.assert_ooc('The lights were turned on.', over=True)
         self.assert_lights(1, 0)
@@ -177,7 +180,8 @@ class TestLights_01_Basic(_TestLights):
         self.c0.assert_ooc('The lights were turned on.', over=True)
         self.c1.assert_no_packets()
         self.c2.assert_packet('BN', self.area4.background)
-        self.c2.assert_ooc('(X) {} turned the lights on.'.format(self.c3_dname), over=True)
+        self.c2.assert_ooc('(X) {} [{}] turned the lights on.'
+                           .format(self.c3_dname, 3), over=True)
         self.c3.assert_packet('BN', self.area4.background)
         self.c3.assert_ooc('You turned the lights on.', over=True)
         self.assert_lights(1, 0)
