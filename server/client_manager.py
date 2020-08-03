@@ -23,7 +23,7 @@ import warnings
 from server import client_changearea
 from server import fantacrypt
 from server import logger
-from server.exceptions import ClientError, PartyError
+from server.exceptions import AreaError, ClientError, PartyError
 from server.constants import TargetType, Constants, Clients
 
 class ClientManager:
@@ -1066,6 +1066,69 @@ class ClientManager:
                                          .format(self.name, self.id), is_officer=True)
                 raise ClientError('Invalid password.')
 
+        def logout(self):
+            self.is_mod = False
+            self.is_gm = False
+            self.is_cm = False
+
+            # Clean-up operations
+            if self.server.rp_mode:
+                self.in_rp = True
+            if self.area.evidence_mod == 'HiddenCM':
+                self.area.broadcast_evidence_list()
+
+            # Update the music list to show reachable areas and activate the AFK timer
+            self.reload_music_list()
+            self.server.tasker.create_task(self, ['as_afk_kick', self.area.afk_delay,
+                                                  self.area.afk_sendto])
+
+            # If using a character restricted in the area, switch out
+            if self.get_char_name() in self.area.restricted_chars:
+                try:
+                    new_char_id = self.area.get_rand_avail_char_id(allow_restricted=False)
+                except AreaError:
+                    # Force into spectator mode if all other available characters are taken
+                    new_char_id = -1
+
+                old_char = self.get_char_name()
+                self.change_character(new_char_id, announce_zwatch=False)
+                new_char = self.get_char_name()
+
+                self.send_ooc('Your character has been set to restricted in this area by a staff '
+                              'member. Switching you to `{}`.'.format(new_char))
+                self.send_ooc_others('(X) Client {} had their character changed from `{}` to `{}` '
+                                     'in your zone as their old character was restricted in their '
+                                     'area ({}).'
+                                     .format(self.id, old_char, new_char, self.area.id),
+                                     is_zstaff_flex=True)
+
+            # If watching a zone, stop watching it
+            target_zone = self.zone_watched
+            if target_zone:
+                target_zone.remove_watcher(self)
+
+                self.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.get_id()))
+                if target_zone.get_watchers():
+                    self.send_ooc_others('(X) {} [{}] is no longer watching your zone.'
+                                           .format(self.displayname, self.id),
+                                           part_of=target_zone.get_watchers())
+                else:
+                    self.send_ooc('As you were the last person watching it, your zone has been '
+                                  'deleted.')
+                    self.send_ooc_others('Zone `{}` was automatically deleted as no one was '
+                                         'watching it anymore.'.format(target_zone.get_id()),
+                                         is_officer=True)
+
+            # If managing a day cycle clock, cancel it
+            try:
+                self.server.tasker.remove_task(self, ['as_day_cycle'])
+            except KeyError:
+                pass
+
+            # If having global IC enabled, remove it
+            self.multi_ic = None
+            self.multi_ic_pre = ''
+
         def get_hdid(self):
             return self.hdid
 
@@ -1138,6 +1201,14 @@ class ClientManager:
             info += ('\n*Is transient? {}. Has autopass? {}. Clients open: {}'
                      .format(self.is_transient, self.autopass, len(self.get_multiclients())))
             info += '\n*Is muted? {}. Is OOC Muted? {}'.format(self.is_muted, self.is_ooc_muted)
+            if self.multi_ic is None:
+                areas = set()
+            else:
+                start, end = self.multi_ic[0].id, self.multi_ic[1].id
+                areas = {area for area in self.server.area_manager.areas if start <= area.id <= end}
+            info += ('\n*Global IC range: {}. Global IC prefix: {}'
+                     .format(Constants.format_area_ranges(areas),
+                             'None' if not self.multi_ic_pre else f'`{self.multi_ic_pre}`'))
             info += '\n*Following: {}'.format(self.following.id if self.following else "-")
             info += '\n*Followed by: {}'.format(", ".join([str(c.id) for c in self.followedby])
                                                 if self.followedby else "-")

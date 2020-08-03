@@ -457,3 +457,9 @@
 * Fixed /rplay failing if the reachable areas of an area was just the keyword '<ALL>'
 * Fixed launching servers via double clicking start_server.py being unable to find configuration files and crashing immediately afterwards
 * Fixed Attorney Online 2.8 not handling music and area list updates
+
+### (4.2.5-post1)
+* Fixed global IC areas and prefixes, as well as day cycle clocks not being canceled on /logout and /cleargm
+* Fixed /cleargm not forcing GMs who were in an area that restricted some characters off their character if they were using one of those restricted characters
+* Fixed global IC areas and prefixes not being reset on area list reloads, even when it would not make too much sense to keep them around
+* /whois now shows global IC and global IC prefix status

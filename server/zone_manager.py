@@ -257,28 +257,8 @@ class ZoneManager:
                 Zone details in human readable format.
             """
 
-            # Obtain area ranges
-            raw_area_ids = sorted([area.id for area in self._areas])
-            last_area = raw_area_ids[0]
-            area_ranges = list()
-            current_range = [last_area, last_area]
-
-            def add_range():
-                if current_range[0] != current_range[1]:
-                    area_ranges.append('{}-{}'.format(current_range[0], current_range[1]))
-                else:
-                    area_ranges.append('{}'.format(current_range[0]))
-
-            for area_id in raw_area_ids[1:]:
-                if area_id != last_area+1:
-                    add_range()
-                    current_range = [area_id, area_id]
-                else:
-                    current_range[1] = area_id
-                last_area = area_id
-
-            add_range()
-            area_description = Constants.cjoin(area_ranges)
+            # Format areas
+            area_description = Constants.format_area_ranges(self._areas)
 
             # Obtain watchers
             watchers = sorted(self._watchers, key=lambda c: c.id)

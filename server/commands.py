@@ -1215,31 +1215,8 @@ def ooc_cmd_cleargm(client: ClientManager.Client, arg: str):
     for area in client.server.area_manager.areas:
         for c in [x for x in area.clients if x.is_gm]:
             gm_list += '{} {} [{}]'.format((':' if not gm_list else ','), c.name, c.id)
-            c.is_gm = False
-            if client.server.rp_mode:
-                c.in_rp = True
-            # Update the music list to show reachable areas and activate the AFK timer
-            c.reload_music_list()
-            c.server.tasker.create_task(client, ['as_afk_kick', client.area.afk_delay,
-                                                 client.area.afk_sendto])
-
             c.send_ooc('You are no longer a GM.')
-            # If watching a zone, stop watching it
-            target_zone = c.zone_watched
-            if target_zone:
-                target_zone.remove_watcher(c)
-
-                c.send_ooc('You are no longer watching zone `{}`.'
-                                .format(target_zone.get_id()))
-                if target_zone.get_watchers():
-                    c.send_ooc_others('(X) {} [{}] is no longer watching your zone.'
-                                      .format(c.displayname, c.id),
-                                      part_of=target_zone.get_watchers())
-                else:
-                    c.send_ooc('As you were the last person watching it, your zone has been '
-                               'deleted.')
-                    c.send_ooc_others('Zone `{}` was automatically deleted as no one was watching '
-                                      'it anymore.'.format(target_zone.get_id()), is_officer=True)
+            c.logout()
 
     client.send_ooc('All GMs logged out.')
     if len(gm_list) > 0:
@@ -2791,56 +2768,10 @@ def ooc_cmd_logout(client: ClientManager.Client, arg: str):
     else:
         role = 'game master'
 
-    client.is_mod = False
-    client.is_gm = False
-    client.is_cm = False
     client.send_ooc('You are no longer logged in.')
     client.send_ooc_others('{} [{}] is no longer a {}.'
                            .format(client.name, client.id, role), is_officer=True)
-
-    # Clean-up operations
-    if client.server.rp_mode:
-        client.in_rp = True
-    if client.area.evidence_mod == 'HiddenCM':
-        client.area.broadcast_evidence_list()
-
-    # Update the music list to show reachable areas and activate the AFK timer
-    client.reload_music_list()
-    client.server.tasker.create_task(client, ['as_afk_kick', client.area.afk_delay,
-                                              client.area.afk_sendto])
-
-    # If using a character restricted in the area, switch out
-    if client.get_char_name() in client.area.restricted_chars:
-        try:
-            new_char_id = client.area.get_rand_avail_char_id(allow_restricted=False)
-        except AreaError:
-            new_char_id = -1 # Force into spectator mode if all other available characters are taken
-
-        old_char = client.get_char_name()
-        client.change_character(new_char_id, announce_zwatch=False)
-        new_char = client.get_char_name()
-
-        client.send_ooc('Your character has been set to restricted in this area by a staff member. '
-                        'Switching you to `{}`.'.format(new_char))
-        client.send_ooc_others('(X) Client {} had their character changed from `{}` to `{}` in '
-                               'your zone as their old character was restricted in their area ({}).'
-                               .format(client.id, old_char, new_char, client.area.id),
-                               is_zstaff_flex=True)
-
-    # If watching a zone, stop watching it
-    target_zone = client.zone_watched
-    if target_zone:
-        target_zone.remove_watcher(client)
-
-        client.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.get_id()))
-        if target_zone.get_watchers():
-            client.send_ooc_others('(X) {} [{}] is no longer watching your zone.'
-                                   .format(client.displayname, client.id),
-                                   part_of=target_zone.get_watchers())
-        else:
-            client.send_ooc('As you were the last person watching it, your zone has been deleted.')
-            client.send_ooc_others('Zone `{}` was automatically deleted as no one was watching it '
-                                   'anymore.'.format(target_zone.get_id()), is_officer=True)
+    client.logout()
 
 def ooc_cmd_look(client: ClientManager.Client, arg: str):
     """

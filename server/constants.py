@@ -1109,3 +1109,33 @@ class Constants():
     def remove_letters(message, target):
         message = re.sub("[{}]".format(target), "", message, flags=re.IGNORECASE)
         return re.sub(r"\s+", " ", message)
+
+    @staticmethod
+    def format_area_ranges(areas) -> str:
+        # Obtain area ranges from an iterable containing area objects
+        # Ex. If areas contains area 1, 2, 3, 5, 6 and 8, this will return "1-3, 5-6 and 8"
+        # If areas is None or empty, returns None
+        if not areas:
+            return 'None'
+
+        raw_area_ids = sorted([area.id for area in areas])
+        last_area = raw_area_ids[0]
+        area_ranges = list()
+        current_range = [last_area, last_area]
+
+        def add_range():
+            if current_range[0] != current_range[1]:
+                area_ranges.append('{}-{}'.format(current_range[0], current_range[1]))
+            else:
+                area_ranges.append('{}'.format(current_range[0]))
+
+        for area_id in raw_area_ids[1:]:
+            if area_id != last_area+1:
+                add_range()
+                current_range = [area_id, area_id]
+            else:
+                current_range[1] = area_id
+            last_area = area_id
+
+        add_range()
+        return Constants.cjoin(area_ranges)

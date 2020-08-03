@@ -1005,6 +1005,17 @@ class AreaManager:
             except KeyError:
                 pass
 
+        # And remove all global IC and global IC prefixes
+        for client in self.server.client_manager.clients:
+            if client.multi_ic:
+                client.send_ooc('Due to an area list reload, your global IC was turned off. You '
+                                'may turn it on again manually.')
+                client.multi_ic = None
+            if client.multi_ic_pre:
+                client.send_ooc('Due to an area list reload, your global IC prefix was removed. '
+                                'You may set it again manually.')
+                client.multi_ic_pre = ''
+
         # If the default area ID is now past the number of available areas, reset it back to zero
         if self.server.default_area >= len(self.areas):
             self.server.default_area = 0

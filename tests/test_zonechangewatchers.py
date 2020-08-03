@@ -382,9 +382,8 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         self.c1.assert_ooc('(X) {} [{}] is no longer watching your zone.'
                            .format(self.c2_dname, 2))
         self.c1.assert_ooc('All GMs logged out.', over=True)
-        self.c2.assert_packet('FM', None)
         self.c2.assert_ooc('You are no longer a GM.')
+        self.c2.assert_packet('FM', None)
         self.c2.assert_ooc('You are no longer watching zone `{}`.'.format('z0'), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-
