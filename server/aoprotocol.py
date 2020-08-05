@@ -529,7 +529,7 @@ class AOProtocol(asyncio.Protocol):
 
         # Censor passwords if login command accidentally typed in IC
         for password in self.server.all_passwords:
-            for login in ['login ', 'logincm ', 'loginrp ']:
+            for login in ['login ', 'logincm ', 'loginrp ', 'logingm ']:
                 if login + password in msg:
                     msg = msg.replace(password, '[CENSORED]')
 
@@ -709,7 +709,7 @@ class AOProtocol(asyncio.Protocol):
         else:
             # Censor passwords if accidentally said without a slash in OOC
             for password in self.server.all_passwords:
-                for login in ['login ', 'logincm ', 'loginrp ']:
+                for login in ['login ', 'logincm ', 'loginrp ', 'logingm ']:
                     if login + password in args[1]:
                         args[1] = args[1].replace(password, '[CENSORED]')
             if self.client.disemvowel: #If you are disemvoweled, replace string.
