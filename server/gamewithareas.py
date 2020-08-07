@@ -110,8 +110,8 @@ class GameWithAreas(_Game):
             If an int, it is the maximum number of teams the game supports. If None, it
             indicates the game has no team limit. Defaults to None.
         timer_limit : int or None, optional
-            If an int, it is the maximum number of steptimers the game supports. If None, it
-            indicates the game has no steptimer limit. Defaults to None.
+            If an int, it is the maximum number of timers the game supports. If None, it
+            indicates the game has no timer limit. Defaults to None.
         areas : set of AreaManager.Area, optional
             Areas the game starts with.
         playergroup_manager : PlayerGroupManager, optional
@@ -246,12 +246,11 @@ class GameWithAreas(_Game):
         if area not in self._areas:
             raise GameWithAreasError.AreaNotInGameError
 
-        self._areas.discard(area)
-        self.listener.unsubscribe(area)
-
         for player in self.get_players(cond=lambda client: client.area == area):
             self.remove_player(player)
-
+        # Remove area only after removing all players to prevent structural checks failing
+        self._areas.discard(area)
+        self.listener.unsubscribe(area)
         if not self._areas:
             self.destroy()
 
@@ -320,7 +319,7 @@ class GameWithAreas(_Game):
 
         return (f"GameWithAreas::{self.get_id()}:"
                 f"{self.get_players()}:{self.get_leaders()}:{self.get_invitations()}"
-                f"{self.get_steptimers()}:"
+                f"{self.get_timers()}:"
                 f"{self.get_teams()}:"
                 f"{self.get_areas()}")
 
@@ -342,13 +341,13 @@ class GameWithAreas(_Game):
                 f'require_invitations={self._playergroup._require_invitations}, '
                 f'require_leaders={self._playergroup._require_leaders}, '
                 f'require_character={self._require_character}, '
-                f'team_limit={self._team_manager._playergroup_limit}, '
-                f'timer_limit={self._timer_manager._steptimer_limit}, '
+                f'team_limit={self._team_manager.get_group_limit()}, '
+                f'timer_limit={self._timer_manager.get_timer_limit()}, '
                 f'areas={self.get_areas()}) || '
                 f'players={self.get_players()}, '
                 f'invitations={self.get_invitations()}, '
                 f'leaders={self.get_leaders()}, '
-                f'timers={self.get_steptimers()}, '
+                f'timers={self.get_timers()}, '
                 f'teams={self.get_teams()}')
 
     def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,

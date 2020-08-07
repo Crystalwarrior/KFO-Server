@@ -17,7 +17,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 """
-Module that contains the PlayerGroupManager class, which itself contains the PlayerGroup subclass.
+Module that contains the PlayerGroupManager class and the PlayerGroup subclass.
 
 """
 
@@ -25,6 +25,743 @@ import random
 
 from server.constants import Constants
 from server.exceptions import PlayerGroupError
+
+class PlayerGroup:
+    """
+    A mutable data type for player groups.
+
+    Player groups are groups of users (called players) with an ID, where some players
+    (possibly none) are leaders.
+
+    Each player group may have a player limit (beyond which no new players may be added), may
+    require that it never loses all its players as soon as it gets its first one (or else it
+    is automatically deleted) and may require that if it has at least one player, then that
+    there is at least one leader (or else one is automatically chosen between all players).
+    Each of these groups may also impose a concurrent membership limit, so that every user
+    that is a player of it is at most a player of that many player groups managed by this
+    group's manager.
+
+    Once a group is scheduled for deletion, its manager will no longer recognize it as a group
+    it is managing (it will unmanage it), so no further mutator public method calls would be
+    allowed on the player group.
+
+    """
+
+    # (Private) Attributes
+    # --------------------
+    # _server : TsuserverDR
+    #     Server the player group belongs to.
+    # _manager : PlayerGroupManager
+    #     Manager for this player group.
+    # _playergroup_id : str
+    #     Identifier for this player group.
+    # _player_limit : int or None.
+    #     If an int, it is the maximum number of players the group supports. If None, the group
+    #     may have an arbitrary number of players.
+    # _concurrent_limit : int or None.
+    #     If an int, it is the maximum number of player groups managed by the same manager as
+    #     this group that any player part of this player group may belong to, including this
+    #     player group. If None, no such restriction is considered.
+    # _players : set of ClientManager.Client
+    #     Players of the player group.
+    # _leaders : set of ClientManager.Client
+    #     Leaders of the player group.
+    # _invitations : set of clientManager.Client
+    #     Users invited to (but not part of of) the player group.
+    # _require_players : bool
+    #     If True, the group will disassemble automatically if it loses all its players (but it
+    #     may start with no players).
+    # _require_leaders : bool
+    #     If True and the group has no leaders but at least one player, it will randomly choose
+    #     one player to be a leader.
+    # _ever_had_players : bool
+    #    If True, at least once has a player been added successfully the the player group;
+    #    otherwise False.
+    # _unmanaged : bool
+    #     If True, the manager this group claims is its manager no longer recognizes it is
+    #     managing this group, thus no further mutator public method calls would be allowed.
+
+    # Invariants
+    # ----------
+    # 1. Each player is a client of the server.
+    # 2. `self._unmanaged` is False if and only if `self` is in
+    #    `self._manager._id_to_group.values()`.
+    # 3. If `self._unmanaged`, then `self._players`, `self._invitations`, `self._leaders` are
+    #    all empty sets.
+    # 4. For every player `player` in `self._players`, `self._manager._user_to_groups[player]`
+    #    exists and contains `self`.
+    # 5. If `self._player_limit` is not None, then `len(self._players) <= player_limit`.
+    # 6. For every player in `self._leaders`, they also belong in `self._players`.
+    # 7. If `len(self._players) >= 1`, then `self._ever_had_players is True`.
+    # 8. If `self._require_players` is True, then `len(self._players) >= 1 or self._unmanaged`.
+    # 9. If `self._require_leaders` is True and `len(self._players) >= 1`, then
+    #    `len(self._leaders) >= 1`.
+    # 10. `self._invitations` and `self._players` are disjoint sets.
+    # 11. If `self._require_invitations` is False, then `self._invitations` is the empty set.
+
+    def __init__(self, server, manager, playergroup_id, player_limit=None,
+                 concurrent_limit=1, require_invitations=False, require_players=True,
+                 require_leaders=True):
+        """
+        Create a new player group. A player group should not be created outside some manager code.
+
+        Parameters
+        ----------
+        server : TsuserverDR
+            Server the player group belongs to.
+        manager : PlayerGroupManager
+            Manager for this player group.
+        playergroup_id : str
+            Identifier of the player group.
+        player_limit : int or None, optional
+            If an int, it is the maximum number of players the player group supports. If None,
+            it indicates the player group has no player limit. Defaults to None.
+        concurrent_limit : int or None, optional
+            If an int, it is the maximum number of player groups managed by `manager` that any
+            player of this group may belong to, including this group. If None, it indicates
+            that this group does not care about how many other player groups managed by
+            `manager` each of its players belongs to. Defaults to 1 (a player may not be in
+            another group managed by `manager` while in this group).
+        require_invitation : bool, optional
+            If True, players can only be added to the group if they were previously invited. If
+            False, no checking for invitations is performed. Defaults to False.
+        require_players : bool, optional
+            If True, if at any point the group has no players left, the group will
+            automatically be deleted. If False, no such automatic deletion will happen.
+            Defaults to True.
+        require_leaders : bool, optional
+            If True, if at any point the group has no leaders left, the group will choose a
+            leader among any remaining players left; if no players are left, the next player
+            added will be made leader. If False, no such automatic assignment will happen.
+            Defaults to True.
+
+        """
+
+        self._server = server
+        self._manager = manager
+        self._playergroup_id = playergroup_id
+        self._player_limit = player_limit
+        self._concurrent_limit = concurrent_limit
+        self._require_invitations = require_invitations
+        self._require_players = require_players
+        self._require_leaders = require_leaders
+
+        self._players = set()
+        self._leaders = set()
+        self._invitations = set()
+        self._ever_had_players = False
+        self._unmanaged = False
+
+        self._manager._check_structure()
+
+    def get_id(self):
+        """
+        Return the ID of this player group.
+
+        Returns
+        -------
+        str
+            The ID.
+
+        """
+
+        return self._playergroup_id
+
+    def get_concurrent_limit(self):
+        """
+        Return the concurrent membership limit of this player group.
+
+        Returns
+        -------
+        int
+            The concurrent player limit.
+
+        """
+
+        return self._concurrent_limit
+
+    def get_players(self, cond=None):
+        """
+        Return (a shallow copy of) the set of players of this player group that satisfy a
+        condition if given.
+
+        Parameters
+        ----------
+        cond : types.LambdaType: ClientManager.Client -> bool, optional
+            Condition that all players returned satisfy. Defaults to None (no checked
+            conditions).
+
+        Returns
+        -------
+        set of ClientManager.Client
+            The (filtered) players of this player group.
+
+        """
+
+        if cond is None:
+            cond = lambda c: True
+
+        filtered_players = {player for player in self._players if cond(player)}
+        return filtered_players
+
+    def is_player(self, user):
+        """
+        Decide if a user is a player of the player group.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to test.
+
+        Returns
+        -------
+        bool
+            True if the user is a player, False otherwise.
+
+        """
+
+        return user in self._players
+
+    def add_player(self, user):
+        """
+        Make a user a player of the player group. By default this player will not be a
+        leader, unless the group has no leaders and the player group requires a leader.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to add to the player group.
+
+        Raises
+        ------
+        PlayerGroupError.GroupIsUnmanagedError:
+            If the group was scheduled for deletion and thus does not accept any mutator
+            public method calls.
+        PlayerGroupError.UserNotInvitedError
+            If the group requires players be invited to be added and the user is not invited.
+        PlayerGroupError.UserAlreadyPlayerError
+            If the user to add is already a user of the player group.
+        PlayerGroupError.UserInAnotherGroupError
+            If the player is already in another group managed by this manager.
+        PlayerGroupError.GroupIsFullError
+            If the group reached its player limit.
+        PlayerGroupError.UserHitGroupConcurrentLimitError.
+            If the player has reached any of the groups it belongs to managed by this player
+            group's manager concurrent membership limit, or by virtue of joining this group
+            they will violate this group's concurrent membership limit.
+
+        """
+
+        if self._unmanaged:
+            raise PlayerGroupError.GroupIsUnmanagedError
+        if self._require_invitations and user not in self._invitations:
+            raise PlayerGroupError.UserNotInvitedError
+        if user in self._players:
+            raise PlayerGroupError.UserAlreadyPlayerError
+        if self._player_limit is not None and len(self._players) >= self._player_limit:
+            raise PlayerGroupError.GroupIsFullError
+        if self._manager._find_concurrent_limiting_group(user):
+            raise PlayerGroupError.UserHitGroupConcurrentLimitError
+        groups_of_user = self._manager.get_groups_of_user(user)
+        if len(groups_of_user) >= self._concurrent_limit:
+            raise PlayerGroupError.UserHitGroupConcurrentLimitError
+
+        self._ever_had_players = True
+        self._players.add(user)
+        self._manager._add_user_to_mapping(user, self)
+
+        if self._require_invitations:
+            self._invitations.remove(user)
+
+        self._choose_leader_if_needed()
+
+        self._manager._check_structure()
+
+    def remove_player(self, user):
+        """
+        Make a user be no longer a player of this player group.
+
+        If the group required that there it always had players and by calling this method the
+        group had no more players, the group will automatically be scheduled for deletion.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to remove.
+
+        Raises
+        ------
+        PlayerGroupError.GroupIsUnmanagedError:
+            If the group was scheduled for deletion and thus does not accept any mutator
+            public method calls.
+        PlayerGroupError.UserNotPlayerError
+            If the user to remove is already not a player of this group.
+
+        """
+
+        if self._unmanaged:
+            raise PlayerGroupError.GroupIsUnmanagedError
+        if user not in self._players:
+            raise PlayerGroupError.UserNotPlayerError
+
+        self._players.remove(user)
+        self._leaders.discard(user)
+        self._manager._remove_user_from_mapping(user, self)
+
+        # Check updated leadership requirement
+        self._choose_leader_if_needed()
+        # Check if no players, and disassemble if appropriate
+        if self._require_players and not self._players:
+            self._manager.delete_group(self)
+
+        self._manager._check_structure()
+
+    def get_invitations(self, cond=None):
+        """
+        Return (a shallow copy of) the set of invited users of this player group that satisfy
+        a condition if given.
+
+        Parameters
+        ----------
+        cond : types.LambdaType: ClientManager.Client -> bool, optional
+            Condition that all invited users returned satisfy. Defaults to None (no checked
+            conditions).
+
+        Returns
+        -------
+        set of ClientManager.Client
+            The (filtered) invited users of this player group.
+
+        """
+
+        if cond is None:
+            cond = lambda c: True
+
+        filtered_invited = {invited for invited in self._invitations if cond(invited)}
+        return filtered_invited
+
+    def is_invited(self, user):
+        """
+        Decide if a user is invited to the player group.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to test.
+
+        Raises
+        ------
+        PlayerGroupError.UserAlreadyPlayerError
+            If the user is a player of this group.
+
+        Returns
+        -------
+        bool
+            True if the user is invited, False otherwise.
+
+        """
+
+        if user in self._players:
+            raise PlayerGroupError.UserAlreadyPlayerError
+
+        return user in self._invitations
+
+    def add_invitation(self, user):
+        """
+        Mark a user as invited to this player group.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to invite to the player group.
+
+        Raises
+        ------
+        PlayerGroupError.GroupIsUnmanagedError:
+            If the group was scheduled for deletion and thus does not accept any mutator
+            public method calls.
+        PlayerGroupError.GroupDoesNotTakeInvitationsError
+            If the group does not require users be invited to the player group.
+        PlayerGroupError.UserAlreadyInvitedError
+            If the player to invite is already invited to the player group.
+        PlayerGroupError.UserAlreadyPlayerError
+            If the player to invite is already a player of the player group.
+
+        """
+
+        if self._unmanaged:
+            raise PlayerGroupError.GroupIsUnmanagedError
+        if not self._require_invitations: # By design check if invitations are required first
+            raise PlayerGroupError.GroupDoesNotTakeInvitationsError
+        if user in self._invitations:
+            raise PlayerGroupError.UserAlreadyInvitedError
+        if user in self._players:
+            raise PlayerGroupError.UserAlreadyPlayerError
+
+        self._invitations.add(user)
+
+        self._manager._check_structure()
+
+    def remove_invitation(self, user):
+        """
+        Mark a user as no longer invited to this player group (uninvite).
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to uninvite.
+
+        Raises
+        ------
+        PlayerGroupError.GroupIsUnmanagedError:
+            If the group was scheduled for deletion and thus does not accept any mutator
+            public method calls.
+        PlayerGroupError.GroupDoesNotTakeInvitationsError
+            If the group does not require users be invited to the player group.
+        PlayerGroupError.UserNotInvitedError
+            If the user to uninvite is already not invited to this group.
+
+        """
+
+        if self._unmanaged:
+            raise PlayerGroupError.GroupIsUnmanagedError
+        if not self._require_invitations: # By design check if invitations are required first
+            raise PlayerGroupError.GroupDoesNotTakeInvitationsError
+        if user not in self._invitations:
+            raise PlayerGroupError.UserNotInvitedError
+
+        self._invitations.remove(user)
+
+        self._manager._check_structure()
+
+    def get_leaders(self, cond=None):
+        """
+        Return (a shallow copy of) the set of leaders of this player group that satisfy a
+        condition if given.
+
+        Parameters
+        ----------
+        cond : types.LambdaType: ClientManager.Client -> bool, optional
+            Condition that all leaders returned satisfy. Defaults to None (no checked
+            conditions).
+
+        Returns
+        -------
+        set of ClientManager.Client
+            The (filtered) leaders of this player group.
+
+        """
+
+        if cond is None:
+            cond = lambda c: True
+
+        filtered_leaders = {leader for leader in self._leaders if cond(leader)}
+        return filtered_leaders
+
+    def get_regulars(self, cond=None):
+        """
+        Return (a shallow copy of) the set of players of this player group that are not leaders
+        (regulars) and satisfy a condition if given.
+
+        Parameters
+        ----------
+        cond : types.LambdaType: ClientManager.Client -> bool, optional
+            Condition that all regulars returned satisfy. Defaults to None (no checked
+            conditions).
+
+        Returns
+        -------
+        set of ClientManager.Client
+            The (filtered) regulars of this player group.
+
+        """
+
+        if cond is None:
+            cond = lambda c: True
+
+        regulars = {player for player in self._players if player not in self._leaders}
+        filtered_regulars = {regular for regular in regulars if cond(regular)}
+        return filtered_regulars
+
+    def is_leader(self, user):
+        """
+        Decide if a user is a leader of the player group.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to test.
+
+        Raises
+        ------
+        PlayerGroupError.UserNotPlayerError
+            If the player to test is not a player of this group.
+
+        Returns
+        -------
+        bool
+            True if the player is a user, False otherwise.
+
+        """
+
+        if user not in self._players:
+            raise PlayerGroupError.UserNotPlayerError
+
+        return user in self._leaders
+
+    def add_leader(self, user):
+        """
+        Set a user as leader of this group (promote to leader).
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            Player to promote to leader.
+
+        Raises
+        ------
+        PlayerGroupError.GroupIsUnmanagedError:
+            If the group was scheduled for deletion and thus does not accept any mutator
+            public method calls.
+        PlayerGroupError.UserNotPlayerError
+            If the player to promote is not a player of this group.
+        PlayerGroupError.UserAlreadyLeaderError
+            If the player to promote is already a leader of this group.
+
+        """
+
+        if self._unmanaged:
+            raise PlayerGroupError.GroupIsUnmanagedError
+        if user not in self._players:
+            raise PlayerGroupError.UserNotPlayerError
+        if user in self._leaders:
+            raise PlayerGroupError.UserAlreadyLeaderError
+
+        self._leaders.add(user)
+        self._manager._check_structure()
+
+    def remove_leader(self, user):
+        """
+        Make a user no longer leader of this group (demote).
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to demote.
+
+        Raises
+        ------
+        PlayerGroupError.GroupIsUnmanagedError:
+            If the group was scheduled for deletion and thus does not accept any mutator
+            public method calls.
+        PlayerGroupError.UserNotPlayerError
+            If the player to demote is not a player of this group.
+        PlayerGroupError.UserNotLeaderError
+            If the player to demote is already not a leader of this group.
+
+        """
+
+        if self._unmanaged:
+            raise PlayerGroupError.GroupIsUnmanagedError
+        if user not in self._players:
+            raise PlayerGroupError.UserNotPlayerError
+        if user not in self._leaders:
+            raise PlayerGroupError.UserNotLeaderError
+
+        self._leaders.remove(user)
+        # Check leadership requirement
+        self._choose_leader_if_needed()
+        self._manager._check_structure()
+
+    def is_unmanaged(self):
+        """
+        Return True if this player group is unmanaged, False otherwise.
+
+        Returns
+        -------
+        bool
+            True if unmanaged, False otherwise.
+
+        """
+
+        return self._unmanaged
+
+    def destroy(self):
+        """
+        Mark this player group as destroyed and notify its manager so that it is deleted.
+        If the player group is already destroyed, this function does nothing.
+
+        This method is reentrant (it will do nothing though).
+
+        Returns
+        -------
+        None.
+
+        """
+
+        # Implementation detail: To make this safely reentrant and allow this code to be ran
+        # multiple times, we do the following:
+        # At the very beginning we check if self._unmanaged is True.
+        # * If yes, we abort execution of this method.
+        # * If no, we continue execution and mark self._unmanaged as True
+        # Thus there cannot be more than one call of destroy that is not immediately aborted.
+
+        if self._unmanaged:
+            return
+        self._unmanaged = True
+
+        try:
+            self._manager.delete_group(self)
+        except PlayerGroupError.ManagerDoesNotManageGroupError:
+            pass
+
+        # While only clearing internal variables here means that structural integrity won't be
+        # maintained in time for the manager's structural checks, as the manager will no longer
+        # list this player group as a group it manages, no structural checks will be performed
+        # on this object anymore by outside entities, so this code is safe.
+
+        self._players = set()
+        self._invitations = set()
+        self._leaders = set()
+
+        return
+
+    def _choose_leader_if_needed(self):
+        """
+        If the player group requires that the group always have a leader if there is at least
+        one player, one leader will randomly be chosen among all players. If this condition is
+        already true, no new leaders are chosen.
+        """
+
+        if not self._require_leaders:
+            return
+        if self._leaders:
+            return
+        if not self._players:
+            return
+
+        new_leader = random.choice(list(self.get_players()))
+        self.add_leader(new_leader)
+
+    def _check_structure(self):
+        """
+        Assert that all invariants specified in the class description are maintained.
+
+        Raises
+        ------
+        AssertionError
+            If any of the invariants are not maintained.
+
+        """
+
+        # 1.
+        for player in self._players:
+            err = (f'For group {self._playergroup_id}, expected that player {player} was a '
+                   f'client of its server {self._server}, but found that was not the case. '
+                   f'|| {self}')
+            assert self._server.is_client(player), err
+
+        # 2.
+        err = (f'For group {self._playergroup_id} that is not unmanaged that also claims that '
+               f'it is managed by manager {self._manager}, expected that it recognized that '
+               f'it managed it, but found it did not. || {self}')
+        if not self._unmanaged:
+            assert self in self._manager.get_groups(), err
+
+        err = (f'For group {self._playergroup_id} that is unmanaged that also claims that it '
+               f'was managed by manager {self._manager}, expected that it recognized that '
+               f'it did not manage it, but found it did. || {self}')
+        if self._unmanaged:
+            assert self not in self._manager.get_groups(), err
+
+        # 3.
+        if self._unmanaged:
+            err = (f'For group {self._playergroup_id} that is unmanaged, expected that it had '
+                   f'no players, but found it had these players: {self._players} || {self}')
+            assert not self._players, err
+
+            err = (f'For group {self._playergroup_id} that is unmanaged, expected that it had '
+                   f'no invitations, but found it had these invitations: {self._invitations} '
+                   f'|| {self}')
+            assert not self._invitations, err
+
+            err = (f'For group {self._playergroup_id} that is unmanaged, expected that it had '
+                   f'no leaders, but found it had these leaders: {self._leaders} || {self}')
+            assert not self._leaders, err
+
+        # 4.
+        for player in self._players:
+            err = (f'For group {self._playergroup_id}, expected that its player {player} is '
+                   f'properly recognized in the player to group mapping of the manager of the '
+                   f'group {self._manager}, but found that was not the case. || {self}')
+            assert (player in self._manager.get_users_in_groups()
+                    and self in self._manager.get_groups_of_user(player)), err
+
+        # 5.
+        if self._player_limit is not None:
+            err = (f'For group {self._playergroup_id}, expected that there were at most '
+                   f'{self._player_limit} players, but found it had {len(self._players)} '
+                   f'players. || {self}')
+            assert len(self._players) <= self._player_limit, err
+
+        # 6.
+        for leader in self._leaders:
+            err = (f'For group {self._playergroup_id}, expected that leader {leader} was a '
+                   f'player of it too, but found it was not. || {self}')
+            assert leader in self._players, err
+
+        # 7.
+        if self._players:
+            err = (f'For group {self._playergroup_id}, expected it knew it ever had some '
+                   f'players, but found it did not. || {self}')
+            assert self._ever_had_players, err
+
+        # 8.
+        if self._require_players and self._ever_had_players:
+            err = (f'For group {self._playergroup_id}, expected that it was scheduled for '
+                   f'deletion after losing all its players, but found it was not. || {self}')
+            assert self._players or self._unmanaged, err
+
+        # 9.
+        if self._require_leaders:
+            err = (f'For group {self._playergroup_id} with some players, expected that there '
+                   f'was a leader, but found it had none. || {self}')
+            assert not self._players or self._leaders, err
+
+        # 10.
+        players_also_invited = self._players.intersection(self._invitations)
+        err = (f'For group {self._playergroup_id}, expected that all users in the invitation '
+               f'list of the group were not players, but found the following players who were '
+               f'in the invitation list: {players_also_invited}. || {self}')
+        assert not players_also_invited, err
+
+        # 11.
+        err = (f'For group {self._playergroup_id} that does not require invitations, expected '
+               f'that no player was invited to the group, but found the following users who '
+               f'were in the invitation list: {self._invitations}. || {self}')
+        assert self._require_invitations or not self._invitations
+
+    def __repr__(self):
+        """
+        Return a representation of this player group.
+
+        Returns
+        -------
+        str
+            Printable representation.
+
+        """
+
+        return (f"PlayerGroup(server, {self._manager.get_id()}, '{self._playergroup_id}', "
+                f"player_limit={self._player_limit}, "
+                f"concurrent_limit={self._concurrent_limit}, "
+                f"require_players={self._require_players}, "
+                f"require_invitations={self._require_invitations}, "
+                f"require_leaders={self._require_leaders}) "
+                f"|| "
+                f"players={self._players}, invitations={self._invitations}, "
+                f"leaders={self._leaders}, unmanaged={self._unmanaged}"
+                )
 
 class PlayerGroupManager:
     """
@@ -46,12 +783,12 @@ class PlayerGroupManager:
     # _playergroup_limit : int or None
     #     If an int, it is the maximum number of player groups this manager supports. If None, the
     #     manager may manage an arbitrary number of groups.
-    # _default_playergroup_type : PlayerGroupManager.PlayerGroup or functools.partial
+    # _default_playergroup_type : PlayerGroup or functools.partial
     #     The type of player groups this player group manager will create by default when ordered
     #     to create a new one.
-    # _user_to_groups : dict of ClientManager.Client to set of PlayerGroupManager.PlayerGroup
+    # _user_to_groups : dict of ClientManager.Client to set of PlayerGroup
     #     Mapping of users to the player groups managed by this manager they belong to.
-    # _id_to_group : dict of str to PlayerGroupManager.PlayerGroup
+    # _id_to_group : dict of str to PlayerGroup
     #     Mapping of player group IDs to player groups that this manager manages.
 
     # Invariants
@@ -70,717 +807,6 @@ class PlayerGroupManager:
     #     c. For every group `group` in `self._user_to_groups[player]`, `player` belongs to `group`.
     # 5. Each player group it manages also satisfies its structural invariants.
 
-    class PlayerGroup:
-        """
-        A mutable data type for player groups.
-
-        Player groups are groups of users (called players) with an ID, where some players
-        (possibly none) are leaders. Each player group may have a player limit (beyond which no
-        new players may be added), may require that it never loses all its players as soon as it
-        gets its first one (or else it is automatically deleted) and may require that if it has
-        at least one player, then that there is at least one leader (or else one is automatically
-        chosen between all players). Each of these groups may also impose a concurrent membership
-        limit, so that every user that is a player of it is at most a player of that many player
-        groups managed by this group's manager.
-
-        Once a group is scheduled for deletion, its manager will no longer recognize it as a group
-        it is managing (it will unmanage it), so no further mutator public method calls would be
-        allowed on the player group.
-
-        """
-
-        # (Private) Attributes
-        # --------------------
-        # _server : TsuserverDR
-        #     Server the player group belongs to.
-        # _manager : PlayerGroupManager
-        #     Manager for this player group.
-        # _playergroup_id : str
-        #     Identifier for this player group.
-        # _player_limit : int or None.
-        #     If an int, it is the maximum number of players the group supports. If None, the group
-        #     may have an arbitrary number of players.
-        # _concurrent_limit : int or None.
-        #     If an int, it is the maximum number of player groups managed by the same manager as
-        #     this group that any player part of this player group may belong to, including this
-        #     player group. If None, no such restriction is considered.
-        # _players : set of ClientManager.Client
-        #     Players of the player group.
-        # _leaders : set of ClientManager.Client
-        #     Leaders of the player group.
-        # _invitations : set of clientManager.Client
-        #     Users invited to (but not part of of) the player group.
-        # _require_players : bool
-        #     If True, the group will disassemble automatically if it loses all its players (but it
-        #     may start with no players).
-        # _require_leaders : bool
-        #     If True and the group has no leaders but at least one player, it will randomly choose
-        #     one player to be a leader.
-        # _ever_had_players : bool
-        #    If True, at least once has a player been added successfully the the player group;
-        #    otherwise False.
-        # _unmanaged : bool
-        #     If True, the manager this group claims is its manager no longer recognizes it is
-        #     managing this group, thus no further mutator public method calls would be allowed.
-
-        # Invariants
-        # ----------
-        # 1. Each player is a client of the server.
-        # 2. `self._unmanaged` is False if and only if `self` is in
-        #    `self._manager._id_to_group.values()`.
-        # 3. If `self._unmanaged`, then `self._players`, `self._invitations`, `self._leaders` are
-        #    all empty sets.
-        # 4. For every player `player` in `self._players`, `self._manager._user_to_groups[player]`
-        #    exists and contains `self`.
-        # 5. If `self._player_limit` is not None, then `len(self._players) <= player_limit`.
-        # 6. For every player in `self._leaders`, they also belong in `self._players`.
-        # 7. If `len(self._players) >= 1`, then `self._ever_had_players is True`.
-        # 8. If `self._require_players` is True, then `len(self._players) >= 1 or self._unmanaged`.
-        # 9. If `self._require_leaders` is True and `len(self._players) >= 1`, then
-        #    `len(self._leaders) >= 1`.
-        # 10. `self._invitations` and `self._players` are disjoint sets.
-        # 11. If `self._require_invitations` is False, then `self._invitations` is the empty set.
-
-        def __init__(self, server, manager, playergroup_id, player_limit=None,
-                     concurrent_limit=1, require_invitations=False, require_players=True,
-                     require_leaders=True):
-            """
-            Create a new player group.
-
-            Parameters
-            ----------
-            server : TsuserverDR
-                Server the player group belongs to.
-            manager : PlayerGroupManager
-                Manager for this player group.
-            playergroup_id : str
-                Identifier of the player group.
-            player_limit : int or None, optional
-                If an int, it is the maximum number of players the player group supports. If None,
-                it indicates the player group has no player limit. Defaults to None.
-            concurrent_limit : int or None, optional
-                If an int, it is the maximum number of player groups managed by `manager` that any
-                player of this group may belong to, including this group. If None, it indicates
-                that this group does not care about how many other player groups managed by
-                `manager` each of its players belongs to. Defaults to 1 (a player may not be in
-                another group managed by `manager` while in this group).
-            require_invitation : bool, optional
-                If True, players can only be added to the group if they were previously invited. If
-                False, no checking for invitations is performed. Defaults to False.
-            require_players : bool, optional
-                If True, if at any point the group has no players left, the group will
-                automatically be deleted. If False, no such automatic deletion will happen.
-                Defaults to True.
-            require_leaders : bool, optional
-                If True, if at any point the group has no leaders left, the group will choose a
-                leader among any remaining players left; if no players are left, the next player
-                added will be made leader. If False, no such automatic assignment will happen.
-                Defaults to True.
-
-            """
-
-            self._server = server
-            self._manager = manager
-            self._playergroup_id = playergroup_id
-            self._player_limit = player_limit
-            self._concurrent_limit = concurrent_limit
-            self._require_invitations = require_invitations
-            self._require_players = require_players
-            self._require_leaders = require_leaders
-
-            self._players = set()
-            self._leaders = set()
-            self._invitations = set()
-            self._ever_had_players = False
-            self._unmanaged = False
-
-            self._manager._check_structure()
-
-        def get_id(self):
-            """
-            Return the ID of this player group.
-
-            Returns
-            -------
-            str
-                The ID.
-
-            """
-
-            return self._playergroup_id
-
-        def get_concurrent_limit(self):
-            """
-            Return the concurrent membership limit of this player group.
-
-            Returns
-            -------
-            int
-                The concurrent player limit.
-
-            """
-
-            return self._concurrent_limit
-
-        def get_players(self, cond=None):
-            """
-            Return (a shallow copy of) the set of players of this player group that satisfy a
-            condition if given.
-
-            Parameters
-            ----------
-            cond : types.LambdaType: ClientManager.Client -> bool, optional
-                Condition that all players returned satisfy. Defaults to None (no checked
-                conditions).
-
-            Returns
-            -------
-            set of ClientManager.Client
-                The (filtered) players of this player group.
-
-            """
-
-            if cond is None:
-                cond = lambda c: True
-
-            filtered_players = {player for player in self._players if cond(player)}
-            return filtered_players
-
-        def is_player(self, user):
-            """
-            Decide if a user is a player of the player group.
-
-            Parameters
-            ----------
-            user : ClientManager.Client
-                User to test.
-
-            Returns
-            -------
-            bool
-                True if the user is a player, False otherwise.
-
-            """
-
-            return user in self._players
-
-        def add_player(self, user):
-            """
-            Make a user a player of the player group. By default this player will not be a
-            leader, unless the group has no leaders and the player group requires a leader.
-
-            Parameters
-            ----------
-            user : ClientManager.Client
-                User to add to the player group.
-
-            Raises
-            ------
-            PlayerGroupError.GroupIsUnmanagedError:
-                If the group was scheduled for deletion and thus does not accept any mutator
-                public method calls.
-            PlayerGroupError.UserNotInvitedError
-                If the group requires players be invited to be added and the user is not invited.
-            PlayerGroupError.UserAlreadyPlayerError
-                If the user to add is already a user of the player group.
-            PlayerGroupError.UserInAnotherGroupError
-                If the player is already in another group managed by this manager.
-            PlayerGroupError.GroupIsFullError
-                If the group reached its player limit.
-            PlayerGroupError.UserHitGroupConcurrentLimitError.
-                If the player has reached any of the groups it belongs to managed by this player
-                group's manager concurrent membership limit, or by virtue of joining this group
-                they will violate this group's concurrent membership limit.
-
-            """
-
-            if self._unmanaged:
-                raise PlayerGroupError.GroupIsUnmanagedError
-            if self._require_invitations and user not in self._invitations:
-                raise PlayerGroupError.UserNotInvitedError
-            if user in self._players:
-                raise PlayerGroupError.UserAlreadyPlayerError
-            if self._player_limit is not None and len(self._players) >= self._player_limit:
-                raise PlayerGroupError.GroupIsFullError
-            if self._manager._find_concurrent_limiting_group(user):
-                raise PlayerGroupError.UserHitGroupConcurrentLimitError
-            groups_of_user = self._manager.get_groups_of_user(user)
-            if len(groups_of_user) >= self._concurrent_limit:
-                raise PlayerGroupError.UserHitGroupConcurrentLimitError
-
-            self._ever_had_players = True
-            self._players.add(user)
-            self._manager._add_user_to_mapping(user, self)
-
-            if self._require_invitations:
-                self._invitations.remove(user)
-
-            self._choose_leader_if_needed()
-
-            self._manager._check_structure()
-
-        def remove_player(self, user):
-            """
-            Make a user be no longer a player of this player group.
-
-            If the group required that there it always had players and by calling this method the
-            group had no more players, the group will automatically be scheduled for deletion.
-
-            Parameters
-            ----------
-            user : ClientManager.Client
-                User to remove.
-
-            Raises
-            ------
-            PlayerGroupError.GroupIsUnmanagedError:
-                If the group was scheduled for deletion and thus does not accept any mutator
-                public method calls.
-            PlayerGroupError.UserNotPlayerError
-                If the user to remove is already not a player of this group.
-
-            """
-
-            if self._unmanaged:
-                raise PlayerGroupError.GroupIsUnmanagedError
-            if user not in self._players:
-                raise PlayerGroupError.UserNotPlayerError
-
-            self._players.remove(user)
-            self._leaders.discard(user)
-            self._manager._remove_user_from_mapping(user, self)
-
-            # Check updated leadership requirement
-            self._choose_leader_if_needed()
-            # Check if no players, and disassemble if appropriate
-            if self._require_players and not self._players:
-                self._manager.delete_group(self)
-
-            self._manager._check_structure()
-
-        def get_invitations(self, cond=None):
-            """
-            Return (a shallow copy of) the set of invited users of this player group that satisfy
-            a condition if given.
-
-            Parameters
-            ----------
-            cond : types.LambdaType: ClientManager.Client -> bool, optional
-                Condition that all invited users returned satisfy. Defaults to None (no checked
-                conditions).
-
-            Returns
-            -------
-            set of ClientManager.Client
-                The (filtered) invited users of this player group.
-
-            """
-
-            if cond is None:
-                cond = lambda c: True
-
-            filtered_invited = {invited for invited in self._invitations if cond(invited)}
-            return filtered_invited
-
-        def is_invited(self, user):
-            """
-            Decide if a user is invited to the player group.
-
-            Parameters
-            ----------
-            user : ClientManager.Client
-                User to test.
-
-            Raises
-            ------
-            PlayerGroupError.UserAlreadyPlayerError
-                If the user is a player of this group.
-
-            Returns
-            -------
-            bool
-                True if the user is invited, False otherwise.
-
-            """
-
-            if user in self._players:
-                raise PlayerGroupError.UserAlreadyPlayerError
-
-            return user in self._invitations
-
-        def add_invitation(self, user):
-            """
-            Mark a user as invited to this player group.
-
-            Parameters
-            ----------
-            user : ClientManager.Client
-                User to invite to the player group.
-
-            Raises
-            ------
-            PlayerGroupError.GroupIsUnmanagedError:
-                If the group was scheduled for deletion and thus does not accept any mutator
-                public method calls.
-            PlayerGroupError.GroupDoesNotTakeInvitationsError
-                If the group does not require users be invited to the player group.
-            PlayerGroupError.UserAlreadyInvitedError
-                If the player to invite is already invited to the player group.
-            PlayerGroupError.UserAlreadyPlayerError
-                If the player to invite is already a player of the player group.
-
-            """
-
-            if self._unmanaged:
-                raise PlayerGroupError.GroupIsUnmanagedError
-            if not self._require_invitations: # By design check if invitations are required first
-                raise PlayerGroupError.GroupDoesNotTakeInvitationsError
-            if user in self._invitations:
-                raise PlayerGroupError.UserAlreadyInvitedError
-            if user in self._players:
-                raise PlayerGroupError.UserAlreadyPlayerError
-
-            self._invitations.add(user)
-
-            self._manager._check_structure()
-
-        def remove_invitation(self, user):
-            """
-            Mark a user as no longer invited to this player group (uninvite).
-
-            Parameters
-            ----------
-            user : ClientManager.Client
-                User to uninvite.
-
-            Raises
-            ------
-            PlayerGroupError.GroupIsUnmanagedError:
-                If the group was scheduled for deletion and thus does not accept any mutator
-                public method calls.
-            PlayerGroupError.GroupDoesNotTakeInvitationsError
-                If the group does not require users be invited to the player group.
-            PlayerGroupError.UserNotInvitedError
-                If the user to uninvite is already not invited to this group.
-
-            """
-
-            if self._unmanaged:
-                raise PlayerGroupError.GroupIsUnmanagedError
-            if not self._require_invitations: # By design check if invitations are required first
-                raise PlayerGroupError.GroupDoesNotTakeInvitationsError
-            if user not in self._invitations:
-                raise PlayerGroupError.UserNotInvitedError
-
-            self._invitations.remove(user)
-
-            self._manager._check_structure()
-
-        def get_leaders(self, cond=None):
-            """
-            Return (a shallow copy of) the set of leaders of this player group that satisfy a
-            condition if given.
-
-            Parameters
-            ----------
-            cond : types.LambdaType: ClientManager.Client -> bool, optional
-                Condition that all leaders returned satisfy. Defaults to None (no checked
-                conditions).
-
-            Returns
-            -------
-            set of ClientManager.Client
-                The (filtered) leaders of this player group.
-
-            """
-
-            if cond is None:
-                cond = lambda c: True
-
-            filtered_leaders = {leader for leader in self._leaders if cond(leader)}
-            return filtered_leaders
-
-        def is_leader(self, user):
-            """
-            Decide if a user is a leader of the player group.
-
-            Parameters
-            ----------
-            user : ClientManager.Client
-                User to test.
-
-            Raises
-            ------
-            PlayerGroupError.UserNotPlayerError
-                If the player to test is not a player of this group.
-
-            Returns
-            -------
-            bool
-                True if the player is a user, False otherwise.
-
-            """
-
-            if user not in self._players:
-                raise PlayerGroupError.UserNotPlayerError
-
-            return user in self._leaders
-
-        def add_leader(self, user):
-            """
-            Set a user as leader of this group (promote to leader).
-
-            Parameters
-            ----------
-            user : ClientManager.Client
-                Player to promote to leader.
-
-            Raises
-            ------
-            PlayerGroupError.GroupIsUnmanagedError:
-                If the group was scheduled for deletion and thus does not accept any mutator
-                public method calls.
-            PlayerGroupError.UserNotPlayerError
-                If the player to promote is not a player of this group.
-            PlayerGroupError.UserAlreadyLeaderError
-                If the player to promote is already a leader of this group.
-
-            """
-
-            if self._unmanaged:
-                raise PlayerGroupError.GroupIsUnmanagedError
-            if user not in self._players:
-                raise PlayerGroupError.UserNotPlayerError
-            if user in self._leaders:
-                raise PlayerGroupError.UserAlreadyLeaderError
-
-            self._leaders.add(user)
-            self._manager._check_structure()
-
-        def remove_leader(self, user):
-            """
-            Make a user no longer leader of this group (demote).
-
-            Parameters
-            ----------
-            user : ClientManager.Client
-                User to demote.
-
-            Raises
-            ------
-            PlayerGroupError.GroupIsUnmanagedError:
-                If the group was scheduled for deletion and thus does not accept any mutator
-                public method calls.
-            PlayerGroupError.UserNotPlayerError
-                If the player to demote is not a player of this group.
-            PlayerGroupError.UserNotLeaderError
-                If the player to demote is already not a leader of this group.
-
-            """
-
-            if self._unmanaged:
-                raise PlayerGroupError.GroupIsUnmanagedError
-            if user not in self._players:
-                raise PlayerGroupError.UserNotPlayerError
-            if user not in self._leaders:
-                raise PlayerGroupError.UserNotLeaderError
-
-            self._leaders.remove(user)
-            # Check leadership requirement
-            self._choose_leader_if_needed()
-            self._manager._check_structure()
-
-        def is_unmanaged(self):
-            """
-            Return True if this player group is unmanaged, False otherwise.
-
-            Returns
-            -------
-            bool
-                True if unmanaged, False otherwise.
-
-            """
-
-            return self._unmanaged
-
-        def destroy(self):
-            """
-            Mark this player group as destroyed and notify its manager so that it is deleted.
-            If the player group is already destroyed, this function does nothing.
-
-            This method is reentrant (it will do nothing though).
-
-            Returns
-            -------
-            None.
-
-            """
-
-            # Implementation detail: To make this safely reentrant and allow this code to be ran
-            # multiple times, we do the following:
-            # At the very beginning we check if self._unmanaged is True.
-            # * If yes, we abort execution of this method.
-            # * If no, we continue execution and mark self._unmanaged as True
-            # Thus there cannot be more than one call of destroy that is not immediately aborted.
-
-            if self._unmanaged:
-                return
-            self._unmanaged = True
-
-            try:
-                self._manager.delete_group(self)
-            except PlayerGroupError.ManagerDoesNotManageGroupError:
-                pass
-
-            # While only clearing internal variables here means that structural integrity won't be
-            # maintained in time for the manager's structural checks, as the manager will no longer
-            # list this player group as a group it manages, no structural checks will be performed
-            # on this object anymore by outside entities, so this code is safe.
-
-            self._players = set()
-            self._invitations = set()
-            self._leaders = set()
-
-            return
-
-        def _choose_leader_if_needed(self):
-            """
-            If the player group requires that the group always have a leader if there is at least
-            one player, one leader will randomly be chosen among all players. If this condition is
-            already true, no new leaders are chosen.
-            """
-
-            if not self._require_leaders:
-                return
-            if self._leaders:
-                return
-            if not self._players:
-                return
-
-            new_leader = random.choice(list(self.get_players()))
-            self.add_leader(new_leader)
-
-        def _check_structure(self):
-            """
-            Assert that all invariants specified in the class description are maintained.
-
-            Raises
-            ------
-            AssertionError
-                If any of the invariants are not maintained.
-
-            """
-
-            # 1.
-            for player in self._players:
-                err = (f'For group {self._playergroup_id}, expected that player {player} was a '
-                       f'client of its server {self._server}, but found that was not the case. '
-                       f'|| {self}')
-                assert self._server.is_client(player), err
-
-            # 2.
-            err = (f'For group {self._playergroup_id} that is not unmanaged that also claims that '
-                   f'it is managed by manager {self._manager}, expected that it recognized that '
-                   f'it managed it, but found it did not. || {self}')
-            if not self._unmanaged:
-                assert self in self._manager.get_groups(), err
-
-            err = (f'For group {self._playergroup_id} that is unmanaged that also claims that it '
-                   f'was managed by manager {self._manager}, expected that it recognized that '
-                   f'it did not manage it, but found it did. || {self}')
-            if self._unmanaged:
-                assert self not in self._manager.get_groups(), err
-
-            # 3.
-            if self._unmanaged:
-                err = (f'For group {self._playergroup_id} that is unmanaged, expected that it had '
-                       f'no players, but found it had these players: {self._players} || {self}')
-                assert not self._players, err
-
-                err = (f'For group {self._playergroup_id} that is unmanaged, expected that it had '
-                       f'no invitations, but found it had these invitations: {self._invitations} '
-                       f'|| {self}')
-                assert not self._invitations, err
-
-                err = (f'For group {self._playergroup_id} that is unmanaged, expected that it had '
-                       f'no leaders, but found it had these leaders: {self._leaders} || {self}')
-                assert not self._leaders, err
-
-            # 4.
-            for player in self._players:
-                err = (f'For group {self._playergroup_id}, expected that its player {player} is '
-                       f'properly recognized in the player to group mapping of the manager of the '
-                       f'group {self._manager}, but found that was not the case. || {self}')
-                assert (player in self._manager.get_users_in_groups()
-                        and self in self._manager.get_groups_of_user(player)), err
-
-            # 5.
-            if self._player_limit is not None:
-                err = (f'For group {self._playergroup_id}, expected that there were at most '
-                       f'{self._player_limit} players, but found it had {len(self._players)} '
-                       f'players. || {self}')
-                assert len(self._players) <= self._player_limit, err
-
-            # 6.
-            for leader in self._leaders:
-                err = (f'For group {self._playergroup_id}, expected that leader {leader} was a '
-                       f'player of it too, but found it was not. || {self}')
-                assert leader in self._players, err
-
-            # 7.
-            if self._players:
-                err = (f'For group {self._playergroup_id}, expected it knew it ever had some '
-                       f'players, but found it did not. || {self}')
-                assert self._ever_had_players, err
-
-            # 8.
-            if self._require_players and self._ever_had_players:
-                err = (f'For group {self._playergroup_id}, expected that it was scheduled for '
-                       f'deletion after losing all its players, but found it was not. || {self}')
-                assert self._players or self._unmanaged, err
-
-            # 9.
-            if self._require_leaders:
-                err = (f'For group {self._playergroup_id} with some players, expected that there '
-                       f'was a leader, but found it had none. || {self}')
-                assert not self._players or self._leaders, err
-
-            # 10.
-            players_also_invited = self._players.intersection(self._invitations)
-            err = (f'For group {self._playergroup_id}, expected that all users in the invitation '
-                   f'list of the group were not players, but found the following players who were '
-                   f'in the invitation list: {players_also_invited}. || {self}')
-            assert not players_also_invited, err
-
-            # 11.
-            err = (f'For group {self._playergroup_id} that does not require invitations, expected '
-                   f'that no player was invited to the group, but found the following users who '
-                   f'were in the invitation list: {self._invitations}. || {self}')
-            assert self._require_invitations or not self._invitations
-
-        def __repr__(self):
-            """
-            Return a representation of this player group.
-
-            Returns
-            -------
-            str
-                Printable representation.
-
-            """
-
-            return (f"PlayerGroupManager.PlayerGroup(server, {self._manager.get_id()}, "
-                    f"'{self._playergroup_id}', "
-                    f"player_limit={self._player_limit}, "
-                    f"concurrent_limit={self._concurrent_limit}, "
-                    f"require_players={self._require_players}, "
-                    f"require_invitations={self._require_invitations}, "
-                    f"require_leaders={self._require_leaders}) "
-                    f"|| "
-                    f"players={self._players}, invitations={self._invitations}, "
-                    f"leaders={self._leaders}, unmanaged={self._unmanaged}"
-                    )
-
     def __init__(self, server, playergroup_limit=None, default_playergroup_type=None,
                  available_id_producer=None):
         """
@@ -792,9 +818,9 @@ class PlayerGroupManager:
             The server this player group manager belongs to.
         playergroup_limit : int, optional
             The maximum number of groups this manager can handle. Defaults to None (no limit).
-        playergroup_type : PlayerGroupManager.PlayerGroup, optional
+        playergroup_type : PlayerGroup, optional
             The default type of player group this manager will create. Defaults to None (and then
-            converted to self.PlayerGroup).
+            converted to PlayerGroup).
         available_id_producer : typing.types.FunctionType, optional
             Function to produce available group IDs. It will override the built-in class method
             get_available_group_id. Defaults to None (and then converted to the built-in
@@ -803,7 +829,7 @@ class PlayerGroupManager:
         """
 
         if default_playergroup_type is None:
-            default_playergroup_type = self.PlayerGroup
+            default_playergroup_type = PlayerGroup
         if available_id_producer is None:
             available_id_producer = self.get_available_group_id
         self.get_available_group_id = available_id_producer
@@ -824,7 +850,7 @@ class PlayerGroupManager:
 
         Parameters
         ----------
-        playergroup_type : PlayerGroupManager.PlayerGroup
+        playergroup_type : PlayerGroup
             Class of player group that will be produced. Defaults to None (and converted to the
             default player group created by this player group manager).
         creator : ClientManager.Client, optional
@@ -852,7 +878,7 @@ class PlayerGroupManager:
 
         Returns
         -------
-        PlayerGroupManager.PlayerGroup
+        PlayerGroup
             The created player group.
 
         Raises
@@ -914,7 +940,7 @@ class PlayerGroupManager:
 
         Parameters
         ----------
-        playergroup : PlayerGroupManager.PlayerGroup
+        playergroup : PlayerGroup
             The player group to delete.
 
         Returns
@@ -953,7 +979,7 @@ class PlayerGroupManager:
 
         Parameters
         ----------
-        playergroup : PlayerGroupManager.PlayerGroup
+        playergroup : PlayerGroup
             The player group to check.
 
         Returns
@@ -971,7 +997,7 @@ class PlayerGroupManager:
 
         Returns
         -------
-        set of PlayerGroupManager.PlayerGroup
+        set of PlayerGroup
             Player groups this manager manages.
 
         """
@@ -989,7 +1015,7 @@ class PlayerGroupManager:
 
         Returns
         -------
-        PlayerGroupManager.PlayerGroup
+        PlayerGroup
             The player group that matches the given tag.
 
         Raises
@@ -1042,7 +1068,7 @@ class PlayerGroupManager:
 
         Returns
         -------
-        set of PlayerGroupManager.PlayerGroup
+        set of PlayerGroup
             Player groups the player belongs to.
 
         """
@@ -1120,7 +1146,7 @@ class PlayerGroupManager:
 
         Returns
         -------
-        PlayerGroupManager.PlayerGroup or None
+        PlayerGroup or None
             Limiting player group as previously described if it exists, None otherwise.
 
         """
@@ -1153,7 +1179,7 @@ class PlayerGroupManager:
         ----------
         user : ClientManager.Client
             User that was added.
-        group : PlayerGroupManager.PlayerGroup
+        group : PlayerGroup
             Player group that `user` was added to.
 
         Returns
@@ -1176,7 +1202,7 @@ class PlayerGroupManager:
         ----------
         user : ClientManager.Client
             User that was removed.
-        group : PlayerGroupManager.PlayerGroup
+        group : PlayerGroup
             Player group that `user` was removed from.
 
         Returns

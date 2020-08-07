@@ -71,7 +71,11 @@ class _Trial(GameWithAreas):
     # ----------
     # 1. For each player of a minigame of this trial, they are also a player of the trial.
     # 2. For each area of a minigame of this trial, they are also an area of the trial.
-    # 3. The invariants from the parent class GameWithArea are satisfied.
+    # 3. The player to influence and player to focus maps contain exactly the IDs of all players
+    # of the trial.
+    # 4. For each influence and focus value in the player to influence and player to focus maps,
+    # they are a value between 0 and 10 inclusive.
+    # 5. The invariants from the parent class GameWithArea are satisfied.
 
     def __init__(self, server, manager, trial_id, player_limit=None, concurrent_limit=None,
                  require_invitations=False, require_players=True, require_leaders=True,
@@ -119,8 +123,8 @@ class _Trial(GameWithAreas):
             If an int, it is the maximum number of teams the trial supports. If None, it
             indicates the trial has no team limit. Defaults to None.
         timer_limit : int or None, optional
-            If an int, it is the maximum number of steptimers the trial supports. If None, it
-            indicates the trial has no steptimer limit. Defaults to None.
+            If an int, it is the maximum number of timers the trial supports. If None, it
+            indicates the trial has no timer limit. Defaults to None.
         areas : set of AreaManager.Area, optional
             Areas the trial starts with.
         minigame_limit : int or None, optional
@@ -137,6 +141,13 @@ class _Trial(GameWithAreas):
             If the manager is already managing its maximum number of games.
 
         """
+
+        self._player_to_influence = dict()
+        self._player_to_focus = dict()
+        self._min_influence = 0
+        self._max_influence = 10
+        self._min_focus = 0
+        self._max_focus = 10
 
         self._minigame_manager = GameManager(server, game_limit=minigame_limit,
                                              default_game_type=TrialMinigame,
@@ -185,7 +196,13 @@ class _Trial(GameWithAreas):
 
         """
 
+        self._player_to_influence[user.id] = (self._max_influence, self._min_influence,
+                                              self._max_influence)
+        self._player_to_focus[user.id] = (self._max_focus, self._min_focus, self._max_focus)
         super().add_player(user)
+
+        user.send_command('HP', 1, int(self._player_to_focus[user.id][0]))
+        user.send_command('HP', 2, int(self._player_to_influence[user.id][0]))
         user.send_command('VA', 'trial')
 
     def remove_player(self, user):
@@ -214,12 +231,305 @@ class _Trial(GameWithAreas):
 
         """
 
+        self._player_to_influence.pop(user.id)
+        self._player_to_focus.pop(user.id)
         for game in self._minigame_manager.get_games():
             if user in game.get_players():
                 game.remove_player(user)
 
         super().remove_player(user)
+
+        user.send_command('HP', 1, user.area.hp_pro)
+        user.send_command('HP', 2, user.area.hp_def)
         user.send_command('VA', '')
+
+    def get_influence(self, user) -> float:
+        """
+        Get the current influence of a player of the trial.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            Player to check.
+
+        Raises
+        ------
+        TrialError.UserNotPlayerError
+            If the user is not a player of the trial.
+
+        Returns
+        -------
+        float
+            Current influence of the player.
+
+        """
+
+        try:
+            return self._player_to_influence[user.id][0]
+        except KeyError:
+            raise TrialError.UserNotPlayerError
+
+    def set_influence(self, user, new_influence):
+        """
+        Set the influence of a player of the trial.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            Client to change.
+        new_influence : float
+            New influence.
+
+        Raises
+        ------
+        TrialError.UserNotPlayerError
+            If the user is not a player of the trial.
+        TrialError.InfluenceIsInvalidError
+            If the new influence is below the trial minimum or above the trial maximum.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if not user in self.get_players():
+            raise TrialError.UserNotPlayerError
+        _, min_influence, max_influence = self._player_to_influence[user.id]
+
+        if not min_influence <= new_influence <= max_influence:
+            raise TrialError.InfluenceIsInvalidError
+
+        self._player_to_influence[user.id] = (new_influence, min_influence, max_influence)
+        user.send_command('HP', 2, int(new_influence))
+        self._check_structure()
+
+    def change_influence_by(self, user, change_by):
+        """
+        Change the influence of a player by a certain value. If the new influence value goes
+        below the trial minimum, it is set to the trial minimum. If instead it goes above the
+        trial maximum, it is set to the trial maximum.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            Client to change.
+        change_by : float
+            Amount to change influence by.
+
+        Raises
+        ------
+        TrialError.UserNotPlayerError
+            If the user is not a player of the trial.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if not user in self.get_players():
+            raise TrialError.UserNotInPlayerError
+
+        new_influence = self._player_to_influence[user.id][0] + change_by
+        new_influence = max(self._min_influence, min(self._max_influence, new_influence))
+        self.set_influence(user, new_influence) # Also calls _check_structure()
+
+    def get_min_influence(self, user) -> float:
+        """
+        Get the current minimum influence of a player of the trial.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            Player to check.
+
+        Raises
+        ------
+        TrialError.UserNotPlayerError
+            If the user is not a player of the trial.
+
+        Returns
+        -------
+        float
+            Current minimum influence of the player.
+
+        """
+
+        try:
+            return self._player_to_influence[user.id][1]
+        except KeyError:
+            raise TrialError.UserNotPlayerError
+
+    def get_max_influence(self, user) -> float:
+        """
+        Get the current maximum influence of a player of the trial.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            Player to check.
+
+        Raises
+        ------
+        TrialError.UserNotPlayerError
+            If the user is not a player of the trial.
+
+        Returns
+        -------
+        float
+            Current maximum influence of the player.
+
+        """
+
+        try:
+            return self._player_to_influence[user.id][2]
+        except KeyError:
+            raise TrialError.UserNotPlayerError
+
+    def get_focus(self, user) -> float:
+        """
+        Get the current focus of a player of the trial.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            Player to check.
+
+        Raises
+        ------
+        TrialError.UserNotPlayerError
+            If the user is not a player of the trial.
+
+        Returns
+        -------
+        float
+            Current focus of the player.
+
+        """
+
+        try:
+            return self._player_to_focus[user.id][0]
+        except KeyError:
+            raise TrialError.UserNotPlayerError
+
+    def set_focus(self, user, new_focus):
+        """
+        Set the focus of a player of the trial.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            Client to change.
+        new_focus : float
+            New focus.
+
+        Raises
+        ------
+        TrialError.UserNotPlayerError
+            If the user is not a player of the trial.
+        TrialError.FocusIsInvalidError
+            If the new focus is below the trial minimum or above the trial maximum.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if not user in self.get_players():
+            raise TrialError.UserNotPlayerError
+        _, min_focus, max_focus = self._player_to_focus[user.id]
+
+        if not min_focus <= new_focus <= max_focus:
+            raise TrialError.FocusIsInvalidError
+
+        self._player_to_focus[user.id] = (new_focus, min_focus, max_focus)
+        user.send_command('HP', 1, int(new_focus))
+        self._check_structure()
+
+    def change_focus_by(self, user, change_by):
+        """
+        Change the focus of a player by a certain value. If the new focus value goes
+        below the trial minimum, it is set to the trial minimum. If instead it goes above the
+        trial maximum, it is set to the trial maximum.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            Client to change.
+        change_by : float
+            Amount to change focus by.
+
+        Raises
+        ------
+        TrialError.UserNotPlayerError
+            If the user is not a player of the trial.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if not user in self.get_players():
+            raise TrialError.UserNotInPlayerError
+
+        new_focus = self._player_to_focus[user.id][0] + change_by
+        new_focus = max(self._min_focus, min(self._max_focus, new_focus))
+        self.set_focus(user, new_focus) # Also calls _check_structure()
+
+    def get_min_focus(self, user) -> float:
+        """
+        Get the current minimum focus of a player of the trial.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            Player to check.
+
+        Raises
+        ------
+        TrialError.UserNotPlayerError
+            If the user is not a player of the trial.
+
+        Returns
+        -------
+        float
+            Current minimum focus of the player.
+
+        """
+
+        try:
+            return self._player_to_focus[user.id][1]
+        except KeyError:
+            raise TrialError.UserNotPlayerError
+
+    def get_max_focus(self, user) -> float:
+        """
+        Get the current maximum focus of a player of the trial.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            Player to check.
+
+        Raises
+        ------
+        TrialError.UserNotPlayerError
+            If the user is not a player of the trial.
+
+        Returns
+        -------
+        float
+            Current maximum focus of the player.
+
+        """
+
+        try:
+            return self._player_to_focus[user.id][2]
+        except KeyError:
+            raise TrialError.UserNotPlayerError
 
     def new_nsd(self, creator=None, player_limit=None, add_players=False,
                 require_invitations=False, require_players=True,
@@ -253,8 +563,8 @@ class _Trial(GameWithAreas):
             If an int, it is the maximum number of teams the NSD will support. If None, it
             indicates the NSD will have no team limit. Defaults to None.
         timer_limit : int or None, optional
-            If an int, it is the maximum number of steptimers the NSD will support. If None, it
-            indicates the NSD will have no steptimer limit. Defaults to None.
+            If an int, it is the maximum number of timers the NSD will support. If None, it
+            indicates the NSD will have no timer limit. Defaults to None.
         timer_start_value : float, optional
             In seconds, the length of time the main timer of this non-stop debate will have at the
             start. It must be a positive number. Defaults to 300 (5 minutes).
@@ -364,7 +674,7 @@ class _Trial(GameWithAreas):
 
         return self._minigame_manager.get_game_by_id(minigame_id)
 
-    def get_available_minigame_id(self):
+    def get_available_minigame_id(self) -> str:
         """
         Get a minigame ID that no other minigame managed by this manager has.
 
@@ -388,6 +698,49 @@ class _Trial(GameWithAreas):
                 return new_game_id
             game_number += 1
         raise GameError.ManagerTooManyGamesError
+
+    def get_info(self) -> str:
+        """
+        Obtain a long description of the trial and its players.
+
+        Returns
+        -------
+        str
+            Description.
+
+        """
+
+        tid = self.get_id()
+        leaders = self.get_leaders()
+        regulars = self.get_regulars()
+
+        num_members = len(leaders.union(regulars))
+        group_texts = list()
+        for group in (leaders, regulars):
+            if not group:
+                group_texts.append('\n*None')
+                continue
+            group_text = ''
+            for player in group:
+                player_text = f'{player.displayname} [{player.id}]: '
+                influence = self.get_influence(player)
+                min_influence = self.get_min_influence(player)
+                max_influence = self.get_max_influence(player)
+                focus = self.get_focus(player)
+                min_focus = self.get_min_focus(player)
+                max_focus = self.get_max_focus(player)
+                player_text += f'I: {influence} (m: {min_influence}/M: {max_influence}); '
+                player_text += f'F: {focus} (m: {min_focus}/M: {max_focus}); '
+                player_text += f'A: {player.area.id}'
+                group_text += f'\n*{player_text}'
+            group_texts.append(group_text)
+
+        leader_text, regular_text = group_texts
+        area_ids = ', '.join(sorted({str(area.id) for area in self.get_areas()}))
+        info = (f'Trial {tid} [{num_members}/-] ({area_ids}).'
+                f'\nLeaders: {leader_text}'
+                f'\nRegular members: {regular_text}')
+        return info
 
     def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
                              ignore_bleeding=False):
@@ -478,6 +831,66 @@ class _Trial(GameWithAreas):
 
         self._check_structure()
 
+    def _on_client_change_character(self, player, old_char_id=None, new_char_id=None):
+        """
+        It checks if the player is now no longer having a character. If that is
+        the case and the trial requires all players have characters, the player is automatically
+        removed.
+
+        Parameters
+        ----------
+        player : ClientManager.Client
+            Player that signaled it has changed character.
+        old_char_id : int, optional
+            Previous character ID. The default is None.
+        new_char_id : int, optional
+            New character ID. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        old_char = player.get_char_name(old_char_id)
+        if self._require_character and not player.has_character():
+            player.send_ooc('You were removed from your trial as it required its players to have '
+                            'characters.')
+            player.send_ooc_others(f'(X) Player {player.displayname} changed character from '
+                                   f'{old_char} to a non-character and was removed from your '
+                                   f'trial.')
+            self.remove_player(player)
+
+        self._check_structure()
+
+    def _on_client_destroyed(self, player):
+        """
+        Remove the player from the trial. If the trial is already unmanaged or
+        the player is not in the game, this callback does nothing.
+
+        Parameters
+        ----------
+        player : ClientManager.Client
+            Player that signaled it was destroyed.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if self.is_unmanaged():
+            return
+        if player not in self.get_players():
+            return
+        # Warning this raises socket.send() exception if server shutdown and want to send
+        # OOC to disconnected players. This is in \lib\asyncio\selector_events.py.
+        player.send_ooc_others(f'(X) Player {player.displayname} of your trial disconnected. '
+                               f'({player.area.id})', pred=lambda c: c in self.get_leaders())
+        self.remove_player(player)
+
+        self._check_structure()
+
     def __str__(self):
         """
         Return a string representation of this trial.
@@ -491,7 +904,7 @@ class _Trial(GameWithAreas):
 
         return (f"Trial::{self.get_id()}:"
                 f"{self.get_players()}:{self.get_leaders()}:{self.get_invitations()}"
-                f"{self.get_steptimers()}:"
+                f"{self.get_timers()}:"
                 f"{self.get_teams()}:"
                 f"{self.get_areas()}:"
                 f"{self.get_minigames()}")
@@ -514,12 +927,12 @@ class _Trial(GameWithAreas):
                 f'require_invitations={self._playergroup._require_invitations}, '
                 f'require_leaders={self._playergroup._require_leaders}, '
                 f'require_character={self._require_character}, '
-                f'team_limit={self._team_manager._playergroup_limit}, '
-                f'timer_limit={self._timer_manager._steptimer_limit}, || '
+                f'team_limit={self._team_manager.get_group_limit()}, '
+                f'timer_limit={self._timer_manager.get_timer_limit()}, || '
                 f'players={self.get_players()}, '
                 f'invitations={self.get_invitations()}, '
                 f'leaders={self.get_leaders()}, '
-                f'timers={self.get_steptimers()}, '
+                f'timers={self.get_timers()}, '
                 f'teams={self.get_teams()}, '
                 f'areas={self.get_areas()}), '
                 f'minigames={self.get_minigames()}')
@@ -550,6 +963,72 @@ class _Trial(GameWithAreas):
                 assert area in self.get_areas(), err
 
         # 3.
+        for player in self.get_players():
+            err = (f'For trial {self}, expected that player {player} of the trial appeared in the '
+                   f'player to influence map of the trial {self._player_to_influence}, found that '
+                   f'was not the case.')
+            assert player.id in self._player_to_influence, err
+
+            err = (f'For trial {self}, expected that player {player} of the trial appeared in the '
+                   f'player to focus map of the trial {self._player_to_focus}, found that '
+                   f'was not the case.')
+            assert player.id in self._player_to_focus, err
+
+        player_ids = {player.id for player in self.get_players()}
+        for player_id in self._player_to_influence:
+            err = (f'For trial {self}, expected that player with ID {player_id} that appeared '
+                   f'in the player to influence map of the trial {self._player_to_influence} was '
+                   f'a player of the trial, found that was not the case.')
+            assert player_id in player_ids, err
+
+        for player_id in self._player_to_focus:
+            err = (f'For trial {self}, expected that player with ID {player_id} that appeared '
+                   f'in the player to focus map of the trial {self._player_to_focus} was '
+                   f'a player of the trial, found that was not the case.')
+            assert player_id in player_ids, err
+
+        # 4.
+        for (player_id, value) in self._player_to_influence.items():
+            influences = self._player_to_influence[player_id]
+            err = (f'For trial {self}, expected that the player with ID {player_id} had a '
+                   f'3-tuple of current influence, min influence and max influence associated '
+                   f'to it in the player to influence map, found it was {influences} instead.')
+            assert isinstance(influences, tuple) and len(influences) == 3, err
+
+            influence, min_influence, max_influence = self._player_to_influence[player_id]
+            err = (f'For trial {self}, expected that the player with ID {player_id} had a '
+                   f'3-tuple of floats associated to it in the player to influence map, found it '
+                   f'was {influences} instead.')
+
+            all_numbers = [isinstance(value, (int, float)) for value in influences]
+            assert all(all_numbers), err
+
+            err = (f'For trial {self}, expected that player with ID {player_id} had an influence '
+                   f'value between {min_influence} and {max_influence} inclusive, '
+                   f'found it was {influence} instead.')
+            assert min_influence <= influence <= max_influence, err
+
+        for (player_id, value) in self._player_to_focus.items():
+            focuses = self._player_to_focus[player_id]
+            err = (f'For trial {self}, expected that the player with ID {player_id} had a '
+                   f'3-tuple of current focus, min focus and max focus associated '
+                   f'to it in the player to focus map, found it was {focuses} instead.')
+            assert isinstance(focuses, tuple) and len(focuses) == 3, err
+
+            focus, min_focus, max_focus = self._player_to_focus[player_id]
+            err = (f'For trial {self}, expected that the player with ID {player_id} had a '
+                   f'3-tuple of floats associated to it in the player to focus map, found it '
+                   f'was {focuses} instead.')
+
+            all_numbers = [isinstance(value, (int, float)) for value in focuses]
+            assert all(all_numbers), err
+
+            err = (f'For trial {self}, expected that player with ID {player_id} had an focus '
+                   f'value between {min_focus} and {max_focus} inclusive, '
+                   f'found it was {focus} instead.')
+            assert min_focus <= focus <= max_focus, err
+
+        # 5.
         super()._check_structure()
 
 class TrialManager(GameManager):
@@ -589,8 +1068,8 @@ class TrialManager(GameManager):
             If an int, it is the maximum number of teams the trial will support. If None, it
             indicates the trial will have no team limit. Defaults to None.
         timer_limit : int or None, optional
-            If an int, it is the maximum number of steptimers the trial will support. If None, it
-            indicates the trial will have no steptimer limit. Defaults to None.
+            If an int, it is the maximum number of timers the trial will support. If None, it
+            indicates the trial will have no timer limit. Defaults to None.
 
         Returns
         -------

@@ -108,8 +108,8 @@ class TrialMinigame(GameWithAreas):
             If an int, it is the maximum number of teams the trial minigame supports. If None, it
             indicates the trial minigame has no team limit. Defaults to None.
         timer_limit : int or None, optional
-            If an int, it is the maximum number of steptimers the trial minigame supports. If None,
-            it indicates the trial minigame has no steptimer limit. Defaults to None.
+            If an int, it is the maximum number of timers the trial minigame supports. If None,
+            it indicates the trial minigame has no timer limit. Defaults to None.
         areas : set of AreaManager.Area, optional
             Areas the trial minigame starts with. Defaults to None.
         trial : TrialManager.Trial, optional
@@ -321,7 +321,7 @@ class TrialMinigame(GameWithAreas):
 
         return (f"TrialMinigame::{self.get_id()}:{self.get_trial()}"
                 f"{self.get_players()}:{self.get_leaders()}:{self.get_invitations()}"
-                f"{self.get_steptimers()}:"
+                f"{self.get_timers()}:"
                 f"{self.get_teams()}:"
                 f"{self.get_areas()}")
 
@@ -343,12 +343,12 @@ class TrialMinigame(GameWithAreas):
                 f'require_invitations={self._playergroup._require_invitations}, '
                 f'require_leaders={self._playergroup._require_leaders}, '
                 f'require_character={self._require_character}, '
-                f'team_limit={self._team_manager._playergroup_limit}, '
-                f'timer_limit={self._timer_manager._steptimer_limit}, '
+                f'team_limit={self._team_manager.get_group_limit()}, '
+                f'timer_limit={self._timer_manager.get_timer_limit()}, '
                 f'areas={self.get_areas()}, '
                 f'trial={self.get_trial()}) || '
                 f'players={self.get_players()}, '
                 f'invitations={self.get_invitations()}, '
                 f'leaders={self.get_leaders()}, '
-                f'timers={self.get_steptimers()}, '
+                f'timers={self.get_timers()}, '
                 f'teams={self.get_teams()}')

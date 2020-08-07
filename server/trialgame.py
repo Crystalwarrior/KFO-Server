@@ -18,6 +18,7 @@
 
 from server.exceptions import GameError, GameWithAreasError
 from server.gamewithareas import GameWithAreas
+from server.trial_manager import _Trial
 
 class TrialGame(GameWithAreas):
     def __init__(self, server, manager, trial_id, player_limit=None, concurrent_limit=None,
@@ -46,5 +47,5 @@ class TrialGame(GameWithAreas):
 
         super().add_area(area)
 
-    def get_trial(self):
+    def get_trial(self) -> _Trial:
         return self._trial

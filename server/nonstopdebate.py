@@ -21,6 +21,8 @@ Module that contains the non-stop debate game.
 
 """
 
+import time
+
 from enum import Enum, auto
 
 from server.exceptions import ClientError, NonStopDebateError
@@ -35,6 +37,7 @@ class NSDMode(Enum):
     RECORDING = auto()
     LOOPING = auto()
     INTERMISSION = auto()
+    INTERMISSION_POSTBREAK = auto()
 
 class NonStopDebate(TrialMinigame):
     """
@@ -121,8 +124,8 @@ class NonStopDebate(TrialMinigame):
             If an int, it is the maximum number of teams the NSD supports. If None, it
             indicates the NSD has no team limit. Defaults to None.
         timer_limit : int or None, optional
-            If an int, it is the maximum number of steptimers the NSD supports. If None, it
-            indicates the NSD has no steptimer limit. Defaults to None.
+            If an int, it is the maximum number of timers the NSD supports. If None, it
+            indicates the NSD has no timer limit. Defaults to None.
         areas : set of AreaManager.Area, optional
             Areas the NSD starts with. Defaults to None.
         trial : TrialManager.Trial, optional
@@ -143,6 +146,7 @@ class NonStopDebate(TrialMinigame):
         """
 
         self._mode = NSDMode.PRERECORDING
+        self._preintermission_mode = NSDMode.PRERECORDING
         self._messages = list()
         self._message_index = -1
 
@@ -160,6 +164,7 @@ class NonStopDebate(TrialMinigame):
         self._timer_start_value = timer_start_value
         self._message_refresh_rate = 5
         self._client_timer_id = 0
+        self._breaker = None
         # To consider: somehow keep spectators in the loop so they get variants/timer updates
 
     def get_mode(self):
@@ -195,10 +200,13 @@ class NonStopDebate(TrialMinigame):
                                                            'mode.')
 
         self._mode = NSDMode.RECORDING
-        self._timer.unpause_timer()
+        self._preintermission_mode = NSDMode.RECORDING
+        self._timer.unpause()
+        self._player_refresh_timer.unpause()
         for player in self.get_players():
+            player.send_command('VA', 'nsd')
             player.send_command('TR', self._client_timer_id)
-        self._player_refresh_timer.unpause_timer()
+            self._update_player_timer(player)
 
     def set_intermission(self, delay_variant=0, blankpost=True):
         """
@@ -220,6 +228,8 @@ class NonStopDebate(TrialMinigame):
         ------
         NonStopDebateError.NSDAlreadyInModeError
             If the non-stop debate is already in intermission mode.
+        NonStopDebateError.NSDNotInModeError
+            If the non-stop debate is in prerecording mode.
 
         Returns
         -------
@@ -227,17 +237,20 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        if self._mode == NSDMode.INTERMISSION:
+        if self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
             raise NonStopDebateError.NSDAlreadyInModeError('Non-stop debate is already in this '
                                                            'mode.')
+        if self._mode == NSDMode.PRERECORDING:
+            raise NonStopDebateError.NSDNotInModeError
+
         self._mode = NSDMode.INTERMISSION
 
-        if self._timer and not self._timer.is_paused():
-            self._timer.pause_timer()
-        if self._message_timer and not self._message_timer.is_paused():
-            self._message_timer.pause_timer()
-        if self._player_refresh_timer and not self._player_refresh_timer.is_paused():
-            self._player_refresh_timer.pause_timer()
+        if self._timer and not self._timer.paused():
+            self._timer.pause()
+        if self._message_timer and not self._message_timer.paused():
+            self._message_timer.pause()
+        if self._player_refresh_timer and not self._player_refresh_timer.paused():
+            self._player_refresh_timer.pause()
 
         for player in self.get_players():
             player.send_command('TP', self._client_timer_id)
@@ -248,11 +261,15 @@ class NonStopDebate(TrialMinigame):
             for player in self.get_players():
                 player.send_command('VA', 'trial')
 
-        variant_timer = self.new_steptimer(start_timer_value=1, timestep_length=-1,
-                                           firing_interval=max(delay_variant, 0.016),
-                                           min_timer_value=0)
-        variant_timer._on_min_end = _variant
-        variant_timer.start_timer()
+        # this causes a concurrency issue!!!!!!!!
+        variant_timer = self.new_timer(start_value=0, max_value=max(delay_variant, 0.016),)
+        variant_timer._on_max_end = _variant
+        variant_timer.start()
+
+    def set_intermission_postbreak(self, breaker, delay_variant=0, blankpost=True):
+        self.set_intermission(delay_variant=delay_variant, blankpost=blankpost)
+        self._mode = NSDMode.INTERMISSION_POSTBREAK
+        self._breaker = breaker
 
     def set_looping(self):
         """
@@ -264,6 +281,8 @@ class NonStopDebate(TrialMinigame):
         ------
         NonStopDebateError.NSDAlreadyInModeError
             If the non-stop debate is already in looping mode.
+        NonStopDebateError.NSDNotInModeError
+            If the non-stop debate is in prerecording mode.
 
         Returns
         -------
@@ -274,18 +293,36 @@ class NonStopDebate(TrialMinigame):
         if self._mode == NSDMode.LOOPING:
             raise NonStopDebateError.NSDAlreadyInModeError('Non-stop debate is already in this '
                                                            'mode.')
+        if self._mode == NSDMode.PRERECORDING:
+            raise NonStopDebateError.NSDNotInModeError
 
         self._mode = NSDMode.LOOPING
+        self._preintermission_mode = NSDMode.LOOPING
         self._message_index = 0
 
-        self._timer.unpause_timer()
-        self._player_refresh_timer.unpause_timer()
-        self._message_timer.unpause_timer()
+        self._timer.unpause()
+        self._player_refresh_timer.unpause()
+        self._message_timer.unpause()
 
         for player in self.get_players():
             player.send_command('VA', 'nsd')
             player.send_command('TR', self._client_timer_id)
         self._display_next_message()
+
+    def resume(self) -> NSDMode:
+        if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
+            raise NonStopDebateError.NSDNotInModeError
+        if self._preintermission_mode == NSDMode.PRERECORDING:
+            raise RuntimeError(f'Should not have made it here for NSD {self}: '
+                               f'{self._preintermission_mode}')
+        if self._preintermission_mode == NSDMode.RECORDING:
+            self.set_recording()
+            return NSDMode.RECORDING
+        if self._preintermission_mode == NSDMode.LOOPING:
+            self.set_looping()
+            return NSDMode.LOOPING
+        raise RuntimeError(f'Should not have made it here for NSD {self}: '
+                           f'{self._preintermission_mode}')
 
     def add_player(self, user):
         """
@@ -328,13 +365,13 @@ class NonStopDebate(TrialMinigame):
         if not self._timer:
             self._setup_timers()
         self._update_player_timer(user)
-        if self._timer.is_paused():
+        if self._timer.paused():
             user.send_command('TP', self._client_timer_id)
 
         if self._mode in [NSDMode.LOOPING, NSDMode.RECORDING, NSDMode.PRERECORDING]:
             user.send_command('VA', 'nsd')
             user.send_command('RT', 'testimony4')
-        elif self._mode == NSDMode.INTERMISSION:
+        elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
             user.send_command('VA', 'trial')
         else:
             raise RuntimeError(f'Unrecognized mode {self._mode}')
@@ -367,6 +404,21 @@ class NonStopDebate(TrialMinigame):
         super().remove_player(user)
         user.send_command('VA', 'trial')
 
+    def accept_break(self):
+        if not self._mode == NSDMode.INTERMISSION_POSTBREAK:
+            raise NonStopDebateError.NSDNotInModeError
+        self._breaker.send_ooc('Your break was accepted and you recovered 0.5 influence.')
+        self.get_trial().change_influence_by(self._breaker, 0.5)
+        self.destroy()
+
+    def reject_break(self):
+        if not self._mode == NSDMode.INTERMISSION_POSTBREAK:
+            raise NonStopDebateError.NSDNotInModeError
+        self._breaker.send_ooc('Your break was rejected and you lost 1 influence.')
+        self.get_trial().change_influence_by(self._breaker, -1)
+        self._mode = NSDMode.INTERMISSION
+        self._breaker = None
+
     def _setup_timers(self):
         """
         Setup the internal timers.
@@ -377,48 +429,30 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        self._timer = self.new_steptimer(start_timer_value=self._timer_start_value,
-                                         timestep_length=-0.016,
-                                         firing_interval=0.016, min_timer_value=0)
-        self._timer.start_timer()
-        self._timer.pause_timer()
-
         PLAYER_REFRESH_RATE = 5
-        self._player_refresh_timer = self.new_steptimer(start_timer_value=0,
-                                                        timestep_length=0.016,
-                                                        firing_interval=0.016,
-                                                        max_timer_value=0.016)
+        self._player_refresh_timer = self.new_timer(start_value=0, max_value=PLAYER_REFRESH_RATE,
+                                                    auto_restart=True)
         def _refresh():
+            print(time.time())
             for player in self.get_players():
                 self._update_player_timer(player)
-            self.delete_steptimer(self._player_refresh_timer)
-            self._player_refresh_timer = self.new_steptimer(start_timer_value=0,
-                                                            timestep_length=PLAYER_REFRESH_RATE,
-                                                            firing_interval=PLAYER_REFRESH_RATE,
-                                                            max_timer_value=PLAYER_REFRESH_RATE)
-            self._player_refresh_timer._on_max_end = _refresh
-            self._player_refresh_timer.start_timer()
 
         self._player_refresh_timer._on_max_end = _refresh
-        self._player_refresh_timer.start_timer()
-        self._player_refresh_timer.pause_timer()
 
-        self._message_timer = self.new_steptimer(start_timer_value=0,
-                                                 timestep_length=0.016,
-                                                 firing_interval=0.016,
-                                                 max_timer_value=self._message_refresh_rate)
-
+        self._message_timer = self.new_timer(start_value=0, max_value=self._message_refresh_rate,
+                                             auto_restart=True)
         self._message_timer._on_max_end = self._display_next_message
-        self._message_timer.start_timer()
-        self._message_timer.pause_timer()
+
+        self._timer = self.new_timer(start_value=self._timer_start_value,
+                                     tick_rate=-1, min_value=0)
 
     def _update_player_timer(self, player):
         player.send_command('TST', self._client_timer_id,
-                            round(self._timer.get_time()*1000))
+                            round(self._timer.get()*1000))
         player.send_command('TSS', self._client_timer_id,
-                            round(self._timer.get_timestep_length()*1000))
+                            round(-0.016*1000))
         player.send_command('TSF', self._client_timer_id,
-                            round(self._timer.get_firing_interval()*1000))
+                            round(0.016*1000))
 
     def _on_client_send_ic_check(self, player, contents=None):
         """
@@ -492,7 +526,7 @@ class NonStopDebate(TrialMinigame):
                 self._break_loop(player, contents)
             else:
                 self._add_message(player, contents=contents)
-        elif self._mode == NSDMode.INTERMISSION:
+        elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
             # Nothing particular
             pass
         elif self._mode == NSDMode.LOOPING:
@@ -522,10 +556,10 @@ class NonStopDebate(TrialMinigame):
 
         self._messages.append([player, contents])
         self._message_index += 1
-        if self._timer.is_paused():
-            self._timer.unpause_timer()
-            for player in self.get_players():
-                player.send_command('TR', self._client_timer_id)
+        if self._timer.paused():
+            self._timer.unpause()
+            for nsd_player in self.get_players():
+                nsd_player.send_command('TR', self._client_timer_id)
 
     def _display_next_message(self):
         """
@@ -538,21 +572,10 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        self.delete_steptimer(self._message_timer)
-        self._message_timer = self.new_steptimer(start_timer_value=0,
-                                                 timestep_length=0.016,
-                                                 firing_interval=0.016,
-                                                 max_timer_value=self._message_refresh_rate)
-        self._message_timer._on_max_end = self._display_next_message
-        self._message_timer.start_timer()
-
         if self._message_index < len(self._messages):
             sender, contents = self._messages[self._message_index]
             for player in self.get_players():
                 player.send_ic(params=contents, sender=sender)
-                # player.send_command('TST', 0, round(self._timer.get_time()*1000))
-                # player.send_command('TSS', 0, round(self._timer.get_timestep_length()*1000))
-                # player.send_command('TSF', 0, round(self._timer.get_firing_interval()*1000))
             self._message_index += 1
         else:
             self.set_intermission()
@@ -597,11 +620,15 @@ class NonStopDebate(TrialMinigame):
         for leader in self.get_leaders():
             leader.send_ooc(f"{player.displayname} {action} {broken_player.displayname}'s "
                             f"statement `{broken_ic['text']}`")
-        for regular_player in self.get_players(cond=lambda c: c != player):
-            regular_player.send_ooc(f"{player.displayname} {regular_action} "
-                                    f"{broken_player.displayname}'s statement "
-                                    f"`{broken_ic['text']}`")
-        self.set_intermission(delay_variant=3, blankpost=False)
+            leader.send_ooc("Type /nsd_accept to accept the break and end the debate, "
+                            "/nsd_reject to reject the break and penalize the breaker, "
+                            "/nsd_resume to resume the debate where it was, and "
+                            "/nsd_end to end the debate.")
+        for regular in self.get_regulars():
+            regular.send_ooc(f"{player.displayname} {regular_action} "
+                             f"{broken_player.displayname}'s statement "
+                             f"`{broken_ic['text']}`")
+        self.set_intermission_postbreak(player, delay_variant=3, blankpost=False)
 
     def _check_structure(self):
         """
@@ -630,7 +657,7 @@ class NonStopDebate(TrialMinigame):
 
         return (f"NonStopDebate::{self.get_id()}:{self.get_trial()}"
                 f"{self.get_players()}:{self.get_leaders()}:{self.get_invitations()}"
-                f"{self.get_steptimers()}:"
+                f"{self.get_timers()}:"
                 f"{self.get_teams()}:"
                 f"{self.get_areas()}")
 
@@ -652,12 +679,12 @@ class NonStopDebate(TrialMinigame):
                 f'require_invitations={self._playergroup._require_invitations}, '
                 f'require_leaders={self._playergroup._require_leaders}, '
                 f'require_character={self._require_character}, '
-                f'team_limit={self._team_manager._playergroup_limit}, '
-                f'timer_limit={self._timer_manager._steptimer_limit}, '
+                f'team_limit={self._team_manager.get_group_limit()}, '
+                f'timer_limit={self._timer_manager.get_timer_limit()}, '
                 f'areas={self.get_areas()}, '
                 f'trial={self.get_trial().get_id()}) || '
                 f'players={self.get_players()}, '
                 f'invitations={self.get_invitations()}, '
                 f'leaders={self.get_leaders()}, '
-                f'timers={self.get_steptimers()}, '
+                f'timers={self.get_timers()}, '
                 f'teams={self.get_teams()}')

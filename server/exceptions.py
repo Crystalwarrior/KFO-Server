@@ -136,7 +136,7 @@ class PlayerGroupError(TsuserverException):
         pass
 
 @recreate_subexceptions
-class SteptimerError(TsuserverException):
+class TimerError(TsuserverException):
     class TimerTooLowError(TsuserverException):
         pass
 
@@ -146,34 +146,31 @@ class SteptimerError(TsuserverException):
     class InvalidMinTimerValueError(TsuserverException):
         pass
 
-    class InvalidFiringIntervalError(TsuserverException):
+    class InvalidTickRateError(TsuserverException):
         pass
 
-    class InvalidTimestepLengthError(TsuserverException):
+    class AlreadyStartedTimerError(TsuserverException):
         pass
 
-    class AlreadyStartedSteptimerError(TsuserverException):
+    class NotStartedTimerError(TsuserverException):
         pass
 
-    class NotStartedSteptimerError(TsuserverException):
+    class AlreadyPausedTimerError(TsuserverException):
         pass
 
-    class AlreadyPausedSteptimerError(TsuserverException):
+    class NotPausedTimerError(TsuserverException):
         pass
 
-    class NotPausedSteptimerError(TsuserverException):
+    class AlreadyTerminatedTimerError(TsuserverException):
         pass
 
-    class AlreadyTerminatedSteptimerError(TsuserverException):
+    class ManagerTooManyTimersError(TsuserverException):
         pass
 
-    class ManagerTooManySteptimersError(TsuserverException):
+    class ManagerDoesNotManageTimerError(TsuserverException):
         pass
 
-    class ManagerDoesNotManageSteptimerError(TsuserverException):
-        pass
-
-    class ManagerInvalidSteptimerIDError(TsuserverException):
+    class ManagerInvalidTimerIDError(TsuserverException):
         pass
 
 @recreate_subexceptions
@@ -243,7 +240,7 @@ class GameError(TsuserverException):
     class GameTooManyTimersError(TsuserverException):
         pass
 
-    class GameDoesNotManageSteptimerError(TsuserverException):
+    class GameDoesNotManageTimerError(TsuserverException):
         pass
 
     class GameInvalidTimerIDError(TsuserverException):
@@ -283,7 +280,16 @@ class TrialError(GameWithAreasError):
     class UserNotInMinigameError(GameWithAreasError):
         pass
 
+    class InfluenceIsInvalidError(GameWithAreasError):
+        pass
+
+    class FocusIsInvalidError(GameWithAreasError):
+        pass
+
 @recreate_subexceptions
 class NonStopDebateError(GameWithAreasError):
     class NSDAlreadyInModeError(GameWithAreasError):
+        pass
+
+    class NSDNotInModeError(GameWithAreasError):
         pass

@@ -29,12 +29,12 @@ import traceback
 from server import logger
 from server.constants import Constants, TargetType
 from server.exceptions import ArgumentError, AreaError, ClientError, ServerError
-from server.exceptions import PartyError, ZoneError, SteptimerError, TrialError, NonStopDebateError
+from server.exceptions import PartyError, ZoneError, TimerError, TrialError, NonStopDebateError
 from server.client_manager import ClientManager
 
 from server.gamewithareas import GameWithAreas
 from server.trial_manager import TrialManager
-from server.nonstopdebate import NonStopDebate
+from server.nonstopdebate import NonStopDebate, NSDMode
 
 """ <parameter_name>: required parameter
 {parameter_name}: optional parameter
@@ -131,7 +131,7 @@ def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='&1-2', split_spaces=True)
-    
+
     arg = arg.split(' ')
 
     if not client.is_mod and not client.is_cm and client.area.lobby_area:
@@ -3003,7 +3003,7 @@ def ooc_cmd_make_gm(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True)
-    
+
     target = Constants.parse_id(client, arg)
 
     if not (client.is_cm or client.is_mod) and target not in client.get_multiclients():
@@ -4953,7 +4953,7 @@ def ooc_cmd_time12(client: ClientManager.Client, arg: str):
         current_time = current_time_str.strftime('%a %b %e %I:%M:%S %p (UTC{}) %Y'
                                                  .format(offset_str))
     client.send_ooc(current_time)
-    
+
 def ooc_cmd_timer(client: ClientManager.Client, arg: str):
     """
     Start a timer.
@@ -6628,75 +6628,61 @@ def ooc_cmd_sts(client: ClientManager.Client, arg: str):
     t = client.server._b
     try:
         t.start_timer()
-    except SteptimerError.AlreadyTerminatedSteptimerError:
-        raise ClientError('Steptimer already terminated.')
-    except SteptimerError.AlreadyStartedSteptimerError:
-        raise ClientError('Steptimer already started.')
+    except TimerError.AlreadyTerminatedTimerError:
+        raise ClientError('Timer already terminated.')
+    except TimerError.AlreadyStartedTimerError:
+        raise ClientError('Timer already started.')
     else:
-        client.send_ooc('Started steptimer.')
+        client.send_ooc('Started timer.')
 
 def ooc_cmd_stp(client: ClientManager.Client, arg: str):
     t = client.server._b
     try:
         t.pause_timer()
-    except SteptimerError.AlreadyTerminatedSteptimerError:
-        raise ClientError('Steptimer already terminated.')
-    except SteptimerError.NotStartedSteptimerError:
-        raise ClientError('Steptimer not started.')
-    except SteptimerError.AlreadyPausedSteptimerError:
-        raise ClientError('Steptimer already paused.')
+    except TimerError.AlreadyTerminatedTimerError:
+        raise ClientError('Timer already terminated.')
+    except TimerError.NotStartedTimerError:
+        raise ClientError('Timer not started.')
+    except TimerError.AlreadyPausedTimerError:
+        raise ClientError('Timer already paused.')
     else:
-        client.send_ooc('Paused steptimer.')
+        client.send_ooc('Paused timer.')
 
 def ooc_cmd_stu(client: ClientManager.Client, arg: str):
     t = client.server._b
     try:
         t.unpause_timer()
-    except SteptimerError.AlreadyTerminatedSteptimerError:
-        raise ClientError('Steptimer already terminated.')
-    except SteptimerError.NotStartedSteptimerError:
-        raise ClientError('Steptimer not started.')
-    except SteptimerError.NotPausedSteptimerError:
-        raise ClientError('Steptimer already not paused.')
+    except TimerError.AlreadyTerminatedTimerError:
+        raise ClientError('Timer already terminated.')
+    except TimerError.NotStartedTimerError:
+        raise ClientError('Timer not started.')
+    except TimerError.NotPausedTimerError:
+        raise ClientError('Timer already not paused.')
     else:
-        client.send_ooc('Unpaused steptimer.')
+        client.send_ooc('Unpaused timer.')
 
 def ooc_cmd_stt(client: ClientManager.Client, arg: str):
     t = client.server._b
     try:
         t.terminate_timer()
-    except SteptimerError.AlreadyTerminatedSteptimerError:
-        raise ClientError('Steptimer already terminated.')
+    except TimerError.AlreadyTerminatedTimerError:
+        raise ClientError('Timer already terminated.')
     else:
-        client.send_ooc('Terminated steptimer.')
+        client.send_ooc('Terminated timer.')
 
 def ooc_cmd_stg(client: ClientManager.Client, arg: str):
     t = client.server._b
     time = t.get_time()
     formatted_time = "{:.3f}".format(time)
-    client.send_ooc('Current steptimer time: {}.'.format(formatted_time))
+    client.send_ooc('Current timer time: {}.'.format(formatted_time))
 
-def ooc_cmd_stsf(client: ClientManager.Client, arg: str):
+def ooc_cmd_stsr(client: ClientManager.Client, arg: str):
     t = client.server._b
     x = float(arg)
-    try:
-        t.set_firing_interval(x)
-    except SteptimerError.InvalidFiringIntervalError:
-        raise ClientError('Invalid firing interval {}'.format(x))
-    else:
-        client.send_ooc('Updated firing interval to {}'.format(x))
+    t.set_tick_rate(x)
+    client.send('Updated tick rate to {}'.format(x))
 
 def ooc_cmd_stst(client: ClientManager.Client, arg: str):
-    t = client.server._b
-    x = float(arg)
-    try:
-        t.set_timestep_length(x)
-    except SteptimerError.InvalidTimestepLengthError:
-        raise ClientError('Invalid timestep length {}'.format(x))
-    else:
-        client.send_ooc('Updated timestep length to {}'.format(x))
-
-def ooc_cmd_stss(client: ClientManager.Client, arg: str):
     t = client.server._b
     x = float(arg)
     t.set_time(x)
@@ -6775,9 +6761,93 @@ def ooc_cmd_trial_add(client: ClientManager.Client, arg: str):
         raise ClientError('This player is already part of this trial.')
     else:
         client.send_ooc(f'You added {target.displayname} [{target.id}] to your trial.')
-        client.send_ooc_others(f'(X) added {target.displayname} [{target.id}] to your trial.',
+        client.send_ooc_others(f'(X) {client.displayname} added {target.displayname} [{target.id}] '
+                               f'to your trial.',
                                pred=lambda c: c in trial.get_leaders())
         target.send_ooc(f'You were added to trial `{trial.get_id()}`.')
+
+def ooc_cmd_trial_end(client: ClientManager, arg: str):
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    # Save leaders and regulars before destruction
+    leaders = trial.get_leaders()
+    regulars = trial.get_regulars()
+    trial.destroy()
+
+    client.send_ooc('You ended your trial.')
+    client.send_ooc_others('Your trial was ended.',
+                           pred=lambda c: c in regulars)
+    client.send_ooc_others(f'(X) {client.displayname} ended your trial.',
+                           pred=lambda c: c in leaders)
+
+def ooc_cmd_trial_focus(client: ClientManager, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='>1')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if client not in trial.get_leaders():
+        raise ClientError('You are not a leader of your trial.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+    try:
+        new_focus = float(arg.split(' ')[-1])
+    except ValueError:
+        raise ClientError(f'New focus value must be a number.')
+
+    try:
+        trial.set_focus(target, new_focus)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('This player is not part of your trial.')
+    except TrialError.FocusIsInvalidError:
+        raise ClientError(f'This new focus value {new_focus} is outside the valid range.')
+
+    client.send_ooc(f'You have set the focus level of {target.displayname} [{target.id}] to '
+                    f'{new_focus}.')
+    if client != target:
+        target.send_ooc(f'Your focus level was set to {new_focus}.')
+    client.send_ooc_others(f'(X) {client.name} [{client.id}] has set the focus level of '
+                           f'{target.displayname} [{target.id}] to {new_focus}.',
+                           pred=lambda c: c != target and c in trial.get_leaders())
+
+def ooc_cmd_trial_influence(client: ClientManager, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='>1')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if client not in trial.get_leaders():
+        raise ClientError('You are not a leader of your trial.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+    try:
+        new_influence = float(arg.split(' ')[-1])
+    except ValueError:
+        raise ClientError(f'New influence value must be a number.')
+
+    try:
+        trial.set_influence(target, new_influence)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('This player is not part of your trial.')
+    except TrialError.InfluenceIsInvalidError:
+        raise ClientError(f'This new influence value {new_influence} is outside the valid range.')
+
+    client.send_ooc(f'You have set the influence level of {target.displayname} [{target.id}] to '
+                    f'{new_influence}.')
+    if client != target:
+        target.send_ooc(f'Your influence level was set to {new_influence}.')
+    client.send_ooc_others(f'(X) {client.name} [{client.id}] has set the influence level of '
+                           f'{target.displayname} [{target.id}] to {new_influence}.',
+                           pred=lambda c: c != target and c in trial.get_leaders())
 
 def ooc_cmd_trial_info(client: ClientManager, arg: str):
     Constants.assert_command(client, arg, parameters='=0')
@@ -6787,16 +6857,7 @@ def ooc_cmd_trial_info(client: ClientManager, arg: str):
     except TrialError.UserNotPlayerError:
         raise ClientError('You are not part of a trial.')
 
-    tid = trial.get_id()
-    area = next(iter(trial.get_areas()))
-    leaders = trial.get_leaders()
-    regulars = trial.get_players(cond=lambda c: c not in leaders)
-
-    num_members = len(leaders.union(regulars))
-    leaders = ', '.join([f'{c.displayname} [{c.id}]' for c in leaders]) if leaders else 'None'
-    regulars = ', '.join([f'{c.displayname} [{c.id}]' for c in regulars]) if regulars else 'None'
-    info = (f'Trial {tid} [{num_members}/-] ({area.id}). '
-            f'Leaders: {leaders}. Regular members: {regulars}.')
+    info = trial.get_info()
     client.send_ooc(info)
 
 def ooc_cmd_trial_lead(client: ClientManager, arg: str):
@@ -6930,9 +6991,32 @@ def ooc_cmd_nsd_add(client: ClientManager.Client, arg: str):
         raise ClientError('This player is already part of this non-stop debate.')
     else:
         client.send_ooc(f'You added {target.displayname} [{target.id}] to your non-stop debate.')
-        client.send_ooc_others(f'(X) added {target.displayname} [{target.id}] to your non-stop '
+        client.send_ooc_others(f'(X) {client.displayname} added {target.displayname} [{target.id}] '
+                               'to your non-stop '
                                f'debate.', pred=lambda c: c in trial.get_leaders())
         target.send_ooc(f'You were added to the non-stop debate `{nsd.get_id()}`.')
+
+def ooc_cmd_nsd_end(client: ClientManager, arg: str):
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a non-stop debate.')
+
+    leaders = nsd.get_leaders()
+    regulars = nsd.get_regulars()
+    nsd.destroy()
+
+    client.send_ooc('You ended your non-stop debate.')
+    client.send_ooc_others('Your non-stop debate was ended.',
+                           pred=lambda c: c in regulars)
+    client.send_ooc_others(f'(X) {client.displayname} ended your non-stop debate.',
+                           pred=lambda c: c in leaders)
 
 def ooc_cmd_nsd_info(client: ClientManager, arg: str):
     Constants.assert_command(client, arg, parameters='=0')
@@ -6949,7 +7033,7 @@ def ooc_cmd_nsd_info(client: ClientManager, arg: str):
     nid = nsd.get_id()
     area = next(iter(nsd.get_areas()))
     leaders = nsd.get_leaders()
-    regulars = nsd.get_players(cond=lambda c: c not in leaders)
+    regulars = nsd.get_regulars()
 
     num_members = len(leaders.union(regulars))
     leaders = ', '.join([f'{c.displayname} [{c.id}]' for c in leaders]) if leaders else 'None'
@@ -6998,7 +7082,7 @@ def ooc_cmd_nsd_kick(client: ClientManager.Client, arg: str):
     cm = client.server.client_manager
     target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
     if client == target:
-        raise PartyError('You cannot kick yourself off your non-stop debate.')
+        raise ClientError('You cannot kick yourself off your non-stop debate.')
 
     try:
         nsd.remove_player(target)
@@ -7023,7 +7107,16 @@ def ooc_cmd_nsd_pause(client: ClientManager.Client, arg: str):
     except TrialError.UserNotInMinigameError:
         raise ClientError('You are not part of a non-stop debate.')
 
-    nsd.set_intermission()
+    try:
+        nsd.set_intermission()
+    except NonStopDebateError.NSDAlreadyInModeError:
+        raise ClientError('The non-stop debate is already in this mode.')
+    except NonStopDebateError.NSDNotInModeError:
+        raise ClientError('You may not pause a non-stop debate at this moment.')
+    else:
+        client.send_ooc('You have paused your non-stop debate.')
+        client.send_ooc_others(f'(X) {client.displayname} has paused your non-stop debate.',
+                               pred=lambda c: c in nsd.get_leaders())
 
 def ooc_cmd_nsd_loop(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
@@ -7037,8 +7130,89 @@ def ooc_cmd_nsd_loop(client: ClientManager.Client, arg: str):
     except TrialError.UserNotInMinigameError:
         raise ClientError('You are not part of a non-stop debate.')
 
-    nsd.set_looping()
-    
+    try:
+        nsd.set_looping()
+    except NonStopDebateError.NSDAlreadyInModeError:
+        raise ClientError('The non-stop debate is already in this mode.')
+    except NonStopDebateError.NSDNotInModeError:
+        raise ClientError('You may not loop a non-stop debate at this moment.')
+    except:
+        client.send_ooc('You have set your non-stop debate to start looping.')
+        client.send_ooc_others(f'(X) {client.displayname} has set your non-stop debate to start '
+                               f'looping.', pred=lambda c: c in nsd.get_leaders())
+
+def ooc_cmd_nsd_resume(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a non-stop debate.')
+
+    try:
+        resumed_mode = nsd.resume()
+    except NonStopDebateError.NSDNotInModeError:
+        raise ClientError('You may not resume a non-stop debate at this moment.')
+    else:
+        mode = resumed_mode.name.lower()
+
+def ooc_cmd_nsd_accept(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a non-stop debate.')
+
+    # Save because NSD is destroyed!
+    leaders, regulars = nsd.get_leaders(), nsd.get_regulars()
+    try:
+        nsd.accept_break()
+    except NonStopDebateError.NSDNotInModeError:
+        raise ClientError('You may not accept a break for your non-stop debate at this moment.')
+
+    client.send_ooc('You accepted the break and ended the non-stop debate. The breaker gained '
+                    '0.5 influence.')
+    client.send_ooc_others(f'(X) {client.displayname} accepted the break and ended the non-stop '
+                           f'debate. The breaker gained 0.5 influence.',
+                           pred=lambda c: c in leaders)
+    client.send_ooc_others('Your non-stop debate was ended by an accepted break.',
+                           pred=lambda c: c in regulars)
+
+def ooc_cmd_nsd_reject(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a non-stop debate.')
+
+    try:
+        nsd.reject_break()
+    except NonStopDebateError.NSDNotInModeError:
+        raise ClientError('You may not reject a break for your non-stop debate at this moment.')
+
+    client.send_ooc('You rejected the break. The breaker lost 1 influence.')
+    client.send_ooc('Send /nsd_resume to resume the debate, /nsd_end to end the debate.')
+
+    client.send_ooc_others(f'(X) {client.displayname} rejected the break. The breaker lost 1 '
+                           f'influence.',
+                           pred=lambda c: c in nsd.get_leaders())
+    client.send_ooc_others('The break was rejected, so the debate continues!',
+                           pred=lambda c: c in nsd.get_regulars())
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

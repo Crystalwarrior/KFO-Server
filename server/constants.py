@@ -1122,7 +1122,7 @@ class Constants():
         If there was no exception, do no further actions.
         If there was an exception other than asyncio.CancelledError, reraise the exception in
         the callback accordingly.
-        If there was an asyncio.CancelledError, do no further actions.
+        If there was an asyncio.CancelledError or KeyboardInterrupt, do no further actions.
 
         Parameters
         ----------
@@ -1151,10 +1151,10 @@ class Constants():
         def check_exception(_client, _future):
             try:
                 exception = _future.exception()
-            except asyncio.CancelledError:
+            except (asyncio.CancelledError):
                 return
 
-            if not exception:
+            if not exception or isinstance(exception, KeyboardInterrupt):
                 return
             try:
                 if not (_client and isinstance(exception, TsuserverException)):
@@ -1169,6 +1169,33 @@ class Constants():
         task = loop.create_task(coro_or_future)
         task.add_done_callback(functools.partial(check_exception, client))
         return task
+
+    @staticmethod
+    def cancel_and_await_task(task):
+        """
+        Function that schedules the cancellation of `task` and awaiting it until it is able to
+        properly retrieve the cancellation exception from `task`. This function assumes the task
+        has not been
+        cancelled yet.
+
+        Parameters
+        ----------
+        task : asyncio.Task
+            Task to cancel
+
+        Returns
+        -------
+        None.
+        """
+
+        async def _do():
+            try:
+                task.cancel()
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        Constants.create_fragile_task(_do())
 
     @staticmethod
     def complete_partial_arguments(original_partial, *overwriting_args, **overwriting_keywords):

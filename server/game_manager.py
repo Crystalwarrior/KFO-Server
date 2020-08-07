@@ -25,7 +25,7 @@ managed by the same game. Players of a game need not be part of a team managed b
 team can only have players of the game as players of the team. Removing a player from a game
 also removes them from their team if they were in any.
 
-Games also maintain a SteptimerManager-like structure, allowing the creation of steptimers
+Games also maintain a TimerManager-like structure, allowing the creation of timers
 managed by the game.
 
 Each game is managed by a game manager, which itself maintains a PlayerGroupManager-like structure.
@@ -35,12 +35,12 @@ same game manager.
 """
 
 from server.constants import Constants
-from server.exceptions import GameError, PlayerGroupError, SteptimerError
-from server.playergroup_manager import PlayerGroupManager
-from server.steptimer_manager import SteptimerManager
+from server.exceptions import GameError, PlayerGroupError, TimerError
+from server.playergroup_manager import PlayerGroup, PlayerGroupManager
+from server.timer_manager import TimerManager
 from server.subscriber import Listener
 
-class _Team(PlayerGroupManager.PlayerGroup):
+class _Team(PlayerGroup):
     """
     Teams are player groups with a fixed concurrent membership limit of 1.
     """
@@ -138,17 +138,17 @@ class _Game():
     Games are groups of users (called players) with an ID, that may also manage some timers
     and teams.
 
-    Some players of the game (possibly none) may become leaders. Each game may have a player
-    limit (beyond which no new players may be added), may require that it never loses all its
-    players as soon as it gets its first one (or else it is automatically deleted) and may
-    require that if it has at least one player, then that there is at least one leader (or
-    else one is automatically chosen between all players). Each of these games may also
-    impose a concurrent membership limit, so that every user that is a player of it is at most
-    of that many games managed by this game's manager. Each game may also require all its
+    Some players of the game (possibly none) may become leaders. A player that is not a leader
+    is called regular. Each game may have a player limit (beyond which no new players may be added),
+    may require that it never loses all its players as soon as it gets its first one (or else it
+    is automatically deleted) and may require that if it has at least one player, then that there
+    is at least one leader (or else one is automatically chosen between all players). Each of these
+    games may also impose a concurrent membership limit, so that every user that is a player of it
+    is at most of that many games managed by this game's manager. Each game may also require all its
     players have characters when trying to join the game, as well as remove any player that
     switches to a non-character.
 
-    Each of the timers a game manages are steptimers.
+    Each of the timers a game manages are timer_manager.Timers.
 
     For each managed team, its players must also be players of this game.
 
@@ -191,9 +191,9 @@ class _Game():
     #   game. If False, no such checks are made.
     # _team_manager : PlayerGroupManager
     #     Internal manager that handles the teams of the game.
-    # _timer_manager: SteptimerManager
-    #     Internal manager that handles the steptimers of the game.
-    # _playergroup: PlayerGroupManager.PlayerGroup
+    # _timer_manager: TimerManager
+    #     Internal manager that handles the timers of the game.
+    # _playergroup: PlayerGroup
     #     Internal playergroup that implements the player features of the game.
 
     # Invariants
@@ -250,8 +250,8 @@ class _Game():
             If an int, it is the maximum number of teams the game supports. If None, it
             indicates the game has no team limit. Defaults to None.
         timer_limit : int or None, optional
-            If an int, it is the maximum number of steptimers the game supports. If None, it
-            indicates the game has no steptimer limit. Defaults to None.
+            If an int, it is the maximum number of timers the game supports. If None, it
+            indicates the game has no timer limit. Defaults to None.
         playergroup_manager : PlayerGroupManager, optional
             The internal playergroup manager of the game manager. Access to this value is
             limited exclusively to this __init__, and is only to initialize the internal
@@ -272,7 +272,7 @@ class _Game():
 
         self._team_manager = PlayerGroupManager(server, playergroup_limit=team_limit,
                                                 default_playergroup_type=_Team)
-        self._timer_manager = SteptimerManager(server, steptimer_limit=timer_limit)
+        self._timer_manager = TimerManager(server, timer_limit=timer_limit)
         # Creator is to be added in the manager
         try:
             group = playergroup_manager.new_group(creator=None,
@@ -596,6 +596,25 @@ class _Game():
 
         return self._playergroup.get_leaders(cond=cond)
 
+    def get_regulars(self, cond=None):
+        """
+        Return (a shallow copy of) the set of players of this game that are regulars and satisfy
+        a condition if given.
+
+        Parameters
+        ----------
+        cond : types.LambdaType: ClientManager.Client -> bool, optional
+            Condition that all regulars returned satisfy. Defaults to None (no checked
+            conditions).
+
+        Returns
+        -------
+        set of ClientManager.Client
+            The (filtered) regulars of this game.
+
+        """
+        return self._playergroup.get_regulars(cond=cond)
+
     def is_leader(self, user):
         """
         Decide if a user is a leader of the game.
@@ -688,38 +707,44 @@ class _Game():
 
         self._manager._check_structure()
 
-    def new_steptimer(self, steptimer_type=None, start_timer_value=None, timestep_length=None,
-                      firing_interval=None, min_timer_value=None, max_timer_value=None):
+    def new_timer(self, timer_type=None, start_value=None, tick_rate=1,
+                  min_value=None, max_value=None, auto_restart=False, auto_destroy=True):
         """
-        Create a new steptimer with given parameters managed by this game.
+        Create a new timer with given parameters managed by this game.
 
         Parameters
         ----------
-        steptimer_type : SteptimerManager.Steptimer, optional
-            Class of steptimer that will be produced. Defaults to None (and converted to
-            SteptimerManager.Steptimer)
-        start_timer_value : float, optional
-            Number of seconds the apparent timer the steptimer will initially have. Defaults
-            to None (will use the default from `steptimer_type`).
-        timestep_length : float, optional
-            Number of seconds that tick from the apparent timer every step. Must be a non-
-            negative number at least `min_timer_value` and `max_timer_value`. Defaults to
-            None (will use the default from `steptimer_type`).
-        firing_interval : float, optional
-            Number of seconds that must elapse for the apparent timer to tick. Defaults to None
-            (and converted to abs(timestep_length))
-        min_timer_value : float, optional
+        timer_type : TimerManager.Timer, optional
+            Class of timer that will be produced. Defaults to None (and converted to
+            TimerManager.Timer)
+        start_value : float, optional
+            Number of seconds the apparent timer the timer will initially have. Defaults
+            to None (will use the default from `timer_type`).
+        tick_rate : float, optional
+            Starting rate in timer seconds/IRL seconds at which the timer will tick. Defaults to
+            None (will use the default from `timer_type`).
+        min_value : float, optional
             Minimum value the apparent timer may take. If the timer ticks below this, it will
             end automatically. It must be a non-negative number. Defaults to None (will use the
-            default from `steptimer_type`.)
-        max_timer_value : float, optional
+            default from `timer_type`.)
+        max_value : float, optional
             Maximum value the apparent timer may take. If the timer ticks above this, it will
-            end automatically. Defaults to None (will use the default from `steptimer_type`).
+            end automatically. Defaults to None (will use the default from `timer_type`).
+        auto_restart : bool, optional
+            If True, the timer will reset without terminating back to its max value if the tick rate
+            was non-negative and the timer went below its min value, or back to its max value if
+            the tick rate was negative and the timer went above its max value. If False, the
+            timer will terminate once either of the two conditions is satisfied without restarting.
+            Defaults to False.
+        auto_destroy : bool, optional
+            If True, the game will automatically delete the timer once it is terminated by it
+            ticking out or manual termination. If False, no such automatic deletion will take place.
+            Defaults to True.
 
         Returns
         -------
-        SteptimerManager.Steptimer
-            The created steptimer.
+        TimerManager.Timer
+            The created timer.
 
         Raises
         ------
@@ -727,7 +752,7 @@ class _Game():
             If the game was scheduled for deletion and thus does not accept any mutator
             public method calls.
         GameError.GameTooManyTimersError
-            If the game is already managing its maximum number of steptimers.
+            If the game is already managing its maximum number of timers.
 
         """
 
@@ -735,36 +760,37 @@ class _Game():
             raise GameError.GameIsUnmanagedError
 
         try:
-            timer = self._timer_manager.new_steptimer(steptimer_type=steptimer_type,
-                                                      start_timer_value=start_timer_value,
-                                                      timestep_length=timestep_length,
-                                                      firing_interval=firing_interval,
-                                                      min_timer_value=min_timer_value,
-                                                      max_timer_value=max_timer_value)
-        except SteptimerError.ManagerTooManySteptimersError:
+            timer = self._timer_manager.new_timer(timer_type=timer_type,
+                                                  start_value=start_value,
+                                                  tick_rate=tick_rate,
+                                                  min_value=min_value,
+                                                  max_value=max_value,
+                                                  auto_restart=auto_restart,
+                                                  auto_destroy=auto_destroy)
+        except TimerError.ManagerTooManyTimersError:
             raise GameError.GameTooManyTimersError
 
         self._manager._check_structure()
         return timer
 
-    def delete_steptimer(self, steptimer):
+    def delete_timer(self, timer):
         """
-        Delete a steptimer managed by this game, terminating it first if needed.
+        Delete a timer managed by this game, terminating it first if needed.
 
         Parameters
         ----------
-        steptimer : SteptimerManager.Steptimer
-            The steptimer to delete.
+        timer : TimerManager.Timer
+            The timer to delete.
 
         Returns
         -------
         str
-            The ID of the steptimer that was deleted.
+            The ID of the timer that was deleted.
 
         Raises
         ------
-        GameError.GameDoesNotManageSteptimerError
-            If the game does not manage the target steptimer.
+        GameError.GameDoesNotManageTimerError
+            If the game does not manage the target timer.
 
         """
 
@@ -772,64 +798,64 @@ class _Game():
             raise GameError.GameIsUnmanagedError
 
         try:
-            timer_id = self._timer_manager.delete_steptimer(steptimer)
-        except SteptimerError.ManagerDoesNotManageSteptimerError:
-            raise GameError.GameDoesNotManageSteptimerError
+            timer_id = self._timer_manager.delete_timer(timer)
+        except TimerError.ManagerDoesNotManageTimerError:
+            raise GameError.GameDoesNotManageTimerError
 
         self._manager._check_structure()
         return timer_id
 
-    def get_steptimers(self):
+    def get_timers(self):
         """
-        Return (a shallow copy of) the steptimers this game manages.
+        Return (a shallow copy of) the timers this game manages.
 
         Returns
         -------
-        set of SteptimerManager.Steptimer
-            Steptimers this game manages.
+        set of TimerManager.Timer
+            Timers this game manages.
 
         """
 
-        return self._timer_manager.get_steptimers()
+        return self._timer_manager.get_timers()
 
-    def get_steptimer_by_id(self, steptimer_id):
+    def get_timer_by_id(self, timer_id):
         """
-        If `steptimer_tag` is the ID of a steptimer managed by this game, return that steptimer.
+        If `timer_tag` is the ID of a timer managed by this game, return that timer.
 
         Parameters
         ----------
-        steptimer_id: str
-            ID of steptimer this game manages.
+        timer_id: str
+            ID of timer this game manages.
 
         Returns
         -------
-        SteptimerManager.Steptimer
-            The steptimer whose ID matches the given ID.
+        TimerManager.Timer
+            The timer whose ID matches the given ID.
 
         Raises
         ------
         GameError.GameInvalidTimerIDError:
-            If `steptimer_tag` is a str and it is not the ID of a steptimer this game manages.
+            If `timer_tag` is a str and it is not the ID of a timer this game manages.
 
         """
 
         try:
-            return self._timer_manager.get_steptimer_by_id(steptimer_id)
-        except SteptimerError.ManagerInvalidSteptimerIDError:
+            return self._timer_manager.get_timer_by_id(timer_id)
+        except TimerError.ManagerInvalidTimerIDError:
             raise GameError.GameInvalidTimerIDError
 
-    def get_steptimer_ids(self):
+    def get_timer_ids(self):
         """
-        Return (a shallow copy of) the IDs of all steptimers managed by this game.
+        Return (a shallow copy of) the IDs of all timers managed by this game.
 
         Returns
         -------
         set of str
-            The ID of the steptimer that matches the given tag.
+            The ID of the timer that matches the given tag.
 
         """
 
-        return self._timer_manager.get_steptimer_ids()
+        return self._timer_manager.get_timer_ids()
 
     def new_team(self, team_type=None, creator=None, player_limit=None,
                  require_invitations=False, require_players=True, require_leaders=True):
@@ -1096,8 +1122,8 @@ class _Game():
             return
         self._unmanaged = True
 
-        for timer in self._timer_manager.get_steptimers():
-            self._timer_manager.delete_steptimer(timer)
+        for timer in self._timer_manager.get_timers():
+            self._timer_manager.delete_timer(timer)
         for team in self._team_manager.get_groups():
             team.destroy()
 
@@ -1197,7 +1223,7 @@ class _Game():
         Parameters
         ----------
         player : ClientManager.Client
-            Player that signaled it has changed character.
+            Player that signaled it was destroyed.
 
         Returns
         -------
@@ -1277,7 +1303,7 @@ class _Game():
 
         return (f"Game::{self.get_id()}:"
                 f"{self.get_players()}:{self.get_leaders()}:{self.get_invitations()}"
-                f"{self.get_steptimers()}:"
+                f"{self.get_timers()}:"
                 f"{self.get_teams()}")
 
     def __repr__(self):
@@ -1298,12 +1324,12 @@ class _Game():
                 f'require_invitations={self._playergroup._require_invitations}, '
                 f'require_leaders={self._playergroup._require_leaders}, '
                 f'require_character={self._require_character}, '
-                f'team_limit={self._team_manager._playergroup_limit}, '
-                f'timer_limit={self._timer_manager._steptimer_limit} || '
+                f'team_limit={self._team_manager.get_group_limit()}, '
+                f'timer_limit={self._timer_manager.get_timer_limit()} || '
                 f'players={self.get_players()}, '
                 f'invitations={self.get_invitations()}, '
                 f'leaders={self.get_leaders()}, '
-                f'timers={self.get_steptimers()}, '
+                f'timers={self.get_timers()}, '
                 f'teams={self.get_teams()})')
 
 class GameManager:
@@ -1351,7 +1377,7 @@ class GameManager:
             The maximum number of games this manager can handle. Defaults to None (no limit).
         default_game_type : _Game, optional
             The default type of game this manager will create. Defaults to None (and then
-            converted to self.Game).
+            converted to Game).
         available_id_producer : typing.types.FunctionType, optional
             Function to produce available game IDs. It will override the built-in class method
             get_available_game_id. Defaults to None (and then converted to the built-in
@@ -1413,8 +1439,8 @@ class GameManager:
             If an int, it is the maximum number of teams the game will support. If None, it
             indicates the game will have no team limit. Defaults to None.
         timer_limit : int or None, optional
-            If an int, it is the maximum number of steptimers the game will support. If None, it
-            indicates the game will have no steptimer limit. Defaults to None.
+            If an int, it is the maximum number of timers the game will support. If None, it
+            indicates the game will have no timer limit. Defaults to None.
 
         Returns
         -------
@@ -1726,4 +1752,4 @@ class GameManager:
                 f"default_game_type={self._default_game_type}, "
                 f"|| "
                 f"_id_to_game={self._id_to_game}, "
-                f"id={hex(id(self))})")
+                f"id={self.get_id()})")
