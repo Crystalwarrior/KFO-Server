@@ -4304,12 +4304,8 @@ def ooc_cmd_scream(client: ClientManager.Client, arg: str):
     if not client.is_gagged:
         client.send_ooc('You screamed "{}".'.format(arg))
 
-        client.send_ooc_others(arg, username="<dollar>SCREAM[{}]".format(client.displayname),
+        client.send_ooc_others(msg="You heard {} scream nearby.".format(client.displayname),
                                is_zstaff_flex=False, to_deaf=False,
-                               pred=lambda c: (not c.muted_global and
-                                               (c.area == client.area or
-                                                c.area.name in client.area.scream_range)))
-        client.send_ooc_others('Your ears are ringing.', is_zstaff_flex=False, to_deaf=True,
                                pred=lambda c: (not c.muted_global and
                                                (c.area == client.area or
                                                 c.area.name in client.area.scream_range)))
@@ -4317,13 +4313,12 @@ def ooc_cmd_scream(client: ClientManager.Client, arg: str):
                                .format(client.displayname, client.id, arg, client.area.id),
                                is_zstaff_flex=True, pred=lambda c: not c.muted_global)
 
-        client.send_ic(msg=arg, pos=client.pos, cid=client.char_id,
-                       showname=client.showname if client.showname else '')
-        client.send_ic_others(msg=arg, to_deaf=False,
+        client.send_ic(msg=arg, pos=client.pos, cid=client.char_id, showname=client.showname)
+        client.send_ic_others(msg=arg, to_deaf=False, showname=client.showname,
                               pred=lambda c: (not c.muted_global and
                                               (c.area == client.area or
                                                c.area.name in client.area.scream_range)))
-        client.send_ic_others(msg='', to_deaf=True,
+        client.send_ic_others(msg=arg, to_deaf=True,
                               pred=lambda c: (not c.muted_global and
                                               (c.area == client.area or
                                                c.area.name in client.area.scream_range)))

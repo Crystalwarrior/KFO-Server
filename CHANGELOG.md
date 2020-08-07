@@ -464,5 +464,10 @@
 * Fixed global IC areas and prefixes not being reset on area list reloads, even when it would not make too much sense to keep them around
 * /whois now shows global IC and global IC prefix status
 
-### 2008305a (4.2.5-post2)
+### 200805a (4.2.5-post2)
 * Fixed accidental uses of /logingm in IC or in OOC surrounded by spaces not filtering out server passwords like other login commands do
+
+### 200807a (4.2.5-post3)
+* Fixed /scream not showing default or custom shownames in IC for non-deaf players
+* Reworded the /scream OOC notification so it is more in line with other OOC/IC notifications
+* Deaf players now only see an IC notification for screams
