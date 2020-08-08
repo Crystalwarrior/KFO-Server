@@ -254,14 +254,15 @@ class AreaManager:
 
             Returns
             -------
-            unavailable: dict
+            unavailable: set
                 Character IDs of all unavailable characters in the area.
             """
 
             if more_unavail_chars is None:
                 more_unavail_chars = set()
 
-            unavailable = {x.char_id for x in self.clients if x.char_id is not None}
+            unavailable = {x.char_id for x in self.clients if x.char_id is not None
+                           and x.char_id >= 0}
             unavailable |= more_unavail_chars
             restricted = {self.server.char_list.index(name) for name in self.restricted_chars}
 
@@ -548,8 +549,9 @@ class AreaManager:
                                           is_zstaff_flex=False, in_area=area if area else True, to_blind=False)
                 initiator.send_ooc_others('You hear a flicker.', is_zstaff_flex=False, in_area=area if area else True,
                                           to_blind=True, to_deaf=False)
-                initiator.send_ooc_others('(X) {} turned the lights {}.'
-                                          .format(initiator.displayname, status[new_lights]),
+                initiator.send_ooc_others('(X) {} [{}] turned the lights {}.'
+                                          .format(initiator.displayname, initiator.id,
+                                                  status[new_lights]),
                                           is_zstaff_flex=True, in_area=area if area else True)
             else: # Otherwise, send generic message
                 self.broadcast_ooc('The lights were turned {}.'.format(status[new_lights]))
@@ -634,9 +636,7 @@ class AreaManager:
                 pargs['name'] = name
             if 'cid' not in pargs:
                 pargs['cid'] = client.char_id
-            # if 'showname' not in pargs:
-            #     pargs['showname'] = client.displayname
-            pargs['showname'] = client.showname # Ignore AO shownames
+            pargs['showname'] = client.displayname # Ignore AO shownames
             if 'loop' not in pargs:
                 pargs['loop'] = -1
             if 'channel' not in pargs:
@@ -669,8 +669,9 @@ class AreaManager:
             # Changing music reveals sneaked players, so do that if requested
             if not client.is_staff() and not client.is_visible and reveal_sneaked:
                 client.change_visibility(True)
-                client.send_ooc_others('(X) {} revealed themselves by playing music ({}).'
-                                       .format(client.displayname, client.area.id), is_zstaff=True)
+                client.send_ooc_others('(X) {} [{}] revealed themselves by playing music ({}).'
+                                       .format(client.displayname, client.id, client.area.id),
+                                       is_zstaff=True)
 
         def play_music(self, name, cid, length=-1, showname=''):
             """
@@ -1017,6 +1018,17 @@ class AreaManager:
                 client.server.tasker.remove_task(client, ['as_day_cycle'])
             except KeyError:
                 pass
+
+        # And remove all global IC and global IC prefixes
+        for client in self.server.client_manager.clients:
+            if client.multi_ic:
+                client.send_ooc('Due to an area list reload, your global IC was turned off. You '
+                                'may turn it on again manually.')
+                client.multi_ic = None
+            if client.multi_ic_pre:
+                client.send_ooc('Due to an area list reload, your global IC prefix was removed. '
+                                'You may set it again manually.')
+                client.multi_ic_pre = ''
 
         # If the default area ID is now past the number of available areas, reset it back to zero
         if self.server.default_area >= len(self.areas):

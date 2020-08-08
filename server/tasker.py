@@ -133,7 +133,7 @@ class Tasker:
 
     def get_task_attr(self, client, args, attr):
         """
-        Given client, task arguments, and an attribute name of a task, retrive its associated
+        Given client, task arguments, and an attribute name of a task, retrieve its associated
         attribute value.
 
         Parameters
@@ -186,7 +186,7 @@ class Tasker:
     async def do_nothing(self):
         while True:
             try:
-                await asyncio.sleep(100)
+                await asyncio.sleep(1)
             except KeyboardInterrupt:
                 raise
 
@@ -250,7 +250,6 @@ class Tasker:
         hour = hour_start
         minute_at_interruption = 0
         hour_paused_at = time.time() # Does not need initialization, but PyLint complains otherwise
-        self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False) # True after /clock_pause, False after 1 second
         self.set_task_attr(client, ['as_day_cycle'], 'just_unpaused', False) # True after /clock_unpause, False after current hour elapses
         self.set_task_attr(client, ['as_day_cycle'], 'is_paused', False) # True after /clock_pause, false after /clock_unpause
 
@@ -268,18 +267,14 @@ class Tasker:
                     hour_started_at = time.time()
                     minute_at_interruption = 0
                     client.last_sent_clock = hour
-                    self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False)
                     await asyncio.sleep(hour_length)
                 # If the clock was just unpaused, send out notif and restart the current hour
                 elif (not self.get_task_attr(client, ['as_day_cycle'], 'is_paused') and
                       self.get_task_attr(client, ['as_day_cycle'], 'just_unpaused')):
                     client.send_ooc('Your day cycle in areas {} through {} has been unpaused.'
                                     .format(area_1, area_2))
-                    client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through '
-                                           '{} has been unpaused.'
-                                           .format(client.name, area_1, area_2),
-                                           is_zstaff_flex=True)
-                    self.set_task_attr(client, ['as_day_cycle'], 'just_paused', False)
+                    client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through {} has been unpaused.'
+                                           .format(client.name, area_1, area_2), is_zstaff_flex=True)
                     self.set_task_attr(client, ['as_day_cycle'], 'just_unpaused', False)
 
                     minute = minute_at_interruption + (hour_paused_at - hour_started_at)/hour_length*60
@@ -294,15 +289,18 @@ class Tasker:
 
                     await asyncio.sleep((60-minute_at_interruption)/60 * hour_length)
 
-
                 # Otherwise, is paused. Check again in one second.
                 else:
                     await asyncio.sleep(1)
-            except asyncio.CancelledError:
+
+                if (not self.get_task_attr(client, ['as_day_cycle'], 'is_paused') and
+                    not self.get_task_attr(client, ['as_day_cycle'], 'just_unpaused')):
+                    hour = (hour + 1) % 24
+
+            except (asyncio.CancelledError, KeyError):
                 # Code can run here for one of two reasons
                 # 1. The timer was canceled
                 # 2. The timer was just paused
-
                 try:
                     is_paused = self.get_task_attr(client, ['as_day_cycle'], 'is_paused')
                 except KeyError: # Task may be canceled, so it'll never get this values
@@ -332,11 +330,6 @@ class Tasker:
                                            '{} has been paused at {}.'
                                            .format(client.name, area_1, area_2, time_at_pause),
                                            is_zstaff_flex=True)
-                    self.set_task_attr(client, ['as_day_cycle'], 'just_paused', True)
-            else:
-                if (not self.get_task_attr(client, ['as_day_cycle'], 'is_paused') and
-                    not self.get_task_attr(client, ['as_day_cycle'], 'just_unpaused')):
-                    hour = (hour + 1) % 24
             finally:
                 send_first_hour = True
 

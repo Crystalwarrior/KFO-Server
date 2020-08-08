@@ -434,6 +434,44 @@
 * Improved client termination messages for abnormal connections and packets
 * Added best-effort support for (upcoming) Attorney Online 2.8 and similar clients. Unrecognized clients will now be warned in OOC when they join
 
+### 200712a (4.2.4-post4)
+* Fixed servers not launching if they did not set some daily gmpasses
+* config.yaml now shows instructions on how to make daily gmpasses optional, as well as indications on password requirements
+
+### 200720a (4.2.4-post5)
+* Fixed situation where players that started a clock, paused it and disconnected did not have the clocks properly cleared
+
+### 200731a (4.2.5)
+* Added /party_whisper (aliases /pw and /huddle) so players in the same party may whisper to one another
+* Added /zone_info (alias /zi) so zone watchers may quickly obtain details about their zone and a list of players in their zone.
+* Added /logingm, alias to /loginrp.
+* /play, /rplay, /zone_lights and /zone_play now send status messages to both the player executing the command as well as any player watching the zone if appropriate
+* /play, /rplay and /zone_play now warn the player executing the command if the track name is not a recognized one and that it will not loop
+* /scream now displays the scream in IC to the screamer
+* Raised character limit in commands from 256 to 1024, except for IC-related commands (these remain at 256)
+* (Temporarily) patched /globalic_pre so that GMs using /globalic with prefixes would have their client IC chatboxes and effects cleared once their message was sent
+* All staff-privileged commands now send displayname and client ID rather than some combination of names
+* /party_members and /zone_list now list client ID of members and zone watchers respectively
+* Servers no longer stop launch if they are unable to obtain their public IP
+* Improved wording in README
+* Fixed /rplay failing if the reachable areas of an area was just the keyword '<ALL>'
+* Fixed launching servers via double clicking start_server.py being unable to find configuration files and crashing immediately afterwards
+* Fixed Attorney Online 2.8 not handling music and area list updates
+
+### 200803a (4.2.5-post1)
+* Fixed global IC areas and prefixes, as well as day cycle clocks not being canceled on /logout and /cleargm
+* Fixed /cleargm not forcing GMs who were in an area that restricted some characters off their character if they were using one of those restricted characters
+* Fixed global IC areas and prefixes not being reset on area list reloads, even when it would not make too much sense to keep them around
+* /whois now shows global IC and global IC prefix status
+
+### 200805a (4.2.5-post2)
+* Fixed accidental uses of /logingm in IC or in OOC surrounded by spaces not filtering out server passwords like other login commands do
+
+### 200807a (4.2.5-post3)
+* Fixed /scream not showing default or custom shownames in IC for non-deaf players
+* Reworded the /scream OOC notification so it is more in line with other OOC/IC notifications
+* Deaf players now only see an IC notification for screams
+
 ### (4.3.0)
 * Dropped Python 3.6 support
 * Added lurk callouts to name players who have been idle some amount of time

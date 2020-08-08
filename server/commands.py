@@ -157,9 +157,10 @@ def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):
             client.send_ooc('You kicked client {} ({}) from area {} to area {}.'
                             .format(c.id, current_char, old_area.id, area.id))
             c.send_ooc('You were kicked from the area to area {}.'.format(area.id))
-            client.send_ooc_others('(X) {} kicked client {} from area {} to area {}.'
-                                   .format(client.name, c.id, old_area.id, area.id), not_to={c},
-                                   is_staff=True)
+            client.send_ooc_others('(X) {} [{}] kicked client {} from area {} to area {}.'
+                                   .format(client.displayname, client.id, c.id, old_area.id,
+                                           area.id),
+                                   not_to={c}, is_staff=True)
 
             if old_area.is_locked or old_area.is_modlocked:
                 try: # Try and remove the IPID from the area's invite list
@@ -203,9 +204,9 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
         client.server.area_manager.load_areas()
         client.send_ooc('You have restored the original area list of the server.')
         client.send_ooc_others('The original area list of the server has been restored.',
-                               is_staff=False)
-        client.send_ooc_others('{} has restored the original area list of the server.'
-                               .format(client.name), is_staff=True)
+                               is_officer=False)
+        client.send_ooc_others('{} [{}] has restored the original area list of the server.'
+                               .format(client.name, client.id), is_officer=True)
     else:
         try:
             new_area_file = 'config/area_lists/{}.yaml'.format(arg)
@@ -227,9 +228,21 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
                                 .format(new_area_file, exc))
 
         client.send_ooc('You have loaded the area list {}.'.format(arg))
-        client.send_ooc_others('The area list {} has been loaded.'.format(arg), is_staff=False)
-        client.send_ooc_others('{} has loaded the area list {}.'.format(client.name, arg),
-                               is_staff=True)
+        client.send_ooc_others('The area list {} has been loaded.'.format(arg), is_officer=False)
+        client.send_ooc_others('{} [{}] has loaded the area list {}.'
+                               .format(client.name, client.id, arg),
+                               is_officer=True)
+
+    # Every area that was locked before the reload gets warned that their areas were unlocked.
+    for area_name in old_locked_areas:
+        try:
+            area = client.server.area_manager.get_area_by_name(area_name)
+            area.broadcast_ooc('This area became unlocked after the area reload. Relock it using '
+                               '/lock.')
+        # if no area is found with that name, then an old locked area does not exist anymore, so
+        # we do not need to do anything.
+        except AreaError:
+            pass
 
     # Every area that was locked before the reload gets warned that their areas were unlocked.
     for area_name in old_locked_areas:
@@ -335,8 +348,8 @@ def ooc_cmd_ban(client: ClientManager.Client, arg: str):
             client.send_ooc('You banned {} [{}/{}].'.format(c.displayname, c.ipid, c.hdid))
             client.send_ooc_others('{} was banned.'.format(c.displayname), is_officer=False,
                                    in_area=True)
-            client.send_ooc_others('{} banned {} [{}/{}].'
-                                   .format(client.name, c.displayname, c.ipid, c.hdid),
+            client.send_ooc_others('{} [{}] banned {} [{}/{}].'
+                                   .format(client.name, client.id, c.displayname, c.ipid, c.hdid),
                                    is_officer=True)
             c.disconnect()
 
@@ -393,16 +406,17 @@ def ooc_cmd_banhdid(client: ClientManager.Client, arg: str):
             client.send_ooc('You HDID banned {} [{}/{}].'.format(c.displayname, c.ipid, c.hdid))
             client.send_ooc_others('{} was banned.'.format(c.displayname), is_officer=False,
                                    in_area=True)
-            client.send_ooc_others('{} HDID banned {} [{}/{}].'
-                                   .format(client.name, c.displayname, c.ipid, c.hdid),
+            client.send_ooc_others('{} [{}] HDID banned {} [{}/{}].'
+                                   .format(client.name, client.id, c.displayname, c.ipid, c.hdid),
                                    is_officer=True)
             c.disconnect()
 
     plural = 's were' if len(targets) != 1 else ' was'
     client.send_ooc('You banned HDID `{}`. As a result, {} client{} kicked as well.'
                     .format(arg, len(targets), plural))
-    client.send_ooc_others('{} banned HDID `{}`. As a result, {} client{} kicked as well.'
-                           .format(client.name, arg, len(targets), plural), is_officer=True)
+    client.send_ooc_others('{} [{}] banned HDID `{}`. As a result, {} client{} kicked as well.'
+                           .format(client.name, client.id, arg, len(targets), plural),
+                           is_officer=True)
     logger.log_server('HDID-banned {}.'.format(identifier), client)
 
 def ooc_cmd_bg(client: ClientManager.Client, arg: str):
@@ -497,14 +511,14 @@ def ooc_cmd_bilock(client: ClientManager.Client, arg: str):
     now_reachable = Constants.parse_passage_lock(client, areas, bilock=True)
 
     status = {True: 'unlocked', False: 'locked'}
-    cname = client.name if client.is_staff() else client.displayname
     now0, now1 = status[now_reachable[0]], status[now_reachable[1]]
     name0, name1 = areas[0].name, areas[1].name
 
     if now_reachable[0] == now_reachable[1]:
         client.send_ooc('You have {} the passage between {} and {}.'.format(now0, name0, name1))
-        client.send_ooc_others('(X) {} has {} the passage between {} and {} ({}).'
-                               .format(cname, now0, name0, name1, client.area.id),
+        client.send_ooc_others('(X) {} [{}] has {} the passage between {} and {} ({}).'
+                               .format(client.displayname, client.id, now0,
+                                       name0, name1, client.area.id),
                                is_zstaff_flex=True)
         logger.log_server('[{}][{}]Has {} the passage between {} and {}.'
                           .format(client.area.id, client.get_char_name(), now0, name0, name1))
@@ -512,9 +526,10 @@ def ooc_cmd_bilock(client: ClientManager.Client, arg: str):
     else:
         client.send_ooc('You have {} the passage from {} to {} and {} it the other way around.'
                         .format(now0, name0, name1, now1))
-        client.send_ooc_others('(X) {} has {} the passage from {} and {} and {} it the other way '
-                               'around ({}).'
-                               .format(cname, now0, name0, name1, now1, client.area.id),
+        client.send_ooc_others('(X) {} [{}] has {} the passage from {} and {} and {} it the other '
+                               'way around ({}).'
+                               .format(client.displayname, client.id, now0,
+                                       name0, name1, now1, client.area.id),
                                is_zstaff_flex=True)
         logger.log_server('[{}][{}]Has {} the passage from {} to {} and {} it the other way around.'
                           .format(client.area.id, client.get_char_name(), now0, name0, name1, now1))
@@ -548,9 +563,10 @@ def ooc_cmd_blind(client: ClientManager.Client, arg: str):
 
     client.send_ooc('You have {} {}.'.format(status[new_blind], target.displayname))
     target.send_ooc('You have been {}.'.format(status[new_blind]))
-    target.send_ooc_others('(X) {} has {} {} ({}).'
-                           .format(client.name, status[new_blind], target.displayname,
-                                   target.area.id), not_to={client}, is_zstaff_flex=True)
+    target.send_ooc_others('(X) {} [{}] has {} {} ({}).'
+                           .format(client.displayname, client.id, status[new_blind],
+                                   target.displayname, target.area.id),
+                           not_to={client}, is_zstaff_flex=True)
 
     target.change_blindness(new_blind)
 
@@ -621,13 +637,14 @@ def ooc_cmd_bloodtrail(client: ClientManager.Client, arg: str):
     if target != client:
         client.send_ooc('{}You made {} {} bleeding.'
                         .format(connector, target.displayname, status2[target.is_bleeding]))
-        target.send_ooc_others('(X) {} made {} {} bleeding ({}).'
-                               .format(client.name, target.displayname,
+        target.send_ooc_others('(X) {} [{}] made {} {} bleeding ({}).'
+                               .format(client.displayname, client.id, target.displayname,
                                        status2[target.is_bleeding], target.area.id),
                                is_zstaff_flex=True, not_to={client})
     else:
-        target.send_ooc_others('(X) {} made themselves {} bleeding ({}).'
-                               .format(client.name, status2[target.is_bleeding], target.area.id),
+        target.send_ooc_others('(X) {} [{}] made themselves {} bleeding ({}).'
+                               .format(client.displayname, client.id, status2[target.is_bleeding],
+                                       target.area.id),
                                is_zstaff_flex=True, not_to={client})
 
     target.area_changer.notify_others_blood(target, target.area, target.displayname,
@@ -693,20 +710,21 @@ def ooc_cmd_bloodtrail_clean(client: ClientManager.Client, arg: str):
         else:
             if (client.is_blind or not area.lights) and not (area.bleeds_to or area.blood_smeared):
                 # Poke fun
-                connector = '(X) ' if not client.area.lights else ''
-                client.send_ooc_others('{}{} tried to clean the blood trail in the area, unaware '
-                                       'that there was no blood to begin with.'
-                                       .format(connector, client.displayname), in_area=area,
-                                       is_zstaff_flex=True)
-                client.send_ooc_others('{} tried to clean the blood trail in the area, unaware '
-                                       'that there was no blood to begin with.'
-                                       .format(client.displayname), in_area=area, to_blind=False,
-                                       is_zstaff_flex=False, pred=lambda c: area.lights)
+                client.send_ooc_others('(X) {} [{}] tried to clean the blood trail in the area, '
+                                       'unaware that there was no blood to begin with.'
+                                       .format(client.displayname, client.id),
+                                       in_area=area, is_zstaff_flex=True)
+                client.send_ooc_others('{} tried to clean the blood trail in the area, '
+                                       'unaware that there was no blood to begin with.'
+                                       .format(client.displayname),
+                                       in_area=area, to_blind=False, is_zstaff_flex=False,
+                                       pred=lambda c: area.lights)
             elif not client.is_staff() and (client.is_blind or not area.lights):
-                client.send_ooc_others('{} tried to clean the blood trail in the area, but only '
-                                       'managed to smear it all over the place.'
-                                       .format(client.displayname), in_area=area, to_blind=False,
-                                       is_zstaff_flex=False, pred=lambda c: area.lights)
+                client.send_ooc_others('{} tried to clean the blood trail in the area, but '
+                                       'only managed to smear it all over the place.'
+                                       .format(client.displayname),
+                                       in_area=area, to_blind=False, is_zstaff_flex=False,
+                                       pred=lambda c: area.lights)
                 area.blood_smeared = True
             else:
                 client.send_ooc_others('{} cleaned the blood trail in your area.'
@@ -720,40 +738,41 @@ def ooc_cmd_bloodtrail_clean(client: ClientManager.Client, arg: str):
         if not arg:
             message = client.area.name
             client.send_ooc('You cleaned the blood trail in your area.')
-            connector = '(X) ' if not area.lights else ''
             aname1 = 'your area'
             aname2 = 'area {}'.format(client.area.name)
 
             if client.is_staff():
-                mes = '{}{} cleaned the blood trail in {}.'
-                client.send_ooc_others(mes.format(connector, client.name, aname1),
+                mes = '(X) {} [{}] cleaned the blood trail in {}.'
+                client.send_ooc_others(mes.format(client.displayname, client.id, aname1),
                                        is_zstaff_flex=True, in_area=True)
-                client.send_ooc_others(mes.format('(X) ', client.name, aname2),
+                client.send_ooc_others(mes.format(client.displayname, client.id, aname2),
                                        is_zstaff_flex=True, in_area=False)
             else:
                 mes = ''
 
                 if (client.is_blind or not area.lights) and area.blood_smeared:
-                    mes = ('{}{} tried to clean the blood trail in {}, but as they could not '
-                           'see, they only managed to smear it all over the place.')
+                    mes = ('(X) {} [{}] tried to clean the blood trail in {}, but as they could '
+                           'not see, they only managed to smear it all over the place.')
                 elif not (client.is_blind or not area.lights):
-                    mes = '{}{} cleaned the blood trail in {}.'
+                    mes = '(X) {} [{}] cleaned the blood trail in {}.'
 
-                client.send_ooc_others(mes.format(connector, client.displayname, aname1),
+                client.send_ooc_others(mes.format(client.displayname, client.id, aname1),
                                        is_zstaff_flex=True, in_area=True)
-                client.send_ooc_others(mes.format('(X) ', client.displayname, aname2),
+                client.send_ooc_others(mes.format(client.displayname, client.id, aname2),
                                        is_zstaff_flex=True, in_area=False)
 
         elif len(successful_cleans) == 1:
             message = str(successful_cleans.pop())
             client.send_ooc('You cleaned the blood trail in area {}.'.format(message))
-            client.send_ooc_others('(X) {} cleaned the blood trail in area {}.'
-                                   .format(client.name, message), is_zstaff_flex=True)
+            client.send_ooc_others('(X) {} [{}] cleaned the blood trail in area {}.'
+                                   .format(client.displayname, client.id, message),
+                                   is_zstaff_flex=True)
         elif len(successful_cleans) > 1:
             message = Constants.cjoin(successful_cleans)
             client.send_ooc('You cleaned the blood trails in areas {}.'.format(message))
-            client.send_ooc_others('(X) {} cleaned the blood trails in areas {}.'
-                                   .format(client.name, message), is_zstaff_flex=True)
+            client.send_ooc_others('(X) {} [{}] cleaned the blood trails in areas {}.'
+                                   .format(client.displayname, client.id, message),
+                                   is_zstaff_flex=True)
         logger.log_server('[{}][{}]Cleaned the blood trail in {}.'
                           .format(client.area.id, client.get_char_name(), message), client)
 
@@ -836,8 +855,9 @@ def ooc_cmd_bloodtrail_set(client: ClientManager.Client, arg: str):
     client.send_ooc('Set the blood trail in this area to {}.'.format(message))
     client.send_ooc_others('The blood trail in this area was set to {}.'.format(message),
                            is_zstaff_flex=False, in_area=True, to_blind=False)
-    client.send_ooc_others('(X) {} set the blood trail in area {} to {}.'
-                           .format(client.name, client.area.name, message), is_zstaff_flex=True)
+    client.send_ooc_others('(X) {} [{}] set the blood trail in area {} to {}.'
+                           .format(client.displayname, client.id, client.area.name, message),
+                           is_zstaff_flex=True)
     client.area.bleeds_to = {area.name for area in areas_to_link}
 
 def ooc_cmd_bloodtrail_smear(client: ClientManager.Client, arg: str):
@@ -896,28 +916,24 @@ def ooc_cmd_bloodtrail_smear(client: ClientManager.Client, arg: str):
 
             message = client.area.name
             client.send_ooc('You smeared the blood trail in your area.')
-            connector = '(X) ' if not client.area.lights else ''
 
-            if client.is_staff():
-                name = client.name
-            else:
-                name = client.displayname
-
-            mes = '{}{} smeared the blood trail in {}.'
-            client.send_ooc_others(mes.format(connector, name, yarea), is_zstaff_flex=True,
-                                   in_area=True)
-            client.send_ooc_others(mes.format('(X) ', name, oarea), is_zstaff_flex=True,
-                                   in_area=False)
+            mes = '(X) {} [{}] smeared the blood trail in {}.'
+            client.send_ooc_others(mes.format(client.displayname, client.id, yarea),
+                                   is_zstaff_flex=True, in_area=True)
+            client.send_ooc_others(mes.format(client.displayname, client.id, oarea),
+                                   is_zstaff_flex=True, in_area=False)
         elif len(successful_smears) == 1:
             message = str(successful_smears.pop())
             client.send_ooc("You smeared the blood trail in area {}.".format(message))
-            client.send_ooc_others('(X) {} smeared the blood trail in area {}.'
-                                   .format(client.name, message), is_zstaff_flex=True)
+            client.send_ooc_others('(X) {} [{}] smeared the blood trail in area {}.'
+                                   .format(client.displayname, client.id, message),
+                                   is_zstaff_flex=True)
         elif len(successful_smears) > 1:
             message = Constants.cjoin(successful_smears)
             client.send_ooc("You smeared the blood trails in areas {}.".format(message))
-            client.send_ooc_others('(X) {} smeared the blood trails in areas {}.'
-                                   .format(client.name, message), is_zstaff_flex=True)
+            client.send_ooc_others('(X) {} [{}] smeared the blood trails in areas {}.'
+                                   .format(client.displayname, client.id, message),
+                                   is_zstaff_flex=True)
         logger.log_server('[{}][{}]Smeared the blood trail in {}.'
                           .format(client.area.id, client.get_char_name(), message), client)
 
@@ -1083,8 +1099,9 @@ def ooc_cmd_charselect(client: ClientManager.Client, arg: str):
             client.send_ooc(f'You forced {c.displayname} to open the character select screen.')
             if client != c:
                 c.send_ooc('You were forced to open the character select screen.')
-            client.send_ooc_others(f'{c.name} forced {c.displayname} to open the character '
-                                   f'select screen ({c.area.id})', not_to={c}, is_officer=True)
+            client.send_ooc_others(f'{c.name} [{c.id}] forced {c.displayname} to open the '
+                                   f'character select screen ({c.area.id})',
+                                   not_to={c}, is_officer=True)
             c.char_select()
 
 def ooc_cmd_char_restrict(client: ClientManager.Client, arg: str):
@@ -1120,8 +1137,8 @@ def ooc_cmd_char_restrict(client: ClientManager.Client, arg: str):
                     .format(new_stat, arg))
     client.send_ooc_others('A staff member has {} the use of character {} in this area.'
                            .format(new_stat, arg), is_zstaff_flex=False, in_area=True)
-    client.send_ooc_others('(X) {} has {} the use of character `{}` in area {} ({}).'
-                           .format(client.displayname, new_stat, arg, client.area.name,
+    client.send_ooc_others('(X) {} [{}] has {} the use of character `{}` in area {} ({}).'
+                           .format(client.displayname, client.id, new_stat, arg, client.area.name,
                                    client.area.id), is_zstaff=True)
 
     # If intended character not in area's restriction, add it
@@ -1215,30 +1232,8 @@ def ooc_cmd_cleargm(client: ClientManager.Client, arg: str):
     for area in client.server.area_manager.areas:
         for c in [x for x in area.clients if x.is_gm]:
             gm_list += '{} {} [{}]'.format((':' if not gm_list else ','), c.name, c.id)
-            c.is_gm = False
-            if client.server.rp_mode:
-                c.in_rp = True
-            # Update the music list to show reachable areas and activate the AFK timer
-            c.reload_music_list()
-            c.server.tasker.create_task(client, ['as_afk_kick', client.area.afk_delay,
-                                                 client.area.afk_sendto])
-
             c.send_ooc('You are no longer a GM.')
-            # If watching a zone, stop watching it
-            target_zone = c.zone_watched
-            if target_zone:
-                target_zone.remove_watcher(c)
-
-                c.send_ooc('You are no longer watching zone `{}`.'
-                                .format(target_zone.get_id()))
-                if target_zone.get_watchers():
-                    c.send_ooc_others('(X) {} is no longer watching your zone.'.format(c.name),
-                                       part_of=target_zone.get_watchers())
-                else:
-                    c.send_ooc('As you were the last person watching it, your zone has been '
-                               'deleted.')
-                    c.send_ooc_others('Zone `{}` was automatically deleted as no one was watching '
-                                      'it anymore.'.format(target_zone.get_id()), is_officer=True)
+            c.logout()
 
     client.send_ooc('All GMs logged out.')
     if len(gm_list) > 0:
@@ -1301,10 +1296,10 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
 
     client.send_ooc('You initiated a day cycle of length {} seconds per hour in areas {} through '
                     '{}. The cycle ID is {}.'.format(hour_length, area_1, area_2, client.id))
-    client.send_ooc_others('(X) {} initiated a day cycle of length {} seconds per hour in areas {} '
-                           'through {}. The cycle ID is {} ({}).'
-                           .format(client.name, hour_length, area_1, area_2, client.id,
-                                   client.area.id), is_zstaff_flex=True)
+    client.send_ooc_others('(X) {} [{}] initiated a day cycle of length {} seconds per hour in '
+                           'areas {} through {}. The cycle ID is {} ({}).'
+                           .format(client.displayname, client.id, hour_length, area_1, area_2,
+                                   client.id, client.area.id), is_zstaff_flex=True)
     if normie_notif:
         client.send_ooc_others('{} initiated a day cycle.'.format(client.displayname),
                                is_zstaff_flex=False, pred=lambda c: area_1 <= c.area.id <= area_2)
@@ -1492,13 +1487,15 @@ def ooc_cmd_cure(client: ClientManager.Client, arg: str):
             target.send_ooc('You were cured of the effect `{}`.'.format(effect.name))
             client.send_ooc('You cured {} of the effect `{}`.'
                             .format(target.displayname, effect.name))
-            client.send_ooc_others('(X) {} cured {} of the effect `{}` ({}).'
-                                   .format(client.name, target.displayname, effect.name,
-                                           client.area.id,), is_zstaff_flex=True, not_to={target})
+            client.send_ooc_others('(X) {} [{}] cured {} of the effect `{}` ({}).'
+                                   .format(client.displayname, client.id, target.displayname,
+                                           effect.name, client.area.id,),
+                                   is_zstaff_flex=True, not_to={target})
         else:
             client.send_ooc('You cured yourself of the effect `{}`.'.format(effect.name))
-            client.send_ooc_others('(X) {} cured themselves of the effect `{}` ({}).'
-                                   .format(client.name, effect.name, client.area.id),
+            client.send_ooc_others('(X) {} [{}] cured themselves of the effect `{}` ({}).'
+                                   .format(client.displayname, client.id, effect.name,
+                                           client.area.id),
                                    is_zstaff_flex=True)
 
         effect.function(target, False)
@@ -1553,9 +1550,10 @@ def ooc_cmd_deafen(client: ClientManager.Client, arg: str):
 
     client.send_ooc('You have {} {}.'.format(status[new_deaf], target.displayname))
     target.send_ooc('You have been {}.'.format(status[new_deaf]))
-    target.send_ooc_others('(X) {} has {} {} ({}).'
-                           .format(client.name, status[new_deaf], target.displayname,
-                                   target.area.id), is_zstaff_flex=True, not_to={client})
+    target.send_ooc_others('(X) {} [{}] has {} {} ({}).'
+                           .format(client.displayname, client.id, status[new_deaf],
+                                   target.displayname, target.area.id),
+                           is_zstaff_flex=True, not_to={client})
 
     target.change_deafened(new_deaf)
 
@@ -1894,9 +1892,10 @@ def ooc_cmd_gag(client: ClientManager.Client, arg: str):
 
     client.send_ooc('You have {} {}.'.format(status[new_gagged], target.displayname))
     target.send_ooc('You have been {}.'.format(status[new_gagged]))
-    target.send_ooc_others('(X) {} has {} {} ({}).'
-                           .format(client.name, status[new_gagged], target.displayname,
-                                   target.area.id), is_zstaff_flex=True, not_to={client})
+    target.send_ooc_others('(X) {} [{}] has {} {} ({}).'
+                           .format(client.displayname, client.id, status[new_gagged],
+                                   target.displayname, target.area.id),
+                           is_zstaff_flex=True, not_to={client})
 
     target.change_gagged(new_gagged)
 
@@ -2177,6 +2176,8 @@ def ooc_cmd_guide(client: ClientManager.Client, arg: str):
 
     cm = client.server.client_manager
     target, _, msg = cm.get_target_public(client, arg)
+    msg = msg[:256] # Cap
+
     if client == target:
         raise ClientError('You cannot guide yourself.')
 
@@ -2186,8 +2187,9 @@ def ooc_cmd_guide(client: ClientManager.Client, arg: str):
     target.send_ooc('You hear a guiding voice in your head.')
     target.send_ic(msg=msg, bypass_replace=True)
 
-    client.send_ooc_others('(X) {} gave the following guidance to {}: `{}` ({}).'
-                           .format(client.displayname, target.displayname, msg, client.area.id),
+    client.send_ooc_others('(X) {} [{}] gave the following guidance to {}: `{}` ({}).'
+                           .format(client.displayname, client.id, target.displayname, msg,
+                                   client.area.id),
                            is_zstaff_flex=target.area, not_to={target})
 
 def ooc_cmd_handicap(client: ClientManager.Client, arg: str):
@@ -2251,10 +2253,11 @@ def ooc_cmd_handicap(client: ClientManager.Client, arg: str):
     for c in targets:
         client.send_ooc('You imposed a movement handicap "{}" of length {} seconds on {}.'
                         .format(name, length, c.displayname))
-        msg = ('(X) {} imposed a movement handicap "{}" of length {} seconds on {} in area {} ({}).'
-               .format(client.name, name, length, c.displayname, client.area.name,
-                       client.area.id))
-        client.send_ooc_others(msg, is_zstaff_flex=True, pred=lambda x: x != c)
+        client.send_ooc_others('(X) {} [{}] imposed a movement handicap "{}" of length {} seconds '
+                               'on {} in area {} ({}).'
+                               .format(client.displayname, client.id, name, length, c.displayname,
+                                       client.area.name, client.area.id),
+                               is_zstaff_flex=True, pred=lambda x: x != c)
         c.send_ooc('You were imposed a movement handicap "{}" of length {} seconds when '
                    'changing areas.'.format(name, length))
 
@@ -2359,9 +2362,10 @@ def ooc_cmd_iclock(client: ClientManager.Client, arg: str):
     client.send_ooc('You {} the IC chat in this area.'.format(status[client.area.ic_lock]))
     client.send_ooc_others('The IC chat has been {} in this area.'
                            .format(status[client.area.ic_lock]), is_zstaff_flex=False, in_area=True)
-    client.send_ooc_others('(X) {} has {} the IC chat in area {} ({}).'
-                           .format(client.name, status[client.area.ic_lock], client.area.name,
-                                   client.area.id), is_zstaff_flex=True)
+    client.send_ooc_others('(X) {} [{}] has {} the IC chat in area {} ({}).'
+                           .format(client.displayname, client.id, status[client.area.ic_lock],
+                                   client.area.name, client.area.id),
+                           is_zstaff_flex=True)
 
     logger.log_server('[{}][{}]Changed IC lock to {}'
                       .format(client.area.id, client.get_char_name(), client.area.ic_lock), client)
@@ -2485,8 +2489,8 @@ def ooc_cmd_kick(client: ClientManager.Client, arg: str):
         client.send_ooc('You kicked {} [{}/{}].'.format(c.displayname, c.ipid, c.hdid))
         client.send_ooc_others('{} was kicked.'.format(c.displayname), is_officer=False,
                                in_area=True)
-        client.send_ooc_others('{} kicked {} [{}/{}].'
-                               .format(client.name, c.displayname, c.ipid, c.hdid),
+        client.send_ooc_others('{} [{}] kicked {} [{}/{}].'
+                               .format(client.name, client.id, c.displayname, c.ipid, c.hdid),
                                is_officer=True)
         logger.log_server('Kicked {}.'.format(c.ipid), client)
         c.disconnect()
@@ -2562,9 +2566,10 @@ def ooc_cmd_knock(client: ClientManager.Client, arg: str):
     client.send_ooc('You knocked on the door to area {}.'.format(target_area.name))
     client.send_ooc_others('Someone knocked on your door from area {}.'.format(client.area.name),
                            is_zstaff_flex=False, in_area=target_area, to_deaf=False)
-    client.send_ooc_others('(X) {} knocked on the door to area {} in area {} ({}).'
-                           .format(client.displayname, target_area.name, client.area.name,
-                                   client.area.id), is_zstaff_flex=True)
+    client.send_ooc_others('(X) {} [{}] knocked on the door to area {} in area {} ({}).'
+                           .format(client.displayname, client.id, target_area.name,
+                                   client.area.name, client.area.id),
+                           is_zstaff_flex=True)
 
     for c in client.area.clients:
         c.send_ic(msg='', ding=0 if c.is_deaf else 7)
@@ -2780,57 +2785,10 @@ def ooc_cmd_logout(client: ClientManager.Client, arg: str):
     else:
         role = 'game master'
 
-    client.is_mod = False
-    client.is_gm = False
-    client.is_cm = False
     client.send_ooc('You are no longer logged in.')
     client.send_ooc_others('{} [{}] is no longer a {}.'
                            .format(client.name, client.id, role), is_officer=True)
-
-    # Clean-up operations
-    if client.server.rp_mode:
-        client.in_rp = True
-    if client.area.evidence_mod == 'HiddenCM':
-        client.area.broadcast_evidence_list()
-
-    # Update the music list to show reachable areas, activate the AFK timer
-    # and lurk callout if there is one
-    client.reload_music_list()
-    client.server.tasker.create_task(client, ['as_afk_kick', client.area.afk_delay,
-                                              client.area.afk_sendto])
-    client.check_lurk()
-
-    # If using a character restricted in the area, switch out
-    if client.get_char_name() in client.area.restricted_chars:
-        try:
-            new_char_id = client.area.get_rand_avail_char_id(allow_restricted=False)
-        except AreaError:
-            new_char_id = -1 # Force into spectator mode if all other available characters are taken
-
-        old_char = client.get_char_name()
-        client.change_character(new_char_id, announce_zwatch=False)
-        new_char = client.get_char_name()
-
-        client.send_ooc('Your character has been set to restricted in this area by a staff member. '
-                        'Switching you to `{}`.'.format(new_char))
-        client.send_ooc_others('(X) Client {} had their character changed from `{}` to `{}` in '
-                               'your zone as their old character was restricted in their area ({}).'
-                               .format(client.id, old_char, new_char, client.area.id),
-                               is_zstaff_flex=True)
-
-    # If watching a zone, stop watching it
-    target_zone = client.zone_watched
-    if target_zone:
-        target_zone.remove_watcher(client)
-
-        client.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.get_id()))
-        if target_zone.get_watchers():
-            client.send_ooc_others('(X) {} is no longer watching your zone.'.format(client.name),
-                                   part_of=target_zone.get_watchers())
-        else:
-            client.send_ooc('As you were the last person watching it, your zone has been deleted.')
-            client.send_ooc_others('Zone `{}` was automatically deleted as no one was watching it '
-                                   'anymore.'.format(target_zone.get_id()), is_officer=True)
+    client.logout()
 
 def ooc_cmd_look(client: ClientManager.Client, arg: str):
     """
@@ -2897,14 +2855,16 @@ def ooc_cmd_look_clean(client: ClientManager.Client, arg: str):
         message = str(successful_cleans.pop())
         client.send_ooc('Restored the original area description of area {}.'
                         .format(message))
-        client.send_ooc_others('(X) {} restored the original area description of area {}.'
-                               .format(client.name, message), is_zstaff_flex=True)
+        client.send_ooc_others('(X) {} [{}] restored the original area description of area {}.'
+                               .format(client.displayname, client.id, message),
+                               is_zstaff_flex=True)
     elif len(successful_cleans) > 1:
         message = Constants.cjoin(successful_cleans)
         client.send_ooc('Restored the original area descriptions of areas {}.'
                         .format(message))
-        client.send_ooc_others('(X) {} restored the original area descriptions of areas {}.'
-                               .format(client.name, message), is_zstaff_flex=True)
+        client.send_ooc_others('(X) {} [{}] restored the original area descriptions of areas {}.'
+                               .format(client.displayname, client.id, message),
+                               is_zstaff_flex=True)
 
     logger.log_server('[{}][{}]Reset the area description in {}.'
                       .format(client.area.id, client.get_char_name(), message), client)
@@ -2966,22 +2926,26 @@ def ooc_cmd_look_set(client: ClientManager.Client, arg: str):
     if len(arg) == 0:
         client.area.description = client.area.default_description
         client.send_ooc('Reset the area description to its original value.')
-        client.send_ooc_others('(X) {} reset the area description of your area to its original '
-                               'value.'.format(client.name), is_zstaff_flex=True, in_area=True)
-        client.send_ooc_others('(X) {} reset the area description of area {} to its original value.'
-                               .format(client.name, client.area.name), is_zstaff_flex=True,
-                               in_area=False)
+        client.send_ooc_others('(X) {} [{}] reset the area description of your area to its '
+                               'original value.'
+                               .format(client.displayname, client.id),
+                               is_zstaff_flex=True, in_area=True)
+        client.send_ooc_others('(X) {} [{}] reset the area description of area {} to its original '
+                               'value.'
+                               .format(client.displayname, client.id, client.area.name),
+                               is_zstaff_flex=True, in_area=False)
         logger.log_server('[{}][{}]Reset the area description in {}.'
                           .format(client.area.id, client.get_char_name(), client.area.name), client)
 
     else:
         client.area.description = arg
         client.send_ooc('Updated the area descriptions to `{}`.'.format(arg))
-        client.send_ooc_others('(X) {} set the area description of your area to `{}`.'
-                               .format(client.area.name, client.area.description),
+        client.send_ooc_others('(X) {} [{}] set the area description of your area to `{}`.'
+                               .format(client.displayname, client.id, client.area.description),
                                is_zstaff_flex=True, in_area=True)
-        client.send_ooc_others('(X) {} set the area descriptions of area {} to `{}`.'
-                               .format(client.name, client.area.name, client.area.description),
+        client.send_ooc_others('(X) {} [{}] set the area descriptions of area {} to `{}`.'
+                               .format(client.displayname, client.id, client.area.name,
+                                       client.area.description),
                                is_zstaff_flex=True, in_area=False)
         logger.log_server('[{}][{}]Set the area descriptions to {}.'
                           .format(client.area.id, client.get_char_name(), arg), client)
@@ -3354,8 +3318,8 @@ def ooc_cmd_party(client: ClientManager.Client, arg: str):
     party = client.server.party_manager.new_party(client, tc=True)
     client.send_ooc('You have created party {}.'.format(party.get_id()))
     client.send_ooc('Invite others to your party with /party_invite <user_id>')
-    client.send_ooc_others('(X) {} has created party {} ({}).'
-                           .format(client.displayname, party.get_id(), client.area.id),
+    client.send_ooc_others('(X) {} [{}] has created party {} ({}).'
+                           .format(client.displayname, client.id, party.get_id(), client.area.id),
                            is_zstaff_flex=True)
 
 def ooc_cmd_party_disband(client: ClientManager.Client, arg: str):
@@ -3638,12 +3602,14 @@ def ooc_cmd_party_members(client: ClientManager.Client, arg: str):
 
     party = client.get_party(tc=True)
     regulars, leaders = party.get_members_leaders()
-
+    regulars, leaders = sorted(regulars, key=lambda c: c.id), sorted(leaders, key=lambda c: c.id)
     info = '== Members of party {} =='.format(party.get_id())
     if leaders:
-        info += '\r\n*Leaders: {}'.format(' '.join([str(c.displayname) for c in leaders]))
+        names = ' '.join([f'[{c.id}] {c.displayname}' for c in leaders])
+        info += '\r\n*Leaders: {}'.format(names)
     if regulars:
-        info += '\r\n*Members: {}'.format(' '.join([str(c.displayname) for c in regulars]))
+        names = ' '.join([f'[{c.id}] {c.displayname}' for c in regulars])
+        info += '\r\n*Members: {}'.format(names)
     client.send_ooc(info)
 
 def ooc_cmd_party_uninvite(client: ClientManager.Client, arg: str):
@@ -3821,6 +3787,19 @@ def ooc_cmd_play(client: ClientManager.Client, arg: str):
 
     client.area.play_track(arg, client, raise_if_not_found=False, reveal_sneaked=False)
 
+    client.send_ooc('You have played track `{}` in your area.'
+                    .format(arg))
+    client.send_ooc_others('(X) {} [{}] has played track `{}` in your area.'
+                           .format(client.displayname, client.id, arg),
+                           is_zstaff_flex=True, in_area=True)
+
+    # Warn if track is not in the music list
+    try:
+        client.server.get_song_data(arg, c=client)
+    except ServerError.MusicNotFoundError:
+        client.send_ooc(f'(X) Warning: `{arg}` is not a recognized track name, so it will not '
+                        'loop.')
+
 def ooc_cmd_pm(client: ClientManager.Client, arg: str):
     """
     Sends a personal message to a specified user.
@@ -3935,14 +3914,16 @@ def ooc_cmd_poison(client: ClientManager.Client, arg: str):
                         .format(target_message))
         client.send_ooc('You poisoned {} with the following effects: {}'
                         .format(target.displayname, self_message))
-        client.send_ooc_others('(X) {} poisoned {} with the following effects ({}): {}'
-                               .format(client.name, target.displayname, client.area.id,
-                                       zstaff_message), is_zstaff_flex=True, not_to={target})
+        client.send_ooc_others('(X) {} [{}] poisoned {} with the following effects ({}): {}'
+                               .format(client.displayname, client.id, target.displayname,
+                                       client.area.id, zstaff_message),
+                               is_zstaff_flex=True, not_to={target})
     else:
         client.send_ooc('You poisoned yourself with the following effects: {}'
                         .format(self_message))
-        client.send_ooc_others('(X) {} poisoned themselves with the following effects ({}): {}'
-                               .format(client.name, client.area.id, zstaff_message),
+        client.send_ooc_others('(X) {} [{}] poisoned themselves with the following effects ({}): {}'
+                               .format(client.displayname, client.id, client.area.id,
+                                       zstaff_message),
                                is_zstaff_flex=True)
 
 def ooc_cmd_pos(client: ClientManager.Client, arg: str):
@@ -4117,9 +4098,9 @@ def ooc_cmd_reveal(client: ClientManager.Client, arg: str):
         if c != client:
             client.send_ooc("{} is no longer sneaking.".format(c.displayname))
         c.change_visibility(True)
-        client.send_ooc_others('(X) {} revealed {} ({}).'
-                               .format(client.name, c.displayname, c.area.id), not_to={c},
-                               is_zstaff=True)
+        client.send_ooc_others('(X) {} [{}] revealed {} ({}).'
+                               .format(client.displayname, client.id, c.displayname, c.area.id),
+                               not_to={c}, is_zstaff=True)
 
 def ooc_cmd_roll(client: ClientManager.Client, arg: str):
     """
@@ -4159,10 +4140,12 @@ def ooc_cmd_roll(client: ClientManager.Client, arg: str):
     roll_message = 'rolled {} out of {}'.format(roll_result, num_faces)
     client.send_ooc('You {}.'.format(roll_message))
     client.send_ooc_others('{} {}.'.format(client.displayname, roll_message), in_area=True)
-    client.send_ooc_others('(X) {} {} in {} ({}).'
-                           .format(client.displayname, roll_message, client.area.name,
-                                   client.area.id), is_zstaff_flex=client.area, in_area=False,
-                                   pred=lambda c: c.get_foreign_rolls)
+    client.send_ooc_others('(X) {} [{}] {} in {} ({}).'
+                           .format(client.displayname, client.id, roll_message,
+                                   client.area.name, client.area.id),
+                           is_zstaff_flex=client.area, in_area=False,
+                           pred=lambda c: c.get_foreign_rolls)
+
     client.add_to_dicelog(roll_message + '.')
     client.area.add_to_dicelog(client, roll_message + '.')
     logger.log_server('[{}][{}]Used /roll and got {} out of {}.'
@@ -4202,12 +4185,14 @@ def ooc_cmd_rollp(client: ClientManager.Client, arg: str):
     roll_message = 'privately rolled {} out of {}'.format(roll_result, num_faces)
     client.send_ooc('You {}.'.format(roll_message))
     client.send_ooc_others('Someone rolled.', is_zstaff_flex=False, in_area=True)
-    client.send_ooc_others('(X) {} {}.'.format(client.displayname, roll_message),
+    client.send_ooc_others('(X) {} [{}] {}.'.format(client.displayname, client.id, roll_message),
                            is_zstaff_flex=True, in_area=True)
-    client.send_ooc_others('(X) {} {} in {} ({}).'
-                           .format(client.displayname, roll_message, client.area.name,
-                                   client.area.id), is_zstaff_flex=client.area, in_area=False,
-                                   pred=lambda c: c.get_foreign_rolls)
+    client.send_ooc_others('(X) {} [{}] {} in {} ({}).'
+                           .format(client.displayname, client.id, roll_message, client.area.name,
+                                   client.area.id),
+                           is_zstaff_flex=client.area, in_area=False,
+                           pred=lambda c: c.get_foreign_rolls)
+
     client.add_to_dicelog(roll_message + '.')
     client.area.add_to_dicelog(client, roll_message + '.')
 
@@ -4237,9 +4222,32 @@ def ooc_cmd_rplay(client: ClientManager.Client, arg: str):
     except ArgumentError:
         raise ArgumentError('You must specify a song.')
 
-    for reachable_area_name in client.area.reachable_areas:
-        reachable_area = client.server.area_manager.get_area_by_name(reachable_area_name)
-        reachable_area.play_track(arg, client, raise_if_not_found=False, reveal_sneaked=False)
+    if client.area.reachable_areas == '<ALL>':
+        areas = set(client.area.areas)
+    else:
+        areas = {client.server.area_manager.get_area_by_name(reachable_area_name)
+                 for reachable_area_name in client.area.reachable_areas}
+
+    for area in areas:
+        area.play_track(arg, client, raise_if_not_found=False, reveal_sneaked=False)
+
+    client.send_ooc('You have played track `{}` in the areas reachable from your area.'
+                    .format(arg))
+    client.send_ooc_others('(X) {} [{}] has played track `{}` in the areas reachable from your '
+                           'area.'
+                           .format(client.displayname, client.id, arg),
+                           is_zstaff_flex=True, in_area=True)
+    client.send_ooc_others('(X) {} [{}] has played track `{}` in the areas reachable from area '
+                           '{}, which included your area.'
+                           .format(client.displayname, client.id, arg, client.area.name),
+                           is_zstaff_flex=True, in_area=areas-{client.area})
+
+    # Warn if track is not in the music list
+    try:
+        client.server.get_song_data(arg, c=client)
+    except ServerError.MusicNotFoundError:
+        client.send_ooc(f'(X) Warning: `{arg}` is not a recognized track name, so it will not '
+                        'loop.')
 
 def ooc_cmd_rpmode(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
@@ -4305,27 +4313,26 @@ def ooc_cmd_scream(client: ClientManager.Client, arg: str):
     if client.muted_global:
         raise ClientError('You have the global chat muted.')
 
+    arg = arg[:256] # Cap
+
     if not client.is_gagged:
         client.send_ooc('You screamed "{}".'.format(arg))
 
-        client.send_ooc_others(arg, username="<dollar>SCREAM[{}]".format(client.displayname),
+        client.send_ooc_others(msg="You heard {} scream nearby.".format(client.displayname),
                                is_zstaff_flex=False, to_deaf=False,
                                pred=lambda c: (not c.muted_global and
                                                (c.area == client.area or
                                                 c.area.name in client.area.scream_range)))
-        client.send_ooc_others('Your ears are ringing.', is_zstaff_flex=False, to_deaf=True,
-                               pred=lambda c: (not c.muted_global and
-                                               (c.area == client.area or
-                                                c.area.name in client.area.scream_range)))
-        client.send_ooc_others('(X) {} screamed "{}" ({}).'
-                               .format(client.displayname, arg, client.area.id),
+        client.send_ooc_others('(X) {} [{}] screamed "{}" ({}).'
+                               .format(client.displayname, client.id, arg, client.area.id),
                                is_zstaff_flex=True, pred=lambda c: not c.muted_global)
 
-        client.send_ic_others(msg=arg, to_deaf=False,
+        client.send_ic(msg=arg, pos=client.pos, cid=client.char_id, showname=client.showname)
+        client.send_ic_others(msg=arg, to_deaf=False, showname=client.showname,
                               pred=lambda c: (not c.muted_global and
                                               (c.area == client.area or
                                                c.area.name in client.area.scream_range)))
-        client.send_ic_others(msg='', to_deaf=True,
+        client.send_ic_others(msg=arg, to_deaf=True,
                               pred=lambda c: (not c.muted_global and
                                               (c.area == client.area or
                                                c.area.name in client.area.scream_range)))
@@ -4334,8 +4341,8 @@ def ooc_cmd_scream(client: ClientManager.Client, arg: str):
         client.send_ooc_others('You hear some grunting noises.', is_zstaff_flex=False,
                                to_deaf=False, in_area=True, pred=lambda c: not c.muted_global)
         # Deaf players get no notification on a gagged player screaming
-        client.send_ooc_others('(X) {} attempted to scream "{}" while gagged ({}).'
-                               .format(client.displayname, arg, client.area.id),
+        client.send_ooc_others('(X) {} [{}] attempted to scream "{}" while gagged ({}).'
+                               .format(client.displayname, client.id, arg, client.area.id),
                                is_zstaff_flex=True, pred=lambda c: not c.muted_global)
 
     client.check_lurk()
@@ -4407,9 +4414,9 @@ def ooc_cmd_scream_set(client: ClientManager.Client, arg: str):
         client.area.scream_range.add(intended_area.name)
         client.send_ooc('Added area {} to the scream range of area {}.'
                         .format(intended_area.name, client.area.name))
-        client.send_ooc_others('(X) {} added area {} to the scream range of area {} ({}).'
-                               .format(client.displayname, intended_area.name, client.area.name,
-                                       client.area.id), is_zstaff_flex=True)
+        client.send_ooc_others('(X) {} [{}] added area {} to the scream range of area {} ({}).'
+                               .format(client.displayname, client.id, intended_area.name,
+                                       client.area.name, client.area.id), is_zstaff_flex=True)
         logger.log_server('[{}][{}]Added area {} to the scream range of area {}.'
                           .format(client.area.id, client.get_char_name(), intended_area.name,
                                   client.area.name), client)
@@ -4417,9 +4424,9 @@ def ooc_cmd_scream_set(client: ClientManager.Client, arg: str):
         client.area.scream_range.remove(intended_area.name)
         client.send_ooc('Removed area {} from the scream range of area {}.'
                         .format(intended_area.name, client.area.name))
-        client.send_ooc_others('(X) {} removed area {} from the scream range of area {} ({}).'
-                               .format(client.displayname, intended_area.name, client.area.name,
-                                       client.area.id), is_zstaff_flex=True)
+        client.send_ooc_others('(X) {} [{}] removed area {} from the scream range of area {} ({}).'
+                               .format(client.displayname, client.id, intended_area.name,
+                                       client.area.name, client.area.id), is_zstaff_flex=True)
         logger.log_server('[{}][{}]Removed area {} from the scream range of area {}.'
                           .format(client.area.id, client.get_char_name(), intended_area.name,
                                   client.area.name), client)
@@ -4461,8 +4468,8 @@ def ooc_cmd_scream_set_range(client: ClientManager.Client, arg: str):
 
     client.send_ooc('Set the scream range of area {} to be: {}.'
                     .format(client.area.name, area_names))
-    client.send_ooc_others('(X) {} set the scream range of area {} to be: {} ({}).'
-                           .format(client.displayname, client.area.name, area_names,
+    client.send_ooc_others('(X) {} [{}] set the scream range of area {} to be: {} ({}).'
+                           .format(client.displayname, client.id, client.area.name, area_names,
                                    client.area.id), is_zstaff_flex=True)
     logger.log_server('[{}][{}]Set the scream range of area {} to be: {}.'
                       .format(client.area.id, client.get_char_name(), client.area.name, area_names), client)
@@ -4649,10 +4656,10 @@ def ooc_cmd_showname_freeze(client: ClientManager.Client, arg: str):
 
     client.send_ooc('You have {} all shownames.'.format(status[client.server.showname_freeze]))
     client.send_ooc_others('A mod has {} all shownames.'
-                           .format(status[client.server.showname_freeze]), is_staff=False)
-    client.send_ooc_others('{} has {} all shownames.'
-                           .format(client.name, status[client.server.showname_freeze]),
-                           is_staff=True)
+                           .format(status[client.server.showname_freeze]), is_officer=False)
+    client.send_ooc_others('{} [{}] has {} all shownames.'
+                           .format(client.name, client.id, status[client.server.showname_freeze]),
+                           is_officer=True)
     logger.log_server('{} has {} all shownames.'
                       .format(client.name, status[client.server.showname_freeze]), client)
 
@@ -4715,8 +4722,9 @@ def ooc_cmd_showname_nuke(client: ClientManager.Client, arg: str):
             c.change_showname('')
 
     client.send_ooc('You have nuked all shownames.')
-    client.send_ooc_others('A mod has nuked all shownames.', is_staff=False)
-    client.send_ooc_others('{} has nuked all shownames.'.format(client.name), is_staff=True)
+    client.send_ooc_others('A mod has nuked all shownames.', is_officer=False)
+    client.send_ooc_others('{} [{}] has nuked all shownames.'
+                           .format(client.name, client.id), is_officer=True)
     logger.log_server('{} has nuked all shownames.'.format(client.name), client)
 
 def ooc_cmd_showname_set(client: ClientManager.Client, arg: str):
@@ -4765,18 +4773,19 @@ def ooc_cmd_showname_set(client: ClientManager.Client, arg: str):
         if showname:
             s_message = 'You have set the showname of client {} to `{}`.'.format(c.id, showname)
             if old_showname:
-                w_message = ('(X) {} changed the showname of client {} from `{}` to `{}` in your '
-                             'zone ({}).'
-                             .format(client.displayname, c.id, old_showname, c.showname, c.area.id))
+                w_message = ('(X) {} [{}] changed the showname of client {} from `{}` to `{}` in '
+                             'your zone ({}).'
+                             .format(client.displayname, client.id, c.id, old_showname, c.showname,
+                                     c.area.id))
             else:
-                w_message = ('(X) {} set the showname of client {} to `{}` in your zone ({}).'
-                             .format(client.displayname, c.id, c.showname, c.area.id))
+                w_message = ('(X) {} [{}] set the showname of client {} to `{}` in your zone ({}).'
+                             .format(client.displayname, client.id, c.id, c.showname, c.area.id))
             o_message = 'Your showname was set to `{}` by a staff member.'.format(showname)
             l_message = 'Set showname of {} to {}.'.format(c.ipid, showname)
         else:
             s_message = 'You have removed the showname of client {}.'.format(c.id)
-            w_message = ('(X) {} removed the showname `{}` of client {} in your zone ({}).'
-                         .format(client.displayname, old_showname, c.id, c.area.id))
+            w_message = ('(X) {} [{}] removed the showname `{}` of client {} in your zone ({}).'
+                         .format(client.displayname, client.id, old_showname, c.id, c.area.id))
             o_message = 'Your showname was removed by a staff member.'
             l_message = 'Removed showname {} of {}.'.format(showname, c.ipid)
 
@@ -4824,9 +4833,35 @@ def ooc_cmd_sneak(client: ClientManager.Client, arg: str):
         if c != client:
             client.send_ooc("{} is now sneaking.".format(c.displayname))
         c.change_visibility(False)
-        client.send_ooc_others('(X) {} sneaked {} ({}).'
-                               .format(client.name, c.displayname, c.area.id), not_to={c},
-                               is_zstaff=True)
+        client.send_ooc_others('(X) {} [{}] sneaked {} ({}).'
+                               .format(client.displayname, client.id, c.displayname, c.area.id),
+                               not_to={c}, is_zstaff=True)
+
+def ooc_cmd_spectate(client: ClientManager.Client, arg):
+    """
+    Switches user's current character to the SPECTATOR character.
+    Returns an error if their character is already a SPECTATOR.
+
+    SYNTAX
+    /spectate
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /spectate                       :: Returns "You are now spectating." or "You are already spectating."
+    """
+
+    if len(arg) != 0:
+        client.send_ooc('This command has no arguments.')
+
+    # If user is already SPECTATOR, no need to change.
+    if client.char_id == -1:
+        raise ClientError('You are already spectating.')
+
+    # Change the character to SPECTATOR
+    client.change_character(-1)
+    client.send_ooc('You are now spectating.')
 
 def ooc_cmd_spectate(client: ClientManager.Client, arg: str):
     """
@@ -5008,9 +5043,10 @@ def ooc_cmd_timer(client: ClientManager.Client, arg: str):
 
     client.server.tasker.active_timers[name] = client #Add to active timers list
     client.send_ooc('You initiated a timer "{}" of length {} seconds.'.format(name, length))
-    client.send_ooc_others('{} initiated a timer "{}" of length {} seconds in area {} ({}).'
-                           .format(client.displayname, name, length, client.area.name,
-                                   client.area.id), is_zstaff_flex=True)
+    client.send_ooc_others('(X) {} [{}] initiated a timer "{}" of length {} seconds in area {} '
+                           '({}).'
+                           .format(client.displayname, client.id, name, length,
+                                   client.area.name, client.area.id), is_zstaff_flex=True)
     client.send_ooc_others('{} initiated a timer "{}" of length {} seconds.'
                            .format(client.displayname, name, length), is_zstaff_flex=False,
                            pred=lambda c: is_public)
@@ -5320,7 +5356,8 @@ def ooc_cmd_unban(client: ClientManager.Client, arg: str):
     client.server.ban_manager.remove_ban(idnt)
 
     client.send_ooc('Unbanned `{}`.'.format(idnt))
-    client.send_ooc_others('{} unbanned `{}`.'.format(client.name, idnt), is_officer=True)
+    client.send_ooc_others('{} [{}] unbanned `{}`.'
+                           .format(client.name, client.id, idnt), is_officer=True)
     logger.log_server('Unbanned {}.'.format(idnt), client)
 
 def ooc_cmd_unbanhdid(client: ClientManager.Client, arg: str):
@@ -5356,7 +5393,8 @@ def ooc_cmd_unbanhdid(client: ClientManager.Client, arg: str):
         raise ClientError('User is already not banned.')
 
     client.send_ooc('Unbanned HDID `{}`.'.format(arg))
-    client.send_ooc_others('{} unbanned HDID `{}`.'.format(client.name, arg), is_officer=True)
+    client.send_ooc_others('{} [{}] unbanned HDID `{}`.'
+                           .format(client.name, client.id, arg), is_officer=True)
     logger.log_server('HDID-unbanned {}.'.format(arg), client)
 
 def ooc_cmd_unblockdj(client: ClientManager.Client, arg: str):
@@ -5554,9 +5592,11 @@ def ooc_cmd_unhandicap(client: ClientManager.Client, arg: str):
         else:
             client.send_ooc('You removed the movement handicap "{}" on {}.'
                             .format(name, c.displayname))
-            client.send_ooc_others('(X) {} removed the movement handicap "{}" on {} in area {} ({}).'
-                                   .format(client.name, name, c.displayname, client.area.name,
-                                           client.area.id), is_zstaff_flex=True)
+            client.send_ooc_others('(X) {} [{}] removed the movement handicap "{}" on {} in area '
+                                   '{} ({}).'
+                                   .format(client.displayname, client.id, name, c.displayname,
+                                           client.area.name, client.area.id),
+                                   is_zstaff_flex=True)
             c.send_ooc('Your movement handicap "{}" when changing areas was removed.'.format(name))
             c.handicap_backup = None
             client.server.tasker.remove_task(c, ['as_handicap'])
@@ -5603,14 +5643,15 @@ def ooc_cmd_unilock(client: ClientManager.Client, arg: str):
     now_reachable = Constants.parse_passage_lock(client, areas, bilock=False)
 
     status = {True: 'unlocked', False: 'locked'}
-    cname = client.name if client.is_staff() else client.displayname
     now0 = status[now_reachable[0]]
     name0, name1 = areas[0].name, areas[1].name
 
     client.send_ooc('You have {} the passage from {} to {}.'
                     .format(now0, name0, name1))
-    client.send_ooc_others('(X) {} has {} the passage from {} to {} ({}).'
-                           .format(cname, now0, name0, name1, client.area.id), is_zstaff_flex=True)
+    client.send_ooc_others('(X) {} [{}] has {} the passage from {} to {} ({}).'
+                           .format(client.displayname, client.id, now0, name0, name1,
+                                   client.area.id),
+                           is_zstaff_flex=True)
     logger.log_server('[{}][{}]Has {} the passage from {} to {}.'
                       .format(client.area.id, client.get_char_name(), now0, name0, name1))
 
@@ -5852,6 +5893,8 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
 
     cm = client.server.client_manager
     target, _, msg = cm.get_target_public(client, arg, only_in_area=True)
+    msg = msg[:256] # Cap
+
     public_area = not client.area.private_area
 
     final_sender = client.displayname
@@ -5883,17 +5926,18 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         if not client.is_visible and public_area:
             # This code should run if client and target are sneaked and part of same party
             # and also if the area is public
-            client.send_ooc_others('(X) {} whispered `{}` to {} while both were sneaking and part '
-                                   'of the same party ({}).'
-                                   .format(final_st_sender, final_message, final_target,
-                                           client.area.id), is_zstaff_flex=True, not_to={target})
+            client.send_ooc_others('(X) {} [{}] whispered `{}` to {} while both were sneaking and '
+                                   'part of the same party ({}).'
+                                   .format(final_st_sender, client.id, final_message,
+                                           final_target, client.area.id),
+                                   is_zstaff_flex=True, not_to={target})
         else:
             # Otherwise, announce it to everyone. If the area is private, zone watchers and staff
             # get normal whisper reports if in the same area.
             if public_area:
-                client.send_ooc_others('(X) {} whispered `{}` to {} ({}).'
-                                       .format(final_st_sender, final_message, final_target,
-                                               client.area.id),
+                client.send_ooc_others('(X) {} [{}] whispered `{}` to {} ({}).'
+                                       .format(final_st_sender, client.id, final_message,
+                                               final_target, client.area.id),
                                        is_zstaff_flex=True, not_to={target})
             client.send_ooc_others('{} whispered something to {}.'
                                    .format(final_sender, final_target),
@@ -5915,8 +5959,8 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         target.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
 
         if not client.area.private_area:
-            client.send_ooc_others('(X) {} whispered `{}` to {} while sneaking ({}).'
-                                   .format(final_st_sender, final_message, final_target,
+            client.send_ooc_others('(X) {} [{}] whispered `{}` to {} while sneaking ({}).'
+                                   .format(final_st_sender, client.id, final_message, final_target,
                                            client.area.id), is_zstaff_flex=True, not_to={target})
     else: # Sender is not sneaked, target is
         if client.is_staff():
@@ -6040,8 +6084,8 @@ def ooc_cmd_zone(client: ClientManager.Client, arg: str):
         output = 'areas {} through {}'.format(lower_area.id, upper_area.id)
 
     client.send_ooc('You have created zone `{}` containing {}.'.format(zone_id, output))
-    client.send_ooc_others('(X) {} has created zone `{}` containing {} ({}).'
-                           .format(client.displayname, zone_id, output, client.area.id),
+    client.send_ooc_others('(X) {} [{}] has created zone `{}` containing {} ({}).'
+                           .format(client.displayname, client.id, zone_id, output, client.area.id),
                            is_officer=True)
     for area in areas:
         for c in area.clients:
@@ -6081,8 +6125,8 @@ def ooc_cmd_zone_add(client: ClientManager.Client, arg: str):
         raise ZoneError('Area {} already belongs to a zone.'.format(arg))
 
     client.send_ooc('You have added area {} to your zone.'.format(area.id))
-    client.send_ooc_others('(X) {} has added area {} to your zone.'.format(client.name, area.id),
-                           is_zstaff=True)
+    client.send_ooc_others('(X) {} [{}] has added area {} to your zone.'
+                           .format(client.displayname, client.id, area.id), is_zstaff=True)
 
     zone_id = client.zone_watched.get_id()
     for c in area.clients:
@@ -6137,9 +6181,10 @@ def ooc_cmd_zone_delete(client: ClientManager.Client, arg: str):
         client.send_ooc('You have deleted zone `{}`.'.format(backup_id))
     else:
         client.send_ooc('You have deleted your zone.')
-    client.send_ooc_others('(X) {} has deleted your zone.'.format(client.name),
-                           part_of=backup_watchers)
-    client.send_ooc_others('(X) {} has deleted zone `{}`.'.format(client.name, backup_id),
+    client.send_ooc_others('(X) {} [{}] has deleted your zone.'
+                           .format(client.displayname, client.id), part_of=backup_watchers)
+    client.send_ooc_others('(X) {} [{}] has deleted zone `{}`.'
+                           .format(client.displayname, client.id, backup_id),
                            is_officer=True, not_to=backup_watchers)
 
 def ooc_cmd_zone_global(client: ClientManager.Client, arg: str):
@@ -6179,6 +6224,17 @@ def ooc_cmd_zone_global(client: ClientManager.Client, arg: str):
         target.send_ooc(arg, username='<dollar>ZG[{}][{}]'
                         .format(client.area.id, client.displayname),
                         pred=lambda c: not c.muted_global)
+
+def ooc_cmd_zone_info(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    info = f'== Zone {zone.get_id()} ==\r\n{zone.get_info()}'
+    client.send_ooc(info)
+    client.send_area_info(client.area, -2, False, include_shownames=True)
 
 def ooc_cmd_zone_lights(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
@@ -6221,7 +6277,9 @@ def ooc_cmd_zone_lights(client: ClientManager.Client, arg: str):
         except AreaError:
             pass
 
-    client.send_ooc('You have turned the lights in zone {} {}.'.format(client.zone_watched.get_id(), arg))
+    client.send_ooc('You have turned {} the lights in your zone.'.format(arg))
+    client.send_ooc_others('(X) {} [{}] has turned {} the lights in your zone.'
+                           .format(client.displayname, client.id, arg), is_zstaff=True)
 
 def ooc_cmd_zone_list(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
@@ -6274,6 +6332,18 @@ def ooc_cmd_zone_play(client: ClientManager.Client, arg: str):
     for zone_area in client.zone_watched.get_areas():
         zone_area.play_track(arg, client, raise_if_not_found=False, reveal_sneaked=False)
 
+    client.send_ooc('You have played track `{}` in your zone.'
+                    .format(arg))
+    client.send_ooc_others('(X) {} [{}] has played track `{}` in your zone.'
+                           .format(client.displayname, client.id, arg), is_zstaff=True)
+
+    # Warn if track is not in the music list
+    try:
+        client.server.get_song_data(arg, c=client)
+    except ServerError.MusicNotFoundError:
+        client.send_ooc(f'(X) Warning: `{arg}` is not a recognized track name, so it will not '
+                        'loop.')
+
 def ooc_cmd_zone_remove(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Removes an area by name or ID from the zone the user is watching.
@@ -6309,8 +6379,8 @@ def ooc_cmd_zone_remove(client: ClientManager.Client, arg: str):
     # Announce area removal, taking care of using the backup watchers in case the zone got
     # automatically deleted
     client.send_ooc('You have removed area {} from your zone.'.format(area.id))
-    client.send_ooc_others('(X) {} has removed area {} from your zone.'
-                           .format(client.name, area.id), part_of=backup_watchers)
+    client.send_ooc_others('(X) {} [{}] has removed area {} from your zone.'
+                           .format(client.displayname, client.id, area.id), part_of=backup_watchers)
 
     # Announce automatic deletion if needed.
     zone_id = target_zone.get_id()
@@ -6351,7 +6421,8 @@ def ooc_cmd_zone_unwatch(client: ClientManager.Client, arg: str):
 
     client.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.get_id()))
     if target_zone.get_watchers():
-        client.send_ooc_others('(X) {} is no longer watching your zone.'.format(client.name),
+        client.send_ooc_others('(X) {} [{}] is no longer watching your zone.'
+                               .format(client.displayname, client.id),
                                part_of=target_zone.get_watchers())
     else:
         client.send_ooc('As you were the last person watching it, your zone has been deleted.')
@@ -6389,8 +6460,8 @@ def ooc_cmd_zone_watch(client: ClientManager.Client, arg: str):
     for c in target_zone.get_watchers():
         if c == client:
             continue
-    client.send_ooc_others('(X) {} is now watching your zone.'.format(client.name),
-                           is_zstaff=True)
+    client.send_ooc_others('(X) {} [{}] is now watching your zone.'
+                           .format(client.displayname, client.id), is_zstaff=True)
 
 def ooc_cmd_8ball(client: ClientManager.Client, arg: str):
     """
@@ -6462,6 +6533,7 @@ def ooc_cmd_narrate(client: ClientManager.Client, arg: str):
     /narrate Hello World!   :: Sends `Hello World!` to the people in the area as a narrator.
     """
 
+    arg = arg[:256] # Cap
     Constants.assert_command(client, arg, is_staff=True)
 
     for c in client.area.clients:
@@ -6482,6 +6554,7 @@ def ooc_cmd_mod_narrate(client: ClientManager.Client, arg: str):
     /mod_narrate Hello World!   :: Sends `Hello World!` to the people in the area as a narrator with mod color.
     """
 
+    arg = arg[:256] # Cap
     Constants.assert_command(client, arg, is_staff=True)
 
     for c in client.area.clients:
@@ -6540,6 +6613,124 @@ def ooc_cmd_cid(client: ClientManager.Client, arg: str):
         cm = client.server.client_manager
         target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
         client.send_ooc('The client ID of {} is {}.'.format(arg, target.id))
+
+def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
+    """
+    Sends an IC personal message to everyone in the sender's party. The messages have the showname
+    of the sender and their message, but does not include their sprite.
+    Elevated notifications are sent to zone watchers/staff members on whispers to other people,
+    which include the message content, so this is not meant to act as a private means of
+    communication between players, for which /pm is recommended.
+    Whispers sent by sneaked players include an empty showname so as to not reveal their identity,
+    except if some members of the party are sneaking as well, in which case they will receive the
+    message with showname.
+    Deafened recipients will receive a nerfed message if whispered to.
+    Non-zone watchers/non-staff players in the same area as the whisperer will be notified that
+    they whispered to their target (but will not receive the content of the message), provided they
+    are not blind (in which case no notification is sent) and that this was not a self-whisper.
+    Returns an error if the player is not part of a party, if the message is empty or if the
+    sender is gagged or IC-muted.
+
+    SYNTAX
+    /party_whisper <user_ID> <message>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
+    <message>: Message to be sent.
+
+    EXAMPLES
+    /party_whisper Hey, all!   :: Sends that message to all players of the party.
+    """
+
+    try:
+        Constants.assert_command(client, arg, parameters='>0')
+    except ArgumentError:
+        raise ArgumentError('Not enough arguments. Use /party_whisper <message>. Target should '
+                            'be ID, char-name, edited-to character, custom showname or OOC-name.')
+
+    party = client.get_party(tc=True)
+    if client.is_muted:
+        raise ClientError('You have been muted by a moderator.')
+    if client.is_gagged:
+        raise ClientError('Your attempt at whispering failed because you are gagged.')
+
+    msg = arg[:256] # Cap
+    public_area = not client.area.private_area
+
+    client.send_ooc('You whispered `{}` to your party members.'.format(msg))
+    client.send_ic(msg=msg, pos=client.pos, cid=client.char_id, showname=client.showname,
+                   bypass_deafened_starters=True) # send_ic handles nerfing for deafened
+
+    members = party.get_members()-{client}
+    if client.is_visible:
+        for target in members:
+            target.send_ooc('{} whispered something to your party.'
+                            .format(client.displayname), to_deaf=False)
+            target.send_ooc('{} seemed to whisper something to your party, but you could not make '
+                            'it out.'
+                            .format(client.displayname), to_deaf=True, to_blind=False)
+            target.send_ooc('Someone seemed to whisper something to your party, but you could '
+                            'not make it out.',
+                            to_deaf=True, to_blind=True)
+
+
+            target.send_ic(msg=msg, pos=client.pos, cid=client.char_id,
+                           showname=(client.showname if not (target.is_deaf and target.is_blind)
+                                     else '???'),
+                           bypass_deafened_starters=True) # send_ic handles nerfing for deafened
+
+        if public_area:
+            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party ({}).'
+                                   .format(client.displayname, client.id, msg, client.area.id),
+                                   is_zstaff_flex=True, not_to=members)
+            client.send_ooc_others('You see a group of people huddling together.',
+                                   in_area=True, to_blind=False, is_zstaff_flex=False,
+                                   not_to=members)
+        else:
+            # For private areas, zone watchers and staff get normal whisper reports if in the same
+            # area.
+            client.send_ooc_others('(X) You see a group of people huddling together.',
+                                   in_area=True, is_zstaff_flex=True, not_to=members)
+    else:
+        sneaked = {member for member in members if not member.is_visible}
+        not_sneaked = members-sneaked
+        for target in sneaked:
+            target.send_ooc('{} whispered something to your party while sneaking.'
+                            .format(client.displayname), to_deaf=False)
+            target.send_ooc('{} seemed to whisper something to your party while sneaking, but you '
+                            'could not make it out.'
+                            .format(client.displayname), to_deaf=True, to_blind=False)
+            # No different notification
+            target.send_ooc('Someone seemed to whisper something to your party, but you could '
+                            'not make it out.',
+                            to_deaf=True, to_blind=True)
+            target.send_ic(msg=msg, pos=client.pos, cid=client.char_id,
+                           showname=(client.showname if not (target.is_deaf and target.is_blind)
+                                     else '???'),
+                           bypass_deafened_starters=True) # send_ic handles nerfing for deafened
+
+        for target in not_sneaked:
+            target.send_ooc('You heard a whisper, but you could not seem to tell where it came '
+                            'from.', to_deaf=False)
+            target.send_ooc('Your ears seemed to pick up something.', to_deaf=True)
+            target.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
+
+        if public_area:
+            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party while sneaking ({}).'
+                                   .format(client.displayname, client.id, msg, client.area.id),
+                                   is_zstaff_flex=True, not_to=members)
+            client.send_ooc_others('You heard a whisper, but you could not seem to tell where it '
+                                   'came from.',
+                                   in_area=True, to_deaf=False, is_zstaff_flex=False,
+                                   not_to=members)
+            client.send_ooc_others('Your ears seemed to pick up something.',
+                                   in_area=True, to_deaf=True, is_zstaff_flex=True,
+                                   not_to=members)
+        else:
+            # For private areas, zone watchers and staff get normal whisper reports if in the same
+            # area.
+            client.send_ooc_others('(X) You see a group of people huddling together',
+                                   in_area=True, is_zstaff_flex=True, not_to=members)
 
 def ooc_cmd_lurk(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)

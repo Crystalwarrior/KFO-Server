@@ -32,9 +32,11 @@ masterserver_port: 27016 # Keep
 # modpass: password for moderators
 # cmpass: password for community managers
 # gmpass: password for game masters
-# gmpass1: password for game masters that is only good for Monday based on server time
-# gmpass2: password for game masters that is only good for Tuesday based on server time
+# gmpass1: password for game masters that is only good for Monday based on server time (daily password for Monday)
+# gmpass2: password for game masters that is only good for Tuesday based on server time (daily password for Tuesday)
 # ....
+# If you do not want daily passwords, remove their lines completely from this configuration file.
+# Every password you put here must be unique and non-empty.
 
 modpass: Mod
 cmpass: Community Manager

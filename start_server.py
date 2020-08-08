@@ -21,11 +21,11 @@
 # WARNING!
 # This class will suffer major reworkings for 4.3
 
-import os
-import sys
 import asyncio
-import traceback
+import os
+import pathlib
 import sys
+import traceback
 
 from server import logger
 from server.tsuserver import TsuserverDR
@@ -56,7 +56,7 @@ def main():
 
         logger.log_server('Server is shutting down due to an unhandled exception.')
         logger.log_print('Attempting a graceful shutdown.')
-
+        
         if not server:
             logger.log_pserver('Server has successfully shut down.')
             return
@@ -118,4 +118,7 @@ def main():
             # everything has shut down by this point.
             pass
 if __name__ == '__main__':
+    # Make launching via python.exe and python start_server.py possible
+    path_to_this = pathlib.Path(__file__).absolute()
+    os.chdir(os.path.dirname(path_to_this))
     main()

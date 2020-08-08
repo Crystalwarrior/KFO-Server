@@ -22,7 +22,7 @@ import time
 from server import client_changearea
 from server import fantacrypt
 from server import logger
-from server.exceptions import ClientError, PartyError
+from server.exceptions import AreaError, ClientError, PartyError
 from server.constants import TargetType, Constants, Clients
 from server.subscriber import Publisher
 
@@ -125,7 +125,7 @@ class ClientManager:
             self.mus_change_time = [x * self.mflood_interval for x in range(self.mflood_times)]
 
         def send_raw_message(self, msg):
-            # print(f'< {self.id} {msg}')
+            # print(f'< {self.id}: {msg}')
             self.transport.write(msg.encode('utf-8'))
 
         def send_command(self, command, *args):
@@ -322,6 +322,8 @@ class ClientManager:
                 allowed_starters = ('(', '*', '[')
 
                 # Nerf message for deaf
+                # TEMPORARY: REMOVE FOR 4.3+CLIENT UPDATE
+                # Remove the send_deaf_space requirement
                 if self.is_deaf and pargs['msg']:
                     if (not pargs['msg'].startswith(allowed_starters) or
                         (sender.is_gagged and gag_replaced) or bypass_deafened_starters):
@@ -330,6 +332,13 @@ class ClientManager:
                             pargs['msg'] = pargs['msg'] + ' '
                         self.send_deaf_space = not self.send_deaf_space
 
+                # TEMPORARY: REMOVE FOR 4.3+CLIENT UPDATE
+                # Remove globalIC prefix to everyone but sender to work around client bug
+                if sender and sender.multi_ic_pre and pargs['msg'].startswith(sender.multi_ic_pre):
+                    if self != sender:
+                        pargs['msg'] = pargs['msg'].replace(sender.multi_ic_pre, '', 1)
+
+                # Modify shownames as needed
                 if self.is_blind and self.is_deaf and sender:
                     pargs['showname'] = '???'
                 elif self.show_shownames and sender:
@@ -512,11 +521,11 @@ class ClientManager:
                 raw_music_list = self.server.load_music(music_list_file=new_music_file,
                                                         server_music_list=False)
             else:
-                raw_music_list = None
+                raw_music_list = self.music_list
 
             # KFO deals with music lists differently than other clients
             # They want the area lists and music lists separate, so they will have it like that
-            if self.packet_handler != Clients.ClientKFO2d8:
+            if self.packet_handler not in [Clients.ClientAO2d8d4, Clients.ClientKFO2d8]:
                 reloaded_music_list = self.server.build_music_list_ao2(from_area=self.area, c=self,
                                                                        music_list=raw_music_list)
 
@@ -529,10 +538,9 @@ class ClientManager:
                                                              include_areas=True,
                                                              include_music=False)
                 self.send_command('FA', *area_list)
-                if raw_music_list:
-                    music_list = self.server.prepare_music_list(c=self,
-                                                                specific_music_list=raw_music_list)
-                    self.send_command('FM', *music_list)
+                music_list = self.server.prepare_music_list(c=self,
+                                                            specific_music_list=raw_music_list)
+                self.send_command('FM', *music_list)
 
             # Update the new music list of the client once everything is done, if a new music list
             # was indeed loaded. Doing this only now prevents setting the music list to something
@@ -648,9 +656,10 @@ class ClientManager:
                             # revealed. From this, we can recover the old handicap backup
                             _, old_length, old_name, old_announce_if_over = self.handicap_backup[1]
 
-                            msg = ('(X) {} was automatically imposed their old movement handicap '
-                                   '"{}" of length {} seconds after being revealed in area {} ({}).'
-                                   .format(self.displayname, old_name, old_length,
+                            msg = ('(X) {} was [{}] automatically imposed their old movement '
+                                   'handicap "{}" of length {} seconds after being revealed in '
+                                   'area {} ({}).'
+                                   .format(self.displayname, self.id, old_name, old_length,
                                            self.area.name, self.area.id))
                             self.send_ooc_others(msg, is_zstaff_flex=True)
                             self.send_ooc('You were automatically imposed your former movement '
@@ -675,9 +684,9 @@ class ClientManager:
                     try:
                         _, length, _, _ = self.server.tasker.get_task_args(self, ['as_handicap'])
                         if length < shandicap:
-                            msg = ('(X) {} was automatically imposed the longer movement handicap '
-                                   '"Sneaking" of length {} seconds in area {} ({}).'
-                                   .format(self.displayname, shandicap, self.area.name,
+                            msg = ('(X) {} [{}] was automatically imposed the longer movement '
+                                   'handicap "Sneaking" of length {} seconds in area {} ({}).'
+                                   .format(self.displayname, self.id, shandicap, self.area.name,
                                            self.area.id))
                             self.send_ooc_others(msg, is_zstaff_flex=True)
                             raise KeyError # Lazy way to get there, but it works
@@ -847,22 +856,27 @@ class ClientManager:
                                           include_shownames=include_shownames,
                                           include_ipid=include_ipid,
                                           only_my_multiclients=only_my_multiclients)
+            if info == '':
+                info = '\r\n*No players were found in the area range.'
             if area_id == -1:
                 info = '== Area List ==' + info
+            elif area_id == -2:
+                info = '== Zone Area List ==' + info
             self.send_ooc(info)
 
         def prepare_area_info(self, current_area, area_id, mods, as_mod=None,
                               include_shownames=False, include_ipid=None,
                               only_my_multiclients=False):
             #If area_id is -1, then return all areas.
+            #If area_id is -2, then return all areas part of self's watched zone
             #If mods is True, then return only mods.
             #If include_shownames is True, then include non-empty custom shownames.
             #If include_ipid is True, then include IPIDs.
             #If only_my_multiclients is True, then include only clients opened by the current player
             # Verify that it should send the area info first
             if not self.is_staff() and not as_mod:
-                getareas_restricted = (area_id == -1 and not self.area.rp_getareas_allowed)
-                getarea_restricted = (area_id != -1 and not self.area.rp_getarea_allowed)
+                getareas_restricted = (area_id < 0 and not self.area.rp_getareas_allowed)
+                getarea_restricted = (area_id >= 0 and not self.area.rp_getarea_allowed)
                 if getareas_restricted or getarea_restricted:
                     raise ClientError('This command has been restricted to authorized users only '
                                       'in this area while in RP mode.')
@@ -871,11 +885,22 @@ class ClientManager:
 
             # All code from here on assumes the area info will be sent successfully
             info = ''
-            if area_id == -1:
+            if area_id < 0:
                 # all areas info
                 unrestricted_access_area = '<ALL>' in current_area.reachable_areas
-                for (i, area) in enumerate(self.server.area_manager.areas):
-                    # Get area i details...
+
+                if area_id == -1:
+                    areas = self.server.area_manager.areas
+                elif area_id == -2:
+                    zone = self.zone_watched
+                    if zone is None:
+                        raise ClientError(f'Client {self.id} is not watching a zone.')
+                    areas = sorted(list(zone.get_areas()), key=lambda c: c.id)
+                else:
+                    raise ValueError(f'Invalid area_id {area_id}')
+
+                for area in areas:
+                    # Get area details...
                     # If staff (or acting as mod) and there are clients in the area OR
                     # If not staff, there are visible clients in the area, and one of the following
                     # 1. The area has no passage restrictions.
@@ -887,7 +912,7 @@ class ClientManager:
 
                     if (((self.is_staff() or as_mod) and len(area.clients) > 0)
                         or (not self.is_staff() and norm_check)):
-                        num, ainfo = self.get_area_info(i, mods, as_mod=as_mod,
+                        num, ainfo = self.get_area_info(area.id, mods, as_mod=as_mod,
                                                         include_shownames=include_shownames,
                                                         include_ipid=include_ipid,
                                                         only_my_multiclients=only_my_multiclients)
@@ -926,19 +951,25 @@ class ClientManager:
         def get_area_ip(self, ip):
             raise NotImplementedError
 
-        def send_done(self):
-            unusable = self.area.get_chars_unusable(allow_restricted=self.is_staff())
-            avail_char_ids = set(range(len(self.server.char_list))) - unusable
-            # Readd sneaked players if needed so that they don't appear as taken
+        def refresh_char_list(self):
+            char_list = [0] * len(self.server.char_list)
+            unusable_ids = self.area.get_chars_unusable(allow_restricted=self.is_staff())
+            # Remove sneaked players from unusable if needed so that they don't appear as taken
             # Their characters will not be able to be reused, but at least that's one less clue
             # about their presence.
             if not self.is_staff():
-                avail_char_ids |= {c.char_id for c in self.area.clients if not c.is_visible}
+                unusable_ids -= {c.char_id for c in self.area.clients if not c.is_visible}
 
-            char_list = [-1] * len(self.server.char_list)
-            for x in avail_char_ids:
-                char_list[x] = 0
+            for x in unusable_ids:
+                char_list[x] = -1
+
+            # If not spectator
+            if self.char_id is not None and self.char_id >= 0:
+                char_list[self.char_id] = 0 # Self is always available
             self.send_command('CharsCheck', *char_list)
+
+        def send_done(self):
+            self.refresh_char_list()
             self.send_command('HP', 1, self.area.hp_def)
             self.send_command('HP', 2, self.area.hp_pro)
             self.send_background(name=self.area.background)
@@ -1077,6 +1108,69 @@ class ClientManager:
                                          .format(self.name, self.id), is_officer=True)
                 raise ClientError('Invalid password.')
 
+        def logout(self):
+            self.is_mod = False
+            self.is_gm = False
+            self.is_cm = False
+
+            # Clean-up operations
+            if self.server.rp_mode:
+                self.in_rp = True
+            if self.area.evidence_mod == 'HiddenCM':
+                self.area.broadcast_evidence_list()
+
+            # Update the music list to show reachable areas and activate the AFK timer
+            self.reload_music_list()
+            self.server.tasker.create_task(self, ['as_afk_kick', self.area.afk_delay,
+                                                  self.area.afk_sendto])
+
+            # If using a character restricted in the area, switch out
+            if self.get_char_name() in self.area.restricted_chars:
+                try:
+                    new_char_id = self.area.get_rand_avail_char_id(allow_restricted=False)
+                except AreaError:
+                    # Force into spectator mode if all other available characters are taken
+                    new_char_id = -1
+
+                old_char = self.get_char_name()
+                self.change_character(new_char_id, announce_zwatch=False)
+                new_char = self.get_char_name()
+
+                self.send_ooc('Your character has been set to restricted in this area by a staff '
+                              'member. Switching you to `{}`.'.format(new_char))
+                self.send_ooc_others('(X) Client {} had their character changed from `{}` to `{}` '
+                                     'in your zone as their old character was restricted in their '
+                                     'area ({}).'
+                                     .format(self.id, old_char, new_char, self.area.id),
+                                     is_zstaff_flex=True)
+
+            # If watching a zone, stop watching it
+            target_zone = self.zone_watched
+            if target_zone:
+                target_zone.remove_watcher(self)
+
+                self.send_ooc('You are no longer watching zone `{}`.'.format(target_zone.get_id()))
+                if target_zone.get_watchers():
+                    self.send_ooc_others('(X) {} [{}] is no longer watching your zone.'
+                                           .format(self.displayname, self.id),
+                                           part_of=target_zone.get_watchers())
+                else:
+                    self.send_ooc('As you were the last person watching it, your zone has been '
+                                  'deleted.')
+                    self.send_ooc_others('Zone `{}` was automatically deleted as no one was '
+                                         'watching it anymore.'.format(target_zone.get_id()),
+                                         is_officer=True)
+
+            # If managing a day cycle clock, cancel it
+            try:
+                self.server.tasker.remove_task(self, ['as_day_cycle'])
+            except KeyError:
+                pass
+
+            # If having global IC enabled, remove it
+            self.multi_ic = None
+            self.multi_ic_pre = ''
+
         def get_hdid(self):
             return self.hdid
 
@@ -1152,6 +1246,14 @@ class ClientManager:
             info += ('\n*Is transient? {}. Has autopass? {}. Clients open: {}'
                      .format(self.is_transient, self.autopass, len(self.get_multiclients())))
             info += '\n*Is muted? {}. Is OOC Muted? {}'.format(self.is_muted, self.is_ooc_muted)
+            if self.multi_ic is None:
+                areas = set()
+            else:
+                start, end = self.multi_ic[0].id, self.multi_ic[1].id
+                areas = {area for area in self.server.area_manager.areas if start <= area.id <= end}
+            info += ('\n*Global IC range: {}. Global IC prefix: {}'
+                     .format(Constants.format_area_ranges(areas),
+                             'None' if not self.multi_ic_pre else f'`{self.multi_ic_pre}`'))
             info += '\n*Following: {}'.format(self.following.id if self.following else "-")
             info += '\n*Followed by: {}'.format(", ".join([str(c.id) for c in self.followedby])
                                                 if self.followedby else "-")
@@ -1247,8 +1349,8 @@ class ClientManager:
         if client.id >= 0: # Avoid having pre-clients do this (before they are granted a cID)
             self.cur_id[client.id] = False
             # Cancel client's pending tasks
-            for task_id in self.server.tasker.client_tasks[client.id].keys():
-                self.server.tasker.get_task(client, [task_id]).cancel()
+            for task_id in self.server.tasker.client_tasks[client.id].copy():
+                self.server.tasker.remove_task(client, [task_id])
 
         # If the client was part of a party, remove them from the party
         if client.party:
@@ -1260,8 +1362,8 @@ class ClientManager:
 
         if client.zone_watched:
             client.zone_watched.remove_watcher(client)
-            client.send_ooc_others('(X) Client {} ({}) disconnected while watching your zone ({}).'
-                                   .format(client.id, client.displayname, client.area.id),
+            client.send_ooc_others('(X) {} [{}] disconnected while watching your zone ({}).'
+                                   .format(client.displayname, client.id, client.area.id),
                                    part_of=backup_zone.get_watchers())
             if not backup_zone.get_watchers():
                 client.send_ooc_others('Zone `{}` was automatically deleted as no one was watching '
@@ -1271,8 +1373,8 @@ class ClientManager:
         # have been already notified. This would happen if a client is in an area part of zone A
         # but they are watching some different zone B instead.
         if client.area.in_zone and backup_zone != client.area.in_zone:
-            client.send_ooc_others('(X) Client {} ({}) disconnected in your zone ({}).'
-                                   .format(client.id, client.displayname, client.area.id),
+            client.send_ooc_others('(X) {} [{}] disconnected in your zone ({}).'
+                                   .format(client.displayname, client.id, client.area.id),
                                    is_zstaff=True)
 
         client.publisher.publish('client_destroyed', {})
@@ -1456,7 +1558,6 @@ class ClientManager:
 
                     multiple_match_mes += ('\r\n*[{}] {} ({}) (OOC: {})'
                                            .format(target.id, char, target.showname, target.name))
-                    
         if not valid_targets or len(valid_targets) > 1:
             # If was able to match more than one at some point, return that
             if multiple_match_mes:

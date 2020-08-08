@@ -66,8 +66,8 @@ class TestBlind_02_Effect(_TestBlind):
         self.c1.ooc('/blind {}'.format(0))
         self.c1.assert_ooc('You have blinded {}.'.format(self.c0_dname), over=True)
         self.c0.assert_ooc('You have been blinded.', ooc_over=True)
-        self.c2.assert_ooc('(X) {} has blinded {} ({}).'
-                           .format(self.c1.name, self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] has blinded {} ({}).'
+                           .format(self.c1.displayname, 1, self.c0_dname, 0), over=True)
         self.c3.assert_no_ooc()
 
         assert self.c0.is_blind

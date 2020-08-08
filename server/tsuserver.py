@@ -26,7 +26,7 @@ import random
 import ssl
 import sys
 import traceback
-import urllib.request
+import urllib.request, urllib.error
 import warnings
 
 from server import logger
@@ -73,11 +73,12 @@ class TsuserverDR:
         self.shutting_down = False
         self.loop = None
         self.last_error = None
-
         self.allowed_iniswaps = None
         self.area_list = None
         self.old_area_list = None
         self.default_area = 0
+        self.all_passwords = list()
+
         self.load_config()
         self.load_iniswaps()
         self.char_list = list()
@@ -135,17 +136,25 @@ class TsuserverDR:
                                                      bound_ip, self.config['port'],
                                                      start_serving=False)
         asyncio.create_task(self._server.serve_forever())
-
         logger.log_pserver('Server started successfully!')
 
         if self.config['local']:
             host_ip = '127.0.0.1'
         else:
-            request = urllib.request.urlopen('https://api.ipify.org', context=ssl.SSLContext())
-            host_ip = request.read().decode('utf8')
-
-        logger.log_pdebug('Server should be now accessible from {}:{}:{}'
-                          .format(host_ip, self.config['port'], server_name))
+            try:
+                host_ip = (urllib.request.urlopen('https://api.ipify.org',
+                                                  context=ssl.SSLContext())
+                           .read().decode('utf8'))
+            except urllib.error.URLError as ex:
+                host_ip = None
+                logger.log_pdebug('Unable to obtain personal IP from https://api.ipify.org\n'
+                                  '{}: {}\n'
+                                  'Players may be unable to join.'
+                                  .format(type(ex).__name__, ex.reason))
+        if host_ip is not None:
+            logger.log_pdebug('Server should be now accessible from {}:{}:{}'
+                              .format(host_ip, self.config['port'], server_name))
+            
         if not self.config['local']:
             logger.log_pdebug('If you want to join your server from this device, you may need to '
                               'join with this IP instead: 127.0.0.1:{}:localhost'
@@ -258,17 +267,27 @@ class TsuserverDR:
         with Constants.fopen('config/config.yaml', 'r', encoding='utf-8') as cfg:
             self.config = Constants.yaml_load(cfg)
             self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
-            self.config['passwords'] = []
-            passwords = ['modpass', 'cmpass', 'gmpass']
-            for i in range(1, 8):
-                passwords.append('gmpass{}'.format(i))
-            for password in passwords:
-                self.config['passwords'].append(self.config[password])
+            self.all_passwords = list()
+            # Mandatory passwords must be present in the configuration file. If they are not,
+            # a server error will be raised.
+            mandatory_passwords = ['modpass', 'cmpass', 'gmpass']
+            for password in mandatory_passwords:
+                if not (password not in self.config or not str(self.config[password])):
+                    self.all_passwords.append(self.config[password])
+                else:
+                    err = (f'Password "{password}" is not defined in server/config.yaml. Please '
+                           f'make sure it is set and try again.')
+                    raise ServerError(err)
 
-        for i in range(1, 8):
-            daily_gmpass = 'gmpass{}'.format(i)
-            if daily_gmpass not in self.config or not self.config[daily_gmpass]:
-                self.config[daily_gmpass] = None
+            # Daily (and guard) passwords are handled differently. They may optionally be left
+            # blank or be not available. What this means is the server does not want a daily
+            # password for that day (or a guard password)
+            optional_passwords = ['guardpass'] + [f'gmpass{i}' for i in range(1, 8)]
+            for password in optional_passwords:
+                if not (password not in self.config or not str(self.config[password])):
+                    self.all_passwords.append(self.config[password])
+                else:
+                    self.config[password] = None
 
         # Default values to fill in config.yaml if not present
         defaults_for_tags = {
@@ -296,7 +315,7 @@ class TsuserverDR:
             if tag not in self.config:
                 self.config[tag] = value
 
-        # Check that all passwords were generated and that they are unique
+        # Check that all passwords were generated are unique
         passwords = ['guardpass',
                      'modpass',
                      'cmpass',
@@ -308,11 +327,6 @@ class TsuserverDR:
                      'gmpass5',
                      'gmpass6',
                      'gmpass7']
-        for password_type in passwords:
-            if password_type not in self.config:
-                info = ('Password "{}" not defined in server/config.yaml. Please make sure it is '
-                        'set and try again.'.format(password_type))
-                raise ServerError(info)
 
         for (i, password1) in enumerate(passwords):
             for (j, password2) in enumerate(passwords):

@@ -52,16 +52,16 @@ class TestBlood_01_Basic(_TestBlood):
         self.c1.ooc('/bloodtrail 0')
         self.c0.assert_ooc('You are now bleeding.', over=True)
         self.c1.assert_ooc('You made {} start bleeding.'.format(self.c0_dname), over=True)
-        self.c2.assert_ooc('(X) {} made {} start bleeding ({}).'
-                           .format(self.c1.name, self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] made {} start bleeding ({}).'
+                           .format(self.c1.displayname, 1, self.c0_dname, 0), over=True)
         self.c3.assert_no_ooc()
         self.assert_bleeding({self.c0}, 1)
 
         self.c1.ooc('/bloodtrail 0')
         self.c0.assert_ooc('You are no longer bleeding.', over=True)
         self.c1.assert_ooc('You made {} stop bleeding.'.format(self.c0_dname), over=True)
-        self.c2.assert_ooc('(X) {} made {} stop bleeding ({}).'
-                           .format(self.c1.name, self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] made {} stop bleeding ({}).'
+                           .format(self.c1.displayname, 1, self.c0_dname, 0), over=True)
         self.c3.assert_no_ooc()
         self.assert_bleeding(0, 1)
 
@@ -72,17 +72,17 @@ class TestBlood_01_Basic(_TestBlood):
 
         self.c2.ooc('/bloodtrail 0')
         self.c0.assert_ooc('You are now bleeding.', over=True)
-        self.c1.assert_ooc('(X) {} made {} start bleeding ({}).'
-                           .format(self.c2.name, self.c0_dname, 0), over=True)
-        self.c2.assert_ooc('(X) You made {} start bleeding.'.format(self.c0_dname, 0), over=True)
+        self.c1.assert_ooc('(X) {} [{}] made {} start bleeding ({}).'
+                           .format(self.c2.displayname, 2, self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) You made {} start bleeding.'.format(self.c0_dname), over=True)
         self.c3.assert_no_ooc()
         self.assert_bleeding({self.c0}, 1)
 
         self.c2.ooc('/bloodtrail 0')
         self.c0.assert_ooc('You are no longer bleeding.', over=True)
-        self.c1.assert_ooc('(X) {} made {} stop bleeding ({}).'
-                           .format(self.c2.name, self.c0_dname, 0), over=True)
-        self.c2.assert_ooc('(X) You made {} stop bleeding.'.format(self.c0_dname, 0), over=True)
+        self.c1.assert_ooc('(X) {} [{}] made {} stop bleeding ({}).'
+                           .format(self.c2.displayname, 2, self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) You made {} stop bleeding.'.format(self.c0_dname), over=True)
         self.c3.assert_no_ooc()
         self.assert_bleeding(0, 1)
 
@@ -93,16 +93,16 @@ class TestBlood_01_Basic(_TestBlood):
         self.c1.ooc('/bloodtrail 0')
         self.c0.assert_ooc('You are now bleeding.', over=True)
         self.c1.assert_ooc('You made {} start bleeding.'.format(self.c0_dname), over=True)
-        self.c2.assert_ooc('(X) {} made {} start bleeding ({}).'
-                           .format(self.c1.name, self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] made {} start bleeding ({}).'
+                           .format(self.c1.displayname, 1, self.c0_dname, 0), over=True)
         self.c3.assert_no_ooc()
         self.assert_bleeding({self.c0}, 1)
 
         self.c2.ooc('/bloodtrail 0')
         self.c0.assert_ooc('You are no longer bleeding.', over=True)
-        self.c1.assert_ooc('(X) {} made {} stop bleeding ({}).'
-                           .format(self.c2.name, self.c0_dname, 0), over=True)
-        self.c2.assert_ooc('(X) You made {} stop bleeding.'.format(self.c0_dname, 0), over=True)
+        self.c1.assert_ooc('(X) {} [{}] made {} stop bleeding ({}).'
+                           .format(self.c2.displayname, 2, self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) You made {} stop bleeding.'.format(self.c0_dname), over=True)
         self.c3.assert_no_ooc()
         self.assert_bleeding(0, 1)
 
@@ -121,8 +121,8 @@ class TestBlood_01_Basic(_TestBlood):
         self.c1.ooc('/bloodtrail 1')
         self.c0.assert_ooc('You see {} is now bleeding.'.format(self.c1_dname), over=True)
         self.c1.assert_ooc('You are now bleeding.', over=True)
-        self.c2.assert_ooc('(X) {} made themselves start bleeding ({}).'.format(self.c1.name, 0),
-                           over=True)
+        self.c2.assert_ooc('(X) {} [{}] made themselves start bleeding ({}).'
+                           .format(self.c1.displayname, 1, 0), over=True)
         self.c3.assert_no_ooc()
         self.assert_bleeding({self.c1, self.c2}, 1)
 
@@ -140,8 +140,8 @@ class TestBlood_01_Basic(_TestBlood):
 
         self.c2.ooc('/bloodtrail 2')
         self.c0.assert_no_ooc()
-        self.c1.assert_ooc('(X) {} made themselves stop bleeding ({}).'.format(self.c2.name, 4),
-                           over=True)
+        self.c1.assert_ooc('(X) {} [{}] made themselves stop bleeding ({}).'
+                           .format(self.c2.displayname, 2, 4), over=True)
         self.c2.assert_ooc('You are no longer bleeding.', over=True)
         self.c3.assert_ooc('You see {} is no longer bleeding.'.format(self.c2_dname), over=True)
         self.assert_bleeding(0, 1)
@@ -156,8 +156,8 @@ class TestBlood_02_Effect(_TestBlood):
         self.c1.ooc('/bloodtrail 0')
         self.c0.assert_ooc('You are now bleeding.', over=True)
         self.c1.assert_ooc('You made {} start bleeding.'.format(self.c0_dname), over=True)
-        self.c2.assert_ooc('(X) {} made {} start bleeding ({}).'
-                           .format(self.c1.name, self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] made {} start bleeding ({}).'
+                           .format(self.c1.displayname, 1, self.c0_dname, 0), over=True)
         self.c3.assert_no_ooc()
         self.assert_bleeding({self.c0}, 1)
 
@@ -398,8 +398,9 @@ class TestBlood_04_Set(_TestBlood):
 
         self.c2.ooc('/bloodtrail_set')
         self.c0.assert_no_ooc()
-        self.c1.assert_ooc('(X) {} set the blood trail in area {} to be an unconnected pool of blood.'
-                           .format(self.c2.name, self.a4_name), over=True)
+        self.c1.assert_ooc('(X) {} [{}] set the blood trail in area {} to be an unconnected pool '
+                           'of blood.'
+                           .format(self.c2.displayname, 2, self.a4_name), over=True)
         self.c2.assert_ooc('Set the blood trail in this area to be an unconnected pool of blood.',
                            over=True)
         self.c3.assert_ooc('The blood trail in this area was set to be an unconnected pool of '
@@ -419,8 +420,8 @@ class TestBlood_04_Set(_TestBlood):
 
         self.c2.ooc('/bloodtrail_set {}, {}'.format(self.area5.id, self.a7_name))
         x = 'go to the {}, the {} and the {}'.format(self.a4_name, self.a5_name, self.a7_name)
-        self.c1.assert_ooc('(X) {} set the blood trail in area {} to {}.'
-                           .format(self.c2.name, self.a4_name, x), over=True)
+        self.c1.assert_ooc('(X) {} [{}] set the blood trail in area {} to {}.'
+                           .format(self.c2.displayname, 2, self.a4_name, x), over=True)
         self.c2.assert_ooc('Set the blood trail in this area to {}.'
                            .format(x), over=True)
         self.c3.assert_ooc('The blood trail in this area was set to {}.'.format(x), over=True)

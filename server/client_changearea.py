@@ -299,14 +299,14 @@ class ClientChangeArea:
         ###########
         # Check if exiting a zone
         if old_area.in_zone and area.in_zone != old_area.in_zone:
-            client.send_ooc_others('(X) Client {} ({}) has left your zone ({}->{}).'
-                                   .format(client.id, old_dname, old_area.id, area.id),
+            client.send_ooc_others('(X) {} [{}] has left your zone ({}->{}).'
+                                   .format(old_dname, client.id, old_area.id, area.id),
                                    is_zstaff=old_area)
 
         # Check if entering a zone
         if area.in_zone and area.in_zone != old_area.in_zone:
-            client.send_ooc_others('(X) Client {} ({}) has entered your zone ({}->{}).'
-                                   .format(client.id, new_dname, old_area.id, area.id),
+            client.send_ooc_others('(X) {} [{}] has entered your zone ({}->{}).'
+                                   .format(new_dname, client.id, old_area.id, area.id),
                                    is_zstaff=area)
             # Raise multiclienting warning to the watchers of the new zone if needed
             # Note that this implementation does not have an off-by-one error, as the incoming
@@ -551,9 +551,10 @@ class ClientChangeArea:
                                           area.name, area.id), client)
                 #logger.log_rp('[{}]Changed area from {} ({}) to {} ({}).'
                 #              .format(client.get_char_name(), old_area.name, old_area.id,
-                #                      client.area.name, client.area.id), client)
+                #                      old_area.name, old_area.id), client)
 
                 client.notify_change_area(area, old_dname, ignore_bleeding=ignore_bleeding)
+                
                 old_area.publisher.publish('area_client_left', {
                     'client': client,
                     'new_area': area,

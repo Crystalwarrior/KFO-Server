@@ -94,8 +94,8 @@ class TestZoneChangeArea_01_Add(_TestZone):
 
         self.c5.ooc('/zone_add 1')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} has added area {} to your zone.'.format(self.c5.name, 1),
-                           over=True)
+        self.c1.assert_ooc('(X) {} [{}] has added area {} to your zone.'
+                           .format(self.c5.displayname, 5, 1), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -196,8 +196,8 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('(X) {} has removed area {} from your zone.'.format(self.c1.name, 4),
-                           over=True)
+        self.c5.assert_ooc('(X) {} [{}] has removed area {} from your zone.'
+                           .format(self.c1.displayname, 1, 4), over=True)
         self.assert_zones({'z0': {6, 7}})
 
         self.c1.ooc('/zone_remove 6')
@@ -206,8 +206,8 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('(X) {} has removed area {} from your zone.'.format(self.c1.name, 6),
-                           over=True)
+        self.c5.assert_ooc('(X) {} [{}] has removed area {} from your zone.'
+                           .format(self.c1.displayname, 1, 6), over=True)
         self.assert_zones({'z0': {7}})
 
         self.c1.ooc('/zone_remove 7')
@@ -218,7 +218,8 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('(X) {} has removed area {} from your zone.'.format(self.c1.name, 7))
+        self.c5.assert_ooc('(X) {} [{}] has removed area {} from your zone.'
+                           .format(self.c1.displayname, 1, 7))
         self.c5.assert_ooc('(X) As your zone no longer covers any areas, it has been deleted.',
                            over=True)
         self.assert_zones(dict())
@@ -253,8 +254,8 @@ class TestZoneChangeArea_02_Remove(_TestZone):
 
         self.c5.ooc('/zone_remove 7')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} has removed area {} from your zone.'.format(self.c5.name, 7),
-                           over=True)
+        self.c1.assert_ooc('(X) {} [{}] has removed area {} from your zone.'
+                           .format(self.c5.displayname, 5, 7), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()

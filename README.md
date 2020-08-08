@@ -9,52 +9,60 @@ Requires Python 3.7-3.8 and PyYAML (follow instructions below to install).
 
 ### Installing
 
+It is highly recommended you read through all the installation steps first before going through them.
+
 * Install the latest version of Python. **Python 2 will not work**.
-  - You can download Python from its official website [here](https://www.python.org/downloads/).
-  - If your system supports it, it is recommended that you use a separate virtual environment, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python).
-  - If prompted during the installation to add `python` as a PATH environment variable, accept this option.
+  - You can download Python from its official website [here](https://www.python.org/downloads/). If you already have Python installed, check that your Python version satisfies the version requirement listed above.
+  - If prompted during the installation to add `python` as a PATH environment variable, accept this option. You may see this option appear on the very first screen during the installation process.
+  - If you know what a virtual environment is and your system supports it, it is recommended that you use one, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python). If you do not know what a virtual environment is, you may skip this point.
   - If you have Python 3.6 or lower, you will be prompted on server launch to update to a newer version of Python. That is because the server requires Python 3.7 or higher. Follow instructions under Updating to update your Python version.
 * Open Command Prompt, PowerShell or your preferred terminal, and change to the directory where you downloaded TsuserverDR to. You can do this in two ways:
   - Go up one folder above the TsuserverDR folder, Shift + right click the TsuserverDR folder, and click `Open PowerShell window here`. This is the easiest method.
   - Copy the path of the TsuserverDR folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackets, but including the quotation marks if the path contains spaces.
-* To install PyYAML and dependencies, type in the following:
-  ```bash
+* Install PyYAML and dependencies by typing in the following in the terminal you just opened:
+  ```
   python -m pip install --user -r requirements.txt
   ```
+
   If you are using Windows and have both Python 2 and 3 installed, you may do the following:
-  ```batch
+  ```
   py -3 -m pip install --user -r requirements.txt
   ```
+
   This operation should not require administrator privileges, unless you decide to remove the `--user` option.
-* Rename `config_sample` to `config` and edit the values in the provided YAML files to your liking. Be sure to check the YAML files for syntax errors after you are done. *Use spaces only; do not use tabs.*
+* Rename the folder `config_sample` to `config` and edit the values in the provided YAML files to your liking. Be sure to check the YAML files for syntax errors after you are done. *Use spaces only; do not use tabs.*
 
 ### Running
 
-* Run by either double-clicking `start_server.py` or typing in cmd or your terminal `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. If everything was set up correctly, you will see something like this appear:
+* To launch a server, you may either 
+  - Double-click `start_server.py` in your TsuserverDR folder.
+  - In PowerShell, Command Prompt or your preferred terminal, change directory to your TsuserverDR folder and type `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. For instructions on how to launch any of the above programs or change directory, refer to the second point in the Installing section.
+  
+* If everything was set up correctly, you will see something like this appear:
 
-\[2020-05-16T10:20:20\]: Starting...  
-\[2020-05-16T10:20:20\]: Launching TsuserverDR 4.2.4 (200516a)...  
-\[2020-05-16T10:20:20\]: Loading server configurations...  
-\[2020-05-16T10:20:20\]: Server configurations loaded successfully!  
-\[2020-05-16T10:20:20\]: Starting a nonlocal server...  
-\[2020-05-16T10:20:20\]: Server started successfully!  
-\[2020-05-16T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
+\[2020-07-31T10:20:20\]: Starting...  
+\[2020-07-31T10:20:20\]: Launching TsuserverDR 4.2.5 (200731a)...  
+\[2020-07-31T10:20:20\]: Loading server configurations...  
+\[2020-07-31T10:20:20\]: Server configurations loaded successfully!  
+\[2020-07-31T10:20:20\]: Starting a nonlocal server...  
+\[2020-07-31T10:20:20\]: Server started successfully!  
+\[2020-07-31T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
 
 * If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:
 
-\[2020-05-16T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
-\[2020-05-16T10:20:21\]: *Server name: My First DR Server  
-\[2020-05-16T10:20:21\]: *Server description: This is my flashy new DR server  
-\[2020-05-16T10:20:22\]: Connected to the master server.  
+\[2020-07-31T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
+\[2020-07-31T10:20:21\]: *Server name: My First DR Server  
+\[2020-07-31T10:20:21\]: *Server description: This is my flashy new DR server  
+\[2020-07-31T10:20:22\]: Connected to the master server.  
 
-  - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If during launch you get  `urllib.error.URLError` or `socket.gaierror`, there is probably something wrong with your internet connection.
+  - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If it fails to do that, it will let you know that, as it means there is probably something wrong with your internet connection and that other players may not be able to connect to your server.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
-\[2020-05-16T22:23:04\]: You have initiated a server shut down.  
-\[2020-05-16T22:23:04\]: Kicking 12 remaining clients.  
-\[2020-05-16T22:23:04\]: Server has successfully shut down.  
+\[2020-07-31T22:23:04\]: You have initiated a server shut down.  
+\[2020-07-31T22:23:04\]: Kicking 12 remaining clients.  
+\[2020-07-31T22:23:04\]: Server has successfully shut down.  
 
 * If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
@@ -74,7 +82,7 @@ Requires Python 3.7-3.8 and PyYAML (follow instructions below to install).
   - In general, updating to a Python version beyond what is specified as supported may lead to unstable behavior, so for active servers try to keep your Python version among the ones specifically labeled as supported.
 
 ## Commands
-Additional notes are listed at the end of the command list.
+Additional notes are listed at the end of the command list. Unless otherwise specified, all command arguments have a character limit of 1024 characters, beyond which they will be cut off.
 
 ### User Commands
 
@@ -172,6 +180,10 @@ Additional notes are listed at the end of the command list.
     - Revokes an invitation sent to a player to join your player.
 * **party_unlead**
     - Removes your party leader role.
+* **party_whisper** "message"
+    - Sends an IC private message to everyone in the party.
+    - Other people in the area are warned that a whisper has taken place (but not the message content). However, staff members do get message contents, so this command should only be used in RP settings.
+	- Messages are limited to 256 characters.
 * **ping**
     - Returns "Pong", used to check for server connection.
 * **play** "song.mp3"
@@ -190,7 +202,8 @@ Additional notes are listed at the end of the command list.
 * **rollp** "number of dice"d"number of faces" "modifiers"
     - Same as roll but other non-staff members in the area only are notified that someone rolled.
 * **scream** "message"
-    - Sends a message visible to all players in the areas that are set to be able to listen to screams from the current area.
+    - Sends an IC message visible to all players in the areas that are set to be able to listen to screams from the current area.
+    - Messages are limited to 256 characters.
 * **showname** "showname"
     - Sets your showname to be the given one, or clears it if not given one.
 * **showname_area**
@@ -234,6 +247,7 @@ Additional notes are listed at the end of the command list.
 * **whisper** "ID/char name/edited-to character/showname/OOC name" "message"
     - Sends an IC private message to the target, provided they are in the area.
     - Other people in the area are warned that a whisper has taken place (but not the message content). However, staff members do get message contents, so this command should only be used in RP settings.
+    - Messages are limited to 256 characters.
 * **zone_global**
     - Sends a message to all players in the zone you are in.
 * **8ball** "question"
@@ -311,6 +325,7 @@ GMs can:
 * **guide** "ID/char name/edited-to character/showname/OOC name" "message"
     - Sends an IC private 'guiding' message to the target.
     - Unlike /whisper, other people in the area are not warned that a whisper has taken place. However, staff members do get message contents, so this command should only be used in RP settings.
+	- Messages are limited to 256 characters.
 * **handicap** "ID" "length" "name" "announce if over"
     - Sets a movement handicap on a client by ID so that they need to wait a set amount of time in seconds between changing areas.
     - If name is given, the handicap announcement will use it as the name of the handicap.
@@ -401,6 +416,8 @@ GMs can:
     - Adds an area by name or ID to the zone you are watching.
 * **zone_delete**
     - Deletes the zone you are watching.
+* **zone_info**
+    - Lists brief description of the zone you are watching, as well as lists all players in areas part of the zone.
 * **zone_lights** "on/off"
     - Changes the light status of every area in a zone you are watching to on or off.
 * **zone_list**
@@ -539,16 +556,20 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 
 #### Everyone
 
-* **showname_list**: Same as /showname_areas.
+* **huddle**: Same as /party_whisper.
+* **pw**: Same as /party_whisper.
 * **sa**: Same as /showname_area.
 * **sas**: Same as /showname_areas.
 * **shout**: Same as /scream.
+* **showname_list**: Same as /showname_areas.
 * **unsneak**: Same as /reveal.
 * **yell**: Same as /scream.
 * **zg**: Same as /zone_global.
+* **zi**: Same as /zone_info.
 
 #### GM+
 
+* **logingm**: Same as /loginrp.
 * **unsneak**: Same as /reveal.
 
 ### Notes

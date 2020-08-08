@@ -95,10 +95,10 @@ class TestBloodClean_01_Basic(_TestBlood):
 
         self.c3.ooc('/bloodtrail_clean')
         self.c0.assert_no_ooc()
-        self.c1.assert_ooc('(X) {} cleaned the blood trail in area {}.'
-                           .format(self.c3_dname, self.a4_name), over=True)
-        self.c2.assert_ooc('{} cleaned the blood trail in your area.'
-                           .format(self.c3_dname), over=True)
+        self.c1.assert_ooc('(X) {} [{}] cleaned the blood trail in area {}.'
+                           .format(self.c3_dname, 3, self.a4_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] cleaned the blood trail in your area.'
+                           .format(self.c3_dname, 3), over=True)
         self.c3.assert_ooc('You cleaned the blood trail in your area.', over=True)
 
         self.c1.ooc('/bloodtrail_list')
@@ -119,8 +119,8 @@ class TestBloodClean_01_Basic(_TestBlood):
 
         self.c2.ooc('/bloodtrail_clean')
         self.c0.assert_no_ooc()
-        self.c1.assert_ooc('(X) {} cleaned the blood trail in area {}.'
-                           .format(self.c2.name, self.a4_name), over=True)
+        self.c1.assert_ooc('(X) {} [{}] cleaned the blood trail in area {}.'
+                           .format(self.c2.displayname, 2, self.a4_name), over=True)
         self.c2.assert_ooc('You cleaned the blood trail in your area.', over=True)
         self.c3.assert_ooc('{} cleaned the blood trail in your area.'
                            .format(self.c2_dname), over=True)
@@ -192,8 +192,8 @@ class TestBloodClean_01_Basic(_TestBlood):
                     .format(self.a0_name, self.area6.id))
         self.c1.assert_ooc('You cleaned the blood trails in areas {} and {}.'
                            .format(self.a0_name, self.a6_name), over=True)
-        self.c2.assert_ooc('(X) {} cleaned the blood trails in areas {} and {}.'
-                           .format(self.c1.name, self.a0_name, self.a6_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] cleaned the blood trails in areas {} and {}.'
+                           .format(self.c1.displayname, 1, self.a0_name, self.a6_name), over=True)
 
         self.c1.ooc('/bloodtrail_list')
         self.mes = ('{}' # Python why are you like this
@@ -257,8 +257,9 @@ class TestBloodClean_02_NoLights(_TestSituation5Mc1Gc2):
 
         self.c0.ooc('/bloodtrail_clean')
         self.c0.assert_ooc('You cleaned the blood trail in your area.', over=True)
-        self.c2.assert_ooc('(X) {} tried to clean the blood trail in the area, unaware that there '
-                           'was no blood to begin with.'.format(self.c0_dname), over=True)
+        self.c2.assert_ooc('(X) {} [{}] tried to clean the blood trail in the area, unaware that '
+                           'there was no blood to begin with.'
+                           .format(self.c0_dname, 0), over=True)
         self.assertEqual(self.area4.bleeds_to, set())
         self.assertFalse(self.area4.blood_smeared)
 
@@ -271,23 +272,23 @@ class TestBloodClean_02_NoLights(_TestSituation5Mc1Gc2):
 
         self.c0.ooc('/bloodtrail_clean')
         self.c0.assert_ooc('You cleaned the blood trail in your area.', over=True)
-        self.c1.assert_ooc('(X) {} tried to clean the blood trail in area {}, but as they could '
-                           'not see, they only managed to smear it all over the place.'
-                           .format(self.c0_dname, self.a4_name), over=True)
-        self.c2.assert_ooc('(X) {} tried to clean the blood trail in your area, but as they could '
-                           'not see, they only managed to smear it all over the place.'
-                           .format(self.c0_dname), over=True)
+        self.c1.assert_ooc('(X) {} [{}] tried to clean the blood trail in area {}, but as they '
+                           'could not see, they only managed to smear it all over the place.'
+                           .format(self.c0_dname, 0, self.a4_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] tried to clean the blood trail in your area, but as they '
+                           'could not see, they only managed to smear it all over the place.'
+                           .format(self.c0_dname, 0), over=True)
         self.assertEqual(self.area4.bleeds_to, {self.area0.name})
         self.assertTrue(self.area4.blood_smeared)
 
         self.c0.ooc('/bloodtrail_clean')
         self.c0.assert_ooc('You cleaned the blood trail in your area.', over=True)
-        self.c1.assert_ooc('(X) {} tried to clean the blood trail in area {}, but as they could '
-                           'not see, they only managed to smear it all over the place.'
-                           .format(self.c0_dname, self.a4_name), over=True)
-        self.c2.assert_ooc('(X) {} tried to clean the blood trail in your area, but as they could '
-                           'not see, they only managed to smear it all over the place.'
-                           .format(self.c0_dname), over=True)
+        self.c1.assert_ooc('(X) {} [{}] tried to clean the blood trail in area {}, but as they '
+                           'could not see, they only managed to smear it all over the place.'
+                           .format(self.c0_dname, 0, self.a4_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] tried to clean the blood trail in your area, but as they '
+                           'could not see, they only managed to smear it all over the place.'
+                           .format(self.c0_dname, 0), over=True)
         self.assertEqual(self.area4.bleeds_to, {self.area0.name})
         self.assertTrue(self.area4.blood_smeared)
 
@@ -323,8 +324,9 @@ class TestBloodClean_03_Blind(_TestSituation5Mc1Gc2):
 
         self.c0.ooc('/bloodtrail_clean')
         self.c0.assert_ooc('You cleaned the blood trail in your area.', over=True)
-        self.c2.assert_ooc('{} tried to clean the blood trail in the area, unaware that there was '
-                           'no blood to begin with.'.format(self.c0_dname), over=True)
+        self.c2.assert_ooc('(X) {} [{}] tried to clean the blood trail in the area, unaware that '
+                           'there was no blood to begin with.'
+                           .format(self.c0_dname, 0), over=True)
         self.c3.assert_ooc('{} tried to clean the blood trail in the area, unaware that there was '
                            'no blood to begin with.'.format(self.c0_dname), over=True)
         self.assertEqual(self.area4.bleeds_to, set())
@@ -337,8 +339,9 @@ class TestBloodClean_03_Blind(_TestSituation5Mc1Gc2):
 
         self.c0.ooc('/bloodtrail_clean')
         self.c0.assert_ooc('You cleaned the blood trail in your area.', over=True)
-        self.c2.assert_ooc('(X) {} tried to clean the blood trail in the area, unaware that there '
-                           'was no blood to begin with.'.format(self.c0_dname), over=True)
+        self.c2.assert_ooc('(X) {} [{}] tried to clean the blood trail in the area, unaware that '
+                           'there was no blood to begin with.'
+                           .format(self.c0_dname, 0), over=True)
         self.assertEqual(self.area4.bleeds_to, set())
         self.assertFalse(self.area4.blood_smeared)
 
@@ -354,12 +357,12 @@ class TestBloodClean_03_Blind(_TestSituation5Mc1Gc2):
 
         self.c0.ooc('/bloodtrail_clean')
         self.c0.assert_ooc('You cleaned the blood trail in your area.', over=True)
-        self.c1.assert_ooc('(X) {} tried to clean the blood trail in area {}, but as they could '
-                           'not see, they only managed to smear it all over the place.'
-                           .format(self.c0_dname, self.a4_name), over=True)
-        self.c2.assert_ooc('{} tried to clean the blood trail in your area, but as they could not '
-                           'see, they only managed to smear it all over the place.'
-                           .format(self.c0_dname), over=True)
+        self.c1.assert_ooc('(X) {} [{}] tried to clean the blood trail in area {}, but as they '
+                           'could not see, they only managed to smear it all over the place.'
+                           .format(self.c0_dname, 0, self.a4_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] tried to clean the blood trail in your area, but as they '
+                           'could not see, they only managed to smear it all over the place.'
+                           .format(self.c0_dname, 0), over=True)
         self.c3.assert_ooc('{} tried to clean the blood trail in the area, but only managed to '
                            'smear it all over the place.'
                            .format(self.c0_dname), over=True)
@@ -374,23 +377,23 @@ class TestBloodClean_03_Blind(_TestSituation5Mc1Gc2):
 
         self.c0.ooc('/bloodtrail_clean')
         self.c0.assert_ooc('You cleaned the blood trail in your area.', over=True)
-        self.c1.assert_ooc('(X) {} tried to clean the blood trail in area {}, but as they could '
-                           'not see, they only managed to smear it all over the place.'
-                           .format(self.c0_dname, self.a4_name), over=True)
-        self.c2.assert_ooc('(X) {} tried to clean the blood trail in your area, but as they could '
-                           'not see, they only managed to smear it all over the place.'
-                           .format(self.c0_dname), over=True)
+        self.c1.assert_ooc('(X) {} [{}] tried to clean the blood trail in area {}, but as they '
+                           'could not see, they only managed to smear it all over the place.'
+                           .format(self.c0_dname, 0, self.a4_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] tried to clean the blood trail in your area, but as they '
+                           'could not see, they only managed to smear it all over the place.'
+                           .format(self.c0_dname, 0), over=True)
         self.assertEqual(self.area4.bleeds_to, {self.area0.name})
         self.assertTrue(self.area4.blood_smeared)
 
         self.c0.ooc('/bloodtrail_clean')
         self.c0.assert_ooc('You cleaned the blood trail in your area.', over=True)
-        self.c1.assert_ooc('(X) {} tried to clean the blood trail in area {}, but as they could '
-                           'not see, they only managed to smear it all over the place.'
-                           .format(self.c0_dname, self.a4_name), over=True)
-        self.c2.assert_ooc('(X) {} tried to clean the blood trail in your area, but as they could '
-                           'not see, they only managed to smear it all over the place.'
-                           .format(self.c0_dname), over=True)
+        self.c1.assert_ooc('(X) {} [{}] tried to clean the blood trail in area {}, but as they '
+                           'could not see, they only managed to smear it all over the place.'
+                           .format(self.c0_dname, 0, self.a4_name), over=True)
+        self.c2.assert_ooc('(X) {} [{}] tried to clean the blood trail in your area, but as they '
+                           'could not see, they only managed to smear it all over the place.'
+                           .format(self.c0_dname, 0), over=True)
         self.assertEqual(self.area4.bleeds_to, {self.area0.name})
         self.assertTrue(self.area4.blood_smeared)
 
