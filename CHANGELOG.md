@@ -473,7 +473,11 @@
 * Deaf players now only see an IC notification for screams
 
 ### (4.3.0)
-* Dropped Python 3.6 support
+* Added basic trial and NSD modes
 * Added lurk callouts to name players who have been idle some amount of time
+* Players may now set a custom status via /look_me, which will send an IC notification to every player that subsequently sees them
+* Areas may now be marked as noteworthy, which will also trigger a similar IC notification on arrival or visibility change
+* System blankposts are now sent on area change to clear the last character on screen
 * Changed wording of GM login notifications
 * Removed deprecated AO commands
+* Dropped Python 3.6 support

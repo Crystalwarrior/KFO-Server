@@ -50,8 +50,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a43'
-        self.internal_version = 'M200807a'
+        self.segment_version = 'a44'
+        self.internal_version = 'M200820a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -154,7 +154,7 @@ class TsuserverDR:
         if host_ip is not None:
             logger.log_pdebug('Server should be now accessible from {}:{}:{}'
                               .format(host_ip, self.config['port'], server_name))
-            
+
         if not self.config['local']:
             logger.log_pdebug('If you want to join your server from this device, you may need to '
                               'join with this IP instead: 127.0.0.1:{}:localhost'

@@ -540,6 +540,11 @@ GMs can:
 * **unlock**
     - Unlocks an area, provided the lock came as a result of /gmlock, /lock or /modlock.
 
+### Pending
+* NSD 
+* Trial
+* Look
+
 ### Debug commands
 
 * **exec** "command"
