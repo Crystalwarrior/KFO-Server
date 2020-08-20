@@ -112,7 +112,7 @@ class ClientChangeArea:
 
         return new_char_id, captured_messages
 
-    def notify_change_area(self, area, old_dname, ignore_bleeding=False, just_me=False):
+    def notify_change_area(self, area, old_dname, ignore_bleeding=False, just_me=False) -> bool:
         """
         Send all OOC notifications that come from switching areas.
         Right now there is
@@ -133,13 +133,19 @@ class ClientChangeArea:
         ** Blood in area status, sent to player who's moving.
 
         If just_me is True, no notifications are sent to other players in the area.
+
+        Returns True if any RP related notifications are sent to the player who changed areas,
+        False otherwise.
+
         """
 
-        self.notify_me(area, old_dname, ignore_bleeding=ignore_bleeding)
+        found_something = self.notify_me(area, old_dname, ignore_bleeding=ignore_bleeding)
         if not just_me:
             self.notify_others(area, old_dname, ignore_bleeding=ignore_bleeding)
 
-    def notify_me(self, area, old_dname, ignore_bleeding=False):
+        return found_something
+
+    def notify_me(self, area, old_dname, ignore_bleeding=False) -> bool:
         client = self.client
 
         # Code here assumes successful area change, so it will be sending client notifications
@@ -190,13 +196,32 @@ class ClientChangeArea:
             area.bleeds_to.add(old_area.name)
             client.send_ooc('You are bleeding.')
 
+        found_something = self.notify_me_rp(area)
+        return found_something
+
+    def notify_me_rp(self, area, changed_visibility=True, changed_hearing=True) -> bool:
         ###########
         # Check bleeding status
-        self.notify_me_blood(area)
+        blood = self.notify_me_blood(area, changed_visibility=changed_visibility,
+                                     changed_hearing=changed_hearing)
 
-    def notify_me_blood(self, area, changed_visibility=True, changed_hearing=True):
+        ###########
+        # Check for any player statuses
+        statuses = self.notify_me_status(area, changed_visibility=changed_visibility,
+                                         changed_hearing=changed_hearing)
+
+        ###########
+        # Check for the area being noteworthy
+        area_noteworthy = self.notify_me_area_noteworthy(area,
+                                                         changed_visibility=changed_visibility,
+                                                         changed_hearing=changed_hearing)
+
+        return blood or statuses or area_noteworthy
+
+    def notify_me_blood(self, area, changed_visibility=True, changed_hearing=True) -> bool:
         client = self.client
         changed_area = (client.area != area)
+        found_something = False
 
         ###########
         # If someone else is bleeding in the new area, notify the person moving
@@ -204,7 +229,7 @@ class ClientChangeArea:
                             if c.is_visible and c.is_bleeding and c != client]
         bleeding_sneaking = [c for c in area.clients
                              if not c.is_visible and c.is_bleeding and c != client]
-        info = ''
+        bleeding_info = ''
         vis_info = ''
         sne_info = ''
 
@@ -246,14 +271,15 @@ class ClientChangeArea:
         # 3. It is not the same as the visible info (To avoid double 'hear faint drops')
         if vis_info:
             if sne_info and sne_info != 'You smell blood' and vis_info != sne_info:
-                info = '{}, and {}'.format(info, sne_info.lower())
+                bleeding_info = '{}, and {}'.format(vis_info, sne_info.lower())
             else:
-                info = vis_info
+                bleeding_info = vis_info
         else:
-            info = sne_info
+            bleeding_info = sne_info
 
-        if info:
-            client.send_ooc(info + '.')
+        if bleeding_info:
+            client.send_ooc(bleeding_info + '.')
+            found_something = True
 
         ###########
         # If there are blood trails in the area, send notification if one of the following is true
@@ -266,28 +292,96 @@ class ClientChangeArea:
         # 2. A notification was not sent in the previous part
 
         normal_visibility = changed_visibility and area.lights and not client.is_blind
+        bloodtrail_info = ''
         if client.is_staff() or normal_visibility:
             start_connector = '(X) ' if not normal_visibility else ''
             smeared_connector = 'smeared ' if client.is_staff() and area.blood_smeared else ''
 
             if not client.is_staff() and area.blood_smeared:
-                client.send_ooc('{}You spot some smeared blood in the area.'
-                                .format(start_connector))
+                bloodtrail_info = ('{}You spot some smeared blood in the area.'
+                                   .format(start_connector))
             elif area.bleeds_to == set([area.name]):
-                client.send_ooc('{}You spot some {}blood in the area.'
-                                .format(start_connector, smeared_connector))
+                bloodtrail_info = ('{}You spot some {}blood in the area.'
+                                   .format(start_connector, smeared_connector))
             elif len(area.bleeds_to) > 1:
                 bleed_to_areas = list(area.bleeds_to - set([area.name]))
                 if client.is_staff() and area.blood_smeared:
                     start_connector = '(X) ' # Force staff indication
 
-                info = ('{}You spot a {}blood trail leading to {}.'
-                        .format(start_connector, smeared_connector,
-                                Constants.cjoin(bleed_to_areas, the=True)))
-                client.send_ooc(info)
+                bloodtrail_info = ('{}You spot a {}blood trail leading to {}.'
+                                   .format(start_connector, smeared_connector,
+                                           Constants.cjoin(bleed_to_areas, the=True)))
         elif not client.is_staff() and (area.bleeds_to or area.blood_smeared) and changed_area:
-            if not info:
-                client.send_ooc('You smell blood.')
+            if not bleeding_info:
+                bloodtrail_info = 'You smell blood.'
+
+        if bloodtrail_info:
+            client.send_ooc(bloodtrail_info)
+            found_something = True
+
+        return found_something
+
+    def notify_me_status(self, area, changed_visibility=True, changed_hearing=True) -> bool:
+        client = self.client
+        normal_visibility = changed_visibility and area.lights and not client.is_blind
+        info = ''
+        vis_info = ''
+        sne_info = ''
+        found_something = False
+
+        status_visible = [c for c in area.clients if c.status and c != client and c.is_visible]
+        status_sneaking = [c for c in area.clients if c.status and c != client and not c.is_visible]
+        staff_privileged = not normal_visibility
+        if status_visible:
+            if client.is_staff() or normal_visibility:
+                mark = '(X) ' if staff_privileged  else ''
+                players = Constants.cjoin([c.displayname for c in status_visible])
+                verb = 'was' if len(status_visible) == 1 else 'were'
+                vis_info = (f'{mark}You note something about {players} who {verb} in the area '
+                            f'already')
+
+            elif changed_visibility and not client.is_deaf:
+                # Give nerfed notifications if the lights are out or the player is blind, but NOT
+                # if the player is deaf.
+                vis_info = 'You think something is unusual about someone in the area'
+
+        # To prepare message with sneaked bleeding, you must be staff.
+        # Otherwise, prepare faint drops of blood if you are not deaf.
+        # Otherwise, just prepare 'smell' if lights turned off or you are blind
+
+        if status_sneaking:
+            if client.is_staff():
+                players = Constants.cjoin([c.displayname for c in status_sneaking])
+                verb = 'was' if len(status_sneaking) == 1 else 'were'
+                sne_info = (f'(X) You note something about {players}, who {verb} in the area '
+                            f'already and also sneaking')
+
+        if vis_info and sne_info:
+            # Remove marks and capital letters. Use 'count=1' explicitly to prevent more
+            # replacements that could happen with player displaynames.
+            # Then readd the mark manually (mark would have been present because sne_info)
+            vis_info = vis_info[4:] if vis_info.startswith('(X)') else vis_info
+            sne_info = sne_info.replace("(X) You", "you", 1)
+            info = f'(X) {vis_info}, and {sne_info}'
+        elif vis_info:
+            info = vis_info
+        elif sne_info:
+            info = sne_info
+
+        if info:
+            client.send_ooc(info + '.')
+            found_something = True
+
+        return found_something
+
+    def notify_me_area_noteworthy(self, area, changed_visibility=True, changed_hearing=True) -> bool:
+        if not area.noteworthy:
+            return False
+
+        # Regardless of area, changing visibiility or sightedness, ALWAYS send notification
+        client = self.client
+        client.send_ooc('Something in the area catches your attention.')
+        return True
 
     def notify_others(self, area, old_dname, ignore_bleeding=False):
         client = self.client
@@ -323,11 +417,15 @@ class ClientChangeArea:
 
         if not client.char_id < 0:
             self.notify_others_moving(client, old_area,
-                                      '{} has left to the {}'.format(old_dname, area.name),
+                                      '{} has left to the {}.'.format(old_dname, area.name),
                                       'You hear footsteps going out of the room.')
+            status = f' {client.status}' if client.status else ''
             self.notify_others_moving(client, area,
-                                      '{} has entered from the {}'.format(new_dname, old_area.name),
+                                      ('{} has entered from the {}.'
+                                       .format(new_dname, old_area.name)),
                                       'You hear footsteps coming into the room.')
+
+        ic_attention_others = False
 
         if client.is_bleeding:
             old_area.bleeds_to.add(old_area.name)
@@ -336,6 +434,14 @@ class ClientChangeArea:
         if not ignore_bleeding and client.is_bleeding:
             self.notify_others_blood(client, old_area, old_dname, status='left')
             self.notify_others_blood(client, area, new_dname, status='arrived')
+            ic_attention_others = True
+
+        if client.status:
+            self.notify_others_status(client, area, new_dname, status='arrived')
+            if client.is_visible:
+                ic_attention_others = True
+
+        area.broadcast_ic_attention(cond=lambda _: ic_attention_others)
 
     def notify_others_moving(self, client, area, autopass_mes, blind_mes):
         staff = nbnd = ybnd = nbyd = '' # nbnd = notblindnotdeaf ybnd=yesblindnotdeaf
@@ -346,13 +452,16 @@ class ClientChangeArea:
         # Deaf: can hear autopass but not footsteps
         # No lights: at most footsteps
 
+        # Remove trailing periods and add it again. This helps prevent duplicate periods.
+        autopass_mes = autopass_mes[:-1] if autopass_mes.endswith('.') else autopass_mes
+
         if client.autopass:
-            staff = autopass_mes
-            nbnd = autopass_mes
+            staff = autopass_mes + '.'
+            nbnd = autopass_mes + '.'
             ybnd = blind_mes
-            nbyd = autopass_mes
+            nbyd = autopass_mes + '.'
         else:
-            staff = '(X) {} (no autopass)'.format(autopass_mes)
+            staff = '(X) {} (no autopass).'.format(autopass_mes)
 
         if not area.lights:
             staff = '(X) {} while the lights were out.'.format(autopass_mes)
@@ -466,6 +575,58 @@ class ClientChangeArea:
         if send_to_staff:
             client.send_ooc_others(staff, is_zstaff_flex=True, in_area=area)
 
+    def notify_others_status(self, client, area, name, status='stay') -> bool:
+        # Assume client's special status is worth announcing
+        # If client has custom status, send reminder in OOC to everyone but those not staff,
+        # blind and deaf simultaneously.
+
+        norm_mes =  f'You note something about {name} {{}}'
+        vague_mes = 'You think there is something odd about someone'
+        staff_mes = f'(X) {name} [{client.id}] {{}} and has a custom status: {client.status}'
+
+        if status == 'stay':
+            norm_mes = norm_mes.format(' who was already here')
+            vague_mes += ' who was already here.'
+            staff_mes = staff_mes.format('was already here{}')
+        elif status == 'arrived':
+            norm_mes = norm_mes.format(' who has just arrived')
+            vague_mes += ' who has just arrived.'
+            staff_mes = staff_mes.format('has just arrived{}')
+        else:
+            # Case status is left or anything else
+            # Boring cases for which the function should not be called
+            raise KeyError('Invalid call of notify_others_status with client {}. Player status: {}.'
+                           'Status: {}'.format(client, client.status, status))
+
+        if client.is_visible and area.lights:
+            norm = norm_mes
+            ybnd = vague_mes
+            nbyd = norm_mes
+            staff = staff_mes.format('')
+        elif not client.is_visible and area.lights:
+            norm = vague_mes
+            ybnd = vague_mes
+            nbyd = vague_mes
+            staff = staff_mes.format(' while sneaking')
+        elif client.is_visible and not area.lights:
+            norm = vague_mes
+            ybnd = vague_mes
+            nbyd = vague_mes
+            staff = staff_mes.format('')
+        else:
+            norm = vague_mes
+            ybnd = vague_mes
+            nbyd = vague_mes
+            staff = staff_mes.format(' while sneaking')
+
+        client.send_ooc_others(norm, is_zstaff_flex=False, in_area=area, to_blind=False,
+                               to_deaf=False)
+        client.send_ooc_others(ybnd, is_zstaff_flex=False, in_area=area, to_blind=True,
+                               to_deaf=False)
+        client.send_ooc_others(nbyd, is_zstaff_flex=False, in_area=area, to_blind=False,
+                               to_deaf=True)
+        client.send_ooc_others(staff, is_zstaff_flex=True, in_area=area)
+
     def change_area(self, area, override_all=False, override_passages=False,
                     override_effects=False, ignore_bleeding=False, ignore_followers=False,
                     ignore_checks=False, ignore_notifications=False, more_unavail_chars=None,
@@ -493,6 +654,7 @@ class ClientChangeArea:
 
         client = self.client
         old_area = client.area
+        found_something = False
 
         if not override_all:
             # All the code that could raise errors goes here
@@ -553,8 +715,9 @@ class ClientChangeArea:
                 #              .format(client.get_char_name(), old_area.name, old_area.id,
                 #                      old_area.name, old_area.id), client)
 
-                client.notify_change_area(area, old_dname, ignore_bleeding=ignore_bleeding)
-                
+                found_something = client.notify_change_area(area, old_dname,
+                                                            ignore_bleeding=ignore_bleeding)
+
                 old_area.publisher.publish('area_client_left', {
                     'client': client,
                     'new_area': area,
@@ -582,6 +745,15 @@ class ClientChangeArea:
             for c in client.followedby:
                 c.follow_area(area)
 
+        if found_something:
+            client.send_ic_attention()
+
+        # attention_possible = [player for player in area.players if player.is_visible and
+        #                       (player.status or player.is_bleeding)]
+        # if attention_possible:
+        # attention = client.status or client.is_bleeding
+        # area.broadcast_ic_attention(cond=lambda _: attention)
+
         client.reload_music_list() # Update music list to include new area's reachable areas
         # If new area has lurk callout timer, reset it to that, provided it makes sense
         client.check_lurk()
@@ -605,5 +777,3 @@ class ClientChangeArea:
                    'left there.'.format(old_area.name))
             client.send_ooc(mes, is_zstaff_flex=old_area)
             client.send_ooc_others(mes, is_zstaff_flex=old_area)
-
-

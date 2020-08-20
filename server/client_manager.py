@@ -100,6 +100,7 @@ class ClientManager:
             self._zone_watched = None
             self.files = None
             self.get_nonautopass_autopass = False
+            self.status = ''
 
             # Pairing stuff
             self.charid_pair = -1
@@ -326,7 +327,7 @@ class ClientManager:
                 # Remove the send_deaf_space requirement
                 if self.is_deaf and pargs['msg']:
                     if (not pargs['msg'].startswith(allowed_starters) or
-                        (sender.is_gagged and gag_replaced) or bypass_deafened_starters):
+                        (sender and sender.is_gagged and gag_replaced) or bypass_deafened_starters):
                         pargs['msg'] = '(Your ears are ringing)'
                         if self.send_deaf_space:
                             pargs['msg'] = pargs['msg'] + ' '
@@ -382,6 +383,9 @@ class ClientManager:
                           not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
                           msg=msg, pos=pos, cid=cid, ding=ding, color=color, showname=showname)
+
+        def send_ic_attention(self):
+            self.send_ic(msg='(Something catches your attention)', ding=1)
 
         def send_background(self, name=None, pos=None):
             """
@@ -557,9 +561,9 @@ class ClientManager:
                               more_unavail_chars=more_unavail_chars)
             return results
 
-        def notify_change_area(self, area, old_char, ignore_bleeding=False, just_me=False):
+        def notify_change_area(self, area, old_char, ignore_bleeding=False, just_me=False) -> bool:
             notifier = self.area_changer.notify_change_area
-            notifier(area, old_char, ignore_bleeding=ignore_bleeding, just_me=just_me)
+            return notifier(area, old_char, ignore_bleeding=ignore_bleeding, just_me=just_me)
 
         def check_lurk(self):
             if self.area.lurk_length > 0 and not self.is_staff() and self.char_id >= 0:
@@ -590,15 +594,19 @@ class ClientManager:
             else:
                 self.send_background(name=self.area.background)
 
-            self.area_changer.notify_me_blood(self.area, changed_visibility=changed,
-                                              changed_hearing=False)
+            found_something = self.area_changer.notify_me_rp(self.area, changed_visibility=changed,
+                                                             changed_hearing=False)
+            if found_something and not blind:
+                self.send_ic_attention()
 
         def change_deafened(self, deaf):
             changed = (self.is_deaf != deaf)
             self.is_deaf = deaf
 
-            self.area_changer.notify_me_blood(self.area, changed_visibility=False,
-                                              changed_hearing=changed)
+            found_something = self.area_changer.notify_me_rp(self.area, changed_visibility=False,
+                                                             changed_hearing=changed)
+            if found_something and not deaf:
+                self.send_ic_attention()
 
         def change_gagged(self, gagged):
             # changed = (self.is_gagged != gagged)
@@ -805,6 +813,35 @@ class ClientManager:
                     msg += ' [*]'
             self.send_ooc(msg)
 
+        def get_visible_clients(self, area, mods=False, as_mod=None, only_my_multiclients=False):
+            clients = set()
+
+            for c in area.clients:
+                # Conditions to print out a client in /getarea(s)
+                # * Client is not in the server selection screen and,
+                # * If mods is True, the client is a mod, andm
+                # * If only_my_multiclients is True, the client is a multiclient of self, and,
+                # * Any of the three
+                # 1. Client is yourself.
+                # 2. self is a staff member (or acting as mod).
+                # 3. Client is visible, or they are not but self is not visible either and part of
+                # the same party as client
+
+                if c.char_id is None:
+                    continue
+                if mods and not c.is_mod:
+                    continue
+                if only_my_multiclients and not c in self.get_multiclients():
+                    continue
+
+                if c == self:
+                    clients.add(c)
+                elif self.is_staff():
+                    clients.add(c)
+                elif c.is_visible or (not self.is_visible and self.party and self.party == c.party):
+                    clients.add(c)
+            return clients
+
         def get_area_info(self, area_id, mods, as_mod=None, include_shownames=False,
                           include_ipid=None, only_my_multiclients=False):
             if as_mod is None:
@@ -813,32 +850,15 @@ class ClientManager:
                 include_ipid = True
 
             area = self.server.area_manager.get_area_by_id(area_id)
+            clients = self.get_visible_clients(area, mods=mods, as_mod=as_mod,
+                                               only_my_multiclients=only_my_multiclients)
+            sorted_clients = sorted(clients, key=lambda x: x.get_char_name())
+
             info = '== Area {}: {} =='.format(area.id, area.name)
-            sorted_clients = []
-
-            for c in area.clients:
-                # Conditions to print out a client in /getarea(s)
-                # * Client is not in the server selection screen and,
-                # * Any of the four
-                # 1. Client is yourself.
-                # 2. self is a staff member (or acting as mod).
-                # 3. Client is visible.
-                # 4. Client is a mod when requiring only mods be printed.
-
-                # If only_my_multiclients is set to True, only the clients opened by the current
-                # user will be listed. Useful for /multiclients.
-                if c.char_id is not None:
-                    cond = (c == self or self.is_staff() or as_mod or c.is_visible
-                            or (mods and c.is_mod))
-                    multiclient_cond = not only_my_multiclients or c in self.get_multiclients()
-
-                    if cond and multiclient_cond:
-                        sorted_clients.append(c)
-
-            sorted_clients = sorted(sorted_clients, key=lambda x: x.get_char_name())
-
             for c in sorted_clients:
                 info += '\r\n[{}] {}'.format(c.id, c.get_char_name())
+                if c.status:
+                    info += ' (!)'
                 if include_shownames and c.showname != '':
                     info += ' ({})'.format(c.showname)
                 if len(c.get_multiclients()) > 1 and as_mod:
@@ -1471,6 +1491,7 @@ class ClientManager:
         ------
         ClientError:
             If either no clients or more than one client matches the identifier.
+
         """
 
         split_identifier = identifier.split(' ')

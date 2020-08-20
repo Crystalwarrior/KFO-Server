@@ -56,17 +56,20 @@ class TestBloodNotifyExistTrail_01_Lights(_TestBloodTrail):
         self.c4.move_area(6, discard_trivial=True)
         self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_dname))
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+                           .format(self.a0_name, self.a4_name, self.a7_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(7, discard_trivial=True)
         self.c4.assert_ooc('You see {} and {} are bleeding.'
                            .format(*sorted([self.c0_dname, self.c2_dname])))
         self.c4.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(4, discard_trivial=True)
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a5_name, self.a6_name), over=True)
+                           .format(self.a0_name, self.a5_name, self.a6_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(2, discard_trivial=True)
         self.c4.assert_no_ooc()
@@ -84,13 +87,16 @@ class TestBloodNotifyExistTrail_01_Lights(_TestBloodTrail):
         self.c4.discard_all()
 
         self.c4.move_area(6, discard_trivial=True)
-        self.c4.assert_ooc('You hear faint drops of blood.', over=True)
+        self.c4.assert_ooc('You hear faint drops of blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(7, discard_trivial=True)
-        self.c4.assert_ooc('You hear faint drops of blood.', over=True)
+        self.c4.assert_ooc('You hear faint drops of blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(4, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(2, discard_trivial=True)
         self.c4.assert_no_ooc()
@@ -108,13 +114,16 @@ class TestBloodNotifyExistTrail_01_Lights(_TestBloodTrail):
         self.c4.discard_all()
 
         self.c4.move_area(6, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(7, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(4, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(2, discard_trivial=True)
         self.c4.assert_no_ooc()
@@ -133,17 +142,20 @@ class TestBloodNotifyExistTrail_01_Lights(_TestBloodTrail):
         self.c4.move_area(6, discard_trivial=True)
         self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_dname))
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+                           .format(self.a0_name, self.a4_name, self.a7_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(7, discard_trivial=True)
         self.c4.assert_ooc('You see {} and {} are bleeding.'
                            .format(*sorted([self.c0_dname, self.c2_dname])))
         self.c4.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(4, discard_trivial=True)
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a5_name, self.a6_name), over=True)
+                           .format(self.a0_name, self.a5_name, self.a6_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(2, discard_trivial=True)
         self.c4.assert_no_ooc()
@@ -177,15 +189,18 @@ class TestBloodNotifyExistTrail_02_NoLights(_TestBloodTrail):
 
         self.c4.move_area(6, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You hear faint drops of blood.', over=True)
+        self.c4.assert_ooc('You hear faint drops of blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(7, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You hear faint drops of blood.', over=True)
+        self.c4.assert_ooc('You hear faint drops of blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(4, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(2, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.', over=True)
@@ -203,13 +218,16 @@ class TestBloodNotifyExistTrail_02_NoLights(_TestBloodTrail):
         self.c4.discard_all()
 
         self.c4.move_area(6, discard_trivial=True)
-        self.c4.assert_ooc('You hear faint drops of blood.', over=True)
+        self.c4.assert_ooc('You hear faint drops of blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(7, discard_trivial=True)
-        self.c4.assert_ooc('You hear faint drops of blood.', over=True)
+        self.c4.assert_ooc('You hear faint drops of blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(4, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(2, discard_trivial=True)
         self.c4.assert_no_ooc()
@@ -227,13 +245,16 @@ class TestBloodNotifyExistTrail_02_NoLights(_TestBloodTrail):
         self.c4.discard_all()
 
         self.c4.move_area(6, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(7, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(4, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(2, discard_trivial=True)
         self.c4.assert_no_ooc()
@@ -251,15 +272,18 @@ class TestBloodNotifyExistTrail_02_NoLights(_TestBloodTrail):
 
         self.c4.move_area(6, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(7, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(4, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.move_area(2, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.', over=True)
@@ -276,18 +300,21 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
 
         self.c4.move_area(6, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You hear faint drops of blood.', over=True)
+        self.c4.assert_ooc('You hear faint drops of blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c3.ooc('/lights on')
         self.c3.assert_packet('BN', self.area6.background)
         self.c3.assert_ooc('You turned the lights on.')
         self.c3.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+                           .format(self.a0_name, self.a4_name, self.a7_name), ooc_over=True)
+        self.c3.assert_ic('(Something catches your attention)', over=True)
         self.c4.assert_packet('BN', self.area6.background)
         self.c4.assert_ooc('The lights were turned on.')
         self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_dname))
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+                           .format(self.a0_name, self.a4_name, self.a7_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c3.ooc('/lights off')
         self.c3.assert_packet('BN', self.blackout_background)
@@ -299,25 +326,29 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         ###
         self.c4.move_area(7, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You hear faint drops of blood.', over=True)
+        self.c4.assert_ooc('You hear faint drops of blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c2.ooc('/lights on')
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
         self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_dname))
         self.c0.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c0.assert_ic('(Something catches your attention)', over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
         self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_dname))
         self.c2.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c2.assert_ic('(Something catches your attention)', over=True)
         self.c4.assert_packet('BN', self.area7.background)
         self.c4.assert_ooc('The lights were turned on.')
         self.c4.assert_ooc('You see {} and {} are bleeding.'
                            .format(*sorted([self.c0_dname, self.c2_dname])))
         self.c4.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c2.ooc('/lights off')
         self.c0.assert_packet('BN', self.blackout_background)
@@ -335,13 +366,15 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         ###
         self.c4.move_area(4, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.ooc('/lights on')
         self.c4.assert_packet('BN', self.area4.background)
         self.c4.assert_ooc('You turned the lights on.')
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a5_name, self.a6_name), over=True)
+                           .format(self.a0_name, self.a5_name, self.a6_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.ooc('/lights off')
         self.c4.assert_packet('BN', self.blackout_background)
@@ -373,13 +406,15 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         self.c4.discard_all()
 
         self.c4.move_area(6, discard_trivial=True)
-        self.c4.assert_ooc('You hear faint drops of blood.', over=True)
+        self.c4.assert_ooc('You hear faint drops of blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c3.ooc('/lights on')
         self.c3.assert_packet('BN', self.area6.background)
         self.c3.assert_ooc('You turned the lights on.')
         self.c3.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+                           .format(self.a0_name, self.a4_name, self.a7_name), ooc_over=True)
+        self.c3.assert_ic('(Something catches your attention)', over=True)
         self.c4.assert_packet('BN', self.blackout_background)
         self.c4.assert_ooc('You hear a flicker.', over=True)
 
@@ -392,21 +427,25 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
 
         ###
         self.c4.move_area(7, discard_trivial=True)
-        self.c4.assert_ooc('You hear faint drops of blood.', over=True)
+        self.c4.assert_ooc('You hear faint drops of blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c2.ooc('/lights on')
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
         self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_dname))
         self.c0.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c0.assert_ic('(Something catches your attention)', over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
         self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_dname))
         self.c2.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c2.assert_ic('(Something catches your attention)', over=True)
         self.c4.assert_packet('BN', self.blackout_background)
         self.c4.assert_ooc('You hear a flicker.', over=True)
+        self.c4.assert_no_ic() # Blind gets no IC
 
         self.c2.ooc('/lights off')
         self.c0.assert_packet('BN', self.blackout_background)
@@ -423,7 +462,8 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
 
         ###
         self.c4.move_area(4, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.ooc('/lights on')
         self.c4.assert_packet('BN', self.blackout_background)
@@ -459,13 +499,15 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         self.c4.discard_all()
 
         self.c4.move_area(6, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c3.ooc('/lights on')
         self.c3.assert_packet('BN', self.area6.background)
         self.c3.assert_ooc('You turned the lights on.')
         self.c3.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+                           .format(self.a0_name, self.a4_name, self.a7_name), ooc_over=True)
+        self.c3.assert_ic('(Something catches your attention)', over=True)
         self.c4.assert_packet('BN', self.blackout_background, over=True)
 
         self.c3.ooc('/lights off')
@@ -476,19 +518,22 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
 
         ###
         self.c4.move_area(7, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c2.ooc('/lights on')
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
         self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_dname))
         self.c0.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c0.assert_ic('(Something catches your attention)', over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
         self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_dname))
         self.c2.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c2.assert_ic('(Something catches your attention)', over=True)
         self.c4.assert_packet('BN', self.blackout_background, over=True)
 
         self.c2.ooc('/lights off')
@@ -505,7 +550,8 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
 
         ###
         self.c4.move_area(4, discard_trivial=True)
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.ooc('/lights on')
         self.c4.assert_packet('BN', self.blackout_background)
@@ -541,18 +587,21 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
 
         self.c4.move_area(6, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c3.ooc('/lights on')
         self.c3.assert_packet('BN', self.area6.background)
         self.c3.assert_ooc('You turned the lights on.')
         self.c3.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+                           .format(self.a0_name, self.a4_name, self.a7_name), ooc_over=True)
+        self.c3.assert_ic('(Something catches your attention)', over=True)
         self.c4.assert_packet('BN', self.area6.background)
         self.c4.assert_ooc('The lights were turned on.')
         self.c4.assert_ooc('You see {} is bleeding.'.format(self.c3_dname))
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a4_name, self.a7_name), over=True)
+                           .format(self.a0_name, self.a4_name, self.a7_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c3.ooc('/lights off')
         self.c3.assert_packet('BN', self.blackout_background)
@@ -564,25 +613,29 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         ###
         self.c4.move_area(7, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c2.ooc('/lights on')
         self.c0.assert_packet('BN', self.area7.background)
         self.c0.assert_ooc('The lights were turned on.')
         self.c0.assert_ooc('You see {} is bleeding.'.format(self.c2_dname))
         self.c0.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c0.assert_ic('(Something catches your attention)', over=True)
         self.c2.assert_packet('BN', self.area7.background)
         self.c2.assert_ooc('You turned the lights on.')
         self.c2.assert_ooc('You see {} is bleeding.'.format(self.c0_dname))
         self.c2.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c2.assert_ic('(Something catches your attention)', over=True)
         self.c4.assert_packet('BN', self.area7.background)
         self.c4.assert_ooc('The lights were turned on.')
         self.c4.assert_ooc('You see {} and {} are bleeding.'
                            .format(*sorted([self.c0_dname, self.c2_dname])))
         self.c4.assert_ooc('You spot a blood trail leading to the {}.'
-                           .format(self.a6_name), over=True)
+                           .format(self.a6_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c2.ooc('/lights off')
         self.c0.assert_packet('BN', self.blackout_background)
@@ -600,13 +653,15 @@ class TestBloodNotifyExistTrail_03_SwitchLights(TestBloodNotifyExistTrail_02_NoL
         ###
         self.c4.move_area(4, discard_trivial=True)
         self.c4.assert_ooc('You enter a pitch dark room.')
-        self.c4.assert_ooc('You smell blood.', over=True)
+        self.c4.assert_ooc('You smell blood.', ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.ooc('/lights on')
         self.c4.assert_packet('BN', self.area4.background)
         self.c4.assert_ooc('You turned the lights on.')
         self.c4.assert_ooc('You spot a blood trail leading to the {}, the {} and the {}.'
-                           .format(self.a0_name, self.a5_name, self.a6_name), over=True)
+                           .format(self.a0_name, self.a5_name, self.a6_name), ooc_over=True)
+        self.c4.assert_ic('(Something catches your attention)', over=True)
 
         self.c4.ooc('/lights off')
         self.c4.assert_packet('BN', self.blackout_background)

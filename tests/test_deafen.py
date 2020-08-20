@@ -198,10 +198,10 @@ class TestDeafen_03_ChangeArea(_TestDeafen):
 
         self.c3.ooc('/autopass')
         self.c3.move_area(5)
-        self.c0.assert_ooc('{} has left to the {}'.format(self.c3_dname, self.a5_name), over=True)
+        self.c0.assert_ooc('{} has left to the {}.'.format(self.c3_dname, self.a5_name), over=True)
 
         self.c3.move_area(4)
-        self.c0.assert_ooc('{} has entered from the {}'
+        self.c0.assert_ooc('{} has entered from the {}.'
                            .format(self.c3_dname, self.a5_name), over=True)
 
         self.c1.discard_all()

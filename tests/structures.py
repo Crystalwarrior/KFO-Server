@@ -319,7 +319,7 @@ class _TestClientManager(ClientManager):
             self.ooc('/logout')
             self.assert_ooc('You are no longer logged in.', ooc_over=over)
             self.assert_packet('FM', None, over=over)
-            
+
             # Assert command for any officers of this client's logout
             for c in self.server.client_manager.clients:
                 if (c.is_mod or c.is_cm) and c != self:
@@ -347,7 +347,8 @@ class _TestClientManager(ClientManager):
                                     ['HP', None],
                                     ['BN', None],
                                     ['LE', None],
-                                    ['FM', None]
+                                    ['FM', None],
+                                    ['BN', None],
                                     )
                 for packet in packets_to_discard:
                     self.discard_packet(packet, somewhere=True)

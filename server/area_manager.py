@@ -87,6 +87,7 @@ class AreaManager:
             self.dicelog = list()
             self.lurk_length = 0
             self._in_zone = None
+            self.noteworthy = False
 
             self.name = parameters['area']
             self.background = parameters['background']
@@ -203,6 +204,33 @@ class AreaManager:
             """
 
             self.send_command('CT', self.server.config['hostname'], msg)
+
+        def broadcast_ic_attention(self, cond=None):
+            """
+            Send an IC message with a ding to everyone in the area indicating something catches
+            their attention, *except* if the player is blind or deaf.
+
+            Parameters
+            ----------
+            cond : types.LambdaType: ClientManager.Client -> bool, optional
+                Custom condition each player in the area must also satisfy to receive the
+                attention message.
+
+            Returns
+            -------
+            None.
+
+            """
+
+            if cond is None:
+                cond = lambda client: True
+
+            for player in self.clients:
+                if player.is_deaf and player.is_blind:
+                    continue
+
+                if cond(player):
+                    player.send_ic_attention()
 
         def change_background(self, bg, validate=True, override_blind=False):
             """
@@ -561,7 +589,10 @@ class AreaManager:
                 party.check_lights()
 
             for c in self.clients:
-                c.area_changer.notify_me_blood(self, changed_visibility=True, changed_hearing=False)
+                found_something = c.area_changer.notify_me_rp(self, changed_visibility=True,
+                                                              changed_hearing=False)
+                if found_something and new_lights:
+                    c.send_ic_attention()
 
         def set_next_msg_delay(self, msg_length):
             """
