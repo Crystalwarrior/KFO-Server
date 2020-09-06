@@ -479,5 +479,6 @@
 * Areas may now be marked as noteworthy, which will also trigger a similar IC notification on arrival or visibility change
 * System blankposts are now sent on area change to clear the last character on screen
 * Changed wording of GM login notifications
+* Added support for new colors available in DRO as well as the set position SP packet
 * Removed deprecated AO commands
 * Dropped Python 3.6 support

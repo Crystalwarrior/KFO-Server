@@ -477,18 +477,10 @@ class AOProtocol(asyncio.Protocol):
             return
         if pargs['ding'] not in (0, 1, 2, 3, 4, 5, 6, 7): # Effects
             return
-        if pargs['color'] not in (0, 1, 2, 3, 4, 5, 6):
+        if pargs['color'] not in (0, 1, 2, 3, 4, 5, 6, 7, 8):
             return
         if pargs['color'] == 5 and not self.client.is_mod and not self.client.is_cm:
             pargs['color'] = 0
-        if pargs['color'] == 6:
-            # Remove all unicode to prevent now yellow text abuse
-            pargs['text'] = re.sub(r'[^\x00-\x7F]+', ' ', pargs['text'])
-            if len(pargs['text'].strip(' ')) == 1:
-                pargs['color'] = 0
-            else:
-                if pargs['text'].strip(' ') in ('<num>', '<percent>', '<dollar>', '<and>'):
-                    pargs['color'] = 0
         if self.client.pos:
             pargs['pos'] = self.client.pos
         else:
@@ -630,7 +622,7 @@ class AOProtocol(asyncio.Protocol):
                 pargs['charid_pair'] = -1
                 pargs['offset_pair'] = 0
                 pargs['charid_pair_pair_order'] = -1
-                
+
         self.client.publisher.publish('client_send_ic', {'contents': pargs.copy()})
 
         for area_id in area_range:
@@ -906,6 +898,16 @@ class AOProtocol(asyncio.Protocol):
         # Well, not empty, there are these comments which makes it not empty
         # but not code is run.
         pass
+
+    def net_cmd_sp(self, args):
+        """
+        Set position packet.
+        """
+
+        if len(args) < 1:
+            return
+
+        self.client.change_position(args[0])
 
     def net_cmd_opKICK(self, args):
         self.net_cmd_ct(['opkick', '/kick {}'.format(args[0])])
