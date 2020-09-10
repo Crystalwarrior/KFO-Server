@@ -651,7 +651,7 @@ class AreaManager:
                 pargs['name'] = name
             if 'cid' not in pargs:
                 pargs['cid'] = client.char_id
-            pargs['showname'] = client.displayname # Ignore AO shownames
+            pargs['showname'] = client.showname # Ignore AO shownames
             if 'loop' not in pargs:
                 pargs['loop'] = -1
             if 'channel' not in pargs:
@@ -659,7 +659,6 @@ class AreaManager:
             if 'effects' not in pargs:
                 pargs['effects'] = 0
 
-            # self.play_music(name, client.char_id, length, effect=effect)
             def loop(cid):
                 for client in self.clients:
                     loop_pargs = pargs.copy()
