@@ -969,6 +969,12 @@ class AreaManager:
                 info = 'Area {} has no background.'.format(item['area'])
                 raise AreaError(info)
 
+            # Prevent <ALL> as a valid area name (it has a special meaning)
+            if item['area'] == '<ALL>':
+                info = ('An area in your area list is called `<ALL>`. This is a reserved name, '
+                        'thus it is not a valid area name. Please change its name and try again.')
+                raise AreaError(info)
+
             # Check unset optional parameters
             for param in def_param:
                 if param not in item:
@@ -1023,7 +1029,7 @@ class AreaManager:
             unrecognized_areas = reachable_areas-temp_area_names
             if unrecognized_areas:
                 info = (f'Area `{name}` has unrecognized areas {unrecognized_areas} defined as '
-                        f'areas player can reach to. Please rename the affected areas and try '
+                        f'areas a player can reach to. Please rename the affected areas and try '
                         f'again.')
                 raise AreaError(info)
 

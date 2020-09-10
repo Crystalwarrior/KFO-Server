@@ -324,6 +324,7 @@ class ClientManager:
 
                 # Change "message" parts of IC port
                 allowed_starters = ('(', '*', '[')
+                allowed_messages = (' ', '  ')
 
                 # Nerf message for deaf
                 # TEMPORARY: REMOVE FOR 4.3+CLIENT UPDATE
@@ -372,10 +373,11 @@ class ClientManager:
             self.last_ic_received_mine = (sender == self)
             self.send_command('MS', *to_send)
 
-        def send_ic_others(self, params=None, sender=None, bypass_replace=False, pred=None,
-                           not_to=None, gag_replaced=False, is_staff=None, in_area=None,
-                           to_blind=None, to_deaf=None,
-                           msg=None, pos=None, cid=None, ding=None, color=None, showname=None):
+        def send_ic_others(self, params=None, sender=None, bypass_replace=False,
+                           bypass_deafened_starters=False, pred=None, not_to=None,
+                           gag_replaced=False, is_staff=None, in_area=None, to_blind=None,
+                           to_deaf=None,  msg=None, pos=None, cid=None, ding=None, color=None,
+                           showname=None):
 
             if not_to is None:
                 not_to = {self}
@@ -383,8 +385,9 @@ class ClientManager:
                 not_to = not_to.union({self})
 
             for c in self.server.client_manager.clients:
-                c.send_ic(params=None, sender=sender, bypass_replace=bypass_replace, pred=pred,
-                          not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
+                c.send_ic(params=None, sender=sender, bypass_replace=bypass_replace,
+                          bypass_deafened_starters=bypass_deafened_starters,
+                          pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
                           msg=msg, pos=pos, cid=cid, ding=ding, color=color, showname=showname)
 

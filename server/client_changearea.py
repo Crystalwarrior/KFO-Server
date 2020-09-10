@@ -276,7 +276,13 @@ class ClientChangeArea:
         # 3. It is not the same as the visible info (To avoid double 'hear faint drops')
         if vis_info:
             if sne_info and sne_info != 'You smell blood' and vis_info != sne_info:
-                bleeding_info = '{}, and {}'.format(vis_info, sne_info.lower())
+                if client.is_staff():
+                    # This has (X) no matter what courtesy of sne_info
+                    # Move (X) to the beginning of vis_info if needed
+                    vis_info = f'(X) {vis_info}' if not vis_info.startswith('(X)') else vis_info
+                    sne_info = sne_info.replace('(X) ', '', 1)
+                sne_info = sne_info[0].lower() + sne_info[1:]
+                bleeding_info = '{}, and {}'.format(vis_info, sne_info)
             else:
                 bleeding_info = vis_info
         else:

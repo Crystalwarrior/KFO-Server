@@ -78,14 +78,12 @@ class _UnittestSenseBlock(_TestSenseBlock):
     def test_04_canaffectself(self):
         """
         Situation: Authorized user attempts to sense block themselves and succeeds.
-        TODO: Figure out repetition.
         """
 
         self.c2.ooc('/{} {}'.format(self.sense, 2))
-        self.c2.assert_ooc('You have {} {}.'.format(self.sense_pp, self.c2_dname))
-        self.c2.assert_ooc('You have been {}.'.format(self.sense_pp), ooc_over=True)
-        self.c1.assert_ooc('(X) {} [{}] has {} {} ({}).'
-                           .format(self.c2.displayname, 2, self.sense_pp, self.c2_dname, 4),
+        self.c2.assert_ooc('You have {} yourself.'.format(self.sense_pp), ooc_over=True)
+        self.c1.assert_ooc('(X) {} [{}] has {} themselves ({}).'
+                           .format(self.c2_dname, 2, self.sense_pp, 4),
                            over=True)
         self.c0.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -154,7 +152,6 @@ class _UnittestSenseBlock(_TestSenseBlock):
     def test_07_canunaffectstaff(self):
         """
         Situation: Authorized user attempts to sense unblock a staff member and succeeds.
-        TODO: Figure out repetition.
         """
 
         self.c2.ooc('/{} {}'.format(self.sense, 1))
@@ -173,14 +170,12 @@ class _UnittestSenseBlock(_TestSenseBlock):
     def test_08_canunaffectself(self):
         """
         Situation: Authorized user attempts to sense block themselves and succeeds.
-        TODO: Figure out repetition.
         """
 
         self.c2.ooc('/{} {}'.format(self.sense, 2))
-        self.c2.assert_ooc('You have un{} {}.'.format(self.sense_pp, self.c2_dname))
-        self.c2.assert_ooc('You have been un{}.'.format(self.sense_pp), ooc_over=True)
-        self.c1.assert_ooc('(X) {} [{}] has un{} {} ({}).'
-                           .format(self.c2.displayname, 2, self.sense_pp, self.c2_dname, 4),
+        self.c2.assert_ooc('You have un{} yourself.'.format(self.sense_pp), ooc_over=True)
+        self.c1.assert_ooc('(X) {} [{}] has un{} themselves ({}).'
+                           .format(self.c2_dname, 2, self.sense_pp, 4),
                            over=True)
 
         self.c0.assert_no_ooc()

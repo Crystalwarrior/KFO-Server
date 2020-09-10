@@ -482,5 +482,10 @@
 * Changed wording of GM login notifications and /minimap
 * Added support for new colors available in DRO as well as the set position SP packet
 * Removed deprecated AO commands
-* Dropped Python 3.6 support
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
+* Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now send messages but filtered.
+* Fixed blankposts or double empty spaces being filtered out for deafened players
+* Fixed wrongly formatted OOC notifications being sent if a player moves to an area where there are players bleeding and sneaking, and players bleeding but not sneaking
+* Fixed GMs blinding, deafening or gagging themselves receiving two notifications
+* Fixed area lists containing <ALL> as an area name loading without raising errors
+* Dropped Python 3.6 support
