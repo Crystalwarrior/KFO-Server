@@ -262,8 +262,8 @@ GMs can:
 * **area_kick** "ID" "area number"
     - Kicks target from your area to the intended area and remove them from its invite-list.
     - If not given a target area, it will use the server's default area (usually area 0).
-* **bilock** "area 1", "area 2"
-    - Changes the passage status (locked/unlocked) between two areas.
+* **bilockh** "area 1", "area 2"
+    - Changes the passage locked status (locked/unlocked) between two areas. Locking a passage in such a way hides it from non-GMs; unlocking it reveals it to non-GMs.
 * **blind** "ID"
     - Changes the blind status of a target.
     - Blind players will receive no character sprites nor background with IC messages and cannot use "visual" commands such as /look, /getarea, etc.
@@ -399,8 +399,8 @@ GMs can:
     - Stops sending subsequent IC messages to the area range specified in a previous /globalic command.
 * **unhandicap** "ID"
     - Removes movement handicaps on a target.
-* **unilock** "area 1", "area 2"
-    - Changes the passage status (locked/unlocked) from area 1 to area 2.
+* **unilockh** "area 1", "area 2"
+    - Changes the passage status (locked/unlocked) from area 1 to area 2. Locking a passage in such a way hides it from non-GMs; unlocking it reveals it to non-GMs.
 * **uninvite** "ID/char name/edited-to character/showname/OOC name"
     - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**

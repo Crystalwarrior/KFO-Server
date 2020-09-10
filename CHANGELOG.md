@@ -477,8 +477,10 @@
 * Added lurk callouts to name players who have been idle some amount of time
 * Players may now set a custom status via /look_me, which will send an IC notification to every player that subsequently sees them
 * Areas may now be marked as noteworthy, which will also trigger a similar IC notification on arrival or visibility change
+* Added /bilockh and /unilockh GM commands. They have the effect /bilock and /unilock formerly had of showing/hiding areas from the area list. /bilock and /unilock for all ranks now does not change passage visibility for all ranks.
 * System blankposts are now sent on area change to clear the last character on screen
-* Changed wording of GM login notifications
+* Changed wording of GM login notifications and /minimap
 * Added support for new colors available in DRO as well as the set position SP packet
 * Removed deprecated AO commands
 * Dropped Python 3.6 support
+* Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area

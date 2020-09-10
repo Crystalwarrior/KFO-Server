@@ -502,11 +502,13 @@ def ooc_cmd_bilock(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, parameters='&1-2', split_commas=True)
     areas = arg.split(', ')
     if len(areas) == 2 and not client.is_staff():
-        raise ClientError('You must be authorized to use the two-parameter version of this command.')
+        raise ClientError('You must be authorized to use the two-parameter version of this '
+                          'command.')
 
     areas = Constants.parse_two_area_names(client, areas, area_duplicate=False,
                                            check_valid_range=False)
-    now_reachable = Constants.parse_passage_lock(client, areas, bilock=True)
+    now_reachable = client.server.area_manager.change_passage_lock(client, areas, bilock=True,
+                                                                   change_passage_visibility=False)
 
     status = {True: 'unlocked', False: 'locked'}
     now0, now1 = status[now_reachable[0]], status[now_reachable[1]]
@@ -2555,8 +2557,7 @@ def ooc_cmd_knock(client: ClientManager.Client, arg: str):
     if target_area.lobby_area:
         raise ClientError('You cannot knock the door to a lobby area.')
 
-    if client.area.default_reachable_areas != {'<ALL>'} and \
-    target_area.name not in client.area.default_reachable_areas | client.area.reachable_areas:
+    if target_area.name not in client.area.default_reachable_areas | client.area.reachable_areas:
         raise ClientError('You tried to knock on the door to {} but you realized the room is too '
                           'far away.'.format(target_area.name))
 
@@ -3044,23 +3045,25 @@ def ooc_cmd_minimap(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, parameters='=0')
 
-    info = '== Areas reachable from {} =='.format(client.area.name)
-    try:
+    info = '== Minimap for {} =='.format(client.area.name)
+    if client.area.visible_reachable_areas == client.server.area_manager.area_names:
+        # Useful abbreviation
+        info += '\r\n<ALL>'
+    else:
         # Get all reachable areas and sort them by area ID
-        sorted_areas = sorted(client.area.reachable_areas,
-                              key=lambda area_name: client.server.area_manager.get_area_by_name(area_name).id)
+        sorted_areas = sorted(client.area.visible_reachable_areas,
+                              key=lambda name: client.server.area_manager.get_area_by_name(name).id)
 
         # No areas found or just the current area found means there are no reachable areas.
         if len(sorted_areas) == 0 or sorted_areas == [client.area.name]:
             info += '\r\n*No areas available.'
         # Otherwise, build the list of all reachable areas
         else:
-            for area in sorted_areas:
-                if area != client.area.name:
-                    info += '\r\n*{}-{}'.format(client.server.area_manager.get_area_by_name(area).id, area)
-    except AreaError:
-        # In case no passages are set, send '<ALL>' as default answer.
-        info += '\r\n<ALL>'
+            for area_name in sorted_areas:
+                if area_name == client.area.name:
+                    continue
+                area = client.server.area_manager.get_area_by_name(area_name)
+                info += f'\r\n{area.id}-{area_name}'
 
     client.send_ooc(info)
 
@@ -3743,7 +3746,7 @@ def ooc_cmd_passage_clear(client: ClientManager.Client, arg: str):
 
     for i in range(areas[0].id, areas[1].id+1):
         area = client.server.area_manager.get_area_by_id(i)
-        area.reachable_areas = {'<ALL>'}
+        area.reachable_areas = client.server.area_manager.area_names
 
     if areas[0] == areas[1]:
         client.send_ooc('Area passage locks have been removed in {}.'.format(areas[0].name))
@@ -4266,11 +4269,8 @@ def ooc_cmd_rplay(client: ClientManager.Client, arg: str):
     except ArgumentError:
         raise ArgumentError('You must specify a song.')
 
-    if client.area.reachable_areas == '<ALL>':
-        areas = set(client.area.areas)
-    else:
-        areas = {client.server.area_manager.get_area_by_name(reachable_area_name)
-                 for reachable_area_name in client.area.reachable_areas}
+    areas = {client.server.area_manager.get_area_by_name(reachable_area_name)
+             for reachable_area_name in client.area.visible_reachable_areas}
 
     for area in areas:
         area.play_track(arg, client, raise_if_not_found=False, reveal_sneaked=False)
@@ -5657,7 +5657,8 @@ def ooc_cmd_unilock(client: ClientManager.Client, arg: str):
 
     areas = Constants.parse_two_area_names(client, areas, area_duplicate=False,
                                            check_valid_range=False)
-    now_reachable = Constants.parse_passage_lock(client, areas, bilock=False)
+    now_reachable = client.server.area_manager.change_passage_lock(client, areas, bilock=False,
+                                                                   change_passage_visibility=False)
 
     status = {True: 'unlocked', False: 'locked'}
     now0 = status[now_reachable[0]]
@@ -7525,6 +7526,60 @@ def ooc_cmd_noteworthy(client: ClientManager.Client, arg: str):
     logger.log_server('[{}][{}]Set noteworthy status to {}'
                       .format(client.area.id, client.get_char_name(), client.area.noteworthy),
                       client)
+
+
+def ooc_cmd_bilockh(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, parameters='&1-2', is_staff=True, split_commas=True)
+
+    areas = Constants.parse_two_area_names(client, arg.split(', '), area_duplicate=False,
+                                           check_valid_range=False)
+    now_reachable = client.server.area_manager.change_passage_lock(client, areas, bilock=True,
+                                                                   change_passage_visibility=True)
+
+    status = {True: 'unlocked and revealed', False: 'locked and hid'}
+    now0, now1 = status[now_reachable[0]], status[now_reachable[1]]
+    name0, name1 = areas[0].name, areas[1].name
+
+    if now_reachable[0] == now_reachable[1]:
+        client.send_ooc('You have {} the passage between {} and {}.'.format(now0, name0, name1))
+        client.send_ooc_others('(X) {} [{}] has {} the passage between {} and {} ({}).'
+                               .format(client.displayname, client.id, now0,
+                                       name0, name1, client.area.id),
+                               is_zstaff_flex=True)
+        logger.log_server('[{}][{}]Has {} the passage between {} and {}.'
+                          .format(client.area.id, client.get_char_name(), now0, name0, name1))
+
+    else:
+        client.send_ooc('You have {} the passage from {} to {} and {} it the other way around.'
+                        .format(now0, name0, name1, now1))
+        client.send_ooc_others('(X) {} [{}] has {} the passage from {} and {} and {} it the other '
+                               'way around ({}).'
+                               .format(client.displayname, client.id, now0,
+                                       name0, name1, now1, client.area.id),
+                               is_zstaff_flex=True)
+        logger.log_server('[{}][{}]Has {} the passage from {} to {} and {} it the other way around.'
+                          .format(client.area.id, client.get_char_name(), now0, name0, name1, now1))
+
+def ooc_cmd_unilockh(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, parameters='&1-2', is_staff=True, split_commas=True)
+
+    areas = Constants.parse_two_area_names(client, arg.split(', '), area_duplicate=False,
+                                           check_valid_range=False)
+    now_reachable = client.server.area_manager.change_passage_lock(client, areas, bilock=False,
+                                                                   change_passage_visibility=True)
+
+    status = {True: 'unlocked and revealed', False: 'locked and hid'}
+    now0 = status[now_reachable[0]]
+    name0, name1 = areas[0].name, areas[1].name
+
+    client.send_ooc('You have {} the passage from {} to {}.'
+                    .format(now0, name0, name1))
+    client.send_ooc_others('(X) {} [{}] has {} the passage from {} to {} ({}).'
+                           .format(client.displayname, client.id, now0, name0, name1,
+                                   client.area.id),
+                           is_zstaff_flex=True)
+    logger.log_server('[{}][{}]Has {} the passage from {} to {}.'
+                      .format(client.area.id, client.get_char_name(), now0, name0, name1))
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

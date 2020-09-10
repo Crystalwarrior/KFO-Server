@@ -71,7 +71,7 @@ class ClientChangeArea:
                               code='ChArSneakPrivate')
 
         # Check if area has some sort of lock
-        if not client.ipid in area.invite_list:
+        if client.ipid not in area.invite_list:
             if area.is_locked and not client.is_staff():
                 raise ClientError('That area is locked.', code='ChArLocked')
             if area.is_gmlocked and not client.is_mod and not client.is_gm:
@@ -81,23 +81,28 @@ class ClientChangeArea:
 
         # Check if trying to reach an unreachable area
         if not (client.is_staff() or client.is_transient or override_passages or
-                area.name in client.area.reachable_areas or '<ALL>' in client.area.reachable_areas):
+                area.name in client.area.reachable_areas):
+            raise ClientError('The passage to this area is locked.',
+                              code='ChArUnreachable')
+            """
             info = ('Selected area cannot be reached from your area without authorization. '
                     'Try one of the following areas instead: ')
-            if client.area.reachable_areas == {client.area.name}:
+            if client.area.visible_reachable_areas == {client.area.name}:
                 info += '\r\n*No areas available.'
             else:
                 get_name = client.server.area_manager.get_area_by_name
                 try:
-                    sorted_areas = sorted(client.area.reachable_areas, key=lambda x: get_name(x).id)
+                    sorted_areas = sorted(client.area.visible_reachable_areas,
+                                          key=lambda x: get_name(x).id)
                     for reachable_area in sorted_areas:
                         if reachable_area != client.area.name:
                             area_id = client.server.area_manager.get_area_by_name(reachable_area).id
                             info += '\r\n*({}) {}'.format(area_id, reachable_area)
                 except AreaError:
-                    #When would you ever execute this piece of code is beyond me, but meh
+                    # When would you ever execute this piece of code is beyond me, but meh
                     info += '\r\n<ALL>'
             raise ClientError(info, code='ChArUnreachable')
+            """
 
         # Check if current character is taken in the new area
         new_char_id = client.char_id
@@ -777,3 +782,6 @@ class ClientChangeArea:
                    'left there.'.format(old_area.name))
             client.send_ooc(mes, is_zstaff_flex=old_area)
             client.send_ooc_others(mes, is_zstaff_flex=old_area)
+
+        if area.id not in client.remembered_locked_passages:
+            client.remembered_locked_passages[area.id] = set()

@@ -50,8 +50,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'a45'
-        self.internal_version = 'M200905a'
+        self.segment_version = 'a46'
+        self.internal_version = 'M200909a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -539,13 +539,12 @@ class TsuserverDR:
         """
 
         # Determine whether to filter the areas in the results
-        need_to_check = (from_area is None or '<ALL>' in from_area.reachable_areas
-                         or (c is not None and (c.is_staff() or c.is_transient)))
+        need_to_check = (from_area is None or (c is not None and (c.is_staff() or c.is_transient)))
 
         # Now add areas
         prepared_area_list = list()
         for area in self.area_manager.areas:
-            if need_to_check or area.name in from_area.reachable_areas:
+            if need_to_check or area.name in from_area.visible_reachable_areas:
                 prepared_area_list.append("{}-{}".format(area.id, area.name))
 
         return prepared_area_list

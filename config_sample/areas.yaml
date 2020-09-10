@@ -102,7 +102,7 @@
   afk_sendto: 3
   lobby_area: false
   private_area: false
-  scream_range: Class Trial Room 3
+  scream_range: <ALL>
   restricted_chars: Kaede Akamatsu_HD, Monokuma_HD
   has_lights: true
   default_description: A class trial room that does not like bullets.

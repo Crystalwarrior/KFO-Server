@@ -118,27 +118,11 @@ class AreaManager:
             self.description = self.default_description
             # Have a background backup in order to restore temporary background changes
             self.background_backup = self.background
-            # Fix comma-separated entries
-            self.reachable_areas = Constants.fix_and_setify(self.reachable_areas)
-            self.scream_range = Constants.fix_and_setify(self.scream_range)
-            self.restricted_chars = Constants.fix_and_setify(self.restricted_chars)
 
             self.default_reachable_areas = self.reachable_areas.copy()
-            self.staffset_reachable_areas = self.reachable_areas.copy()
+            self.visible_reachable_areas = self.reachable_areas.copy()
 
-            if '<ALL>' not in self.reachable_areas:
-                self.reachable_areas.add(self.name) # Safety feature, yay sets
-
-            # Make sure only characters that exist are part of the restricted char set
-            try:
-                for char_name in self.restricted_chars:
-                    self.server.char_list.index(char_name)
-            except ValueError:
-                info = ('Area `{}` has a character `{}` not in the character list of the server '
-                        'listed as a restricted character. Please make sure this character exists '
-                        'and try again.'
-                        .format(self.name, char_name))
-                raise AreaError(info)
+            self.reachable_areas.add(self.name) # Area can always reach itself
 
         def new_client(self, client):
             """
@@ -944,9 +928,8 @@ class AreaManager:
 
         self.area_names = set()
         current_area_id = 0
-        temp_areas = list()
+        area_parameters = list()
         temp_area_names = set()
-        temp_reachable_area_names = set()
 
         # Check if valid area list file
         with Constants.fopen(area_list_file, 'r') as chars:
@@ -1014,34 +997,68 @@ class AreaManager:
                             'again.'.format(parameter, item['area']))
                     raise AreaError(info)
 
-            temp_areas.append(self.Area(current_area_id, self.server, item))
+            area_parameters.append(item)
             temp_area_names.add(item['area'])
-            temp_reachable_area_names |= temp_areas[-1].reachable_areas
             current_area_id += 1
 
         # Check if a reachable area is not an area name
         # Can only be done once all areas are created
+        for area_item in area_parameters:
+            name = area_item['area']
 
-        unrecognized_areas = temp_reachable_area_names-temp_area_names-{'<ALL>'}
-        if unrecognized_areas != set():
-            info = ('The following areas were defined as reachable areas of some areas in the '
-                    'area list file, but were not actually defined as areas: {}. Please rename the '
-                    'affected areas and try again.'.format(unrecognized_areas))
-            raise AreaError(info)
+            reachable_areas = Constants.fix_and_setify(area_item['reachable_areas'])
+            scream_range = Constants.fix_and_setify(area_item['scream_range'])
+            restricted_chars = Constants.fix_and_setify(area_item['restricted_chars'])
+
+            if reachable_areas == {'<ALL>'}:
+                reachable_areas = temp_area_names.copy()
+            if scream_range == {'<ALL>'}:
+                scream_range = temp_area_names.copy()
+
+            area_item['reachable_areas'] = reachable_areas
+            area_item['scream_range'] = scream_range
+            area_item['restricted_chars'] = restricted_chars
+
+            # Make sure no weird areas were set as reachable by players or by screams
+            unrecognized_areas = reachable_areas-temp_area_names
+            if unrecognized_areas:
+                info = (f'Area `{name}` has unrecognized areas {unrecognized_areas} defined as '
+                        f'areas player can reach to. Please rename the affected areas and try '
+                        f'again.')
+                raise AreaError(info)
+
+            unrecognized_areas = scream_range-temp_area_names
+            if unrecognized_areas:
+                info = (f'Area `{name}` has unrecognized areas {unrecognized_areas} defined as '
+                        f'areas screams can reach to. Please rename the affected areas and try '
+                        f'again.')
+                raise AreaError(info)
+
+            # Make sure only characters that exist are part of the restricted char set
+            unrecognized_characters = restricted_chars-set(self.server.char_list)
+            if unrecognized_characters:
+                info = (f'Area `{name} has unrecognized characters {unrecognized_characters} '
+                        f'defined as restricted characters. Please make sure the characters exist '
+                        f'and try again.')
+                raise AreaError(info)
+
+        # Now we are ready to create the areas
+        temp_areas = list()
+        for (i, area_item) in enumerate(area_parameters):
+            temp_areas.append(self.Area(i, self.server, area_item))
+
+        old_areas = self.areas
+        self.areas = temp_areas
+        self.area_names = temp_area_names
 
         # Only once all areas have been created, actually set the corresponding values
         # Helps avoiding junk area lists if there was an error
         # But first, remove all zones
-
         backup_zones = self.server.zone_manager.get_zones()
         for (zone_id, zone) in backup_zones.items():
             self.server.zone_manager.delete_zone(zone_id)
             for client in zone.get_watchers():
                 client.send_ooc('Your zone has been automatically deleted.')
-
-        old_areas = self.areas
-        self.areas = temp_areas
-        self.area_names = temp_area_names
 
         # And cancel all existing day cycles
         for client in self.server.client_manager.clients:
@@ -1177,3 +1194,40 @@ class AreaManager:
         """
 
         return {self.get_area_by_id(i) for i in range(area1.id, area2.id+1)}
+
+    def change_passage_lock(self, client, areas, bilock=False, change_passage_visibility=False):
+        now_reachable = []
+        num_areas = 2 if bilock else 1
+
+        # First check if it is the case a non-authorized use is trying to change passages to areas
+        # that do not allow their passages to be modified
+        for i in range(num_areas):
+            if not areas[i].change_reachability_allowed and not client.is_staff():
+                raise AreaError('You must be authorized to change passages in area {}.'
+                                .format(areas[i].name))
+
+        # Just in case something goes wrong, have a backup to revert back
+        formerly_reachable = [areas[i].reachable_areas.copy() for i in range(num_areas)]
+
+        for i in range(num_areas):
+            if areas[1-i].name in areas[i].reachable_areas:  # Case removing a passage
+                now_reachable.append(False)
+                areas[i].reachable_areas -= {areas[1-i].name}
+                if change_passage_visibility:
+                    areas[i].visible_reachable_areas -= {areas[1-i].name}
+            else:  # Case creating a passage
+                # Make sure that non-authorized users cannot create passages they cannot see
+                if not (client.is_staff() or areas[1-i].name in areas[i].visible_reachable_areas):
+                    # And if they try and do, undo changes and restore formerly reachable areas
+                    for j in range(num_areas):
+                        areas[j].reachable_areas = formerly_reachable[j]
+                    raise AreaError('You must be authorized to create a new passage from {} to '
+                                    '{}.'.format(areas[i].name, areas[1-i].name))
+
+                # Otherwise, create new passages
+                now_reachable.append(True)
+                areas[i].reachable_areas.add(areas[1-i].name)
+                if change_passage_visibility:
+                    areas[i].visible_reachable_areas += {areas[1-i].name}
+
+        return now_reachable
