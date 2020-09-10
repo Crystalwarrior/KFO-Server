@@ -121,7 +121,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
 * **files** "ID/char name/edited-to character/showname/OOC name"
     - Gives a download link set by the target that links to their files, or gives your own download link if not given an argument.
 * **files_set** "url"
-    - Sets a download link for the user's files, or clears it if not given an argument.
+    - Sets a download link for your character files, or clears it if not given an argument.
 * **g** "message"
     - Sends a serverwide message.
 * **getarea**
@@ -149,7 +149,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
 * **logout**
     - Logs you out of the rank you have, if any.
 * **look**
-    - Obtains the description of the current area.
+    - Obtains the description of the current area as well as players inside
 * **minimap**
     - Lists all areas reachable from the current one.
 * **motd**
@@ -210,6 +210,10 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Similar to /getarea, but lists shownames along with character names.
 * **showname_areas**
     - Similar to /getareas, but lists shownames along with character names.
+* **status** "ID/char name/edited-to character/showname/OOC name"
+    - Check the custom status of a player
+* **status_set** "status"
+    - Sets a custom status for your character, or clears it if not given an argument.
 * **spectate**
     - Switches you to a SPECTATOR character.
 * **switch** "character name"
@@ -350,6 +354,8 @@ GMs can:
     - Makes the target a GM, provided the target is a multiclient of the player.
 * **multiclients** "ID"
     - Lists all the clients opened by a target and the areas they are in.
+* **noteworthy**
+   - Changes the noteworthy status of the area.
 * **party_disband** "party ID"
     - Disbands a party.
 * **party_join** "party ID"
@@ -387,6 +393,8 @@ GMs can:
     - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
 * **st** "message"
     - Sends a message to all active staff members.
+* **status_set_other** "ID/char name/edited-to character/showname/OOC name" "status"
+    - Sets the player status of another user, or clears it if not given a status.
 * **toggle_allpasses**
 	- Changes your ability to receive autopass notifications from players that do not have autopass on. By default it is off.
 * **toggle_allrolls**

@@ -474,10 +474,21 @@
 
 ### (4.3.0)
 * Added basic trial and NSD modes
-* Added lurk callouts to name players who have been idle some amount of time
-* Players may now set a custom status via /look_me, which will send an IC notification to every player that subsequently sees them
-* Areas may now be marked as noteworthy, which will also trigger a similar IC notification on arrival or visibility change
+* Added area lurk callouts to name players who have been idle some amount of time in an area via
+  - /lurk <length>
+  - /lurk_cancel (to cancel a lurk callout in an area)
+* Players may now set and see custom status, which will send an IC notification to every player that subsequently sees them:
+  - /status <id>
+  - /status_set <new_status>
+  - /status_set_other <id> <new_status> (GM+ command)
+* Areas may now be marked as noteworthy, which will also trigger a similar IC notification on arrival or visibility change.
+  - /noteworthy
+* /look now shows a list of players in the area like /getarea, with the following additions
+  - Players are listed by showname, if unavailable edited to character, and if unavailable character folder
+  - Players in the same party now show a (P)
+  - Players with a custom status now show a (!)
 * Added /bilockh and /unilockh GM commands. They have the effect /bilock and /unilock formerly had of showing/hiding areas from the area list. /bilock and /unilock for all ranks now does not change passage visibility for all ranks.
+* Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players.
 * System blankposts are now sent on area change to clear the last character on screen
 * Changed wording of GM login notifications and /minimap
 * Added support for new colors available in DRO as well as the set position SP packet

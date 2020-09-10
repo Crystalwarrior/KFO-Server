@@ -7461,11 +7461,9 @@ def ooc_cmd_status(client: ClientManager.Client, arg: str):
     <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to character, custom showname or OOC name of the intended recipient.
 
     EXAMPLES
-    Assuming client 1 on character Phantom_HD and iniswapped to Spam_HD has set their files'
-    download link to https://example.com
-    /files 1           :: May return something like this:
-        $HOST: Files set by client 1 for Spam_HD: https://example.com
-        $HOST: Links are spoopy. Exercise caution when opening external links.
+    Assuming client 1 on character Phantom_HD has a custom description
+    /status 1           :: May return something like this:
+        $HOST: You note the following about Phantom_HD: 'Phantom is carrying a bag.'
     """
 
     if not client.is_staff():
@@ -7488,20 +7486,20 @@ def ooc_cmd_status(client: ClientManager.Client, arg: str):
         else:
             client.send_ooc('You do not note anything unusual about yourself.')
 
-def ooc_cmd_look_me(client: ClientManager.Client, arg: str):
+def ooc_cmd_status_set(client: ClientManager.Client, arg: str):
     """
     Sets your player status as the given argument; otherwise, clears it.
 
     SYNTAX
-    /look_me
-    /look_me <status>
+    /status_set
+    /status_set <status>
 
     PARAMETERS
     <status>: New status
 
     EXAMPLES
     If client 1 is on character Phantom_HD and iniswapped to Spam_HD
-    /look_me https://example.com  :: Sets the download link to Spam_HD to https://example.com
+    /status_set Phantom is carrying a bag  :: Sets the status to `Phantom is carrying a bag.`
     """
 
     if arg:
@@ -7513,6 +7511,34 @@ def ooc_cmd_look_me(client: ClientManager.Client, arg: str):
             client.status = arg
         else:
             raise ClientError('You have no player status.')
+
+def ooc_cmd_status_set_other(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    cm = client.server.client_manager
+    target, _, status = cm.get_target_public(client, arg)
+    status = status[:1024]  # Cap
+
+    if client == target:
+        raise ClientError('You cannot set your own status with this command.')
+    if not status and not client.status:
+        raise ClientError(f'{target.displayname} already does not have a player status.')
+
+    client.send_ooc(f'You set the player status of {target.displayname} to `{status}`.')
+    if not (target.is_blind and target.is_deaf):
+        target.send_ooc('Your status was updated. Do /status to check it out.')
+
+    if status:
+        target.status = status
+        client.send_ooc_others('(X) {client.displayname} [{target.id}] set the player status '
+                               'of {target.displayname} to `{status}` ({target.id}).',
+                               is_zstaff_flex=True, not_to={target})
+    else:
+        # By previous if, player must have had a status
+        target.status = status
+        client.send_ooc_others('(X) {client.displayname} [{target.id}] cleared the player '
+                               'status of {target.displayname} ({target.id}).',
+                               is_zstaff_flex=True, not_to={target})
 
 def ooc_cmd_noteworthy(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
