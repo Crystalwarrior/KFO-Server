@@ -748,7 +748,10 @@ class ClientChangeArea:
 
         client.send_command('HP', 1, client.area.hp_def)
         client.send_command('HP', 2, client.area.hp_pro)
-        client.send_background(name=client.area.background)
+        if client.is_blind:
+            client.send_background(name=client.server.config['blackout_background'])
+        else:
+            client.send_background(name=client.area.background)
         client.send_command('LE', *client.area.get_evidence_list(client))
         client.send_ic(msg='', bypass_replace=True) # Blankpost to simulate area change
 
@@ -758,12 +761,6 @@ class ClientChangeArea:
 
         if found_something:
             client.send_ic_attention()
-
-        # attention_possible = [player for player in area.players if player.is_visible and
-        #                       (player.status or player.is_bleeding)]
-        # if attention_possible:
-        # attention = client.status or client.is_bleeding
-        # area.broadcast_ic_attention(cond=lambda _: attention)
 
         client.reload_music_list() # Update music list to include new area's reachable areas
         # If new area has lurk callout timer, reset it to that, provided it makes sense

@@ -997,7 +997,10 @@ class ClientManager:
             self.refresh_char_list()
             self.send_command('HP', 1, self.area.hp_def)
             self.send_command('HP', 2, self.area.hp_pro)
-            self.send_background(name=self.area.background)
+            if self.is_blind:
+                self.send_background(name=self.server.config['blackout_background'])
+            else:
+                self.send_background(name=self.area.background)
             self.send_command('LE', *self.area.get_evidence_list(self))
             self.send_command('MM', 1)
             self.send_command('OPPASS', fantacrypt.fanta_encrypt(self.server.config['guardpass']))

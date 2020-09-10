@@ -497,6 +497,7 @@
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now send messages but filtered.
 * Fixed /scream bypassing moderation mutes
 * Fixed /scream bypassing IC chat locks, or being rendered in scream-reachable areas whose IC chats are locked
+* Fixed /charselect sending the proper area background to blind clients
 * Fixed blankposts or double empty spaces being filtered out for deafened players
 * Fixed wrongly formatted OOC notifications being sent if a player moves to an area where there are players bleeding and sneaking, and players bleeding but not sneaking
 * Fixed GMs blinding, deafening or gagging themselves receiving two notifications
