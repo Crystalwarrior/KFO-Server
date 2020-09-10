@@ -436,7 +436,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc("You have been muted by a moderator.")
             return
         if self.client.area.ic_lock and not self.client.is_staff():
-            self.client.send_ooc("IC chat in this area has been locked by a moderator.")
+            self.client.send_ooc('The IC chat in this area is currently locked.')
             return
         if not self.client.area.can_send_message():
             return

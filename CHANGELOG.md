@@ -490,13 +490,15 @@
 * Added /bilockh and /unilockh GM commands. They have the effect /bilock and /unilock formerly had of showing/hiding areas from the area list. /bilock and /unilock for all ranks now does not change passage visibility for all ranks.
 * Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players.
 * System blankposts are now sent on area change to clear the last character on screen
-* Changed wording of GM login notifications and /minimap
+* Changed wording of GM login notifications, /minimap, attempting to access a locked passage, and talking in an area whose IC chat is locked
 * Added support for new colors available in DRO as well as the set position SP packet
-* Removed deprecated AO commands
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now send messages but filtered.
+* Fixed /scream bypassing moderation mutes
+* Fixed /scream bypassing IC chat locks, or being rendered in scream-reachable areas whose IC chats are locked
 * Fixed blankposts or double empty spaces being filtered out for deafened players
 * Fixed wrongly formatted OOC notifications being sent if a player moves to an area where there are players bleeding and sneaking, and players bleeding but not sneaking
 * Fixed GMs blinding, deafening or gagging themselves receiving two notifications
 * Fixed area lists containing <ALL> as an area name loading without raising errors
+* Removed deprecated AO commands
 * Dropped Python 3.6 support
