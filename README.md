@@ -17,19 +17,22 @@ It is highly recommended you read through all the installation steps first befor
   - If you know what a virtual environment is and your system supports it, it is recommended that you use one, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python). If you do not know what a virtual environment is, you may skip this point.
   - If you have Python 3.6 or lower, you will be prompted on server launch to update to a newer version of Python. That is because the server requires Python 3.7 or higher. Follow instructions under Updating to update your Python version.
 * Open Command Prompt, PowerShell or your preferred terminal, and change to the directory where you downloaded TsuserverDR to. You can do this in two ways:
-  - Go up one folder above the TsuserverDR folder, Shift + right click the TsuserverDR folder, and click `Open PowerShell window here`. This is the easiest method.
-  - Copy the path of the TsuserverDR folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackets, but including the quotation marks if the path contains spaces.
-* Install PyYAML and dependencies by typing in the following in the terminal you just opened:
+  - On Windows, go up one folder above the TsuserverDR folder, Shift + right click the TsuserverDR folder, and click `Open PowerShell window here`. This is the easiest method.
+  - On most operating systems, copy the path of the TsuserverDR folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackets, but including the quotation marks if the path contains spaces.
+* Install PyYAML and dependencies by typing in the following two commands in the terminal you just opened:
   ```
+  python -m pip install --upgrade pip
   python -m pip install --user -r requirements.txt
   ```
 
   If you are using Windows and have both Python 2 and 3 installed, you may do the following:
   ```
+  py -3 -m pip install --upgrade pip
   py -3 -m pip install --user -r requirements.txt
   ```
 
   This operation should not require administrator privileges, unless you decide to remove the `--user` option.
+  
 * Rename the folder `config_sample` to `config` and edit the values in the provided YAML files to your liking. Be sure to check the YAML files for syntax errors after you are done. *Use spaces only; do not use tabs.*
 
 ### Running
@@ -158,6 +161,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Sets your music list to the given one, or restores the original one if not given any.
 * **music_lists**
     - Lists all available music lists as established in `config/music_lists.yaml`.
+* **nsd_info**
+    - Returns details about your NSD.
 * **online**
     - Returns how many players are online.
 * **party**
@@ -240,6 +245,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Changes your setting to receive PMs. By default it is on.
 * **toggle_shownames**
     - Changes your setting to have the IC messages you receive to include the sender's custom showname. By default it is on.
+* **trial_info**
+    - Returns details about your trial.
 * **unilock** "area number/name"
     - Changes the passage status (locked/unlocked) from the current area to the given one.
 * **uninvite** "ID/char name/edited-to character/showname/OOC name"
@@ -266,8 +273,10 @@ GMs can:
 * **area_kick** "ID" "area number"
     - Kicks target from your area to the intended area and remove them from its invite-list.
     - If not given a target area, it will use the server's default area (usually area 0).
+* **bilock** "area 1", "area 2"
+    - Changes the passage locked status (locked/unlocked) between two areas, or from the current area to area 1 if just given one area. Locking a passage in such a way does not change its current visibility to non-GMs.
 * **bilockh** "area 1", "area 2"
-    - Changes the passage locked status (locked/unlocked) between two areas. Locking a passage in such a way hides it from non-GMs; unlocking it reveals it to non-GMs.
+    - Changes the passage locked status (locked/unlocked) between two areas, or from the current area to area 1 if just given one area. Locking a passage in such a way hides it from non-GMs; unlocking it reveals it to non-GMs.
 * **blind** "ID"
     - Changes the blind status of a target.
     - Blind players will receive no character sprites nor background with IC messages and cannot use "visual" commands such as /look, /getarea, etc.
@@ -356,6 +365,28 @@ GMs can:
     - Lists all the clients opened by a target and the areas they are in.
 * **noteworthy**
    - Changes the noteworthy status of the area.
+* **nsd** "time"
+    - Starts an NSD part of your current trial with all players in the area part of your trial, making you leader of the NSD.
+    - The NSD will have a given time limit in seconds, or 300 seconds time limit if not given a time.
+* **nsd_accept**
+    - Accepts a break from a player who shot a bullet during looping or recording mode for the NSD you lead, restoring 0.5 influence and ending the NSD.
+* **nsd_add** "ID/char name/edited-to character/showname/OOC name" 
+    - Adds a player part of your current trial to your NSD.
+* **nsd_end**
+    - Ends an NSD you lead.
+* **nsd_lead**
+    - Makes you a leader of your NSD.
+* **nsd_loop**
+    - Sets the NSD you lead to be in looping mode: messages saved during recording mode will be played Danganronpa style one after the other until a bullet is shot or all messages are seen.
+* **nsd_kick** "ID/char name/edited-to character/showname/OOC name" 
+    - Kicks a player off the NSD you lead.
+* **nsd_pause**
+    - Pauses the NSD you lead, putting it in intermission mode.
+* **nsd_reject**
+    - Rejects a break from a player who shot a bullet during looping or recording mode for the NSD you lead, draining 1 influence from them. 
+    - The NSD will not end or resume automatically, you will be prompted to decide what to do.
+* **nsd_resume**
+    - Sets the NSD you lead to be in the mode prior to intermission mode: if it was recording mode, previously recorded messages will be saved and future messages will be saved on top of the older ones; if it was looping, messages will be played from the first one.
 * **party_disband** "party ID"
     - Disbands a party.
 * **party_join** "party ID"
@@ -401,14 +432,32 @@ GMs can:
     - Changes your ability to receive /roll and /rollp results from other areas. By default it is off.
 * **transient** "ID"
     - Changes a player's ability to ignore passage locks and thus access all areas from any given area. By default it is off.
+* **trial**
+    - Starts a trial with all players in the area, making you leader of the trial.
+* **trial_add** "ID/char name/edited-to character/showname/OOC name" 
+    - Adds a player to a trial you lead.
+* **trial_end**
+    - Ends a trial you lead, as well as any minigames that may have be taking place in the trial.
+* **trial_focus** "ID/char name/edited-to character/showname/OOC name" "number"
+    - Sets the focus level of a player in your trial to the given value.
+    - Number must be an integer from 0 to 10.
+* **trial_influence** "ID/char name/edited-to character/showname/OOC name" "number"
+    - Sets the influence level of a player in your trial to the given value.
+    - Number must be an integer from 0 to 10.
+ * **trial_lead**
+    - Makes you a leader of your trial.
+* **trial_kick** "ID/char name/edited-to character/showname/OOC name" 
+    - Kicks a player off your trial.
 * **unfollow**
     - Stops following whoever you were following.
 * **unglobalic**
     - Stops sending subsequent IC messages to the area range specified in a previous /globalic command.
 * **unhandicap** "ID"
     - Removes movement handicaps on a target.
+* **unilock** "area 1", "area 2"
+    - Changes the passage status (locked/unlocked) from area 1 to area 2 if given two areas, or from the current area to area 1 if just given one area. Locking a passage in such a way does not change its current visibility to non-GMs.
 * **unilockh** "area 1", "area 2"
-    - Changes the passage status (locked/unlocked) from area 1 to area 2. Locking a passage in such a way hides it from non-GMs; unlocking it reveals it to non-GMs.
+    - Changes the passage status (locked/unlocked) from area 1 to area 2, or from the current area to area 1 if just given one area. Locking a passage in such a way hides it from non-GMs; unlocking it reveals it to non-GMs.
 * **uninvite** "ID/char name/edited-to character/showname/OOC name"
     - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**
@@ -544,14 +593,9 @@ GMs can:
 * **unbanhdid** "HDID"
     - Unbans the specified HDID.
 * **undisemvowel/undisemconsonant/ungimp/unremove_h** "ID/IPID"
-    - Undo correlating command.
+    - Undoes correlating command.
 * **unlock**
     - Unlocks an area, provided the lock came as a result of /gmlock, /lock or /modlock.
-
-### Pending
-* NSD 
-* Trial
-* Look
 
 ### Debug commands
 
