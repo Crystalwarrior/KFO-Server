@@ -38,7 +38,7 @@ class ClientManager:
             self.can_join = 0  # Needs to be 2 to actually connect
             self.can_askchaa = True  # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined')  # AO version used established through ID pack
-            self.packet_handler = Clients.ClientDRO
+            self.packet_handler = Clients.ClientDRO1d0d0
             self.bad_version = False
             self.publisher = Publisher(self)
 
@@ -534,9 +534,8 @@ class ClientManager:
             else:
                 raw_music_list = self.music_list
 
-            # KFO deals with music lists differently than other clients
-            # They want the area lists and music lists separate, so they will have it like that
             if self.packet_handler not in [Clients.ClientAO2d8d4, Clients.ClientKFO2d8]:
+                # DRO and AO2.6< protocol
                 reloaded_music_list = self.server.build_music_list_ao2(from_area=self.area, c=self,
                                                                        music_list=raw_music_list)
 
@@ -545,6 +544,8 @@ class ClientManager:
                 # that crashes all clients that dare attempt join this area.
                 self.send_command('FM', *reloaded_music_list)
             else:
+                # KFO and AO2.8.4 deals with music lists differently than other clients
+                # They want the area lists and music lists separate, so they will have it like that
                 area_list = self.server.build_music_list_ao2(from_area=self.area, c=self,
                                                              include_areas=True,
                                                              include_music=False)

@@ -20,7 +20,7 @@ import time
 
 from server import logger
 from server.exceptions import ClientError, AreaError
-from server.constants import Constants
+from server.constants import Constants, Clients
 
 class ClientChangeArea:
     def __init__(self, client):
@@ -753,7 +753,8 @@ class ClientChangeArea:
         else:
             client.send_background(name=client.area.background)
         client.send_command('LE', *client.area.get_evidence_list(client))
-        client.send_ic(msg='', bypass_replace=True) # Blankpost to simulate area change
+        if client.packet_handler == Clients.ClientDRO1d0d0:
+            client.send_ic(msg='', bypass_replace=True) # Blankpost to simulate area change
 
         if client.followedby and not ignore_followers and not override_all:
             for c in client.followedby:

@@ -213,8 +213,6 @@ class _TestClientManager(ClientManager):
             self.received_packets = list()
             self.received_ooc = list()
             self.received_ic = list()
-            self.last_ic = None, None
-            self.discarded_ic_somewhere = False
 
         def disconnect(self, assert_no_outstanding=False):
             """ Overwrites client_manager.ClientManager.Client.disconnect """
@@ -645,9 +643,6 @@ class _TestClientManager(ClientManager):
                                    ic_over=ic_over)
 
             err = 'Expected IC messages, found none.'
-            if self.discarded_ic_somewhere:
-                err = (err + ' \nWARNING: Some IC messages were discarded sometime after the '
-                       'last assert_ic call due to the client receiving repeated IC messages.')
             assert len(self.received_ic) > 0, err
 
             params = self.received_ic.pop(0)
@@ -724,7 +719,7 @@ class _TestClientManager(ClientManager):
             if command_type == 'decryptor': # Hi
                 buffer = 'HI#FAKEHDID#%'
             elif command_type == 'ID': # Server ID
-                buffer = "ID#AO2#2.4.8#%"
+                buffer = "ID#DRO#1.0.0#%"
                 assert(args[0] == self.id)
             elif command_type == 'FL': # AO 2.2.5 configs
                 pass
@@ -775,12 +770,7 @@ class _TestClientManager(ClientManager):
                 # 15 = showname
                 if not (len(args) == 16):
                     raise ValueError('Malformed MS packet for an IC message {}'.format(args))
-                # AO/DRO Client discards repetitions, except when it comes from a system IC message
-                if (args[8] == -1) or (args[2] != self.last_ic[0] or args[4] != self.last_ic[1]):
-                    self.received_ic.append(args)
-                    self.last_ic = args[2], args[4]
-                else:
-                    self.discarded_ic_somewhere = True
+                self.received_ic.append(args)
             elif command_type == 'MC': # Start playing track
                 pass
             elif command_type == 'ZZ': # Mod call

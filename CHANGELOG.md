@@ -473,6 +473,7 @@
 * Deaf players now only see an IC notification for screams
 
 ### (4.3.0)
+* Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0.
 * Added basic trial and NSD modes
 * Added area lurk callouts to name players who have been idle some amount of time in an area via
   - /lurk <length>
@@ -488,14 +489,14 @@
   - Players in the same party now show a (P)
   - Players with a custom status now show a (!)
 * Added /bilockh and /unilockh GM commands. They have the effect /bilock and /unilock formerly had of showing/hiding areas from the area list. /bilock and /unilock for all ranks now does not change passage visibility for all ranks.
-* Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players.
-* System blankposts are now sent on area change to clear the last character on screen
+* Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players
+* System blankposts are now sent on area change to clear the last character on screen for compatible clients.
 * Changed wording of GM login notifications, /minimap, attempting to access a locked passage, and talking in an area whose IC chat is locked
 * Added support for new colors available in DRO as well as the set position SP packet
 * Music playing notifications now show the server showname of the player in DRO if the player set a showname
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
-* Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now send messages but filtered.
-* Fixed /scream bypassing moderation mutes
+* Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now send messages but filtered
+* Fixed /scream bypassing moderation mutes or client mutes
 * Fixed /scream bypassing IC chat locks, or being rendered in scream-reachable areas whose IC chats are locked
 * Fixed /charselect sending the proper area background to blind clients
 * Fixed blankposts or double empty spaces being filtered out for deafened players

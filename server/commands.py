@@ -4399,13 +4399,13 @@ def ooc_cmd_scream(client: ClientManager.Client, arg: str):
                                is_zstaff_flex=True, pred=lambda c: not c.muted_global)
 
         client.send_ic(msg=arg, pos=client.pos, cid=client.char_id, showname=client.showname)
-        client.send_ic_others(msg=arg, to_deaf=False, showname=client.showname,
+        client.send_ic_others(msg=arg, to_deaf=False, showname=client.showname, cid=client.char_id,
                               bypass_deafened_starters=True, # send_ic handles nerfing for deafened
                               pred=lambda c: (not c.muted_global and
                                               (c.area == client.area or
                                                ((client.is_staff() or not c.area.ic_lock) and
                                                 c.area.name in client.area.scream_range))))
-        client.send_ic_others(msg=arg, to_deaf=True,
+        client.send_ic_others(msg=arg, to_deaf=True, cid=client.char_id,
                               bypass_deafened_starters=True, # send_ic handles nerfing for deafened
                               pred=lambda c: (not c.muted_global and
                                               (c.area == client.area or
