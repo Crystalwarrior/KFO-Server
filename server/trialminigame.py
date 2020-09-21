@@ -21,8 +21,19 @@ Module that contains the trial minigame class.
 
 """
 
+import enum
+
 from server.exceptions import GameError, GameWithAreasError
-from server.gamewithareas import GameWithAreas
+from server.gamewithareas_manager import GameWithAreas
+
+
+class TRIALMINIGAMES(enum.Enum):
+    """
+    All supported trial minigames.
+    """
+
+    NONSTOP_DEBATE = enum.auto()
+
 
 class TrialMinigame(GameWithAreas):
     """
@@ -218,6 +229,20 @@ class TrialMinigame(GameWithAreas):
 
         return self._trial
 
+    def get_type(self) -> TRIALMINIGAMES:
+        """
+        Return the type of the minigame.
+
+        Returns
+        -------
+        TRIALMINIGAMES
+            Type of minigame.
+
+        """
+
+        # Should be overriden in child class.
+        raise NotImplementedError
+
     def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
                              ignore_bleeding=False):
         """
@@ -254,7 +279,7 @@ class TrialMinigame(GameWithAreas):
                             f'minigame.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your trial minigame and thus was '
-                                   f'automatically removed it ({area.id}->{new_area.id}).',
+                                   f'automatically removed from it ({area.id}->{new_area.id}).',
                                    pred=lambda c: c in self.get_leaders())
 
             self.remove_player(client)

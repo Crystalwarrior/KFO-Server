@@ -303,7 +303,7 @@ class Timer:
         self._last_time_update = time.perf_counter()
 
         self._internal_timer_task = Constants.create_fragile_task(self._internal_timer())
-        print(f'[{time.time()}] Timer {self.get_id()} started at {self._base_value}.')
+        # print(f'[{time.time()}] Timer {self.get_id()} started at {self._base_value}.')
         self._check_structure()
 
         return self._base_value # This is the current internal time, as no seconds have passed.
@@ -428,7 +428,7 @@ class Timer:
         if new_tick_rate == 0:
             raise TimerError.InvalidTickRateError
 
-        print(f'{time.time()} Timer {self._id} set tick to {new_tick_rate} at {self.get()}')
+        # print(f'{time.time()} Timer {self._id} set tick to {new_tick_rate} at {self.get()}')
         self._tick_rate = new_tick_rate
         self._check_structure()
 
@@ -473,7 +473,7 @@ class Timer:
 
         self._paused = True
         current_time = self._get()
-        print(f'{time.time()} Timer {self._id} paused at {current_time}')
+        # print(f'{time.time()} Timer {self._id} paused at {current_time}')
         self._check_structure()
 
         return current_time
@@ -506,7 +506,7 @@ class Timer:
             # Put _paused after getting time, so that the timer is updated as if it was paused still
             # and thus does not consider the time spent while paused as time elapsed
             self._paused = False
-            print(f'{time.time()} Timer {self._id} unpaused at {current_time}')
+            # print(f'{time.time()} Timer {self._id} unpaused at {current_time}')
             self._check_structure()
         else:
             current_time = self._base_value
@@ -605,7 +605,7 @@ class Timer:
 
         """
 
-        print(f'[{time.time()}] Timer {self.get_id()} min-ended at {self.get()}')
+        # print(f'[{time.time()}] Timer {self.get_id()} min-ended at {self.get()}')
 
     def _on_max_end(self):
         """
@@ -624,7 +624,7 @@ class Timer:
 
         """
 
-        print(f'[{time.time()}] Timer {self.get_id()} max-ended at {self.get()}')
+        # print(f'[{time.time()}] Timer {self.get_id()} max-ended at {self.get()}')
 
     def _update_elapsed_per_tick(self):
         """
@@ -702,6 +702,7 @@ class Timer:
 
         """
 
+        epsilon = 0.001 #  Account for rounding errors and floating point arithmetic
         timer_value = self._get()
 
         # 1.
@@ -711,11 +712,11 @@ class Timer:
 
         err = (f'Expected the timer value be at least the minimum timer value '
                f'{self._min_value}, found it was {timer_value} instead.')
-        assert timer_value >= self._min_value, err
+        assert timer_value >= self._min_value - epsilon, err
 
         err = (f'Expected the timer value be at most the maximum timer value '
                f'{self._max_value}, found it was {timer_value} instead.')
-        assert timer_value <= self._max_value, err
+        assert timer_value <= self._max_value + epsilon, err
 
         # 2.
         err = (f'Expected the default timer minimum timer value be a non-negative number, '

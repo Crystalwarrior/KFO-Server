@@ -21,7 +21,7 @@ Module that contains the base game with areas class.
 """
 
 from server.exceptions import GameWithAreasError, GameError
-from server.game_manager import _Game
+from server.game_manager import _Game, GameManager
 
 class GameWithAreas(_Game):
     """
@@ -455,3 +455,46 @@ class GameWithAreas(_Game):
 
         # 2.
         super()._check_structure()
+
+
+class GameWithAreasManager(GameManager):
+    """
+    A game with areas manager is a game manager with dedicated area management functions.
+
+    """
+
+    # TODO: Enforce GameWithAreasManager to only take game with areas as games when calling
+    # new_game, or when initialized. Also do it in check_structure()
+
+    def get_games_in_area(self, area):
+        """
+        Return all games managed by this manager that contain the given area.
+
+        Parameters
+        ----------
+        area : AreaManager.Area
+            Area that all returned games must contain.
+
+        Returns
+        -------
+        set of GameWithAreas
+            Games that contain the given area.
+
+        """
+
+        return {game for game in self.get_games() if game.has_area(area)}
+
+    def __repr__(self):
+        """
+        Return a representation of this game with areas manager.
+
+        Returns
+        -------
+        str
+            Printable representation.
+
+        """
+
+        return (f"GameWithAreasManager(server, game_limit={self.get_game_limit()}, "
+                f"|| "
+                f"id={hex(id(self))})")

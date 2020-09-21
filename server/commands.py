@@ -32,8 +32,6 @@ from server.exceptions import ArgumentError, AreaError, ClientError, ServerError
 from server.exceptions import PartyError, ZoneError, TimerError, TrialError, NonStopDebateError
 from server.client_manager import ClientManager
 
-from server.gamewithareas import GameWithAreas
-
 """ <parameter_name>: required parameter
 {parameter_name}: optional parameter
 """
@@ -3503,8 +3501,8 @@ def ooc_cmd_party_invite(client: ClientManager.Client, arg: str):
 def ooc_cmd_party_join(client: ClientManager.Client, arg: str):
     """
     Enrolls you into a party by party ID provided you were previously invited to it.
-    Returns an error if you are already part of a party, if the party reached its maximum number
-    of members, or if you are following someone.
+    Returns an error if the party ID does not exist, you are already part of a party, if the
+    party reached its maximum number of members, or if you are following someone.
 
     SYNTAX
     /party_join <party_id>
@@ -6963,12 +6961,53 @@ def ooc_cmd_trial_add(client: ClientManager.Client, arg: str):
         raise ClientError('This player is already part of another trial.')
     except TrialError.UserAlreadyPlayerError:
         raise ClientError('This player is already part of this trial.')
-    else:
-        client.send_ooc(f'You added {target.displayname} [{target.id}] to your trial.')
-        client.send_ooc_others(f'(X) {client.displayname} added {target.displayname} [{target.id}] '
-                               f'to your trial.',
-                               pred=lambda c: c in trial.get_leaders())
-        target.send_ooc(f'You were added to trial `{trial.get_id()}`.')
+
+    client.send_ooc(f'You added {target.displayname} [{target.id}] to your trial.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] added {target.displayname} '
+                           f'[{target.id}] to your trial.',
+                           pred=lambda c: c in trial.get_leaders())
+    target.send_ooc(f'You were added to trial `{trial.get_id()}`.')
+
+
+def ooc_cmd_trial_join(client: ClientManager, arg: str):
+    """ (STAFF ONLY)
+    Enrolls you into a trial by trial ID.
+    Returns an error if the trial ID is invalid, if you are not part of an area part of the trial,
+    if you do not have a character when trying to join the trial, or if you are already part of
+    this or another trial.
+
+    SYNTAX
+    /trial_join <trial_id>
+
+    PARAMETERS
+    <trial_id>: Trial ID
+
+    EXAMPLES
+    /trial_join trial0      :: You will join trial trial0.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_game_by_id(arg)
+    except TrialError.ManagerInvalidGameIDError:
+        raise ClientError(f'Unrecognized trial ID `{arg}`.')
+
+    try:
+        trial.add_player(client)
+    except TrialError.UserNotInAreaError:
+        raise ClientError('You are not part of an area part of this trial.')
+    except TrialError.UserHasNoCharacterError:
+        raise ClientError('You must have a character to join this trial.')
+    except TrialError.UserHitConcurrentLimitError:
+        raise ClientError('You are already part of another trial.')
+    except TrialError.UserAlreadyPlayerError:
+        raise ClientError('You are already part of this trial.')
+
+    client.send_ooc(f'You joined trial `{arg}`.')
+    client.send_ooc('Become a leader of your trial with /trial_lead')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] joined your trial.',
+                           pred=lambda c: c in trial.get_leaders())
 
 
 def ooc_cmd_trial_end(client: ClientManager, arg: str):
@@ -7256,7 +7295,7 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
     except NonStopDebateError.UserHasNoCharacterError:
         raise ClientError('You must have a character to create a NSD.')
 
-    client.send_ooc(f'You have created non-stop debate `{nsd.get_id()}` in area '
+    client.send_ooc(f'You have created nonstop debate `{nsd.get_id()}` in area '
                     f'{client.area.name}.')
     nsd.add_leader(client)
 
@@ -7279,12 +7318,12 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
         f'[{player.id}] {player.displayname}' for player in trial.get_players()
         ])
 
-    client.send_ooc(f'These players were automatically added to your non-stop debate: '
+    client.send_ooc(f'These players were automatically added to your nonstop debate: '
                     f'\n{player_list}')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] created a non-stop debate '
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] created a nonstop debate '
                            f'`{nsd.get_id()}` in area {client.area.name} ({client.area.id}).',
                            is_zstaff_flex=True)
-    client.send_ooc_others(f'You were added to non-stop debate `{nsd.get_id()}`.',
+    client.send_ooc_others(f'You were added to nonstop debate `{nsd.get_id()}`.',
                            pred=lambda c: c in trial.get_players())
 
 
@@ -7312,12 +7351,13 @@ def ooc_cmd_nsd_add(client: ClientManager.Client, arg: str):
         trial = client.server.trial_manager.get_trial_of_user(client)
     except TrialError.UserNotPlayerError:
         raise ClientError('You are not part of a trial.')
+
     try:
         nsd = trial.get_nsd_of_user(client)
     except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a non-stop debate.')
+        raise ClientError('You are not part of a nonstop debate.')
     if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your non-stop debate.')
+        raise ClientError('You are not a leader of your nonstop debate.')
 
     cm = client.server.client_manager
     target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
@@ -7327,19 +7367,65 @@ def ooc_cmd_nsd_add(client: ClientManager.Client, arg: str):
     except NonStopDebateError.UserNotPlayerError:
         raise ClientError('This player is not part of your trial.')
     except NonStopDebateError.UserNotInAreaError:
-        raise ClientError('This player is not part of an area part of this non-stop debate.')
+        raise ClientError('This player is not part of an area part of this nonstop debate.')
     except NonStopDebateError.UserHasNoCharacterError:
-        raise ClientError('This player must have a character to join this non-stop debate.')
+        raise ClientError('This player must have a character to join this nonstop debate.')
     except NonStopDebateError.UserHitConcurrentLimitError:
-        raise ClientError('This player is already part of another non-stop debate.')
+        raise ClientError('This player is already part of another nonstop debate.')
     except NonStopDebateError.UserAlreadyPlayerError:
-        raise ClientError('This player is already part of this non-stop debate.')
-    else:
-        client.send_ooc(f'You added {target.displayname} [{target.id}] to your non-stop debate.')
-        client.send_ooc_others(f'(X) {client.displayname} added {target.displayname} [{target.id}] '
-                               'to your non-stop '
-                               f'debate.', pred=lambda c: c in trial.get_leaders())
-        target.send_ooc(f'You were added to the non-stop debate `{nsd.get_id()}`.')
+        raise ClientError('This player is already part of this nonstop debate.')
+
+    client.send_ooc(f'You added {target.displayname} [{target.id}] to your nonstop debate.')
+    client.send_ooc_others(f'(X) {client.displayname} added {target.displayname} [{target.id}] '
+                           'to your nonstop '
+                           f'debate.', pred=lambda c: c in trial.get_leaders())
+    target.send_ooc(f'You were added to the nonstop debate `{nsd.get_id()}`.')
+
+
+def ooc_cmd_nsd_join(client: ClientManager, arg: str):
+    """ (STAFF ONLY)
+    Enrolls you into a nonstop debate by nonstop debate ID.
+    Returns an error if you are not part of a trial, if the NSD ID is invalid, if you are not part
+    of an area part of the NSD, if you do not have a character when trying to join the NSD, or if
+    you are already part of this or another NSD.
+
+    SYNTAX
+    /nsd_join <nsd_id>
+
+    PARAMETERS
+    <nsd_id>: NSD ID
+
+    EXAMPLES
+    /nsd_join trial0g0      :: You will join NSD trial0g0.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    try:
+        nsd = trial.get_minigame_by_id(arg)
+    except TrialError.ManagerInvalidGameIDError:
+        raise ClientError(f'Unrecognized nonstop debate ID `{arg}`.')
+
+    try:
+        nsd.add_player(client)
+    except NonStopDebateError.UserNotInAreaError:
+        raise ClientError('You are not part of an area part of this nonstop debate.')
+    except NonStopDebateError.UserHasNoCharacterError:
+        raise ClientError('You must have a character to join this nonstop debate.')
+    except NonStopDebateError.UserHitConcurrentLimitError:
+        raise ClientError('You are already part of another nonstop debate.')
+    except NonStopDebateError.UserAlreadyPlayerError:
+        raise ClientError('You are already part of this nonstop debate.')
+
+    client.send_ooc(f'You joined nonstop debate `{arg}`.')
+    client.send_ooc('Become a leader of your nonstop debate with /nsd_lead')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] joined your nonstop debate.',
+                           pred=lambda c: c in nsd.get_leaders())
 
 
 def ooc_cmd_nsd_end(client: ClientManager, arg: str):
@@ -7367,18 +7453,18 @@ def ooc_cmd_nsd_end(client: ClientManager, arg: str):
     try:
         nsd = trial.get_nsd_of_user(client)
     except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a non-stop debate.')
+        raise ClientError('You are not part of a nonstop debate.')
     if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your non-stop debate.')
+        raise ClientError('You are not a leader of your nonstop debate.')
 
     leaders = nsd.get_leaders()
     regulars = nsd.get_regulars()
     nsd.destroy()
 
-    client.send_ooc('You ended your non-stop debate.')
-    client.send_ooc_others('Your non-stop debate was ended.',
+    client.send_ooc('You ended your nonstop debate.')
+    client.send_ooc_others('Your nonstop debate was ended.',
                            pred=lambda c: c in regulars)
-    client.send_ooc_others(f'(X) {client.displayname} ended your non-stop debate.',
+    client.send_ooc_others(f'(X) {client.displayname} ended your nonstop debate.',
                            pred=lambda c: c in leaders)
 
 
@@ -7406,7 +7492,7 @@ def ooc_cmd_nsd_info(client: ClientManager, arg: str):
     try:
         nsd = trial.get_nsd_of_user(client)
     except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a non-stop debate.')
+        raise ClientError('You are not part of a nonstop debate.')
 
     nid = nsd.get_id()
     area = next(iter(nsd.get_areas()))
@@ -7416,7 +7502,7 @@ def ooc_cmd_nsd_info(client: ClientManager, arg: str):
     num_members = len(leaders.union(regulars))
     leaders = ', '.join([f'{c.displayname} [{c.id}]' for c in leaders]) if leaders else 'None'
     regulars = ', '.join([f'{c.displayname} [{c.id}]' for c in regulars]) if regulars else 'None'
-    info = (f'Non-stop debate {nid} [{num_members}/-] ({area.id}). '
+    info = (f'Nonstop debate {nid} [{num_members}/-] ({area.id}). '
             f'Leaders: {leaders}. Regular members: {regulars}.')
     client.send_ooc(info)
 
@@ -7446,18 +7532,18 @@ def ooc_cmd_nsd_lead(client: ClientManager, arg: str):
     try:
         nsd = trial.get_nsd_of_user(client)
     except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a non-stop debate.')
+        raise ClientError('You are not part of a nonstop debate.')
 
     try:
         nsd.add_leader(client)
     except NonStopDebateError.UserNotPlayerError:
-        raise ClientError('You are not a player of this non-stop debate.')
+        raise ClientError('You are not a player of this nonstop debate.')
     except NonStopDebateError.UserAlreadyLeaderError:
-        raise ClientError('You are already a leader of this non-stop debate.')
+        raise ClientError('You are already a leader of this nonstop debate.')
 
-    client.send_ooc('You are now a leader of your non-stop debate.')
+    client.send_ooc('You are now a leader of your nonstop debate.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
-                           f'non-stop debate.', pred=lambda c: nsd.is_leader(client))
+                           f'nonstop debate.', pred=lambda c: nsd.is_leader(client))
 
 
 def ooc_cmd_nsd_kick(client: ClientManager.Client, arg: str):
@@ -7485,24 +7571,24 @@ def ooc_cmd_nsd_kick(client: ClientManager.Client, arg: str):
     try:
         nsd = trial.get_nsd_of_user(client)
     except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a non-stop debate.')
+        raise ClientError('You are not part of a nonstop debate.')
     if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your non-stop debate.')
+        raise ClientError('You are not a leader of your nonstop debate.')
 
     cm = client.server.client_manager
     target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
     if client == target:
-        raise ClientError('You cannot kick yourself off your non-stop debate.')
+        raise ClientError('You cannot kick yourself off your nonstop debate.')
 
     try:
         nsd.remove_player(target)
     except TrialError.UserNotPlayerError:
-        raise ClientError('This player is not part of your non-stop debate.')
+        raise ClientError('This player is not part of your nonstop debate.')
 
-    client.send_ooc(f'You have kicked {target.displayname} [{target.id}] off your non-stop debate.')
-    target.send_ooc('You were kicked off your non-stop debate.')
+    client.send_ooc(f'You have kicked {target.displayname} [{target.id}] off your nonstop debate.')
+    target.send_ooc('You were kicked off your nonstop debate.')
     client.send_ooc_others(f'(X) {client.name} [{client.id}] has kicked {target.displayname} '
-                           f'[{target.id}] off your non-stop debate.',
+                           f'[{target.id}] off your nonstop debate.',
                            pred=lambda c: c != target and c in trial.get_leaders())
 
 
@@ -7532,20 +7618,22 @@ def ooc_cmd_nsd_pause(client: ClientManager.Client, arg: str):
     try:
         nsd = trial.get_nsd_of_user(client)
     except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a non-stop debate.')
+        raise ClientError('You are not part of a nonstop debate.')
     if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your non-stop debate.')
+        raise ClientError('You are not a leader of your nonstop debate.')
 
     try:
         nsd.set_intermission()
     except NonStopDebateError.NSDAlreadyInModeError:
-        raise ClientError('The non-stop debate is already in this mode.')
+        raise ClientError('The nonstop debate is already in this mode.')
     except NonStopDebateError.NSDNotInModeError:
-        raise ClientError('You may not pause a non-stop debate at this moment.')
+        raise ClientError('You may not pause a nonstop debate at this moment.')
     else:
-        client.send_ooc('You have paused your non-stop debate.')
-        client.send_ooc_others(f'(X) {client.displayname} has paused your non-stop debate.',
-                               pred=lambda c: c in nsd.get_leaders())
+        client.send_ooc('You have paused your nonstop debate.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has paused your nonstop '
+                               f'debate.', pred=lambda c: c in nsd.get_leaders())
+        client.send_ooc_others('Your nonstop debate was paused.',
+                               pred=lambda c: c in nsd.get_regulars())
 
 
 def ooc_cmd_nsd_loop(client: ClientManager.Client, arg: str):
@@ -7577,20 +7665,22 @@ def ooc_cmd_nsd_loop(client: ClientManager.Client, arg: str):
     try:
         nsd = trial.get_nsd_of_user(client)
     except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a non-stop debate.')
+        raise ClientError('You are not part of a nonstop debate.')
     if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your non-stop debate.')
+        raise ClientError('You are not a leader of your nonstop debate.')
 
     try:
         nsd.set_looping()
     except NonStopDebateError.NSDAlreadyInModeError:
-        raise ClientError('The non-stop debate is already in this mode.')
+        raise ClientError('The nonstop debate is already in this mode.')
     except NonStopDebateError.NSDNotInModeError:
-        raise ClientError('You may not loop a non-stop debate at this moment.')
-    except:
-        client.send_ooc('You have set your non-stop debate to start looping.')
-        client.send_ooc_others(f'(X) {client.displayname} has set your non-stop debate to start '
-                               f'looping.', pred=lambda c: c in nsd.get_leaders())
+        raise ClientError('You may not loop a nonstop debate at this moment.')
+    else:
+        client.send_ooc('You have set your nonstop debate to start looping.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has set your nonstop '
+                               f'debate to start looping.', pred=lambda c: c in nsd.get_leaders())
+        client.send_ooc_others('Your nonstop debate is now looping.',
+                               pred=lambda c: c in nsd.get_regulars())
 
 
 def ooc_cmd_nsd_resume(client: ClientManager.Client, arg: str):
@@ -7618,17 +7708,22 @@ def ooc_cmd_nsd_resume(client: ClientManager.Client, arg: str):
     try:
         nsd = trial.get_nsd_of_user(client)
     except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a non-stop debate.')
+        raise ClientError('You are not part of a nonstop debate.')
     if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your non-stop debate.')
+        raise ClientError('You are not a leader of your nonstop debate.')
 
     try:
         resumed_mode = nsd.resume()
     except NonStopDebateError.NSDNotInModeError:
-        raise ClientError('You may not resume a non-stop debate at this moment.')
+        raise ClientError('You may not resume a nonstop debate at this moment.')
     else:
         mode = resumed_mode.name.lower()
-        # TODO: Finish this!
+        client.send_ooc(f'You have put your nonstop debate back in {mode} mode.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has put your nonstop '
+                               f'debate back in {mode} mode.',
+                               pred=lambda c: c in nsd.get_leaders())
+        client.send_ooc_others(f'Your nonstop debate is now in {mode} mode again.',
+                               pred=lambda c: c in nsd.get_regulars())
 
 
 def ooc_cmd_nsd_accept(client: ClientManager.Client, arg: str):
@@ -7657,24 +7752,25 @@ def ooc_cmd_nsd_accept(client: ClientManager.Client, arg: str):
     try:
         nsd = trial.get_nsd_of_user(client)
     except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a non-stop debate.')
+        raise ClientError('You are not part of a nonstop debate.')
     if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your non-stop debate.')
+        raise ClientError('You are not a leader of your nonstop debate.')
 
     # Save because NSD is destroyed!
     leaders, regulars = nsd.get_leaders(), nsd.get_regulars()
     try:
         nsd.accept_break()
     except NonStopDebateError.NSDNotInModeError:
-        raise ClientError('You may not accept a break for your non-stop debate at this moment.')
+        raise ClientError('You may not accept a break for your nonstop debate at this moment.')
 
-    client.send_ooc('You accepted the break and ended the non-stop debate. The breaker gained '
+    client.send_ooc('You accepted the break and ended the nonstop debate. The breaker recovered '
                     '0.5 influence.')
-    client.send_ooc_others(f'(X) {client.displayname} accepted the break and ended the non-stop '
-                           f'debate. The breaker gained 0.5 influence.',
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] accepted the break and ended '
+                           f'the nonstop debate. The breaker recovered 0.5 influence.',
                            pred=lambda c: c in leaders)
-    client.send_ooc_others('Your non-stop debate was ended by an accepted break.',
+    client.send_ooc_others('Your nonstop debate was ended by an accepted break.',
                            pred=lambda c: c in regulars)
+
 
 def ooc_cmd_nsd_reject(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
@@ -7703,20 +7799,20 @@ def ooc_cmd_nsd_reject(client: ClientManager.Client, arg: str):
     try:
         nsd = trial.get_nsd_of_user(client)
     except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a non-stop debate.')
+        raise ClientError('You are not part of a nonstop debate.')
     if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your non-stop debate.')
+        raise ClientError('You are not a leader of your nonstop debate.')
 
     try:
         nsd.reject_break()
     except NonStopDebateError.NSDNotInModeError:
-        raise ClientError('You may not reject a break for your non-stop debate at this moment.')
+        raise ClientError('You may not reject a break for your nonstop debate at this moment.')
 
     client.send_ooc('You rejected the break. The breaker lost 1 influence.')
     client.send_ooc('Send /nsd_resume to resume the debate, /nsd_end to end the debate.')
 
-    client.send_ooc_others(f'(X) {client.displayname} rejected the break. The breaker lost 1 '
-                           f'influence.',
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] rejected the break. The '
+                           f'breaker lost 1 influence.',
                            pred=lambda c: c in nsd.get_leaders())
     client.send_ooc_others('The break was rejected, so the debate continues!',
                            pred=lambda c: c in nsd.get_regulars())

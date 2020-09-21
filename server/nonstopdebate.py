@@ -17,7 +17,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 """
-Module that contains the non-stop debate game.
+Module that contains the nonstop debate game.
 
 """
 
@@ -26,11 +26,12 @@ import time
 from enum import Enum, auto
 
 from server.exceptions import ClientError, NonStopDebateError
-from server.trialminigame import TrialMinigame
+from server.trialminigame import TrialMinigame, TRIALMINIGAMES
+
 
 class NSDMode(Enum):
     """
-    Modes for a non-stop debate.
+    Modes for a nonstop debate.
     """
 
     PRERECORDING = auto()
@@ -39,9 +40,10 @@ class NSDMode(Enum):
     INTERMISSION = auto()
     INTERMISSION_POSTBREAK = auto()
 
+
 class NonStopDebate(TrialMinigame):
     """
-    A non-stop debate is a trial game based in its Danganronpa counterpart.
+    A nonstop debate is a trial game based in its Danganronpa counterpart.
 
     Attributes
     ----------
@@ -84,7 +86,7 @@ class NonStopDebate(TrialMinigame):
                  timer_limit=None, areas=None, trial=None, timer_start_value=300,
                  playergroup_manager=None):
         """
-        Create a new non-stop debate (NSD) game. An NSD should not be fully initialized anywhere
+        Create a new nonstop debate (NSD) game. An NSD should not be fully initialized anywhere
         else other than some manager code, as otherwise the manager will not recognize the NSD.
 
         Parameters
@@ -129,9 +131,9 @@ class NonStopDebate(TrialMinigame):
         areas : set of AreaManager.Area, optional
             Areas the NSD starts with. Defaults to None.
         trial : TrialManager.Trial, optional
-            Trial the non-stop debate is a part of. Defaults to None.
+            Trial the nonstop debate is a part of. Defaults to None.
         timer_start_value : float, optional
-            In seconds, the length of time the main timer of this non-stop debate will have at the
+            In seconds, the length of time the main timer of this nonstop debate will have at the
             start. It must be a positive number. Defaults to 300 (5 minutes).
         playergroup_manager : PlayerGroupManager, optional
             The internal playergroup manager of the game manager. Access to this value is
@@ -167,9 +169,22 @@ class NonStopDebate(TrialMinigame):
         self._breaker = None
         # To consider: somehow keep spectators in the loop so they get variants/timer updates
 
+    def get_type(self) -> TRIALMINIGAMES:
+        """
+        Return the type of the minigame (NonStopDebate).
+
+        Returns
+        -------
+        TRIALMINIGAMES
+            Type of minigame.
+
+        """
+
+        return TRIALMINIGAMES.NONSTOP_DEBATE
+
     def get_mode(self):
         """
-        Return the current mode of the non-stop debate.
+        Return the current mode of the nonstop debate.
 
         Returns
         -------
@@ -187,7 +202,7 @@ class NonStopDebate(TrialMinigame):
         Raises
         ------
         NonStopDebateError.NSDAlreadyInModeError
-            If the non-stop debate is already in recording mode.
+            If the nonstop debate is already in recording mode.
 
         Returns
         -------
@@ -227,9 +242,9 @@ class NonStopDebate(TrialMinigame):
         Raises
         ------
         NonStopDebateError.NSDAlreadyInModeError
-            If the non-stop debate is already in intermission mode.
+            If the nonstop debate is already in intermission mode.
         NonStopDebateError.NSDNotInModeError
-            If the non-stop debate is in prerecording mode.
+            If the nonstop debate is in prerecording mode.
 
         Returns
         -------
@@ -280,9 +295,9 @@ class NonStopDebate(TrialMinigame):
         Raises
         ------
         NonStopDebateError.NSDAlreadyInModeError
-            If the non-stop debate is already in looping mode.
+            If the nonstop debate is already in looping mode.
         NonStopDebateError.NSDNotInModeError
-            If the non-stop debate is in prerecording mode.
+            If the nonstop debate is in prerecording mode.
 
         Returns
         -------
@@ -484,7 +499,7 @@ class NonStopDebate(TrialMinigame):
 
         # Trying to do anything other than counter/consent
         if contents['button'] not in {0, 1, 2, 7, 8}:
-            raise ClientError('You may not perform that action during a non-stop debate.')
+            raise ClientError('You may not perform that action during a nonstop debate.')
         # Before a message was even sent
         if contents['button'] in {1, 2, 7, 8} and self._message_index == -1:
             raise ClientError('You may not use a bullet now.')
@@ -535,6 +550,100 @@ class NonStopDebate(TrialMinigame):
             self._break_loop(player, contents)
         else:
             raise RuntimeError(f'Unrecognized mode {self._mode}')
+
+    def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
+                             ignore_bleeding=False):
+        """
+        If a player left to an area not part of the NSD, remove the player and warn them and
+        the leaders of the NSD.
+
+        If a non-plyer left to an area not part of the NSD, warn them and the leaders of the
+        NSD.
+
+        Parameters
+        ----------
+        area : AreaManager.Area
+            Area that signaled a client has left.
+        client : ClientManager.Client, optional
+            The client that has left. The default is None.
+        new_area : AreaManager.Area
+            The new area the client has gone to. The default is None.
+        old_displayname : str, optional
+            The old displayed name of the client before they changed area. This will typically
+            change only if the client's character or showname are taken. The default is None.
+        ignore_bleeding : bool, optional
+            If the code should ignore actions regarding bleeding. The default is False.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        was_leader = self.is_leader(client) if self.is_player(client) else False
+        if client in self.get_players() and new_area not in self.get_areas():
+            client.send_ooc(f'You have left to an area not part of NSD '
+                            f'`{self.get_id()}` and thus were automatically removed from the '
+                            f'NSD.')
+            client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
+                                   f'an area not part of your NSD and thus was '
+                                   f'automatically removed from it ({area.id}->{new_area.id}).',
+                                   pred=lambda c: c in self.get_leaders())
+
+            self.remove_player(client)
+            if self.is_unmanaged():
+                if was_leader:
+                    client.send_ooc(f'Your NSD `{self.get_id()}` was automatically '
+                                    f'deleted as it lost all its players.')
+                client.send_ooc_others(f'(X) NSD `{self.get_id()}` was automatically '
+                                       f'deleted as it lost all its players.',
+                                       is_zstaff_flex=True)
+
+        elif new_area not in self.get_areas():
+            client.send_ooc(f'You have left to an area not part of NSD '
+                            f'`{self.get_id()}`.')
+            client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to an '
+                                   f'area not part of your NSD '
+                                   f'({area.id}->{new_area.id}).',
+                                   pred=lambda c: c in self.get_leaders())
+
+        self._check_structure()
+
+    def _on_area_client_entered(self, area, client=None, old_area=None, old_displayname=None,
+                                ignore_bleeding=False):
+        """
+        If a non-player entered, warn them and the leaders of the NSD.
+
+        Parameters
+        ----------
+        area : AreaManager.Area
+            Area that signaled a client has entered.
+        client : ClientManager.Client, optional
+            The client that has entered. The default is None.
+        old_area : AreaManager.Area
+            The old area the client has come from. The default is None.
+        old_displayname : str, optional
+            The old displayed name of the client before they changed area. This will typically
+            change only if the client's character or showname are taken. The default is None.
+        ignore_bleeding : bool, optional
+            If the code should ignore actions regarding bleeding. The default is False.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if client not in self.get_players() and old_area not in self.get_areas():
+            client.send_ooc(f'You have entered an area part of NSD `{self.get_id()}`.')
+            if client.is_staff():
+                client.send_ooc(f'Join this NSD with /nsd_join {self.get_id()}')
+            client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
+                                   f'an area part of your NSD '
+                                   f'({old_area.id}->{area.id}).',
+                                   pred=lambda c: c in self.get_leaders())
+            client.send_ooc_others(f'(X) Add {client.displayname} to your NSD with '
+                                   f'/nsd_add {client.id}')
 
     def _add_message(self, player, contents=None):
         """
@@ -646,7 +755,7 @@ class NonStopDebate(TrialMinigame):
 
     def __str__(self):
         """
-        Return a string representation of this non-stop debate.
+        Return a string representation of this nonstop debate.
 
         Returns
         -------

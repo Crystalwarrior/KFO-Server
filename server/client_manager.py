@@ -22,7 +22,7 @@ import time
 from server import client_changearea
 from server import fantacrypt
 from server import logger
-from server.exceptions import AreaError, ClientError, PartyError
+from server.exceptions import AreaError, ClientError, GameError, PartyError, TrialError
 from server.constants import TargetType, Constants, Clients
 from server.subscriber import Publisher
 
@@ -1070,6 +1070,27 @@ class ClientManager:
                 self.send_ooc('(X) You are in an area part of zone `{}`. To be able to receive its '
                               'notifications, start watching it with /zone_watch {}'
                               .format(zone_id, zone_id))
+
+            # Send command hints for leading trials and other minigames
+            try:
+                trial = self.server.trial_manager.get_trial_of_user(self)
+            except GameError.UserNotPlayerError:
+                pass
+            else:
+                if self not in trial.get_leaders():
+                    self.send_ooc(f'(X) You are in an area part of trial `{trial.get_id()}`. To be '
+                                  f'able to perform trial administrative actions, start leading it '
+                                  f'with /trial_lead')
+
+                try:
+                    nsd = trial.get_nsd_of_user(self)
+                except TrialError.UserNotInMinigameError:
+                    pass
+                else:
+                    if self not in nsd.get_leaders():
+                        self.send_ooc(f'(X) You are in an area part of NSD `{nsd.get_id()}`. '
+                                      f'To be able to perform NSD administrative actions, start '
+                                      f'leading it with /nsd_lead')
 
             # No longer bound to AFK rules
             # Nor lurk callouts

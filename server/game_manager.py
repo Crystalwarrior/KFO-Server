@@ -1340,8 +1340,7 @@ class GameManager:
     methods on them. Each manager may also have a game limit (beyond which it will not manage any
     more groups).
 
-    Contains the game object definition, methods for creating and deleting them, as well as
-    some observer methods.
+    Contains methods for creating and deleting games, as well as some observer methods.
 
     """
 

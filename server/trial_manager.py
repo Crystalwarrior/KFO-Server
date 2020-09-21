@@ -25,9 +25,10 @@ import functools
 
 from server.exceptions import TrialError, GameError
 from server.game_manager import GameManager
-from server.gamewithareas import GameWithAreas
-from server.trialminigame import TrialMinigame
+from server.gamewithareas_manager import GameWithAreas, GameWithAreasManager
+from server.trialminigame import TrialMinigame, TRIALMINIGAMES
 from server.nonstopdebate import NonStopDebate
+
 
 class _Trial(GameWithAreas):
     """
@@ -199,7 +200,13 @@ class _Trial(GameWithAreas):
         self._player_to_influence[user.id] = (self._max_influence, self._min_influence,
                                               self._max_influence)
         self._player_to_focus[user.id] = (self._max_focus, self._min_focus, self._max_focus)
-        super().add_player(user)
+        try:
+            super().add_player(user)
+        except GameError as ex:
+            # Remove entries in player to influence and player to focus maps before reraising
+            self._player_to_influence.pop(user.id)
+            self._player_to_focus.pop(user.id)
+            raise ex
 
         user.send_command('HP', 1, int(self._player_to_focus[user.id][0]))
         user.send_command('HP', 2, int(self._player_to_influence[user.id][0]))
@@ -230,6 +237,9 @@ class _Trial(GameWithAreas):
             If the user to remove is already not a player of this game.
 
         """
+
+        if not self.is_player(user):
+            raise GameError.UserNotPlayerError
 
         self._player_to_influence.pop(user.id)
         self._player_to_focus.pop(user.id)
@@ -293,7 +303,7 @@ class _Trial(GameWithAreas):
 
         """
 
-        if not user in self.get_players():
+        if user not in self.get_players():
             raise TrialError.UserNotPlayerError
         _, min_influence, max_influence = self._player_to_influence[user.id]
 
@@ -328,12 +338,12 @@ class _Trial(GameWithAreas):
 
         """
 
-        if not user in self.get_players():
-            raise TrialError.UserNotInPlayerError
+        if user not in self.get_players():
+            raise TrialError.UserNotPlayerError
 
         new_influence = self._player_to_influence[user.id][0] + change_by
         new_influence = max(self._min_influence, min(self._max_influence, new_influence))
-        self.set_influence(user, new_influence) # Also calls _check_structure()
+        self.set_influence(user, new_influence)  # Also calls _check_structure()
 
     def get_min_influence(self, user) -> float:
         """
@@ -437,7 +447,7 @@ class _Trial(GameWithAreas):
 
         """
 
-        if not user in self.get_players():
+        if user not in self.get_players():
             raise TrialError.UserNotPlayerError
         _, min_focus, max_focus = self._player_to_focus[user.id]
 
@@ -472,12 +482,12 @@ class _Trial(GameWithAreas):
 
         """
 
-        if not user in self.get_players():
-            raise TrialError.UserNotInPlayerError
+        if user not in self.get_players():
+            raise TrialError.UserNotPlayerError
 
         new_focus = self._player_to_focus[user.id][0] + change_by
         new_focus = max(self._min_focus, min(self._max_focus, new_focus))
-        self.set_focus(user, new_focus) # Also calls _check_structure()
+        self.set_focus(user, new_focus)  # Also calls _check_structure()
 
     def get_min_focus(self, user) -> float:
         """
@@ -650,7 +660,6 @@ class _Trial(GameWithAreas):
 
         return self._minigame_manager.get_games().copy()
 
-
     def get_minigame_by_id(self, minigame_id) -> TrialMinigame:
         """
         If `minigame_id` is the ID of a minigame managed by this trial, return that.
@@ -673,6 +682,34 @@ class _Trial(GameWithAreas):
         """
 
         return self._minigame_manager.get_game_by_id(minigame_id)
+
+    def get_nsd_by_id(self, nsd_id) -> NonStopDebate:
+        """
+        If `nsd_id` is the ID of a nonstop debate managed by this trial, return that.
+
+        Parameters
+        ----------
+        nsd_id : str
+            ID of the nonstop debate this trial manages.
+
+        Returns
+        -------
+        NonStopDebate
+            The nonstop debate with that ID.
+
+        Raises
+        ------
+        GameError.ManagerInvalidGameIDError
+            If `nsd_id` is not the ID of a nonstop debate this game manages.
+
+        """
+
+        minigame = self.get_minigame_by_id(nsd_id)
+        minigame_type = minigame.get_type()
+        if minigame_type != TRIALMINIGAMES.NONSTOP_DEBATE:
+            raise GameError.ManagerInvalidGameIDError(f'`{nsd_id}` is a minigame of type '
+                                                      '{minigame_type}, not nonstop debate.')
+        return minigame
 
     def get_available_minigame_id(self) -> str:
         """
@@ -825,10 +862,13 @@ class _Trial(GameWithAreas):
 
         if client not in self.get_players() and old_area not in self.get_areas():
             client.send_ooc(f'You have entered an area part of trial `{self.get_id()}`.')
+            if client.is_staff():
+                client.send_ooc(f'Join this trial with /trial_join {self.get_id()}')
             client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
                                    f'an area part of your trial ({old_area.id}->{area.id}).',
                                    pred=lambda c: c in self.get_leaders())
-
+            client.send_ooc_others(f'(X) Add {client.displayname} to your trial with '
+                                   f'/trial_add {client.id}')
         self._check_structure()
 
     def _on_client_change_character(self, player, old_char_id=None, new_char_id=None):
@@ -1031,11 +1071,15 @@ class _Trial(GameWithAreas):
         # 5.
         super()._check_structure()
 
-class TrialManager(GameManager):
+
+class TrialManager(GameWithAreasManager):
     """
-    A trial manager is a game manager with dedicated trial management functions.
+    A trial manager is a game with areas manager with dedicated trial management functions.
 
     """
+
+    # TODO: Enforce GameWithAreasManager to only take game with areas as games when calling
+    # new_game, or when initialized. Also do it in check_structure()
 
     def new_trial(self, creator=None, player_limit=None, concurrent_limit=1, add_players=False,
                   require_invitations=False, require_players=True,

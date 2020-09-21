@@ -374,6 +374,8 @@ GMs can:
     - Adds a player part of your current trial to your NSD.
 * **nsd_end**
     - Ends an NSD you lead.
+* **nsd_join** "nsdID"
+    - Enroll in the NSD in your trial occurring your area.
 * **nsd_lead**
     - Makes you a leader of your NSD.
 * **nsd_loop**
@@ -444,7 +446,9 @@ GMs can:
 * **trial_influence** "ID/char name/edited-to character/showname/OOC name" "number"
     - Sets the influence level of a player in your trial to the given value.
     - Number must be an integer from 0 to 10.
- * **trial_lead**
+* **trial_join** "trial ID"
+    - Enrolls in the trial by ID occurring in your area.
+* **trial_lead**
     - Makes you a leader of your trial.
 * **trial_kick** "ID/char name/edited-to character/showname/OOC name" 
     - Kicks a player off your trial.
