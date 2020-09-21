@@ -16,9 +16,11 @@ It is highly recommended you read through all the installation steps first befor
   - If prompted during the installation to add `python` as a PATH environment variable, accept this option. You may see this option appear on the very first screen during the installation process.
   - If you know what a virtual environment is and your system supports it, it is recommended that you use one, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python). If you do not know what a virtual environment is, you may skip this point.
   - If you have Python 3.6 or lower, you will be prompted on server launch to update to a newer version of Python. That is because the server requires Python 3.7 or higher. Follow instructions under Updating to update your Python version.
+  
 * Open Command Prompt, PowerShell or your preferred terminal, and change to the directory where you downloaded TsuserverDR to. You can do this in two ways:
-  - On Windows, go up one folder above the TsuserverDR folder, Shift + right click the TsuserverDR folder, and click `Open PowerShell window here`. This is the easiest method.
+  - On Windows 10, go up one folder above the TsuserverDR folder, Shift + right click the TsuserverDR folder, and click `Open PowerShell window here`. This is the easiest method. Alternatively...
   - On most operating systems, copy the path of the TsuserverDR folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackets, but including the quotation marks if the path contains spaces.
+
 * Install PyYAML and dependencies by typing in the following two commands in the terminal you just opened:
   ```
   python -m pip install --upgrade pip
@@ -38,34 +40,34 @@ It is highly recommended you read through all the installation steps first befor
 ### Running
 
 * To launch a server, you may either 
-  - Double-click `start_server.py` in your TsuserverDR folder.
+  - Double-click `start_server.py` in your TsuserverDR folder, or...
   - In PowerShell, Command Prompt or your preferred terminal, change directory to your TsuserverDR folder and type `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. For instructions on how to launch any of the above programs or change directory, refer to the second point in the Installing section.
   
 * If everything was set up correctly, you will see something like this appear:
 
-\[2020-07-31T10:20:20\]: Starting...  
-\[2020-07-31T10:20:20\]: Launching TsuserverDR 4.2.5 (200731a)...  
-\[2020-07-31T10:20:20\]: Loading server configurations...  
-\[2020-07-31T10:20:20\]: Server configurations loaded successfully!  
-\[2020-07-31T10:20:20\]: Starting a nonlocal server...  
-\[2020-07-31T10:20:20\]: Server started successfully!  
-\[2020-07-31T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
+\[2020-09-21T10:20:20\]: Starting...  
+\[2020-09-21T10:20:20\]: Launching TsuserverDR 4.3.0-b1 (M200921b)...  
+\[2020-09-21T10:20:20\]: Loading server configurations...  
+\[2020-09-21T10:20:20\]: Server configurations loaded successfully!  
+\[2020-09-21T10:20:20\]: Starting a nonlocal server...  
+\[2020-09-21T10:20:20\]: Server started successfully!  
+\[2020-09-21T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
 
 * If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:
 
-\[2020-07-31T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
-\[2020-07-31T10:20:21\]: *Server name: My First DR Server  
-\[2020-07-31T10:20:21\]: *Server description: This is my flashy new DR server  
-\[2020-07-31T10:20:22\]: Connected to the master server.  
+\[2020-09-21T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
+\[2020-09-21T10:20:21\]: *Server name: My First DR Server  
+\[2020-09-21T10:20:21\]: *Server description: This is my flashy new DR server  
+\[2020-09-21T10:20:22\]: Connected to the master server.  
 
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If it fails to do that, it will let you know that, as it means there is probably something wrong with your internet connection and that other players may not be able to connect to your server.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
-\[2020-07-31T22:23:04\]: You have initiated a server shut down.  
-\[2020-07-31T22:23:04\]: Kicking 12 remaining clients.  
-\[2020-07-31T22:23:04\]: Server has successfully shut down.  
+\[2020-09-21T22:23:04\]: You have initiated a server shut down.  
+\[2020-09-21T22:23:04\]: Kicking 12 remaining clients.  
+\[2020-09-21T22:23:04\]: Server has successfully shut down.  
 
 * If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
