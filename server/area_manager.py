@@ -1233,6 +1233,6 @@ class AreaManager:
                 now_reachable.append(True)
                 areas[i].reachable_areas.add(areas[1-i].name)
                 if change_passage_visibility:
-                    areas[i].visible_reachable_areas += {areas[1-i].name}
+                    areas[i].visible_reachable_areas.add(areas[1-i].name)
 
         return now_reachable

@@ -2871,7 +2871,7 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
                 player_description += ' (!)'
             if player.party and player.party == client.party:
                 player_description += ' (P)'
-            if client.is_staff():
+            if client.is_staff() and len(client.get_multiclients()) > 1:
                 # If client is multiclienting add (MC) for officers
                 player_description += ' (MC)'
             if not player.is_visible:
@@ -7915,7 +7915,7 @@ def ooc_cmd_status_set_other(client: ClientManager.Client, arg: str):
 
     if client == target:
         raise ClientError('You cannot set your own status with this command.')
-    if not status and not client.status:
+    if not status and not target.status:
         raise ClientError(f'{target.displayname} already does not have a player status.')
 
     client.send_ooc(f'You set the player status of {target.displayname} to `{status}`.')
@@ -7924,14 +7924,14 @@ def ooc_cmd_status_set_other(client: ClientManager.Client, arg: str):
 
     if status:
         target.status = status
-        client.send_ooc_others('(X) {client.displayname} [{target.id}] set the player status '
-                               'of {target.displayname} to `{status}` ({target.id}).',
+        client.send_ooc_others(f'(X) {client.displayname} [{target.id}] set the player status '
+                               f'of {target.displayname} to `{status}` ({target.id}).',
                                is_zstaff_flex=True, not_to={target})
     else:
         # By previous if, player must have had a status
         target.status = status
-        client.send_ooc_others('(X) {client.displayname} [{target.id}] cleared the player '
-                               'status of {target.displayname} ({target.id}).',
+        client.send_ooc_others(f'(X) {client.displayname} [{target.id}] cleared the player '
+                               f'status of {target.displayname} ({target.id}).',
                                is_zstaff_flex=True, not_to={target})
 
 
