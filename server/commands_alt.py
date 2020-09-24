@@ -101,8 +101,6 @@ def ooc_cmd_zi(client, arg):
 
     do_command('zone_info', client, arg)
 
-    do_command('scream', client, arg)
-
 def ooc_cmd_zg(client, arg):
     """
     Alias for /zone_global.

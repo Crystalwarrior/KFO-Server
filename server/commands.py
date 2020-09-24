@@ -2879,8 +2879,9 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
 
         client.send_ooc(
             f"""=== Look results for {client.area.name} ===
+            *About the people: you see {player_description}
             *About the area: {area_description}
-            *About the people: you see {player_description}""")
+            """)
 
 def ooc_cmd_look_clean(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
