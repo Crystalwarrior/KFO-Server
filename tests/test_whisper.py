@@ -1,5 +1,6 @@
 from .structures import _TestSituation6Mc1Gc25
 
+
 class _TestWhisper(_TestSituation6Mc1Gc25):
     @classmethod
     def setUpClass(cls):
@@ -28,6 +29,7 @@ class _TestWhisper(_TestSituation6Mc1Gc25):
         if client.showname:
             identifiers.append(client.showname)
         return identifiers
+
 
 class TestWhisper_01_WhisperFailure(_TestWhisper):
     def test_01_wrongarguments(self):
@@ -119,7 +121,7 @@ class TestWhisper_01_WhisperFailure(_TestWhisper):
             message = '{} with {} to {}'.format(self.c0, identifier, self.c4)
             self.c0.ooc('/whisper {} {}'.format(identifier, message))
             self.c0.assert_ooc('No targets with identifier `{} {}` found.'
-                              .format(identifier, message), over=True)
+                               .format(identifier, message), over=True)
             self.c1.assert_no_packets()
             self.c2.assert_no_packets()
             self.c3.assert_no_packets()
@@ -156,6 +158,7 @@ class TestWhisper_01_WhisperFailure(_TestWhisper):
         self.c1.discard_all()
         self.c4.discard_all()
 
+
 class TestWhisper_02_WhisperNormal(_TestWhisper):
     def test_01_whisperbothnonstaff(self):
         """
@@ -169,9 +172,9 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
-                staff_ooc = ('(X) {} [{}] whispered `{}` to {} ({}).'
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
-                                     sender.area.id))
+                                     recipient.id, sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
@@ -198,11 +201,11 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
-                staff_ooc = ('(X) {} [{}] whispered `{}` to {} ({}).'
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
-                                     sender.area.id))
+                                     recipient.id, sender.area.id))
                 nonstaff_ooc = ('{} whispered something to {}.'
-                                 .format(sender.displayname, recipient.displayname))
+                                .format(sender.displayname, recipient.displayname))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
@@ -229,9 +232,9 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
-                staff_ooc = ('(X) {} [{}] whispered `{}` to {} ({}).'
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
-                                     sender.area.id))
+                                     recipient.id, sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
@@ -267,9 +270,9 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                             .format(recipient.displayname, message))
                 recipient_ooc = ('You heard a whisper and you think it was directed at you, but '
                                  'you could not seem to tell where it came from.')
-                staff_ooc = ('(X) {} [{}] whispered `{}` to {} while sneaking ({}).'
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] while sneaking ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
-                                     sender.area.id))
+                                     recipient.id, sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic(message, folder='<NOCHAR>', pos='jud', showname='???', over=True)
@@ -320,7 +323,7 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
         _, p = self.c0.search_match((self.server.config['hostname'], 'You have created party'),
                                     self.c0.received_ooc, somewhere=True, remove_match=False,
                                     allow_partial_match=True)
-        party_number = p[1].split(' ')[-1][:-1] # Temporary, will improve later
+        party_number = p[1].split(' ')[-1][:-1]  # Temporary, will improve later
         self.c0.ooc('/party_invite 4')
         self.c4.ooc('/party_join {}'.format(party_number))
         self.c3.ooc('/party')
@@ -343,10 +346,10 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
-                staff_ooc = ('(X) {} [{}] whispered `{}` to {} while both were sneaking and part '
-                             'of the same party ({}).'
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] while both were sneaking and '
+                             'part of the same party ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
-                                     sender.area.id))
+                                     recipient.id, sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic(message, folder='<NOCHAR>', pos=sender.pos, cid=sender.char_id,
@@ -361,7 +364,7 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
 
         # Unsuccessful because other type of party interaction
         interactions = [(self.c0, self.c2), (self.c2, self.c3), (self.c3, self.c4),
-                        (self.c4, self.c2), (self.c3, self.c0), (self.c4, self.c3) ]
+                        (self.c4, self.c2), (self.c3, self.c0), (self.c4, self.c3)]
 
         for (sender, recipient) in interactions:
             for identifier in self.get_identifiers(recipient):
@@ -385,6 +388,7 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
         self.c2.move_area(4)
         self.c3.move_area(5)
         self.c2.make_gm()
+
 
 class TestWhisper_03_WhisperToDeafened(_TestWhisper):
     # The following people are assumed deafened throughout this test class
@@ -415,9 +419,9 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = ('{} seemed to whisper something to you, but you could not make it '
                                  'out.'.format(sender.displayname))
-                staff_ooc = ('(X) {} [{}] whispered `{}` to {} ({}).'
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
-                                     sender.area.id))
+                                     recipient.id, sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic('(Your ears are ringing)', folder='<NOCHAR>', pos=sender.pos,
@@ -446,11 +450,11 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
             message = '{} with {} to {}'.format(sender, identifier, recipient)
             sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
             recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
-            staff_ooc = ('(X) {} [{}] whispered `{}` to {} ({}).'
+            staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] ({}).'
                          .format(sender.displayname, sender.id, message, recipient.displayname,
-                                 sender.area.id))
+                                 recipient.id, sender.area.id))
             nonstaff_ooc = ('{} whispered something to {}.'
-                             .format(sender.displayname, recipient.displayname))
+                            .format(sender.displayname, recipient.displayname))
             sender.ooc('/whisper {} {}'.format(identifier, message))
             sender.assert_ooc(sent_ooc, ooc_over=True)
             sender.assert_ic('(Your ears are ringing)', folder='<NOCHAR>', pos=sender.pos,
@@ -486,9 +490,9 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
                 sent_ooc = ('You spooked {} by whispering `{}` to them while sneaking.'
                             .format(recipient.displayname, message))
                 recipient_ooc = 'Your ears seemed to pick up something.'
-                staff_ooc = ('(X) {} [{}] whispered `{}` to {} while sneaking ({}).'
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] while sneaking ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
-                                     sender.area.id))
+                                     recipient.id, sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic(message, folder='<NOCHAR>', pos='jud', showname='???', over=True)
@@ -541,7 +545,7 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
         _, p = self.c0.search_match((self.server.config['hostname'], 'You have created party'),
                                     self.c0.received_ooc, somewhere=True, remove_match=False,
                                     allow_partial_match=True)
-        party_number = p[1].split(' ')[-1][:-1] # Temporary, will improve later
+        party_number = p[1].split(' ')[-1][:-1]  # Temporary, will improve later
         self.c0.ooc('/party_invite 4')
         self.c4.ooc('/party_join {}'.format(party_number))
         self.c3.ooc('/party')
@@ -565,10 +569,10 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
                 recipient_ooc = ('{} seemed to whisper something to you, but you could not make it '
                                  'out.'.format(sender.displayname))
-                staff_ooc = ('(X) {} [{}] whispered `{}` to {} while both were sneaking and part '
-                             'of the same party ({}).'
+                staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] while both were sneaking and '
+                             'part of the same party ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
-                                     sender.area.id))
+                                     recipient.id, sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic('(Your ears are ringing)', folder='<NOCHAR>', pos=sender.pos,
@@ -585,7 +589,7 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
 
         # Unsuccessful because other type of party interaction
         interactions = [(self.c0, self.c2), (self.c2, self.c3), (self.c3, self.c4),
-                        (self.c4, self.c2), (self.c3, self.c0), (self.c4, self.c3) ]
+                        (self.c4, self.c2), (self.c3, self.c0), (self.c4, self.c3)]
 
         for (sender, recipient) in interactions:
             for identifier in self.get_identifiers(recipient):
@@ -609,6 +613,7 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
         self.c2.move_area(4)
         self.c3.move_area(5)
         self.c2.make_gm()
+
 
 class TestWhisper_04_Guide(_TestWhisper):
     def test_01_wrongarguments(self):
@@ -689,8 +694,8 @@ class TestWhisper_04_Guide(_TestWhisper):
                 self.c3.assert_no_packets()
                 self.c5.assert_ooc(staff_ooc, over=True)
 
-        target = self.c3 # Non-staff not in c0's area
-        identifier = '3' # Client ID is the only identifier that will work
+        target = self.c3  # Non-staff not in c0's area
+        identifier = '3'  # Client ID is the only identifier that will work
         message = '{} with {} to {}'.format(sender, identifier, target)
         sent_ooc = ('You gave the following guidance to {}: `{}`.'
                     .format(target.displayname, message))

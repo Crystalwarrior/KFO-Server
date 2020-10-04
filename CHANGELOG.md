@@ -495,7 +495,7 @@
 * Added support for new colors available in DRO as well as the set position SP packet
 * Music playing notifications now show the server showname of the player in DRO if the player set a showname
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
-* Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now send messages but filtered
+* Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
 * Fixed /scream bypassing moderation mutes or client mutes
 * Fixed /scream bypassing IC chat locks, or being rendered in scream-reachable areas whose IC chats are locked
 * Fixed /charselect sending the proper area background to blind clients
@@ -503,5 +503,6 @@
 * Fixed wrongly formatted OOC notifications being sent if a player moves to an area where there are players bleeding and sneaking, and players bleeding but not sneaking
 * Fixed GMs blinding, deafening or gagging themselves receiving two notifications
 * Fixed area lists containing <ALL> as an area name loading without raising errors
+* Fixed /whisper not showing client ID of target for GMs+
 * Removed deprecated AO commands
 * Dropped Python 3.6 support
