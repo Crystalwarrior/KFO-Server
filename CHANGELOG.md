@@ -494,6 +494,11 @@
 * Changed wording of GM login notifications, /minimap, attempting to access a locked passage, and talking in an area whose IC chat is locked
 * Added support for new colors available in DRO as well as the set position SP packet
 * Music playing notifications now show the server showname of the player in DRO if the player set a showname
+* Last sender sprites no longer show in first person mode if the player with first person mode talks and the last sender
+  - Disconnected
+  - Is in a different area
+  - Changed characters
+  - Has sneaked, and it is not the case the player is sneaking and they are both in a party
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
 * Fixed /scream bypassing moderation mutes or client mutes

@@ -92,7 +92,9 @@ class ClientManager:
             self.last_ic_message = ''
             self.last_ooc_message = ''
             self.first_person = False
-            self.last_ic_notme = None, None
+            self.forward_sprites = True
+            self.last_received_ic = [None, None]
+            self.last_received_ic_notme = [None, None]
             self.is_blind = False
             self.is_deaf = False
             self.is_gagged = False
@@ -117,8 +119,6 @@ class ClientManager:
             # modifications that it may have undergone afterwards (say, via gimp, gag, etc.)
             self.last_ic_char = ''  # The char they used to send their last IC message, not
             # necessarily equivalent to self.get_char_name()
-            self.last_ic_received_mine = False  # True if the last IC message this player received
-            # came from their doing, false otherwise.
 
             # music flood-guard stuff
             self.mus_counter = 0
@@ -283,19 +283,65 @@ class ClientManager:
                 # Change "character" parts of IC port
                 if self.is_blind:
                     pargs['anim'] = '../../misc/blank'
+                    # TODO: reset self.last_received_ic_notme ??
                     self.send_background(name=self.server.config['blackout_background'])
-                elif sender == self and self.first_person:
-                    last_area, last_args = self.last_ic_notme
-                    # Check that the last received message exists and comes from the current area
-                    if self.area.id == last_area and last_args:
+                # If self just spoke while in first person mode, change the message they receive
+                # accordingly for them so they do not see themselves talking
+                # Also do this replacement if the sender is not in forward sprites mode
+                elif ((sender == self and self.first_person) or
+                      (sender and not sender.forward_sprites)):
+                    # last_sender: Client who actually sent the new message
+                    # last_apparent_sender: Client whose sprites were used for the last message
+                    # last_args: "MS" arguments to the last message
+                    # Do note last_sender != last_apparent_sender if a person receives a message
+                    # from someone in not forward sprites mode. In that case, last_sender is
+                    # updated with this new client, but last apparent_sender is not.
+
+                    # First check this is first person mode. By doing this check first we
+                    # guarantee ourselves we do not pick the last message that could possibly
+                    # be self
+                    if sender == self and self.first_person:
+                        last_apparent_sender, last_args = self.last_received_ic_notme
+                    else:
+                        last_apparent_sender, last_args = self.last_received_ic
+
+                    # Make sure showing previous sender makes sense. If it does not make sense now,
+                    # it will not make sense later.
+
+                    # If last sender is no longer connected, do not show previous sender
+                    if not last_apparent_sender or not self.server.is_client(last_apparent_sender):
+                        pargs['anim'] = '../../misc/blank'
+                        self.last_received_ic_notme = [None, None]
+                        self.last_received_ic = [None, None]
+                    # If last apparent sender and self are not in the same area, do not show previous sender
+                    elif self.area != last_apparent_sender.area:
+                        pargs['anim'] = '../../misc/blank'
+                        self.last_received_ic_notme = [None, None]
+                        self.last_received_ic = [None, None]
+                    # If last sender has changed character, do not show previous sender
+                    elif last_apparent_sender.get_char_name() != last_args['folder']:
+                        pargs['anim'] = '../../misc/blank'
+                        self.last_received_ic_notme = [None, None]
+                        self.last_received_ic = [None, None]
+                    # Do not show previous sender if
+                    # 1. Previous sender is sneaked, and
+                    # 2. It is not the case self is in a party, the same one as previous sender,
+                    # and self is sneaked
+                    elif (not last_apparent_sender.is_visible and
+                          not (self.party and self.party == last_apparent_sender.party
+                               and not self.is_visible)):
+                        # It will still be the case self will reveal themselves by talking
+                        # They will however see last sender if needed
+                        pargs['anim'] = '../../misc/blank'
+                        self.last_received_ic_notme = [None, None]
+                        self.last_received_ic = [None, None]
+                    # Otherwise, show message
+                    else:
                         pargs['folder'] = last_args['folder']
                         pargs['anim'] = last_args['anim']
                         pargs['pos'] = last_args['pos']
                         pargs['anim_type'] = last_args['anim_type']
                         pargs['flip'] = last_args['flip']
-                    # Otherwise, send blank
-                    else:
-                        pargs['anim'] = '../../misc/blank'
 
                     # Regardless of anything, pairing is visually canceled while in first person
                     # so set them to default values
@@ -329,6 +375,7 @@ class ClientManager:
                 # Nerf message for deaf
                 # TEMPORARY: REMOVE FOR 4.3+CLIENT UPDATE
                 # Remove the send_deaf_space requirement
+                # TODO: reintroduce allowed_messages
                 if self.is_deaf and pargs['msg']:
                     if (not pargs['msg'].startswith(allowed_starters) or
                         (sender and sender.is_gagged and gag_replaced) or
@@ -367,10 +414,16 @@ class ClientManager:
             # Keep track of packet details in case this was sent by someone else
             # This is used, for example, for first person mode
             if sender != self:
-                self.last_ic_notme = self.area.id, final_pargs
+                # Only update apparent sender if sender was in forward sprites mode
+                if sender and sender.forward_sprites:
+                    self.last_received_ic_notme[0] = sender
+                self.last_received_ic_notme[1] = final_pargs
+            # Moreover, keep track of last received IC message
+            # This is used for forward sprites mode.
+            if sender and sender.forward_sprites:
+                self.last_received_ic[0] = sender
+            self.last_received_ic[1] = final_pargs
 
-            # Update the last IC received status being true or false
-            self.last_ic_received_mine = (sender == self)
             self.send_command('MS', *to_send)
 
         def send_ic_others(self, params=None, sender=None, bypass_replace=False,

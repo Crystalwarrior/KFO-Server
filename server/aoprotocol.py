@@ -444,7 +444,8 @@ class AOProtocol(asyncio.Protocol):
         # not receive any other messages in the meantime.
         # This helps prevent record these messages and retransmit it to clients who may want to
         # filter these out
-        if (pargs['text'] == self.client.last_ic_raw_message and self.client.last_ic_received_mine
+        if (pargs['text'] == self.client.last_ic_raw_message
+            and self.client.last_received_ic[0] == self.client
             and self.client.get_char_name() == self.client.last_ic_char):
             return
 

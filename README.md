@@ -241,6 +241,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Chooses "Truth" or "Dare" for Truth or Dare minigames.
 * **toggle_fp**
     - Changes your setting to be in first person mode (your character does not appear to you when you send IC messages) or normal mode (your character does appear). By default it is in normal mode.
+* **toggle_fs**
+    - Changes your setting to have forward sprites mode off (your character sprites are not sent to anyone, everyone sees the last sprites they last saw) or on (your character appears normally). By default it is on. 
 * **toggle_global**
     - Changes your setting to receive global messages. By default it is on.
 * **toggle_pm**

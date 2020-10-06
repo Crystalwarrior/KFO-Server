@@ -8076,6 +8076,33 @@ def ooc_cmd_unilockh(client: ClientManager.Client, arg: str):
     logger.log_server('[{}][{}]Has {} the passage from {} to {}.'
                       .format(client.area.id, client.get_char_name(), now0, name0, name1))
 
+
+def ooc_cmd_toggle_fs(client: ClientManager.Client, arg: str):
+    """
+    Toggles forward sprites mode on or off. If off, no matter what message the player sends, their
+    sprite will not be forwarded to target players, but instead they will see whatever the last
+    sprite used was onscreen appear with the message.
+
+    SYNTAX
+    /toggle_fs
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    Assuming you start in normal mode...
+    /toggle_fs          :: Toggles first person mode on.
+    /toggle_fs          :: Toggles first person mode off.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    client.forward_sprites = not client.forward_sprites
+    status = {True: 'now', False: 'no longer'}
+
+    client.send_ooc('You are {} in forward sprites mode.'.format(status[client.forward_sprites]))
+
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
