@@ -419,14 +419,21 @@ class Constants():
 
     @staticmethod
     def yaml_load(file):
+        # Extract the name of the yaml in case of errors
+        separator = max(file.name.rfind('\\'), file.name.rfind('/'))
+        file_name = file.name[separator+1:]
+
         try:
             return yaml.safe_load(file)
         except yaml.YAMLError as exc:
-            # Extract the name of the yaml
-            separator = max(file.name.rfind('\\'), file.name.rfind('/'))
-            file_name = file.name[separator+1:]
-            # Then raise the exception
-            msg = ('File {} returned the following YAML error when loading: `{}`.'
+            msg = ('File {} returned the following YAML error when loading: `{}`. Fix the syntax '
+                   'error and try again.'
+                   .format(file_name, exc))
+            raise ServerError.YAMLInvalidError(msg)
+        except UnicodeDecodeError as exc:
+            msg = ('File {} returned the following UnicodeDecode error when loading: `{}`. Make '
+                   'sure this is an actual YAML file and that it does not contain any unusual '
+                   'characters and try again.'
                    .format(file_name, exc))
             raise ServerError.YAMLInvalidError(msg)
 
