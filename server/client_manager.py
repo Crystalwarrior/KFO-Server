@@ -283,7 +283,6 @@ class ClientManager:
                 # Change "character" parts of IC port
                 if self.is_blind:
                     pargs['anim'] = '../../misc/blank'
-                    # TODO: reset self.last_received_ic_notme ??
                     self.send_background(name=self.server.config['blackout_background'])
                 # If self just spoke while in first person mode, change the message they receive
                 # accordingly for them so they do not see themselves talking
@@ -375,11 +374,11 @@ class ClientManager:
                 # Nerf message for deaf
                 # TEMPORARY: REMOVE FOR 4.3+CLIENT UPDATE
                 # Remove the send_deaf_space requirement
-                # TODO: reintroduce allowed_messages
                 if self.is_deaf and pargs['msg']:
-                    if (not pargs['msg'].startswith(allowed_starters) or
-                        (sender and sender.is_gagged and gag_replaced) or
-                        bypass_deafened_starters):
+                    if (bypass_deafened_starters or
+                        (not pargs['msg'].startswith(allowed_starters) and
+                         not pargs['msg'] in allowed_messages) or
+                        (sender and sender.is_gagged and gag_replaced)):
                         pargs['msg'] = '(Your ears are ringing)'
                         if self.send_deaf_space:
                             pargs['msg'] = pargs['msg'] + ' '
@@ -413,7 +412,10 @@ class ClientManager:
 
             # Keep track of packet details in case this was sent by someone else
             # This is used, for example, for first person mode
-            if sender != self:
+            if sender != self or self.is_blind:
+                # Blind people are effectively in first person mode
+                # So also update as needed.
+
                 # Only update apparent sender if sender was in forward sprites mode
                 if sender and sender.forward_sprites:
                     self.last_received_ic_notme[0] = sender
@@ -446,6 +448,10 @@ class ClientManager:
 
         def send_ic_attention(self):
             self.send_ic(msg='(Something catches your attention)', ding=1)
+
+        def send_ic_blankpost(self):
+            if self.packet_handler == Clients.ClientDRO1d0d0:
+                self.send_ic(msg='', bypass_replace=True)
 
         def send_background(self, name=None, pos=None):
             """
@@ -652,6 +658,7 @@ class ClientManager:
 
             if self.is_blind:
                 self.send_background(name=self.server.config['blackout_background'])
+                self.send_ic_blankpost()  # Clear screen
             else:
                 self.send_background(name=self.area.background)
 

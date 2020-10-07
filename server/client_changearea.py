@@ -753,8 +753,7 @@ class ClientChangeArea:
         else:
             client.send_background(name=client.area.background)
         client.send_command('LE', *client.area.get_evidence_list(client))
-        if client.packet_handler == Clients.ClientDRO1d0d0:
-            client.send_ic(msg='', bypass_replace=True) # Blankpost to simulate area change
+        client.send_ic_blankpost()
 
         if client.followedby and not ignore_followers and not override_all:
             for c in client.followedby:

@@ -270,7 +270,7 @@ class NonStopDebate(TrialMinigame):
         for player in self.get_players():
             player.send_command('TP', self._client_timer_id)
             if blankpost:
-                player.send_ic(msg='', bypass_replace=True) # Blankpost
+                player.send_ic_blankpost()  # Blankpost
 
         def _variant():
             for player in self.get_players():

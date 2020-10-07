@@ -46,8 +46,8 @@ class TestBlind_01_Common(_UnittestSenseBlock):
 
     def sense_affect(self, client):
         if client.is_blind:
-            client.assert_packet('BN', self.server.config['blackout_background'],
-                                          over=True)
+            client.assert_packet('BN', self.server.config['blackout_background'],)
+            client.assert_ic('', over=True)
         else:
             raise TypeError
 
@@ -75,7 +75,8 @@ class TestBlind_02_Effect(_TestBlind):
         assert not self.c2.is_blind
         assert not self.c3.is_blind
 
-        self.c0.assert_packet('BN', self.server.config['blackout_background'], over=True)
+        self.c0.assert_packet('BN', self.server.config['blackout_background'])
+        self.c0.assert_ic('', over=True)
 
     def test_02_blindseesnothing(self):
         """
