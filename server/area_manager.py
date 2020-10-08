@@ -1204,16 +1204,21 @@ class AreaManager:
         now_reachable = []
         num_areas = 2 if bilock else 1
 
-        # First check if it is the case a non-authorized use is trying to change passages to areas
-        # that do not allow their passages to be modified
+        # First check if the player should be able to change the passage at all
         for i in range(num_areas):
+            # First check if it is the case a non-authorized use is trying to change passages to
+            # areas that do not allow their passages to be modified
             if not areas[i].change_reachability_allowed and not client.is_staff():
                 raise AreaError('You must be authorized to change passages in area {}.'
                                 .format(areas[i].name))
 
-        # Just in case something goes wrong, have a backup to revert back
-        formerly_reachable = [areas[i].reachable_areas.copy() for i in range(num_areas)]
+            # And make sure that non-authorized users cannot create passages they cannot see
+            if ((not areas[1-i].name in areas[i].reachable_areas) and
+                not (client.is_staff() or areas[1-i].name in areas[i].visible_reachable_areas)):
+                raise AreaError('You must be authorized to create a new passage from {} to '
+                                '{}.'.format(areas[i].name, areas[1-i].name))
 
+        # If we are at this point, we are committed to changing the passage locks
         for i in range(num_areas):
             if areas[1-i].name in areas[i].reachable_areas:  # Case removing a passage
                 now_reachable.append(False)
@@ -1221,18 +1226,12 @@ class AreaManager:
                 if change_passage_visibility:
                     areas[i].visible_reachable_areas -= {areas[1-i].name}
             else:  # Case creating a passage
-                # Make sure that non-authorized users cannot create passages they cannot see
-                if not (client.is_staff() or areas[1-i].name in areas[i].visible_reachable_areas):
-                    # And if they try and do, undo changes and restore formerly reachable areas
-                    for j in range(num_areas):
-                        areas[j].reachable_areas = formerly_reachable[j]
-                    raise AreaError('You must be authorized to create a new passage from {} to '
-                                    '{}.'.format(areas[i].name, areas[1-i].name))
-
-                # Otherwise, create new passages
                 now_reachable.append(True)
                 areas[i].reachable_areas.add(areas[1-i].name)
                 if change_passage_visibility:
                     areas[i].visible_reachable_areas.add(areas[1-i].name)
+
+            for client in areas[i].clients:
+                client.reload_music_list()
 
         return now_reachable

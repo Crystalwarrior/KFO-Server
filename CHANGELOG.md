@@ -489,6 +489,7 @@
   - Players in the same party now show a (P)
   - Players with a custom status now show a (!)
 * Added /bilockh and /unilockh GM commands. They have the effect /bilock and /unilock formerly had of showing/hiding areas from the area list. /bilock and /unilock for all ranks now does not change passage visibility for all ranks.
+  - Passage visibility changes are immediately reported in the affected players' area lists.
 * Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players
 * System blankposts are now sent on area change or when blinded to clear the last character on screen for compatible clients.
 * Changed wording of GM login notifications, /minimap, attempting to access a locked passage, and talking in an area whose IC chat is locked
