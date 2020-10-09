@@ -489,7 +489,7 @@
   - Players in the same party now show a (P)
   - Players with a custom status now show a (!)
 * Added /bilockh and /unilockh GM commands. They have the effect /bilock and /unilock formerly had of showing/hiding areas from the area list. /bilock and /unilock for all ranks now does not change passage visibility for all ranks.
-  - Passage visibility changes are immediately reported in the affected players' area lists.
+  - Passage visibility changes are immediately reported in the affected players' area lists
 * Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players
 * System blankposts are now sent on area change or when blinded to clear the last character on screen for compatible clients.
 * Changed wording of GM login notifications, /minimap, attempting to access a locked passage, and talking in an area whose IC chat is locked
@@ -512,6 +512,7 @@
 * Fixed area lists containing <ALL> as an area name loading without raising errors
 * Fixed /whisper not showing client ID of target for GMs+
 * Fixed situation where if a player was in first person mode and was blinded, talked themselves but heard no one else talk, and after being unblinded started talking, they would see the sprite of the last person they last saw talked
-* Fixed attempting to load non-YAML files or files with unusual encoding raising an uncaught UnicodeDecode error.
+* Fixed attempting to load non-YAML files or files with unusual encoding raising an uncaught UnicodeDecode error
+* Fixed /refresh not undoing changes if either the background, character or music list raised errors when loading
 * Removed deprecated AO commands
 * Dropped Python 3.6 support

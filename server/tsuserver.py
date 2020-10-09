@@ -50,8 +50,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b8'
-        self.internal_version = 'M201008a'
+        self.segment_version = 'b9'
+        self.internal_version = 'M201009a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -222,14 +222,37 @@ class TsuserverDR:
         return mes
 
     def reload(self):
-        with Constants.fopen('config/characters.yaml', 'r') as chars:
-            self.char_list = Constants.yaml_load(chars)
-        with Constants.fopen('config/music.yaml', 'r') as music:
-            self.music_list = Constants.yaml_load(music)
-        self.build_music_pages_ao1()
-        self.build_music_list_ao2()
-        with Constants.fopen('config/backgrounds.yaml', 'r') as bgs:
-            self.backgrounds = Constants.yaml_load(bgs)
+        # Keep backups in case of failure
+        backup = [self.char_list.copy(), self.music_list.copy(), self.backgrounds.copy()]
+
+        file_names = ['characters', 'music', 'backgrounds']
+        files = list()
+        for file_type in file_names:
+            file_name = f'config/{file_type}.yaml'
+            try:
+                with Constants.fopen(file_name, 'r', encoding='utf-8') as file:
+                    files.append(Constants.yaml_load(file))
+            except ServerError.YAMLInvalidError as exc:
+                # The YAML exception already provides a full description. Just add the fact the
+                # reload was undone to ease the person who ran the command's nerves.
+                msg = ('{} Reload was undone.'.format(exc))
+                raise ServerError.YAMLInvalidError(msg)
+            except ServerError as exc:
+                msg = ('File {} returned the following error when loading: `{}`. Reload was undone.'
+                       .format(file_name, exc))
+                raise ServerError(msg)
+
+        self.char_list, self.music_list, self.backgrounds = files
+
+        try:
+            self.build_music_pages_ao1()
+            self.build_music_list_ao2()
+        except ServerError as exc:
+            self.char_list, self.music_list, self.backgrounds = backup
+            msg = ('The new music list returned the following error when loading: `{}`. Fix the '
+                   'error and try again. Reload was undone.'
+                   .format(exc))
+            raise ServerError.MusicInvalidError(msg)
 
     def reload_commands(self):
         try:
