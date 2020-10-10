@@ -2862,10 +2862,14 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
             if player.party and player.party == client.party:
                 priority -= 2**1
 
-            player_list.append([priority, name, player])
+            player_list.append([priority, name, player.id, player])
+            # We add player.id as a tiebreaker if both priority and name are the same
+            # This can be the case if, say, two SPECTATOR are in the same area.
+            # player.id is unique, so it helps break ties
+            # player instances do not have order, so they are a bad way to sort ties.
 
         player_list.sort()
-        for (_, name, player) in player_list:
+        for (_, name, _, player) in player_list:
             player_description += '\r\n[{}] {}'.format(player.id, name)
             if player.status:
                 player_description += ' (!)'
@@ -2880,8 +2884,7 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
         client.send_ooc(
             f"""=== Look results for {client.area.name} ===
             *About the people: you see {player_description}
-            *About the area: {area_description}
-            """)
+            *About the area: {area_description}""")
 
 def ooc_cmd_look_clean(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
