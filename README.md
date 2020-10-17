@@ -224,7 +224,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
 * **spectate**
     - Switches you to a SPECTATOR character.
 * **switch** "character name"
-    - Switches you to the given character.
+    - Switches you to the given character, provided no other player is using it in the area and it is not restricted.
 * **time**
     - Displays the server's local time.
 * **time12**
@@ -441,6 +441,8 @@ GMs can:
     - Sends a message to all active staff members.
 * **status_set_other** "ID/char name/edited-to character/showname/OOC name" "status"
     - Sets the player status of another user, or clears it if not given a status.
+* **switch** "character name"
+    - Switches you to the given character, provided no other player is using it in the area.
 * **toggle_allpasses**
 	- Changes your ability to receive autopass notifications from players that do not have autopass on. By default it is off.
 * **toggle_allrolls**
@@ -604,7 +606,9 @@ GMs can:
 * **showname_nuke**
     - Clears all shownames from non-staff members.
 * **showname_set** "ID/IPID" "showname"
-    - Sets a target's showname to be the given one, or clears it if not given one.
+    - Sets a target's showname to be the given one, or clears it if not given one.* **switch** "character name"
+* **switch** "character name"
+    - Switches you to the given character. If some other player in the area is using it, they will be forced to the character select screen.
 * **unban** "IPID/IP"
     - Unbans the specified IPID/IP.
 * **unbanhdid** "HDID"

@@ -520,6 +520,13 @@ class ClientManager:
                     for client in self.area.clients:
                         if client.char_id == char_id:
                             client.char_select()
+                            if client != self:
+                                client.send_ooc('You were forced off your character.')
+                                self.send_ooc(f'You forced client {client.id} off their '
+                                              f'character.')
+                                self.send_ooc_others(f'{self.name} [{self.id}] forced client '
+                                                     f'{client.id} off their character.',
+                                                     is_officer=True, not_to={client})
                 else:
                     raise ClientError('Character {} not available.'
                                       .format(self.get_char_name(char_id)))
@@ -577,7 +584,7 @@ class ClientManager:
             return 0
 
         def reload_character(self):
-            self.change_character(self.char_id, True)
+            self.change_character(self.char_id, force=True)
 
         def reload_music_list(self, new_music_file=None):
             """
