@@ -192,7 +192,8 @@ class AreaManager:
         def broadcast_ic_attention(self, cond=None):
             """
             Send an IC message with a ding to everyone in the area indicating something catches
-            their attention, *except* if the player is blind or deaf.
+            their attention, *except* if the player is blind or deaf, or if the area is a lobby
+            area.
 
             Parameters
             ----------
@@ -205,6 +206,9 @@ class AreaManager:
             None.
 
             """
+
+            if self.lobby_area:
+                return
 
             if cond is None:
                 cond = lambda client: True
