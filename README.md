@@ -313,6 +313,15 @@ GMs can:
     - Cancels the day cycle initiated by the target or yourself if not given a target.
 * **clock_pause** "ID"
     - Pauses the day cycle initiated by the target or yourself if not given a target.
+* **clock_period** "name" "hour start"
+    - Initializes a clock period that starts at the given hour for your day cycle. 
+    - Whenever the clock ticks into the period, clients in the clock range will be ordered to switch to that time of day's version of their theme.
+* **clock_set** "hour length" "hour"
+    - Modifies the hour length and current hour of your day cycle without restarting it. This is the way to move the day cycle out of unknown time if needed as well. 
+    - Acts just like doing /clock again, but does not erase already set periods.
+* **clock_unknown**
+    - Sets the time of your day cycle to be unknown, a special time where hours do not tick.
+    - Clients in the clock range will be ordered to switch to the unknown time of day version of their theme.
 * **clock_unpause** "ID"
     - Unpauses the day cycle initiated by the target or yourself if not given a target.
 * **cure** "ID" "initials of effects"

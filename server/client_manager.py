@@ -88,7 +88,6 @@ class ClientManager:
             self.show_shownames = True
             self.is_bleeding = False
             self.get_foreign_rolls = False
-            self.last_sent_clock = None
             self.last_ic_message = ''
             self.last_ooc_message = ''
             self.first_person = False

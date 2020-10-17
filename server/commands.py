@@ -1374,11 +1374,12 @@ def ooc_cmd_clock_pause(client: ClientManager.Client, arg: str):
     except KeyError:
         raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
 
-    is_paused = client.server.tasker.get_task_attr(c, ['as_day_cycle'], 'is_paused')
-    if is_paused:
+    if client.server.tasker.get_task_attr(c, ['as_day_cycle'], 'is_unknown'):
+        raise ClientError('You may not pause the day cycle while the time is unknown.')
+    if client.server.tasker.get_task_attr(c, ['as_day_cycle'], 'is_paused'):
         raise ClientError('Day cycle is already paused.')
 
-    client.server.tasker.set_task_attr(c, ['as_day_cycle'], 'is_paused', True)
+    client.server.tasker.set_task_attr(c, ['as_day_cycle'], 'refresh_reason', 'pause')
     client.server.tasker.cancel_task(task)
 
 def ooc_cmd_clock_unpause(client: ClientManager.Client, arg: str):
@@ -1409,16 +1410,17 @@ def ooc_cmd_clock_unpause(client: ClientManager.Client, arg: str):
         raise ArgumentError('Client {} is not online.'.format(arg))
 
     try:
-        client.server.tasker.get_task(c, ['as_day_cycle'])
+        task = client.server.tasker.get_task(c, ['as_day_cycle'])
     except KeyError:
         raise ClientError('Client {} has not initiated any day cycles.'.format(arg))
 
-    is_paused = client.server.tasker.get_task_attr(c, ['as_day_cycle'], 'is_paused')
-    if not is_paused:
+    if client.server.tasker.get_task_attr(c, ['as_day_cycle'], 'is_unknown'):
+        raise ClientError('You may not unpause the day cycle while the time is unknown.')
+    if not client.server.tasker.get_task_attr(c, ['as_day_cycle'], 'is_paused'):
         raise ClientError('Day cycle is already unpaused.')
 
-    client.server.tasker.set_task_attr(c, ['as_day_cycle'], 'is_paused', False)
-    client.server.tasker.set_task_attr(c, ['as_day_cycle'], 'just_unpaused', True)
+    client.server.tasker.set_task_attr(c, ['as_day_cycle'], 'refresh_reason', 'unpause')
+    client.server.tasker.cancel_task(task)
 
 def ooc_cmd_coinflip(client: ClientManager.Client, arg: str):
     """
@@ -8104,6 +8106,134 @@ def ooc_cmd_toggle_fs(client: ClientManager.Client, arg: str):
     status = {True: 'now', False: 'no longer'}
 
     client.send_ooc('You are {} in forward sprites mode.'.format(status[client.forward_sprites]))
+
+
+def ooc_cmd_clock_period(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Adds a period to the day cycle established by the player. Whenever the day cycle clock ticks
+    into a time part of the period, all clients in the affected areas will be ordered to change
+    to that time of day's version of their theme. Time of day periods go from their given hour
+    start all the way until the next period.
+    If the period name already exists, its hour start will be overwritten.
+    If some period already starts at the given hour start, its name will be overwritten.
+    Returns an error if the client has not started a day cycle, or if the hour start is not an
+    integer from 0 to 23.
+
+    SYNTAX
+    /clock_period <name> <hour_start>
+
+    PARAMETERS
+    <name>: Name of the period.
+    <hour_start>: Start time of the period (integer from 0 to 23).
+
+    EXAMPLE
+    Assuming the commands are run in order.
+    /clock_period day 8     :: Sets up a period that goes from 8 AM to 8 AM.
+    /clock_period night 22  :: Sets up a night period that goes from 10 PM to 8 AM. Day period now goes from 8 AM to 10 PM.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='&1-2')
+
+    try:
+        task = client.server.tasker.get_task(client, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('You have not initiated any day cycles.')
+
+    try:
+        args = arg.split()
+        if len(args) == 1:
+            name, start = args[0], -1
+        else:
+            name, start = args[0], int(args[1])
+            if not (0 <= start <= 23):
+                raise ValueError
+    except ValueError:
+        raise ArgumentError('Invalid period start hour {}.'.format(start))
+
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'new_period_start', (start, name))
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'period')
+    client.server.tasker.cancel_task(task)
+
+
+def ooc_cmd_clock_set(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Updates the hour length and current hour of the client's day cycle without restarting it,
+    changing its area range or notifying normal players. If the day cycle time was unknown, the
+    time is updated in the same manner (effectively taking it out of unknown mode).
+    Returns an error if the client has not started a day cycle, or if the hour is not an
+    integer from 0 to 23.
+
+    SYNTAX
+    /clock_set <hour_length> <hour>
+
+    PARAMETERS
+    <hour_length>: Length of each ingame hour (in seconds)
+    <hour>: New hour (integer from 0 to 23)
+
+    EXAMPLES
+    /clock_set 900 8  :: Update the day cycle to be a 900-second hour clock with current time 8 a.m.
+    /clock_set 10 19  :: Update the day cycle to be a 10-second hour clock with current time 7 p.m.
+
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=2')
+
+    try:
+        task = client.server.tasker.get_task(client, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('You have not initiated any day cycles.')
+
+    pre_hour_length, pre_hour_start = arg.split(' ')
+    try:
+        hour_length = int(pre_hour_length)
+        if hour_length <= 0:
+            raise ValueError
+    except ValueError:
+        raise ArgumentError('Invalid hour length {}.'.format(pre_hour_length))
+
+    try:
+        hour_start = int(pre_hour_start)
+        if hour_start < 0 or hour_start >= 24:
+            raise ValueError
+    except ValueError:
+        raise ArgumentError('Invalid hour start {}.'.format(pre_hour_start))
+
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'new_day_cycle_args',
+                                       (hour_length, hour_start))
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'set')
+    client.server.tasker.cancel_task(task)
+
+
+def ooc_cmd_clock_unknown(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets the client's day cycle time to unknown. Time does not flow in this mode, and clients in
+    the area range will be ordered to switch to their unknown time of day version of their theme.
+    Requires /clock_set to undo.
+    Returns an error if the client has not started a day cycle, or if the time is already unknown.
+
+    SYNTAX
+    /clock_unknown
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /clock_unknown :: Set the time to be unknown
+
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        task = client.server.tasker.get_task(client, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('You have not initiated any day cycles.')
+
+    if client.server.tasker.get_task_attr(client, ['as_day_cycle'], 'is_unknown'):
+        raise ClientError('Your day cycle already has unknown time.')
+
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'unknown')
+    client.server.tasker.cancel_task(task)
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):

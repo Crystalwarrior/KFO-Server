@@ -490,9 +490,7 @@
   - Players with a custom status now show a (!)
 * Added /bilockh and /unilockh GM commands. They have the effect /bilock and /unilock formerly had of showing/hiding areas from the area list. /bilock and /unilock for all ranks now does not change passage visibility for all ranks.
   - Passage visibility changes are immediately reported in the affected players' area lists
-* Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players
 * System blankposts are now sent on area change or when blinded to clear the last character on screen for compatible clients.
-* Changed wording of GM login notifications, /minimap, attempting to access a locked passage, and talking in an area whose IC chat is locked
 * Added support for new colors available in DRO as well as the set position SP packet
 * Music playing notifications now show the server showname of the player in DRO if the player set a showname
 * Last sender sprites no longer show in first person mode if the player with first person mode talks and the last sender
@@ -501,6 +499,13 @@
   - Changed characters
   - Has sneaked, and it is not the case the player is sneaking and they are both in a party
 * Added explicit 'forwards sprite mode' via /toggle_fs. When a player has forwards sprites disabled, all recipients of their IC message will not see the player's sprite, but the last one they saw (or blank if any of the conditions described for first person mode blanks applies). By default it is on.
+* Day cycle clocks are now more linked with DRO 1.0.0 by supporting time of day periods. Players in the clock range playing with compatible clients will automatically change to their time of day's version of their theme when entering a custom period or unknown time:
+  - /clock_period 
+  - /clock_unknown
+* Day cycle clocks can now have their hour length and current hour be modified via /clock_set
+* Day cycle clock unpauses now take place as soon as processed rather than at most 1 second after being processed
+* Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players
+* Changed wording of GM login notifications, /minimap, attempting to access a locked passage, and talking in an area whose IC chat is locked
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
 * Fixed /scream bypassing moderation mutes or client mutes
