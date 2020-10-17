@@ -7889,10 +7889,16 @@ def ooc_cmd_status_set(client: ClientManager.Client, arg: str):
         client.send_ooc(f'You have set your player status to {arg}')
         client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set their player status '
                                f'to `{client.status}` ({client.area.id}).', is_zstaff=True)
+        if client.area.lights:
+            client.send_ooc_others(f'You now note something about {client.displayname}.',
+                                   is_zstaff_flex=False, in_area=True,
+                                   pred=lambda c: not (c.is_deaf and c.is_blind))
+            client.area.broadcast_ic_attention()
+
     else:
         if client.status:
+            client.status = ''
             client.send_ooc('You have removed your player status.')
-            client.status = arg
             client.send_ooc_others(f'(X) {client.displayname} [{client.id}] removed their player '
                                    f'status ({client.area.id}).', is_zstaff=True)
         else:
@@ -7921,26 +7927,32 @@ def ooc_cmd_status_set_other(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, is_staff=True, parameters='>0')
 
     cm = client.server.client_manager
-    target, _, status = cm.get_target_public(client, arg)
-    status = status[:1024]  # Cap
+    target, _, new_status = cm.get_target_public(client, arg)
+    new_status = new_status[:1024]  # Cap
 
     if client == target:
         raise ClientError('You cannot set your own status with this command.')
-    if not status and not target.status:
+    if not new_status and not target.status:
         raise ClientError(f'{target.displayname} already does not have a player status.')
 
-    client.send_ooc(f'You set the player status of {target.displayname} to `{status}`.')
+    client.send_ooc(f'You set the player status of {target.displayname} to `{new_status}`.')
     if not (target.is_blind and target.is_deaf):
         target.send_ooc('Your status was updated. Do /status to check it out.')
 
-    if status:
-        target.status = status
+    if new_status:
+        target.status = new_status
         client.send_ooc_others(f'(X) {client.displayname} [{target.id}] set the player status '
-                               f'of {target.displayname} to `{status}` ({client.area.id}).',
+                               f'of {target.displayname} to `{new_status}` ({client.area.id}).',
                                is_zstaff=True, not_to={target})
+        if target.area.lights:
+            client.send_ooc_others(f'You now note something about {client.displayname}.',
+                                   is_zstaff_flex=False, in_area=True, not_to={target},
+                                   pred=lambda c: not (c.is_deaf and c.is_blind))
+            target.area.broadcast_ic_attention()
+
     else:
-        # By previous if, player must have had a status
-        target.status = status
+        # By previous if, player must have had a status before
+        target.status = ''
         client.send_ooc_others(f'(X) {client.displayname} [{target.id}] cleared the player '
                                f'status of {target.displayname} ({client.area.id}).',
                                is_zstaff=True, not_to={target})
