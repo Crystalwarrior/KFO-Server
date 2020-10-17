@@ -2840,7 +2840,7 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
             client.send_ooc(f'You look at {client.displayname} and find nothing particularly '
                             f'remarkable.')
         else:
-            client.send_ooc(f'You look at {client.displayname} and note this: {client.status}')
+            client.send_ooc(f'You look at {target.displayname} and note this: {client.status}')
     else:
         if client.area.description == client.server.config['default_area_description']:
             area_description = 'Nothing particularly interesting.'
