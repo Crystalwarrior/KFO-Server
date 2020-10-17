@@ -7887,13 +7887,16 @@ def ooc_cmd_status_set(client: ClientManager.Client, arg: str):
     if arg:
         client.status = arg
         client.send_ooc(f'You have set your player status to {arg}')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set their player status '
+                               f'to `{client.status}` ({client.area.id}).', is_zstaff=True)
     else:
         if client.status:
             client.send_ooc('You have removed your player status.')
             client.status = arg
+            client.send_ooc_others(f'(X) {client.displayname} [{client.id}] removed their player '
+                                   f'status ({client.area.id}).', is_zstaff=True)
         else:
             raise ClientError('You have no player status.')
-    # TODO: notify zone watchers about status change
 
 
 def ooc_cmd_status_set_other(client: ClientManager.Client, arg: str):
@@ -7933,14 +7936,14 @@ def ooc_cmd_status_set_other(client: ClientManager.Client, arg: str):
     if status:
         target.status = status
         client.send_ooc_others(f'(X) {client.displayname} [{target.id}] set the player status '
-                               f'of {target.displayname} to `{status}` ({target.id}).',
-                               is_zstaff_flex=True, not_to={target})
+                               f'of {target.displayname} to `{status}` ({client.area.id}).',
+                               is_zstaff=True, not_to={target})
     else:
         # By previous if, player must have had a status
         target.status = status
         client.send_ooc_others(f'(X) {client.displayname} [{target.id}] cleared the player '
-                               f'status of {target.displayname} ({target.id}).',
-                               is_zstaff_flex=True, not_to={target})
+                               f'status of {target.displayname} ({client.area.id}).',
+                               is_zstaff=True, not_to={target})
 
 
 def ooc_cmd_noteworthy(client: ClientManager.Client, arg: str):
