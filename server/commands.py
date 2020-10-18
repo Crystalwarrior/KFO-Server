@@ -130,7 +130,7 @@ def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):
 
     arg = arg.split(' ')
 
-    if not client.is_mod and not client.is_cm and client.area.lobby_area:
+    if client.area.lobby_area and not client.is_officer():
         raise ClientError('You must be authorized to kick clients in lobby areas.')
 
     if len(arg) == 1:
@@ -1857,9 +1857,10 @@ def ooc_cmd_follow(client: ClientManager.Client, arg: str):
                       .format(client.get_char_name(), c.get_char_name()), client)
 
 def ooc_cmd_g(client: ClientManager.Client, arg: str):
-    """
+    """ (VARYING REQUIREMENTS)
     Sends a global message in the OOC chat visible to all users in the server who have not disabled
-    global chat. Returns an error if the user has global chat off or sends an empty message.
+    global chat.
+    Returns an error if the user has global chat off or sends an empty message.
 
     SYNTAX
     /g <message>
@@ -1871,10 +1872,13 @@ def ooc_cmd_g(client: ClientManager.Client, arg: str):
     /g Hello World      :: Sends Hello World to global chat.
     """
 
+    try:
+        Constants.assert_command(client, arg, parameters='>0')
+    except ArgumentError:
+        raise ArgumentError("You cannot send an empty message.")
+
     if client.muted_global:
         raise ClientError('You have the global chat muted.')
-    if len(arg) == 0:
-        raise ArgumentError("You cannot send an empty message.")
 
     client.server.broadcast_global(client, arg)
     logger.log_server('[{}][{}][GLOBAL]{}.'
@@ -2318,7 +2322,7 @@ def ooc_cmd_help(client: ClientManager.Client, arg: str):
     ranks_to_try = [
         ('normie', True),
         ('gm', client.is_staff()),
-        ('cm', client.is_mod or client.is_cm),
+        ('cm', client.is_officer()),
         ('mod', client.is_mod)
         ]
 
@@ -2373,7 +2377,7 @@ def ooc_cmd_iclock(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-    if not (client.is_mod or client.is_cm) and (client.is_gm and not client.area.gm_iclock_allowed):
+    if not client.is_officer() and (client.is_gm and not client.area.gm_iclock_allowed):
         raise ClientError('GMs are not authorized to change IC locks in this area.')
 
     client.area.ic_lock = not client.area.ic_lock
@@ -2418,7 +2422,7 @@ def ooc_cmd_invite(client: ClientManager.Client, arg: str):
         raise ClientError('Area is not locked.')
 
     targets = list() # Start with empty list
-    if (client.is_cm or client.is_mod) and arg.isdigit():
+    if client.is_officer() and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
         if targets:
             some_target = targets[0]
@@ -3040,7 +3044,7 @@ def ooc_cmd_make_gm(client: ClientManager.Client, arg: str):
 
     target = Constants.parse_id(client, arg)
 
-    if not (client.is_cm or client.is_mod) and target not in client.get_multiclients():
+    if not client.is_officer() and target not in client.get_multiclients():
         raise ClientError('You must be authorized to login as game masters players other than your '
                           'multiclients.')
     if target.is_gm:
@@ -3171,7 +3175,7 @@ def ooc_cmd_multiclients(client: ClientManager.Client, arg: str):
 
     target = Constants.parse_id_or_ipid(client, arg)[0]
     info = target.prepare_area_info(client.area, -1, False, as_mod=client.is_staff(),
-                                    include_ipid=client.is_mod or client.is_cm,
+                                    include_ipid=client.is_officer(),
                                     only_my_multiclients=True)
     info = '== Clients of {} =={}'.format(arg, info)
     client.send_ooc(info)
@@ -5736,7 +5740,7 @@ def ooc_cmd_uninvite(client: ClientManager.Client, arg: str):
         raise ClientError('Area is not locked.')
 
     targets = list() # Start with empty list
-    if (client.is_mod or client.is_cm) and arg.isdigit():
+    if client.is_officer() and arg.isdigit():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
         if targets:
             some_target = targets[0]
@@ -6066,11 +6070,11 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
         targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
 
     # If still needed, pretend the identifier is a client IPID (only CM and mod)
-    if not targets and arg.isdigit() and (client.is_mod or client.is_cm):
+    if not targets and arg.isdigit() and client.is_officer():
         targets = client.server.client_manager.get_targets(client, TargetType.IPID, int(arg), False)
 
     # If still needed, pretend the identifier is a client IPID (only CM and mod)
-    if not targets and (client.is_mod or client.is_cm):
+    if not targets and client.is_officer():
         targets = client.server.client_manager.get_targets(client, TargetType.HDID, arg, False)
 
     # If still needed, pretend the identifier is an OOC username

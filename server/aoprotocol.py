@@ -476,7 +476,7 @@ class AOProtocol(asyncio.Protocol):
             return
         if pargs['color'] not in (0, 1, 2, 3, 4, 5, 6, 7, 8):
             return
-        if pargs['color'] == 5 and not self.client.is_mod and not self.client.is_cm:
+        if pargs['color'] == 5 and not self.client.is_officer():
             pargs['color'] = 0
         if self.client.pos:
             pargs['pos'] = self.client.pos
@@ -877,7 +877,7 @@ class AOProtocol(asyncio.Protocol):
                    .format(current_time, self.client.get_char_name(), self.client.get_ip(),
                            self.client.area.name, self.client.area.id))
 
-        self.server.send_all_cmd_pred('ZZ', message, pred=lambda c: c.is_mod or c.is_cm)
+        self.server.send_all_cmd_pred('ZZ', message, pred=lambda c: c.is_officer())
         self.client.set_mod_call_delay()
         logger.log_server('[{}][{}]{} called a moderator.'
                           .format(self.client.get_ip(), self.client.area.id,

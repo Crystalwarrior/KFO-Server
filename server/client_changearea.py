@@ -61,7 +61,7 @@ class ClientChangeArea:
                               .format(name, remain_text), code='ChArHandicap')
 
         # Check if trying to move to a lobby/private area while sneaking
-        if area.lobby_area and not client.is_visible and not client.is_mod and not client.is_cm:
+        if area.lobby_area and not client.is_visible and not client.is_officer():
             raise ClientError('Lobby areas do not let non-authorized users remain sneaking. Please '
                               'change music, speak IC or ask a staff member to reveal you.',
                               code='ChArSneakLobby')

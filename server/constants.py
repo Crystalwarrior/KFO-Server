@@ -481,9 +481,9 @@ class Constants():
                 raise ClientError.UnauthorizedError('You have too high a rank to do that.')
 
         if is_officer is not None:
-            if is_officer is True and not (client.is_mod or client.is_cm):
+            if is_officer is True and not client.is_officer():
                 raise ClientError.UnauthorizedError('You must be authorized to do that.')
-            if is_officer is False and (client.is_mod or client.is_cm):
+            if is_officer is False and client.is_officer():
                 raise ClientError.UnauthorizedError('You have too high a rank to do that.')
 
         if is_mod is not None:
@@ -566,9 +566,9 @@ class Constants():
             raise KeyError('Invalid argument for build_cond is_staff: {}'.format(is_staff))
 
         if is_officer is True:
-            conditions.append(lambda c: c.is_cm or c.is_mod)
+            conditions.append(lambda c: c.is_officer())
         elif is_officer is False:
-            conditions.append(lambda c: not (c.is_cm or c.is_mod))
+            conditions.append(lambda c: not c.is_officer())
         elif is_officer is None:
             pass
         else:
@@ -1000,7 +1000,7 @@ class Constants():
 
         # Otherwise, try and match by IPID
         # PROVIDED the client is CM or mod
-        if client.is_cm or client.is_mod:
+        if client.is_officer():
             targets = client.server.client_manager.get_targets(client, TargetType.IPID, idnt, False)
             if targets:
                 return targets

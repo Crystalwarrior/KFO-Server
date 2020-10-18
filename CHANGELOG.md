@@ -509,6 +509,7 @@
 * Notifications are now sent if a mod via /switch forces a target off their character (e.g. mod using /switch) to the mod, the target, and other officers in the server
 * Improved README description of /switch to account for GMs being able to switch to restricted characters, and mods being able to force a player off their character.
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
+* Fixed scream_range not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
 * Fixed /scream bypassing moderation mutes or client mutes
 * Fixed /scream bypassing IC chat locks, or being rendered in scream-reachable areas whose IC chats are locked

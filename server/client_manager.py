@@ -575,7 +575,7 @@ class ClientManager:
                               .format(self.area.id, old_char, self.get_char_name()), self)
 
         def change_music_cd(self):
-            if self.is_mod or self.is_cm:
+            if self.is_officer():
                 return 0
             if self.mute_time:
                 if time.time() - self.mute_time < self.mflood_mutelength:
@@ -927,7 +927,7 @@ class ClientManager:
         def get_area_info(self, area_id, mods, as_mod=None, include_shownames=False,
                           include_ipid=None, only_my_multiclients=False):
             if as_mod is None:
-                as_mod = self.is_mod or self.is_cm  # Cheap, but decent
+                as_mod = self.is_officer()
             if include_ipid is None and as_mod:
                 include_ipid = True
 
@@ -1118,6 +1118,12 @@ class ClientManager:
             Returns True if logged in as 'any' staff role.
             """
             return self.is_mod or self.is_cm or self.is_gm
+
+        def is_officer(self):
+            """
+            Returns True if logged in as Community Manager or Moderator.
+            """
+            return self.is_mod or self.is_cm
 
         def login(self, arg, auth_command, role, announce_to_officers=True):
             """
