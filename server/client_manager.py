@@ -317,7 +317,15 @@ class ClientManager:
                         self.last_received_ic_notme = [None, None]
                         self.last_received_ic = [None, None]
                     # If last sender has changed character, do not show previous sender
-                    elif last_apparent_sender.get_char_name() != last_args['folder']:
+                    elif (last_apparent_sender.char_id != last_args['cid'] or
+                          last_apparent_sender.char_folder != last_args['folder']):
+                        # We need to check for iniswaps as well, to account for this possibility:
+                        # 1. A and B are in the same room. A as in first person mode
+                        # 2. B talks to A and moves to another room
+                        # 3. B iniswaps without changing character and talks in their new area
+                        # 4. B goes back to A's area and talks there
+                        # 5. If A had received no other message in the meantime, clear the last
+                        # character seen.
                         pargs['anim'] = '../../misc/blank'
                         self.last_received_ic_notme = [None, None]
                         self.last_received_ic = [None, None]
