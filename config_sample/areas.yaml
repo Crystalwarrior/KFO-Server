@@ -1,6 +1,7 @@
 # A sample area list document
 # Each item in an area list is an area. Areas have parameters you may tweak, and will be used when loading the area list.
 # Start each area item with a - (and only the area item, for every other parameter use spaces)
+# List each key: value pair in a new line. If you wish to use a default value for a key, do not include the key in the area item.
 # Yes, this has a lot of introductory text. This is because areas have lots of parameters that can be tweaked.
 # If you want to go to the actual areas part, scroll beyond all the text that starts with #.
 
@@ -19,6 +20,7 @@
 # *evidence_mod: Unused (do not include)
 # *gm_iclock_allowed: If false, only CM+ may /iclock the area. If true, GMs may also /iclock.
 # *iniswap_allowed: If false, everyone can send IC messages while iniswapped/iniedited; if true, no one can send IC messages while iniswapped/iniedited.
+# *global_allowed: If false, only CM+ may use /g in the area. If true, anyone can use it.
 # *has_lights: If false, the area cannot have its lights turned off via /light or similar. If true, no such restriction is imposed.
 # *lobby_area: If true, the area is marked as lobby (which disallows non-GMs+ from sneaking or /knock'ing from or to the area). If false, no such restriction is placed.
 # *locking_allowed: If false, everyone can lock the area; if true, no one can lock it.
@@ -50,6 +52,7 @@
 # default_description: `default_area_description` in config.yaml
 # evidence_mod: FFA
 # gm_iclock_allowed: true
+# global_allowed: true
 # has_lights: true
 # iniswap_allowed: false
 # lobby_area: false
@@ -79,6 +82,7 @@
   evidence_mod: CM
   locking_allowed: true
   iniswap_allowed: true
+  global_allowed: false
   reachable_areas: Class Trial Room,\ 2, Basement
   rp_getarea_allowed: false
   gm_iclock_allowed: false
@@ -103,6 +107,7 @@
   lobby_area: false
   private_area: false
   scream_range: <ALL>
+  global_allowed: true
   restricted_chars: Kaede Akamatsu_HD, Monokuma_HD
   has_lights: true
   default_description: A class trial room that does not like bullets.

@@ -1860,7 +1860,8 @@ def ooc_cmd_g(client: ClientManager.Client, arg: str):
     """ (VARYING REQUIREMENTS)
     Sends a global message in the OOC chat visible to all users in the server who have not disabled
     global chat.
-    Returns an error if the user has global chat off or sends an empty message.
+    Returns an error if the user has global chat off, sends an empty message, or is not an officer
+    and attempts to send a message in an area where global messages are disallowed.
 
     SYNTAX
     /g <message>
@@ -1877,6 +1878,8 @@ def ooc_cmd_g(client: ClientManager.Client, arg: str):
     except ArgumentError:
         raise ArgumentError("You cannot send an empty message.")
 
+    if not client.is_officer() and not client.area.global_allowed:
+        raise ClientError('You must be authorized to send global messages in this area.')
     if client.muted_global:
         raise ClientError('You have the global chat muted.')
 

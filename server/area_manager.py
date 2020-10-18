@@ -104,6 +104,7 @@ class AreaManager:
             self.gm_iclock_allowed = parameters['gm_iclock_allowed']
             self.afk_delay = parameters['afk_delay']
             self.afk_sendto = parameters['afk_sendto']
+            self.global_allowed = parameters['global_allowed']
             self.lobby_area = parameters['lobby_area']
             self.private_area = parameters['private_area']
             self.scream_range = parameters['scream_range']
@@ -950,6 +951,7 @@ class AreaManager:
             'gm_iclock_allowed': True,
             'has_lights': True,
             'iniswap_allowed': False,
+            'global_allowed': True,
             'lobby_area': False,
             'locking_allowed': False,
             'private_area': False,
@@ -974,7 +976,7 @@ class AreaManager:
 
             # Prevent <ALL> as a valid area name (it has a special meaning)
             if item['area'] == '<ALL>':
-                info = ('An area in your area list is called `<ALL>`. This is a reserved name, '
+                info = ('An area in your area list is called \'<ALL>\'. This is a reserved name, '
                         'thus it is not a valid area name. Please change its name and try again.')
                 raise AreaError(info)
 
@@ -1031,14 +1033,14 @@ class AreaManager:
             # Make sure no weird areas were set as reachable by players or by screams
             unrecognized_areas = reachable_areas-temp_area_names
             if unrecognized_areas:
-                info = (f'Area `{name}` has unrecognized areas {unrecognized_areas} defined as '
+                info = (f'Area {name} has unrecognized areas {unrecognized_areas} defined as '
                         f'areas a player can reach to. Please rename the affected areas and try '
                         f'again.')
                 raise AreaError(info)
 
             unrecognized_areas = scream_range-temp_area_names
             if unrecognized_areas:
-                info = (f'Area `{name}` has unrecognized areas {unrecognized_areas} defined as '
+                info = (f'Area {name} has unrecognized areas {unrecognized_areas} defined as '
                         f'areas screams can reach to. Please rename the affected areas and try '
                         f'again.')
                 raise AreaError(info)
@@ -1046,7 +1048,7 @@ class AreaManager:
             # Make sure only characters that exist are part of the restricted char set
             unrecognized_characters = restricted_chars-set(self.server.char_list)
             if unrecognized_characters:
-                info = (f'Area `{name} has unrecognized characters {unrecognized_characters} '
+                info = (f'Area {name} has unrecognized characters {unrecognized_characters} '
                         f'defined as restricted characters. Please make sure the characters exist '
                         f'and try again.')
                 raise AreaError(info)

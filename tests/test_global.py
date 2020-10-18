@@ -137,8 +137,8 @@ class TestGlobal_03_Global(_TestOOC):
 
     def test_02_sendglobal(self):
         """
-        Situation: C0-4 send correct globals. They all
-        receive one another's globals, even if they are in different areas.
+        Situation: C0-4 send correct globals. They all receive one another's globals, even if they
+        are in different areas, as they are all in areas that allow for global messages.
         """
 
         for (i, c) in enumerate(self.clients[:4]):
@@ -148,7 +148,37 @@ class TestGlobal_03_Global(_TestOOC):
             for x in self.clients[:4]:
                 x.assert_ooc('Hello.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
 
-    def test_03_globalwhilemutedglobal(self):
+    def test_03_sendglobal_globalallowed(self):
+        """
+        Situation: C0 and C1 move to an area that disallows globals. They both attempt to send
+        global messages, but only C1 succeeds (they are a mod, and need at least CM rank).
+        """
+
+        self.c0.move_area(1)
+        self.c1.move_area(1)
+
+        self.c0.ooc('/g Hallo from C0')
+        self.c0.assert_ooc('You must be authorized to send global messages in this area.',
+                           over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c1.ooc('/g Hallo from C1.')
+        self.c0.assert_ooc('Hallo from C1.',
+                           username='<dollar>G[{}][{}]'.format(1, self.c1.name), over=True)
+        self.c1.assert_ooc('Hallo from C1.',
+                           username='<dollar>G[{}][{}]'.format(1, self.c1.name), over=True)
+        self.c2.assert_ooc('Hallo from C1.',
+                           username='<dollar>G[{}][{}]'.format(1, self.c1.name), over=True)
+        self.c3.assert_ooc('Hallo from C1.',
+                           username='<dollar>G[{}][{}]'.format(1, self.c1.name), over=True)
+
+        # Undo move for next tests
+        self.c0.move_area(0)
+        self.c1.move_area(0)
+
+    def test_04_globalwhilemutedglobal(self):
         """
         Situation: C0 and C2 attempt to communicate through globals, but fail as C0 has muted them.
         """
