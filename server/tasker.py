@@ -468,15 +468,16 @@ class Tasker:
                         client.send_ooc(f'(X) You have added period `{name}` that starts at '
                                         f'{formatted_time}.')
                         client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has '
-                                               f'removed period `{name}` off their day cycle '
-                                               '({client.area.id}).',
+                                               f'added period `{name}` to their day cycle that '
+                                               f'starts at {formatted_time} '
+                                               f'({client.area.id}).',
                                                is_zstaff_flex=True)
                     else:
                         # Case removed a period
                         client.send_ooc(f'(X) You have removed period `{name}`.')
                         client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has '
                                                f'removed period `{name}` off their day cycle '
-                                               '({client.area.id}).',
+                                               f'({client.area.id}).',
                                                is_zstaff_flex=True)
                 elif refresh_reason == 'unpause':
                     self.set_task_attr(client, ['as_day_cycle'], 'is_paused', False)

@@ -128,7 +128,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
 * **files_set** "url"
     - Sets a download link for your character files, or clears it if not given an argument.
 * **g** "message"
-    - Sends a serverwide message.
+    - Sends a serverwide message. Fails if the current area disallows sending global messages.
 * **getarea**
     - Shows the current characters in your area.
 * **getareas**
@@ -516,6 +516,8 @@ GMs can:
     - Mutes the target from changing music.
 * **cleargm**
     - Logs out all GMs in the server and puts them in RP mode if needed.
+* **g** "message"
+    - Sends a serverwide message, even if the current area disallows sending global messages.
 * **getarea**
     - Shows the current characters in your area as well as their IPIDs.
 * **getareas**
