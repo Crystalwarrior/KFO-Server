@@ -8164,9 +8164,9 @@ def ooc_cmd_clock_period(client: ClientManager.Client, arg: str):
     try:
         args = arg.split()
         if len(args) == 1:
-            name, start = args[0], -1
+            name, start = args[0].lower(), -1
         else:
-            name, start = args[0], int(args[1])
+            name, start = args[0].lower(), int(args[1])
             if not (0 <= start <= 23):
                 raise ValueError
     except ValueError:

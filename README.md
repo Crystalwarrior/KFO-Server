@@ -316,6 +316,7 @@ GMs can:
 * **clock_period** "name" "hour start"
     - Initializes a clock period that starts at the given hour for your day cycle. 
     - Whenever the clock ticks into the period, clients in the clock range will be ordered to switch to that time of day's version of their theme.
+    - Clock period names are automatically made all lowercase.
 * **clock_set** "hour length" "hour"
     - Modifies the hour length and current hour of your day cycle without restarting it. This is the way to move the day cycle out of unknown time if needed as well. 
     - Acts just like doing /clock again, but does not erase already set periods.
