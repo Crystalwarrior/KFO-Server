@@ -7891,25 +7891,33 @@ def ooc_cmd_status_set(client: ClientManager.Client, arg: str):
     /status_set Phantom is carrying a bag  :: Sets the status to `Phantom is carrying a bag.`
     """
 
+    if not arg and not client.status:
+        raise ClientError('You already have no player status.')
+
     if arg:
         client.status = arg
         client.send_ooc(f'You have set your player status to {arg}')
         client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set their player status '
-                               f'to `{client.status}` ({client.area.id}).', is_zstaff=True)
-        if client.area.lights:
-            client.send_ooc_others(f'You now note something about {client.displayname}.',
-                                   is_zstaff_flex=False, in_area=True,
-                                   pred=lambda c: not (c.is_deaf and c.is_blind))
-            client.area.broadcast_ic_attention()
+                               f'to `{client.status}` ({client.area.id}).',
+                               is_zstaff_flex=True)
+
+        refreshed_clients = client.refresh_remembered_status()
+        for c in refreshed_clients:
+            c.send_ooc(f'You note something different about {client.displayname}.',
+                       is_zstaff_flex=False)
+
+        client.area.broadcast_ic_attention(cond=lambda c: c in refreshed_clients)
 
     else:
-        if client.status:
-            client.status = ''
-            client.send_ooc('You have removed your player status.')
-            client.send_ooc_others(f'(X) {client.displayname} [{client.id}] removed their player '
-                                   f'status ({client.area.id}).', is_zstaff=True)
-        else:
-            raise ClientError('You have no player status.')
+        client.status = ''
+        client.send_ooc('You have removed your player status.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] removed their player '
+                               f'status ({client.area.id}).', is_zstaff_flex=True)
+
+        refreshed_clients = client.refresh_remembered_status()
+        for c in refreshed_clients:
+            c.send_ooc(f'You no longer note something different about {client.displayname}.',
+                       is_zstaff_flex=False)
 
 
 def ooc_cmd_status_set_other(client: ClientManager.Client, arg: str):
@@ -7950,19 +7958,30 @@ def ooc_cmd_status_set_other(client: ClientManager.Client, arg: str):
         target.status = new_status
         client.send_ooc_others(f'(X) {client.displayname} [{target.id}] set the player status '
                                f'of {target.displayname} to `{new_status}` ({client.area.id}).',
-                               is_zstaff=True, not_to={target})
-        if target.area.lights:
-            client.send_ooc_others(f'You now note something about {client.displayname}.',
-                                   is_zstaff_flex=False, in_area=True, not_to={target},
-                                   pred=lambda c: not (c.is_deaf and c.is_blind))
-            target.area.broadcast_ic_attention()
+                               is_zstaff_flex=True, not_to={target})
+
+        refreshed_clients = target.refresh_remembered_status()
+        for c in refreshed_clients:
+            if c == client:
+                continue
+
+            c.send_ooc(f'You now note something about {target.displayname}.',
+                       is_zstaff_flex=False)
+        target.area.broadcast_ic_attention()
 
     else:
         # By previous if, player must have had a status before
         target.status = ''
         client.send_ooc_others(f'(X) {client.displayname} [{target.id}] cleared the player '
                                f'status of {target.displayname} ({client.area.id}).',
-                               is_zstaff=True, not_to={target})
+                               is_zstaff_flex=True, not_to={target})
+
+        refreshed_clients = target.refresh_remembered_status()
+        for c in refreshed_clients:
+            if c == client:
+                continue
+            c.send_ooc(f'You no longer note something different about {target.displayname}.',
+                       is_zstaff_flex=False)
 
 
 def ooc_cmd_noteworthy(client: ClientManager.Client, arg: str):

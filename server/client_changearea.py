@@ -338,6 +338,9 @@ class ClientChangeArea:
         info = ''
         vis_info = ''
         sne_info = ''
+        # While we always notify in OOC if someone has a custom status, we only ping IC if the
+        # status has changed from the last time the player has seen it.
+        # This prevents ping spam if two players with custom statuses move together.
         found_something = False
 
         status_visible = [c for c in area.clients if c.status and c != client and c.is_visible]
@@ -345,11 +348,19 @@ class ClientChangeArea:
         staff_privileged = not normal_visibility
         if status_visible:
             if client.is_staff() or normal_visibility:
-                mark = '(X) ' if staff_privileged  else ''
+                mark = '(X) ' if staff_privileged else ''
                 players = Constants.cjoin([c.displayname for c in status_visible])
                 verb = 'was' if len(status_visible) == 1 else 'were'
                 vis_info = (f'{mark}You note something about {players} who {verb} in the area '
                             f'already')
+
+                for player in status_visible:
+                    remembered_status = client.remembered_statuses.get(player.id, '')
+                    if player.status != remembered_status:
+                        # Found someone whose status has changed
+                        # Only for these situations do we want to ping
+                        found_something = True
+                    client.remembered_statuses[player.id] = player.status
 
             elif changed_visibility and not client.is_deaf:
                 # Give nerfed notifications if the lights are out or the player is blind, but NOT
@@ -381,7 +392,6 @@ class ClientChangeArea:
 
         if info:
             client.send_ooc(info + '.')
-            found_something = True
 
         return found_something
 
@@ -430,7 +440,6 @@ class ClientChangeArea:
             self.notify_others_moving(client, old_area,
                                       '{} has left to the {}.'.format(old_dname, area.name),
                                       'You hear footsteps going out of the room.')
-            status = f' {client.status}' if client.status else ''
             self.notify_others_moving(client, area,
                                       ('{} has entered from the {}.'
                                        .format(new_dname, old_area.name)),
@@ -449,10 +458,12 @@ class ClientChangeArea:
 
         if client.status:
             self.notify_others_status(client, area, new_dname, status='arrived')
-            if client.is_visible:
-                ic_attention_others = True
+            status_refreshed_clients = client.refresh_remembered_status(area=area)
+        else:
+            status_refreshed_clients = list() # Do not IC ping if client has no status
 
-        area.broadcast_ic_attention(cond=lambda _: ic_attention_others)
+        area.broadcast_ic_attention(cond=lambda c: (ic_attention_others or
+                                                    c in status_refreshed_clients))
 
     def notify_others_moving(self, client, area, autopass_mes, blind_mes):
         staff = nbnd = ybnd = nbyd = '' # nbnd = notblindnotdeaf ybnd=yesblindnotdeaf
@@ -586,7 +597,7 @@ class ClientChangeArea:
         if send_to_staff:
             client.send_ooc_others(staff, is_zstaff_flex=True, in_area=area)
 
-    def notify_others_status(self, client, area, name, status='stay') -> bool:
+    def notify_others_status(self, client, area, name, status='stay'):
         # Assume client's special status is worth announcing
         # If client has custom status, send reminder in OOC to everyone but those not staff,
         # blind and deaf simultaneously.

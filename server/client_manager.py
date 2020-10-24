@@ -105,6 +105,7 @@ class ClientManager:
             self.status = ''
             self.remembered_passages = dict()
             self.remembered_locked_passages = dict()
+            self.remembered_statuses = dict()
 
             # Pairing stuff
             self.charid_pair = -1
@@ -824,6 +825,60 @@ class ClientManager:
 
             return resulting_effects
 
+        def refresh_remembered_status(self, area=None):
+            """
+            Update the last remembered statuses of the clients in a given area and return those
+            whose remembered status of the client indeed changed.
+
+            Parameters
+            ----------
+            area : AreaManager.Area
+                Area to target. Defaults to None (and converted to self.area)
+
+            Returns
+            -------
+            clients_to_notify : list of ClientManager.Client
+                Clients whose last remembered status of self indeed changed as a result of the call.
+
+            """
+            if area is None:
+                area = self.area
+            # Figure out who to notify if a status has changed from the last one they have seen
+            # 0. Self does not get self pings
+            # 1. Staff always get pinged the first time/
+            # 2. Non-staff get pinged the first time they see someone with different status if:
+            # ** That someone is not sneaking
+            # ** The lights are on
+            # ** Non-staff is not deaf nor deaf
+            clients_to_notify = list()
+
+            for other_client in area.clients:
+                if other_client == self:
+                    continue
+                if other_client.is_staff():
+                    if self.id not in other_client.remembered_statuses:
+                        other_client.remembered_statuses[self.id] = ''
+
+                    if other_client.remembered_statuses[self.id] != self.status:
+                        other_client.remembered_statuses[self.id] = self.status
+                        clients_to_notify.append(other_client)
+                    continue
+                if not self.is_visible:
+                    continue
+                if not area.lights:
+                    continue
+                if other_client.is_blind or other_client.is_deaf:
+                    continue
+
+                if self.id not in other_client.remembered_statuses:
+                    other_client.remembered_statuses[self.id] = ''
+
+                if other_client.remembered_statuses[self.id] != self.status:
+                    other_client.remembered_statuses[self.id] = self.status
+                    clients_to_notify.append(other_client)
+
+            return clients_to_notify
+
         def follow_user(self, target):
             if target == self:
                 raise ClientError('You cannot follow yourself.')
@@ -1508,6 +1563,14 @@ class ClientManager:
                                    is_zstaff=True)
 
         client.publisher.publish('client_destroyed', {})
+
+        # Finally, for every other client, remove the remembered status
+        for other in self.clients:
+            if client == other:
+                continue
+            if client.id in other.remembered_statuses:
+                other.remembered_statuses.pop(client.id)
+
         self.clients.remove(client)
 
     def is_client(self, client):
