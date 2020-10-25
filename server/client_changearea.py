@@ -166,6 +166,11 @@ class ClientChangeArea:
             else:
                 client.send_ooc('You have left zone `{}`.'.format(zone_id))
 
+            # If the new area is not part of a zone, send order to go back to original gamemode
+            # If the area is part of a zone, that is covered in the next if
+            if not area.in_zone:
+                client.send_command('GM', '')
+
         # Check if entering a zone
         if area.in_zone and area.in_zone != old_area.in_zone:
             zone_id = area.in_zone.get_id()
@@ -175,6 +180,8 @@ class ClientChangeArea:
                                 .format(zone_id, zone_id))
             else:
                 client.send_ooc('You have entered zone `{}`.'.format(zone_id))
+
+            client.send_command('GM', area.in_zone.get_mode())
 
         # Check if someone in the new area has the same showname
         try: # Verify that showname is still valid

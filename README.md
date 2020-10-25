@@ -315,14 +315,14 @@ GMs can:
     - Pauses the day cycle initiated by the target or yourself if not given a target.
 * **clock_period** "name" "hour start"
     - Initializes a clock period that starts at the given hour for your day cycle. 
-    - Whenever the clock ticks into the period, clients in the clock range will be ordered to switch to that time of day's version of their theme.
+    - Whenever the clock ticks into the period, players in the clock range will be ordered to switch to that time of day's version of their theme.
     - Clock period names are automatically made all lowercase.
 * **clock_set** "hour length" "hour"
     - Modifies the hour length and current hour of your day cycle without restarting it. This is the way to move the day cycle out of unknown time if needed as well. 
     - Acts just like doing /clock again, but does not erase already set periods.
 * **clock_unknown**
     - Sets the time of your day cycle to be unknown, a special time where hours do not tick.
-    - Clients in the clock range will be ordered to switch to the unknown time of day version of their theme.
+    - Players in the clock range will be ordered to switch to the unknown time of day version of their theme.
 * **clock_unpause** "ID"
     - Unpauses the day cycle initiated by the target or yourself if not given a target.
 * **cure** "ID" "initials of effects"
@@ -499,6 +499,10 @@ GMs can:
     - Changes the light status of every area in a zone you are watching to on or off.
 * **zone_list**
     - Lists all active zones in the server, as well as some of their details.
+* **zone_mode** "mode"
+    - Sets up the gamemode of your zone, or clears it if not given one.
+    - Players in an area part of the zone will be ordered to switch to that gamemode's version of their theme.
+    - Gamemodes are automatically made all lowercase.
 * **zone_play**
     - Plays a track in all areas in the zone you are watching.
 * **zone_remove** "area"

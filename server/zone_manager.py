@@ -59,6 +59,7 @@ class ZoneManager:
             self._areas = set()
             self._watchers = set()
 
+            self._mode = ''
             self.add_areas(areas, check_structure=False)
             self.add_watchers(watchers, check_structure=False)
 
@@ -142,6 +143,10 @@ class ZoneManager:
 
             self._areas.remove(area)
             area.in_zone = None
+
+            # For each player that was in that area, restore their gamemode
+            for client in area.clients:
+                client.send_command('GM', '')
 
             # If no more areas, delete the zone
             if not self._areas:
@@ -246,6 +251,40 @@ class ZoneManager:
             if not self._watchers:
                 self._server.zone_manager.delete_zone(self._zone_id)
             self._server.zone_manager._check_structure()
+
+        def set_mode(self, new_mode):
+            """
+            Set the mode of the zone.
+
+            Parameters
+            ----------
+            new_mode : str
+                New mode.
+
+            Returns
+            -------
+            None.
+
+            """
+
+            self._mode = new_mode
+
+            for area in self.get_areas():
+                for client in area.clients:
+                    client.send_command('GM', new_mode)
+
+        def get_mode(self):
+            """
+            Get the mode of the zone.
+
+            Returns
+            -------
+            str
+                Mode of the zone.
+
+            """
+
+            return self._mode
 
         def get_info(self):
             """
@@ -373,6 +412,9 @@ class ZoneManager:
         zone = self._zones.pop(zone_id)
         for area in zone._areas:
             area.in_zone = None
+            # For each player that was in an area part of the zone, restore their gamemode
+            for client in area.clients:
+                client.send_command('GM', '')
         for watcher in zone._watchers:
             watcher.zone_watched = None
 

@@ -8277,6 +8277,41 @@ def ooc_cmd_clock_unknown(client: ClientManager.Client, arg: str):
     client.server.tasker.cancel_task(task)
 
 
+def ooc_cmd_zone_mode(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets the mode of a zone the player is watching if given an argument, or clears it otherwise.
+    Players part of an area in the zone are ordered to switch to this gamemode. Players later
+    entering an area part of the zone from an area outside of it will be ordered to switch
+    to this gamemode.
+
+    SYNTAX
+    /zone_mode <gamemode>
+
+    PARAMETERS
+    <gamemode>: New gamemode
+
+    EXAMPLES
+    Assuming the user is watching zone z0
+    /zone_mode daily      :: Sets the zone mode to daily
+    /zone_mode            :: Clears the zone mode
+    """
+
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+    except ArgumentError:
+        raise ArgumentError('You must specify a song.')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    client.zone_watched.set_mode(arg)
+
+    client.send_ooc('You have set the gamemode of your zone to be `{}`.'
+                    .format(arg))
+    client.send_ooc_others('(X) {} [{}] has set the gamemode of your zone to be `{}`.'
+                           .format(client.displayname, client.id, arg), is_zstaff=True)
+
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
