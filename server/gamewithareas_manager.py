@@ -287,6 +287,22 @@ class GameWithAreas(_Game):
 
         return self._areas.copy()
 
+    def get_users_in_areas(self):
+        """
+        Return all users in areas part of the game, even those that are not players of the game.
+
+        Returns
+        -------
+        users : list of ClientManagerClient
+            All users in areas part of the game.
+
+        """
+
+        clients = list()
+        for area in self._areas:
+            clients.extend(area.clients)
+        return clients
+
     def destroy(self):
         """
         Mark this game as destroyed and notify its manager so that it is deleted.

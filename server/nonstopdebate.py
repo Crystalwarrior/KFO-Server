@@ -218,8 +218,8 @@ class NonStopDebate(TrialMinigame):
         self._preintermission_mode = NSDMode.RECORDING
         self._timer.unpause()
         self._player_refresh_timer.unpause()
-        for player in self.get_players():
-            player.send_command('VA', 'nsd')
+        for player in self.get_users_in_areas():
+            player.send_command('GM', 'nsd')
             player.send_command('TR', self._client_timer_id)
             self._update_player_timer(player)
 
@@ -267,14 +267,14 @@ class NonStopDebate(TrialMinigame):
         if self._player_refresh_timer and not self._player_refresh_timer.paused():
             self._player_refresh_timer.pause()
 
-        for player in self.get_players():
+        for player in self.get_users_in_areas():
             player.send_command('TP', self._client_timer_id)
             if blankpost:
                 player.send_ic_blankpost()  # Blankpost
 
         def _variant():
-            for player in self.get_players():
-                player.send_command('VA', 'trial')
+            for player in self.get_users_in_areas():
+                player.send_command('GM', 'trial')
 
         # this causes a concurrency issue!!!!!!!!
         variant_timer = self.new_timer(start_value=0, max_value=max(delay_variant, 0.016),)
@@ -319,8 +319,8 @@ class NonStopDebate(TrialMinigame):
         self._player_refresh_timer.unpause()
         self._message_timer.unpause()
 
-        for player in self.get_players():
-            player.send_command('VA', 'nsd')
+        for player in self.get_users_in_areas():
+            player.send_command('GM', 'nsd')
             player.send_command('TR', self._client_timer_id)
         self._display_next_message()
 
@@ -384,10 +384,10 @@ class NonStopDebate(TrialMinigame):
             user.send_command('TP', self._client_timer_id)
 
         if self._mode in [NSDMode.LOOPING, NSDMode.RECORDING, NSDMode.PRERECORDING]:
-            user.send_command('VA', 'nsd')
+            user.send_command('GM', 'nsd')
             user.send_command('RT', 'testimony4')
         elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
-            user.send_command('VA', 'trial')
+            user.send_command('GM', 'trial')
         else:
             raise RuntimeError(f'Unrecognized mode {self._mode}')
 
@@ -417,7 +417,7 @@ class NonStopDebate(TrialMinigame):
         """
 
         super().remove_player(user)
-        user.send_command('VA', 'trial')
+        user.send_command('GM', 'trial')
 
     def accept_break(self):
         if not self._mode == NSDMode.INTERMISSION_POSTBREAK:
@@ -449,7 +449,7 @@ class NonStopDebate(TrialMinigame):
                                                     auto_restart=True)
         def _refresh():
             print(time.time())
-            for player in self.get_players():
+            for player in self.get_users_in_areas():
                 self._update_player_timer(player)
 
         self._player_refresh_timer._on_max_end = _refresh
@@ -580,8 +580,11 @@ class NonStopDebate(TrialMinigame):
 
         """
 
+        if new_area in self.get_areas():
+            return
+
         was_leader = self.is_leader(client) if self.is_player(client) else False
-        if client in self.get_players() and new_area not in self.get_areas():
+        if client in self.get_players():
             client.send_ooc(f'You have left to an area not part of NSD '
                             f'`{self.get_id()}` and thus were automatically removed from the '
                             f'NSD.')
@@ -598,14 +601,14 @@ class NonStopDebate(TrialMinigame):
                 client.send_ooc_others(f'(X) NSD `{self.get_id()}` was automatically '
                                        f'deleted as it lost all its players.',
                                        is_zstaff_flex=True)
-
-        elif new_area not in self.get_areas():
+        else:
             client.send_ooc(f'You have left to an area not part of NSD '
                             f'`{self.get_id()}`.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to an '
                                    f'area not part of your NSD '
                                    f'({area.id}->{new_area.id}).',
                                    pred=lambda c: c in self.get_leaders())
+            client.send_command('GM', '')
 
         self._check_structure()
 
@@ -634,16 +637,21 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        if client not in self.get_players() and old_area not in self.get_areas():
+        if old_area in self.get_areas():
+            return
+
+        if client not in self.get_players():
             client.send_ooc(f'You have entered an area part of NSD `{self.get_id()}`.')
             if client.is_staff():
                 client.send_ooc(f'Join this NSD with /nsd_join {self.get_id()}')
+            client.send_command('GM', 'nsd')
             client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
                                    f'an area part of your NSD '
                                    f'({old_area.id}->{area.id}).',
                                    pred=lambda c: c in self.get_leaders())
             client.send_ooc_others(f'(X) Add {client.displayname} to your NSD with '
                                    f'/nsd_add {client.id}')
+            client.send_command('GM', 'nsd')
 
     def _add_message(self, player, contents=None):
         """
@@ -667,7 +675,7 @@ class NonStopDebate(TrialMinigame):
         self._message_index += 1
         if self._timer.paused():
             self._timer.unpause()
-            for nsd_player in self.get_players():
+            for nsd_player in self.get_users_in_areas():
                 nsd_player.send_command('TR', self._client_timer_id)
 
     def _display_next_message(self):
@@ -683,7 +691,7 @@ class NonStopDebate(TrialMinigame):
 
         if self._message_index < len(self._messages):
             sender, contents = self._messages[self._message_index]
-            for player in self.get_players():
+            for player in self.get_users_in_areas():
                 player.send_ic(params=contents, sender=sender)
             self._message_index += 1
         else:

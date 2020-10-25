@@ -210,7 +210,7 @@ class _Trial(GameWithAreas):
 
         user.send_command('HP', 1, int(self._player_to_focus[user.id][0]))
         user.send_command('HP', 2, int(self._player_to_influence[user.id][0]))
-        user.send_command('VA', 'trial')
+        user.send_command('GM', 'trial')
 
     def remove_player(self, user):
         """
@@ -251,7 +251,7 @@ class _Trial(GameWithAreas):
 
         user.send_command('HP', 1, user.area.hp_pro)
         user.send_command('HP', 2, user.area.hp_def)
-        user.send_command('VA', '')
+        user.send_command('GM', '')
 
     def get_influence(self, user) -> float:
         """
@@ -808,8 +808,11 @@ class _Trial(GameWithAreas):
 
         """
 
+        if new_area in self.get_areas():
+            return
+
         was_leader = self.is_leader(client) if self.is_player(client) else False
-        if client in self.get_players() and new_area not in self.get_areas():
+        if client in self.get_players():
             client.send_ooc(f'You have left to an area not part of trial `{self.get_id()}` and '
                             f'thus were automatically removed from the trial.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
@@ -826,12 +829,12 @@ class _Trial(GameWithAreas):
                 client.send_ooc_others(f'(X) Trial `{self.get_id()}` was automatically '
                                        f'deleted as it lost all its players.',
                                        is_zstaff_flex=True)
-
-        elif new_area not in self.get_areas():
+        else:
             client.send_ooc(f'You have left to an area not part of trial `{self.get_id()}`.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your trial ({area.id}->{new_area.id}).',
                                    pred=lambda c: c in self.get_leaders())
+            client.send_command('GM', '')
 
         self._check_structure()
 
@@ -864,6 +867,7 @@ class _Trial(GameWithAreas):
             client.send_ooc(f'You have entered an area part of trial `{self.get_id()}`.')
             if client.is_staff():
                 client.send_ooc(f'Join this trial with /trial_join {self.get_id()}')
+            client.send_command('GM', 'trial')
             client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
                                    f'an area part of your trial ({old_area.id}->{area.id}).',
                                    pred=lambda c: c in self.get_leaders())
