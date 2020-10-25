@@ -308,7 +308,7 @@ class NonStopDebate(TrialMinigame):
         if self._mode == NSDMode.LOOPING:
             raise NonStopDebateError.NSDAlreadyInModeError('Non-stop debate is already in this '
                                                            'mode.')
-        if self._mode == NSDMode.PRERECORDING:
+        if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
             raise NonStopDebateError.NSDNotInModeError
 
         self._mode = NSDMode.LOOPING
