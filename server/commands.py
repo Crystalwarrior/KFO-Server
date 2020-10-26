@@ -6883,7 +6883,7 @@ def ooc_cmd_trial(client: ClientManager.Client, arg: str):
     Starts a trial with all players in the area. Players that are already part of a trial or that
     lack a character are not added to a trial. The trial creator is automatically added as a
     trial leader.
-    Players added to a trial are ordered to switch to the `trial` theme variant.
+    Players added to a trial are ordered to switch to the 'trial' theme gamemode.
     Returns an error if the server has reached its trial limit, or if the player is part of another
     trial or has no character.
 
@@ -7028,7 +7028,7 @@ def ooc_cmd_trial_join(client: ClientManager, arg: str):
 def ooc_cmd_trial_end(client: ClientManager, arg: str):
     """ (STAFF ONLY)
     Ends the trial of the player. Every player of the trial is ordered to switch back to the
-    "default" variant.
+    'default' gamemode.
     Returns an error if the player is not a part of a trial or is not a leader of it.
 
     SYNTAX
@@ -7267,10 +7267,10 @@ def ooc_cmd_trial_kick(client: ClientManager.Client, arg: str):
 def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Starts an NSD with the players of your trial in your area with time limit if given, defaulting
-    to 5 minutes if not given. The NSD creator is automatically added as a NSD leader.
+    to no time limit if not given. The NSD creator is automatically added as a NSD leader.
     Players in the area not part of the trial, already part of a minigame or that do not have a
     character are not added to the NSD. Players added to the NSD are ordered to switch to the
-    "nsd" variant.
+    'nsd' gamemode.
     Returns an error if the player osnot part of a trial or leader of one, if the trial reached its
     NSD limit, if the player is already part of a minigame or does not have a character, or if the
     time is negative or above the server time limit.
@@ -7280,7 +7280,7 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
 
     OPTIONAL PARAMETERS
     {length}: time in seconds, or in mm:ss, or in h:mm:ss; limited to TIMER_LIMIT in function
-              Constants.parse_time_length
+              Constants.parse_time_length. If given, it must be a positive integer.
 
     EXAMPLE
     /nsd 3:00       :: Starts an NSD with 3 minutes of time.
@@ -7288,11 +7288,14 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
     """
 
     try:
-        Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+        Constants.assert_command(client, arg, is_staff=True, parameters='<2')
     except ArgumentError:
         seconds = 300
     else:
-        seconds = Constants.parse_time_length(arg)  # Also internally validates
+        if not arg or arg == "0":
+            seconds = 0
+        else:
+            seconds = Constants.parse_time_length(arg)  # Also internally validates
 
     try:
         trial = client.server.trial_manager.get_trial_of_user(client)
@@ -7310,8 +7313,13 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
     except NonStopDebateError.UserHasNoCharacterError:
         raise ClientError('You must have a character to create a NSD.')
 
-    client.send_ooc(f'You have created nonstop debate `{nsd.get_id()}` in area '
-                    f'{client.area.name}.')
+    if seconds > 0:
+        client.send_ooc(f'You have created nonstop debate `{nsd.get_id()}` in area '
+                        f'{client.area.name} with time limit {seconds} seconds.')
+    else:
+        client.send_ooc(f'You have created nonstop debate `{nsd.get_id()}` in area '
+                        f'{client.area.name} with no time limit.')
+
     nsd.add_leader(client)
 
     for user in client.area.clients:
@@ -7446,7 +7454,7 @@ def ooc_cmd_nsd_join(client: ClientManager, arg: str):
 def ooc_cmd_nsd_end(client: ClientManager, arg: str):
     """ (STAFF ONLY)
     Ends the NSD of the player. Every player of the NSD is ordered to switch back to the
-    "trial" variant.
+    'trial' gamemode.
     Returns an error if the player is not a part of a trial or NSD, or is not a leader of it.
 
     SYNTAX
@@ -7610,7 +7618,7 @@ def ooc_cmd_nsd_kick(client: ClientManager.Client, arg: str):
 def ooc_cmd_nsd_pause(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Pauses your current NSD and puts it in intermission mode. Players part of the NSD are put in
-    the "trial" variant.
+    the 'trial' gamemode.
     Returns an error if you are not part of a trial or NSD or leader for it, or if the NSD is not
     in recording or looping mode.
 

@@ -381,7 +381,7 @@ GMs can:
    - Changes the noteworthy status of the area.
 * **nsd** "time"
     - Starts an NSD part of your current trial with all players in the area part of your trial, making you leader of the NSD.
-    - The NSD will have a given time limit in seconds, or 300 seconds time limit if not given a time.
+    - The NSD will have a given time limit in seconds, or no time limit if not given a time. Debates with a time limit will be automatically halted once the timer runs out.
 * **nsd_accept**
     - Accepts a break from a player who shot a bullet during looping or recording mode for the NSD you lead, restoring 0.5 influence and ending the NSD.
 * **nsd_add** "ID/char name/edited-to character/showname/OOC name" 

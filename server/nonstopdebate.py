@@ -169,7 +169,6 @@ class NonStopDebate(TrialMinigame):
         self._message_refresh_rate = 5
         self._client_timer_id = 0
         self._breaker = None
-        # To consider: somehow keep spectators in the loop so they get variants/timer updates
 
     def get_type(self) -> TRIALMINIGAMES:
         """
@@ -218,7 +217,8 @@ class NonStopDebate(TrialMinigame):
 
         self._mode = NSDMode.RECORDING
         self._preintermission_mode = NSDMode.RECORDING
-        self._timer.unpause()
+        if self._timer:
+            self._timer.unpause()
         self._player_refresh_timer.unpause()
         for player in self.get_users_in_areas():
             player.send_command('GM', 'nsd')
@@ -327,7 +327,8 @@ class NonStopDebate(TrialMinigame):
         self._preintermission_mode = NSDMode.LOOPING
         self._message_index = -1
 
-        self._timer.unpause()
+        if self._timer:
+            self._timer.unpause()
         self._player_refresh_timer.unpause()
         self._message_timer.unpause()
 
@@ -392,7 +393,7 @@ class NonStopDebate(TrialMinigame):
         if not self._timer:
             self._setup_timers()
         self._update_player_timer(user)
-        if self._timer.paused():
+        if self._timer and self._timer.paused():
             user.send_command('TP', self._client_timer_id)
 
         if self._mode in [NSDMode.LOOPING, NSDMode.RECORDING, NSDMode.PRERECORDING]:
@@ -471,12 +472,16 @@ class NonStopDebate(TrialMinigame):
                                              auto_restart=True)
         self._message_timer._on_max_end = self._display_next_message
 
-        self._timer = self.new_timer(start_value=self._timer_start_value,
-                                     tick_rate=-1, min_value=0)
-        self._timer._on_min_end = functools.partial(
-            self._set_intermission_timeranout, delay_variant=0, blankpost=True)
+        if self._timer_start_value > 0:
+            self._timer = self.new_timer(start_value=self._timer_start_value,
+                                         tick_rate=-1, min_value=0)
+            self._timer._on_min_end = functools.partial(
+                self._set_intermission_timeranout, delay_variant=0, blankpost=True)
 
     def _update_player_timer(self, player):
+        if not self._timer:
+            return
+
         player.send_command('TST', self._client_timer_id,
                             round(self._timer.get()*1000))
         player.send_command('TSS', self._client_timer_id,
@@ -691,7 +696,7 @@ class NonStopDebate(TrialMinigame):
 
         self._messages.append([player, contents])
         self._message_index += 1
-        if self._timer.paused():
+        if self._timer and self._timer.paused():
             self._timer.unpause()
             for nsd_player in self.get_users_in_areas():
                 nsd_player.send_command('TR', self._client_timer_id)
