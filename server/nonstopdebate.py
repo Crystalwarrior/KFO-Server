@@ -313,7 +313,7 @@ class NonStopDebate(TrialMinigame):
 
         self._mode = NSDMode.LOOPING
         self._preintermission_mode = NSDMode.LOOPING
-        self._message_index = 0
+        self._message_index = -1
 
         self._timer.unpause()
         self._player_refresh_timer.unpause()
@@ -689,11 +689,12 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        if self._message_index < len(self._messages):
+        # -1 avoids fencepost error
+        if self._message_index < len(self._messages)-1:
+            self._message_index += 1
             sender, contents = self._messages[self._message_index]
             for player in self.get_users_in_areas():
                 player.send_ic(params=contents, sender=sender)
-            self._message_index += 1
         else:
             self.set_intermission()
 
