@@ -21,6 +21,7 @@ Module that contains the nonstop debate game.
 
 """
 
+import functools
 import time
 
 from enum import Enum, auto
@@ -39,6 +40,7 @@ class NSDMode(Enum):
     LOOPING = auto()
     INTERMISSION = auto()
     INTERMISSION_POSTBREAK = auto()
+    INTERMISSION_TIMERANOUT = auto()
 
 
 class NonStopDebate(TrialMinigame):
@@ -252,7 +254,8 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        if self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
+        if self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
+                          NSDMode.INTERMISSION_TIMERANOUT]:
             raise NonStopDebateError.NSDAlreadyInModeError('Non-stop debate is already in this '
                                                            'mode.')
         if self._mode == NSDMode.PRERECORDING:
@@ -260,7 +263,7 @@ class NonStopDebate(TrialMinigame):
 
         self._mode = NSDMode.INTERMISSION
 
-        if self._timer and not self._timer.paused():
+        if self._timer and not self._timer.paused() and not self._timer.terminated():
             self._timer.pause()
         if self._message_timer and not self._message_timer.paused():
             self._message_timer.pause()
@@ -281,10 +284,19 @@ class NonStopDebate(TrialMinigame):
         variant_timer._on_max_end = _variant
         variant_timer.start()
 
-    def set_intermission_postbreak(self, breaker, delay_variant=0, blankpost=True):
+    def _set_intermission_postbreak(self, breaker, delay_variant=0, blankpost=True):
         self.set_intermission(delay_variant=delay_variant, blankpost=blankpost)
         self._mode = NSDMode.INTERMISSION_POSTBREAK
         self._breaker = breaker
+
+    def _set_intermission_timeranout(self, delay_variant=0, blankpost=True):
+        self.set_intermission(delay_variant=delay_variant, blankpost=blankpost)
+        self._mode = NSDMode.INTERMISSION_TIMERANOUT
+
+        for player in self.get_players():
+            player.send_ooc('Time ran out for your debate!')
+        for leader in self.get_leaders():
+            leader.send_ooc('Type /nsd_end to end the debate.')
 
     def set_looping(self):
         """
@@ -297,7 +309,7 @@ class NonStopDebate(TrialMinigame):
         NonStopDebateError.NSDAlreadyInModeError
             If the nonstop debate is already in looping mode.
         NonStopDebateError.NSDNotInModeError
-            If the nonstop debate is in prerecording mode.
+            If the nonstop debate is not in regular or post-break intermission mode.
 
         Returns
         -------
@@ -386,7 +398,8 @@ class NonStopDebate(TrialMinigame):
         if self._mode in [NSDMode.LOOPING, NSDMode.RECORDING, NSDMode.PRERECORDING]:
             user.send_command('GM', 'nsd')
             user.send_command('RT', 'testimony4')
-        elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
+        elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
+                            NSDMode.INTERMISSION_TIMERANOUT]:
             user.send_command('GM', 'trial')
         else:
             raise RuntimeError(f'Unrecognized mode {self._mode}')
@@ -460,6 +473,8 @@ class NonStopDebate(TrialMinigame):
 
         self._timer = self.new_timer(start_value=self._timer_start_value,
                                      tick_rate=-1, min_value=0)
+        self._timer._on_min_end = functools.partial(
+            self._set_intermission_timeranout, delay_variant=0, blankpost=True)
 
     def _update_player_timer(self, player):
         player.send_command('TST', self._client_timer_id,
@@ -504,7 +519,9 @@ class NonStopDebate(TrialMinigame):
         if contents['button'] in {1, 2, 7, 8} and self._message_index == -1:
             raise ClientError('You may not use a bullet now.')
         # Trying to bullet during intermission
-        if contents['button'] != 0 and self._mode == NSDMode.INTERMISSION:
+        if contents['button'] != 0 and self._mode in [NSDMode.INTERMISSION,
+                                                      NSDMode.INTERMISSION_POSTBREAK,
+                                                      NSDMode.INTERMISSION_TIMERANOUT]:
             raise ClientError('You may not use a bullet now.')
         # Trying to talk during looping mode
         if contents['button'] == 0 and self._mode == NSDMode.LOOPING:
@@ -541,7 +558,8 @@ class NonStopDebate(TrialMinigame):
                 self._break_loop(player, contents)
             else:
                 self._add_message(player, contents=contents)
-        elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
+        elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
+                            NSDMode.INTERMISSION_TIMERANOUT]:
             # Nothing particular
             pass
         elif self._mode == NSDMode.LOOPING:
@@ -746,7 +764,7 @@ class NonStopDebate(TrialMinigame):
             regular.send_ooc(f"{player.displayname} {regular_action} "
                              f"{broken_player.displayname}'s statement "
                              f"`{broken_ic['text']}`")
-        self.set_intermission_postbreak(player, delay_variant=3, blankpost=False)
+        self._set_intermission_postbreak(player, delay_variant=3, blankpost=False)
 
     def _check_structure(self):
         """
