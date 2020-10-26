@@ -82,7 +82,7 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         self.c0.discard_all() # Discard all messages related to the zone that might clog next line
         self.c4.make_mod(over=False)
         self.c4.discard_all()
-        
+
         self.c0.ooc('/zone {}, {}'.format(1, 3))
         self.c0.discard_all() # Discard notification for logging in while in zone
         self.c1.discard_all() # Discard notification for zone creation
@@ -277,14 +277,17 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         """
         Situation: C5 unwatches their zone. As they were the last person watching it, they get a
         special message about their zone being removed. C1/4 also gets a message by being a mod.
+        C0-C4, being in an area part of the zone, are ordered to switch back to no gamemode.
         """
 
         self.c5.ooc('/zone_unwatch')
-        self.c0.assert_no_packets()
+        self.c0.assert_packet('GM', '', over=True)
+        self.c1.assert_packet('GM', '')
         self.c1.assert_ooc('(X) Zone `{}` was automatically deleted as no one was watching it '
                            'anymore.'.format('z0'), over=True)
-        self.c2.assert_no_packets()
-        self.c3.assert_no_packets()
+        self.c2.assert_packet('GM', '', over=True)
+        self.c3.assert_packet('GM', '', over=True)
+        self.c4.assert_packet('GM', '')
         self.c4.assert_ooc('(X) Zone `{}` was automatically deleted as no one was watching it '
                            'anymore.'.format('z0'), over=True)
         self.c5.assert_ooc('You are no longer watching zone `{}`.'.format('z0'))

@@ -775,6 +775,10 @@ class _TestClientManager(ClientManager):
                 pass
             elif command_type == 'ZZ': # Mod call
                 pass
+            elif command_type == 'GM': # Gamemode switch
+                pass
+            elif command_type == 'TOD': # Time of day switch
+                pass
             else:
                 raise KeyError('Unrecognized STC argument `{}` {}'.format(command_type, args))
 

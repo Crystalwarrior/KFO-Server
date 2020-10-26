@@ -425,6 +425,7 @@ class TestZoneBasic_03_Delete(_TestZone):
     def test_02_deletezone(self):
         """
         Situation: C1 creates a zone, and then deletes it.
+        Everyone who was in an area part of a zone is ordered to switch back to no gamemode.
         """
 
         self.c1.ooc('/zone 0, 5')
@@ -432,10 +433,11 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c2.discard_all() # would receive being in zone notification
 
         self.c1.ooc('/zone_delete')
-        self.c0.assert_no_packets()
+        self.c0.assert_packet('GM', '', over=True)
+        self.c1.assert_packet('GM', '')
         self.c1.assert_ooc('You have deleted your zone.', over=True)
-        self.c2.assert_no_packets()
-        self.c3.assert_no_packets()
+        self.c2.assert_packet('GM', '', over=True)
+        self.c3.assert_packet('GM', '', over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
@@ -460,6 +462,7 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c2.assert_ooc('You have deleted your zone.', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
+        self.c5.assert_packet('GM', '')
         self.c5.assert_ooc('(X) {} [{}] has deleted your zone.'
                            .format(self.c2_dname, 2), over=True)
 
@@ -497,8 +500,9 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c0.assert_no_packets()
         self.c1.assert_ooc('(X) {} [{}] has deleted zone `{}`.'
                            .format(self.c2_dname, 2, 'z1'), over=True)
+        self.c2.assert_packet('GM', '')
         self.c2.assert_ooc('You have deleted your zone.', over=True)
-        self.c3.assert_no_packets()
+        self.c3.assert_packet('GM', '', over=True)
         self.c4.assert_no_packets()
 
         self.assert_zones({'z0': {4}})
@@ -513,7 +517,8 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c4.make_cm()
 
         self.c3.ooc('/zone_delete {}'.format('z0'))
-        self.c0.assert_no_packets()
+        self.c0.assert_packet('GM', '', over=True)
+        self.c1.assert_packet('GM', '')
         self.c1.assert_ooc('(X) {} [{}] has deleted your zone.'
                            .format(self.c3_dname, 3), over=True)
         self.c2.assert_no_packets()
@@ -541,9 +546,11 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c5.discard_all()
 
         self.c1.ooc('/zone_delete {}'.format('z0'))
-        self.c0.assert_no_packets()
+        self.c0.assert_packet('GM', '', over=True)
+        self.c1.assert_packet('GM', '')
         self.c1.assert_ooc('You have deleted zone `{}`.'.format('z0'), over=True)
-        self.c2.assert_no_packets()
+        self.c2.assert_packet('GM', '', over=True)
+        self.c3.assert_packet('GM', '')
         self.c3.assert_ooc('(X) {} [{}] has deleted your zone.'
                            .format(self.c1_dname, 1), over=True)
         self.c4.assert_ooc('(X) {} [{}] has deleted zone `{}`.'
@@ -573,9 +580,11 @@ class TestZoneBasic_03_Delete(_TestZone):
         """
 
         self.c1.ooc('/zone_delete {}'.format('z0'))
-        self.c0.assert_no_packets()
+        self.c0.assert_packet('GM', '', over=True)
+        self.c1.assert_packet('GM', '')
         self.c1.assert_ooc('You have deleted zone `{}`.'.format('z0'), over=True)
-        self.c2.assert_no_packets()
+        self.c2.assert_packet('GM', '', over=True)
+        self.c3.assert_packet('GM', '')
         self.c3.assert_ooc('(X) {} [{}] has deleted your zone.'
                            .format(self.c1_dname, 1), over=True)
         self.c4.assert_ooc('(X) {} [{}] has deleted zone `{}`.'
