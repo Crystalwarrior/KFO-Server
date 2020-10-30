@@ -374,15 +374,16 @@ class Tasker:
                     notify_normies = (old_hour != hour)
                     minute_at_interruption = 0
                     force_period_refresh = True
+                    str_hour = '{0:02d}'.format(hour)
                     self.set_task_attr(client, ['as_day_cycle'], 'is_unknown', False)
                     client.send_ooc('Your day cycle in areas {} through {} was updated. New hour '
                                     'length: {} seconds. New hour: {}:00.'
-                                    .format(area_1, area_2, hour_length, hour))
+                                    .format(area_1, area_2, hour_length, str_hour))
                     client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through '
                                            '{} has been updated. New hour length: {} seconds. '
                                            'New hour: {}:00.'
                                            .format(client.name, area_1, area_2, hour_length,
-                                                   hour),
+                                                   str_hour),
                                            is_zstaff_flex=True)
                     # Setting time does not unpause the timer, warn clock master
                     if self.get_task_attr(client, ['as_day_cycle'], 'is_paused'):
@@ -391,7 +392,7 @@ class Tasker:
                     # Moreover, hour is +1'd automatically if the clock is unpaused
                     # So preemptively -1
                     if not self.get_task_attr(client, ['as_day_cycle'], 'is_paused'):
-                        hour -= 1 # Take one hour away, because an hour would be added anyway
+                        hour -= 1  # Take one hour away, because an hour would be added anyway
 
                 elif refresh_reason == 'unknown':
                     hour = -1
@@ -405,8 +406,11 @@ class Tasker:
                     client.send_ooc_others('You seem to have lost track of time.', is_staff=False,
                                            pred=lambda c: area_1 <= c.area.id <= area_2)
 
-                    func = lambda c: c == client or (area_1 <= c.area.id <= area_2)
-                    self.server.send_all_cmd_pred('TOD', 'unknown', pred=func)
+                    targets = [c for c in self.server.client_manager.clients if c == client or
+                               (area_1 <= c.area.id <= area_2)]
+                    for c in targets:
+                        c.send_command('CL', client.id, -1)
+                        c.send_command('TOD', 'unknown')
 
                 elif refresh_reason == 'period':
                     # Only update minute and time started at if timer is not paused
