@@ -331,10 +331,11 @@ class ClientManager:
                         self.last_received_ic_notme = [None, None]
                         self.last_received_ic = [None, None]
                     # Do not show previous sender if
-                    # 1. Previous sender is sneaked, and
+                    # 1. Previous sender is sneaked and is not GM, and
                     # 2. It is not the case self is in a party, the same one as previous sender,
                     # and self is sneaked
                     elif (not last_apparent_sender.is_visible and
+                          not last_apparent_sender.is_staff() and
                           not (self.party and self.party == last_apparent_sender.party
                                and not self.is_visible)):
                         # It will still be the case self will reveal themselves by talking
