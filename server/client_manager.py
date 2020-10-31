@@ -381,22 +381,24 @@ class ClientManager:
 
                 # Nerf message for deaf
                 # TEMPORARY: REMOVE FOR 4.3+CLIENT UPDATE
-                # Remove the send_deaf_space requirement
+                # Remove the send_deaf_space variable eventually
                 if self.is_deaf and pargs['msg']:
                     if (bypass_deafened_starters or
                         (not pargs['msg'].startswith(allowed_starters) and
                          not pargs['msg'] in allowed_messages) or
                         (sender and sender.is_gagged and gag_replaced)):
                         pargs['msg'] = '(Your ears are ringing)'
-                        if self.send_deaf_space:
+                        if self.send_deaf_space and self.packet_handler != Clients.ClientDRO1d0d0:
                             pargs['msg'] = pargs['msg'] + ' '
                         self.send_deaf_space = not self.send_deaf_space
 
                 # TEMPORARY: REMOVE FOR 4.3+CLIENT UPDATE
-                # Remove globalIC prefix to everyone but sender to work around client bug
-                if sender and sender.multi_ic_pre and pargs['msg'].startswith(sender.multi_ic_pre):
-                    if self != sender:
-                        pargs['msg'] = pargs['msg'].replace(sender.multi_ic_pre, '', 1)
+                # Remove globalIC prefix to everyone but sender, but only if in DRO 1.0.0, to work
+                # around old client bug
+                if sender and sender.multi_ic and sender.multi_ic_pre:
+                    if pargs['msg'].startswith(sender.multi_ic_pre):
+                        if self != sender or sender.packet_handler == Clients.ClientDRO1d0d0:
+                            pargs['msg'] = pargs['msg'].replace(sender.multi_ic_pre, '', 1)
 
                 # Modify shownames as needed
                 if self.is_blind and self.is_deaf and sender:

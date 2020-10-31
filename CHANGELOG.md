@@ -508,6 +508,7 @@
 * Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players
 * Changed wording of GM login notifications, /minimap, attempting to access a locked passage, and talking in an area whose IC chat is locked
 * Notifications are now sent if a mod via /switch forces a target off their character (e.g. mod using /switch) to the mod, the target, and other officers in the server
+* Clients with compatible clients now no longer see auxiliary extra spaces in IC if deafened nor their own messages with global IC prefixes if they have them on
 * Improved README description of /switch to account for GMs being able to switch to restricted characters, and mods being able to force a player off their character
 * Added area parameter that allows only CMs and mods to send global messages in an area (by default false)
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
@@ -524,7 +525,8 @@
 * Fixed situation where if a player was in first person mode and was blinded, talked themselves but heard no one else talk, and after being unblinded started talking, they would see the sprite of the last person they last saw talked
 * Fixed attempting to load non-YAML files or files with unusual encoding raising an uncaught UnicodeDecode error
 * Fixed /refresh not undoing changes if either the background, character or music list raised errors when loading
-* Fixed /sneak and /reveal not showing the client ID of target players to zone watchers.
-* Fixed /zone_add, /zone_lights, /zone_play, /zone_watch not showing the area ID of the command sender to zone watchers.
+* Fixed /sneak and /reveal not showing the client ID of target players to zone watchers
+* Fixed /zone_add, /zone_lights, /zone_play, /zone_watch not showing the area ID of the command sender to zone watchers
+* Fixed filtering out global IC prefixes if a prefix was set and a message that started with that prefix was sent while global IC was turned off.
 * Removed deprecated AO commands
 * Dropped Python 3.6 support

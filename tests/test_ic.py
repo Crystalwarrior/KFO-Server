@@ -1,4 +1,5 @@
-from .structures import _TestSituation5Mc1Gc2, _TestSituation6Mc1Gc25
+from .structures import _TestSituation5Mc1Gc2
+
 
 class _TestIC(_TestSituation5Mc1Gc2):
     @classmethod
@@ -7,6 +8,7 @@ class _TestIC(_TestSituation5Mc1Gc2):
         cls.c2.move_area(4)
         cls.c3.move_area(5)
         cls.c4.move_area(4)
+
 
 class TestIC_01_Basic(_TestIC):
     def test_01_areaencapsulation(self):
@@ -72,6 +74,7 @@ class TestIC_01_Basic(_TestIC):
         self.c3.sic('Anyone in here?')
         self.c3.assert_no_packets()
 
+
 class TestIC_02_GlobalIC(_TestIC):
     def test_01_wrongarguments(self):
         """
@@ -88,7 +91,7 @@ class TestIC_02_GlobalIC(_TestIC):
         self.assertIsNone(self.c0.multi_ic)
 
         # Non-existant area
-        self.c2.ooc('/globalic 100') # No area called 100, or with ID 100 in test scenario
+        self.c2.ooc('/globalic 100')  # No area called 100, or with ID 100 in test scenario
         self.c0.assert_no_ooc()
         self.c1.assert_no_ooc()
         self.c2.assert_ooc('Could not parse area `100`.', over=True)
@@ -238,7 +241,7 @@ class TestIC_02_GlobalIC(_TestIC):
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
         self.c4.assert_no_ooc()
-        self.assertEqual(self.c1.multi_ic, [self.area4, self.area5]) # Still has it from prev test
+        self.assertEqual(self.c1.multi_ic, [self.area4, self.area5])  # Still has it from prev test
 
     def test_06_disableglobalic(self):
         """
@@ -258,6 +261,7 @@ class TestIC_02_GlobalIC(_TestIC):
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
         self.c4.assert_no_ic()
+
 
 class TestIC_03_GlobalIC_Pre(_TestIC):
     def test_01_wrongarguments(self):
@@ -334,9 +338,7 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ooc('Sent global IC message "Hallo mates." to areas {} through {}.'
                            .format(self.a1_name, self.a5_name), ooc_over=True)
         self.c0.assert_no_ic()
-        # TEMPORARY: Remove for 4.3+Client update
-        # Workaround for client not clearing messages
-        self.c1.assert_ic('>>>Hallo mates.', folder=self.c1_cname, over=True)
+        self.c1.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
         self.c2.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
         self.c3.assert_no_ic()
         self.c4.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
@@ -370,9 +372,7 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ooc('Sent global IC message "Hallo new mates." to areas {} through {}.'
                            .format(self.a1_name, self.a5_name), ooc_over=True)
         self.c0.assert_no_ic()
-        # TEMPORARY: Remove for 4.3+Client update
-        # Workaround for client not clearing messages
-        self.c1.assert_ic('>>>Hallo new mates.', folder=self.c1_cname, over=True)
+        self.c1.assert_ic('Hallo new mates.', folder=self.c1_cname, over=True)
         self.c2.assert_ic('Hallo new mates.', folder=self.c1_cname, over=True)
         self.c3.assert_ic('Hallo new mates.', folder=self.c1_cname, over=True)
         self.c4.assert_no_ic()
@@ -400,7 +400,11 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
     def test_06_prefixwithnoglobalic(self):
         """
         Situation: C1 disables global IC. They keep the prefix active, but it does nothing.
+        Players in the area see messages from C1 as is.
         """
+
+        # C4 in same area as C1
+        self.c4.move_area(1)
 
         self.c1.ooc('/unglobalic')
         self.c1.assert_ooc('Your IC messages will now be only sent to your current area.',
@@ -414,7 +418,7 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ic('Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
-        self.c4.assert_no_ic()
+        self.c4.assert_ic('Hello?', folder=self.c1_cname, over=True)
 
         self.c1.sic('>>>Hello?')
         self.c1.assert_no_ooc()
@@ -422,7 +426,7 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ic('>>>Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
-        self.c4.assert_no_ic()
+        self.c4.assert_ic('>>>Hello?', folder=self.c1_cname, over=True)
 
     def test_07_changeprefixnoglobalic(self):
         """
@@ -441,7 +445,7 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ic('Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
-        self.c4.assert_no_ic()
+        self.c4.assert_ic('Hello?', folder=self.c1_cname, over=True)
 
         self.c1.sic('<<<Hello?')
         self.c1.assert_no_ooc()
@@ -449,7 +453,7 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ic('<<<Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
-        self.c4.assert_no_ic()
+        self.c4.assert_ic('<<<Hello?', folder=self.c1_cname, over=True)
 
         # Remove
         self.c1.ooc('/globalic_pre')
@@ -463,7 +467,7 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ic('Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
-        self.c4.assert_no_ic()
+        self.c4.assert_ic('Hello?', folder=self.c1_cname, over=True)
 
         self.c1.sic('<<<Hello?')
         self.c1.assert_no_ooc()
@@ -471,12 +475,15 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ic('<<<Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
-        self.c4.assert_no_ic()
+        self.c4.assert_ic('<<<Hello?', folder=self.c1_cname, over=True)
 
     def test_08_prefixbeforeglobalic(self):
         """
         Situation: C1 sets IC prefix before turning global IC. This works.
         """
+
+        # C4 moves out of range.
+        self.c4.move_area(0)
 
         self.c1.ooc('/globalic {}, {}'.format(1, 5))
         self.c1.assert_ooc('Your IC messages will now be sent to areas {} through {}.'
@@ -489,9 +496,7 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ooc('Sent global IC message "Hallo mates." to areas {} through {}.'
                            .format(self.a1_name, self.a5_name), ooc_over=True)
         self.c0.assert_no_ic()
-        # TEMPORARY: Remove for 4.3+Client update
-        # Workaround for client not clearing messages
-        self.c1.assert_ic('>>>Hallo mates.', folder=self.c1_cname, over=True)
+        self.c1.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
         self.c2.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
         self.c3.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
         self.c4.assert_no_ic()
