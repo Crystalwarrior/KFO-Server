@@ -524,5 +524,7 @@
 * Fixed situation where if a player was in first person mode and was blinded, talked themselves but heard no one else talk, and after being unblinded started talking, they would see the sprite of the last person they last saw talked
 * Fixed attempting to load non-YAML files or files with unusual encoding raising an uncaught UnicodeDecode error
 * Fixed /refresh not undoing changes if either the background, character or music list raised errors when loading
+* Fixed /sneak and /reveal not showing the client ID of target players to zone watchers.
+* Fixed /zone_add, /zone_lights, /zone_play, /zone_watch not showing the area ID of the command sender to zone watchers.
 * Removed deprecated AO commands
 * Dropped Python 3.6 support

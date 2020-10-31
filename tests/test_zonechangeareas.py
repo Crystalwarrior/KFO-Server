@@ -1,5 +1,6 @@
 from .test_zonebasic import _TestZone
 
+
 class TestZoneChangeArea_01_Add(_TestZone):
     def test_01_wrongarguments(self):
         """
@@ -94,8 +95,8 @@ class TestZoneChangeArea_01_Add(_TestZone):
 
         self.c5.ooc('/zone_add 1')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} [{}] has added area {} to your zone.'
-                           .format(self.c5.displayname, 5, 1), over=True)
+        self.c1.assert_ooc('(X) {} [{}] has added area {} to your zone ({}).'
+                           .format(self.c5.displayname, 5, 1, 7), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -108,7 +109,7 @@ class TestZoneChangeArea_01_Add(_TestZone):
         """
 
         self.c2.ooc('/zone 2')
-        self.c1.discard_all() # Discard mod notification for zone creation
+        self.c1.discard_all()  # Discard mod notification for zone creation
         self.c2.discard_all()
         self.assert_zones({'z0': {0, 1, 4, 5, 6, 7}, 'z1': {2}})
 
@@ -134,6 +135,7 @@ class TestZoneChangeArea_01_Add(_TestZone):
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
         self.assert_zones({'z0': {0, 1, 4, 5, 6, 7}, 'z1': {2, 3}})
+
 
 class TestZoneChangeArea_02_Remove(_TestZone):
     def test_01_wrongarguments(self):
@@ -167,8 +169,8 @@ class TestZoneChangeArea_02_Remove(_TestZone):
 
         self.c1.ooc('/zone 4, 7')
         self.c1.discard_all()
-        self.c2.discard_all() # c2 receives being in zone at zone creation notif
-        self.c5.discard_all() # same as above
+        self.c2.discard_all()  # c2 receives being in zone at zone creation notif
+        self.c5.discard_all()  # same as above
         self.assert_zones({'z0': {4, 5, 6, 7}})
 
         self.c1.ooc('/zone_remove 5')
@@ -236,8 +238,8 @@ class TestZoneChangeArea_02_Remove(_TestZone):
 
         self.c1.ooc('/zone 4, 7')
         self.c1.discard_all()
-        self.c2.discard_all() # c2 receives being in zone at zone creation notif
-        self.c5.discard_all() # same as above
+        self.c2.discard_all()  # c2 receives being in zone at zone creation notif
+        self.c5.discard_all()  # same as above
 
         self.c5.ooc('/zone_remove 6')
         self.c0.assert_no_packets()
@@ -273,7 +275,7 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         """
 
         self.c2.ooc('/zone 2, 3')
-        self.c1.discard_all() # Discard mod notification for zone creation
+        self.c1.discard_all()  # Discard mod notification for zone creation
         self.c2.discard_all()
         self.assert_zones({'z0': {4, 5, 6}, 'z1': {2, 3}})
 

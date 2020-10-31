@@ -4147,6 +4147,7 @@ def ooc_cmd_remove_h(client: ClientManager.Client, arg: str):
         logger.log_server('Removing h from {}.'.format(c.ipid), client)
         client.area.broadcast_ooc("Removed h from {}.".format(c.displayname))
 
+
 def ooc_cmd_reveal(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY+VARYING REQUIREMENTS)
     Sets given user based on client ID or IPID to no longer be sneaking so that they are visible
@@ -4177,9 +4178,11 @@ def ooc_cmd_reveal(client: ClientManager.Client, arg: str):
         if c != client:
             client.send_ooc("{} is no longer sneaking.".format(c.displayname))
         c.change_visibility(True)
-        client.send_ooc_others('(X) {} [{}] revealed {} ({}).'
-                               .format(client.displayname, client.id, c.displayname, c.area.id),
+        client.send_ooc_others('(X) {} [{}] revealed {} [{}] ({}).'
+                               .format(client.displayname, client.id, c.displayname, client.id,
+                                       c.area.id),
                                not_to={c}, is_zstaff=True)
+
 
 def ooc_cmd_roll(client: ClientManager.Client, arg: str):
     """
@@ -4918,9 +4921,11 @@ def ooc_cmd_sneak(client: ClientManager.Client, arg: str):
         if c != client:
             client.send_ooc("{} is now sneaking.".format(c.displayname))
         c.change_visibility(False)
-        client.send_ooc_others('(X) {} [{}] sneaked {} ({}).'
-                               .format(client.displayname, client.id, c.displayname, c.area.id),
+        client.send_ooc_others('(X) {} [{}] sneaked {} [{}] ({}).'
+                               .format(client.displayname, client.id, c.displayname,
+                                       c.id, c.area.id),
                                not_to={c}, is_zstaff=True)
+
 
 def ooc_cmd_spectate(client: ClientManager.Client, arg: str):
     """
@@ -6187,8 +6192,9 @@ def ooc_cmd_zone_add(client: ClientManager.Client, arg: str):
         raise ZoneError('Area {} already belongs to a zone.'.format(arg))
 
     client.send_ooc('You have added area {} to your zone.'.format(area.id))
-    client.send_ooc_others('(X) {} [{}] has added area {} to your zone.'
-                           .format(client.displayname, client.id, area.id), is_zstaff=True)
+    client.send_ooc_others('(X) {} [{}] has added area {} to your zone ({}).'
+                           .format(client.displayname, client.id, area.id,
+                                   client.area.id), is_zstaff=True)
 
     zone_id = client.zone_watched.get_id()
     for c in area.clients:
@@ -6340,8 +6346,9 @@ def ooc_cmd_zone_lights(client: ClientManager.Client, arg: str):
             pass
 
     client.send_ooc('You have turned {} the lights in your zone.'.format(arg))
-    client.send_ooc_others('(X) {} [{}] has turned {} the lights in your zone.'
-                           .format(client.displayname, client.id, arg), is_zstaff=True)
+    client.send_ooc_others('(X) {} [{}] has turned {} the lights in your zone ({}).'
+                           .format(client.displayname, client.id, arg, client.area.id),
+                           is_zstaff=True)
 
 def ooc_cmd_zone_list(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
@@ -6396,8 +6403,9 @@ def ooc_cmd_zone_play(client: ClientManager.Client, arg: str):
 
     client.send_ooc('You have played track `{}` in your zone.'
                     .format(arg))
-    client.send_ooc_others('(X) {} [{}] has played track `{}` in your zone.'
-                           .format(client.displayname, client.id, arg), is_zstaff=True)
+    client.send_ooc_others('(X) {} [{}] has played track `{}` in your zone ({}).'
+                           .format(client.displayname, client.id, arg, client.area.id),
+                           is_zstaff=True)
 
     # Warn if track is not in the music list
     try:
@@ -6522,8 +6530,8 @@ def ooc_cmd_zone_watch(client: ClientManager.Client, arg: str):
     for c in target_zone.get_watchers():
         if c == client:
             continue
-    client.send_ooc_others('(X) {} [{}] is now watching your zone.'
-                           .format(client.displayname, client.id), is_zstaff=True)
+    client.send_ooc_others('(X) {} [{}] is now watching your zone ({}).'
+                           .format(client.displayname, client.id, client.area.id), is_zstaff=True)
 
 def ooc_cmd_8ball(client: ClientManager.Client, arg: str):
     """
@@ -8316,8 +8324,9 @@ def ooc_cmd_zone_mode(client: ClientManager.Client, arg: str):
 
     client.send_ooc('You have set the gamemode of your zone to be `{}`.'
                     .format(arg))
-    client.send_ooc_others('(X) {} [{}] has set the gamemode of your zone to be `{}`.'
-                           .format(client.displayname, client.id, arg), is_zstaff=True)
+    client.send_ooc_others('(X) {} [{}] has set the gamemode of your zone to be `{}` ({}).'
+                           .format(client.displayname, client.id, arg, client.area.id),
+                           is_zstaff=True)
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
