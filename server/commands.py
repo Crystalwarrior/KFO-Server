@@ -4369,7 +4369,8 @@ def ooc_cmd_scream(client: ClientManager.Client, arg: str):
     """
     Sends a message in the OOC chat visible to all staff members and non-deaf users that are in an
     area whose screams are reachable from the sender's area whose IC chat is not locked. It also
-    sends an IC message with the scream message.
+    sends an IC message with the scream message. If the area of the screamer is marked private,
+    the scream only goes to the current area.
     If the user is gagged, a special message is instead sent to non-deaf players in the same area.
     If a recipient is deaf, they receive a special OOC message and a blank IC message.
     Staff always get normal message
@@ -4402,29 +4403,49 @@ def ooc_cmd_scream(client: ClientManager.Client, arg: str):
     if not client.is_gagged:
         client.send_ooc('You screamed "{}".'.format(arg))
 
-        client.send_ooc_others(msg="You heard {} scream nearby.".format(client.displayname),
-                               is_zstaff_flex=False, to_deaf=False,
-                               pred=lambda c: (not c.muted_global and
-                                               (c.area == client.area or
-                                                ((client.is_staff() or not c.area.ic_lock) and
-                                                 c.area.name in client.area.scream_range))))
-        client.send_ooc_others('(X) {} [{}] screamed "{}" ({}).'
-                               .format(client.displayname, client.id, arg, client.area.id),
-                               is_zstaff_flex=True, pred=lambda c: not c.muted_global)
+        if not client.area.private_area:
+            client.send_ooc_others(msg="You heard {} scream nearby.".format(client.displayname),
+                                   is_zstaff_flex=False, to_deaf=False,
+                                   pred=lambda c: (not c.muted_global and
+                                                   (c.area == client.area or
+                                                    ((client.is_staff() or not c.area.ic_lock) and
+                                                     c.area.name in client.area.scream_range))))
+            client.send_ooc_others('(X) {} [{}] screamed "{}" ({}).'
+                                   .format(client.displayname, client.id, arg,
+                                           client.area.id),
+                                   is_zstaff_flex=True, pred=lambda c: not c.muted_global)
+        else:
+            client.send_ooc_others(msg="You heard {} scream nearby.".format(client.displayname),
+                                   is_zstaff_flex=False, to_deaf=False, in_area=True,
+                                   pred=lambda c: not c.muted_global)
+            client.send_ooc_others('(X) {} [{}] screamed "{}" ({}).'
+                                   .format(client.displayname, client.id, arg,
+                                           client.area.id),
+                                   is_zstaff_flex=True, in_area=True,
+                                   pred=lambda c: not c.muted_global)
 
         client.send_ic(msg=arg, pos=client.pos, cid=client.char_id, showname=client.showname)
-        client.send_ic_others(msg=arg, to_deaf=False, showname=client.showname, cid=client.char_id,
-                              bypass_deafened_starters=True, # send_ic handles nerfing for deafened
-                              pred=lambda c: (not c.muted_global and
-                                              (c.area == client.area or
-                                               ((client.is_staff() or not c.area.ic_lock) and
-                                                c.area.name in client.area.scream_range))))
-        client.send_ic_others(msg=arg, to_deaf=True, cid=client.char_id,
-                              bypass_deafened_starters=True, # send_ic handles nerfing for deafened
-                              pred=lambda c: (not c.muted_global and
-                                              (c.area == client.area or
-                                               ((client.is_staff() or not c.area.ic_lock) and
-                                                c.area.name in client.area.scream_range))))
+
+        if not client.area.private_area:
+            client.send_ic_others(msg=arg, to_deaf=False, showname=client.showname,
+                                  cid=client.char_id,
+                                  bypass_deafened_starters=True, # send_ic handles nerfing for deaf
+                                  pred=lambda c: (not c.muted_global and
+                                                  (c.area == client.area or
+                                                   ((client.is_staff() or not c.area.ic_lock) and
+                                                    c.area.name in client.area.scream_range))))
+            client.send_ic_others(msg=arg, to_deaf=True, cid=client.char_id,
+                                  bypass_deafened_starters=True, # send_ic handles nerfing for deaf
+                                  pred=lambda c: (not c.muted_global and
+                                                  (c.area == client.area or
+                                                   ((client.is_staff() or not c.area.ic_lock) and
+                                                    c.area.name in client.area.scream_range))))
+        else:
+            client.send_ic_others(msg=arg, to_deaf=False, showname=client.showname,
+                                  cid=client.char_id, in_area=client.area,
+                                  bypass_deafened_starters=True, # send_ic handles nerfing for deaf
+                                  pred=lambda c: not c.muted_global)
+
     else:
         client.send_ooc('You attempted to scream but you have no mouth.')
         client.send_ooc_others('You hear some grunting noises.', is_zstaff_flex=False,

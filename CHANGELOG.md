@@ -529,5 +529,6 @@
 * Fixed /zone_add, /zone_lights, /zone_play, /zone_watch not showing the area ID of the command sender to zone watchers
 * Fixed filtering out global IC prefixes if a prefix was set and a message that started with that prefix was sent while global IC was turned off
 * Fixed players in first person mode not seeing the last sender' sprites if the last sender was a GM that was sneaking
+* Fixed /scream going to screamable areas if area is marked as private
 * Removed deprecated AO commands
 * Dropped Python 3.6 support

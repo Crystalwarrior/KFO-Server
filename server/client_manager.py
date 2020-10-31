@@ -260,6 +260,8 @@ class ClientManager:
                     pargs['msg'] = msg
 
             # Check if receiver is actually meant to receive the message. Bail out early if not.
+            # FIXME: First argument should be sender, not self. Using in_area=True fails otherwise
+
             cond = Constants.build_cond(self, is_staff=is_staff, in_area=in_area, not_to=not_to,
                                         to_blind=to_blind, to_deaf=to_deaf, pred=pred)
             if not cond(self):
