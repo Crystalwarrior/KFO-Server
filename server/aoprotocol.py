@@ -317,29 +317,10 @@ class AOProtocol(asyncio.Protocol):
         # Make sure there is enough room for the client
         char_cnt = len(self.server.char_list)
         evi_cnt = 0
-        music_cnt = sum([len(x) for x in self.server.music_pages_ao1])
-        self.client.send_command('SI', char_cnt, evi_cnt, music_cnt)
-
-    def net_cmd_askchar2(self, _):
-        """ Asks for the character list.
-
-        askchar2#%
-
-        """
-        self.client.send_command('CI', *self.server.char_pages_ao1[0])
-
-    def net_cmd_an(self, args):
-        """ Asks for specific pages of the character list.
-
-        AN#<page:int>#%
-
-        """
-        if not self.validate_net_cmd(args, ArgType.INT, needs_auth=False):
-            return
-        if len(self.server.char_pages_ao1) > args[0] >= 0:
-            self.client.send_command('CI', *self.server.char_pages_ao1[args[0]])
-        else:
-            self.client.send_command('EM', *self.server.music_pages_ao1[0])
+        music_cnt = sum([len(item['songs']) + 1
+                         for item in self.server.music_list])  # +1 for category
+        area_cnt = len(self.server.area_manager.areas)
+        self.client.send_command('SI', char_cnt, evi_cnt, music_cnt+area_cnt)
 
     def net_cmd_ae(self, _):
         """ Asks for specific pages of the evidence list.
@@ -348,22 +329,6 @@ class AOProtocol(asyncio.Protocol):
 
         """
         pass  # todo evidence maybe later
-
-    def net_cmd_am(self, args):
-        """ Asks for specific pages of the music list.
-
-        AM#<page:int>#%
-
-        """
-        if not self.validate_net_cmd(args, ArgType.INT, needs_auth=False):
-            return
-        if len(self.server.music_pages_ao1) > args[0] >= 0:
-            self.client.send_command('EM', *self.server.music_pages_ao1[args[0]])
-        else:
-            self.client.send_done()
-            self.client.send_area_list()
-            self.client.send_motd()
-            self.client.can_askchaa = True # Allow rejoining if left to lobby but did not dc.
 
     def net_cmd_rc(self, _):
         """ Asks for the whole character list(AO2)
@@ -383,8 +348,8 @@ class AOProtocol(asyncio.Protocol):
         # Force the server to rebuild the music list, so that clients who just join get the correct
         # music list (as well as every time they request an updated music list directly).
 
-        full_music_list = self.server.build_music_list_ao2(include_areas=True,
-                                                           include_music=True)
+        full_music_list = self.server.build_music_list(include_areas=True,
+                                                       include_music=True)
         self.client.send_command('SM', *full_music_list)
 
     def net_cmd_rd(self, _):
@@ -917,13 +882,10 @@ class AOProtocol(asyncio.Protocol):
         'ID': net_cmd_id,  # client version
         'CH': net_cmd_ch,  # keepalive
         'askchaa': net_cmd_askchaa,  # ask for list lengths
-        'askchar2': net_cmd_askchar2,  # ask for list of characters
-        'AN': net_cmd_an,  # character list
         'AE': net_cmd_ae,  # evidence list
-        'AM': net_cmd_am,  # music list
-        'RC': net_cmd_rc,  # AO2 character list
-        'RM': net_cmd_rm,  # AO2 music list
-        'RD': net_cmd_rd,  # AO2 done request, charscheck etc.
+        'RC': net_cmd_rc,  # character list
+        'RM': net_cmd_rm,  # music list
+        'RD': net_cmd_rd,  # done request, charscheck etc.
         'CC': net_cmd_cc,  # select character
         'MS': net_cmd_ms,  # IC message
         'CT': net_cmd_ct,  # OOC message

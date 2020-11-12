@@ -511,6 +511,9 @@
 * Clients with compatible clients now no longer see auxiliary extra spaces in IC if deafened nor their own messages with global IC prefixes if they have them on
 * Improved README description of /switch to account for GMs being able to switch to restricted characters, and mods being able to force a player off their character
 * Added area parameter that allows only CMs and mods to send global messages in an area (by default false)
+* Improved type checking of background, music and character lists (they now hopefully fail earlier and more clearly if they have subtle errors)
+* If a character list is changed via /refresh, all clients are switched to spectator and prompted to rejoin the server
+* Removed support for AO1 style packets. The server will now respond only to DRO and AO2-style packets
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
@@ -530,5 +533,6 @@
 * Fixed filtering out global IC prefixes if a prefix was set and a message that started with that prefix was sent while global IC was turned off
 * Fixed players in first person mode not seeing the last sender' sprites if the last sender was a GM that was sneaking
 * Fixed /scream going to screamable areas if area is marked as private
+* Fixed the server not failing early if a server YAML file was empty
 * Removed deprecated AO commands
 * Dropped Python 3.6 support

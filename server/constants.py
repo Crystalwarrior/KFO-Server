@@ -424,7 +424,11 @@ class Constants():
         file_name = file.name[separator+1:]
 
         try:
-            return yaml.safe_load(file)
+            contents = yaml.safe_load(file)
+            if not contents:
+                msg = f'File {file_name} was empty. Populate it properly and try again.'
+                raise ServerError.YAMLInvalidError(msg)
+            return contents
         except yaml.YAMLError as exc:
             msg = ('File {} returned the following YAML error when loading: `{}`. Fix the syntax '
                    'error and try again.'

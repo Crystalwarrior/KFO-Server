@@ -50,8 +50,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b33'
-        self.internal_version = 'M201031d'
+        self.segment_version = 'b34'
+        self.internal_version = 'M201111a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -80,12 +80,11 @@ class TsuserverDR:
         self.all_passwords = list()
 
         self.load_config()
-        self.load_iniswaps()
-        self.char_list = list()
-        self.char_pages_ao1 = None
-        self.load_characters()
-        self.load_commandhelp()
         self.client_manager = client_manager(self)
+        self.char_list = list()
+        self.load_iniswaps()
+        self.load_characters()
+
         self.game_manager = GameManager(self)
         self.trial_manager = TrialManager(self)
         self.zone_manager = ZoneManager(self)
@@ -96,11 +95,12 @@ class TsuserverDR:
         self.ipid_list = {}
         self.hdid_list = {}
         self.music_list = None
-        self.music_pages_ao1 = None
         self.backgrounds = None
+        self.load_commandhelp()
         self.load_music()
         self.load_backgrounds()
         self.load_ids()
+
         self.district_client = None
         self.ms_client = None
         self.rp_mode = False
@@ -225,28 +225,26 @@ class TsuserverDR:
         # Keep backups in case of failure
         backup = [self.char_list.copy(), self.music_list.copy(), self.backgrounds.copy()]
 
-        file_names = ['characters', 'music', 'backgrounds']
-        files = list()
-        for file_type in file_names:
-            file_name = f'config/{file_type}.yaml'
+        # Do a dummy YAML load to see if the files can be loaded and parsed at all first.
+        reloaded_assets = [self.load_characters, self.load_backgrounds, self.load_music]
+        for reloaded_asset in reloaded_assets:
             try:
-                with Constants.fopen(file_name, 'r', encoding='utf-8') as file:
-                    files.append(Constants.yaml_load(file))
+                reloaded_asset()
             except ServerError.YAMLInvalidError as exc:
                 # The YAML exception already provides a full description. Just add the fact the
                 # reload was undone to ease the person who ran the command's nerves.
-                msg = ('{} Reload was undone.'.format(exc))
+                msg = (f'{exc} Reload was undone.')
                 raise ServerError.YAMLInvalidError(msg)
-            except ServerError as exc:
-                msg = ('File {} returned the following error when loading: `{}`. Reload was undone.'
-                       .format(file_name, exc))
+            except ServerError.FileSyntaxError as exc:
+                msg = f'{exc} Reload was undone.'
                 raise ServerError(msg)
 
-        self.char_list, self.music_list, self.backgrounds = files
+        # Only on success reload
+        self.load_characters()
+        self.load_backgrounds()
 
         try:
-            self.build_music_pages_ao1()
-            self.build_music_list_ao2()
+            self.load_music()
         except ServerError as exc:
             self.char_list, self.music_list, self.backgrounds = backup
             msg = ('The new music list returned the following error when loading: `{}`. Fix the '
@@ -282,9 +280,46 @@ class TsuserverDR:
         # Ignore players in the server selection screen.
         return len([client for client in self.client_manager.clients if client.char_id is not None])
 
-    def load_backgrounds(self):
+    def _validate_backgrounds(self):
         with Constants.fopen('config/backgrounds.yaml', 'r', encoding='utf-8') as bgs:
-            self.backgrounds = Constants.yaml_load(bgs)
+            backgrounds = Constants.yaml_load(bgs)
+
+        # Check background contents is indeed a list of strings
+        if not isinstance(backgrounds, list):
+            msg = (f'Expected the background list to be a list, got a'
+                   f'{type(backgrounds).__name__}: {backgrounds}.')
+            raise ServerError.FileSyntaxError(msg)
+
+        for (i, background) in enumerate(backgrounds.copy()):
+            if background is None:
+                msg = (f'Expected all background names to be defined, but background {i} was not.')
+                raise ServerError.FileSyntaxError(msg)
+            if not isinstance(background, (str, float, int, bool, complex)):
+                msg = (f'Expected all background names to be strings or numbers, but background '
+                       f'{i}: {background} was not a string or number.')
+                raise ServerError.FileSyntaxError(msg)
+
+            # Otherwise, background i is valid. Cast it as string to deal with YAML doing
+            # potential casting of its own
+            backgrounds[i] = str(background)
+
+        return backgrounds
+
+    def load_backgrounds(self):
+        backgrounds = self._validate_backgrounds()
+
+        self.backgrounds = backgrounds
+        default_background = self.backgrounds[0]
+        # Make sure each area still has a valid background
+        for area in self.area_manager.areas:
+            if area.background not in self.backgrounds and not area.cbg_allowed:
+                # The area no longer has a valid background, so change it to some valid background
+                # like the first one
+                area.change_background(default_background)
+                area.broadcast_ooc(f'After a server refresh, your area no longer had a valid '
+                                   f'background. Switching to {default_background}.')
+
+        return backgrounds.copy()
 
     def load_config(self):
         with Constants.fopen('config/config.yaml', 'r', encoding='utf-8') as cfg:
@@ -359,10 +394,45 @@ class TsuserverDR:
                             .format(password1, password2))
                     raise ServerError(info)
 
+    def _validate_characters(self):
+        with Constants.fopen('config/characters.yaml', 'r', encoding='utf-8') as bgs:
+            characters = Constants.yaml_load(bgs)
+
+        # Check characters contents is indeed a list of strings
+        if not isinstance(characters, list):
+            msg = (f'Expected the characters list to be a list, got a'
+                   f'{type(characters).__name__}: {characters}.')
+            raise ServerError.FileSyntaxError(msg)
+
+        for (i, character) in enumerate(characters.copy()):
+            if character is None:
+                msg = (f'Expected all character names to be defined, but character {i} was not.')
+                raise ServerError.FileSyntaxError(msg)
+            if not isinstance(character, (str, float, int, bool, complex)):
+                msg = (f'Expected all character names to be strings or numbers, but character '
+                       f'{i}: {character} was not a string or number.')
+                raise ServerError.FileSyntaxError(msg)
+
+            # Otherwise, background i is valid. Cast it as string to deal with YAML doing
+            # potential casting of its own
+            characters[i] = str(character)
+
+        return characters
+
     def load_characters(self):
-        with Constants.fopen('config/characters.yaml', 'r', encoding='utf-8') as chars:
-            self.char_list = Constants.yaml_load(chars)
-        self.build_char_pages_ao1()
+        characters = self._validate_characters()
+
+        if self.char_list != characters:
+            # Inconsistent character list, so change everyone to spectator
+            for client in self.client_manager.clients:
+                if client.char_id != -1:
+                    # Except those that are already spectators
+                    client.change_character(-1)
+                client.send_ooc('The server character list was changed and no longer reflects your '
+                                'client character list. Please rejoin the server.')
+
+        self.char_list = characters
+        return characters.copy()
 
     def load_commandhelp(self):
         with Constants.fopen('README.md', 'r', encoding='utf-8') as readme:
@@ -469,16 +539,24 @@ class TsuserverDR:
 
             logger.log_pdebug(message)
 
-    def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
+    def load_music(self, music_list_file='config/music.yaml', server_music_list=True,
+                   check_only=False):
         with Constants.fopen(music_list_file, 'r', encoding='utf-8') as music:
             music_list = Constants.yaml_load(music)
 
+        if check_only:
+            return list()
+
         if server_music_list:
             self.music_list = music_list
-            self.build_music_pages_ao1()
-            self.build_music_list_ao2(music_list=music_list)
+            try:
+                self.build_music_list(music_list=music_list)
+            except ServerError.FileSyntaxError as exc:
+                msg = (f'File {music_list_file} returned the following error when loading: '
+                       f'`{exc.message}`')
+                raise ServerError.FileSyntaxError(msg)
 
-        return music_list
+        return music_list.copy()
 
     def dump_ipids(self):
         with Constants.fopen('storage/ip_ids.json', 'w') as whole_list:
@@ -498,39 +576,8 @@ class TsuserverDR:
             self.dump_ipids()
         return self.ipid_list[ip]
 
-    def build_char_pages_ao1(self):
-        self.char_pages_ao1 = [self.char_list[x:x + 10] for x in range(0, len(self.char_list), 10)]
-        for i in range(len(self.char_list)):
-            self.char_pages_ao1[i // 10][i % 10] = '{}#{}&&0&&&0&'.format(i, self.char_list[i])
-
-    def build_music_pages_ao1(self):
-        self.music_pages_ao1 = []
-        index = 0
-        # add areas first
-        for area in self.area_manager.areas:
-            self.music_pages_ao1.append('{}#{}'.format(index, area.name))
-            index += 1
-        # then add music
-        try:
-            for item in self.music_list:
-                self.music_pages_ao1.append('{}#{}'.format(index, item['category']))
-                index += 1
-                for song in item['songs']:
-                    self.music_pages_ao1.append('{}#{}'.format(index, song['name']))
-                    index += 1
-        except KeyError as err:
-            msg = ("The music list expected key '{}' for item {}, but could not find it."
-                   .format(err.args[0], item))
-            raise ServerError.MusicInvalid(msg)
-        except TypeError:
-            msg = ("The music list expected songs to be listed for item {}, but could not find any."
-                   .format(item))
-            raise ServerError.MusicInvalid(msg)
-
-        self.music_pages_ao1 = [self.music_pages_ao1[x:x + 10] for x in range(0, len(self.music_pages_ao1), 10)]
-
-    def build_music_list_ao2(self, from_area=None, c=None, music_list=None, include_areas=True,
-                             include_music=True):
+    def build_music_list(self, from_area=None, c=None, music_list=None, include_areas=True,
+                         include_music=True):
         built_music_list = list()
 
         # add areas first, if needed
@@ -594,38 +641,93 @@ class TsuserverDR:
 
         # If not provided a specific music list to overwrite
         if specific_music_list is None:
-            specific_music_list = self.music_list # Default value
+            specific_music_list = self.music_list  # Default value
             # But just in case, check if this came as a request of a client who had a
             # previous music list preference
             if c and c.music_list is not None:
                 specific_music_list = c.music_list
 
+        return self._validate_music_list(raw_music_list=specific_music_list)
+
+    def _validate_music_list(self, raw_music_list=None):
+        if raw_music_list is None:
+            raw_music_list = list()
+
         prepared_music_list = list()
-        try:
-            for item in specific_music_list:
-                prepared_music_list.append(item['category'])
-                for song in item['songs']:
-                    if 'length' not in song:
-                        name, length = song['name'], -1
-                    else:
-                        name, length = song['name'], song['length']
 
-                    # Check that length is a number, and if not, abort.
-                    if not isinstance(length, (int, float)):
-                        msg = ("The music list expected a numerical length for track '{}', but "
-                               "found it had length '{}'.").format(song['name'], song['length'])
-                        raise ServerError.MusicInvalidError(msg)
+        # Check music list contents is indeed a list
+        if not isinstance(raw_music_list, list):
+            msg = (f'Expected the music list to be a list, got a'
+                   f'{type(raw_music_list).__name__}: {raw_music_list}.')
+            raise ServerError.FileSyntaxError(msg)
 
-                    prepared_music_list.append(name)
+        # Check top level description is ok
+        for (i, item) in enumerate(raw_music_list.copy()):
+            if item is None:
+                msg = (f'Expected all music list items to be defined, but item {i} was not.')
+                raise ServerError.FileSyntaxError(msg)
+            if not isinstance(item, dict):
+                msg = (f'Expected all music list items to be dictionaries, but item '
+                       f'{i}: {item} was not a dictionary.')
+                raise ServerError.FileSyntaxError(msg)
+            if set(item.keys()) != {'category', 'songs'}:
+                msg = (f'Expected all music list items to have exactly two keys: category and '
+                       f'songs, but item {i} had keys {set(item.keys())}')
+                raise ServerError.FileSyntaxError(msg)
 
-        except KeyError as err:
-            msg = ("The music list expected key '{}' for item {}, but could not find it."
-                   .format(err.args[0], item))
-            raise ServerError.MusicInvalid(msg)
-        except TypeError:
-            msg = ("The music list expected songs to be listed for item {}, but could not find any."
-                   .format(item))
-            raise ServerError.MusicInvalid(msg)
+            category, songs = item['category'], item['songs']
+            if category is None:
+                msg = (f'Expected all music list categories to be defined, but category {i} was '
+                       f'not.')
+                raise ServerError.FileSyntaxError(msg)
+            if songs is None:
+                msg = (f'Expected all music list song descriptions to be defined, but song '
+                       f'description {i} was not.')
+                raise ServerError.FileSyntaxError(msg)
+
+            if not isinstance(category, (str, float, int, bool, complex)):
+                msg = (f'Expected all music list category names to be strings or numbers, but '
+                       f'category {i}: {category} was not a string or number.')
+                raise ServerError.FileSyntaxError(msg)
+            if not isinstance(songs, list):
+                msg = (f'Expected all music list song descriptions to be a list, but '
+                       f'description {i}: {songs} was not a list.')
+                raise ServerError.FileSyntaxError(msg)
+
+        # Check each song description dictionary is ok
+        for (i, item) in enumerate(raw_music_list.copy()):
+            category = item['category']
+            songs = item['songs']
+            prepared_music_list.append(category)
+            for (j, song) in enumerate(songs):
+                if song is None:
+                    msg = (f'Expected all music list song descriptions to be defined, but song '
+                           f'description {j} in item {i} was not defined.')
+                    raise ServerError.FileSyntaxError(msg)
+                if not isinstance(song, dict):
+                    msg = (f'Expected all music list song descriptions to be dictionaries: but '
+                           f'song {j}: {song} in item {i} was not a dictionary.')
+                    raise ServerError.FileSyntaxError(msg)
+                if set(song.keys()) not in [{'name'}, {'name', 'length'}]:
+                    msg = (f'Expected all music list songs to have exactly keys: name, or name and '
+                           f'length, but song {j} in item {i} had keys {set(item.keys())}')
+                    raise ServerError.FileSyntaxError(msg)
+
+                if 'length' not in song:
+                    name, length = song['name'], -1
+                else:
+                    name, length = song['name'], song['length']
+
+                if not isinstance(name, (str, float, int, bool, complex)):
+                    msg = (f'Expected all music list song names to be strings or numbers, but '
+                           f'song {j}: {name} in category {i} was not a string or number.')
+                    raise ServerError.FileSyntaxError(msg)
+                if not isinstance(length, (int, float)):
+                    msg = (f'Expected all music list song lengths to be numbers, but song {j}: '
+                           f'{name} in category {i} had non-numerical length {length}.')
+                    raise ServerError.FileSyntaxError(msg)
+
+                prepared_music_list.append(name)
 
         return prepared_music_list
 

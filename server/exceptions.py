@@ -66,6 +66,9 @@ class ArgumentError(TsuserverException):
 
 @recreate_subexceptions
 class ServerError(TsuserverException):
+    class FileSyntaxError(TsuserverException):
+        pass
+
     class ServerFileNotFoundError(TsuserverException):
         pass
 

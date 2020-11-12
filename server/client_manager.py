@@ -615,8 +615,8 @@ class ClientManager:
 
             if self.packet_handler not in [Clients.ClientAO2d8d4, Clients.ClientKFO2d8]:
                 # DRO and AO2.6< protocol
-                reloaded_music_list = self.server.build_music_list_ao2(from_area=self.area, c=self,
-                                                                       music_list=raw_music_list)
+                reloaded_music_list = self.server.build_music_list(from_area=self.area, c=self,
+                                                                   music_list=raw_music_list)
 
                 # KEEP THE ASTERISK, unless you want a very weird single area comprised
                 # of all areas back to back forming a black hole area of doom and despair
@@ -625,9 +625,9 @@ class ClientManager:
             else:
                 # KFO and AO2.8.4 deals with music lists differently than other clients
                 # They want the area lists and music lists separate, so they will have it like that
-                area_list = self.server.build_music_list_ao2(from_area=self.area, c=self,
-                                                             include_areas=True,
-                                                             include_music=False)
+                area_list = self.server.build_music_list(from_area=self.area, c=self,
+                                                         include_areas=True,
+                                                         include_music=False)
                 self.send_command('FA', *area_list)
                 music_list = self.server.prepare_music_list(c=self,
                                                             specific_music_list=raw_music_list)
@@ -635,7 +635,7 @@ class ClientManager:
 
             # Update the new music list of the client once everything is done, if a new music list
             # was indeed loaded. Doing this only now prevents setting the music list to something
-            # broken, as build_music_list_ao2 checks for syntax and raises an error if bad syntax
+            # broken, as build_music_list checks for syntax and raises an error if bad syntax
             # so if the code makes it here, the loaded music list is good.
             if raw_music_list:
                 self.music_list = raw_music_list
