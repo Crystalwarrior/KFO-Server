@@ -387,7 +387,7 @@ def ooc_cmd_banhdid(client: ClientManager.Client, arg: str):
     # Thus, banning one IPID is sufficient, so check if any associated IPID is already banned.
     for ipid in client.server.hdid_list[arg]:
         if client.server.ban_manager.is_banned(ipid):
-            raise ClientError('Player is already banned.')
+            raise ClientError(f'User is already banned (banned IPID: {ipid}).')
 
     identifier = random.choice(client.server.hdid_list[arg])
     # Try and add the user to the ban list based on the given identifier
@@ -414,6 +414,7 @@ def ooc_cmd_banhdid(client: ClientManager.Client, arg: str):
                            .format(client.name, client.id, arg, len(targets), plural),
                            is_officer=True)
     logger.log_server('HDID-banned {}.'.format(identifier), client)
+
 
 def ooc_cmd_bg(client: ClientManager.Client, arg: str):
     """
