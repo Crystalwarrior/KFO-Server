@@ -130,7 +130,12 @@ class ClientManager:
 
         def send_raw_message(self, msg):
             # print(f'< {self.id}: {msg}')
-            self.transport.write(msg.encode('utf-8'))
+            # Only send messages to players that are.. players
+            # This should only be relevant in the case there is a function that requests packets
+            # be sent to multiple clients, but the function does not check if all targets are
+            # still clients.
+            if self.server.is_client(self):
+                self.transport.write(msg.encode('utf-8'))
 
         def send_command(self, command, *args):
             if args:

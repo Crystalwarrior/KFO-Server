@@ -929,6 +929,7 @@ class _Trial(GameWithAreas):
             return
         # Warning this raises socket.send() exception if server shutdown and want to send
         # OOC to disconnected players. This is in \lib\asyncio\selector_events.py.
+
         player.send_ooc_others(f'(X) Player {player.displayname} of your trial disconnected. '
                                f'({player.area.id})', pred=lambda c: c in self.get_leaders())
         self.remove_player(player)
