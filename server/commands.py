@@ -1847,7 +1847,12 @@ def ooc_cmd_follow(client: ClientManager.Client, arg: str):
     /follow 1                     :: Starts following the player whose client ID is 1
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+    except ClientError.UnauthorizedError:
+        Constants.assert_command(client, arg, parameters='=1')
+        if not client.char_id < 0:
+            raise ClientError('You must be authorized to follow without being in spectator mode.')
 
     if client.party:
         raise PartyError('You cannot follow someone while in a party.')
@@ -5573,7 +5578,7 @@ def ooc_cmd_undisemvowel(client: ClientManager.Client, arg: str):
         client.area.broadcast_ooc("{} was undisemvowelled.".format(c.displayname))
 
 def ooc_cmd_unfollow(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
+    """
     Stops following the player you are following.
     Returns an error if you are not following anyone.
 
@@ -5588,7 +5593,12 @@ def ooc_cmd_unfollow(client: ClientManager.Client, arg: str):
     /unfollow                     :: Stops following the player
     """
 
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+    except ClientError.UnauthorizedError as exc:
+        Constants.assert_command(client, arg, parameters='=0')
+        if not client.char_id < 0:
+            raise ClientError('You must be authorized to unfollow without being in spectator mode.')
 
     client.unfollow_user()
 

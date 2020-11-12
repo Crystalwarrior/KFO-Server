@@ -127,6 +127,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Gives a download link set by the target that links to their files, or gives your own download link if not given an argument.
 * **files_set** "url"
     - Sets a download link for your character files, or clears it if not given an argument.
+* **follow** "ID"
+    - Starts following a target, provided you were a spectator. If the target changes areas, you will automatically follow them there.
 * **g** "message"
     - Sends a serverwide message. Fails if the current area disallows sending global messages.
 * **getarea**
@@ -251,6 +253,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Changes your setting to have the IC messages you receive to include the sender's custom showname. By default it is on.
 * **trial_info**
     - Returns details about your trial.
+* **unfollow**
+    - Stops following whoever you were following, provided you were a spectator.
 * **unilock** "area number/name"
     - Changes the passage status (locked/unlocked) from the current area to the given one.
 * **uninvite** "ID/char name/edited-to character/showname/OOC name"

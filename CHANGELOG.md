@@ -506,14 +506,16 @@
 * Day cycle clock unpauses now take place as soon as processed rather than at most 1 second after being processed
 * Added /zone_mode to set up the gamemode of a zone. Players part of an area in that zone with compatible clients will automatically change to their gamemode's version of their theme. 
 * Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players
-* Changed wording of GM login notifications, /minimap, attempting to access a locked passage, and talking in an area whose IC chat is locked
+* Non-GM players that are spectators may now follow players.
+  - Players that were GM and not spectators who then logged out, or non-GMs who were spectators and switched to a character stop following whoever they were following.
+* Changed wording of GM login notifications, /minimap, attempting to access a locked passage, talking in an area whose IC chat is locked, following and unfollowing
 * Notifications are now sent if a mod via /switch forces a target off their character (e.g. mod using /switch) to the mod, the target, and other officers in the server
 * Clients with compatible clients now no longer see auxiliary extra spaces in IC if deafened nor their own messages with global IC prefixes if they have them on
 * Improved README description of /switch to account for GMs being able to switch to restricted characters, and mods being able to force a player off their character
 * Added area parameter that allows only CMs and mods to send global messages in an area (by default false)
 * Improved type checking of background, music and character lists (they now hopefully fail earlier and more clearly if they have subtle errors)
 * If a character list is changed via /refresh, all clients are switched to spectator and prompted to rejoin the server
-* /banhdid now reports, if a player was already banned, what IPID was banned.
+* /banhdid now reports, if a player was already banned, what IPID was banned
 * Removed support for AO1 style packets. The server will now respond only to DRO and AO2-style packets
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range not checking if the areas a scream can reach to from a particular area exist

@@ -527,6 +527,8 @@ class ClientManager:
             if target_area is None:
                 target_area = self.area
 
+            old_char, old_char_id = self.get_char_name(), self.char_id
+
             if not self.server.is_valid_char_id(char_id):
                 raise ClientError('Invalid character ID.')
             if not target_area.is_char_available(char_id, allow_restricted=self.is_staff()):
@@ -545,14 +547,21 @@ class ClientManager:
                     raise ClientError('Character {} not available.'
                                       .format(self.get_char_name(char_id)))
 
-            if self.char_id < 0 and char_id >= 0:  # No longer spectator?
+            if old_char_id < 0 and char_id >= 0:  # No longer spectator?
                 # Now bound by AFK rules
                 self.server.tasker.create_task(self, ['as_afk_kick', self.area.afk_delay,
                                                       self.area.afk_sendto])
                 # And to lurk callouts, if any, provided not staff member
                 self.check_lurk()
 
-            elif self.char_id >= 0 and char_id < 0:  # Now a spectator?
+                # If they were following someone as a non-GM spectator, stop following
+                if not self.is_staff() and self.following:
+                    self.send_ooc(f'You stopped following [{self.following.id}] '
+                                  f'{self.following.displayname} as you are no longer spectating '
+                                  f'and you are not logged in.')
+                    self.unfollow_user()
+
+            elif old_char_id >= 0 and char_id < 0:  # Now a spectator?
                 # No longer bound to AFK rules
                 try:
                     self.server.tasker.remove_task(self, ['as_afk_kick'])
@@ -561,7 +570,6 @@ class ClientManager:
                 # And to lurk callouts
                 self.check_lurk()
 
-            old_char, old_char_id = self.get_char_name(), self.char_id
             self.char_id = char_id
             self.char_folder = self.get_char_name()  # Assumes players are not iniswapped initially
             self.pos = ''
@@ -890,7 +898,8 @@ class ClientManager:
             if target == self.following:
                 raise ClientError('You are already following that player.')
 
-            self.send_ooc('Began following client {} at {}'.format(target.id, Constants.get_time()))
+            self.send_ooc(f'Began following {target.displayname} [{target.id}] at '
+                          f'{Constants.get_time()}.')
 
             # Notify the player you were following before that you are no longer following them
             # and with notify I mean internally.
@@ -902,12 +911,20 @@ class ClientManager:
             if self.area != target.area:
                 self.follow_area(target.area, just_moved=False)
 
+            # Warn zone watchers of the area of the target
+            self.send_ooc_others(f'(X) {self.displayname} [{self.id}] started following '
+                                 f'{target.displayname} [{target.id}] in your zone '
+                                 f'({self.area.id}).', is_zstaff=target.area)
+
         def unfollow_user(self):
             if not self.following:
                 raise ClientError('You are not following anyone.')
 
-            self.send_ooc("Stopped following client {} at {}."
-                          .format(self.following.id, Constants.get_time()))
+            self.send_ooc(f'Stopped following {self.following.displayname} [{self.following.id}] '
+                          f'at {Constants.get_time()}.')
+            self.send_ooc_others(f'(X) {self.displayname} [{self.id}] stopped following '
+                                 f'{self.following.displayname} [{self.following.id}] in your zone '
+                                 f'({self.area.id}).', is_zstaff=self.following.area)
             self.following.followedby.remove(self)
             self.following = None
 
@@ -916,8 +933,11 @@ class ClientManager:
             # It being false is the case where, when the following started, the followed user was
             # in another area, and thus the followee is moved automtically
             if just_moved:
-                self.send_ooc('Followed user moved to {} at {}'
-                              .format(area.name, Constants.get_time()))
+                if self.is_staff():
+                    self.send_ooc('Followed user moved to {} at {}'
+                                  .format(area.name, Constants.get_time()))
+                else:
+                    self.send_ooc(f'Followed user moved to area {area.name}.')
             else:
                 self.send_ooc('Followed user was at {}'.format(area.name))
 
@@ -1360,6 +1380,13 @@ class ClientManager:
             # If having global IC enabled, remove it
             self.multi_ic = None
             self.multi_ic_pre = ''
+
+            # If following someone while not spectator, stop following
+            if self.following:
+                self.send_ooc(f'You stopped following [{self.following.id}] '
+                              f'{self.following.displayname} as you are no longer logged in and '
+                              f'you are not a spectator.')
+                self.unfollow_user()
 
         def get_hdid(self):
             return self.hdid
