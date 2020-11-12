@@ -667,14 +667,20 @@ class NonStopDebate(TrialMinigame):
             client.send_ooc(f'You have entered an area part of NSD `{self.get_id()}`.')
             if client.is_staff():
                 client.send_ooc(f'Join this NSD with /nsd_join {self.get_id()}')
-            client.send_command('GM', 'nsd')
             client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
                                    f'an area part of your NSD '
                                    f'({old_area.id}->{area.id}).',
                                    pred=lambda c: c in self.get_leaders())
             client.send_ooc_others(f'(X) Add {client.displayname} to your NSD with '
                                    f'/nsd_add {client.id}')
-            client.send_command('GM', 'nsd')
+
+            if self._mode in [NSDMode.LOOPING, NSDMode.RECORDING, NSDMode.PRERECORDING]:
+                client.send_command('GM', 'nsd')
+            elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
+                                NSDMode.INTERMISSION_TIMERANOUT]:
+                client.send_command('GM', 'trial')
+            else:
+                raise RuntimeError(f'Unrecognized mode {self._mode}')
 
     def _add_message(self, player, contents=None):
         """
