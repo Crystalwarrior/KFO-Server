@@ -516,6 +516,7 @@
 * Improved type checking of background, music and character lists (they now hopefully fail earlier and more clearly if they have subtle errors)
 * If a character list is changed via /refresh, all clients are switched to spectator and prompted to rejoin the server
 * /banhdid now reports, if a player was already banned, what IPID was banned
+* Judge buttons are now disallowed in lobby areas
 * Removed support for AO1 style packets. The server will now respond only to DRO and AO2-style packets
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range not checking if the areas a scream can reach to from a particular area exist

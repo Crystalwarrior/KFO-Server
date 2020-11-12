@@ -756,6 +756,10 @@ class AOProtocol(asyncio.Protocol):
             return
         if args[0] not in ('testimony1', 'testimony2', 'testimony3', 'testimony4'):
             return
+        if not self.client.is_staff() and self.client.area.lobby_area:
+            self.client.send_ooc('Judge buttons are disabled in this area.')
+            return
+
         self.client.area.send_command('RT', args[0])
         self.client.area.add_to_judgelog(self.client, 'used judge button {}.'.format(args[0]))
         logger.log_server('[{}]{} used judge button {}.'
