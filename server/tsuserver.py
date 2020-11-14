@@ -49,12 +49,13 @@ class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.logged_packet_limit = 100  # Arbitrary
         self.logged_packets = []
+        self._server = None  # Internal server object, changed to proper object later
 
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b42'
-        self.internal_version = 'M201113b'
+        self.segment_version = 'b43'
+        self.internal_version = 'M201113c'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -215,8 +216,9 @@ class TsuserverDR:
         for client in self.client_manager.clients:
             client.disconnect()
 
-        self._server.close()
-        await self._server.wait_closed()
+        if self._server:
+            self._server.close()
+            await self._server.wait_closed()
 
     def get_version_string(self):
         mes = '{}.{}.{}'.format(self.release, self.major_version, self.minor_version)
