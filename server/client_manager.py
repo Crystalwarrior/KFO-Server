@@ -135,6 +135,7 @@ class ClientManager:
             # be sent to multiple clients, but the function does not check if all targets are
             # still clients.
             if self.server.is_client(self):
+                self.server.log_packet(self, msg, False)
                 self.transport.write(msg.encode('utf-8'))
 
         def send_command(self, command, *args):

@@ -97,6 +97,7 @@ class AOProtocol(asyncio.Protocol):
                 logger.log_debug('[INC][RAW]{}'.format(msg), self.client)
             try:
                 # print(f'> {self.client.id}: {msg}')
+                self.server.log_packet(self.client, msg, True)
                 cmd, *args = msg.split('#')
                 self.net_cmd_dispatcher[cmd](self, args)
             except Exception as ex:

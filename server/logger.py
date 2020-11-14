@@ -81,6 +81,15 @@ def log_error(msg, server, errortype='P'):
     error_log.addHandler(error_handler)
 
     if server:
+        # Add list of most recent packets
+        msg += f'\n\n\n= {server.logged_packet_limit} most recent packets dump ='
+        if not server.logged_packets:
+            msg += '\nNo logged packets.'
+        else:
+            for logged_packet in server.logged_packets:
+                str_logged_packet = ' '.join(logged_packet)
+                msg += f'\n{str_logged_packet}'
+
         # Add list of clients to error log
         try:
             msg += '\n\n\n= Client dump. ='
@@ -111,7 +120,8 @@ def log_error(msg, server, errortype='P'):
             msg += '\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
     else:
         # Case server was not initialized properly, so areas and clients are not set
-        msg += '\nServer was not initialized, so client and area dumps could not be generated.'
+        msg += ('\nServer was not initialized, so packet, client and area dumps could not be '
+                'generated.')
 
     # Write and log
     error_log.error(msg)

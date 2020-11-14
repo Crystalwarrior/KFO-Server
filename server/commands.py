@@ -8396,7 +8396,6 @@ def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     debug = 0
     if not debug:
         return None
-
     logger.log_print("Attempting to run instruction {}".format(arg))
 
     try:

@@ -47,11 +47,14 @@ from server.zone_manager import ZoneManager
 
 class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
+        self.logged_packet_limit = 100  # Arbitrary
+        self.logged_packets = []
+
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b41'
-        self.internal_version = 'M201113a'
+        self.segment_version = 'b42'
+        self.internal_version = 'M201113b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -258,6 +261,12 @@ class TsuserverDR:
             self.commands_alt = importlib.reload(self.commands_alt)
         except Exception as error:
             return error
+
+    def log_packet(self, client, packet, incoming):
+        while len(self.logged_packets) > self.logged_packet_limit:
+            self.packets.pop(0)
+        entry = ('R:' if incoming else 'S:', Constants.get_time_iso(), str(client.id), packet)
+        self.logged_packets.append(entry)
 
     def new_client(self, transport, ip=None, my_protocol=None):
         c = self.client_manager.new_client(transport, my_protocol=my_protocol)
