@@ -449,6 +449,17 @@ class AOProtocol(asyncio.Protocol):
             if pargs['pos']  not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
 
+        # Make sure the areas are ok with this
+        try:
+            self.client.area.publisher.publish('area_client_send_ic_check', {
+                'client': self.client,
+                'contents': pargs,
+                })
+        except TsuserverException as ex:
+            self.client.send_ooc(ex)
+            return
+
+        # Make sure the clients are ok with this
         try:
             self.client.publisher.publish('client_send_ic_check', {
                 'contents': pargs,

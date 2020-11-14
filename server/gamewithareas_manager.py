@@ -141,6 +141,7 @@ class GameWithAreas(_Game):
         self.listener.update_events({
             'area_client_left': self._on_area_client_left,
             'area_client_entered': self._on_area_client_entered,
+            'area_client_send_ic_check': self._on_area_client_send_ic_check,
             'area_destroyed': self._on_area_destroyed,
             })
 
@@ -427,6 +428,34 @@ class GameWithAreas(_Game):
         """
 
         print('Received ENTERED', area, client, old_area, old_displayname, ignore_bleeding)
+
+        self._check_structure()
+
+    def _on_area_client_send_ic_check(self, area, client=None, contents=None):
+        """
+        Default callback for game area signaling a client in the area sent an IC message. Unlike
+        the ClientManager.Client callback for send_ic_check, this one is triggered regardless of
+        whether the sender is part of the game or not. This is useful for example, to filter
+        out messages sent by non-players.
+
+        By default does nothing.
+
+        Parameters
+        ----------
+        area : AreaManager.Area
+            Area that signaled a client has entered.
+        client : ClientManager.Client, optional
+            The client that has send the IC message. The default is None.
+        contents : dict of str to Any
+            Arguments of the IC message as indicated in AOProtocol.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        print('User', client, 'in area', area, 'wants to check sent', contents)
 
         self._check_structure()
 

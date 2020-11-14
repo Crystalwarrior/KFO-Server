@@ -489,6 +489,36 @@ class NonStopDebate(TrialMinigame):
         player.send_command('TSF', self._client_timer_id,
                             round(0.016*1000))
 
+    def _on_area_client_send_ic_check(self, area, client=None, contents=None):
+        """
+        Check if any of the following situations occur:
+        * If the user is not part of the nonstop debate.
+
+        If none of the above is true, allow the IC message as is.
+
+        Parameters
+        ----------
+        area : AreaManager.Area
+            Area of the user that wants to send the IC message.
+        client : ClientManager.Client
+            Client that wants to send the IC message (possibly not a player of the nonstop debate).
+        contents : dict of str to Any
+            Arguments of the IC message as indicated in AOProtocol.
+
+        Raises
+        ------
+        ClientError
+            If any of the above disquaLifying situations is true.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if not self.is_player(client):
+            raise ClientError('You are not a player of this nonstop debate.')
+
     def _on_client_send_ic_check(self, player, contents=None):
         """
         Check if any of the following situations occur:
