@@ -54,8 +54,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b43'
-        self.internal_version = 'M201113c'
+        self.segment_version = 'b44'
+        self.internal_version = 'M201113d'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -266,7 +266,7 @@ class TsuserverDR:
 
     def log_packet(self, client, packet, incoming):
         while len(self.logged_packets) > self.logged_packet_limit:
-            self.packets.pop(0)
+            self.logged_packets.pop(0)
         entry = ('R:' if incoming else 'S:', Constants.get_time_iso(), str(client.id), packet)
         self.logged_packets.append(entry)
 

@@ -1090,14 +1090,19 @@ class ClientManager:
                     # Get area details...
                     # If staff (or acting as mod) and there are clients in the area OR
                     # If not staff, there are visible clients in the area, and one of the following
-                    # 1. The area is reachable from the current one
-                    # 2. The client is transient to area passages
+                    # 1. The client is transient to area passages
+                    # 2. The area is the client's area
+                    # 3. The area is reachable and visibly reachable from the current one
                     norm_check = (len([c for c in area.clients if c.is_visible or c == self]) > 0
-                                  and (self.is_transient
-                                       or area.name in current_area.visible_reachable_areas))
-
-                    if (((self.is_staff() or as_mod) and len(area.clients) > 0)
-                        or (not self.is_staff() and norm_check)):
+                                  and (self.is_transient or area == self.area
+                                       or (area.name in current_area.visible_reachable_areas
+                                           and area.name in current_area.reachable_areas)))
+                    # Check reachable and visibly reachable to prevent gaining information from
+                    # areas that are visible from area list but are not reachable (e.g. normally
+                    # locked passages).
+                    staff_check = ((self.is_staff() or as_mod) and area.clients)
+                    nonstaff_check = (not self.is_staff() and norm_check)
+                    if staff_check or nonstaff_check:
                         num, ainfo = self.get_area_info(area.id, mods, as_mod=as_mod,
                                                         include_shownames=include_shownames,
                                                         include_ipid=include_ipid,
