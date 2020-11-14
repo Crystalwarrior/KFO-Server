@@ -422,6 +422,17 @@ class ClientManager:
                 if 'PER_CLIENT_'+proper_attribute in pargs:
                     pargs[proper_attribute] = pargs['PER_CLIENT_'+proper_attribute](self)
 
+            # Hide perjury if needed. This would typically be done in NSD code, but if the client
+            # is not part of an NSD, this check is not done
+            if pargs['button'] == 8:
+                keep1 = ('PER_CLIENT_button' in pargs and pargs['PER_CLIENT_button'] == 8)
+                keep2 = (self == sender or self.is_staff())
+                # Maintain perjury bullet if
+                # 1. Specifically mandated by NSD (or some other manipulator of the IC message)
+                # 2. Receiver is sender or staff
+                # Otherwise convert to counter bullet
+                if not (keep1 or keep2):
+                    pargs['button'] = 7
             # Done modifying IC message
             # Now send it
 
