@@ -1155,7 +1155,12 @@ class Constants():
             except asyncio.CancelledError:
                 return
 
-            if not exception or isinstance(exception, KeyboardInterrupt):
+            if not exception:
+                return
+            if isinstance(exception, (KeyboardInterrupt, asyncio.CancelledError)):
+                # exception may only be asyncio.CancelledError in Python 3.7 or lower
+                # In Python 3.8 it would be raised as an exception and caught in the
+                # earlier try except.
                 return
             try:
                 if not (_client and isinstance(exception, TsuserverException)):
