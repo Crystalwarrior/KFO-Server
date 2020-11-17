@@ -3,7 +3,7 @@
 
 A Python-based server for Danganronpa Online. It is a fork from [tsuserver3](https://github.com/AttorneyOnline/tsuserver3) which is targeted towards Attorney Online.
 
-Requires Python 3.7-3.8 and PyYAML (follow instructions below to install).
+Requires Python 3.7-3.9 and PyYAML (follow instructions below to install).
 
 ## How to use
 
@@ -81,7 +81,7 @@ It is highly recommended you read through all the installation steps first befor
 
   - This process will not overwrite your server configurations inside the `config` folder, your existing logs inside the `logs` folder, or the user information inside the `storage` folder. However, it will overwrite other files including the Python files inside the `server` folder. Therefore, make sure to save backups of those files before overwriting in case you have modified them and wish to keep an archive of your changes.
 
-* If you want to update **Python** itself, you can get the latest Python download [from their website here](https://www.python.org/downloads/) and then follow the instructions under the Installing section in this readme. To check your current version of Python, you can run ``python`` on its own and look at the first line. The latest stable major Python release is *Python 3.8* as of October 31, 2019.
+* If you want to update **Python** itself, you can get the latest Python download [from their website here](https://www.python.org/downloads/) and then follow the instructions under the Installing section in this readme. To check your current version of Python, you can run ``python`` on its own and look at the first line. The latest stable major Python release is *Python 3.9* as of October 5, 2020.
 
   - Please follow the installation instructions again even if you had successfully ran a server before, because your new Python installation may be missing libraries that TsuserverDR expects there to exist. You should not need to change any server configuration files though.
   - In general, updating to a Python version beyond what is specified as supported may lead to unstable behavior, so for active servers try to keep your Python version among the ones specifically labeled as supported.
