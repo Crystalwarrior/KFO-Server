@@ -853,6 +853,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc('You must wait 30 seconds between mod calls.')
             return
 
+        self.client.send_ooc('You have called for a moderator.')
         current_time = strftime("%H:%M", localtime())
         message = ('[{}] {} ({}) called for a moderator in {} ({}).'
                    .format(current_time, self.client.get_char_name(), self.client.get_ip(),
