@@ -1190,7 +1190,9 @@ class ClientManager:
                               f'Assuming standard DRO client protocol.')
 
         def char_select(self):
-            self.char_id = -1
+            # By running the change_character code, all checks and actions for switching to
+            # spectator are made
+            self.change_character(-1)
             self.send_done()
 
         def get_party(self, tc=False):

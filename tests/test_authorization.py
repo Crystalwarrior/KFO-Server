@@ -3,6 +3,7 @@ import time
 
 from .structures import _TestSituation3, _TestSituation4, _TestSituation5
 
+
 class _TestAuthorization(_TestSituation3):
     @classmethod
     def setUpClass(cls):
@@ -19,7 +20,7 @@ class _TestAuthorization(_TestSituation3):
         cls.gmpasses[5] = cls.server.config['gmpass5']
         cls.gmpasses[6] = cls.server.config['gmpass6']
         cls.gmpasses[7] = cls.server.config['gmpass7']
-        cls.wrong = "AAAABBBB" # Please do not make this any of your staff passwords
+        cls.wrong = "AAAABBBB"  # Please do not make this any of your staff passwords
 
         current_day = datetime.datetime.today().weekday()
         cls.daily_gmpass = cls.server.config['gmpass{}'.format((current_day % 7) + 1)]
@@ -33,7 +34,7 @@ class _TestAuthorization(_TestSituation3):
                              cls.cmpass,
                              cls.modpass,
                              cls.guardpass}.union(cls.not_daily_gmpasses)
-        cls.wrong_passwords = cls.all_passwords.copy() # Set by child tests
+        cls.wrong_passwords = cls.all_passwords.copy()  # Set by child tests
 
     def test_01_NoClientLoggedinYet(self):
         """
@@ -43,7 +44,8 @@ class _TestAuthorization(_TestSituation3):
             self.assertFalse(c.is_mod)
             self.assertFalse(c.is_cm)
             self.assertFalse(c.is_gm)
-            #self.assertTrue(c.in_rp) # Assumes server starts with RP mode on
+            # self.assertTrue(c.in_rp) # Assumes server starts with RP mode on
+
 
 class _TestAuthorizationSingleRank(_TestAuthorization):
     def test_02_WrongLogin(self):
@@ -62,8 +64,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
             self.assertFalse(self.good_rank(c))
             self.assertFalse(self.bad_rank1(c))
             self.assertFalse(self.bad_rank2(c))
-            #print(self.server.rp_mode)
-            #self.assertTrue(c.in_rp) # Assumes server starts with RP mode on
+            # self.assertTrue(c.in_rp) # Assumes server starts with RP mode on
 
     def test_03_RightLoginAndRelogin(self):
         """
@@ -90,7 +91,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
         Situation: C0 attempts to log out of their rank.
         """
 
-        self.c0.ooc('/logout {}'.format(self.correct_pass1)) # Some argument
+        self.c0.ooc('/logout {}'.format(self.correct_pass1))  # Some argument
         self.c0.assert_ooc('This command has no arguments.', over=True)
         self.assertTrue(self.good_rank(self.c0))
 
@@ -267,6 +268,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
                     self.assertFalse(self.bad_rank1(c))
                     self.assertFalse(self.bad_rank2(c))
 
+
 class TestAuthorization_01_GMBasic(_TestAuthorizationSingleRank):
     @classmethod
     def setUpClass(cls):
@@ -279,6 +281,7 @@ class TestAuthorization_01_GMBasic(_TestAuthorizationSingleRank):
         cls.good_rank = lambda x, c: c.is_gm
         cls.bad_rank1 = lambda x, c: c.is_mod
         cls.bad_rank2 = lambda x, c: c.is_cm
+
 
 class TestAuthorization_02_CMBasic(_TestAuthorizationSingleRank):
     @classmethod
@@ -293,6 +296,7 @@ class TestAuthorization_02_CMBasic(_TestAuthorizationSingleRank):
         cls.bad_rank1 = lambda x, c: c.is_mod
         cls.bad_rank2 = lambda x, c: c.is_gm
 
+
 class TestAuthorization_03_ModBasic(_TestAuthorizationSingleRank):
     @classmethod
     def setUpClass(cls):
@@ -305,6 +309,7 @@ class TestAuthorization_03_ModBasic(_TestAuthorizationSingleRank):
         cls.good_rank = lambda x, c: c.is_mod
         cls.bad_rank1 = lambda x, c: c.is_cm
         cls.bad_rank2 = lambda x, c: c.is_gm
+
 
 class TestAuthorization_04_Integration(_TestAuthorization):
     def test_02_WrongLogins(self):
@@ -396,7 +401,7 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         Situation: C0-2 attempt to log out of their rank in some order.
         """
 
-        self.c0.ooc('/logout {}'.format(self.gmpass)) # Some argument
+        self.c0.ooc('/logout {}'.format(self.gmpass))  # Some argument
         self.c0.assert_ooc('This command has no arguments.', over=True)
         self.assertTrue(self.c0.is_gm)
 
@@ -417,7 +422,7 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         self.assertTrue(self.c1.is_cm)
         self.assertTrue(self.c2.is_mod)
 
-        self.c2.ooc('/logout {}'.format(self.wrong)) # Some argument
+        self.c2.ooc('/logout {}'.format(self.wrong))  # Some argument
         self.c2.assert_ooc('This command has no arguments.', over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertTrue(self.c1.is_cm)
@@ -439,8 +444,8 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         self.assertFalse(self.c1.is_cm)
         self.assertFalse(self.c2.is_mod)
 
-        self.c1.ooc('/logout {}'.format(self.wrong)) # Some argument
-         # Staff restriction is checked before arguments
+        self.c1.ooc('/logout {}'.format(self.wrong))  # Some argument
+        # Staff restriction is checked before arguments
         self.c1.assert_ooc('You must be authorized to do that.', over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertFalse(self.c1.is_cm)
@@ -548,6 +553,7 @@ class TestAuthorization_04_Integration(_TestAuthorization):
             self.assertFalse(c.is_cm)
             self.assertFalse(c.is_gm)
 
+
 class TestAuthorization_05_Shortcuts(_TestAuthorization):
     """
     Tester of authorization shortcuts.
@@ -616,6 +622,7 @@ class TestAuthorization_05_Shortcuts(_TestAuthorization):
         self.assertTrue(self.c0.is_cm and not self.c0.is_gm and not self.c0.is_mod)
         self.assertTrue(self.c1.is_gm and not self.c1.is_cm and not self.c1.is_mod)
         self.assertTrue(self.c2.is_mod and not self.c2.is_cm and not self.c2.is_gm)
+
 
 class TestAuthorization_06_GMSelf(_TestSituation4):
     @classmethod
@@ -705,6 +712,7 @@ class TestAuthorization_06_GMSelf(_TestSituation4):
         self.c2.assert_ooc('Logged in as a game master.', over=True)
         self.c3.assert_no_packets()
 
+
 class TestAuthorization_07_Effect(_TestSituation5):
     @classmethod
     def setUpClass(self):
@@ -721,13 +729,14 @@ class TestAuthorization_07_Effect(_TestSituation5):
     def do_modcall(self, client, recipients, cname, cipid, aname, aid):
         client.send_command_cts('ZZ#%')
         current_time = time.strftime("%H:%M", time.localtime())
+        client.assert_ooc('You have called for a moderator.', ooc_over=True)
 
         for c in self.server.client_manager.clients:
             if c not in recipients:
                 c.assert_no_packets()
                 continue
             c.assert_packet('ZZ', ('[{}] {} ({}) called for a moderator in {} ({}).'
-                                     .format(current_time, cname, cipid, aname, aid)), over=True)
+                                   .format(current_time, cname, cipid, aname, aid)), over=True)
 
     def test_01_modcall(self):
         """
