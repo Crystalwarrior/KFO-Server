@@ -877,7 +877,8 @@ class _Trial(GameWithAreas):
                                    f'an area part of your trial ({old_area.id}->{area.id}).',
                                    pred=lambda c: c in self.get_leaders())
             client.send_ooc_others(f'(X) Add {client.displayname} to your trial with '
-                                   f'/trial_add {client.id}')
+                                   f'/trial_add {client.id}',
+                                   pred=lambda c: c in self.get_leaders())
         self._check_structure()
 
     def _on_client_change_character(self, player, old_char_id=None, new_char_id=None):
