@@ -197,6 +197,11 @@ class _Trial(GameWithAreas):
 
         """
 
+        # By checking this early, self._player_to_influence will never be overwritten if the player
+        # was already part of the trial.
+        if self.is_player(user):
+            raise GameError.UserAlreadyPlayerError
+
         self._player_to_influence[user.id] = (self._max_influence, self._min_influence,
                                               self._max_influence)
         self._player_to_focus[user.id] = (self._max_focus, self._min_focus, self._max_focus)
