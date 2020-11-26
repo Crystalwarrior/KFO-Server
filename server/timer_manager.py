@@ -339,6 +339,10 @@ class Timer:
 
         for (tick_rate, elapsed) in self._elapsed_per_tick_rate.items():
             current_time += tick_rate*elapsed
+        if current_time >= self._max_value:
+            current_time = self._max_value
+        if current_time <= self._min_value:
+            current_time = self._min_value
         return current_time
 
     def terminated(self):
