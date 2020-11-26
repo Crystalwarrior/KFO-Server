@@ -166,7 +166,7 @@ class NonStopDebate(TrialMinigame):
         self._player_refresh_timer = None
 
         self._timer_start_value = timer_start_value
-        self._message_refresh_rate = 5
+        self._message_refresh_rate = 7
         self._client_timer_id = 0
         self._breaker = None
 
@@ -212,7 +212,7 @@ class NonStopDebate(TrialMinigame):
         """
 
         if self._mode == NSDMode.RECORDING:
-            raise NonStopDebateError.NSDAlreadyInModeError('Non-stop debate is already in this '
+            raise NonStopDebateError.NSDAlreadyInModeError('Nonstop debate is already in this '
                                                            'mode.')
 
         self._mode = NSDMode.RECORDING
@@ -256,7 +256,7 @@ class NonStopDebate(TrialMinigame):
 
         if self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
                           NSDMode.INTERMISSION_TIMERANOUT]:
-            raise NonStopDebateError.NSDAlreadyInModeError('Non-stop debate is already in this '
+            raise NonStopDebateError.NSDAlreadyInModeError('Nonstop debate is already in this '
                                                            'mode.')
         if self._mode == NSDMode.PRERECORDING:
             raise NonStopDebateError.NSDNotInModeError
@@ -318,7 +318,7 @@ class NonStopDebate(TrialMinigame):
         """
 
         if self._mode == NSDMode.LOOPING:
-            raise NonStopDebateError.NSDAlreadyInModeError('Non-stop debate is already in this '
+            raise NonStopDebateError.NSDAlreadyInModeError('Nonstop debate is already in this '
                                                            'mode.')
         if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
             raise NonStopDebateError.NSDNotInModeError
