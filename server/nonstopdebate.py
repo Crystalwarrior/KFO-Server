@@ -502,14 +502,16 @@ class NonStopDebate(TrialMinigame):
 
     def _update_player_timer(self, player):
         if not self._timer:
-            return
-
-        player.send_command('TST', self._client_timer_id,
-                            round(self._timer.get()*1000))
-        player.send_command('TSS', self._client_timer_id,
-                            round(-0.016*1000))
-        player.send_command('TSF', self._client_timer_id,
-                            round(0.016*1000))
+            player.send_command('TST', self._client_timer_id, 0)
+            player.send_command('TSS', self._client_timer_id, 0)
+            player.send_command('TSF', self._client_timer_id, 0)
+        else:
+            player.send_command('TST', self._client_timer_id,
+                                round(self._timer.get()*1000))
+            player.send_command('TSS', self._client_timer_id,
+                                round(-0.016*1000))
+            player.send_command('TSF', self._client_timer_id,
+                                round(0.016*1000))
 
     def _on_area_client_send_ic_check(self, area, client=None, contents=None):
         """
