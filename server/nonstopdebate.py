@@ -220,10 +220,10 @@ class NonStopDebate(TrialMinigame):
         if self._timer:
             self._timer.unpause()
         self._player_refresh_timer.unpause()
-        for player in self.get_users_in_areas():
-            player.send_command('GM', 'nsd')
-            player.send_command('TR', self._client_timer_id)
-            self._update_player_timer(player)
+        for user in self.get_users_in_areas():
+            user.send_command('GM', 'nsd')
+            user.send_command('TR', self._client_timer_id)
+            self._update_player_timer(user)
 
     def set_intermission(self, blankpost=True):
         """
@@ -266,14 +266,14 @@ class NonStopDebate(TrialMinigame):
         if self._player_refresh_timer and not self._player_refresh_timer.paused():
             self._player_refresh_timer.pause()
 
-        for player in self.get_users_in_areas():
-            player.send_command('TP', self._client_timer_id)
+        for user in self.get_users_in_areas():
+            user.send_command('TP', self._client_timer_id)
             if blankpost:
-                player.send_ic_blankpost()  # Blankpost
+                user.send_ic_blankpost()  # Blankpost
 
         def _variant():
-            for player in self.get_users_in_areas():
-                player.send_command('GM', 'trial')
+            for user in self.get_users_in_areas():
+                user.send_command('GM', 'trial')
 
         # Delay gamemode switch order by just a bit. This prevents a concurrency issue where
         # clients are unable to start playing the shout animation in time for them to be able
@@ -330,9 +330,9 @@ class NonStopDebate(TrialMinigame):
         self._player_refresh_timer.unpause()
         self._message_timer.unpause()
 
-        for player in self.get_users_in_areas():
-            player.send_command('GM', 'nsd')
-            player.send_command('TR', self._client_timer_id)
+        for user in self.get_users_in_areas():
+            user.send_command('GM', 'nsd')
+            user.send_command('TR', self._client_timer_id)
         self._display_next_message()
 
     def resume(self) -> NSDMode:
@@ -446,6 +446,30 @@ class NonStopDebate(TrialMinigame):
         self._mode = NSDMode.INTERMISSION
         self._breaker = None
 
+    def destroy(self):
+        """
+        Mark this game as destroyed and notify its manager so that it is deleted.
+        If the game is already destroyed, this function does nothing.
+
+        This method is reentrant (it will do nothing though).
+
+        Returns
+        -------
+        None.
+
+        """
+
+        # First, send order to pause and zero timer for all users. This is needed because it is
+        # possible to destroy an NSD while the timer is still running, and not handling this would
+        # mean the client timer will still be running.
+
+        for user in self.get_users_in_areas():
+            user.send_command('TST', self._client_timer_id, 0)
+            user.send_command('TP', self._client_timer_id)
+
+        # Then carry on
+        super().destroy()
+
     def _setup_timers(self):
         """
         Setup the internal timers.
@@ -461,8 +485,8 @@ class NonStopDebate(TrialMinigame):
                                                     auto_restart=True)
         def _refresh():
             print(time.time())
-            for player in self.get_users_in_areas():
-                self._update_player_timer(player)
+            for user in self.get_users_in_areas():
+                self._update_player_timer(user)
 
         self._player_refresh_timer._on_max_end = _refresh
 
@@ -732,8 +756,8 @@ class NonStopDebate(TrialMinigame):
         self._message_index += 1
         if self._timer and self._timer.paused():
             self._timer.unpause()
-            for nsd_player in self.get_users_in_areas():
-                nsd_player.send_command('TR', self._client_timer_id)
+            for user in self.get_users_in_areas():
+                user.send_command('TR', self._client_timer_id)
 
     def _display_next_message(self):
         """
@@ -750,8 +774,8 @@ class NonStopDebate(TrialMinigame):
         if self._message_index < len(self._messages)-1:
             self._message_index += 1
             sender, contents = self._messages[self._message_index]
-            for player in self.get_users_in_areas():
-                player.send_ic(params=contents, sender=sender)
+            for user in self.get_users_in_areas():
+                user.send_ic(params=contents, sender=sender)
         else:
             self.set_intermission()
 
