@@ -196,7 +196,37 @@ class NonStopDebate(TrialMinigame):
 
         return self._mode
 
-    def set_recording(self):
+    def set_prerecording(self):
+        """
+        Set the NSD to be in prerecording mode (equivalent to recording but before the first
+        message is sent, so timer is not unpaused).
+
+        Raises
+        ------
+        NonStopDebateError.NSDAlreadyInModeError
+            If the nonstop debate is already in recording mode.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if self._mode == NSDMode.PRERECORDING:
+            raise NonStopDebateError.NSDAlreadyInModeError('Nonstop debate is already in this '
+                                                           'mode.')
+        if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
+            raise NonStopDebateError.NSDNotInModeError('You may not set your nonstop debate to be '
+                                                       'prerecording at this moment.')
+
+        self._mode = NSDMode.PRERECORDING
+        self._preintermission_mode = NSDMode.PRERECORDING
+
+        for user in self.get_users_in_areas():
+            user.send_command('GM', 'nsd')
+            self._update_player_timer(user)
+
+    def _set_recording(self):
         """
         Set the NSD to be in recording mode.
 
@@ -211,9 +241,8 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        if self._mode == NSDMode.RECORDING:
-            raise NonStopDebateError.NSDAlreadyInModeError('Nonstop debate is already in this '
-                                                           'mode.')
+        if self._mode != NSDMode.PRERECORDING:
+            raise RuntimeError(f'Should not have made it here for nsd {self}: {self._mode}')
 
         self._mode = NSDMode.RECORDING
         self._preintermission_mode = NSDMode.RECORDING
@@ -338,12 +367,9 @@ class NonStopDebate(TrialMinigame):
     def resume(self) -> NSDMode:
         if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
             raise NonStopDebateError.NSDNotInModeError
-        if self._preintermission_mode == NSDMode.PRERECORDING:
-            raise RuntimeError(f'Should not have made it here for NSD {self}: '
-                               f'{self._preintermission_mode}')
-        if self._preintermission_mode == NSDMode.RECORDING:
-            self.set_recording()
-            return NSDMode.RECORDING
+        if self._preintermission_mode in [NSDMode.PRERECORDING, NSDMode.RECORDING]:
+            self.set_prerecording()
+            return NSDMode.PRERECORDING
         if self._preintermission_mode == NSDMode.LOOPING:
             self.set_looping()
             return NSDMode.LOOPING
@@ -608,7 +634,7 @@ class NonStopDebate(TrialMinigame):
         """
 
         if self._mode == NSDMode.PRERECORDING:
-            self.set_recording()
+            self._set_recording()
 
         # Not an elif!
         if self._mode == NSDMode.RECORDING:

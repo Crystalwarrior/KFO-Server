@@ -7781,6 +7781,8 @@ def ooc_cmd_nsd_resume(client: ClientManager.Client, arg: str):
         raise ClientError('You may not resume a nonstop debate at this moment.')
     else:
         mode = resumed_mode.name.lower()
+        if mode == 'prerecording':
+            mode = 'recording'
         client.send_ooc(f'You have put your nonstop debate back in {mode} mode.')
         client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has put your nonstop '
                                f'debate back in {mode} mode.',
