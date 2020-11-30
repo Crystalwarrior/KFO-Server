@@ -27,6 +27,7 @@ import time
 from enum import Enum, auto
 
 from server.exceptions import ClientError, NonStopDebateError
+from server import logger
 from server.trialminigame import TrialMinigame, TRIALMINIGAMES
 
 
@@ -804,6 +805,8 @@ class NonStopDebate(TrialMinigame):
             sender, contents = self._messages[self._message_index]
             for user in self.get_users_in_areas():
                 user.send_ic(params=contents, sender=sender)
+            logger.log_server('[IC][{}][{}][NSD]{}'
+                  .format(sender.area.id, sender.get_char_name(), contents['msg']), sender)
         else:
             self.set_intermission()
 
