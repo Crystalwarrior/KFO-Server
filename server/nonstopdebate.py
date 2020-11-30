@@ -225,18 +225,14 @@ class NonStopDebate(TrialMinigame):
             player.send_command('TR', self._client_timer_id)
             self._update_player_timer(player)
 
-    def set_intermission(self, delay_variant=0, blankpost=True):
+    def set_intermission(self, blankpost=True):
         """
         Set the NSD to be in intermission mode. This will pause the NSD timer, terminate the
         current message timer and order all players to pause their timers and switch to a
-        trial variant.
+        trial gamemode.
 
         Parameters
         ----------
-        delay_variant : int, optional
-            Time (in seconds) after this method is executed before a change to trial variant order
-            is sent to all players of the NSD. Any number less than 0.016 (length of one frame at
-            60 FPS) is converted to 0.016. The default is 0.
         blankpost : bool, optional
             If True, it will send a blank system IC message to every player so that they clear
             their screens.
@@ -279,18 +275,20 @@ class NonStopDebate(TrialMinigame):
             for player in self.get_users_in_areas():
                 player.send_command('GM', 'trial')
 
-        # this causes a concurrency issue!!!!!!!!
-        variant_timer = self.new_timer(start_value=0, max_value=max(delay_variant, 0.016),)
+        # Delay gamemode switch order by just a bit. This prevents a concurrency issue where
+        # clients are unable to start playing the shout animation in time for them to be able
+        # to properly delay it.
+        variant_timer = self.new_timer(start_value=0, max_value=0.1)
         variant_timer._on_max_end = _variant
         variant_timer.start()
 
-    def _set_intermission_postbreak(self, breaker, delay_variant=0, blankpost=True):
-        self.set_intermission(delay_variant=delay_variant, blankpost=blankpost)
+    def _set_intermission_postbreak(self, breaker, blankpost=True):
+        self.set_intermission(blankpost=blankpost)
         self._mode = NSDMode.INTERMISSION_POSTBREAK
         self._breaker = breaker
 
-    def _set_intermission_timeranout(self, delay_variant=0, blankpost=True):
-        self.set_intermission(delay_variant=delay_variant, blankpost=blankpost)
+    def _set_intermission_timeranout(self, blankpost=True):
+        self.set_intermission(blankpost=blankpost)
         self._mode = NSDMode.INTERMISSION_TIMERANOUT
 
         for player in self.get_players():
@@ -301,7 +299,7 @@ class NonStopDebate(TrialMinigame):
     def set_looping(self):
         """
         Set the NSD to be in looping mode. This will unpause the NSD timer, order all players
-        to switch to an NSD variant and resume their timer, display the first message in the loop
+        to switch to an NSD gamemode and resume their timer, display the first message in the loop
         and set up a message timer so the messages transition automatically.
 
         Raises
@@ -357,7 +355,7 @@ class NonStopDebate(TrialMinigame):
         Make a user a player of the game. By default this player will not be a leader. It will
         also subscribe the game ot the player so it can listen to its updates.
 
-        It will also send a variant change order to the new player that aligns with the current
+        It will also send a gamemode change order to the new player that aligns with the current
         mode of the NSD.
 
         Parameters
@@ -410,7 +408,7 @@ class NonStopDebate(TrialMinigame):
         Make a user be no longer a player of this game. If they were part of a team managed by
         this game, they will also be removed from said team. It will also unsubscribe the game
         from the player so it will no longer listen to its updates. It will also send an order to
-        the player to go back to its default theme variant.
+        the player to go back to its default theme gamemode.
 
         If the game required that there it always had players and by calling this method the
         game had no more players, the game will automatically be scheduled for deletion.
@@ -476,7 +474,7 @@ class NonStopDebate(TrialMinigame):
             self._timer = self.new_timer(start_value=self._timer_start_value,
                                          tick_rate=-1, min_value=0)
             self._timer._on_min_end = functools.partial(
-                self._set_intermission_timeranout, delay_variant=0, blankpost=True)
+                self._set_intermission_timeranout, blankpost=True)
 
     def _update_player_timer(self, player):
         if not self._timer:
@@ -805,7 +803,7 @@ class NonStopDebate(TrialMinigame):
             regular.send_ooc(f"{player.displayname} {regular_action} "
                              f"{broken_player.displayname}'s statement "
                              f"`{broken_ic['text']}`")
-        self._set_intermission_postbreak(player, delay_variant=3, blankpost=False)
+        self._set_intermission_postbreak(player, blankpost=False)
 
     def _check_structure(self):
         """
