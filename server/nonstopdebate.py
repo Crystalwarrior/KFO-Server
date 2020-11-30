@@ -458,20 +458,67 @@ class NonStopDebate(TrialMinigame):
         super().remove_player(user)
         user.send_command('GM', 'trial')
 
-    def accept_break(self):
-        if not self._mode == NSDMode.INTERMISSION_POSTBREAK:
-            raise NonStopDebateError.NSDNotInModeError
-        self._breaker.send_ooc('Your break was accepted and you recovered 0.5 influence.')
-        self.get_trial().change_influence_by(self._breaker, 0.5)
-        self.destroy()
+    def accept_break(self) -> bool:
+        """
+        Accepts a break and increases the breaker's influence by 0.5, provided they are still a
+        player of the NSD and connected to the server. Regardless, this also destroys the nonstop
+        debate.
 
-    def reject_break(self):
+        Raises
+        ------
+        NonStopDebateError.NSDNotInModeError
+            If the nonstop debate is not in postbreak intermission mode.
+
+        Returns
+        -------
+        bool
+            True if the breaker was a player of the NSD and is connected to the server, False
+            otherwise.
+
+        """
+
         if not self._mode == NSDMode.INTERMISSION_POSTBREAK:
             raise NonStopDebateError.NSDNotInModeError
-        self._breaker.send_ooc('Your break was rejected and you lost 1 influence.')
-        self.get_trial().change_influence_by(self._breaker, -1)
+
+        is_player = self._server.is_client(self._breaker) and self.is_player(self._breaker)
+        if is_player:
+            self._breaker.send_ooc('Your break was accepted and you recovered 0.5 influence.')
+            self.get_trial().change_influence_by(self._breaker, 0.5)
+
+        self.destroy()
+        return is_player
+
+    def reject_break(self) -> bool:
+        """
+        Rejects a break, and decreases the breaker's influence by 1, provided they are still a
+        player of the NSD and connected to the server. This puts the debate in standard
+        intermission mode.
+
+        Raises
+        ------
+        NonStopDebateError.NSDNotInModeError
+            If the nonstop debate is not in postbreak intermission mode.
+
+        Returns
+        -------
+        bool
+            True if the breaker was a player of the NSD and is connected to the server, False
+            otherwise.
+
+        """
+
+        if not self._mode == NSDMode.INTERMISSION_POSTBREAK:
+            raise NonStopDebateError.NSDNotInModeError
+
+        is_player = self._server.is_client(self._breaker) and self.is_player(self._breaker)
+        if is_player:
+            self._breaker.send_ooc('Your break was rejected and you lost 1 influence.')
+            self.get_trial().change_influence_by(self._breaker, -1)
+
         self._mode = NSDMode.INTERMISSION
         self._breaker = None
+
+        return is_player
 
     def destroy(self):
         """

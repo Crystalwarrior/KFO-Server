@@ -7824,15 +7824,25 @@ def ooc_cmd_nsd_accept(client: ClientManager.Client, arg: str):
     # Save because NSD is destroyed!
     leaders, regulars = nsd.get_leaders(), nsd.get_regulars()
     try:
-        nsd.accept_break()
+        existing = nsd.accept_break()
     except NonStopDebateError.NSDNotInModeError:
         raise ClientError('You may not accept a break for your nonstop debate at this moment.')
 
-    client.send_ooc('You accepted the break and ended the nonstop debate. The breaker recovered '
-                    '0.5 influence.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] accepted the break and ended '
-                           f'the nonstop debate. The breaker recovered 0.5 influence.',
-                           pred=lambda c: c in leaders)
+    if existing:
+        client.send_ooc('You accepted the break and ended the nonstop debate. The breaker '
+                        'recovered 0.5 influence.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] accepted the break and '
+                               f'ended the nonstop debate. The breaker recovered 0.5 influence.',
+                               pred=lambda c: c in leaders)
+    else:
+        client.send_ooc('You accepted the break and ended the nonstop debate. Since the breaker '
+                        'had since disconnected or left the nonstop debate, their influence '
+                        'remained unchanged.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] accepted the break and '
+                               f'ended the nonstop debate. Since the breaker had since '
+                               f'disconnected or left the nonstop debate, their influence '
+                               f'remained unchanged.',
+                               pred=lambda c: c in leaders)
     client.send_ooc_others('Your nonstop debate was ended by an accepted break.',
                            pred=lambda c: c in regulars)
 
@@ -7869,16 +7879,24 @@ def ooc_cmd_nsd_reject(client: ClientManager.Client, arg: str):
         raise ClientError('You are not a leader of your nonstop debate.')
 
     try:
-        nsd.reject_break()
+        existing = nsd.reject_break()
     except NonStopDebateError.NSDNotInModeError:
         raise ClientError('You may not reject a break for your nonstop debate at this moment.')
 
-    client.send_ooc('You rejected the break. The breaker lost 1 influence.')
-    client.send_ooc('Send /nsd_resume to resume the debate, /nsd_end to end the debate.')
+    if existing:
+        client.send_ooc('You rejected the break. The breaker lost 1 influence.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] rejected the break. The '
+                               f'breaker lost 1 influence.',
+                               pred=lambda c: c in nsd.get_leaders())
+    else:
+        client.send_ooc('You rejected the break. Since the breaker had since disconnected or left '
+                        f'the nonstop debate, their influence remained unchanged.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] rejected the break. Since '
+                               f'the breaker had since disconnected or left the nonstop debate, '
+                               f'their influence remained unchanged.',
+                               pred=lambda c: c in nsd.get_leaders())
 
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] rejected the break. The '
-                           f'breaker lost 1 influence.',
-                           pred=lambda c: c in nsd.get_leaders())
+    client.send_ooc('Send /nsd_resume to resume the debate, /nsd_end to end the debate.')
     client.send_ooc_others('The break was rejected, so the debate continues!',
                            pred=lambda c: c in nsd.get_regulars())
 
