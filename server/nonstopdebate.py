@@ -338,6 +338,8 @@ class NonStopDebate(TrialMinigame):
             If the nonstop debate is already in looping mode.
         NonStopDebateError.NSDNotInModeError
             If the nonstop debate is not in regular or post-break intermission mode.
+        NonStopDebateError.NSDNoMessagesError
+            If there are no recorded messages to loop.
 
         Returns
         -------
@@ -350,6 +352,8 @@ class NonStopDebate(TrialMinigame):
                                                            'mode.')
         if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
             raise NonStopDebateError.NSDNotInModeError
+        if not self._messages:
+            raise NonStopDebateError.NSDNoMessagesError('There are no messages to loop.')
 
         self._mode = NSDMode.LOOPING
         self._preintermission_mode = NSDMode.LOOPING
@@ -357,13 +361,20 @@ class NonStopDebate(TrialMinigame):
 
         if self._timer:
             self._timer.unpause()
-        self._player_refresh_timer.unpause()
-        self._message_timer.unpause()
 
         for user in self.get_users_in_areas():
             user.send_command('GM', 'nsd')
             user.send_command('TR', self._client_timer_id)
         self._display_next_message()
+
+        # Only unpause now. By the earlier check there is a guarantee that a message will be sent,
+        # so display_next_message will not immediately set intermission.
+        # The reason we unpause now is to reduce offsync with clients who do not get a chance to
+        # run their timer code for a bit due to blocking.
+
+        self._player_refresh_timer.unpause()
+        self._message_timer.set_time(0) # We also reset this just in case it was interrupted before
+        self._message_timer.unpause()
 
     def resume(self) -> NSDMode:
         if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:

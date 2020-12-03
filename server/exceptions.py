@@ -296,3 +296,6 @@ class NonStopDebateError(GameWithAreasError):
 
     class NSDNotInModeError(GameWithAreasError):
         pass
+
+    class NSDNoMessagesError(GameWithAreasError):
+        pass
