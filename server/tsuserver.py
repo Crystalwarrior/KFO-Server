@@ -45,6 +45,7 @@ from server.tasker import Tasker
 from server.trial_manager import TrialManager
 from server.zone_manager import ZoneManager
 
+
 class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.logged_packet_limit = 100  # Arbitrary
@@ -54,8 +55,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b60'
-        self.internal_version = 'M201203a'
+        self.segment_version = 'b61'
+        self.internal_version = 'M201204a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)

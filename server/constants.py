@@ -405,6 +405,23 @@ class Clients():
     ClientCC24 = Enum('ClientCC24', [(m.name, m.value) for m in ClientAO2d8d4])
 
 
+class _UniqueKeySafeLoader(yaml.SafeLoader):
+    # Adapted from ErichBSchulz at https://stackoverflow.com/a/63215043
+    def construct_mapping(self, node, deep=False):
+        mapping = dict()
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in mapping:
+                msg = (f'while scanning a mapping\n'
+                       f'{node.start_mark}\n'
+                       f'duplicate key found in mapping: {key}\n'
+                       f'{mapping[key]}\n'
+                       f'{key_node.start_mark}')
+                raise yaml.YAMLError(msg)
+            mapping[key] = key_node.start_mark
+        return super().construct_mapping(node, deep)
+
+
 class Constants():
     @staticmethod
     def fopen(file, *args, **kwargs):
@@ -424,7 +441,7 @@ class Constants():
         file_name = file.name[separator+1:]
 
         try:
-            contents = yaml.safe_load(file)
+            contents = yaml.load(file, Loader=_UniqueKeySafeLoader)
             if not contents:
                 msg = f'File {file_name} was empty. Populate it properly and try again.'
                 raise ServerError.YAMLInvalidError(msg)

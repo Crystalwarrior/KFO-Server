@@ -542,5 +542,6 @@
 * Fixed /scream going to screamable areas if area is marked as private
 * Fixed the server not failing early if a server YAML file was empty
 * Fixed /charselect (either as mod or not) not running all spectator actions, like restarting AFK kick timers, updating character folder or notifying zone watchers
+* Fixed the server silently accepting a YAML mapping file (like an area list) with duplicate keys in an item. A helpful error message is now raised
 * Removed deprecated AO commands
 * Dropped Python 3.6 support
