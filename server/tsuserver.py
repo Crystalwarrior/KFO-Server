@@ -55,8 +55,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b61'
-        self.internal_version = 'M201204a'
+        self.segment_version = 'b62'
+        self.internal_version = 'M201209a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -336,28 +336,28 @@ class TsuserverDR:
     def load_config(self):
         with Constants.fopen('config/config.yaml', 'r', encoding='utf-8') as cfg:
             self.config = Constants.yaml_load(cfg)
-            self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
-            self.all_passwords = list()
-            # Mandatory passwords must be present in the configuration file. If they are not,
-            # a server error will be raised.
-            mandatory_passwords = ['modpass', 'cmpass', 'gmpass']
-            for password in mandatory_passwords:
-                if not (password not in self.config or not str(self.config[password])):
-                    self.all_passwords.append(self.config[password])
-                else:
-                    err = (f'Password "{password}" is not defined in server/config.yaml. Please '
-                           f'make sure it is set and try again.')
-                    raise ServerError(err)
 
-            # Daily (and guard) passwords are handled differently. They may optionally be left
-            # blank or be not available. What this means is the server does not want a daily
-            # password for that day (or a guard password)
-            optional_passwords = ['guardpass'] + [f'gmpass{i}' for i in range(1, 8)]
-            for password in optional_passwords:
-                if not (password not in self.config or not str(self.config[password])):
-                    self.all_passwords.append(self.config[password])
-                else:
-                    self.config[password] = None
+        self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
+        self.all_passwords = list()
+        # Mandatory passwords must be present in the configuration file. If they are not,
+        # a server error will be raised.
+        mandatory_passwords = ['modpass', 'cmpass', 'gmpass']
+        for password in mandatory_passwords:
+            if password not in self.config or not self.config[password]:
+                err = (f'Password "{password}" is not defined in config/config.yaml. Please '
+                       f'make sure it is set and try again.')
+                raise ServerError(err)
+            self.all_passwords.append(self.config[password])
+
+        # Daily passwords are handled differently. They may optionally be not available.
+        # What this means is the server does not want a daily password for that day
+        # However, deliberately left empty passwords should still raise an error.
+        optional_passwords = [f'gmpass{i}' for i in range(1, 8)]
+        for password in optional_passwords:
+            if password not in self.config or not self.config[password]:
+                self.config[password] = None
+            else:
+                self.all_passwords.append(self.config[password])
 
         # Default values to fill in config.yaml if not present
         defaults_for_tags = {
@@ -401,7 +401,7 @@ class TsuserverDR:
         for (i, password1) in enumerate(passwords):
             for (j, password2) in enumerate(passwords):
                 if i != j and self.config[password1] == self.config[password2] != None:
-                    info = ('Passwords "{}" and "{}" in server/config.yaml match. '
+                    info = ('Passwords "{}" and "{}" in config/config.yaml match. '
                             'Please change them so they are different and try again.'
                             .format(password1, password2))
                     raise ServerError(info)

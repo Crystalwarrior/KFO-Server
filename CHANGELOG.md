@@ -543,5 +543,7 @@
 * Fixed the server not failing early if a server YAML file was empty
 * Fixed /charselect (either as mod or not) not running all spectator actions, like restarting AFK kick timers, updating character folder or notifying zone watchers
 * Fixed the server silently accepting a YAML mapping file (like an area list) with duplicate keys in an item. A helpful error message is now raised
+* Fixed the server indicating the wrong directory for config/config.yaml if the passwords were incorrect (previously showed server/config.yaml)
+* Fixed the server disallowing all IC messages if a daily password was deliberately left empty rather than removed from the configuration file
 * Removed deprecated AO commands
 * Dropped Python 3.6 support
