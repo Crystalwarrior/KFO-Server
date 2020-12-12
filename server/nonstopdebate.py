@@ -466,7 +466,11 @@ class NonStopDebate(TrialMinigame):
         """
 
         super().remove_player(user)
-        user.send_command('GM', 'trial')
+
+        # Only update the gamemode of the player if they are no longer in the area
+        # Otherwise, they get to keep whatever they had
+        if user.area not in self.get_areas():
+            user.send_command('GM', 'trial')
 
     def accept_break(self) -> bool:
         """

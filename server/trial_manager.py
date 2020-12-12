@@ -256,7 +256,10 @@ class _Trial(GameWithAreas):
 
         user.send_command('HP', 1, user.area.hp_pro)
         user.send_command('HP', 2, user.area.hp_def)
-        user.send_command('GM', '')
+        # Only update the gamemode of the player if they are no longer in the area
+        # Otherwise, they get to keep whatever they had
+        if user.area not in self.get_areas():
+            user.send_command('GM', '')
 
     def get_influence(self, user) -> float:
         """
