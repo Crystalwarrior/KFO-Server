@@ -782,8 +782,7 @@ class NonStopDebate(TrialMinigame):
                                    f'area not part of your NSD '
                                    f'({area.id}->{new_area.id}).',
                                    pred=lambda c: c in self.get_leaders())
-            client.send_command('GM', '')
-
+        client.send_command('GM', '')
         self._check_structure()
 
     def _on_area_client_entered(self, area, client=None, old_area=None, old_displayname=None,

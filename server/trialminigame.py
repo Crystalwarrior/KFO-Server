@@ -243,6 +243,30 @@ class TrialMinigame(GameWithAreas):
         # Should be overriden in child class.
         raise NotImplementedError
 
+    def destroy(self):
+        """
+        Mark this game as destroyed and notify its manager so that it is deleted.
+        If the game is already destroyed, this function does nothing.
+
+        This method is reentrant (it will do nothing though).
+
+        Returns
+        -------
+        None.
+
+        """
+
+        # Keep track of areas for later
+        areas = self.get_areas()
+
+        # Then carry on
+        super().destroy()
+
+        # Force every user in the former areas of the minigame to switch to trial gamemode
+        for area in areas:
+            for user in area.clients:
+                user.send_command('GM', 'trial')
+
     def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
                              ignore_bleeding=False):
         """

@@ -788,6 +788,34 @@ class _Trial(GameWithAreas):
                 f'\nRegular members: {regular_text}')
         return info
 
+    def destroy(self):
+        """
+        Mark this game as destroyed and notify its manager so that it is deleted.
+        If the game is already destroyed, this function does nothing.
+
+        This method is reentrant (it will do nothing though).
+
+        Returns
+        -------
+        None.
+
+        """
+
+        # Store backup of areas, useful for later
+        areas = self.get_areas()
+
+        # Remove minigames first. This is done first so as to enforce explicit destruction
+        # (rather than rely on other methods).
+        for game in self._minigame_manager.get_games():
+            game.destroy()
+
+        super().destroy() # Also calls _check_structure()
+
+        # Force every user in the former areas of the trial to switch to no gamemode
+        for area in areas:
+            for user in area.clients:
+                user.send_command('GM', '')
+
     def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
                              ignore_bleeding=False):
         """
@@ -843,7 +871,7 @@ class _Trial(GameWithAreas):
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your trial ({area.id}->{new_area.id}).',
                                    pred=lambda c: c in self.get_leaders())
-            client.send_command('GM', '')
+        client.send_command('GM', '')
 
         self._check_structure()
 
