@@ -822,7 +822,8 @@ class NonStopDebate(TrialMinigame):
                                    f'({old_area.id}->{area.id}).',
                                    pred=lambda c: c in self.get_leaders())
             client.send_ooc_others(f'(X) Add {client.displayname} to your NSD with '
-                                   f'/nsd_add {client.id}')
+                                   f'/nsd_add {client.id}',
+                                   pred=lambda c: c in self.get_leaders())
 
             if self._mode in [NSDMode.LOOPING, NSDMode.RECORDING, NSDMode.PRERECORDING]:
                 client.send_command('GM', 'nsd')
