@@ -772,7 +772,7 @@ class Timer:
                 f'max_value={self._max_value}, '
                 f'auto_restart={self._auto_restart}, '
                 f'auto_destroy={self._auto_destroy}) || '
-                f'time={self._get()}'
+                f'time={self._get()}, '
                 f'started={self._started}, '
                 f'paused={self._paused}, '
                 f'terminated={self._terminated}, '

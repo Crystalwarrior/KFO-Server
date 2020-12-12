@@ -610,6 +610,7 @@ class _Trial(GameWithAreas):
                                               require_leaders=False,
                                               require_character=require_character,
                                               team_limit=team_limit, timer_limit=timer_limit)
+        nsd.setup_timers()
 
         if add_players:
             clients_to_add = {client for area in areas for client in area.clients}

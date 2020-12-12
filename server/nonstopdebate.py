@@ -170,6 +170,7 @@ class NonStopDebate(TrialMinigame):
         self._message_refresh_rate = 7
         self._client_timer_id = 0
         self._breaker = None
+        self._timers_are_setup = False
 
     def get_type(self) -> TRIALMINIGAMES:
         """
@@ -426,8 +427,6 @@ class NonStopDebate(TrialMinigame):
         print('NSD adding', user)
         super().add_player(user)
 
-        if not self._timer:
-            self._setup_timers()
         self._update_player_timer(user)
         if self._timer and self._timer.paused():
             user.send_command('TP', self._client_timer_id)
@@ -555,9 +554,14 @@ class NonStopDebate(TrialMinigame):
         # Then carry on
         super().destroy()
 
-    def _setup_timers(self):
+    def setup_timers(self):
         """
-        Setup the internal timers.
+        Setup the timers for the nonstop debate. This function can only be called once.
+
+        Raises
+        ------
+        NonStopDebateError.TimersAlreadySetupError
+            If the nonstop debate has already had its timers setup.
 
         Returns
         -------
@@ -565,11 +569,15 @@ class NonStopDebate(TrialMinigame):
 
         """
 
+        if self._timers_are_setup:
+            raise NonStopDebateError.TimersAlreadySetupError
+        self._timers_are_setup = True
+
         PLAYER_REFRESH_RATE = 5
         self._player_refresh_timer = self.new_timer(start_value=0, max_value=PLAYER_REFRESH_RATE,
                                                     auto_restart=True)
         def _refresh():
-            print(time.time())
+            print(f'NSD refreshed the timer for everyone at {time.time()}.')
             for user in self.get_users_in_areas():
                 self._update_player_timer(user)
 

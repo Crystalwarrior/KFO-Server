@@ -299,3 +299,6 @@ class NonStopDebateError(GameWithAreasError):
 
     class NSDNoMessagesError(GameWithAreasError):
         pass
+
+    class TimersAlreadySetupError(GameWithAreasError):
+        pass
