@@ -149,6 +149,7 @@ class _Trial(GameWithAreas):
         self._max_influence = 10
         self._min_focus = 0
         self._max_focus = 10
+        self._manager = None  # This is set in the super().__init__
 
         self._minigame_manager = GameManager(server, game_limit=minigame_limit,
                                              default_game_type=TrialMinigame,
@@ -809,10 +810,16 @@ class _Trial(GameWithAreas):
         for game in self._minigame_manager.get_games():
             game.destroy()
 
-        super().destroy() # Also calls _check_structure()
+        super().destroy()  # Also calls _check_structure()
 
         # Force every user in the former areas of the trial to switch to no gamemode
+        # ...provided they are not in an area part of another trial
         for area in areas:
+            # Need to check if _manager was set, because destroy() may be called before the manager
+            # was set.
+            if self._manager and self._manager.get_games_in_area(area):
+                continue
+
             for user in area.clients:
                 user.send_command('GM', '')
 

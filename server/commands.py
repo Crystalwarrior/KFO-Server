@@ -7093,7 +7093,6 @@ def ooc_cmd_trial_end(client: ClientManager, arg: str):
     # Save leaders and regulars before destruction
     leaders = trial.get_leaders()
     regulars = trial.get_regulars()
-    breakpoint()
     trial.destroy()
 
     client.send_ooc('You ended your trial.')

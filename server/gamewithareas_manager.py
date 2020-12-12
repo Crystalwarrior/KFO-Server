@@ -145,7 +145,6 @@ class GameWithAreas(_Game):
             'area_destroyed': self._on_area_destroyed,
             })
 
-
     def add_player(self, user):
         """
         Make a user a player of the game. By default this player will not be a leader. It will
