@@ -766,7 +766,7 @@ class AOProtocol(asyncio.Protocol):
             return
         if not self.validate_net_cmd(args, ArgType.STR):
             return
-        if args[0] not in ('testimony1', 'testimony2', 'testimony3', 'testimony4'):
+        if not args[0].startswith('testimony'):
             return
         if not self.client.is_staff() and self.client.area.lobby_area:
             self.client.send_ooc('Judge buttons are disabled in this area.')

@@ -521,6 +521,7 @@
 * Removed support for AO1 style packets. The server will now respond only to DRO and AO2-style packets
 * Server now logs 100 most recent sent and received packets in error logs
 * Players that successfully call mod now receive an OOC notification acknowledging that
+* Removed the limit on number of different judge buttons accepted
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
