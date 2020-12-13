@@ -7259,7 +7259,7 @@ def ooc_cmd_trial_lead(client: ClientManager, arg: str):
 
     client.send_ooc('You are now a leader of your trial.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
-                           f'trial.', pred=lambda c: trial.is_leader(client))
+                           f'trial.', pred=lambda c: trial.is_leader(c))
 
 
 def ooc_cmd_trial_leave(client: ClientManager, arg: str):
@@ -7638,7 +7638,7 @@ def ooc_cmd_nsd_lead(client: ClientManager, arg: str):
 
     client.send_ooc('You are now a leader of your nonstop debate.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
-                           f'nonstop debate.', pred=lambda c: nsd.is_leader(client))
+                           f'nonstop debate.', pred=lambda c: nsd.is_leader(c))
 
 
 def ooc_cmd_nsd_leave(client: ClientManager, arg: str):

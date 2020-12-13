@@ -333,7 +333,7 @@ class _Trial(GameWithAreas):
         if new_influence == 0:
             user.send_ooc('You ran out of influence!')
             user.send_ooc_others(f'(X) {user.displayname} ran out of influence!',
-                                 pred=lambda c: c in self.get_leaders())
+                                 pred=lambda c: self.is_leader(c))
         self._check_structure()
 
     def change_influence_by(self, user, change_by):
@@ -884,7 +884,7 @@ class _Trial(GameWithAreas):
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your trial and thus was automatically '
                                    f'removed it ({area.id}->{new_area.id}).',
-                                   pred=lambda c: c in self.get_leaders())
+                                   pred=lambda c: self.is_leader(c))
 
             self.remove_player(client)
 
@@ -899,7 +899,7 @@ class _Trial(GameWithAreas):
             client.send_ooc(f'You have left to an area not part of trial `{self.get_id()}`.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your trial ({area.id}->{new_area.id}).',
-                                   pred=lambda c: c in self.get_leaders())
+                                   pred=lambda c: self.is_leader(c))
         client.send_command('GM', '')
 
         self._check_structure()
@@ -936,10 +936,10 @@ class _Trial(GameWithAreas):
             client.send_command('GM', 'trial')
             client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
                                    f'an area part of your trial ({old_area.id}->{area.id}).',
-                                   pred=lambda c: c in self.get_leaders())
+                                   pred=lambda c: self.is_leader(c))
             client.send_ooc_others(f'(X) Add {client.displayname} to your trial with '
                                    f'/trial_add {client.id}',
-                                   pred=lambda c: c in self.get_leaders())
+                                   pred=lambda c: self.is_leader(c))
         self._check_structure()
 
     def _on_client_change_character(self, player, old_char_id=None, new_char_id=None):
@@ -998,7 +998,7 @@ class _Trial(GameWithAreas):
         # OOC to disconnected players. This is in \lib\asyncio\selector_events.py.
 
         player.send_ooc_others(f'(X) Player {player.displayname} of your trial disconnected. '
-                               f'({player.area.id})', pred=lambda c: c in self.get_leaders())
+                               f'({player.area.id})', pred=lambda c: self.is_leader(c))
         self.remove_player(player)
 
         self._check_structure()

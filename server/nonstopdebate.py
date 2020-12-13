@@ -814,7 +814,7 @@ class NonStopDebate(TrialMinigame):
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your NSD and thus was '
                                    f'automatically removed from it ({area.id}->{new_area.id}).',
-                                   pred=lambda c: c in self.get_leaders())
+                                   pred=lambda c: self.is_leader(c))
 
             self.remove_player(client)
             if self.is_unmanaged():
@@ -830,7 +830,7 @@ class NonStopDebate(TrialMinigame):
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to an '
                                    f'area not part of your NSD '
                                    f'({area.id}->{new_area.id}).',
-                                   pred=lambda c: c in self.get_leaders())
+                                   pred=lambda c: self.is_leader(c))
             self.dismiss_user(client)
         self._check_structure()
 
@@ -869,10 +869,10 @@ class NonStopDebate(TrialMinigame):
             client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
                                    f'an area part of your NSD '
                                    f'({old_area.id}->{area.id}).',
-                                   pred=lambda c: c in self.get_leaders())
+                                   pred=lambda c: self.is_leader(c))
             client.send_ooc_others(f'(X) Add {client.displayname} to your NSD with '
                                    f'/nsd_add {client.id}',
-                                   pred=lambda c: c in self.get_leaders())
+                                   pred=lambda c: self.is_leader(c))
             self.introduce_user(client)
 
     def _add_message(self, player, contents=None):
