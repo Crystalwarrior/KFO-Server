@@ -187,6 +187,10 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Kicks a player off your party.
 * **party_lead**
     - Makes you a leader of your party.
+* **party_leave**
+    - Makes you leave your party.
+    - Other people in the party are warned of your departure if you are not sneaking.
+    - If you are the last player to leave the party, it will be automatically disbanded.
 * **party_members**
     - Lists the leaders and regular members of your party.
 * **party_uninvite** "ID/char name/edited-to character/showname/OOC name"

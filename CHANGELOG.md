@@ -546,5 +546,6 @@
 * Fixed the server silently accepting a YAML mapping file (like an area list) with duplicate keys in an item. A helpful error message is now raised
 * Fixed the server indicating the wrong directory for config/config.yaml if the passwords were incorrect (previously showed server/config.yaml)
 * Fixed the server disallowing all IC messages if a daily password was deliberately left empty rather than removed from the configuration file
+* Fixed /party_leave not having short documentation for /help party_leave
 * Removed deprecated AO commands
 * Dropped Python 3.6 support
