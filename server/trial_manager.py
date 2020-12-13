@@ -321,6 +321,12 @@ class _Trial(GameWithAreas):
 
         self._player_to_influence[user.id] = (new_influence, min_influence, max_influence)
         user.send_command('HP', 2, int(new_influence))
+
+        # If the new influence is 0, warn all trial leaders
+        if new_influence == 0:
+            user.send_ooc('You ran out of influence!')
+            user.send_ooc_others(f'(X) {user.displayname} ran out of influence!',
+                                 pred=lambda c: c in self.get_leaders())
         self._check_structure()
 
     def change_influence_by(self, user, change_by):
