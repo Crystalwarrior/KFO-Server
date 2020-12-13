@@ -960,16 +960,20 @@ class NonStopDebate(TrialMinigame):
         player.send_ooc(f"You {action} {broken_player.displayname}'s statement "
                         f"`{broken_ic['text']}`")
         for leader in self.get_leaders():
-            leader.send_ooc(f"{player.displayname} {action} {broken_player.displayname}'s "
-                            f"statement `{broken_ic['text']}`")
+            if leader != player:
+                # Do not send duplicate messages
+                leader.send_ooc(f"{player.displayname} {action} {broken_player.displayname}'s "
+                                f"statement `{broken_ic['text']}`")
+            # But still send leader important information.
             leader.send_ooc("Type /nsd_accept to accept the break and end the debate, "
                             "/nsd_reject to reject the break and penalize the breaker, "
                             "/nsd_resume to resume the debate where it was, and "
                             "/nsd_end to end the debate.")
         for regular in self.get_regulars():
-            regular.send_ooc(f"{player.displayname} {regular_action} "
-                             f"{broken_player.displayname}'s statement "
-                             f"`{broken_ic['text']}`")
+            if regular != player:
+                regular.send_ooc(f"{player.displayname} {regular_action} "
+                                 f"{broken_player.displayname}'s statement "
+                                 f"`{broken_ic['text']}`")
         self._set_intermission_postbreak(player, blankpost=False)
 
     def _check_structure(self):
