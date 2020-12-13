@@ -7262,8 +7262,40 @@ def ooc_cmd_trial_lead(client: ClientManager, arg: str):
                            f'trial.', pred=lambda c: trial.is_leader(client))
 
 
-def ooc_cmd_trial_kick(client: ClientManager.Client, arg: str):
+def ooc_cmd_trial_leave(client: ClientManager, arg: str):
     """
+    Makes you leave your current trial and any minigames you may have been a part of. It will
+    also notify all other remaining trial leaders of your departure.
+    If you were the only member of the trial, the trial will be destroyed.
+    Returns an error if you are not part of a trial.
+
+    SYNTAX
+    /trial_leave
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /trial_leave        :: Makes you leave your current trial.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    tid = trial.get_id()  # Get ID now because trial may be deleted
+
+    client.send_ooc(f'You have left trial `{tid}`.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your trial.',
+                           pred=lambda c: c in trial.get_leaders())
+    trial.remove_player(client)
+
+
+def ooc_cmd_trial_kick(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
     Kicks a player by ID off your trial.
     Returns an error if you are not part of a trial or leader of it, if the target is not found
     or already not a part of your trial, or if the target is the player.
@@ -7290,7 +7322,7 @@ def ooc_cmd_trial_kick(client: ClientManager.Client, arg: str):
     cm = client.server.client_manager
     target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
     if client == target:
-        raise PartyError('You cannot kick yourself off your trial.')
+        raise TrialError('You cannot kick yourself off your trial (consider using /trial_leave).')
 
     try:
         trial.remove_player(target)
@@ -7607,6 +7639,42 @@ def ooc_cmd_nsd_lead(client: ClientManager, arg: str):
     client.send_ooc('You are now a leader of your nonstop debate.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
                            f'nonstop debate.', pred=lambda c: nsd.is_leader(client))
+
+
+def ooc_cmd_nsd_leave(client: ClientManager, arg: str):
+    """
+    Makes you leave your current NSD. It will also notify all other remaining trial leaders of
+    your departure.
+    If you were the only member of the NSD, the NSD will be destroyed.
+    Returns an error if you are not part of a trial or an NSD.
+
+    SYNTAX
+    /nsd_leave
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /nsd_leave        :: Makes you leave your current nonstop debate.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    nid = nsd.get_id()  # Get ID now because NSD may be deleted
+
+    client.send_ooc(f'You have left nonstop debate `{nid}`.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your nonstop debate.',
+                           pred=lambda c: c in nsd.get_leaders())
+    nsd.remove_player(client)
 
 
 def ooc_cmd_nsd_kick(client: ClientManager.Client, arg: str):

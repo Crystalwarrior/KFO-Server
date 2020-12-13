@@ -262,6 +262,13 @@ class _Trial(GameWithAreas):
         if user.area not in self.get_areas():
             user.send_command('GM', '')
 
+        # # If the trial was destroyed because it lost all its players, warn server officers
+        # if self.is_unmanaged():
+        #     user.send_ooc('As you were the last member of your trial, it was automatically '
+        #                   'destroyed.')
+        #     user.send_ooc_others(f'(X) Trial {self.get_id()} was automatically destroyed as it '
+        #                          f'lost all its players.', is_officer=True)
+
     def get_influence(self, user) -> float:
         """
         Get the current influence of a player of the trial.

@@ -167,6 +167,10 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Lists all available music lists as established in `config/music_lists.yaml`.
 * **nsd_info**
     - Returns details about your NSD.
+* **nsd_leave**
+    - Makes you leave your NSD.
+    - You will no longer be able to interact with the NSD, but you will still see messages of the NSD, provided you stay in the NSD area.
+    - If you are the last player to leave the NSD, it will be automatically destroyed.
 * **online**
     - Returns how many players are online.
 * **party**
@@ -253,6 +257,10 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Changes your setting to have the IC messages you receive to include the sender's custom showname. By default it is on.
 * **trial_info**
     - Returns details about your trial.
+* **trial_leave**
+    - Makes you leave your trial.
+    - You will still see messages of the trial, provided you stay in the trial area.
+    - If you are the last player to leave the trial, it will be automatically destroyed.
 * **unfollow**
     - Stops following whoever you were following, provided you were a spectator.
 * **unilock** "area number/name"
