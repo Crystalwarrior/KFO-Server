@@ -172,6 +172,68 @@ class NonStopDebate(TrialMinigame):
         self._breaker = None
         self._timers_are_setup = False
 
+    def introduce_user(self, user):
+        """
+        Broadcast information relevant for a user entering an area of the NSD, namely current
+        gamemode and status of timers.
+        Note the user needs not be in the same area as the NSD, nor be a player of the NSD.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to introduce.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if self._mode in [NSDMode.LOOPING, NSDMode.RECORDING, NSDMode.PRERECORDING]:
+            user.send_command('GM', 'nsd')
+        elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
+                            NSDMode.INTERMISSION_TIMERANOUT]:
+            user.send_command('GM', 'trial')
+        else:
+            raise RuntimeError(f'Unrecognized mode {self._mode}')
+
+        # Nonstop debate splash
+        user.send_command('RT', 'testimony4')
+
+        # Timer stuff
+        if self._timer and self._timer.started() and not self._timer.paused():
+            user.send_command('TR', self._client_timer_id)
+        else:
+            user.send_command('TP', self._client_timer_id)
+        self._update_player_timer(user)
+
+    def dismiss_user(self, user):
+        """
+        Broadcast information relevant for a user leaving an area of the NSD, namely clear out
+        gamemode and timers.
+        Note the user needs not be in the same area as the NSD, nor be a player of the NSD.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to introduce.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        # Only update the gamemode of the player if they are no longer in the area
+        # Otherwise, they get to keep whatever they had
+        if user.area not in self.get_areas():
+            user.send_command('GM', '')
+
+        user.send_command('TP', self._client_timer_id)
+        user.send_command('TST', self._client_timer_id, 0)
+        user.send_command('TSS', self._client_timer_id, 0)
+        user.send_command('TSF', self._client_timer_id, 0)
+
     def get_type(self) -> TRIALMINIGAMES:
         """
         Return the type of the minigame (NonStopDebate).
@@ -299,6 +361,7 @@ class NonStopDebate(TrialMinigame):
 
         for user in self.get_users_in_areas():
             user.send_command('TP', self._client_timer_id)
+            self._update_player_timer(user)
             if blankpost:
                 user.send_ic_blankpost()  # Blankpost
 
@@ -427,18 +490,7 @@ class NonStopDebate(TrialMinigame):
         print('NSD adding', user)
         super().add_player(user)
 
-        self._update_player_timer(user)
-        if self._timer and self._timer.paused():
-            user.send_command('TP', self._client_timer_id)
-
-        if self._mode in [NSDMode.LOOPING, NSDMode.RECORDING, NSDMode.PRERECORDING]:
-            user.send_command('GM', 'nsd')
-            user.send_command('RT', 'testimony4')
-        elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
-                            NSDMode.INTERMISSION_TIMERANOUT]:
-            user.send_command('GM', 'trial')
-        else:
-            raise RuntimeError(f'Unrecognized mode {self._mode}')
+        self.introduce_user(user)
 
     def remove_player(self, user):
         """
@@ -466,11 +518,7 @@ class NonStopDebate(TrialMinigame):
         """
 
         super().remove_player(user)
-
-        # Only update the gamemode of the player if they are no longer in the area
-        # Otherwise, they get to keep whatever they had
-        if user.area not in self.get_areas():
-            user.send_command('GM', 'trial')
+        self.dismiss_user(user)
 
     def accept_break(self) -> bool:
         """
@@ -580,6 +628,7 @@ class NonStopDebate(TrialMinigame):
         PLAYER_REFRESH_RATE = 5
         self._player_refresh_timer = self.new_timer(start_value=0, max_value=PLAYER_REFRESH_RATE,
                                                     auto_restart=True)
+
         def _refresh():
             print(f'NSD refreshed the timer for everyone at {time.time()}.')
             for user in self.get_users_in_areas():
@@ -782,7 +831,7 @@ class NonStopDebate(TrialMinigame):
                                    f'area not part of your NSD '
                                    f'({area.id}->{new_area.id}).',
                                    pred=lambda c: c in self.get_leaders())
-        client.send_command('GM', '')
+            self.dismiss_user(client)
         self._check_structure()
 
     def _on_area_client_entered(self, area, client=None, old_area=None, old_displayname=None,
@@ -824,14 +873,7 @@ class NonStopDebate(TrialMinigame):
             client.send_ooc_others(f'(X) Add {client.displayname} to your NSD with '
                                    f'/nsd_add {client.id}',
                                    pred=lambda c: c in self.get_leaders())
-
-            if self._mode in [NSDMode.LOOPING, NSDMode.RECORDING, NSDMode.PRERECORDING]:
-                client.send_command('GM', 'nsd')
-            elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
-                                NSDMode.INTERMISSION_TIMERANOUT]:
-                client.send_command('GM', 'trial')
-            else:
-                raise RuntimeError(f'Unrecognized mode {self._mode}')
+            self.introduce_user(client)
 
     def _add_message(self, player, contents=None):
         """

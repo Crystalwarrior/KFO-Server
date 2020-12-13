@@ -33,7 +33,7 @@ class Listener:
     #     Parent of the listener (that is, parent.listener == self).
     # _event_directory : dict of str to method
     #     Map of message names to actions to perform on message receipt.
-    # _subscriptions : set of Publisher
+    # _subscriptions : list of Publisher
     #     Publishers this listener are subscribed to.
 
     def __init__(self, parent, event_directory):
@@ -55,7 +55,7 @@ class Listener:
 
         self._parent = parent
         self._event_directory = event_directory.copy()
-        self._subscriptions = set()
+        self._subscriptions = list()
         # self._subscriptions is modified only by publishers
 
     @staticmethod
@@ -142,7 +142,7 @@ class Listener:
 
         Returns
         -------
-        set of Publisher.
+        list of Publisher.
             Subscribed-to publishers.
 
         """
@@ -231,17 +231,19 @@ class Listener:
         else:
             method(source, **arguments)
 
+
 class Publisher:
     """
-    A publisher maintains a set of listeners, to whom it may send messages. Each message has
-    a name and arguments.
+    A publisher maintains a list of listeners, to whom it may send messages. Each message has
+    a name and arguments. Listeners are sent messages in order of subscription: listeners who
+    subscribed earlier are sent a message before listeners who subscribed later.
     """
 
     # (Private) Attributes
     # --------------------
     # _parent : Any
     #     Parent of the publisher (that is, parent.publisher == self).
-    # _listeners : set of Listener
+    # _listeners : list of Listener
     #     Listener objects to whom messages will be sent.
 
     def __init__(self, parent):
@@ -260,7 +262,7 @@ class Publisher:
         """
 
         self._parent = parent
-        self._listeners = set()
+        self._listeners = list()
 
     @staticmethod
     def _get_listener(_object):
@@ -311,8 +313,10 @@ class Publisher:
         """
 
         listener = self._get_listener(new_subscriber)
-        self._listeners.add(listener)
-        listener._subscriptions.add(self)
+        if listener not in self._listeners:
+            self._listeners.append(listener)
+        if self not in listener._subscriptions:
+            listener._subscriptions.append(self)
 
     def discard(self, subscriber):
         """
@@ -336,8 +340,10 @@ class Publisher:
         """
 
         listener = self._get_listener(subscriber)
-        self._listeners.discard(listener)
-        listener._subscriptions.discard(self)
+        if listener in self._listeners:
+            self._listeners.remove(listener)
+        if self in listener._subscriptions:
+            listener._subscriptions.remove(self)
 
     def get_subscribers(self):
         """
@@ -345,7 +351,7 @@ class Publisher:
 
         Returns
         -------
-        set of Listeners.
+        list of Listeners.
             Subscribed listeners.
 
         """

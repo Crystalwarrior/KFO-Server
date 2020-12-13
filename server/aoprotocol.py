@@ -96,7 +96,8 @@ class AOProtocol(asyncio.Protocol):
                 msg = '#'.join([fanta_decrypt(spl[0])] + spl[1:])
                 logger.log_debug('[INC][RAW]{}'.format(msg), self.client)
             try:
-                # print(f'> {self.client.id}: {msg}')
+                if self.server.print_packets:
+                    print(f'> {self.client.id}: {msg}')
                 self.server.log_packet(self.client, msg, True)
                 cmd, *args = msg.split('#')
                 self.net_cmd_dispatcher[cmd](self, args)

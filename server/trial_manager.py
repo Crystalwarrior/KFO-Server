@@ -606,7 +606,7 @@ class _Trial(GameWithAreas):
         nsd_factory = functools.partial(NonStopDebate, areas=areas, trial=self,
                                         timer_start_value=timer_start_value)
 
-        nsd = self._minigame_manager.new_game(game_type=nsd_factory, creator=creator,
+        nsd = self._minigame_manager.new_game(game_type=nsd_factory,
                                               player_limit=player_limit,
                                               concurrent_limit=1,
                                               require_invitations=require_invitations,
@@ -615,6 +615,15 @@ class _Trial(GameWithAreas):
                                               require_character=require_character,
                                               team_limit=team_limit, timer_limit=timer_limit)
         nsd.setup_timers()
+        # Add creator manually. This is because otherwise the creator does not get access to
+        # the timer info.
+        try:
+            if creator:
+                nsd.add_player(creator)
+        except GameError as ex:
+            # Discard game
+            self._minigame_manager.delete_game(nsd)
+            raise ex
 
         if add_players:
             clients_to_add = {client for area in areas for client in area.clients}

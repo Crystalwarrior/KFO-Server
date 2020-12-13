@@ -129,7 +129,8 @@ class ClientManager:
             self.mus_change_time = [x * self.mflood_interval for x in range(self.mflood_times)]
 
         def send_raw_message(self, msg):
-            # print(f'< {self.id}: {msg}')
+            if self.server.print_packets:
+                print(f'< {self.id}: {msg}')
             # Only send messages to players that are.. players
             # This should only be relevant in the case there is a function that requests packets
             # be sent to multiple clients, but the function does not check if all targets are

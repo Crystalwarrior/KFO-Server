@@ -1,3 +1,4 @@
+
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
@@ -151,8 +152,6 @@ class PlayerGroup:
         self._invitations = set()
         self._ever_had_players = False
         self._unmanaged = False
-
-        self._manager._check_structure()
 
     def get_id(self):
         """
