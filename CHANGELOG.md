@@ -548,5 +548,6 @@
 * Fixed the server indicating the wrong directory for config/config.yaml if the passwords were incorrect (previously showed server/config.yaml)
 * Fixed the server disallowing all IC messages if a daily password was deliberately left empty rather than removed from the configuration file
 * Fixed /party_leave not having short documentation for /help party_leave
+* Fixed the server attempting to send packets to clients without checking if the client is still online.
 * Removed deprecated AO commands
 * Dropped Python 3.6 support
