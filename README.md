@@ -420,6 +420,8 @@ GMs can:
     - The NSD will not end or resume automatically, you will be prompted to decide what to do.
 * **nsd_resume**
     - Sets the NSD you lead to be in the mode prior to intermission mode: if it was recording mode, previously recorded messages will be saved and future messages will be saved on top of the older ones; if it was looping, messages will be played from the first one.
+* **nsd_unlead**
+    - Removes your NSD leader role.
 * **party_disband** "party ID"
     - Disbands a party.
 * **party_join** "party ID"
@@ -485,6 +487,8 @@ GMs can:
     - Makes you a leader of your trial.
 * **trial_kick** "ID/char name/edited-to character/showname/OOC name" 
     - Kicks a player off your trial.
+* **trial_unlead**
+    - Removes your trial leader role.
 * **unfollow**
     - Stops following whoever you were following.
 * **unglobalic**

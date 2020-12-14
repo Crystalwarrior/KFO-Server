@@ -7259,8 +7259,6 @@ def ooc_cmd_trial_lead(client: ClientManager, arg: str):
 
     try:
         trial.add_leader(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not a player of this trial.')
     except TrialError.UserAlreadyLeaderError:
         raise ClientError('You are already a leader of this trial.')
 
@@ -7341,6 +7339,38 @@ def ooc_cmd_trial_kick(client: ClientManager.Client, arg: str):
     client.send_ooc_others(f'(X) {client.name} [{client.id}] has kicked {target.displayname} '
                            f'[{target.id}] off your trial.',
                            pred=lambda c: c != target and c in trial.get_leaders())
+
+
+def ooc_cmd_trial_unlead(client: ClientManager, arg: str):
+    """
+    Removes your trial leader role.
+    Returns an error if you are not part of a trial or if you are already not leader of that trial.
+
+    SYNTAX
+    /trial_unlead
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /trial_unlead         :: Removes your trial leader role.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    try:
+        trial.remove_leader(client)
+    except TrialError.UserNotLeaderError:
+        raise ClientError('You are already not a leader of this trial.')
+
+    client.send_ooc('You are no longer a leader of your trial.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is no longer a leader of your '
+                           f'trial.', pred=lambda c: trial.is_leader(c))
 
 
 def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
@@ -7638,8 +7668,6 @@ def ooc_cmd_nsd_lead(client: ClientManager, arg: str):
 
     try:
         nsd.add_leader(client)
-    except NonStopDebateError.UserNotPlayerError:
-        raise ClientError('You are not a player of this nonstop debate.')
     except NonStopDebateError.UserAlreadyLeaderError:
         raise ClientError('You are already a leader of this nonstop debate.')
 
@@ -7974,6 +8002,43 @@ def ooc_cmd_nsd_reject(client: ClientManager.Client, arg: str):
     client.send_ooc('Send /nsd_resume to resume the debate, /nsd_end to end the debate.')
     client.send_ooc_others('The break was rejected, so the debate continues!',
                            pred=lambda c: c in nsd.get_regulars())
+
+
+def ooc_cmd_nsd_unlead(client: ClientManager, arg: str):
+    """
+    Removes your NSD leader role.
+    Returns an error if you are not part of a trial or an NSD, or if you are already not leader
+    of that NSD.
+
+    SYNTAX
+    /nsd_unlead
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /nsd_unlead         :: Removes your trial leader role.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+
+    try:
+        nsd.remove_leader(client)
+    except TrialError.UserNotLeaderError:
+        raise ClientError('You are already not a leader of this NSD.')
+
+    client.send_ooc('You are no longer a leader of your NSD.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is no longer a leader of your '
+                           f'NSD.', pred=lambda c: nsd.is_leader(c))
 
 
 def ooc_cmd_status(client: ClientManager.Client, arg: str):
