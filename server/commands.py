@@ -6981,6 +6981,8 @@ def ooc_cmd_trial(client: ClientManager.Client, arg: str):
                            is_zstaff_flex=True)
     client.send_ooc_others(f'You were added to trial `{trial.get_id()}`.',
                            pred=lambda c: c in trial.get_players())
+    client.send_ooc_others(f'Trial `{trial.get_id()}` started in your area.',
+                           pred=lambda c: c in trial.get_nonplayer_users_in_areas())
 
 
 def ooc_cmd_trial_add(client: ClientManager.Client, arg: str):
@@ -7100,9 +7102,12 @@ def ooc_cmd_trial_end(client: ClientManager, arg: str):
     # Save leaders and regulars before destruction
     leaders = trial.get_leaders()
     regulars = trial.get_regulars()
+    nonplayers = trial.get_nonplayer_users_in_areas()
     trial.destroy()
 
     client.send_ooc('You ended your trial.')
+    client.send_ooc_others('The trial you were watching was ended.',
+                           pred=lambda c: c in nonplayers)
     client.send_ooc_others('Your trial was ended.',
                            pred=lambda c: c in regulars)
     client.send_ooc_others(f'(X) {client.displayname} ended your trial.',
@@ -7264,7 +7269,7 @@ def ooc_cmd_trial_lead(client: ClientManager, arg: str):
 
     client.send_ooc('You are now a leader of your trial.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
-                           f'trial.', pred=lambda c: trial.is_leader(c))
+                           f'trial.', pred=lambda c: c in trial.get_leaders())
 
 
 def ooc_cmd_trial_leave(client: ClientManager, arg: str):
@@ -7370,7 +7375,7 @@ def ooc_cmd_trial_unlead(client: ClientManager, arg: str):
 
     client.send_ooc('You are no longer a leader of your trial.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is no longer a leader of your '
-                           f'trial.', pred=lambda c: trial.is_leader(c))
+                           f'trial.', pred=lambda c: c in trial.get_leaders())
 
 
 def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
@@ -7457,6 +7462,8 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
                            is_zstaff_flex=True)
     client.send_ooc_others(f'You were added to nonstop debate `{nsd.get_id()}`.',
                            pred=lambda c: c in trial.get_players())
+    client.send_ooc_others(f'Nonstop debate `{nsd.get_id()}` started in your area.',
+                           pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
 
 
 def ooc_cmd_nsd_add(client: ClientManager.Client, arg: str):
@@ -7591,9 +7598,13 @@ def ooc_cmd_nsd_end(client: ClientManager, arg: str):
 
     leaders = nsd.get_leaders()
     regulars = nsd.get_regulars()
+    nonplayers = nsd.get_nonplayer_users_in_areas()
+
     nsd.destroy()
 
     client.send_ooc('You ended your nonstop debate.')
+    client.send_ooc_others('The nonstop debate you were watching was ended.',
+                           pred=lambda c: c in nonplayers)
     client.send_ooc_others('Your nonstop debate was ended.',
                            pred=lambda c: c in regulars)
     client.send_ooc_others(f'(X) {client.displayname} ended your nonstop debate.',
@@ -7673,7 +7684,7 @@ def ooc_cmd_nsd_lead(client: ClientManager, arg: str):
 
     client.send_ooc('You are now a leader of your nonstop debate.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
-                           f'nonstop debate.', pred=lambda c: nsd.is_leader(c))
+                           f'nonstop debate.', pred=lambda c: c in nsd.get_leaders())
 
 
 def ooc_cmd_nsd_leave(client: ClientManager, arg: str):
@@ -7800,6 +7811,8 @@ def ooc_cmd_nsd_pause(client: ClientManager.Client, arg: str):
                                f'debate.', pred=lambda c: c in nsd.get_leaders())
         client.send_ooc_others('Your nonstop debate was paused.',
                                pred=lambda c: c in nsd.get_regulars())
+        client.send_ooc_others('The nonstop debate you were watching was paused.',
+                               pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
 
 
 def ooc_cmd_nsd_loop(client: ClientManager.Client, arg: str):
@@ -7847,6 +7860,8 @@ def ooc_cmd_nsd_loop(client: ClientManager.Client, arg: str):
                                f'debate to start looping.', pred=lambda c: c in nsd.get_leaders())
         client.send_ooc_others('Your nonstop debate is now looping.',
                                pred=lambda c: c in nsd.get_regulars())
+        client.send_ooc_others('The nonstop debate you are watching is now looping.',
+                               pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
 
 
 def ooc_cmd_nsd_resume(client: ClientManager.Client, arg: str):
@@ -7892,6 +7907,8 @@ def ooc_cmd_nsd_resume(client: ClientManager.Client, arg: str):
                                pred=lambda c: c in nsd.get_leaders())
         client.send_ooc_others(f'Your nonstop debate is now in {mode} mode again.',
                                pred=lambda c: c in nsd.get_regulars())
+        client.send_ooc_others(f'The nonstop debate you are watching is now in {mode} mode again.',
+                               pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
 
 
 def ooc_cmd_nsd_accept(client: ClientManager.Client, arg: str):
@@ -7926,6 +7943,8 @@ def ooc_cmd_nsd_accept(client: ClientManager.Client, arg: str):
 
     # Save because NSD is destroyed!
     leaders, regulars = nsd.get_leaders(), nsd.get_regulars()
+    nonplayers = nsd.get_nonplayer_users_in_areas()
+
     try:
         existing = nsd.accept_break()
     except NonStopDebateError.NSDNotInModeError:
@@ -7948,6 +7967,8 @@ def ooc_cmd_nsd_accept(client: ClientManager.Client, arg: str):
                                pred=lambda c: c in leaders)
     client.send_ooc_others('Your nonstop debate was ended by an accepted break.',
                            pred=lambda c: c in regulars)
+    client.send_ooc_others('The nonstop debate you were watching was ended by an accepted break.',
+                           pred=lambda c: c in nonplayers)
 
 
 def ooc_cmd_nsd_reject(client: ClientManager.Client, arg: str):
@@ -7993,7 +8014,7 @@ def ooc_cmd_nsd_reject(client: ClientManager.Client, arg: str):
                                pred=lambda c: c in nsd.get_leaders())
     else:
         client.send_ooc('You rejected the break. Since the breaker had since disconnected or left '
-                        f'the nonstop debate, their influence remained unchanged.')
+                        'the nonstop debate, their influence remained unchanged.')
         client.send_ooc_others(f'(X) {client.displayname} [{client.id}] rejected the break. Since '
                                f'the breaker had since disconnected or left the nonstop debate, '
                                f'their influence remained unchanged.',
@@ -8002,6 +8023,8 @@ def ooc_cmd_nsd_reject(client: ClientManager.Client, arg: str):
     client.send_ooc('Send /nsd_resume to resume the debate, /nsd_end to end the debate.')
     client.send_ooc_others('The break was rejected, so the debate continues!',
                            pred=lambda c: c in nsd.get_regulars())
+    client.send_ooc_others('The break was rejected, so the debate continues!',
+                           pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
 
 
 def ooc_cmd_nsd_unlead(client: ClientManager, arg: str):
@@ -8038,7 +8061,7 @@ def ooc_cmd_nsd_unlead(client: ClientManager, arg: str):
 
     client.send_ooc('You are no longer a leader of your NSD.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is no longer a leader of your '
-                           f'NSD.', pred=lambda c: nsd.is_leader(c))
+                           f'NSD.', pred=lambda c: c in nsd.get_leaders())
 
 
 def ooc_cmd_status(client: ClientManager.Client, arg: str):

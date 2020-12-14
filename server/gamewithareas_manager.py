@@ -303,6 +303,34 @@ class GameWithAreas(_Game):
             clients.extend(area.clients)
         return clients
 
+    def get_nonleader_users_in_areas(self):
+        """
+        Return all users in areas part of the game, even those that are not players of the game,
+        such that they are not leaders of the game.
+
+        Returns
+        -------
+        users : list of ClientManagerClient
+            All users in areas part of the game that are not leaders of the game.
+
+        """
+
+        return [client for client in self.get_users_in_areas()
+                if not (self.is_player(client) and self.is_leader(client))]
+
+    def get_nonplayer_users_in_areas(self):
+        """
+        Return all users in areas part of the game that are not players of the game.
+
+        Returns
+        -------
+        users : list of ClientManagerClient
+            All users in areas part of the game that are not players of the game.
+
+        """
+
+        return [client for client in self.get_users_in_areas() if not self.is_player(client)]
+
     def destroy(self):
         """
         Mark this game as destroyed and notify its manager so that it is deleted.

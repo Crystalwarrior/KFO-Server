@@ -151,6 +151,8 @@ class _Trial(GameWithAreas):
         self._max_focus = 10
         self._manager = None  # This is set in the super().__init__
 
+        self._client_timer_id = 0
+
         self._minigame_manager = GameManager(server, game_limit=minigame_limit,
                                              default_game_type=TrialMinigame,
                                              available_id_producer=self.get_available_minigame_id)
@@ -162,6 +164,7 @@ class _Trial(GameWithAreas):
                          require_character=require_character,
                          team_limit=team_limit, timer_limit=timer_limit,
                          areas=areas, playergroup_manager=playergroup_manager)
+
 
     def add_player(self, user):
         """
@@ -214,9 +217,38 @@ class _Trial(GameWithAreas):
             self._player_to_focus.pop(user.id)
             raise ex
 
-        user.send_command('HP', 1, int(self._player_to_focus[user.id][0]))
-        user.send_command('HP', 2, int(self._player_to_influence[user.id][0]))
+        self.introduce_user(user)
+
+    def introduce_user(self, user):
+        """
+        Broadcast information relevant for a user entering an area of the trial, namely current
+        gamemode if needed.
+        Note the user needs not be in the same area as the trial, nor be a player of the trial.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to introduce.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if self.is_player(user):
+            user.send_command('HP', 1, int(self._player_to_focus[user.id][0]))
+            user.send_command('HP', 2, int(self._player_to_influence[user.id][0]))
+
+        # If there are any minigames, let them set the gamemode and timers
+        if self.get_minigames():
+            return
+
         user.send_command('GM', 'trial')
+        user.send_command('TP', self._client_timer_id, 0)
+        user.send_command('TST', self._client_timer_id, 0)
+        user.send_command('TSS', self._client_timer_id, 0)
+        user.send_command('TSF', self._client_timer_id, 0)
 
     def remove_player(self, user):
         """
@@ -255,12 +287,7 @@ class _Trial(GameWithAreas):
 
         super().remove_player(user)
 
-        user.send_command('HP', 1, user.area.hp_pro)
-        user.send_command('HP', 2, user.area.hp_def)
-        # Only update the gamemode of the player if they are no longer in the area
-        # Otherwise, they get to keep whatever they had
-        if user.area not in self.get_areas():
-            user.send_command('GM', '')
+        self.dismiss_user(user)
 
         # # If the trial was destroyed because it lost all its players, warn server officers
         # if self.is_unmanaged():
@@ -268,6 +295,37 @@ class _Trial(GameWithAreas):
         #                   'destroyed.')
         #     user.send_ooc_others(f'(X) Trial {self.get_id()} was automatically destroyed as it '
         #                          f'lost all its players.', is_officer=True)
+
+    def dismiss_user(self, user, refresh_gamemode=False):
+        """
+        Broadcast information relevant for a user that has left the trial, namely clear out
+        gamemode and timers.
+        Note the user needs not be in the same area as the NSD, nor be a player of the NSD.
+
+        Parameters
+        ----------
+        user : ClientManager.Client
+            User to introduce.
+        refresh_gamemode : bool, optional
+            If True, the dismissed user will get a clear gamemode order. If False, no such order
+            will be sent. Defaults to False.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        user.send_command('HP', 1, user.area.hp_pro)
+        user.send_command('HP', 2, user.area.hp_def)
+
+        if refresh_gamemode:
+            user.send_command('GM', '')
+
+        user.send_command('TP', self._client_timer_id)
+        user.send_command('TST', self._client_timer_id, 0)
+        user.send_command('TSS', self._client_timer_id, 0)
+        user.send_command('TSF', self._client_timer_id, 0)
 
     def get_influence(self, user) -> float:
         """
@@ -333,7 +391,7 @@ class _Trial(GameWithAreas):
         if new_influence == 0:
             user.send_ooc('You ran out of influence!')
             user.send_ooc_others(f'(X) {user.displayname} ran out of influence!',
-                                 pred=lambda c: self.is_leader(c))
+                                 pred=lambda c: c in self.get_leaders())
         self._check_structure()
 
     def change_influence_by(self, user, change_by):
@@ -648,6 +706,10 @@ class _Trial(GameWithAreas):
                 except GameError.UserNotPlayerError:
                     continue
 
+        # Manually give packets to nonplayers
+        for nonplayer in nsd.get_nonplayer_users_in_areas():
+            nsd.introduce_user(nonplayer)
+
         return nsd
 
     def get_nsd_of_user(self, user) -> NonStopDebate:
@@ -834,16 +896,10 @@ class _Trial(GameWithAreas):
 
         super().destroy()  # Also calls _check_structure()
 
-        # Force every user in the former areas of the trial to switch to no gamemode
-        # ...provided they are not in an area part of another trial
+        # Force every user in the former areas of the trial to be dismissed
         for area in areas:
-            # Need to check if _manager was set, because destroy() may be called before the manager
-            # was set.
-            if self._manager and self._manager.get_games_in_area(area):
-                continue
-
             for user in area.clients:
-                user.send_command('GM', '')
+                self.dismiss_user(user, refresh_gamemode=True)
 
     def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
                              ignore_bleeding=False):
@@ -884,7 +940,7 @@ class _Trial(GameWithAreas):
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your trial and thus was automatically '
                                    f'removed it ({area.id}->{new_area.id}).',
-                                   pred=lambda c: self.is_leader(c))
+                                   pred=lambda c: c in self.get_leaders())
 
             self.remove_player(client)
 
@@ -899,8 +955,8 @@ class _Trial(GameWithAreas):
             client.send_ooc(f'You have left to an area not part of trial `{self.get_id()}`.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your trial ({area.id}->{new_area.id}).',
-                                   pred=lambda c: self.is_leader(c))
-        client.send_command('GM', '')
+                                   pred=lambda c: c in self.get_leaders())
+            self.dismiss_user(client, refresh_gamemode=True)
 
         self._check_structure()
 
@@ -933,13 +989,13 @@ class _Trial(GameWithAreas):
             client.send_ooc(f'You have entered an area part of trial `{self.get_id()}`.')
             if client.is_staff():
                 client.send_ooc(f'Join this trial with /trial_join {self.get_id()}')
-            client.send_command('GM', 'trial')
+            self.introduce_user(client)
             client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
                                    f'an area part of your trial ({old_area.id}->{area.id}).',
-                                   pred=lambda c: self.is_leader(c))
+                                   pred=lambda c: c in self.get_leaders())
             client.send_ooc_others(f'(X) Add {client.displayname} to your trial with '
                                    f'/trial_add {client.id}',
-                                   pred=lambda c: self.is_leader(c))
+                                   pred=lambda c: c in self.get_leaders())
         self._check_structure()
 
     def _on_client_change_character(self, player, old_char_id=None, new_char_id=None):
@@ -998,7 +1054,7 @@ class _Trial(GameWithAreas):
         # OOC to disconnected players. This is in \lib\asyncio\selector_events.py.
 
         player.send_ooc_others(f'(X) Player {player.displayname} of your trial disconnected. '
-                               f'({player.area.id})', pred=lambda c: self.is_leader(c))
+                               f'({player.area.id})', pred=lambda c: c in self.get_leaders())
         self.remove_player(player)
 
         self._check_structure()
@@ -1218,6 +1274,10 @@ class TrialManager(GameWithAreasManager):
                 clients_to_add.discard(creator)
             for client in clients_to_add:
                 trial.add_player(client)
+
+        # Manually give packets to nonplayers
+        for nonplayer in trial.get_nonplayer_users_in_areas():
+            trial.introduce_user(nonplayer)
 
         return trial
 

@@ -207,9 +207,9 @@ class NonStopDebate(TrialMinigame):
             user.send_command('TP', self._client_timer_id)
         self._update_player_timer(user)
 
-    def dismiss_user(self, user):
+    def dismiss_user(self, user, refresh_gamemode=False):
         """
-        Broadcast information relevant for a user leaving an area of the NSD, namely clear out
+        Broadcast information relevant for a user that has left the NSD, namely clear out
         gamemode and timers.
         Note the user needs not be in the same area as the NSD, nor be a player of the NSD.
 
@@ -217,6 +217,9 @@ class NonStopDebate(TrialMinigame):
         ----------
         user : ClientManager.Client
             User to introduce.
+        refresh_gamemode : bool, optional
+            If True, the dismissed user will get a clear gamemode order. If False, no such order
+            will be sent. Defaults to False.
 
         Returns
         -------
@@ -224,10 +227,13 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        # Only update the gamemode of the player if they are no longer in the area
-        # Otherwise, they get to keep whatever they had
-        if user.area not in self.get_areas():
-            user.send_command('GM', '')
+        if refresh_gamemode:
+            # If the user is still part of an area part of the NSD's trial, make them switch to
+            # the trial gamemode
+            if user.area in self._trial.get_areas():
+                user.send_command('GM', 'trial')
+            else:
+                user.send_command('GM', '')
 
         user.send_command('TP', self._client_timer_id)
         user.send_command('TST', self._client_timer_id, 0)
@@ -595,16 +601,16 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        # First, send order to pause and zero timer for all users. This is needed because it is
-        # possible to destroy an NSD while the timer is still running, and not handling this would
-        # mean the client timer will still be running.
-
-        for user in self.get_users_in_areas():
-            user.send_command('TST', self._client_timer_id, 0)
-            user.send_command('TP', self._client_timer_id)
+        # Get backup of areas
+        areas = self.get_areas()
 
         # Then carry on
         super().destroy()
+
+        # Force every user in the former areas of the trial to be dismissed
+        for area in areas:
+            for user in area.clients:
+                self.dismiss_user(user, refresh_gamemode=True)
 
     def setup_timers(self):
         """
@@ -814,7 +820,7 @@ class NonStopDebate(TrialMinigame):
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your NSD and thus was '
                                    f'automatically removed from it ({area.id}->{new_area.id}).',
-                                   pred=lambda c: self.is_leader(c))
+                                   pred=lambda c: c in self.get_leaders())
 
             self.remove_player(client)
             if self.is_unmanaged():
@@ -830,8 +836,8 @@ class NonStopDebate(TrialMinigame):
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to an '
                                    f'area not part of your NSD '
                                    f'({area.id}->{new_area.id}).',
-                                   pred=lambda c: self.is_leader(c))
-            self.dismiss_user(client)
+                                   pred=lambda c: c in self.get_leaders())
+            self.dismiss_user(client, refresh_gamemode=True)
         self._check_structure()
 
     def _on_area_client_entered(self, area, client=None, old_area=None, old_displayname=None,
@@ -869,10 +875,10 @@ class NonStopDebate(TrialMinigame):
             client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
                                    f'an area part of your NSD '
                                    f'({old_area.id}->{area.id}).',
-                                   pred=lambda c: self.is_leader(c))
+                                   pred=lambda c: c in self.get_leaders())
             client.send_ooc_others(f'(X) Add {client.displayname} to your NSD with '
                                    f'/nsd_add {client.id}',
-                                   pred=lambda c: self.is_leader(c))
+                                   pred=lambda c: c in self.get_leaders())
             self.introduce_user(client)
 
     def _add_message(self, player, contents=None):
@@ -959,17 +965,20 @@ class NonStopDebate(TrialMinigame):
 
         player.send_ooc(f"You {action} {broken_player.displayname}'s statement "
                         f"`{broken_ic['text']}`")
-        for leader in self.get_leaders():
-            if leader != player:
-                # Do not send duplicate messages
-                leader.send_ooc(f"{player.displayname} {action} {broken_player.displayname}'s "
-                                f"statement `{broken_ic['text']}`")
-            # But still send leader important information.
-            leader.send_ooc("Type /nsd_accept to accept the break and end the debate, "
-                            "/nsd_reject to reject the break and penalize the breaker, "
-                            "/nsd_resume to resume the debate where it was, and "
-                            "/nsd_end to end the debate.")
-        for regular in self.get_regulars():
+
+        for user in self.get_users_in_areas():
+            if user in self.get_leaders():
+                if user != player:
+                    # Do not send duplicate messages
+                    user.send_ooc(f"{player.displayname} {action} {broken_player.displayname}'s "
+                                  f"statement `{broken_ic['text']}`")
+                # But still send leader important information.
+                user.send_ooc("Type /nsd_accept to accept the break and end the debate, "
+                              "/nsd_reject to reject the break and penalize the breaker, "
+                              "/nsd_resume to resume the debate where it was, and "
+                              "/nsd_end to end the debate.")
+
+        for regular in self.get_nonleader_users_in_areas():
             if regular != player:
                 regular.send_ooc(f"{player.displayname} {regular_action} "
                                  f"{broken_player.displayname}'s statement "
