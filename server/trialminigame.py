@@ -73,10 +73,10 @@ class TrialMinigame(GameWithAreas):
     # ----------
     # 1. The invariants from the parent class TrialMinigame are satisfied.
 
-    def __init__(self, server, manager, minigame_id, player_limit=None, concurrent_limit=None,
-                 require_invitations=False, require_players=True, require_leaders=True,
-                 require_character=False, team_limit=None, timer_limit=None,
-                 areas=None, trial=None, playergroup_manager=None):
+    def __init__(self, server, manager, minigame_id, player_limit=None,
+                 player_concurrent_limit=None, require_invitations=False, require_players=True,
+                 require_leaders=True, require_character=False, team_limit=None, timer_limit=None,
+                 area_concurrent_limit=1, trial=None, playergroup_manager=None):
         """
         Create a trial minigame. A trial minigame should not be fully initialized anywhere
         else other than some manager code, as otherwise the manager will not recognize the minigame.
@@ -92,7 +92,7 @@ class TrialMinigame(GameWithAreas):
         player_limit : int or None, optional
             If an int, it is the maximum number of players the trial minigame supports. If None, it
             indicates the trial minigame has no player limit. Defaults to None.
-        concurrent_limit : int or None, optional
+        player_concurrent_limit : int or None, optional
             If an int, it is the maximum number of games managed by `manager` that any
             player of this trial minigame may belong to, including this trial minigame. If None, it
             indicates that this trial minigame does not care about how many other games managed by
@@ -121,8 +121,12 @@ class TrialMinigame(GameWithAreas):
         timer_limit : int or None, optional
             If an int, it is the maximum number of timers the trial minigame supports. If None,
             it indicates the trial minigame has no timer limit. Defaults to None.
-        areas : set of AreaManager.Area, optional
-            Areas the trial minigame starts with. Defaults to None.
+        area_concurrent_limit : int or None, optional
+            If an int, it is the maximum number of trials managed by `manager` that any
+            area of this trial may belong to, including this trial. If None, it indicates
+            that this game does not care about how many other trials managed by
+            `manager` each of its areas belongs to. Defaults to 1 (an area may not be a part of
+            another trial managed by `manager` while being an area of this trial).
         trial : TrialManager.Trial, optional
             Trial the non-stop debate is a part of.
         playergroup_manager : PlayerGroupManager, optional
@@ -139,13 +143,14 @@ class TrialMinigame(GameWithAreas):
 
         self._trial = trial
         super().__init__(server, manager, minigame_id, player_limit=player_limit,
-                         concurrent_limit=concurrent_limit,
+                         player_concurrent_limit=player_concurrent_limit,
                          require_invitations=require_invitations,
                          require_players=require_players,
                          require_leaders=require_leaders,
                          require_character=require_character,
                          team_limit=team_limit, timer_limit=timer_limit,
-                         areas=areas, playergroup_manager=playergroup_manager)
+                         area_concurrent_limit=area_concurrent_limit,
+                         playergroup_manager=playergroup_manager)
 
     def add_player(self, user):
         """
@@ -172,10 +177,10 @@ class TrialMinigame(GameWithAreas):
             If the minigame requires players be invited to be added and the user is not invited.
         GameError.UserAlreadyPlayerError
             If the user to add is already a user of the minigame.
-        GameError.UserHitConcurrentLimitError
+        GameError.UserHitGameConcurrentLimitError
             If the player has reached any of the games it belongs to managed by this minigame's
-            manager concurrent membership limit, or by virtue of joining this minigame they
-            will violate this game's concurrent membership limit.
+            manager concurrent player membership limit, or by virtue of joining this minigame they
+            will violate this game's concurrent player membership limit.
         GameError.GameIsFullError
             If the minigame reached its player limit.
 
@@ -204,6 +209,10 @@ class TrialMinigame(GameWithAreas):
             public method calls.
         GameWithAreasError.AreaAlreadyInGameError
             If the area is already part of the minigame.
+        GameWithAreasError.AreaHitGameConcurrentLimitError.
+            If `area` has reached the concurrent area membership limit of any of the games it
+            belongs to managed by this manager, or by virtue of adding this area it will violate
+            this game's concurrent area membership limit.
 
         Returns
         -------
@@ -387,7 +396,7 @@ class TrialMinigame(GameWithAreas):
 
         return (f'TrialMinigame(server, {self._manager.get_id()}, "{self.get_id()}", '
                 f'player_limit={self._playergroup._player_limit}, '
-                f'concurrent_limit={self.get_concurrent_limit()}, '
+                f'player_concurrent_limit={self.get_player_concurrent_limit()}, '
                 f'require_players={self._playergroup._require_players}, '
                 f'require_invitations={self._playergroup._require_invitations}, '
                 f'require_leaders={self._playergroup._require_leaders}, '

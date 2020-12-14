@@ -42,7 +42,7 @@ from server.subscriber import Listener
 
 class _Team(PlayerGroup):
     """
-    Teams are player groups with a fixed concurrent membership limit of 1.
+    Teams are player groups with a fixed concurrent player membership limit of 1.
     """
 
     # (Private) Attributes
@@ -51,7 +51,7 @@ class _Team(PlayerGroup):
     #     Game this team is a part of.
 
     def __init__(self, server, manager, playergroup_id, player_limit=None,
-                 concurrent_limit=None, require_invitations=False, require_players=True,
+                 player_concurrent_limit=None, require_invitations=False, require_players=True,
                  require_leaders=True):
         """
         Create a new player group.
@@ -69,7 +69,7 @@ class _Team(PlayerGroup):
         player_limit : int or None, optional
             If an int, it is the maximum number of players the player group supports. If None,
             it indicates the player group has no player limit. Defaults to None.
-        concurrent_limit : int or None, optional
+        player_concurrent_limit : int or None, optional
             If an int, it is the maximum number of player groups managed by `manager` that any
             player of this group may belong to, including this group. If None, it indicates
             that this group does not care about how many other player groups managed by
@@ -91,7 +91,7 @@ class _Team(PlayerGroup):
         """
 
         super().__init__(server, manager, playergroup_id, player_limit=player_limit,
-                         concurrent_limit=1, # Teams shall only allow 1 concurrent membership
+                         player_concurrent_limit=1, # Teams allow 1 concurrent player membership
                          require_invitations=require_invitations,
                          require_players=require_players, require_leaders=require_leaders)
         self._game = None
@@ -119,8 +119,8 @@ class _Team(PlayerGroup):
             If the group reached its player limit.
         PlayerGroupError.UserHitGroupConcurrentLimitError.
             If the player has reached any of the groups it belongs to managed by this player
-            group's manager concurrent membership limit, or by virtue of joining this group
-            will violate this group's concurrent membership limit.
+            group's manager concurrent player membership limit, or by virtue of joining this group
+            will violate this group's concurrent player membership limit.
         PlayerGroupError.UserNotPlayerError
             If the user to add is not a player of the game.
 
@@ -130,6 +130,7 @@ class _Team(PlayerGroup):
             raise PlayerGroupError.UserNotPlayerError
 
         super().add_player(user)
+
 
 class _Game():
     """
@@ -143,10 +144,10 @@ class _Game():
     may require that it never loses all its players as soon as it gets its first one (or else it
     is automatically deleted) and may require that if it has at least one player, then that there
     is at least one leader (or else one is automatically chosen between all players). Each of these
-    games may also impose a concurrent membership limit, so that every user that is a player of it
-    is at most of that many games managed by this game's manager. Each game may also require all its
-    players have characters when trying to join the game, as well as remove any player that
-    switches to a non-character.
+    games may also impose a concurrent player membership limit, so that every user that is a player
+    of it is at most of that many games managed by this game's manager. Each game may also
+    require all its players have characters when trying to join the game, as well as remove any
+    player that switches to a non-character.
 
     Each of the timers a game manages are timer_manager.Timers.
 
@@ -205,7 +206,7 @@ class _Game():
     # 5. Each internal structure satisfies its invariants.
 
     def __init__(self, server, manager, game_id, player_limit=None,
-                 concurrent_limit=None, require_invitations=False, require_players=True,
+                 player_concurrent_limit=None, require_invitations=False, require_players=True,
                  require_leaders=True, require_character=False, team_limit=None,
                  timer_limit=None, playergroup_manager=None):
         """
@@ -223,7 +224,7 @@ class _Game():
         player_limit : int or None, optional
             If an int, it is the maximum number of players the game supports. If None, it
             indicates the game has no player limit. Defaults to None.
-        concurrent_limit : int or None, optional
+        player_concurrent_limit : int or None, optional
             If an int, it is the maximum number of games managed by `manager` that any
             player of this game may belong to, including this game. If None, it indicates
             that this game does not care about how many other games managed by `manager` each
@@ -277,7 +278,7 @@ class _Game():
         try:
             group = playergroup_manager.new_group(creator=None,
                                                   player_limit=player_limit,
-                                                  concurrent_limit=concurrent_limit,
+                                                  player_concurrent_limit=player_concurrent_limit,
                                                   require_invitations=require_invitations,
                                                   require_players=require_players,
                                                   require_leaders=require_leaders)
@@ -311,18 +312,18 @@ class _Game():
         # game itself. To facilitate your life, these two should be made the same.
         return self._game_id
 
-    def get_concurrent_limit(self):
+    def get_player_concurrent_limit(self):
         """
-        Return the concurrent membership limit of this game.
+        Return the concurrent player membership limit of this game.
 
         Returns
         -------
-        int
-            The concurrent player limit.
+        int or None
+            The concurrent player membership limit.
 
         """
 
-        return self._playergroup.get_concurrent_limit()
+        return self._playergroup.get_player_concurrent_limit()
 
     def get_players(self, cond=None):
         """
@@ -383,10 +384,10 @@ class _Game():
             If the game requires players be invited to be added and the user is not invited.
         GameError.UserAlreadyPlayerError
             If the user to add is already a user of the game.
-        GameError.UserHitConcurrentLimitError
+        GameError.UserHitGameConcurrentLimitError
             If the player has reached any of the games it belongs to managed by this game's
-            manager concurrent membership limit, or by virtue of joining this game they
-            will violate this game's concurrent membership limit.
+            manager concurrent player membership limit, or by virtue of joining this game they
+            will violate this game's concurrent player membership limit.
         GameError.GameIsFullError
             If the game reached its player limit.
 
@@ -405,7 +406,7 @@ class _Game():
         except PlayerGroupError.UserAlreadyPlayerError:
             raise GameError.UserAlreadyPlayerError
         except PlayerGroupError.UserHitGroupConcurrentLimitError:
-            raise GameError.UserHitConcurrentLimitError
+            raise GameError.UserHitGameConcurrentLimitError
         except PlayerGroupError.GroupIsFullError:
             raise GameError.GameIsFullError
 
@@ -910,7 +911,7 @@ class _Game():
         try:
             team = self._team_manager.new_group(playergroup_type=team_type, creator=creator,
                                                 player_limit=player_limit,
-                                                concurrent_limit=1,
+                                                player_concurrent_limit=1,
                                                 require_invitations=require_invitations,
                                                 require_players=require_players,
                                                 require_leaders=require_leaders)
@@ -1319,7 +1320,7 @@ class _Game():
 
         return (f'_Game(server, {self._manager.get_id()}, "{self.get_id()}", '
                 f'player_limit={self._playergroup._player_limit}, '
-                f'concurrent_limit={self.get_concurrent_limit()}, '
+                f'player_concurrent_limit={self.get_player_concurrent_limit()}, '
                 f'require_players={self._playergroup._require_players}, '
                 f'require_invitations={self._playergroup._require_invitations}, '
                 f'require_leaders={self._playergroup._require_leaders}, '
@@ -1397,7 +1398,7 @@ class GameManager:
         self._id_to_game = dict()
 
     def new_game(self, game_type=None, creator=None, player_limit=None,
-                 concurrent_limit=1, require_invitations=False, require_players=True,
+                 player_concurrent_limit=1, require_invitations=False, require_players=True,
                  require_leaders=True, require_character=False, team_limit=None, timer_limit=None):
         """
         Create a new game managed by this manager.
@@ -1413,7 +1414,7 @@ class GameManager:
         player_limit : int or None, optional
             If an int, it is the maximum number of players the game supports. If None, it
             indicates the game has no player limit. Defaults to None.
-        concurrent_limit : int or None, optional
+        player_concurrent_limit : int or None, optional
             If an int, it is the maximum number of games managed by `self` that any player
             of this game to create may belong to, including this game to create. If None, it
             indicates that this game does not care about how many other games managed by `self`
@@ -1464,7 +1465,7 @@ class GameManager:
 
         def_kwargs = {
             'player_limit': player_limit,
-            'concurrent_limit': concurrent_limit,
+            'player_concurrent_limit': player_concurrent_limit,
             'require_invitations': require_invitations,
             'require_players': require_players,
             'require_leaders': require_leaders,

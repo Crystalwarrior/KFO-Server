@@ -84,9 +84,9 @@ class NonStopDebate(TrialMinigame):
     # 1. The invariants from the parent class TrialMinigame are satisfied.
 
     def __init__(self, server, manager, NSD_id, player_limit=None,
-                 concurrent_limit=None, require_invitations=False, require_players=True,
+                 player_concurrent_limit=None, require_invitations=False, require_players=True,
                  require_leaders=True, require_character=False, team_limit=None,
-                 timer_limit=None, areas=None, trial=None, timer_start_value=300,
+                 timer_limit=None, area_concurrent_limit=1, trial=None, timer_start_value=300,
                  playergroup_manager=None):
         """
         Create a new nonstop debate (NSD) game. An NSD should not be fully initialized anywhere
@@ -103,7 +103,7 @@ class NonStopDebate(TrialMinigame):
         player_limit : int or None, optional
             If an int, it is the maximum number of players the NSD supports. If None, it
             indicates the NSD has no player limit. Defaults to None.
-        concurrent_limit : int or None, optional
+        player_concurrent_limit : int or None, optional
             If an int, it is the maximum number of games managed by `manager` that any
             player of this NSD may belong to, including this NSD. If None, it indicates
             that this NSD does not care about how many other games managed by `manager` each
@@ -138,6 +138,12 @@ class NonStopDebate(TrialMinigame):
         timer_start_value : float, optional
             In seconds, the length of time the main timer of this nonstop debate will have at the
             start. It must be a positive number. Defaults to 300 (5 minutes).
+        area_concurrent_limit : int or None, optional
+            If an int, it is the maximum number of trials managed by `manager` that any
+            area of this trial may belong to, including this trial. If None, it indicates
+            that this game does not care about how many other trials managed by
+            `manager` each of its areas belongs to. Defaults to 1 (an area may not be a part of
+            another trial managed by `manager` while being an area of this trial).
         playergroup_manager : PlayerGroupManager, optional
             The internal playergroup manager of the game manager. Access to this value is
             limited exclusively to this __init__, and is only to initialize the internal
@@ -156,10 +162,11 @@ class NonStopDebate(TrialMinigame):
         self._message_index = -1
 
         super().__init__(server, manager, NSD_id, player_limit=player_limit,
-                         concurrent_limit=concurrent_limit, require_invitations=require_invitations,
+                         player_concurrent_limit=player_concurrent_limit,
+                         require_invitations=require_invitations,
                          require_players=require_players, require_leaders=require_leaders,
                          require_character=require_character, team_limit=team_limit,
-                         timer_limit=timer_limit, areas=areas,
+                         timer_limit=timer_limit, area_concurrent_limit=area_concurrent_limit,
                          trial=trial, playergroup_manager=playergroup_manager)
 
         self._timer = None
@@ -495,10 +502,10 @@ class NonStopDebate(TrialMinigame):
             If the game requires players be invited to be added and the user is not invited.
         GameError.UserAlreadyPlayerError
             If the user to add is already a user of the game.
-        GameError.UserHitConcurrentLimitError
+        GameError.UserHitGameConcurrentLimitError
             If the player has reached any of the games it belongs to managed by this game's
-            manager concurrent membership limit, or by virtue of joining this game they
-            will violate this game's concurrent membership limit.
+            manager concurrent player membership limit, or by virtue of joining this game they
+            will violate this game's concurrent player membership limit.
         GameError.GameIsFullError
             If the game reached its player limit.
 
@@ -1078,7 +1085,7 @@ class NonStopDebate(TrialMinigame):
 
         return (f'NonStopDebate(server, {self._manager.get_id()}, "{self.get_id()}", '
                 f'player_limit={self._playergroup._player_limit}, '
-                f'concurrent_limit={self.get_concurrent_limit()}, '
+                f'player_concurrent_limit={self.get_player_concurrent_limit()}, '
                 f'require_players={self._playergroup._require_players}, '
                 f'require_invitations={self._playergroup._require_invitations}, '
                 f'require_leaders={self._playergroup._require_leaders}, '

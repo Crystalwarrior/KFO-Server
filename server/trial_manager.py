@@ -78,10 +78,10 @@ class _Trial(GameWithAreas):
     # they are a value between 0 and 10 inclusive.
     # 5. The invariants from the parent class GameWithArea are satisfied.
 
-    def __init__(self, server, manager, trial_id, player_limit=None, concurrent_limit=None,
+    def __init__(self, server, manager, trial_id, player_limit=None, player_concurrent_limit=None,
                  require_invitations=False, require_players=True, require_leaders=True,
                  require_character=False, team_limit=None, timer_limit=None,
-                 areas=None, minigame_limit=1, playergroup_manager=None):
+                 area_concurrent_limit=None, minigame_limit=1, playergroup_manager=None):
         """
         Create a new trial. A trial should not be fully initialized anywhere else other than
         some manager code, as otherwise the manager will not recognize the trial.
@@ -97,7 +97,7 @@ class _Trial(GameWithAreas):
         player_limit : int or None, optional
             If an int, it is the maximum number of players the trial supports. If None, it
             indicates the trial has no player limit. Defaults to None.
-        concurrent_limit : int or None, optional
+        player_concurrent_limit : int or None, optional
             If an int, it is the maximum number of trials managed by `manager` that any
             player of this trial may belong to, including this trial. If None, it indicates
             that this trial does not care about how many other trials managed by `manager` each
@@ -126,8 +126,12 @@ class _Trial(GameWithAreas):
         timer_limit : int or None, optional
             If an int, it is the maximum number of timers the trial supports. If None, it
             indicates the trial has no timer limit. Defaults to None.
-        areas : set of AreaManager.Area, optional
-            Areas the trial starts with.
+        area_concurrent_limit : int or None, optional
+            If an int, it is the maximum number of trials managed by `manager` that any
+            area of this trial may belong to, including this trial. If None, it indicates
+            that this game does not care about how many other trials managed by
+            `manager` each of its areas belongs to. Defaults to 1 (an area may not be a part of
+            another trial managed by `manager` while being an area of this trial).
         minigame_limit : int or None, optional
             If an int, it is the maximum number of minigames the trial may have simultaneously.
             If None, it indicates the trial has no minigame limit. Defaults to 1.
@@ -153,17 +157,18 @@ class _Trial(GameWithAreas):
 
         self._client_timer_id = 0
 
-        self._minigame_manager = GameManager(server, game_limit=minigame_limit,
-                                             default_game_type=TrialMinigame,
-                                             available_id_producer=self.get_available_minigame_id)
+        self._minigame_manager = GameWithAreasManager(
+            server, game_limit=minigame_limit, default_game_type=TrialMinigame,
+            available_id_producer=self.get_available_minigame_id)
         super().__init__(server, manager, trial_id, player_limit=player_limit,
-                         concurrent_limit=concurrent_limit,
+                         player_concurrent_limit=player_concurrent_limit,
                          require_invitations=require_invitations,
                          require_players=require_players,
                          require_leaders=require_leaders,
                          require_character=require_character,
                          team_limit=team_limit, timer_limit=timer_limit,
-                         areas=areas, playergroup_manager=playergroup_manager)
+                         area_concurrent_limit=area_concurrent_limit,
+                         playergroup_manager=playergroup_manager)
 
     def add_player(self, user):
         """
@@ -191,17 +196,17 @@ class _Trial(GameWithAreas):
             If the trial requires players be invited to be added and the user is not invited.
         GameError.UserAlreadyPlayerError
             If the user to add is already a user of the trial.
-        GameError.UserHitConcurrentLimitError
+        GameError.UserHitGameConcurrentLimitError
             If the player has reached any of the trials it belongs to managed by this trial's
-            manager concurrent membership limit, or by virtue of joining this trial they
-            will violate this trial's concurrent membership limit.
+            manager concurrent player membership limit, or by virtue of joining this trial they
+            will violate this trial's concurrent player membership limit.
         GameError.GameIsFullError
             If the trial reached its player limit.
 
         """
 
         # By checking this early, self._player_to_influence will never be overwritten if the player
-        # was already part of the trial.
+        # was already part of the trial (nor self._player_to_focus)
         if self.is_player(user):
             raise GameError.UserAlreadyPlayerError
 
@@ -670,17 +675,18 @@ class _Trial(GameWithAreas):
         """
 
         areas = {creator.area} if creator else set()
-        nsd_factory = functools.partial(NonStopDebate, areas=areas, trial=self,
+        nsd_factory = functools.partial(NonStopDebate, trial=self,
                                         timer_start_value=timer_start_value)
 
         nsd = self._minigame_manager.new_game(game_type=nsd_factory,
                                               player_limit=player_limit,
-                                              concurrent_limit=1,
+                                              player_concurrent_limit=1,
                                               require_invitations=require_invitations,
                                               require_players=require_players,
                                               require_leaders=False,
                                               require_character=require_character,
-                                              team_limit=team_limit, timer_limit=timer_limit)
+                                              team_limit=team_limit, timer_limit=timer_limit,
+                                              areas=areas)
         nsd.setup_timers()
         # Add creator manually. This is because otherwise the creator does not get access to
         # the timer info.
@@ -1086,7 +1092,7 @@ class _Trial(GameWithAreas):
 
         return (f'Trial(server, {self._manager.get_id()}, "{self.get_id()}", '
                 f'player_limit={self._playergroup._player_limit}, '
-                f'concurrent_limit={self.get_concurrent_limit()}, '
+                f'player_concurrent_limit={self.get_player_concurrent_limit()}, '
                 f'require_players={self._playergroup._require_players}, '
                 f'require_invitations={self._playergroup._require_invitations}, '
                 f'require_leaders={self._playergroup._require_leaders}, '
@@ -1205,12 +1211,14 @@ class TrialManager(GameWithAreasManager):
     # TODO: Enforce GameWithAreasManager to only take game with areas as games when calling
     # new_game, or when initialized. Also do it in check_structure()
 
-    def new_trial(self, creator=None, player_limit=None, concurrent_limit=1, add_players=False,
-                  require_invitations=False, require_players=True,
-                  require_character=False, team_limit=None, timer_limit=None) -> _Trial:
+    def new_trial(self, creator=None, player_limit=None, player_concurrent_limit=1,
+                  add_players=False, require_invitations=False, require_players=True,
+                  require_character=False, team_limit=None, timer_limit=None,
+                  area_concurrent_limit=1) -> _Trial:
         """
         Create a new trial managed by this manager. Overriden default parameters include:
         * A trial does not require leaders.
+        * A trial adds only the creator's area if given a creator, or no area otherwise.
 
         Parameters
         ----------
@@ -1238,10 +1246,16 @@ class TrialManager(GameWithAreasManager):
         timer_limit : int or None, optional
             If an int, it is the maximum number of timers the trial will support. If None, it
             indicates the trial will have no timer limit. Defaults to None.
+        area_concurrent_limit : int or None, optional
+            If an int, it is the maximum number of trials managed by `manager` that any
+            area of the created trial may belong to, including the created trial. If None, it
+            indicates that this trial does not care about how many other trials managed by
+            `manager` each of its areas belongs to. Defaults to 1 (an area may not be a part of
+            another trials managed by `manager` while being an area of this trials).
 
         Returns
         -------
-        NonStopDebate
+        _Trial
             The created trial.
 
         Raises
@@ -1254,22 +1268,27 @@ class TrialManager(GameWithAreasManager):
         """
 
         areas = {creator.area} if creator else set()
-        trial_factory = functools.partial(_Trial, areas=areas)
+        trial_factory = functools.partial(_Trial)
         trial = self.new_game(game_type=trial_factory, creator=creator,
                               player_limit=player_limit,
-                              concurrent_limit=concurrent_limit,
+                              player_concurrent_limit=player_concurrent_limit,
                               require_invitations=require_invitations,
                               require_players=require_players,
                               require_leaders=False,
                               require_character=require_character,
-                              team_limit=team_limit, timer_limit=timer_limit)
+                              team_limit=team_limit, timer_limit=timer_limit,
+                              areas=areas, area_concurrent_limit=area_concurrent_limit)
 
         if add_players:
             clients_to_add = {client for area in areas for client in area.clients}
             if creator:
                 clients_to_add.discard(creator)
             for client in clients_to_add:
-                trial.add_player(client)
+                try:
+                    trial.add_player(client)
+                except GameError as ex:
+                    trial.destroy()
+                    raise ex
 
         # Manually give packets to nonplayers
         for nonplayer in trial.get_nonplayer_users_in_areas():

@@ -201,7 +201,7 @@ class GameError(TsuserverException):
     class UserAlreadyLeaderError(TsuserverException):
         pass
 
-    class UserHitConcurrentLimitError(TsuserverException):
+    class UserHitGameConcurrentLimitError(TsuserverException):
         pass
 
     class UserInNoGameError(TsuserverException):
@@ -276,6 +276,9 @@ class GameWithAreasError(GameError):
         pass
 
     class AreaNotInGameError(GameError):
+        pass
+
+    class AreaHitGameConcurrentLimitError(TsuserverException):
         pass
 
 @recreate_subexceptions

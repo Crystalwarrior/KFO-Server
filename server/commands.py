@@ -6950,9 +6950,11 @@ def ooc_cmd_trial(client: ClientManager.Client, arg: str):
     try:
         trial = client.server.trial_manager.new_trial(creator=client, add_players=False,
                                                       require_character=True)
+    except TrialError.AreaHitGameConcurrentLimitError:
+        raise ClientError('This area already hosts another trial.')
     except TrialError.ManagerTooManyGamesError:
         raise ClientError('The server has reached its trial limit.')
-    except TrialError.UserHitConcurrentLimitError:
+    except TrialError.UserHitGameConcurrentLimitError:
         raise ClientError('You are already part of another trial.')
     except TrialError.UserHasNoCharacterError:
         raise ClientError('You must have a character to create a trial.')
@@ -6965,7 +6967,7 @@ def ooc_cmd_trial(client: ClientManager.Client, arg: str):
             continue
         try:
             trial.add_player(user)
-        except TrialError.UserHitConcurrentLimitError:
+        except TrialError.UserHitGameConcurrentLimitError:
             client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
                             f'they are already part of another trial.')
         except TrialError.UserHasNoCharacterError:
@@ -7022,7 +7024,7 @@ def ooc_cmd_trial_add(client: ClientManager.Client, arg: str):
         raise ClientError('This player is not part of an area part of this trial.')
     except TrialError.UserHasNoCharacterError:
         raise ClientError('This player must have a character to join this trial.')
-    except TrialError.UserHitConcurrentLimitError:
+    except TrialError.UserHitGameConcurrentLimitError:
         raise ClientError('This player is already part of another trial.')
     except TrialError.UserAlreadyPlayerError:
         raise ClientError('This player is already part of this trial.')
@@ -7064,7 +7066,7 @@ def ooc_cmd_trial_join(client: ClientManager, arg: str):
         raise ClientError('You are not part of an area part of this trial.')
     except TrialError.UserHasNoCharacterError:
         raise ClientError('You must have a character to join this trial.')
-    except TrialError.UserHitConcurrentLimitError:
+    except TrialError.UserHitGameConcurrentLimitError:
         raise ClientError('You are already part of another trial.')
     except TrialError.UserAlreadyPlayerError:
         raise ClientError('You are already part of this trial.')
@@ -7424,7 +7426,9 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
                             require_character=True)
     except TrialError.ManagerTooManyGamesError:
         raise ClientError('The trial has reached its NSD limit.')
-    except NonStopDebateError.UserHitConcurrentLimitError:
+    except NonStopDebateError.AreaHitGameConcurrentLimitError:
+        raise ClientError('This area already hosts another NSD.')
+    except NonStopDebateError.UserHitGameConcurrentLimitError:
         raise ClientError('You are already part of another minigame of your NSD.')
     except NonStopDebateError.UserHasNoCharacterError:
         raise ClientError('You must have a character to create a NSD.')
@@ -7446,7 +7450,7 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
         except NonStopDebateError.UserNotPlayerError:
             client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
                             f'they are not part of your trial.')
-        except NonStopDebateError.UserHitConcurrentLimitError:
+        except NonStopDebateError.UserHitGameConcurrentLimitError:
             client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
                             f'they are already part of another minigame.')
         except NonStopDebateError.UserHasNoCharacterError:
@@ -7511,7 +7515,7 @@ def ooc_cmd_nsd_add(client: ClientManager.Client, arg: str):
         raise ClientError('This player is not part of an area part of this nonstop debate.')
     except NonStopDebateError.UserHasNoCharacterError:
         raise ClientError('This player must have a character to join this nonstop debate.')
-    except NonStopDebateError.UserHitConcurrentLimitError:
+    except NonStopDebateError.UserHitGameConcurrentLimitError:
         raise ClientError('This player is already part of another nonstop debate.')
     except NonStopDebateError.UserAlreadyPlayerError:
         raise ClientError('This player is already part of this nonstop debate.')
@@ -7558,7 +7562,7 @@ def ooc_cmd_nsd_join(client: ClientManager, arg: str):
         raise ClientError('You are not part of an area part of this nonstop debate.')
     except NonStopDebateError.UserHasNoCharacterError:
         raise ClientError('You must have a character to join this nonstop debate.')
-    except NonStopDebateError.UserHitConcurrentLimitError:
+    except NonStopDebateError.UserHitGameConcurrentLimitError:
         raise ClientError('You are already part of another nonstop debate.')
     except NonStopDebateError.UserAlreadyPlayerError:
         raise ClientError('You are already part of this nonstop debate.')

@@ -38,7 +38,7 @@ class PlayerGroup:
     require that it never loses all its players as soon as it gets its first one (or else it
     is automatically deleted) and may require that if it has at least one player, then that
     there is at least one leader (or else one is automatically chosen between all players).
-    Each of these groups may also impose a concurrent membership limit, so that every user
+    Each of these groups may also impose a concurrent player membership limit, so that every user
     that is a player of it is at most a player of that many player groups managed by this
     group's manager.
 
@@ -59,7 +59,7 @@ class PlayerGroup:
     # _player_limit : int or None.
     #     If an int, it is the maximum number of players the group supports. If None, the group
     #     may have an arbitrary number of players.
-    # _concurrent_limit : int or None.
+    # _player_concurrent_limit : int or None.
     #     If an int, it is the maximum number of player groups managed by the same manager as
     #     this group that any player part of this player group may belong to, including this
     #     player group. If None, no such restriction is considered.
@@ -101,7 +101,7 @@ class PlayerGroup:
     # 11. If `self._require_invitations` is False, then `self._invitations` is the empty set.
 
     def __init__(self, server, manager, playergroup_id, player_limit=None,
-                 concurrent_limit=1, require_invitations=False, require_players=True,
+                 player_concurrent_limit=1, require_invitations=False, require_players=True,
                  require_leaders=True):
         """
         Create a new player group. A player group should not be created outside some manager code.
@@ -117,7 +117,7 @@ class PlayerGroup:
         player_limit : int or None, optional
             If an int, it is the maximum number of players the player group supports. If None,
             it indicates the player group has no player limit. Defaults to None.
-        concurrent_limit : int or None, optional
+        player_concurrent_limit : int or None, optional
             If an int, it is the maximum number of player groups managed by `manager` that any
             player of this group may belong to, including this group. If None, it indicates
             that this group does not care about how many other player groups managed by
@@ -142,7 +142,7 @@ class PlayerGroup:
         self._manager = manager
         self._playergroup_id = playergroup_id
         self._player_limit = player_limit
-        self._concurrent_limit = concurrent_limit
+        self._player_concurrent_limit = player_concurrent_limit
         self._require_invitations = require_invitations
         self._require_players = require_players
         self._require_leaders = require_leaders
@@ -166,18 +166,18 @@ class PlayerGroup:
 
         return self._playergroup_id
 
-    def get_concurrent_limit(self):
+    def get_player_concurrent_limit(self):
         """
-        Return the concurrent membership limit of this player group.
+        Return the concurrent player membership limit of this player group.
 
         Returns
         -------
-        int
-            The concurrent player limit.
+        int or None
+            The concurrent player membership limit.
 
         """
 
-        return self._concurrent_limit
+        return self._player_concurrent_limit
 
     def get_players(self, cond=None):
         """
@@ -246,8 +246,8 @@ class PlayerGroup:
             If the group reached its player limit.
         PlayerGroupError.UserHitGroupConcurrentLimitError.
             If the player has reached any of the groups it belongs to managed by this player
-            group's manager concurrent membership limit, or by virtue of joining this group
-            they will violate this group's concurrent membership limit.
+            group's manager concurrent player membership limit, or by virtue of joining this group
+            they will violate this group's concurrent player membership limit.
 
         """
 
@@ -259,10 +259,10 @@ class PlayerGroup:
             raise PlayerGroupError.UserAlreadyPlayerError
         if self._player_limit is not None and len(self._players) >= self._player_limit:
             raise PlayerGroupError.GroupIsFullError
-        if self._manager._find_concurrent_limiting_group(user):
+        if self._manager.find_player_concurrent_limiting_group(user):
             raise PlayerGroupError.UserHitGroupConcurrentLimitError
         groups_of_user = self._manager.get_groups_of_user(user)
-        if len(groups_of_user) >= self._concurrent_limit:
+        if len(groups_of_user) >= self._player_concurrent_limit:
             raise PlayerGroupError.UserHitGroupConcurrentLimitError
 
         self._ever_had_players = True
@@ -753,7 +753,7 @@ class PlayerGroup:
 
         return (f"PlayerGroup(server, {self._manager.get_id()}, '{self._playergroup_id}', "
                 f"player_limit={self._player_limit}, "
-                f"concurrent_limit={self._concurrent_limit}, "
+                f"player_concurrent_limit={self._player_concurrent_limit}, "
                 f"require_players={self._require_players}, "
                 f"require_invitations={self._require_invitations}, "
                 f"require_leaders={self._require_leaders}) "
@@ -804,7 +804,11 @@ class PlayerGroupManager:
     #     a. `self._user_to_groups[player]` is a non-empty set.
     #     b. `self._user_to_groups[player]` is a subset of `self._id_to_group.values()`.
     #     c. For every group `group` in `self._user_to_groups[player]`, `player` belongs to `group`.
-    # 5. Each player group it manages also satisfies its structural invariants.
+    # 5. For every player `player` in `self._user_to_groups.keys()`:
+    #     a. For every group `group` in `self._user_to_groups[player]`:
+    #           1. `group` has no player concurrent membership limit, or it is at least the length
+    #               of `self._user_to_groups[player]`.
+    # 6. Each player group it manages also satisfies its structural invariants.
 
     def __init__(self, server, playergroup_limit=None, default_playergroup_type=None,
                  available_id_producer=None):
@@ -842,7 +846,7 @@ class PlayerGroupManager:
         self._check_structure()
 
     def new_group(self, playergroup_type=None, creator=None, player_limit=None,
-                  concurrent_limit=1, require_invitations=False, require_players=True,
+                  player_concurrent_limit=1, require_invitations=False, require_players=True,
                   require_leaders=True):
         """
         Create a new player group managed by this manager.
@@ -858,7 +862,7 @@ class PlayerGroupManager:
         player_limit : int or None, optional
             If an int, it is the maximum number of players the player group supports. If None, it
             indicates the player group has no player limit. Defaults to None.
-        concurrent_limit : int or None, optional
+        player_concurrent_limit : int or None, optional
             If an int, it is the maximum number of player groups managed by `self` that any player
             of this group to create may belong to, including this group to create. If None, it
             indicates that this group does not care about how many other player groups managed by
@@ -885,9 +889,9 @@ class PlayerGroupManager:
         PlayerGroupError.ManagerTooManyGroupsError
             If the manager is already managing its maximum number of groups.
         PlayerGroupError.UserHitGroupConcurrentLimitError.
-            If `creator` has reached the concurrent membership limit of any of the groups it
+            If `creator` has reached the concurrent player membership limit of any of the groups it
             belongs to managed by this manager, or by virtue of joining this group the creator
-            they will violate this group's concurrent membership limit.
+            they will violate this group's concurrent player membership limit.
 
         """
 
@@ -897,10 +901,10 @@ class PlayerGroupManager:
         if creator:
             # Check if adding the creator to this new group would cause any concurrent
             # membership limits being reached.
-            if self._find_concurrent_limiting_group(creator):
+            if self.find_player_concurrent_limiting_group(creator):
                 raise PlayerGroupError.UserHitGroupConcurrentLimitError
             groups_of_user = self._user_to_groups.get(creator, None)
-            if groups_of_user is not None and len(groups_of_user) >= concurrent_limit:
+            if groups_of_user is not None and len(groups_of_user) >= player_concurrent_limit:
                 raise PlayerGroupError.UserHitGroupConcurrentLimitError
 
         # At this point, we are committed to creating this player group.
@@ -913,7 +917,7 @@ class PlayerGroupManager:
             )
         def_kwargs = {
             'player_limit': player_limit,
-            'concurrent_limit': concurrent_limit,
+            'player_concurrent_limit': player_concurrent_limit,
             'require_invitations': require_invitations,
             'require_players': require_players,
             'require_leaders': require_leaders,
@@ -1129,11 +1133,11 @@ class PlayerGroupManager:
 
         return hex(id(self))
 
-    def _find_concurrent_limiting_group(self, user):
+    def find_player_concurrent_limiting_group(self, user):
         """
         For user `user`, find a player group `most_restrictive_group` managed by this manager such
         that, if `user` were to join another player group managed by this manager, they would
-        violate `most_restrictive_group`'s concurrent membership limit.
+        violate `most_restrictive_group`'s concurrent player membership limit.
         If no such group exists (or the player is not member of any player group managed by this
         manager), return None.
         If multiple such groups exist, any one of them may be returned.
@@ -1154,8 +1158,9 @@ class PlayerGroupManager:
         if not groups:
             return None
 
-        # We only care about groups that establish a concurrent membership limit
-        groups_with_limit = {group for group in groups if group.get_concurrent_limit() is not None}
+        # We only care about groups that establish a concurrent player membership limit
+        groups_with_limit = {group for group in groups
+                             if group.get_player_concurrent_limit() is not None}
         if not groups_with_limit:
             return None
 
@@ -1164,8 +1169,8 @@ class PlayerGroupManager:
         # is an example group that can be returned.
         # 2. Otherwise, no other groups exist due to the minimality condition.
         most_restrictive_group = min(groups_with_limit,
-                                     key=lambda group: group.get_concurrent_limit())
-        if len(groups) < most_restrictive_group.get_concurrent_limit():
+                                     key=lambda group: group.get_player_concurrent_limit())
+        if len(groups) < most_restrictive_group.get_player_concurrent_limit():
             return None
         return most_restrictive_group
 
@@ -1288,6 +1293,22 @@ class PlayerGroupManager:
                        f'to group mapping be a player of its associated group {group}, but '
                        f'found that was not the case. || {self}')
                 assert user in group.get_players(), err
+
+        # 5.
+        for user in self._user_to_groups:
+            playergroups = self._user_to_groups[user]
+            membership = len(playergroups)
+
+            for group in playergroups:
+                limit = group.get_player_concurrent_limit()
+
+                if limit is None:
+                    continue
+                err = (f'For player group manager {self}, expected that user {user} in group '
+                       f'{group} belonged to at most the concurrent player membership limit of '
+                       f'that group of {limit} group{"s" if limit != 1 else ""}, found they '
+                       f'belonged to {membership} group{"s" if membership != 1 else ""}. || {self}')
+                assert membership <= limit
 
         # Last.
         for playergroup in self._id_to_group.values():
