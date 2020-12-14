@@ -6965,11 +6965,11 @@ def ooc_cmd_trial(client: ClientManager.Client, arg: str):
         try:
             trial.add_player(user)
         except TrialError.UserHitConcurrentLimitError:
-            client.send_ooc(f'Unable to add player {user.displayname}: they are already part of '
-                            f'another trial.')
+            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
+                            f'they are already part of another trial.')
         except TrialError.UserHasNoCharacterError:
-            client.send_ooc(f'Unable to add player {user.displayname}: they must have a '
-                            f'character to join this trial.')
+            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
+                            f'they must have a character to join this trial.')
 
     player_list = '\n'.join([
         f'[{player.id}] {player.displayname}' for player in trial.get_players()
@@ -7442,14 +7442,14 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
         try:
             nsd.add_player(user)
         except NonStopDebateError.UserNotPlayerError:
-            client.send_ooc(f'Unable to add player {user.displayname}: they are not part of your '
-                            f'trial.')
+            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
+                            f'they are not part of your trial.')
         except NonStopDebateError.UserHitConcurrentLimitError:
-            client.send_ooc(f'Unable to add player {user.displayname}: they are already part of '
-                            f'another minigame.')
+            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
+                            f'they are already part of another minigame.')
         except NonStopDebateError.UserHasNoCharacterError:
-            client.send_ooc(f'Unable to add player {user.displayname}: they must have a '
-                            f'character to join this minigame.')
+            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
+                            f'they must have a character to join this minigame.')
 
     player_list = '\n'.join([
         f'[{player.id}] {player.displayname}' for player in trial.get_players()
