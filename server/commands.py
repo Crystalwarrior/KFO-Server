@@ -4622,6 +4622,7 @@ def ooc_cmd_shoutlog(client: ClientManager.Client, arg: str):
         info = area.get_shoutlog()
         client.send_ooc(info)
 
+
 def ooc_cmd_showname(client: ClientManager.Client, arg: str):
     """
     If given an argument, sets the client's showname to that. Otherwise, it clears their showname
@@ -4629,8 +4630,9 @@ def ooc_cmd_showname(client: ClientManager.Client, arg: str):
     showname the current character has, and is persistent between between character swaps, area
     changes, etc.
     Returns an error if new custom showname exceeds the server limit (server parameter
-    'showname_max_length', is already used in the current area, or if shownames have been frozen
-    and the user is not logged in.
+    'showname_max_length', is already used in the current area, if shownames have been frozen
+    and the user is not logged in, if the client did not have a showname and attempted to clear
+    it anyway, or if the client had a showname and attempted to set it to the same value.
 
     SYNTAX
     /showname <new_showname>
@@ -4648,6 +4650,11 @@ def ooc_cmd_showname(client: ClientManager.Client, arg: str):
         raise ClientError('Shownames are frozen.')
 
     old_showname = client.showname
+    if old_showname == arg == '':
+        raise ClientError('You already do not have a showname.')
+    if old_showname == arg:
+        raise ClientError('You already have that showname.')
+
     try:
         client.change_showname(arg, forced=False)
     except ValueError:
