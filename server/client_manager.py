@@ -55,6 +55,7 @@ class ClientManager:
             self.last_active = Constants.get_time()
 
             self.area = server.area_manager.default_area()
+            self.new_area = self.area  # It is different from self.area in transition to a new area
             self.party = None
             self.is_mod = False
             self.is_gm = False

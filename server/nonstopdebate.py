@@ -26,7 +26,7 @@ import time
 
 from enum import Enum, auto
 
-from server.exceptions import ClientError, NonStopDebateError
+from server.exceptions import ClientError, NonStopDebateError, GameError
 from server import logger
 from server.trialminigame import TrialMinigame, TRIALMINIGAMES
 
@@ -207,19 +207,20 @@ class NonStopDebate(TrialMinigame):
             user.send_command('TP', self._client_timer_id)
         self._update_player_timer(user)
 
-    def dismiss_user(self, user, refresh_gamemode=False):
+    def dismiss_user(self, user):
         """
-        Broadcast information relevant for a user that has left the NSD, namely clear out
-        gamemode and timers.
+        Broadcast information relevant for a user that has left the NSD, namely modify the
+        gamemode and timers as follows:
+        * If the user is still part of an area of the NSD, no action is taken.
+        * Otherwise, if they are still part of an area of the NSD's trial, their gamemode is set
+        to trial and the timers are cleared.
+        * Otherwise, the gamemode is cleared and so are the timers.
         Note the user needs not be in the same area as the NSD, nor be a player of the NSD.
 
         Parameters
         ----------
         user : ClientManager.Client
-            User to introduce.
-        refresh_gamemode : bool, optional
-            If True, the dismissed user will get a clear gamemode order. If False, no such order
-            will be sent. Defaults to False.
+            User to dismiss.
 
         Returns
         -------
@@ -227,18 +228,26 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        if refresh_gamemode:
-            # If the user is still part of an area part of the NSD's trial, make them switch to
-            # the trial gamemode
-            if user.area in self._trial.get_areas():
-                user.send_command('GM', 'trial')
-            else:
-                user.send_command('GM', '')
+        # We use .new_area rather than .area as this function may have been called as a result
+        # of the user moving, in which case .area still points to the user's old area.
 
-        user.send_command('TP', self._client_timer_id)
-        user.send_command('TST', self._client_timer_id, 0)
-        user.send_command('TSS', self._client_timer_id, 0)
-        user.send_command('TSF', self._client_timer_id, 0)
+        # If the user is still part of an area of the NSD, do nothing
+        if user.new_area in self.get_areas():
+            pass
+        # Otherwise, if the user is still part of an area part of the NSD's trial, make them switch
+        # to the trial gamemode
+        elif user.new_area in self._trial.get_areas():
+            user.send_command('GM', 'trial')
+        # Otherwise, fully clear out gamemode
+        else:
+            user.send_command('GM', '')
+
+        # Update the timers only if the player is not in an area part of the NSD
+        if user.new_area not in self.get_areas():
+            user.send_command('TP', self._client_timer_id)
+            user.send_command('TST', self._client_timer_id, 0)
+            user.send_command('TSS', self._client_timer_id, 0)
+            user.send_command('TSF', self._client_timer_id, 0)
 
     def get_type(self) -> TRIALMINIGAMES:
         """
@@ -391,6 +400,8 @@ class NonStopDebate(TrialMinigame):
         self.set_intermission(blankpost=blankpost)
         self._mode = NSDMode.INTERMISSION_TIMERANOUT
 
+        for nonplayer in self.get_nonplayer_users_in_areas():
+            nonplayer.send_ooc('Time ran out for the debate you are watching!')
         for player in self.get_players():
             player.send_ooc('Time ran out for your debate!')
         for leader in self.get_leaders():
@@ -443,7 +454,7 @@ class NonStopDebate(TrialMinigame):
         # run their timer code for a bit due to blocking.
 
         self._player_refresh_timer.unpause()
-        self._message_timer.set_time(0) # We also reset this just in case it was interrupted before
+        self._message_timer.set_time(0)  # We also reset this just in case it was interrupted before
         self._message_timer.unpause()
 
     def resume(self) -> NSDMode:
@@ -610,7 +621,7 @@ class NonStopDebate(TrialMinigame):
         # Force every user in the former areas of the trial to be dismissed
         for area in areas:
             for user in area.clients:
-                self.dismiss_user(user, refresh_gamemode=True)
+                self.dismiss_user(user)
 
     def setup_timers(self):
         """
@@ -837,7 +848,7 @@ class NonStopDebate(TrialMinigame):
                                    f'area not part of your NSD '
                                    f'({area.id}->{new_area.id}).',
                                    pred=lambda c: c in self.get_leaders())
-            self.dismiss_user(client, refresh_gamemode=True)
+            self.dismiss_user(client)
         self._check_structure()
 
     def _on_area_client_entered(self, area, client=None, old_area=None, old_displayname=None,
@@ -880,6 +891,44 @@ class NonStopDebate(TrialMinigame):
                                    f'/nsd_add {client.id}',
                                    pred=lambda c: c in self.get_leaders())
             self.introduce_user(client)
+
+    def _on_client_change_character(self, player, old_char_id=None, new_char_id=None):
+        """
+        It checks if the player is now no longer having a character. If that is
+        the case and the NSD requires all players have characters, the player is automatically
+        removed.
+
+        Parameters
+        ----------
+        player : ClientManager.Client
+            Player that signaled it has changed character.
+        old_char_id : int, optional
+            Previous character ID. The default is None.
+        new_char_id : int, optional
+            New character ID. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        old_char = player.get_char_name(old_char_id)
+        if self._require_character and not player.has_character():
+            player.send_ooc('You were removed from your NSD as it required its players to have '
+                            'characters.')
+            player.send_ooc_others(f'(X) Player {player.displayname} changed character from '
+                                   f'{old_char} to a non-character and was removed from your '
+                                   f'NSD.', pred=lambda c: c in self.get_leaders())
+            try:
+                self.remove_player(player)
+            except GameError:
+                # GameErrors may be raised because the parent trial may have already removed the
+                # player, and thus called remove_player. We use a general GameError as it could be
+                # the case the NSD is scheduled for deletion or the user is already not a player.
+                pass
+
+        self._check_structure()
 
     def _add_message(self, player, contents=None):
         """

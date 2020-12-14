@@ -709,6 +709,7 @@ class ClientChangeArea:
 
             # Code after this line assumes that the area change will be successful
             # (but has not yet been performed)
+            client.new_area = area
 
             # Send client messages that could have been generated during the change area check
             for message in mes:
@@ -765,6 +766,7 @@ class ClientChangeArea:
 
         old_area.remove_client(client)
         client.area = area
+        client.new_area = area  # Update again, as the above if may not have run
         area.new_client(client)
 
         client.send_command('HP', 1, client.area.hp_def)

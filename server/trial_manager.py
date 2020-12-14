@@ -165,7 +165,6 @@ class _Trial(GameWithAreas):
                          team_limit=team_limit, timer_limit=timer_limit,
                          areas=areas, playergroup_manager=playergroup_manager)
 
-
     def add_player(self, user):
         """
         Make a user a player of the trial. By default this player will not be a leader. It will
@@ -296,19 +295,17 @@ class _Trial(GameWithAreas):
         #     user.send_ooc_others(f'(X) Trial {self.get_id()} was automatically destroyed as it '
         #                          f'lost all its players.', is_officer=True)
 
-    def dismiss_user(self, user, refresh_gamemode=False):
+    def dismiss_user(self, user):
         """
         Broadcast information relevant for a user that has left the trial, namely clear out
-        gamemode and timers.
+        gamemode and health bars. Gamemode is only cleared if the user's new area is not part
+        of the trial's areas.
         Note the user needs not be in the same area as the NSD, nor be a player of the NSD.
 
         Parameters
         ----------
         user : ClientManager.Client
             User to introduce.
-        refresh_gamemode : bool, optional
-            If True, the dismissed user will get a clear gamemode order. If False, no such order
-            will be sent. Defaults to False.
 
         Returns
         -------
@@ -316,16 +313,15 @@ class _Trial(GameWithAreas):
 
         """
 
+        # We use .new_area rather than .area as this function may have been called as a result
+        # of the user moving, in which case .area still points to the user's old area.
+
         user.send_command('HP', 1, user.area.hp_pro)
         user.send_command('HP', 2, user.area.hp_def)
 
-        if refresh_gamemode:
+        # If the user is no longer in an area part of an area of the trial, clear out gamemode
+        if user.new_area not in self.get_areas():
             user.send_command('GM', '')
-
-        user.send_command('TP', self._client_timer_id)
-        user.send_command('TST', self._client_timer_id, 0)
-        user.send_command('TSS', self._client_timer_id, 0)
-        user.send_command('TSF', self._client_timer_id, 0)
 
     def get_influence(self, user) -> float:
         """
@@ -899,7 +895,7 @@ class _Trial(GameWithAreas):
         # Force every user in the former areas of the trial to be dismissed
         for area in areas:
             for user in area.clients:
-                self.dismiss_user(user, refresh_gamemode=True)
+                self.dismiss_user(user)
 
     def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
                              ignore_bleeding=False):
@@ -956,7 +952,7 @@ class _Trial(GameWithAreas):
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your trial ({area.id}->{new_area.id}).',
                                    pred=lambda c: c in self.get_leaders())
-            self.dismiss_user(client, refresh_gamemode=True)
+            self.dismiss_user(client)
 
         self._check_structure()
 
@@ -1025,7 +1021,7 @@ class _Trial(GameWithAreas):
                             'characters.')
             player.send_ooc_others(f'(X) Player {player.displayname} changed character from '
                                    f'{old_char} to a non-character and was removed from your '
-                                   f'trial.')
+                                   f'trial.', pred=lambda c: c in self.get_leaders())
             self.remove_player(player)
 
         self._check_structure()
@@ -1258,7 +1254,7 @@ class TrialManager(GameWithAreasManager):
         """
 
         areas = {creator.area} if creator else set()
-        trial_factory = functools.partial(_Trial, areas=areas, require_character=True)
+        trial_factory = functools.partial(_Trial, areas=areas)
         trial = self.new_game(game_type=trial_factory, creator=creator,
                               player_limit=player_limit,
                               concurrent_limit=concurrent_limit,

@@ -6948,7 +6948,8 @@ def ooc_cmd_trial(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     try:
-        trial = client.server.trial_manager.new_trial(creator=client, add_players=False)
+        trial = client.server.trial_manager.new_trial(creator=client, add_players=False,
+                                                      require_character=True)
     except TrialError.ManagerTooManyGamesError:
         raise ClientError('The server has reached its trial limit.')
     except TrialError.UserHitConcurrentLimitError:
@@ -7419,7 +7420,8 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
         raise ClientError('You are not a leader of your trial.')
 
     try:
-        nsd = trial.new_nsd(creator=client, add_players=False, timer_start_value=seconds)
+        nsd = trial.new_nsd(creator=client, add_players=False, timer_start_value=seconds,
+                            require_character=True)
     except TrialError.ManagerTooManyGamesError:
         raise ClientError('The trial has reached its NSD limit.')
     except NonStopDebateError.UserHitConcurrentLimitError:
