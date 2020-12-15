@@ -306,6 +306,7 @@ class _Trial(GameWithAreas):
         gamemode and health bars. Gamemode is only cleared if the user's new area is not part
         of the trial's areas.
         Note the user needs not be in the same area as the NSD, nor be a player of the NSD.
+        If the trial has never had any players, this method does nothing.
 
         Parameters
         ----------
@@ -317,6 +318,9 @@ class _Trial(GameWithAreas):
         None.
 
         """
+
+        if not self.has_ever_had_players():
+            return
 
         # We use .new_area rather than .area as this function may have been called as a result
         # of the user moving, in which case .area still points to the user's old area.

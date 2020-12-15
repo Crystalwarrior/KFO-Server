@@ -223,6 +223,7 @@ class NonStopDebate(TrialMinigame):
         to trial and the timers are cleared.
         * Otherwise, the gamemode is cleared and so are the timers.
         Note the user needs not be in the same area as the NSD, nor be a player of the NSD.
+        If the NSD has never had any players, this method does nothing.
 
         Parameters
         ----------
@@ -234,6 +235,9 @@ class NonStopDebate(TrialMinigame):
         None.
 
         """
+
+        if not self.has_ever_had_players():
+            return
 
         # We use .new_area rather than .area as this function may have been called as a result
         # of the user moving, in which case .area still points to the user's old area.

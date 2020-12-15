@@ -585,6 +585,19 @@ class PlayerGroup:
 
         return self._unmanaged
 
+    def has_ever_had_players(self):
+        """
+        Return True if a player has ever been added to this player group, False otherwise.
+
+        Returns
+        -------
+        bool
+            True if the player group has ever had a player added, False otherwise.
+
+        """
+
+        return self._ever_had_players
+
     def destroy(self):
         """
         Mark this player group as destroyed and notify its manager so that it is deleted.

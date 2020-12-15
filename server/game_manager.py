@@ -1139,6 +1139,19 @@ class _Game():
 
         self._check_structure()
 
+    def has_ever_had_players(self):
+        """
+        Return True if a player has ever been added to this game, False otherwise.
+
+        Returns
+        -------
+        bool
+            True if the game has ever had a player added, False otherwise.
+
+        """
+
+        return self._playergroup.has_ever_had_players()
+
     def _on_client_send_ic_check(self, player, contents=None):
         """
         Default callback for game player signaling it wants to check if sending an IC message
