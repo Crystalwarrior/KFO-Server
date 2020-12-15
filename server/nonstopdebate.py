@@ -980,8 +980,16 @@ class NonStopDebate(TrialMinigame):
             for user in self.get_users_in_areas():
                 user.send_ic(params=contents, sender=sender)
             logger.log_server('[IC][{}][{}][NSD]{}'
-                  .format(sender.area.id, sender.get_char_name(), contents['msg']), sender)
+                              .format(sender.area.id, sender.get_char_name(), contents['msg']),
+                              sender)
         else:
+            for user in self.get_nonplayer_users_in_areas():
+                user.send_ooc('A loop of the nonstop debate you are watching has finished.')
+            for user in self.get_players():
+                user.send_ooc('A loop of your nonstop debate has finished.')
+            for leader in self.get_leaders():
+                leader.send_ooc('Type /nsd_loop to loop the debate again, or /nsd_end to end the '
+                                'debate.')
             self.set_intermission()
 
     def _break_loop(self, player, contents):
@@ -1031,7 +1039,7 @@ class NonStopDebate(TrialMinigame):
                 # But still send leader important information.
                 user.send_ooc("Type /nsd_accept to accept the break and end the debate, "
                               "/nsd_reject to reject the break and penalize the breaker, "
-                              "/nsd_resume to resume the debate where it was, and "
+                              "/nsd_resume to resume the debate where it was, or "
                               "/nsd_end to end the debate.")
 
         for regular in self.get_nonleader_users_in_areas():
