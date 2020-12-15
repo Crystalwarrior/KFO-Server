@@ -382,11 +382,17 @@ class AOProtocol(asyncio.Protocol):
                                      needs_auth=False):
             return
         cid = args[1]
+
+        ever_chose_character = self.client.ever_chose_character  # Store for later
         try:
             self.client.change_character(cid)
         except ClientError:
             return
         self.client.last_active = Constants.get_time()
+
+        if not ever_chose_character:
+            self.client.send_command('GM', '')
+            self.client.send_command('TOD', '')
 
     def net_cmd_ms(self, args):
         """ IC message.

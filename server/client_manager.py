@@ -50,6 +50,7 @@ class ClientManager:
             self.char_folder = ''
             self.pos = ''
             self.showname = ''
+            self.ever_chose_character = False
             self.joined = time.time()
             self.last_active = Constants.get_time()
 
@@ -567,6 +568,9 @@ class ClientManager:
                 else:
                     raise ClientError('Character {} not available.'
                                       .format(self.get_char_name(char_id)))
+
+            # Code after this comment assumes the character change will be successful
+            self.ever_chose_character = True
 
             if old_char_id < 0 and char_id >= 0:  # No longer spectator?
                 # Now bound by AFK rules

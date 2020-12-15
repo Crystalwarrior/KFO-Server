@@ -155,7 +155,9 @@ class TestClientConnection(_Unittest):
 
         # Only now pick char
         c.send_command_cts("CC#1#0#FAKEHDID#%") # Pick char 0
-        c.assert_packet('PV', (1, 'CID', 0), over=True) # 1 because second client online
+        c.assert_packet('PV', (1, 'CID', 0)) # 1 because second client online
+        c.assert_packet('GM', '')
+        c.assert_packet('TOD', '', over=True)
         assert(c.get_char_name() == self.server.char_list[0])
 
         # Check number of clients
@@ -212,7 +214,9 @@ class TestClientConnection(_Unittest):
         c.send_command_cts("CC#2#0#FAKEHDID#%") # Attempt to pick char 0
         c.assert_no_packets() # Should not happen as client 1 has char 0
         c.send_command_cts("CC#2#1#FAKEHDID#%") # Attempt to pick char 1
-        c.assert_packet('PV', (2, 'CID', 1), over=True) # 2 because third client online
+        c.assert_packet('PV', (2, 'CID', 1)) # 2 because third client online
+        c.assert_packet('GM', '')
+        c.assert_packet('TOD', '', over=True)
         assert(c.get_char_name() == self.server.char_list[1])
 
         # Check number of clients
@@ -235,7 +239,9 @@ class TestClientConnection(_Unittest):
         c.send_command_cts("CC#0#4#FAKEHDID#%") # Attempt to pick char 4
         c.assert_no_packets() # Should not happen as there is no char 4
         c.send_command_cts("CC#0#3#FAKEHDID#%") # Attempt to pick char 3
-        c.assert_packet('PV', (0, 'CID', 3), over=True) # 0 because first client online
+        c.assert_packet('PV', (0, 'CID', 3)) # 0 because first client online
+        c.assert_packet('GM', '')
+        c.assert_packet('TOD', '', over=True)
         assert(c.get_char_name() == self.server.char_list[3])
 
         self.assertEqual(len(self.server.client_manager.clients), 3)
