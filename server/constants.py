@@ -1272,3 +1272,32 @@ class Constants():
         if current_type in [None, default_type]:
             return functools.partial(default_type, *args, **kwargs)
         raise ValueError(current_type, type(current_type))
+
+    @staticmethod
+    def contains_illegal_characters(text) -> bool:
+        """
+        Returns True if `text` contains a zero-width character, False otherwise.
+
+        Parameters
+        ----------
+        text : str
+            Text to check.
+
+        Returns
+        -------
+        bool
+            True if `text` contains a zero-width character, False otherwise.
+        """
+
+        illegal_characters = [
+            '\u200b',
+            '\u200c',
+            '\u200d',
+            '\u2060',
+            '\ufeff',
+            ]
+
+        for char in illegal_characters:
+            if char in text:
+                return True
+        return False
