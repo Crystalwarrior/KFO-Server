@@ -1449,6 +1449,7 @@ def ooc_cmd_coinflip(client: ClientManager.Client, arg: str):
     logger.log_server('[{}][{}]Used /coinflip and got {}.'
                       .format(client.area.id, client.get_char_name(), flip), client)
 
+
 def ooc_cmd_cure(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Cures the target of some of three effects (blindness, deafened, or gagged) as follows:
@@ -1489,15 +1490,15 @@ def ooc_cmd_cure(client: ClientManager.Client, arg: str):
         try:
             client.server.tasker.remove_task(target, [effect.async_name])
         except KeyError:
-            pass # Do nothing if not subject to one
+            pass  # Do nothing if not subject to one
 
         if target != client:
             target.send_ooc('You were cured of the effect `{}`.'.format(effect.name))
-            client.send_ooc('You cured {} of the effect `{}`.'
-                            .format(target.displayname, effect.name))
-            client.send_ooc_others('(X) {} [{}] cured {} of the effect `{}` ({}).'
+            client.send_ooc('You cured {} [{}] of the effect `{}`.'
+                            .format(target.displayname, target.id, effect.name))
+            client.send_ooc_others('(X) {} [{}] cured {} [{}] of the effect `{}` ({}).'
                                    .format(client.displayname, client.id, target.displayname,
-                                           effect.name, client.area.id,),
+                                           target.id, effect.name, client.area.id),
                                    is_zstaff_flex=True, not_to={target})
         else:
             client.send_ooc('You cured yourself of the effect `{}`.'.format(effect.name))
@@ -1507,6 +1508,7 @@ def ooc_cmd_cure(client: ClientManager.Client, arg: str):
                                    is_zstaff_flex=True)
 
         effect.function(target, False)
+
 
 def ooc_cmd_currentmusic(client: ClientManager.Client, arg: str):
     """
@@ -3923,6 +3925,7 @@ def ooc_cmd_pm(client: ClientManager.Client, arg: str):
     target.send_ooc('PM from {} in {} ({}): {}'
                     .format(client.name, client.area.name, client.displayname, msg))
 
+
 def ooc_cmd_poison(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Poisons the target with some of three effects (blindness, deafened or gagged) that kick in
@@ -3997,10 +4000,10 @@ def ooc_cmd_poison(client: ClientManager.Client, arg: str):
     if target != client:
         target.send_ooc('You were poisoned. The following effects will apply shortly: {}'
                         .format(target_message))
-        client.send_ooc('You poisoned {} with the following effects: {}'
-                        .format(target.displayname, self_message))
-        client.send_ooc_others('(X) {} [{}] poisoned {} with the following effects ({}): {}'
-                               .format(client.displayname, client.id, target.displayname,
+        client.send_ooc('You poisoned {} [{}] with the following effects: {}'
+                        .format(target.displayname, target.id, self_message))
+        client.send_ooc_others('(X) {} [{}] poisoned {} [{}] with the following effects ({}): {}'
+                               .format(client.displayname, client.id, target.displayname, target.id,
                                        client.area.id, zstaff_message),
                                is_zstaff_flex=True, not_to={target})
     else:
@@ -4010,6 +4013,7 @@ def ooc_cmd_poison(client: ClientManager.Client, arg: str):
                                .format(client.displayname, client.id, client.area.id,
                                        zstaff_message),
                                is_zstaff_flex=True)
+
 
 def ooc_cmd_pos(client: ClientManager.Client, arg: str):
     """

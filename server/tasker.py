@@ -525,14 +525,14 @@ class Tasker:
         else:
             if new_value:
                 client.send_ooc('The effect `{}` kicked in.'.format(effect.name))
-                client.send_ooc_others('(X) {} is now subject to the effect `{}`.'
-                                       .format(client.displayname, effect.name),
+                client.send_ooc_others('(X) {} [{}] is now subject to the effect `{}`.'
+                                       .format(client.displayname, client.id, effect.name),
                                        is_zstaff_flex=True)
                 effect.function(client, True)
             else:
                 client.send_ooc('The effect `{}` stopped.')
-                client.send_ooc_others('(X) {} is no longer subject to the effect `{}`.'
-                                       .format(client.displayname, effect.name),
+                client.send_ooc_others('(X) {} [{}] is no longer subject to the effect `{}`.'
+                                       .format(client.displayname, client.id, effect.name),
                                        is_zstaff_flex=True)
                 effect.function(client, False)
             self.remove_task(client, [effect.async_name])
