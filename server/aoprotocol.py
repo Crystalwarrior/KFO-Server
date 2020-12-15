@@ -648,7 +648,7 @@ class AOProtocol(asyncio.Protocol):
             return
         if not self.validate_net_cmd(args, ArgType.STR, ArgType.STR, needs_auth=False):
             return
-        if args[0] == '':
+        if args[0] == ''  or not self.client.is_valid_name(args[0]):
             self.client.send_ooc('You must insert a name with at least one letter.')
             return
         if args[0].startswith(' '):
@@ -662,13 +662,8 @@ class AOProtocol(asyncio.Protocol):
             return
 
         # After this the name is validated
-        if self.client.name != args[0] and self.client.fake_name != args[0]:
-            if self.client.is_valid_name(args[0]):
-                self.client.name = args[0]
-                self.client.fake_name = args[0]
-            else:
-                self.client.fake_name = args[0]
-                self.client.name = ''
+        self.client.name = args[0]
+
         if args[1].startswith('/'):
             spl = args[1][1:].split(' ', 1)
             cmd = spl[0]

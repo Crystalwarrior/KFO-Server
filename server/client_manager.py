@@ -47,7 +47,6 @@ class ClientManager:
             self.id = user_id
             self.char_id = None
             self.name = ''
-            self.fake_name = ''
             self.char_folder = ''
             self.pos = ''
             self.showname = ''
