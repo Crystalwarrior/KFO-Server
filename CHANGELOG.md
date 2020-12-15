@@ -549,6 +549,7 @@
 * Fixed the server disallowing all IC messages if a daily password was deliberately left empty rather than removed from the configuration file
 * Fixed /party_leave not having short documentation for /help party_leave
 * Fixed the server attempting to send packets to clients without checking if the client is still online.
-* Fixed /poison, /cure and notifications for effects kicking in not showing the target's ID to the command runner and zone watchers,
+* Fixed /poison, /cure and notifications for effects kicking in not showing the target's ID to the command runner and zone watchers
+* Fixed /charselect notifying of the wrong person running the command to officers
 * Removed deprecated AO commands
 * Dropped Python 3.6 support

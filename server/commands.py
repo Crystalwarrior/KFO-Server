@@ -1105,8 +1105,8 @@ def ooc_cmd_charselect(client: ClientManager.Client, arg: str):
             client.send_ooc(f'You forced {c.displayname} to open the character select screen.')
             if client != c:
                 c.send_ooc('You were forced to open the character select screen.')
-            client.send_ooc_others(f'{c.name} [{c.id}] forced {c.displayname} to open the '
-                                   f'character select screen ({c.area.id})',
+            client.send_ooc_others(f'{client.name} [{client.id}] forced {c.displayname} [{c.id}] '
+                                   f'to open the character select screen ({c.area.id}).',
                                    not_to={c}, is_officer=True)
             c.char_select()
 
