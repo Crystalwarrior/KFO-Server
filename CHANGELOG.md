@@ -471,3 +471,7 @@
 * Fixed /scream not showing default or custom shownames in IC for non-deaf players
 * Reworded the /scream OOC notification so it is more in line with other OOC/IC notifications
 * Deaf players now only see an IC notification for screams
+
+### 201215a (4.2.5-post4)
+* Fixed allowing zero-width characters in OOC names and shownames
+* Fixed illegal OOC names being associated with clients, even after being notified they are invalid

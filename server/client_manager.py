@@ -576,6 +576,9 @@ class ClientManager:
             if target_area is None:
                 target_area = self.area
 
+            if Constants.contains_illegal_characters(showname):
+                raise ClientError(f'Showname `{showname}` contains an illegal character.')
+
             # Check length
             if len(showname) > self.server.config['showname_max_length']:
                 raise ClientError("Showname `{}` exceeds the server's character limit of {}."

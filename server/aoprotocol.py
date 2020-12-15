@@ -668,6 +668,20 @@ class AOProtocol(asyncio.Protocol):
             return
         if not self.validate_net_cmd(args, ArgType.STR, ArgType.STR, needs_auth=False):
             return
+        if args[0] == '' or not self.client.is_valid_name(args[0]):
+            self.client.send_ooc('You must insert a name with at least one letter.')
+            return
+        if args[0].startswith(' '):
+            self.client.send_ooc('You must insert a name that starts with a letter.')
+            return
+        if Constants.contains_illegal_characters(args[0]):
+            self.client.send_ooc('Your name contains an illegal character.')
+            return
+        if self.server.config['hostname'] in args[0] or '<dollar>G' in args[0]:
+            self.client.send_ooc('That name is reserved.')
+            return
+
+        # After this the name is validated
         if self.client.name != args[0] and self.client.fake_name != args[0]:
             if self.client.is_valid_name(args[0]):
                 self.client.name = args[0]
@@ -675,15 +689,6 @@ class AOProtocol(asyncio.Protocol):
             else:
                 self.client.fake_name = args[0]
                 self.client.name = ''
-        if self.client.name == '':
-            self.client.send_ooc('You must insert a name with at least one letter.')
-            return
-        if self.client.name.startswith(' '):
-            self.client.send_ooc('You must insert a name that starts with a letter.')
-            return
-        if self.server.config['hostname'] in self.client.name or '<dollar>G' in self.client.name:
-            self.client.send_ooc('That name is reserved.')
-            return
         if args[1].startswith('/'):
             spl = args[1][1:].split(' ', 1)
             cmd = spl[0]
