@@ -7304,11 +7304,22 @@ def ooc_cmd_trial_leave(client: ClientManager, arg: str):
         raise ClientError('You are not part of a trial.')
 
     tid = trial.get_id()  # Get ID now because trial may be deleted
+    nonplayers = trial.get_nonplayer_users_in_areas()
 
     client.send_ooc(f'You have left trial `{tid}`.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your trial.',
                            pred=lambda c: c in trial.get_leaders())
     trial.remove_player(client)
+
+    if trial.is_unmanaged():
+        client.send_ooc(f'Your trial `{tid}` was automatically '
+                        f'deleted as it lost all its players.')
+        client.send_ooc_others(f'(X) Trial `{tid}` was automatically '
+                               f'deleted as it lost all its players.',
+                               is_zstaff_flex=True, not_to=nonplayers)
+        client.send_ooc_others('The trial you were watching was automatically deleted '
+                               'as it lost all its players.',
+                               is_zstaff_flex=False, pred=lambda c: c in nonplayers)
 
 
 def ooc_cmd_trial_kick(client: ClientManager.Client, arg: str):
@@ -7726,11 +7737,21 @@ def ooc_cmd_nsd_leave(client: ClientManager, arg: str):
     except TrialError.UserNotInMinigameError:
         raise ClientError('You are not part of a nonstop debate.')
     nid = nsd.get_id()  # Get ID now because NSD may be deleted
-
+    nonplayers = nsd.get_nonplayer_users_in_areas()  # Get nonplayers now because NSD may be deleted
     client.send_ooc(f'You have left nonstop debate `{nid}`.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your nonstop debate.',
                            pred=lambda c: c in nsd.get_leaders())
     nsd.remove_player(client)
+
+    if nsd.is_unmanaged():
+        client.send_ooc(f'Your nonstop debate `{nid}` was automatically '
+                        f'deleted as it lost all its players.')
+        client.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
+                               f'deleted as it lost all its players.',
+                               is_zstaff_flex=True, not_to=nonplayers)
+        client.send_ooc_others('The nonstop debate you were watching was automatically deleted '
+                               'as it lost all its players.',
+                               is_zstaff_flex=False, pred=lambda c: c in nonplayers)
 
 
 def ooc_cmd_nsd_kick(client: ClientManager.Client, arg: str):

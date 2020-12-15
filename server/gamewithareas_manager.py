@@ -25,6 +25,7 @@ import functools
 from server.exceptions import GameWithAreasError, GameError
 from server.game_manager import _Game, GameManager
 
+
 class GameWithAreas(_Game):
     """
     A game with areas is a game that manages and subscribes to its areas' updates.
@@ -330,7 +331,7 @@ class GameWithAreas(_Game):
 
         Returns
         -------
-        users : list of ClientManagerClient
+        users : set of ClientManager.Client
             All users in areas part of the game.
 
         """
@@ -338,7 +339,7 @@ class GameWithAreas(_Game):
         clients = list()
         for area in self._areas:
             clients.extend(area.clients)
-        return clients
+        return set(clients)
 
     def get_nonleader_users_in_areas(self):
         """
@@ -347,13 +348,13 @@ class GameWithAreas(_Game):
 
         Returns
         -------
-        users : list of ClientManagerClient
+        users : set of ClientManager.Client
             All users in areas part of the game that are not leaders of the game.
 
         """
 
-        return [client for client in self.get_users_in_areas()
-                if not (self.is_player(client) and self.is_leader(client))]
+        return {client for client in self.get_users_in_areas()
+                if not (self.is_player(client) and self.is_leader(client))}
 
     def get_nonplayer_users_in_areas(self):
         """
@@ -361,12 +362,12 @@ class GameWithAreas(_Game):
 
         Returns
         -------
-        users : list of ClientManagerClient
+        users : set of ClientManager.Client
             All users in areas part of the game that are not players of the game.
 
         """
 
-        return [client for client in self.get_users_in_areas() if not self.is_player(client)]
+        return {client for client in self.get_users_in_areas() if not self.is_player(client)}
 
     def destroy(self):
         """
@@ -385,7 +386,7 @@ class GameWithAreas(_Game):
         # areas are removed.
         for area in self.get_areas():
             self.remove_area(area)
-        super().destroy() # Also calls _check_structure()
+        super().destroy()  # Also calls _check_structure()
 
     def __str__(self):
         """

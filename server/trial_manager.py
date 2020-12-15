@@ -939,7 +939,6 @@ class _Trial(GameWithAreas):
         if new_area in self.get_areas():
             return
 
-        was_leader = self.is_leader(client) if self.is_player(client) else False
         if client in self.get_players():
             client.send_ooc(f'You have left to an area not part of trial `{self.get_id()}` and '
                             f'thus were automatically removed from the trial.')
@@ -948,15 +947,20 @@ class _Trial(GameWithAreas):
                                    f'removed it ({area.id}->{new_area.id}).',
                                    pred=lambda c: c in self.get_leaders())
 
+            nonplayers = self.get_nonplayer_users_in_areas()
+            tid = self.get_id()
+
             self.remove_player(client)
 
             if self.is_unmanaged():
-                if was_leader:
-                    client.send_ooc(f'Your trial `{self.get_id()}` was automatically '
-                                    f'deleted as it lost all its players.')
-                client.send_ooc_others(f'(X) Trial `{self.get_id()}` was automatically '
+                client.send_ooc(f'Your trial `{tid}` was automatically '
+                                f'deleted as it lost all its players.')
+                client.send_ooc_others(f'(X) Trial `{tid}` was automatically '
                                        f'deleted as it lost all its players.',
-                                       is_zstaff_flex=True)
+                                       is_zstaff_flex=True, not_to=nonplayers)
+                client.send_ooc_others('The trial you were watching was automatically deleted '
+                                       'as it lost all its players.',
+                                       is_zstaff_flex=False, part_of=nonplayers)
         else:
             client.send_ooc(f'You have left to an area not part of trial `{self.get_id()}`.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
@@ -1032,7 +1036,21 @@ class _Trial(GameWithAreas):
             player.send_ooc_others(f'(X) Player {player.displayname} changed character from '
                                    f'{old_char} to a non-character and was removed from your '
                                    f'trial.', pred=lambda c: c in self.get_leaders())
+
+            nonplayers = self.get_nonplayer_users_in_areas()
+            tid = self.get_id()
+
             self.remove_player(player)
+
+            if self.is_unmanaged():
+                player.send_ooc(f'Your trial `{tid}` was automatically '
+                                f'deleted as it lost all its players.')
+                player.send_ooc_others(f'(X) Trial `{tid}` was automatically '
+                                       f'deleted as it lost all its players.',
+                                       is_zstaff_flex=True, not_to=nonplayers)
+                player.send_ooc_others('The trial you were watching was automatically deleted '
+                                       'as it lost all its players.',
+                                       is_zstaff_flex=False, part_of=nonplayers)
 
         self._check_structure()
 
@@ -1056,12 +1074,23 @@ class _Trial(GameWithAreas):
             return
         if player not in self.get_players():
             return
-        # Warning this raises socket.send() exception if server shutdown and want to send
-        # OOC to disconnected players. This is in \lib\asyncio\selector_events.py.
 
         player.send_ooc_others(f'(X) Player {player.displayname} of your trial disconnected. '
                                f'({player.area.id})', pred=lambda c: c in self.get_leaders())
+        nonplayers = self.get_nonplayer_users_in_areas()
+        tid = self.get_id()
+
         self.remove_player(player)
+
+        if self.is_unmanaged():
+            # player.send_ooc(f'Your trial `{tid}` was automatically '
+            #                 f'deleted as it lost all its players.')
+            player.send_ooc_others(f'(X) Trial `{tid}` was automatically '
+                                   f'deleted as it lost all its players.',
+                                   is_zstaff_flex=True, not_to=nonplayers)
+            player.send_ooc_others('The trial you were watching was automatically deleted '
+                                   'as it lost all its players.',
+                                   is_zstaff_flex=False, part_of=nonplayers)
 
         self._check_structure()
 

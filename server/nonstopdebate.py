@@ -834,7 +834,6 @@ class NonStopDebate(TrialMinigame):
         if new_area in self.get_areas():
             return
 
-        was_leader = self.is_leader(client) if self.is_player(client) else False
         if client in self.get_players():
             client.send_ooc(f'You have left to an area not part of NSD '
                             f'`{self.get_id()}` and thus were automatically removed from the '
@@ -844,14 +843,21 @@ class NonStopDebate(TrialMinigame):
                                    f'automatically removed from it ({area.id}->{new_area.id}).',
                                    pred=lambda c: c in self.get_leaders())
 
+            nonplayers = self.get_nonplayer_users_in_areas()
+            nid = self.get_id()
+
             self.remove_player(client)
+
             if self.is_unmanaged():
-                if was_leader:
-                    client.send_ooc(f'Your NSD `{self.get_id()}` was automatically '
-                                    f'deleted as it lost all its players.')
-                client.send_ooc_others(f'(X) NSD `{self.get_id()}` was automatically '
+                client.send_ooc(f'Your nonstop debate `{nid}` was automatically '
+                                f'deleted as it lost all its players.')
+                client.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
                                        f'deleted as it lost all its players.',
-                                       is_zstaff_flex=True)
+                                       is_zstaff_flex=True, not_to=nonplayers)
+                client.send_ooc_others('The nonstop debate you were watching was automatically '
+                                       'deleted as it lost all its players.',
+                                       is_zstaff_flex=False, part_of=nonplayers)
+
         else:
             client.send_ooc(f'You have left to an area not part of NSD '
                             f'`{self.get_id()}`.')
@@ -931,6 +937,10 @@ class NonStopDebate(TrialMinigame):
             player.send_ooc_others(f'(X) Player {player.displayname} changed character from '
                                    f'{old_char} to a non-character and was removed from your '
                                    f'NSD.', pred=lambda c: c in self.get_leaders())
+
+            nonplayers = self.get_nonplayer_users_in_areas()
+            nid = self.get_id()
+
             try:
                 self.remove_player(player)
             except GameError:
@@ -938,6 +948,65 @@ class NonStopDebate(TrialMinigame):
                 # player, and thus called remove_player. We use a general GameError as it could be
                 # the case the NSD is scheduled for deletion or the user is already not a player.
                 pass
+
+            if self.is_unmanaged():
+                player.send_ooc(f'Your nonstop debate `{nid}` was automatically '
+                                f'deleted as it lost all its players.')
+                player.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
+                                       f'deleted as it lost all its players.',
+                                       is_zstaff_flex=True, not_to=nonplayers)
+                player.send_ooc_others('The nonstop debate you were watching was automatically '
+                                       'deleted as it lost all its players.',
+                                       is_zstaff_flex=False, part_of=nonplayers)
+
+        self._check_structure()
+
+    def _on_client_destroyed(self, player):
+        """
+        Remove the player from the NSD. If the NSD is already unmanaged or
+        the player is not in the game, this callback does nothing.
+
+        Parameters
+        ----------
+        player : ClientManager.Client
+            Player that signaled it was destroyed.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if self.is_unmanaged():
+            return
+        if player not in self.get_players():
+            return
+
+        player.send_ooc_others(f'(X) Player {player.displayname} of your nonstop debate '
+                               f'disconnected ({player.area.id}).',
+                               pred=lambda c: c in self.get_leaders())
+
+        nonplayers = self.get_nonplayer_users_in_areas()
+        nid = self.get_id()
+
+        try:
+            self.remove_player(player)
+        except GameError:
+            # GameErrors may be raised because the parent trial may have already removed the
+            # player, and thus called remove_player. We use a general GameError as it could be
+            # the case the NSD is scheduled for deletion or the user is already not a player.
+            pass
+
+        if self.is_unmanaged():
+            # We check again, because now the NSD may be unmanaged
+            # player.send_ooc(f'Your nonstop debate `{nid}` was automatically '
+            #                 f'deleted as it lost all its players.')
+            player.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
+                                   f'deleted as it lost all its players.',
+                                   is_zstaff_flex=True, not_to=nonplayers)
+            player.send_ooc_others('The nonstop debate you were watching was automatically deleted '
+                                   'as it lost all its players.',
+                                   is_zstaff_flex=False, part_of=nonplayers)
 
         self._check_structure()
 
