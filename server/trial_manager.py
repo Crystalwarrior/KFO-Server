@@ -244,11 +244,12 @@ class _Trial(GameWithAreas):
             user.send_command('HP', 1, int(self._player_to_focus[user.id][0]))
             user.send_command('HP', 2, int(self._player_to_influence[user.id][0]))
 
-        # If there are any minigames, let them set the gamemode and timers
+        # If there are any minigames, let them set the splashes, gamemode and timers
         if self.get_minigames():
             return
 
         user.send_command('GM', 'trial')
+        user.send_command('RT', 'testimony1')
         user.send_command('TP', self._client_timer_id, 0)
         user.send_command('TST', self._client_timer_id, 0)
         user.send_command('TSS', self._client_timer_id, 0)
@@ -892,8 +893,8 @@ class _Trial(GameWithAreas):
 
         """
 
-        # Store backup of areas, useful for later
-        areas = self.get_areas()
+        # Store for later
+        users = self.get_users_in_areas()
 
         # Remove minigames first. This is done first so as to enforce explicit destruction
         # (rather than rely on other methods).
@@ -903,9 +904,25 @@ class _Trial(GameWithAreas):
         super().destroy()  # Also calls _check_structure()
 
         # Force every user in the former areas of the trial to be dismissed
-        for area in areas:
-            for user in area.clients:
-                self.dismiss_user(user)
+        for user in users:
+            self.dismiss_user(user)
+
+    def end(self):
+        """
+        Destroy the trial and play the trial end splash animation to all users in the trial areas.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        users = self.get_users_in_areas()  # Store for later
+
+        self.destroy()
+
+        for user in users:
+            user.send_command('RT', 'testimony2')
 
     def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
                              ignore_bleeding=False):

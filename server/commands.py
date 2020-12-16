@@ -7110,7 +7110,7 @@ def ooc_cmd_trial_end(client: ClientManager, arg: str):
     leaders = trial.get_leaders()
     regulars = trial.get_regulars()
     nonplayers = trial.get_nonplayer_users_in_areas()
-    trial.destroy()
+    trial.end()
 
     client.send_ooc('You ended your trial.')
     client.send_ooc_others('The trial you were watching was ended.',
