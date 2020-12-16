@@ -905,6 +905,7 @@ class AreaManager:
         self.server = server
         self.areas = []
         self.area_names = set()
+        self.publisher = Publisher(self)
         self.load_areas()
 
     def load_areas(self, area_list_file='config/areas.yaml'):
@@ -1069,7 +1070,8 @@ class AreaManager:
         for (zone_id, zone) in backup_zones.items():
             self.server.zone_manager.delete_zone(zone_id)
             for client in zone.get_watchers():
-                client.send_ooc('Your zone has been automatically deleted.')
+                client.send_ooc('Your zone has been automatically deleted due to an area list '
+                                'load.')
 
         # And cancel all existing day cycles
         for client in self.server.client_manager.clients:
@@ -1088,6 +1090,9 @@ class AreaManager:
                 client.send_ooc('Due to an area list reload, your global IC prefix was removed. '
                                 'You may set it again manually.')
                 client.multi_ic_pre = ''
+
+        # And do other tasks associated with areas reloading
+        self.publisher.publish('areas_loaded', dict())
 
         # If the default area ID is now past the number of available areas, reset it back to zero
         if self.server.default_area >= len(self.areas):

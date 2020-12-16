@@ -1129,7 +1129,6 @@ class _Game():
             team.destroy()
 
         # Players (and subscriptions to them) are handled in the manager's delete code.
-
         try:
             self._manager.delete_game(self)
         except GameError.ManagerDoesNotManageGameError:

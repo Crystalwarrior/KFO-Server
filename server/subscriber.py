@@ -20,6 +20,7 @@
 Module that implements a simple publisher-listener model.
 """
 
+
 class Listener:
     """
     A listener may be subscribed to many publishers, so it will be receiving messages from them.
@@ -230,7 +231,6 @@ class Listener:
             return
         else:
             method(source, **arguments)
-
 
 class Publisher:
     """

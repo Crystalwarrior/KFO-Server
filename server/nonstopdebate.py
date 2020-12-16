@@ -1010,6 +1010,29 @@ class NonStopDebate(TrialMinigame):
 
         self._check_structure()
 
+    def _on_areas_loaded(self, area_manager):
+        """
+        Destroy the trial and warn players and nonplayers in areas.
+
+        Parameters
+        ----------
+        area_manager : AreaManager
+            AreaManager that signaled the area list load.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        for nonplayer in self.get_nonleader_users_in_areas():
+            nonplayer.send_ooc('The nonstop debate you were watching was deleted due to an area '
+                               'list load.')
+        for player in self.get_players():
+            player.send_ooc('Your nonstop debate was deleted due to an area list load.')
+
+        self.destroy()
+
     def _add_message(self, player, contents=None):
         """
         Add a message to the log of messages of the NSD. If the NSD timer is paused, it will also

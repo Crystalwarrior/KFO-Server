@@ -152,11 +152,13 @@ class GameWithAreas(_Game):
                          team_limit=team_limit, timer_limit=timer_limit,
                          playergroup_manager=playergroup_manager)
 
+        self.listener.subscribe(self._server.area_manager)
         self.listener.update_events({
             'area_client_left': self._on_area_client_left,
             'area_client_entered': self._on_area_client_entered,
             'area_client_send_ic_check': self._on_area_client_send_ic_check,
             'area_destroyed': self._on_area_destroyed,
+            'areas_loaded': self._on_areas_loaded,
             })
 
     def add_player(self, user):
@@ -270,7 +272,16 @@ class GameWithAreas(_Game):
         if area not in self._areas:
             raise GameWithAreasError.AreaNotInGameError
 
-        for player in self.get_players(cond=lambda client: client.area == area):
+        # Implementation detail: we may not simply check if client.area == area. That is because it
+        # may be the case a player was moved as a result of the area being destroyed, which is one
+        # of the events that triggers this method. Moreover, as the change_area code in area reloads
+        # does not trigger the publishers, we cannot necessarily assume that _on_area_client_left
+        # will do our checks.
+        # However, we can check ourselves manually: if a player of the game is in an area not
+        # part of the game, remove them.
+        # As area is in self._areas (by earlier check), we do not need to check
+        faulty_players = self.get_players(cond=lambda client: client.area == area)
+        for player in faulty_players:
             self.remove_player(player)
         # Remove area only after removing all players to prevent structural checks failing
         self._areas.discard(area)
@@ -545,6 +556,25 @@ class GameWithAreas(_Game):
         self.remove_area(area)
 
         self._check_structure()
+
+    def _on_areas_loaded(self, area_manager):
+        """
+        Default callback for server area manager signaling it loaded new areas.
+
+        By default it calls self.destroy().
+
+        Parameters
+        ----------
+        area_manager : AreaManager
+            AreaManager that signaled the area loads
+
+        Returns
+        -------
+        None.
+
+        """
+
+        self.destroy()
 
     def _check_structure(self):
         """

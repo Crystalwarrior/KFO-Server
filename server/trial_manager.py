@@ -1094,6 +1094,28 @@ class _Trial(GameWithAreas):
 
         self._check_structure()
 
+    def _on_areas_loaded(self, area_manager):
+        """
+        Destroy the trial and warn players and nonplayers in areas.
+
+        Parameters
+        ----------
+        area_manager : AreaManager
+            AreaManager that signaled the area list load.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        for nonplayer in self.get_nonleader_users_in_areas():
+            nonplayer.send_ooc('The trial you were watching was deleted due to an area list load.')
+        for player in self.get_players():
+            player.send_ooc('Your trial was deleted due to an area list load.')
+
+        self.destroy()
+
     def __str__(self):
         """
         Return a string representation of this trial.
