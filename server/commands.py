@@ -8547,10 +8547,10 @@ def ooc_cmd_zone_mode(client: ClientManager.Client, arg: str):
     to this gamemode.
 
     SYNTAX
-    /zone_mode <gamemode>
+    /zone_mode {gamemode}
 
-    PARAMETERS
-    <gamemode>: New gamemode
+    OPTIONAL PARAMETERS
+    {gamemode}: New gamemode
 
     EXAMPLES
     Assuming the user is watching zone z0
@@ -8558,21 +8558,24 @@ def ooc_cmd_zone_mode(client: ClientManager.Client, arg: str):
     /zone_mode            :: Clears the zone mode
     """
 
-    try:
-        Constants.assert_command(client, arg, is_staff=True, parameters='>0')
-    except ArgumentError:
-        raise ArgumentError('You must specify a song.')
+    Constants.assert_command(client, arg, is_staff=True)
 
     if not client.zone_watched:
         raise ZoneError('You are not watching a zone.')
 
     client.zone_watched.set_mode(arg)
 
-    client.send_ooc('You have set the gamemode of your zone to be `{}`.'
-                    .format(arg))
-    client.send_ooc_others('(X) {} [{}] has set the gamemode of your zone to be `{}` ({}).'
-                           .format(client.displayname, client.id, arg, client.area.id),
-                           is_zstaff=True)
+    if arg:
+        client.send_ooc('You have set the gamemode of your zone to be `{}`.'
+                        .format(arg))
+        client.send_ooc_others('(X) {} [{}] has set the gamemode of your zone to be `{}` ({}).'
+                               .format(client.displayname, client.id, arg, client.area.id),
+                               is_zstaff=True)
+    else:
+        client.send_ooc('You have cleared the gamemode of your zone.'.format(arg))
+        client.send_ooc_others('(X) {} [{}] has cleared the gamemode of your zone to be ({}).'
+                               .format(client.displayname, client.id, client.area.id),
+                               is_zstaff=True)
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
