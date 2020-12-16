@@ -8445,13 +8445,15 @@ def ooc_cmd_clock_period(client: ClientManager.Client, arg: str):
     try:
         args = arg.split()
         if len(args) == 1:
-            name, start = args[0].lower(), -1
+            name, pre_start, start = args[0].lower(), "-1", -1
         else:
-            name, start = args[0].lower(), int(args[1])
+            name, pre_start = args[0].lower(), args[1]
+            start = int(pre_start)  # Do it separately so ValueError exception may read args[1]
             if not (0 <= start <= 23):
+                start = args[1]
                 raise ValueError
     except ValueError:
-        raise ArgumentError('Invalid period start hour {}.'.format(start))
+        raise ArgumentError('Invalid period start hour {}.'.format(pre_start))
 
     client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'new_period_start', (start, name))
     client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'period')
