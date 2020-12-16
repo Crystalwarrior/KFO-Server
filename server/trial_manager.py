@@ -1014,15 +1014,25 @@ class _Trial(GameWithAreas):
 
         if client not in self.get_players() and old_area not in self.get_areas():
             client.send_ooc(f'You have entered an area part of trial `{self.get_id()}`.')
-            if client.is_staff():
-                client.send_ooc(f'Join this trial with /trial_join {self.get_id()}')
-            self.introduce_user(client)
             client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
                                    f'an area part of your trial ({old_area.id}->{area.id}).',
                                    pred=lambda c: c in self.get_leaders())
-            client.send_ooc_others(f'(X) Add {client.displayname} to your trial with '
-                                   f'/trial_add {client.id}',
-                                   pred=lambda c: c in self.get_leaders())
+            if not self._require_character or client.has_character():
+                if client.is_staff():
+                    client.send_ooc(f'Join this trial with /trial_join {self.get_id()}')
+                client.send_ooc_others(f'(X) Add {client.displayname} to your trial with '
+                                       f'/trial_add {client.id}',
+                                       pred=lambda c: c in self.get_leaders())
+            else:
+                if client.is_staff():
+                    client.send_ooc(f'This trial requires you have a character to join. Join this '
+                                    f'trial with /trial_join {self.get_id()} after choosing a '
+                                    f'character.')
+                client.send_ooc_others(f'(X) This trial requires players have a character to join. '
+                                       f'Add {client.displayname} to your trial with '
+                                       f'/trial_add {client.id} after they choose a character.',
+                                       pred=lambda c: c in self.get_leaders())
+            self.introduce_user(client)
         self._check_structure()
 
     def _on_client_change_character(self, player, old_char_id=None, new_char_id=None):

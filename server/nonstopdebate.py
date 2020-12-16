@@ -898,15 +898,25 @@ class NonStopDebate(TrialMinigame):
 
         if client not in self.get_players():
             client.send_ooc(f'You have entered an area part of NSD `{self.get_id()}`.')
-            if client.is_staff():
-                client.send_ooc(f'Join this NSD with /nsd_join {self.get_id()}')
             client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
                                    f'an area part of your NSD '
                                    f'({old_area.id}->{area.id}).',
                                    pred=lambda c: c in self.get_leaders())
-            client.send_ooc_others(f'(X) Add {client.displayname} to your NSD with '
-                                   f'/nsd_add {client.id}',
-                                   pred=lambda c: c in self.get_leaders())
+            if not self._require_character or client.has_character():
+                if client.is_staff():
+                    client.send_ooc(f'Join this NSD with /nsd_join {self.get_id()}')
+                client.send_ooc_others(f'(X) Add {client.displayname} to your NSD with '
+                                       f'/nsd_add {client.id}',
+                                       pred=lambda c: c in self.get_leaders())
+            else:
+                if client.is_staff():
+                    client.send_ooc(f'This NSD requires you have a character to join. Join this '
+                                    f'NSD with /nsd_join {self.get_id()} after choosing a '
+                                    f'character.')
+                client.send_ooc_others(f'(X) This NSD requires players have a character to join. '
+                                       f'Add {client.displayname} to your NSD with '
+                                       f'/nsd_add {client.id} after they choose a character.',
+                                       pred=lambda c: c in self.get_leaders())
             self.introduce_user(client)
 
     def _on_client_change_character(self, player, old_char_id=None, new_char_id=None):
