@@ -944,9 +944,9 @@ class NonStopDebate(TrialMinigame):
         if self._require_character and not player.has_character():
             player.send_ooc('You were removed from your NSD as it required its players to have '
                             'characters.')
-            player.send_ooc_others(f'(X) Player {player.displayname} changed character from '
-                                   f'{old_char} to a non-character and was removed from your '
-                                   f'NSD.', pred=lambda c: c in self.get_leaders())
+            player.send_ooc_others(f'(X) Player {player.id} changed character from {old_char} to a '
+                                   f'non-character and was removed from your NSD.',
+                                   pred=lambda c: c in self.get_leaders())
 
             nonplayers = self.get_nonplayer_users_in_areas()
             nid = self.get_id()
@@ -968,6 +968,10 @@ class NonStopDebate(TrialMinigame):
                 player.send_ooc_others('The nonstop debate you were watching was automatically '
                                        'deleted as it lost all its players.',
                                        is_zstaff_flex=False, part_of=nonplayers)
+        else:
+            player.send_ooc_others(f'(X) Player {player.id} changed character from {old_char} to '
+                                   f'{player.get_char_name()} in your NSD.',
+                                   pred=lambda c: c in self.get_leaders())
 
         self._check_structure()
 

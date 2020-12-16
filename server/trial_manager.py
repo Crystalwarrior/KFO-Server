@@ -1060,9 +1060,9 @@ class _Trial(GameWithAreas):
         if self._require_character and not player.has_character():
             player.send_ooc('You were removed from your trial as it required its players to have '
                             'characters.')
-            player.send_ooc_others(f'(X) Player {player.displayname} changed character from '
-                                   f'{old_char} to a non-character and was removed from your '
-                                   f'trial.', pred=lambda c: c in self.get_leaders())
+            player.send_ooc_others(f'(X) Player {player.id} changed character from {old_char} to '
+                                   f'a non-character and was removed from your trial.',
+                                   pred=lambda c: c in self.get_leaders())
 
             nonplayers = self.get_nonplayer_users_in_areas()
             tid = self.get_id()
@@ -1078,7 +1078,10 @@ class _Trial(GameWithAreas):
                 player.send_ooc_others('The trial you were watching was automatically deleted '
                                        'as it lost all its players.',
                                        is_zstaff_flex=False, part_of=nonplayers)
-
+        else:
+            player.send_ooc_others(f'(X) Player {player.id} changed character from {old_char} '
+                                   f'to {player.get_char_name()} in your trial.',
+                                   pred=lambda c: c in self.get_leaders())
         self._check_structure()
 
     def _on_client_destroyed(self, player):
