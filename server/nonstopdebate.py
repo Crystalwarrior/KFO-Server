@@ -902,7 +902,15 @@ class NonStopDebate(TrialMinigame):
                                    f'an area part of your NSD '
                                    f'({old_area.id}->{area.id}).',
                                    pred=lambda c: c in self.get_leaders())
-            if not self._require_character or client.has_character():
+            if not self.get_trial().is_player(client):
+                if client.is_staff():
+                    client.send_ooc('You are not a player of the NSD of this trial. Join the trial '
+                                    'first before trying to join the NSD.')
+                client.send_ooc_others(f'(X) {client.displayname} is not a player of your trial. '
+                                       f'Add them to your trial first before attempting to add '
+                                       f'them to your NSD.',
+                                       pred=lambda c: c in self.get_leaders())
+            elif not self._require_character or client.has_character():
                 if client.is_staff():
                     client.send_ooc(f'Join this NSD with /nsd_join {self.get_id()}')
                 client.send_ooc_others(f'(X) Add {client.displayname} to your NSD with '
