@@ -222,17 +222,28 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
-        self.client.can_join += 1 # One of two conditions to allow joining
-        def check_client_version():
-            self.client.is_ao2 = False
+        self.client.can_join += 1  # One of two conditions to allow joining
 
+        def check_client_version():
             if len(args) < 2:
-                self.client.version = ('AO2', '2.4.x')
+                self.client.version = ('DRO', '1.0.0')
                 return False
+
             self.client.version = (args[0], args[1])
 
+            software = args[0]
             version_list = args[1].split('.')
-            if len(version_list) < 3:
+
+            # Identify version number
+            if len(version_list) >= 3:
+                # Such versions include DRO and AO
+                release = int(version_list[0])
+                major = int(version_list[1])
+                minor = int(version_list[2])
+
+                if args[0] not in ['DRO', 'AO2']:
+                    return False
+            else:
                 # Only such version recognized now is CC
                 # CC has args[1] == 'CC - Update (\d+\.)*\d+'
                 if args[1].startswith('CC'):
@@ -241,49 +252,30 @@ class AOProtocol(asyncio.Protocol):
                     minor = 0
                 else:
                     return False
-            else:
-                release = int(version_list[0])
-                major = int(version_list[1])
-                minor = int(version_list[2])
 
-                # Versions of Attorney Online prior to 2.2.5 should not receive the new client
-                # instructions implemented in 2.2.5
-                if args[0] != 'AO2':
-                    return False
-                if release < 2:
-                    return False
+            if software == 'DRO':
+                self.client.packet_handler = Clients.ClientDRO1d0d0
+            else:  # AO2 protocol
                 if release == 2:
-                    if major < 2:
-                        return False
-                    if major == 2:
-                        if minor < 5:
-                            return False
-
-            self.client.is_ao2 = True
-            self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping',
-                                     'fastloading', 'noencryption', 'deskmod', 'evidence',
-                                     'cccc_ic_support', 'looping_sfx', 'additive', 'effects')
-
-            if release == 2:
-                if major >= 8 and major >= 4:
-                    self.client.packet_handler = Clients.ClientAO2d8d4
-                elif major >= 8: # KFO
-                    self.client.packet_handler = Clients.ClientKFO2d8
-                elif major == 7: # AO 2.7
-                    self.client.packet_handler = Clients.ClientAO2d7
-                elif major == 6: # AO 2.6
-                    self.client.packet_handler = Clients.ClientAO2d6
-                elif major == 4 and minor >= 8: # DRO
-                    self.client.packet_handler = Clients.ClientDRO
-                else:
-                    return False # Unrecognized
-            elif release == 'CC':
-                if major >= 24:
-                    self.client.packet_handler = Clients.ClientCC24
-                elif major >= 22:
-                    self.client.packet_handler = Clients.ClientCC22
-                else:
-                    return False # Unrecognized
+                    if major >= 8 and major >= 4:
+                        self.client.packet_handler = Clients.ClientAO2d8d4
+                    elif major >= 8:  # KFO
+                        self.client.packet_handler = Clients.ClientKFO2d8
+                    elif major == 7:  # AO 2.7
+                        self.client.packet_handler = Clients.ClientAO2d7
+                    elif major == 6:  # AO 2.6
+                        self.client.packet_handler = Clients.ClientAO2d6
+                    elif major == 4 and minor == 8:  # Older DRO
+                        self.client.packet_handler = Clients.ClientDROLegacy
+                    else:
+                        return False  # Unrecognized
+                elif release == 'CC':
+                    if major >= 24:
+                        self.client.packet_handler = Clients.ClientCC24
+                    elif major >= 22:
+                        self.client.packet_handler = Clients.ClientCC22
+                    else:
+                        return False  # Unrecognized
             # The only way to make it here is if we have not returned False
             # If that is the case, we have successfully found a version
             return True
@@ -291,8 +283,12 @@ class AOProtocol(asyncio.Protocol):
         if not check_client_version():
             # Warn player they are using an unknown client.
             # Assume a DRO client instruction set.
-            self.client.packet_handler = Clients.ClientDRO
+            self.client.packet_handler = Clients.ClientDRO1d0d0
             self.client.bad_version = True
+
+        self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping',
+                                 'fastloading', 'noencryption', 'deskmod', 'evidence',
+                                 'cccc_ic_support', 'looping_sfx', 'additive', 'effects')
 
     def net_cmd_ch(self, _):
         """ Periodically checks the connection.
@@ -755,7 +751,7 @@ class AOProtocol(asyncio.Protocol):
             # We have to use fallback protocols for AO2d6 like clients, because if for whatever
             # reason if they don't set an in-client showname, they send less arguments. In
             # particular, they behave like DRO.
-            pargs = self.process_arguments('MC', args, fallback_protocols=[Clients.ClientDRO])
+            pargs = self.process_arguments('MC', args, fallback_protocols=[Clients.ClientDROLegacy])
             if not pargs:
                 return
 

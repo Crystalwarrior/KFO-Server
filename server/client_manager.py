@@ -35,7 +35,7 @@ class ClientManager:
             self.can_join = 0 # Needs to be 2 to actually connect
             self.can_askchaa = True # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined') # AO version used, established through ID pack
-            self.packet_handler = Clients.ClientDRO
+            self.packet_handler = Clients.ClientDROLegacy
             self.bad_version = False
 
             self.hdid = ''
@@ -374,6 +374,10 @@ class ClientManager:
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
                           msg=msg, pos=pos, cid=cid, ding=ding, color=color, showname=showname)
 
+        def send_ic_blankpost(self):
+            if self.packet_handler == Clients.ClientDRO1d0d0:
+                self.send_ic(msg='', bypass_replace=True)
+
         def send_background(self, name=None, pos=None):
             """
             Send a background packet to a client.
@@ -553,6 +557,7 @@ class ClientManager:
 
             if self.is_blind:
                 self.send_background(name=self.server.config['blackout_background'])
+                self.send_ic_blankpost()  # Clear screen
             else:
                 self.send_background(name=self.area.background)
 
