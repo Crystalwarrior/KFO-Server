@@ -93,8 +93,8 @@ class ClientManager:
             self.last_ooc_message = ''
             self.first_person = False
             self.forward_sprites = True
-            self.last_received_ic = [None, None]
-            self.last_received_ic_notme = [None, None]
+            self.last_received_ic = [None, None, None]
+            self.last_received_ic_notme = [None, None, None]
             self.is_blind = False
             self.is_deaf = False
             self.is_gagged = False
@@ -313,9 +313,9 @@ class ClientManager:
                     # guarantee ourselves we do not pick the last message that could possibly
                     # be self
                     if sender == self and self.first_person:
-                        last_apparent_sender, last_args = self.last_received_ic_notme
+                        last_apparent_sender, last_args, last_apparent_args = self.last_received_ic_notme
                     else:
-                        last_apparent_sender, last_args = self.last_received_ic
+                        last_apparent_sender, last_args, last_apparent_args = self.last_received_ic
 
                     # Make sure showing previous sender makes sense. If it does not make sense now,
                     # it will not make sense later.
@@ -323,16 +323,17 @@ class ClientManager:
                     # If last sender is no longer connected, do not show previous sender
                     if not last_apparent_sender or not self.server.is_client(last_apparent_sender):
                         pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None]
-                        self.last_received_ic = [None, None]
-                    # If last apparent sender and self are not in the same area, do not show previous sender
+                        self.last_received_ic_notme = [None, None, None]
+                        self.last_received_ic = [None, None, None]
+                    # If last apparent sender and self are not in the same area, do not show
+                    # previous sender
                     elif self.area != last_apparent_sender.area:
                         pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None]
-                        self.last_received_ic = [None, None]
+                        self.last_received_ic_notme = [None, None, None]
+                        self.last_received_ic = [None, None, None]
                     # If last sender has changed character, do not show previous sender
-                    elif (last_apparent_sender.char_id != last_args['cid'] or
-                          last_apparent_sender.char_folder != last_args['folder']):
+                    elif ((last_apparent_sender.char_id != last_apparent_args['cid'] or
+                           last_apparent_sender.char_folder != last_apparent_args['folder'])):
                         # We need to check for iniswaps as well, to account for this possibility:
                         # 1. A and B are in the same room. A as in first person mode
                         # 2. B talks to A and moves to another room
@@ -341,8 +342,8 @@ class ClientManager:
                         # 5. If A had received no other message in the meantime, clear the last
                         # character seen.
                         pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None]
-                        self.last_received_ic = [None, None]
+                        self.last_received_ic_notme = [None, None, None]
+                        self.last_received_ic = [None, None, None]
                     # Do not show previous sender if
                     # 1. Previous sender is sneaked and is not GM, and
                     # 2. It is not the case self is in a party, the same one as previous sender,
@@ -354,8 +355,8 @@ class ClientManager:
                         # It will still be the case self will reveal themselves by talking
                         # They will however see last sender if needed
                         pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None]
-                        self.last_received_ic = [None, None]
+                        self.last_received_ic_notme = [None, None, None]
+                        self.last_received_ic = [None, None, None]
                     # Otherwise, show message
                     else:
                         pargs['folder'] = last_args['folder']
@@ -454,11 +455,13 @@ class ClientManager:
                 # Only update apparent sender if sender was in forward sprites mode
                 if sender and sender.forward_sprites:
                     self.last_received_ic_notme[0] = sender
+                    self.last_received_ic_notme[2] = final_pargs
                 self.last_received_ic_notme[1] = final_pargs
             # Moreover, keep track of last received IC message
             # This is used for forward sprites mode.
             if sender and sender.forward_sprites:
                 self.last_received_ic[0] = sender
+                self.last_received_ic[2] = final_pargs
             self.last_received_ic[1] = final_pargs
 
             self.send_command('MS', *to_send)
