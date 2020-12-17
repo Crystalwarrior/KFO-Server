@@ -473,7 +473,7 @@
 * Deaf players now only see an IC notification for screams
 
 ### (4.3.0)
-* Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0.
+* Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
 * Explicitly allowed Python 3.9 support for server owners
 * Added basic trial and NSD modes
 * Added area lurk callouts to name players who have been idle some amount of time in an area via

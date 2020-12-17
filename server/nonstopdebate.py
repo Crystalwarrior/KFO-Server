@@ -344,6 +344,11 @@ class NonStopDebate(TrialMinigame):
             user.send_command('TR', self._client_timer_id)
             self._update_player_timer(user)
 
+        for leader in self.get_leaders():
+            leader.send_ooc('(X) Messages for your nonstop debate are now being recorded. Once you '
+                            'are satisfied with the debate messages, you may pause the debate with '
+                            '/nsd_pause and then loop the debate with /nsd_loop.')
+
     def set_intermission(self, blankpost=True):
         """
         Set the NSD to be in intermission mode. This will pause the NSD timer, terminate the
