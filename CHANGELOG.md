@@ -475,7 +475,33 @@
 ### (4.3.0)
 * Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
 * Explicitly allowed Python 3.9 support for server owners
-* Added basic trial and NSD modes
+* Added basic DR-style trials (confront readme for command instructions):    
+  - /trial 
+  - /trial_add <identifier>
+  - /trial_end
+  - /trial_focus <identifier> <value>
+  - /trial_influence <identifier> <value>
+  - /trial_info
+  - /trial_join <trialname>
+  - /trial_lead
+  - /trial_leave
+  - /trial_kick <identifier>
+  - /trial_unlead
+* Added basic DR-style nonstop debates that run within trials and can loop automatically until a player shoots an appropriate bullet (confront readme for command instructions):
+  - /nsd <time>
+  - /nsd_add <identifier>
+  - /nsd_end
+  - /nsd_join <nsdname>
+  - /nsd_lead
+  - /nsd_leave
+  - /nsd_kick <identifier>
+  - /nsd_unlead
+  - /nsd_pause
+  - /nsd_loop
+  - /nsd_accept
+  - /nsd_reject
+  - /nsd_resume
+* Added perjury bullet support: only the person using the perjury bullet and the NSD leaders (or GMs if not part of an NSD) receive the perjury animation, everyone else receives a counter animation.
 * Added area lurk callouts to name players who have been idle some amount of time in an area via
   - /lurk <length>
   - /lurk_cancel (to cancel a lurk callout in an area)
