@@ -650,6 +650,8 @@ GMs can:
 
 * **exec** "command"
     - (DEBUG) Executes the given command as a Python instruction. Requires turning on in `server/commands.py` before using.
+* **dump**
+    - (DEBUG) Prepares a server dump containing debugging information about the server and saves it in the server log files.
 * **lasterror**
     - (DEBUG) Obtains the latest uncaught error as a result of a client packet. This message emulates what is output on the server console.
 * **reload_commands**

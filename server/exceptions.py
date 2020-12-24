@@ -37,7 +37,6 @@ class TsuserverException(Exception):
 
     @classmethod
     def reset_subexceptions(cls):
-
         for subexception_name in cls.subexceptions():
             setattr(cls, subexception_name, type(subexception_name, (cls, ), dict()))
 

@@ -8864,6 +8864,29 @@ def ooc_cmd_zone_mode(client: ClientManager.Client, arg: str):
                                is_zstaff=True)
 
 
+def ooc_cmd_dump(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Prepares a server dump containing debugging information about the server and saves it in the
+    server log files.
+
+    SYNTAX
+    /dump
+
+    OPTIONAL PARAMETERS
+    None
+
+    EXAMPLES
+    /dump           :: May return something like this:
+    $HOST: Generated server dump file logs/[2020-12-23T200220]D.log.
+    """
+
+    Constants.assert_command(client, arg, is_mod=True)
+
+    dump_message = f'Client {client.id} requested a server dump.'
+    file = logger.log_error(dump_message, client.server, errortype='D')
+    client.send_ooc(f'Generated server dump file {file}.')
+
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

@@ -24,6 +24,7 @@ import traceback
 
 from server.constants import Constants
 
+
 def setup_logger(debug):
     logging.Formatter.converter = time.gmtime
     debug_formatter = logging.Formatter('[%(asctime)s UTC]%(message)s')
@@ -63,18 +64,21 @@ def setup_logger(debug):
 
     return (debug_log, debug_handler), (server_log, server_handler)
 
+
 def log_debug(msg, client=None):
     msg = parse_client_info(client) + msg
     logging.getLogger('debug').debug(msg)
 
-def log_error(msg, server, errortype='P'):
+
+def log_error(msg, server, errortype='P') -> str:
     # errortype "C" if server raised an error as a result of a client packet.
+    # errortype "D" if player manually requested an error dump
     # errortype "P" if server raised an error for any other reason
     error_log = logging.getLogger('error')
 
-    moment = 'logs/{}{}.log'.format(Constants.get_time_iso(), errortype)
-    moment = moment.replace(':', '')
-    error_handler = logging.FileHandler(moment, encoding='utf-8')
+    file = 'logs/{}{}.log'.format(Constants.get_time_iso(), errortype)
+    file = file.replace(':', '')
+    error_handler = logging.FileHandler(file, encoding='utf-8')
 
     error_handler.setLevel(logging.ERROR)
     error_handler.setFormatter(logging.Formatter('[%(asctime)s UTC]%(message)s'))
@@ -127,34 +131,42 @@ def log_error(msg, server, errortype='P'):
     error_log.error(msg)
     error_log.removeHandler(error_handler)
 
-    log_pserver('Successfully created error log file {}'.format(moment))
+    log_pserver('Successfully created server dump file {}'.format(file))
+    return file
+
 
 def log_server(msg, client=None):
     msg = f'{parse_client_info(client)}{msg}'
     logging.getLogger('server').info(msg)
 
+
 def log_server2(msg, client=None):
     pass
+
 
 def log_print(msg, client=None):
     msg = f'{parse_client_info(client)}{msg}'
     current_time = Constants.get_time_iso()
     print('{}: {}'.format(current_time, msg))
 
+
 def log_print2(msg, client=None):
     pass
+
 
 def log_pdebug(msg, client=None):
     log_debug(msg, client=client)
     log_print(msg, client=client)
 
+
 def log_pserver(msg, client=None):
     log_server(msg, client=client)
     log_print(msg, client=client)
 
-#def log_rp(msg, client=None):
-#   msg = parse_client_info(client) + msg
+# def log_rp(msg, client=None):
+#    msg = parse_client_info(client) + msg
 #    logging.getLogger('rp').info(msg)
+
 
 def parse_client_info(client):
     if client is None:
