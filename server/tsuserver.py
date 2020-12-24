@@ -56,8 +56,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b100'
-        self.internal_version = 'M201217a'
+        self.segment_version = 'b101'
+        self.internal_version = 'M201223a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -715,15 +715,17 @@ class TsuserverDR:
             for (j, song) in enumerate(songs):
                 if song is None:
                     msg = (f'Expected all music list song descriptions to be defined, but song '
-                           f'description {j} in item {i} was not defined.')
+                           f'description {j} in category {i}: {category} was not defined.')
                     raise ServerError.FileSyntaxError(msg)
                 if not isinstance(song, dict):
                     msg = (f'Expected all music list song descriptions to be dictionaries: but '
-                           f'song {j}: {song} in item {i} was not a dictionary.')
+                           f'song description {j} in category {i}: {category} was not a '
+                           f'dictionary: {song}.')
                     raise ServerError.FileSyntaxError(msg)
                 if set(song.keys()) not in [{'name'}, {'name', 'length'}]:
                     msg = (f'Expected all music list songs to have exactly keys: name, or name and '
-                           f'length, but song {j} in item {i} had keys {set(item.keys())}')
+                           f'length, but song description {j} in category {i}: {category} had keys '
+                           f'{set(song.keys())}.')
                     raise ServerError.FileSyntaxError(msg)
 
                 if 'length' not in song:
@@ -733,11 +735,12 @@ class TsuserverDR:
 
                 if not isinstance(name, (str, float, int, bool, complex)):
                     msg = (f'Expected all music list song names to be strings or numbers, but '
-                           f'song {j}: {name} in category {i} was not a string or number.')
+                           f'song {j}: {name} in category {i}: {category} was not a string or '
+                           f'number.')
                     raise ServerError.FileSyntaxError(msg)
                 if not isinstance(length, (int, float)):
                     msg = (f'Expected all music list song lengths to be numbers, but song {j}: '
-                           f'{name} in category {i} had non-numerical length {length}.')
+                           f'{name} in category {i}: {category} had non-numerical length {length}.')
                     raise ServerError.FileSyntaxError(msg)
 
                 prepared_music_list.append(name)
