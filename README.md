@@ -678,6 +678,7 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 #### GM+
 
 * **logingm**: Same as /loginrp.
+* **slit**: Same as /bloodtrail.
 * **unsneak**: Same as /reveal.
 
 ### Notes

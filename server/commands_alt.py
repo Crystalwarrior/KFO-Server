@@ -21,6 +21,7 @@ This module holds all the commands that are either deprecated or are meant to
 act as aliases for existing commands in commands.py
 """
 
+
 def do_command(command, client, arg):
     """
     Wrapper function for calling commands.
@@ -30,6 +31,7 @@ def do_command(command, client, arg):
     function = getattr(source, adapted_command)
     function(client, arg)
 
+
 def do_command_deprecated(command, client, arg):
     """
     Wrapper function for commands that are deprecated and pending removal.
@@ -38,12 +40,23 @@ def do_command_deprecated(command, client, arg):
                     'Please use /{} next time.'.format(command))
     do_command(command, client, arg)
 
+
+def ooc_cmd_slit(client, arg):
+    """
+    Alias for /bloodtrail.
+
+    """
+
+    do_command('bloodtrail', client, arg)
+
+
 def ooc_cmd_pw(client, arg):
     """
     Alias for /party_whisper.
     """
 
     do_command('party_whisper', client, arg)
+
 
 def ooc_cmd_huddle(client, arg):
     """
@@ -52,12 +65,14 @@ def ooc_cmd_huddle(client, arg):
 
     do_command('party_whisper', client, arg)
 
+
 def ooc_cmd_logingm(client, arg):
     """
     Alias for /loginrp.
     """
 
     do_command('loginrp', client, arg)
+
 
 def ooc_cmd_sa(client, arg):
     """
@@ -66,12 +81,14 @@ def ooc_cmd_sa(client, arg):
 
     do_command('showname_area', client, arg)
 
+
 def ooc_cmd_sas(client, arg):
     """
     Alias for /showname_areas.
     """
 
     do_command('showname_areas', client, arg)
+
 
 def ooc_cmd_shout(client, arg):
     """
@@ -80,12 +97,14 @@ def ooc_cmd_shout(client, arg):
 
     do_command('scream', client, arg)
 
+
 def ooc_cmd_unsneak(client, arg):
     """
     Alias for /reveal.
     """
 
     do_command('reveal', client, arg)
+
 
 def ooc_cmd_yell(client, arg):
     """
@@ -94,6 +113,7 @@ def ooc_cmd_yell(client, arg):
 
     do_command('scream', client, arg)
 
+
 def ooc_cmd_zi(client, arg):
     """
     Alias for /zone_info.
@@ -101,12 +121,14 @@ def ooc_cmd_zi(client, arg):
 
     do_command('zone_info', client, arg)
 
+
 def ooc_cmd_zg(client, arg):
     """
     Alias for /zone_global.
     """
 
     do_command('zone_global', client, arg)
+
 
 def ooc_cmd_showname_list(client, arg):
     """
