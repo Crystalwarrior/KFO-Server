@@ -7710,7 +7710,8 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
     try:
         trial = client.server.trial_manager.get_trial_of_user(client)
     except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
+        raise ClientError('You are not part of a trial. You must start a trial with /trial before '
+                          'starting an NSD.')
     if not trial.is_leader(client):
         raise ClientError('You are not a leader of your trial.')
 
