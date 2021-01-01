@@ -97,9 +97,9 @@ def log_error(msg, server, errortype='P') -> str:
         # Add list of clients to error log
         try:
             msg += '\n\n\n= Client dump. ='
-            msg += '\n*Number of clients: {}'.format(len(server.client_manager.clients))
+            msg += '\n*Number of clients: {}'.format(len(server.get_clients()))
             msg += '\n*Current clients'
-            clients = sorted(server.client_manager.clients, key=lambda c: c.id)
+            clients = sorted(server.get_clients(), key=lambda c: c.id)
             for c in clients:
                 msg += '\n\n{}'.format(c.get_info(as_mod=True))
         except Exception:

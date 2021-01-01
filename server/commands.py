@@ -34,6 +34,9 @@ from server.client_manager import ClientManager
 # <parameter_name>: required parameter
 # {parameter_name}: optional parameter
 
+# (STAFF ONLY): need to be logged in as GM, CM or mod
+# (OFFICER ONLY): need to be logged in as CM or mod
+
 
 def ooc_cmd_announce(client: ClientManager.Client, arg: str):
     """ (MOD ONLY)
@@ -56,7 +59,7 @@ def ooc_cmd_announce(client: ClientManager.Client, arg: str):
     except ArgumentError:
         raise ArgumentError('You cannot send an empty announcement.')
 
-    for c in client.server.client_manager.clients:
+    for c in client.server.get_clients():
         c.send_ooc('=== Announcement ===\r\n{}\r\n=================='.format(arg))
     logger.log_server('[{}][{}][ANNOUNCEMENT]{}.'
                       .format(client.area.id, client.get_char_name(), arg), client)
@@ -590,7 +593,7 @@ def ooc_cmd_blind(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_blockdj(client: ClientManager.Client, arg: str):
-    """ (CM AND MOD ONLY)
+    """ (OFFICER ONLY)
     Revokes the ability of a player by client ID (number in brackets) or IPID (number in
     parentheses) to change music.
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
@@ -1253,32 +1256,50 @@ def ooc_cmd_cleardoc(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_cleargm(client: ClientManager.Client, arg: str):
-    """ (CM AND MOD ONLY)
-    Logs out all game masters in the server and puts them in RP mode if needed.
+    """ (OFFICER ONLY)
+    Logs out a game master by ID or all game masters in the server if not given an ID and puts
+    them in RP mode if needed.
+    Returns an error if the given identifier does not correspond to a user, if given a target
+    they are already not a GM, or if no GMs are currently logged in.
 
     SYNTAX
-    /cleargm
+    /cleargm {client_id}
 
-    PARAMETERS
-    None
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
 
     EXAMPLE
     /cleargm
+    /cleargm 3      :: Makes the client with ID 3 a GM
     """
 
-    Constants.assert_command(client, arg, is_officer=True, parameters='=0')
+    Constants.assert_command(client, arg, is_officer=True)
 
     gm_list = ''
-    for area in client.server.area_manager.areas:
-        for c in [x for x in area.clients if x.is_gm]:
+    if arg:
+        targets = [Constants.parse_id(client, arg)]
+    else:
+        targets = client.server.get_clients()
+
+    for c in targets:
+        if c.is_gm:
             gm_list += '{} {} [{}]'.format((':' if not gm_list else ','), c.name, c.id)
             c.send_ooc('You are no longer a GM.')
             c.logout()
 
-    client.send_ooc('All GMs logged out.')
-    if len(gm_list) > 0:
-        client.send_ooc_others('The following GMs have been logged out by {} [{}]{}.'
-                               .format(client.name, client.id, gm_list), is_officer=True)
+    if arg:
+        target = targets[0]
+        if not gm_list:
+            raise ClientError(f'Client {target.id} is already not a GM.')
+        client.send_ooc(f'You have logged out client {client.id} from their GM rank.')
+        client.send_ooc_others(f'{client.name} [{client.id}] has logged out {target.name} '
+                               f'[{target.id}] from their GM rank.', is_officer=True)
+    else:
+        if not gm_list:
+            raise ClientError('No GMs are currently connected.')
+        client.send_ooc(f'You have logged out the following clients from their GM rank{gm_list}.')
+        client.send_ooc_others(f'{client.name} [{client.id}] has been logged out these clients '
+                               f'from their GM rank{gm_list}.', is_officer=True)
 
 
 def ooc_cmd_clock(client: ClientManager.Client, arg: str):
@@ -2580,7 +2601,7 @@ def ooc_cmd_judgelog(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_kick(client: ClientManager.Client, arg: str):
-    """ (CM AND MOD ONLY)
+    """ (OFFICER ONLY)
     Kicks a user from the server. The target is identified by either client ID (number in brackets)
     or IPID (number in parentheses). If given IPID, it will kick all clients opened by the user.
     Otherwise, it will just kick the given client.
@@ -3375,7 +3396,7 @@ def ooc_cmd_music_lists(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_mute(client: ClientManager.Client, arg: str):
-    """ (CM AND MOD ONLY)
+    """ (OFFICER ONLY)
     Mutes given user based on client ID or IPID so that they are unable to speak in IC chat.
     If given IPID, it will mute all clients opened by the user. Otherwise, it will just mute the
     given client.
@@ -4513,13 +4534,13 @@ def ooc_cmd_rpmode(client: ClientManager.Client, arg: str):
 
     if arg == 'on':
         client.server.rp_mode = True
-        for c in client.server.client_manager.clients:
+        for c in client.server.get_clients():
             c.send_ooc('RP mode enabled.')
             if not c.is_staff():
                 c.in_rp = True
     elif arg == 'off':
         client.server.rp_mode = False
-        for c in client.server.client_manager.clients:
+        for c in client.server.get_clients():
             c.send_ooc('RP mode disabled.')
             c.in_rp = False
     else:
@@ -5014,7 +5035,7 @@ def ooc_cmd_showname_nuke(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, is_mod=True, parameters='=0')
 
-    for c in client.server.client_manager.clients:
+    for c in client.server.get_clients():
         if not c.is_staff() and c.showname != '':
             c.change_showname('')
 
@@ -5184,7 +5205,7 @@ def ooc_cmd_st(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, is_staff=True)
 
     pre = '{} [Staff] {}'.format(client.server.config['hostname'], client.name)
-    for c in client.server.client_manager.clients:
+    for c in client.server.get_clients():
         c.send_ooc(arg, username=pre, pred=lambda c: c.is_staff())
     logger.log_server('[{}][STAFFCHAT][{}][{}]{}.'
                       .format(client.area.id, client.get_char_name(), client.name, arg), client)
@@ -5697,7 +5718,7 @@ def ooc_cmd_unbanhdid(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_unblockdj(client: ClientManager.Client, arg: str):
-    """ (CM AND MOD ONLY)
+    """ (OFFICER ONLY)
     Restores the ability of a player by client ID (number in brackets) or IPID (number in
     parentheses) to change music.
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
@@ -6067,7 +6088,7 @@ def ooc_cmd_unlock(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_unmute(client: ClientManager.Client, arg: str):
-    """ (CM AND MOD ONLY)
+    """ (OFFICER ONLY)
     Unmutes given user based on client ID or IPID so that they are unable to speak in IC chat.
     This command does nothing for clients that are not actively muted.
     If given IPID, it will unmute all clients opened by the user. Otherwise, it will just mute the
@@ -6917,7 +6938,7 @@ def ooc_cmd_narrate(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_mod_narrate(client: ClientManager.Client, arg: str):
-    """ (CM AND MOD ONLY)
+    """ (OFFICER ONLY)
     Sends a message from the "Narrator" position to all players in the area using the mod color.
     This will override any existing IC message, or any hearing properties of the targets.
 

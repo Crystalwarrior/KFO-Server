@@ -261,7 +261,7 @@ class Tasker:
         self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', '')
 
         # Manually notify for the very first hour (if needed)
-        targets = [c for c in self.server.client_manager.clients if c == client or
+        targets = [c for c in self.server.get_clients() if c == client or
                    ((c.is_staff() or send_first_hour) and area_1 <= c.area.id <= area_2)]
         for c in targets:
             c.send_ooc('It is now {}:00.'.format('{0:02d}'.format(hour)))
@@ -314,7 +314,7 @@ class Tasker:
                 # In all cases now, update hour
                 # We can do that as code only runs here if the timer is not paused
                 hour = (hour + 1) % 24
-                targets = [c for c in self.server.client_manager.clients if c == client or
+                targets = [c for c in self.server.get_clients() if c == client or
                            (notify_normies and area_1 <= c.area.id <= area_2)]
                 # Check if new period has started
                 for (period_start, period_name) in periods:
@@ -358,7 +358,7 @@ class Tasker:
                                            '{} has been canceled.'
                                            .format(client.name, area_1, area_2),
                                            is_zstaff_flex=True)
-                    targets = [c for c in self.server.client_manager.clients if c == client or
+                    targets = [c for c in self.server.get_clients() if c == client or
                                area_1 <= c.area.id <= area_2]
 
                     break
@@ -403,7 +403,7 @@ class Tasker:
                     client.send_ooc_others('You seem to have lost track of time.', is_staff=False,
                                            pred=lambda c: area_1 <= c.area.id <= area_2)
 
-                    targets = [c for c in self.server.client_manager.clients if c == client or
+                    targets = [c for c in self.server.get_clients() if c == client or
                                (area_1 <= c.area.id <= area_2)]
                     for c in targets:
                         c.send_clock(client_id=client.id, hour=-1)
@@ -459,7 +459,7 @@ class Tasker:
                                     break
 
                         if changed_current_period:
-                            targets = [c for c in self.server.client_manager.clients
+                            targets = [c for c in self.server.get_clients()
                                        if c == client or area_1 <= c.area.id <= area_2]
                             for c in targets:
                                 c.send_time_of_day(name=new_period_name)

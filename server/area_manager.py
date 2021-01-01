@@ -1094,14 +1094,14 @@ class AreaManager:
                                 'load.')
 
         # And cancel all existing day cycles
-        for client in self.server.client_manager.clients:
+        for client in self.server.get_clients():
             try:
                 client.server.tasker.remove_task(client, ['as_day_cycle'])
             except KeyError:
                 pass
 
         # And remove all global IC and global IC prefixes
-        for client in self.server.client_manager.clients:
+        for client in self.server.get_clients():
             if client.multi_ic:
                 client.send_ooc('Due to an area list reload, your global IC was turned off. You '
                                 'may turn it on again manually.')

@@ -543,8 +543,8 @@ GMs can:
     - If not given a target area, it will use the server's default area (usually area 0).
 * **blockdj** "ID/IPID"
     - Mutes the target from changing music.
-* **cleargm**
-    - Logs out all GMs in the server and puts them in RP mode if needed.
+* **cleargm** "ID"
+    - Logs out the target from their GM rank, or all GMs in the server if not given a target, and puts them in RP mode if needed.
 * **g** "message"
     - Sends a serverwide message, even if the current area disallows sending global messages.
 * **getarea**

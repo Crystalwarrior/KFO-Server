@@ -616,7 +616,7 @@ class ZoneManager:
                 'found it recognized {} instead.'.format(area, area.in_zone))
 
         # 8.
-        for watcher in self._server.client_manager.clients:
+        for watcher in self._server.get_clients():
             if watcher in watchers_so_far:
                 continue
             assert watcher.zone_watched is None, (

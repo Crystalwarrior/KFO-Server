@@ -56,8 +56,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b111'
-        self.internal_version = 'M210101f'
+        self.segment_version = 'b112'
+        self.internal_version = 'M210101g'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -288,6 +288,19 @@ class TsuserverDR:
     def is_client(self, client):
         # This should only be False for clients that have been disconnected.
         return self.client_manager.is_client(client)
+
+    def get_clients(self):
+        """
+        Return a copy of all the clients connected to the server, sorted in ascending order by
+        client ID.
+
+        Returns
+        -------
+        list of ClientManager.Client
+            Clients connected to the server.
+
+        """
+        return sorted(self.client_manager.clients, key=lambda c: c.id)
 
     def get_player_count(self):
         # Ignore players in the server selection screen.

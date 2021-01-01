@@ -946,7 +946,7 @@ class AOProtocol(asyncio.Protocol):
                    .format(current_time, self.client.get_char_name(), self.client.get_ip(),
                            self.client.area.name, self.client.area.id))
 
-        for c in self.server.client_manager.clients:
+        for c in self.server.get_clients():
             if c.is_officer():
                 c.send_command_dict('ZZ', {
                     'message': message

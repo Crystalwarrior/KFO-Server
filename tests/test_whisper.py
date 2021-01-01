@@ -297,7 +297,7 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
         Situation: Every client whispers to themselves. Only they themselves get the notification.
         """
 
-        for client in self.server.client_manager.clients:
+        for client in self.server.get_clients():
             for identifier in self.get_identifiers(client):
                 message = '{} with {} to {}'.format(client, identifier, client)
                 ooc = 'You whispered `{}` to yourself.'.format(message)

@@ -731,7 +731,7 @@ class TestAuthorization_07_Effect(_TestSituation5):
         current_time = time.strftime("%H:%M", time.localtime())
         client.assert_ooc('You have called for a moderator.', ooc_over=True)
 
-        for c in self.server.client_manager.clients:
+        for c in self.server.get_clients():
             if c not in recipients:
                 c.assert_no_packets()
                 continue

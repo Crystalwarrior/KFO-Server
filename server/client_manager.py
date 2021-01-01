@@ -499,7 +499,7 @@ class ClientManager:
             else:
                 not_to = not_to.union({self})
 
-            for c in self.server.client_manager.clients:
+            for c in self.server.get_clients():
                 c.send_ic(params=None, sender=sender, bypass_replace=bypass_replace,
                           bypass_deafened_starters=bypass_deafened_starters,
                           pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
@@ -627,7 +627,7 @@ class ClientManager:
             name_ws = name.replace(' ', '')
             if not name_ws or name_ws.isdigit():
                 return False
-            #for client in self.server.client_manager.clients:
+            #for client in self.server.get_clients():
                 #print(client.name == name)
                 #if client.name == name:
                     #return False
