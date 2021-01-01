@@ -481,6 +481,9 @@ GMs can:
 * **trial_influence** "ID/char name/edited-to character/showname/OOC name" "number"
     - Sets the influence level of a player in your trial to the given value.
     - Number must be an integer from 0 to 10.
+* **trial_info**
+    - Returns details about your trial.
+    - If a leader of your trial, also includes the influence and focus values of all trial players.
 * **trial_join** "trial ID"
     - Enrolls in the trial by ID occurring in your area.
 * **trial_lead**

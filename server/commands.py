@@ -7503,8 +7503,9 @@ def ooc_cmd_trial_influence(client: ClientManager, arg: str):
 
 
 def ooc_cmd_trial_info(client: ClientManager, arg: str):
-    """
-    Returns information about your current trial.
+    """ (VARYING REQUIREMENTS)
+    Returns information about your current trial. Trial leaders also obtain influence and focus
+    values of the players.
     Returns an error if you are not part of a trial.
 
     SYNTAX
@@ -7524,12 +7525,12 @@ def ooc_cmd_trial_info(client: ClientManager, arg: str):
     except TrialError.UserNotPlayerError:
         raise ClientError('You are not part of a trial.')
 
-    info = trial.get_info()
+    info = trial.get_info(include_health=trial.is_leader(client))
     client.send_ooc(info)
 
 
 def ooc_cmd_trial_lead(client: ClientManager, arg: str):
-    """
+    """ (STAFF ONLY)
     Makes you a leader of your trial.
     Returns an error if you are not part of a trial or if you are already leader of that trial.
 

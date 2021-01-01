@@ -839,9 +839,15 @@ class _Trial(GameWithAreas):
             game_number += 1
         raise GameError.ManagerTooManyGamesError
 
-    def get_info(self) -> str:
+    def get_info(self, include_health=True) -> str:
         """
         Obtain a long description of the trial and its players.
+
+        Parameters
+        ----------
+        include_health : bool
+            If True, the description will include the influence and focus values of the trial
+            players; if False, these values will be omitted. Defaults to True.
 
         Returns
         -------
@@ -861,17 +867,14 @@ class _Trial(GameWithAreas):
                 group_texts.append('\n*None')
                 continue
             group_text = ''
-            for player in group:
-                player_text = f'{player.displayname} [{player.id}]: '
-                influence = self.get_influence(player)
-                min_influence = self.get_min_influence(player)
-                max_influence = self.get_max_influence(player)
-                focus = self.get_focus(player)
-                min_focus = self.get_min_focus(player)
-                max_focus = self.get_max_focus(player)
-                player_text += f'I: {influence} (m: {min_influence}/M: {max_influence}); '
-                player_text += f'F: {focus} (m: {min_focus}/M: {max_focus}); '
-                player_text += f'A: {player.area.id}'
+            for player in sorted(group, key=lambda c: c.displayname):
+                player_text = f'[{player.id}] {player.displayname}'
+                if include_health:
+                    player_text += ': '
+                    influence = self.get_influence(player)
+                    focus = self.get_focus(player)
+                    player_text += f'Influence: {influence}; '
+                    player_text += f'Focus: {focus}'
                 group_text += f'\n*{player_text}'
             group_texts.append(group_text)
 
