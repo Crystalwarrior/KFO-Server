@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -439,13 +439,14 @@ class PartyManager:
                         error = AreaError('', code='ChArRestrictedChar')
                         raise error
 
-                    new_cid, _ = member.check_change_area(new_area, more_unavail_chars=new_chars)
-                    new_chars.add(new_cid)
+                    new_char_id, _ = member.check_change_area(new_area,
+                                                              more_unavail_chars=new_chars)
+                    new_chars.add(new_char_id)
                 except (ClientError, AreaError) as ex:
                     error = ex
-                    new_cid = member.char_id
+                    new_char_id = member.char_id
             else:
-                new_cid = member.char_id
+                new_char_id = member.char_id
 
             if error:
                 if error.code in ['ChArHandicap', 'ChArSneakLobby', 'ChArSneakPrivate',
@@ -456,13 +457,13 @@ class PartyManager:
 
                 if error.code in ['ChArLocked', 'ChArGMLocked', 'ChArModLocked',
                                   'ChArRestrictedChar', 'ChArInArea']:
-                    movers[False][member] = new_cid
+                    movers[False][member] = new_char_id
                 elif error.code is not None:
                     raise error
                 else:
-                    movers[True][member] = new_cid
+                    movers[True][member] = new_char_id
             else:
-                movers[attempt_move][member] = new_cid
+                movers[attempt_move][member] = new_char_id
 
         return movers
 

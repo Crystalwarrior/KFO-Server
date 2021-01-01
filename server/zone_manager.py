@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -146,7 +146,7 @@ class ZoneManager:
 
             # For each player that was in that area, restore their gamemode
             for client in area.clients:
-                client.send_command('GM', '')
+                client.send_gamemode(name='')
 
             # If no more areas, delete the zone
             if not self._areas:
@@ -271,7 +271,7 @@ class ZoneManager:
 
             for area in self.get_areas():
                 for client in area.clients:
-                    client.send_command('GM', new_mode)
+                    client.send_gamemode(name=new_mode)
 
         def get_mode(self):
             """
@@ -414,7 +414,7 @@ class ZoneManager:
             area.in_zone = None
             # For each player that was in an area part of the zone, restore their gamemode
             for client in area.clients:
-                client.send_command('GM', '')
+                client.send_gamemode(name='')
         for watcher in zone._watchers:
             watcher.zone_watched = None
 

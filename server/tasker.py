@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ import time
 
 from server.constants import Constants
 from server.exceptions import ServerError
+
 
 class Tasker:
     def __init__(self, server, loop):
@@ -171,7 +172,6 @@ class Tasker:
 
         self.client_tasks[client.id][args[0]][2][attr] = value
 
-
     ###
     # CURRENTLY SUPPORTED TASKS
     ###
@@ -190,17 +190,16 @@ class Tasker:
             except KeyboardInterrupt:
                 raise
 
-
     async def as_afk_kick(self, client, args):
         afk_delay, afk_sendto = args
         try:
-            delay = int(afk_delay)*60 # afk_delay is in minutes, so convert to seconds
+            delay = int(afk_delay)*60  # afk_delay is in minutes, so convert to seconds
         except (TypeError, ValueError):
             info = ('The area file contains an invalid AFK kick delay for area {}: {}'.
                     format(client.area.id, afk_delay))
             raise ServerError(info)
 
-        if delay <= 0: # Assumes 0-minute delay means that AFK kicking is disabled
+        if delay <= 0:  # Assumes 0-minute delay means that AFK kicking is disabled
             return
 
         try:
@@ -214,11 +213,11 @@ class Tasker:
                 info = ('The area file contains an invalid AFK kick destination area for area {}: '
                         '{}'.format(client.area.id, afk_sendto))
                 raise ServerError(info)
-            if client.area.id == afk_sendto: # Don't try and kick back to same area
+            if client.area.id == afk_sendto:  # Don't try and kick back to same area
                 return
-            if client.char_id < 0: # Assumes spectators are exempted from AFK kicks
+            if client.char_id < 0:  # Assumes spectators are exempted from AFK kicks
                 return
-            if client.is_staff(): # Assumes staff are exempted from AFK kicks
+            if client.is_staff():  # Assumes staff are exempted from AFK kicks
                 return
 
             try:
@@ -227,16 +226,16 @@ class Tasker:
                 client.change_area(area, override_passages=True, override_effects=True,
                                    ignore_bleeding=True)
             except Exception:
-                pass # Server raised an error trying to perform the AFK kick, ignore AFK kick
+                pass  # Server raised an error trying to perform the AFK kick, ignore AFK kick
             else:
                 client.send_ooc('You were kicked from area {} to area {} for being inactive for '
                                 '{} minutes.'.format(original_area.id, afk_sendto, afk_delay))
 
                 if client.area.is_locked or client.area.is_modlocked:
-                    try: # Try and remove the IPID from the area's invite list
+                    try:  # Try and remove the IPID from the area's invite list
                         client.area.invite_list.pop(client.ipid)
                     except KeyError:
-                        pass # Would only happen if they joined the locked area through mod powers
+                        pass  # Would only happen if they joined the locked area through mod powers
 
                 if client.party:
                     p = client.party
@@ -250,10 +249,9 @@ class Tasker:
         hour = hour_start
         minute_at_interruption = 0
         time_started_at = time.time()
-        time_refreshed_at = time.time()  # Does not need initialization, but PyLint complains otherwise
+        time_refreshed_at = time.time()  # Doesnt need init, but PyLint complains otherwise
         periods = list()
         force_period_refresh = False
-        unknown_time = False
         current_period = (None, None)
         notify_normies = False
 
@@ -267,7 +265,7 @@ class Tasker:
                    ((c.is_staff() or send_first_hour) and area_1 <= c.area.id <= area_2)]
         for c in targets:
             c.send_ooc('It is now {}:00.'.format('{0:02d}'.format(hour)))
-            c.send_command('CL', client.id, hour)
+            c.send_clock(client_id=client.id, hour=hour)
 
         while True:
             try:
@@ -322,16 +320,15 @@ class Tasker:
                 for (period_start, period_name) in periods:
                     if period_start == hour or force_period_refresh:
                         force_period_refresh = False
-                        func = lambda c: c == client or (area_1 <= c.area.id <= area_2)
-                        self.server.send_all_cmd_pred('TOD', period_name, pred=func)
                         for c in targets:
+                            c.send_time_of_day(name=period_name)
                             c.send_ooc(f'It is now {period_name}.')
                         break
 
                 # Regardless of new period, send other packets
                 for c in targets:
                     c.send_ooc('It is now {}:00.'.format('{0:02d}'.format(hour)))
-                    c.send_command('CL', client.id, hour)
+                    c.send_clock(client_id=client.id, hour=hour)
 
                 time_started_at = time.time()
                 minute_at_interruption = 0
@@ -353,8 +350,8 @@ class Tasker:
                     # refresh_reason may be undefined or the empty string.
                     # Both cases imply cancelation
                     for c in targets:
-                        c.send_command('CL', client.id, -1)
-                        c.send_command('TOD', '')  # Reset time of day
+                        c.send_clock(client_id=client.id, hour=-1)
+                        c.send_time_of_day(name='')  # Reset time of day
                     client.send_ooc('Your day cycle in areas {} through {} has been canceled.'
                                     .format(area_1, area_2))
                     client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through '
@@ -409,8 +406,8 @@ class Tasker:
                     targets = [c for c in self.server.client_manager.clients if c == client or
                                (area_1 <= c.area.id <= area_2)]
                     for c in targets:
-                        c.send_command('CL', client.id, -1)
-                        c.send_command('TOD', 'unknown')
+                        c.send_clock(client_id=client.id, hour=-1)
+                        c.send_time_of_day(name='unknown')
 
                 elif refresh_reason == 'period':
                     # Only update minute and time started at if timer is not paused
@@ -462,8 +459,10 @@ class Tasker:
                                     break
 
                         if changed_current_period:
-                            func = lambda c: c == client or (area_1 <= c.area.id <= area_2)
-                            self.server.send_all_cmd_pred('TOD',  new_period_name, pred=func)
+                            targets = [c for c in self.server.client_manager.clients
+                                       if c == client or area_1 <= c.area.id <= area_2]
+                            for c in targets:
+                                c.send_time_of_day(name=new_period_name)
 
                     # Send notifications appropriately
                     if start >= 0:
@@ -516,12 +515,12 @@ class Tasker:
                     raise ValueError(f'Unknown refresh reason {refresh_reason} for day cycle.')
 
     async def as_effect(self, client, args):
-        _, length, effect, new_value = args # Length in seconds, already converted
+        _, length, effect, new_value = args  # Length in seconds, already converted
 
         try:
             await asyncio.sleep(length)
         except asyncio.CancelledError:
-            pass # Cancellation messages via send_oocs must be sent manually
+            pass  # Cancellation messages via send_oocs must be sent manually
         else:
             if new_value:
                 client.send_ooc('The effect `{}` kicked in.'.format(effect.name))
@@ -553,7 +552,7 @@ class Tasker:
         try:
             await asyncio.sleep(length)
         except asyncio.CancelledError:
-            pass # Cancellation messages via send_oocs must be sent manually
+            pass  # Cancellation messages via send_oocs must be sent manually
         else:
             if announce_if_over and not client.is_staff():
                 client.send_ooc('Your movement handicap has expired. You may move to a new area.')
@@ -561,23 +560,21 @@ class Tasker:
             client.is_movement_handicapped = False
 
     async def as_timer(self, client, args):
-        _, length, name, is_public = args # Length in seconds, already converted
-        client_name = client.name # Failsafe in case disconnection before task is cancelled/expires
+        _, length, name, is_public = args  # Length in seconds, already converted
+        client_name = client.name  # Failsafe in case disconnection before task is cancelled/expires
 
         try:
             await asyncio.sleep(length)
         except asyncio.CancelledError:
-            self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                          'Timer "{}" initiated by {} has been canceled.'
-                                          .format(name, client_name),
-                                          pred=lambda c: (c == client or c.is_staff() or
-                                                          (is_public and c.area == client.area)))
+            client.send_ooc(f'Your timer {client_name} has been canceled.')
+            client.send_ooc_others(f'Timer "{name}" initiated by {client_name} has been canceled.',
+                                   pred=lambda c: (c.is_staff() or
+                                                   (is_public and c.area == client.area)))
         else:
-            self.server.send_all_cmd_pred('CT', '{}'.format(self.server.config['hostname']),
-                                          'Timer "{}" initiated by {} has expired.'
-                                          .format(name, client_name),
-                                          pred=lambda c: (c == client or c.is_staff() or
-                                                          (is_public and c.area == client.area)))
+            client.send_ooc(f'Your timer {client_name} has expired.')
+            client.send_ooc_others(f'Timer "{name}" initiated by {client_name} has expired.',
+                                   pred=lambda c: (c.is_staff() or
+                                                   (is_public and c.area == client.area)))
         finally:
             del self.active_timers[name]
 
@@ -588,7 +585,7 @@ class Tasker:
             try:
                 await asyncio.sleep(length)
             except asyncio.CancelledError:
-                break # Cancellation messages via send_oocs must be sent manually
+                break  # Cancellation messages via send_oocs must be sent manually
             else:
                 if client.is_gagged:
                     client.send_ooc_others('(X) Gagged player {} has not attempted to speak in the '
@@ -606,4 +603,3 @@ class Tasker:
                     client.send_ooc_others('{} is being tightlipped.'.format(client.displayname),
                                            is_zstaff_flex=False, in_area=True,
                                            pred=lambda c: not (c.is_blind and c.is_deaf))
-

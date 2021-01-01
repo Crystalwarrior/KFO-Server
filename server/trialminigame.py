@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,9 +53,9 @@ class TrialMinigame(GameWithAreas):
         Method to perform once a client entered an area of the minigame.
     _on_area_destroyed
         Method to perform once an area of the minigame is marked for destruction.
-    _on_client_send_ic_check
+    _on_client_inbound_ms_check
         Method to perform once a player of the minigame wants to send an IC message.
-    _on_client_send_ic
+    _on_client_inbound_ms
         Method to perform once a player of the minigame sends an IC message.
     _on_client_change_character
         Method to perform once a player of the minigame has changed character.
@@ -274,7 +274,7 @@ class TrialMinigame(GameWithAreas):
         # Force every user in the former areas of the minigame to switch to trial gamemode
         for area in areas:
             for user in area.clients:
-                user.send_command('GM', 'trial')
+                user.send_gamemode(name='trial')
 
     def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
                              ignore_bleeding=False):

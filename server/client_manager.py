@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,11 +19,12 @@
 import datetime
 import time
 
+from server import clients
 from server import client_changearea
 from server import fantacrypt
 from server import logger
 from server.exceptions import AreaError, ClientError, GameError, PartyError, TrialError
-from server.constants import TargetType, Constants, Clients
+from server.constants import TargetType, Constants
 from server.subscriber import Publisher
 
 
@@ -38,7 +39,7 @@ class ClientManager:
             self.can_join = 0  # Needs to be 2 to actually connect
             self.can_askchaa = True  # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined')  # AO version used established through ID pack
-            self.packet_handler = Clients.ClientDRO1d0d0
+            self.packet_handler = clients.ClientDRO1d0d0
             self.bad_version = False
             self.publisher = Publisher(self)
 
@@ -156,7 +157,13 @@ class ClientManager:
             else:
                 self.send_raw_message('{}#%'.format(command))
 
-        def prepare_command(self, identifier, pargs):
+        def send_command_dict(self, command, dargs):
+            _, to_send = self.prepare_command(command, dargs)
+            self.send_command(command, *to_send)
+            self.publisher.publish(f'client_outbound_{command.lower()}',
+                                   {'contents': dargs.copy()})
+
+        def prepare_command(self, identifier, dargs):
             """
             Prepare a packet so that the client's specific protocol can recognize it.
 
@@ -164,33 +171,43 @@ class ClientManager:
             ----------
             identifier : str
                 ID of the packet to send.
-            pargs : dict of str to Any
+            dargs : dict of str to Any
                 Original packet arguments, which will be modified to satisfy the client's protocol.
                 Map is of argument name to argument value.
 
             Returns
             -------
-            final_pargs : dict of str to Any
+            final_dargs : dict of str to Any
                 Modified packet arguments. Map is of argument name to argument value.
             to_send : list of str
                 Packet argument values listed in the order the client protocol expects.
 
             """
 
-            final_pargs = dict()
+            final_dargs = dict()
             to_send = list()
-
-            outbound_args = self.packet_handler['{}_OUTBOUND'.format(identifier.upper())].value
+            idn = f'{identifier.upper()}_OUTBOUND'
+            try:
+                outbound_args = self.packet_handler[idn].value
+            except KeyError:
+                try:
+                    outbound_args = clients.DefaultAO2Protocol[idn].value
+                except KeyError:
+                    err = f'No matching protocol found for {idn}.'
+                    raise KeyError(err)
 
             for (field, default_value) in outbound_args:
                 try:
-                    value = pargs[field]
-                except KeyError:  # If the key was popped/is missing, use defaults then
+                    value = dargs[field]
+                except KeyError:
                     value = default_value
-                to_send.append(value)
-                final_pargs[field] = value
+                if field.endswith('ao2_list'):
+                    to_send.extend(value)
+                else:
+                    to_send.append(value)
+                final_dargs[field] = value
 
-            return final_pargs, to_send
+            return final_dargs, to_send
 
         def send_ooc(self, msg, username=None, allow_empty=False,
                      is_staff=None, is_officer=None, in_area=None, not_to=None, part_of=None,
@@ -212,7 +229,10 @@ class ClientManager:
                                         pred=pred)
 
             if cond(self):
-                self.send_command('CT', username, msg)
+                self.send_command_dict('CT', {
+                    'username': username,
+                    'message': msg,
+                    })
 
         def send_ooc_others(self, msg, username=None, allow_empty=False,
                             is_staff=None, is_officer=None, in_area=None, not_to=None, part_of=None,
@@ -239,7 +259,7 @@ class ClientManager:
         def send_ic(self, params=None, sender=None, pred=None, not_to=None, gag_replaced=False,
                     is_staff=None, in_area=None, to_blind=None, to_deaf=None,
                     bypass_replace=False, bypass_deafened_starters=False,
-                    msg=None, pos=None, cid=None, ding=None, color=None, showname=None):
+                    msg=None, pos=None, char_id=None, ding=None, color=None, showname=None):
 
             # sender is the client who sent the IC message
             # self is who is receiving the IC message at this particular moment
@@ -260,7 +280,7 @@ class ClientManager:
             if params is None:
                 pargs['msg'] = msg
                 pargs['pos'] = pos
-                pargs['cid'] = cid
+                pargs['char_id'] = char_id
                 pargs['ding'] = ding
                 pargs['color'] = color
                 pargs['showname'] = showname
@@ -332,7 +352,7 @@ class ClientManager:
                         self.last_received_ic_notme = [None, None, None]
                         self.last_received_ic = [None, None, None]
                     # If last sender has changed character, do not show previous sender
-                    elif ((last_apparent_sender.char_id != last_apparent_args['cid'] or
+                    elif ((last_apparent_sender.char_id != last_apparent_args['char_id'] or
                            last_apparent_sender.char_folder != last_apparent_args['folder'])):
                         # We need to check for iniswaps as well, to account for this possibility:
                         # 1. A and B are in the same room. A as in first person mode
@@ -403,7 +423,7 @@ class ClientManager:
                          not pargs['msg'] in allowed_messages) or
                         (sender and sender.is_gagged and gag_replaced)):
                         pargs['msg'] = '(Your ears are ringing)'
-                        if self.send_deaf_space and self.packet_handler != Clients.ClientDRO1d0d0:
+                        if self.send_deaf_space and self.packet_handler != clients.ClientDRO1d0d0:
                             pargs['msg'] = pargs['msg'] + ' '
                         self.send_deaf_space = not self.send_deaf_space
 
@@ -412,7 +432,7 @@ class ClientManager:
                 # around old client bug
                 if sender and sender.multi_ic and sender.multi_ic_pre:
                     if pargs['msg'].startswith(sender.multi_ic_pre):
-                        if self != sender or sender.packet_handler == Clients.ClientDRO1d0d0:
+                        if self != sender or sender.packet_handler == clients.ClientDRO1d0d0:
                             pargs['msg'] = pargs['msg'].replace(sender.multi_ic_pre, '', 1)
 
                 # Modify shownames as needed
@@ -464,12 +484,12 @@ class ClientManager:
                 self.last_received_ic[2] = final_pargs
             self.last_received_ic[1] = final_pargs
 
-            self.send_command('MS', *to_send)
+            self.send_command_dict('MS', final_pargs)
 
         def send_ic_others(self, params=None, sender=None, bypass_replace=False,
                            bypass_deafened_starters=False, pred=None, not_to=None,
                            gag_replaced=False, is_staff=None, in_area=None, to_blind=None,
-                           to_deaf=None,  msg=None, pos=None, cid=None, ding=None, color=None,
+                           to_deaf=None,  msg=None, pos=None, char_id=None, ding=None, color=None,
                            showname=None):
 
             if not_to is None:
@@ -482,13 +502,13 @@ class ClientManager:
                           bypass_deafened_starters=bypass_deafened_starters,
                           pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
-                          msg=msg, pos=pos, cid=cid, ding=ding, color=color, showname=showname)
+                          msg=msg, pos=pos, char_id=char_id, ding=ding, color=color, showname=showname)
 
         def send_ic_attention(self):
             self.send_ic(msg='(Something catches your attention)', ding=1)
 
         def send_ic_blankpost(self):
-            if self.packet_handler == Clients.ClientDRO1d0d0:
+            if self.packet_handler == clients.ClientDRO1d0d0:
                 self.send_ic(msg='', bypass_replace=True)
 
         def send_background(self, name=None, pos=None):
@@ -515,13 +535,81 @@ class ClientManager:
             if pos is None:
                 pos = self.pos
 
-            pargs = {
+            self.send_command_dict('BN', {
                 'name': name,
-                'pos': pos
-                }
+                'pos': pos,
+                })
 
-            _, to_send = self.prepare_command('BN', pargs)
-            self.send_command('BN', *to_send)
+        def send_evidence_list(self):
+            self.send_command_dict('LE', {
+                'evidence_ao2_list': self.area.get_evidence_list(self)
+                })
+
+        def send_health(self, side=None, health=None):
+            self.send_command_dict('HP', {
+                'side': side,
+                'health': health
+                })
+
+        def send_music(self, name=None, char_id=None, showname=None, loop=None, channel=None,
+                       effects=None):
+            self.send_command_dict('MC', {
+                'name': name,
+                'char_id': char_id,
+                'showname': showname,
+                'loop': loop,
+                'channel': channel,
+                'effects': effects,
+                })
+
+        def send_splash(self, name=None):
+            self.send_command_dict('RT', {
+                'name': name,
+                })
+
+        def send_clock(self, client_id=None, hour=None):
+            self.send_command_dict('CL', {
+                'client_id': client_id,
+                'hour': hour,
+                })
+
+        def send_gamemode(self, name=None):
+            self.send_command_dict('GM', {
+                'name': name,
+                })
+
+        def send_time_of_day(self, name=None):
+            self.send_command_dict('TOD', {
+                'name': name,
+                })
+
+        def send_timer_resume(self, timer_id=None):
+            self.send_command_dict('TR', {
+                'timer_id': timer_id,
+                })
+
+        def send_timer_pause(self, timer_id=None):
+            self.send_command_dict('TP', {
+                'timer_id': timer_id,
+                })
+
+        def send_timer_set_time(self, timer_id=None, new_time=None):
+            self.send_command_dict('TST', {
+                'timer_id': timer_id,
+                'new_time': new_time,
+                })
+
+        def send_timer_set_step_length(self, timer_id=None, new_step_length=None):
+            self.send_command_dict('TSS', {
+                'timer_id': timer_id,
+                'new_step_length': new_step_length,
+                })
+
+        def send_timer_set_firing_interval(self, timer_id=None, new_firing_interval=None):
+            self.send_command_dict('TSF', {
+                'timer_id': timer_id,
+                'new_firing_interval': new_firing_interval,
+                })
 
         def disconnect(self):
             self.transport.close()
@@ -601,14 +689,17 @@ class ClientManager:
             self.char_id = char_id
             self.char_folder = self.get_char_name()  # Assumes players are not iniswapped initially
             self.pos = ''
-            self.send_command('PV', self.id, 'CID', self.char_id)
-
             if announce_zwatch:
                 self.send_ooc_others('(X) Client {} has changed from character `{}` to `{}` in '
                                      'your zone ({}).'
                                      .format(self.id, old_char, self.char_folder, self.area.id),
                                      is_zstaff=target_area)
 
+            self.send_command_dict('PV', {
+                'client_id': self.id,
+                'char_id_tag': 'CID',
+                'char_id': self.char_id,
+                })
             self.publisher.publish('client_change_character', {
                 'old_char_id': old_char_id,
                 'new_char_id': char_id,
@@ -649,7 +740,7 @@ class ClientManager:
             else:
                 raw_music_list = self.music_list
 
-            if self.packet_handler not in [Clients.ClientAO2d8d4, Clients.ClientKFO2d8]:
+            if self.packet_handler not in [clients.ClientAO2d8d4, clients.ClientKFO2d8]:
                 # DRO and AO2.6< protocol
                 reloaded_music_list = self.server.build_music_list(from_area=self.area, c=self,
                                                                    music_list=raw_music_list)
@@ -657,17 +748,23 @@ class ClientManager:
                 # KEEP THE ASTERISK, unless you want a very weird single area comprised
                 # of all areas back to back forming a black hole area of doom and despair
                 # that crashes all clients that dare attempt join this area.
-                self.send_command('FM', *reloaded_music_list)
+                self.send_command_dict('FM', {
+                    'music_ao2_list': reloaded_music_list,
+                    })
             else:
                 # KFO and AO2.8.4 deals with music lists differently than other clients
                 # They want the area lists and music lists separate, so they will have it like that
                 area_list = self.server.build_music_list(from_area=self.area, c=self,
                                                          include_areas=True,
                                                          include_music=False)
-                self.send_command('FA', *area_list)
+                self.send_command_dict('FA', {
+                    'areas_ao2_list': area_list,
+                    })
                 music_list = self.server.prepare_music_list(c=self,
                                                             specific_music_list=raw_music_list)
-                self.send_command('FM', *music_list)
+                self.send_command_dict('FM', {
+                    'music_ao2_list': music_list,
+                    })
 
             # Update the new music list of the client once everything is done, if a new music list
             # was indeed loaded. Doing this only now prevents setting the music list to something
@@ -1182,22 +1279,37 @@ class ClientManager:
             # If not spectator
             if self.char_id is not None and self.char_id >= 0:
                 char_list[self.char_id] = 0  # Self is always available
-            self.send_command('CharsCheck', *char_list)
+            self.send_command_dict('CharsCheck', {
+                'chars_status_ao2_list': char_list,
+                })
 
         def send_done(self):
             self.refresh_char_list()
-            self.send_command('HP', 1, self.area.hp_def)
-            self.send_command('HP', 2, self.area.hp_pro)
+            self.send_command_dict('HP', {
+                'side': 1,
+                'health': self.area.hp_def
+                })
+            self.send_command_dict('HP', {
+                'side': 2,
+                'health': self.area.hp_pro
+                })
             if self.is_blind:
                 self.send_background(name=self.server.config['blackout_background'])
             else:
                 self.send_background(name=self.area.background)
-            self.send_command('LE', *self.area.get_evidence_list(self))
-            self.send_command('MM', 1)
-            self.send_command('OPPASS', fantacrypt.fanta_encrypt(self.server.config['guardpass']))
+            self.send_command_dict('LE', {
+                'evidence_ao2_list': self.area.get_evidence_list(self),
+                })
+            self.send_command_dict('MM', {
+                'unknown': 1,
+                })
+            self.send_command_dict('OPPASS', {
+                'guard_pass': fantacrypt.fanta_encrypt(self.server.config['guardpass']),
+                })
+
             if self.char_id is None:
                 self.char_id = -1  # Set to a valid ID if still needed
-            self.send_command('DONE')
+            self.send_command_dict('DONE', dict())
 
             if self.bad_version:
                 self.send_ooc(f'Unknown client detected {self.version}. '
@@ -1463,7 +1575,9 @@ class ClientManager:
                 raise ClientError('Invalid position. '
                                   'Possible values: def, pro, hld, hlp, jud, wit.')
             self.pos = pos
-            self.send_command('SP', self.pos)  # Send a "Set Position" packet
+            self.send_command_dict('SP', {
+                'position': self.pos
+                })  # Send a "Set Position" packet
 
         def set_mod_call_delay(self):
             self.mod_call_time = round(time.time() * 1000.0 + 30000)
@@ -1581,8 +1695,10 @@ class ClientManager:
 
         # Check if server is full, and if so, send number of players and disconnect
         if cur_id == -1:
-            c.send_command('PN', self.server.get_player_count(),
-                           self.server.config['playerlimit'])
+            c.send_command_dict('PN', {
+                'player_count': self.server.get_player_count(),
+                'player_limit': self.server.config['playerlimit']
+                })
             c.disconnect()
             return c
         self.cur_id[cur_id] = True

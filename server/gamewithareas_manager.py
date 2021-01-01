@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,9 +50,9 @@ class GameWithAreas(_Game):
         Method to perform once a client entered an area of the game.
     _on_area_destroyed
         Method to perform once an area of the game is marked for destruction.
-    _on_client_send_ic_check
+    _on_client_inbound_ms_check
         Method to perform once a player of the game wants to send an IC message.
-    _on_client_send_ic
+    _on_client_inbound_ms
         Method to perform once a player of the game sends an IC message.
     _on_client_change_character
         Method to perform once a player of the game has changed character.
@@ -156,7 +156,7 @@ class GameWithAreas(_Game):
         self.listener.update_events({
             'area_client_left': self._on_area_client_left,
             'area_client_entered': self._on_area_client_entered,
-            'area_client_send_ic_check': self._on_area_client_send_ic_check,
+            'area_client_inbound_ms_check': self._on_area_client_inbound_ms_check,
             'area_destroyed': self._on_area_destroyed,
             'areas_loaded': self._on_areas_loaded,
             })
@@ -507,7 +507,7 @@ class GameWithAreas(_Game):
 
         self._check_structure()
 
-    def _on_area_client_send_ic_check(self, area, client=None, contents=None):
+    def _on_area_client_inbound_ms_check(self, area, client=None, contents=None):
         """
         Default callback for game area signaling a client in the area sent an IC message. Unlike
         the ClientManager.Client callback for send_ic_check, this one is triggered regardless of

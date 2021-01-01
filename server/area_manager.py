@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -178,6 +178,21 @@ class AreaManager:
             for c in self.clients:
                 c.send_command(cmd, *args)
 
+        def send_command_dict(self, cmd, dargs):
+            """
+            Send a network packet to all clients in the area.
+
+            Parameters
+            ----------
+            cmd: str
+                ID of the packet.
+            dargs : dict of str to Any
+                Packet argument as a map of argument name to argument value.
+            """
+
+            for client in self.clients:
+                client.send_command_dict(cmd, dargs)
+
         def broadcast_ooc(self, msg):
             """
             Send an OOC server message to the clients in the area.
@@ -188,7 +203,8 @@ class AreaManager:
                 Message to be sent.
             """
 
-            self.send_command('CT', self.server.config['hostname'], msg)
+            for client in self.clients:
+                client.send_ooc(msg)
 
         def broadcast_ic_attention(self, cond=None):
             """
@@ -412,9 +428,9 @@ class AreaManager:
             """
 
             for client in self.clients:
-                client.send_command('LE', *self.get_evidence_list(client))
+                client.send_evidence_list()
 
-        def change_hp(self, side, val):
+        def change_hp(self, side, health):
             """
             Change a penalty healthbar.
 
@@ -422,25 +438,28 @@ class AreaManager:
             ----------
             side: int
                 Penalty bar to change (1 for def, 2 for pro).
-            val: int
+            health: int
                 New health value of the penalty bar.
 
             Raises
             ------
             AreaError
                 If an invalid penalty bar or health value was given.
+
             """
-            if not 0 <= val <= 10:
-                raise AreaError('Invalid penalty value.')
+
             if not 1 <= side <= 2:
                 raise AreaError('Invalid penalty side.')
+            if not 0 <= health <= 10:
+                raise AreaError('Invalid penalty value.')
 
             if side == 1:
-                self.hp_def = val
+                self.hp_def = health
             elif side == 2:
-                self.hp_pro = val
+                self.hp_pro = health
 
-            self.send_command('HP', side, val)
+            for client in self.clients:
+                client.send_health(side=side, health=health)
 
         def is_iniswap(self, client, anim1, anim2, char):
             """
@@ -654,9 +673,9 @@ class AreaManager:
 
             if 'name' not in pargs:
                 pargs['name'] = name
-            if 'cid' not in pargs:
-                pargs['cid'] = client.char_id
-            pargs['showname'] = client.showname # Ignore AO shownames
+            if 'char_id' not in pargs:
+                pargs['char_id'] = client.char_id
+            pargs['showname'] = client.showname  # Ignore AO shownames
             if 'loop' not in pargs:
                 pargs['loop'] = -1
             if 'channel' not in pargs:
@@ -664,19 +683,19 @@ class AreaManager:
             if 'effects' not in pargs:
                 pargs['effects'] = 0
 
-            def loop(cid):
+            def loop(char_id):
                 for client in self.clients:
                     loop_pargs = pargs.copy()
-                    loop_pargs['cid'] = cid # Overwrite in case cid changed (e.g., server looping)
-                    _, to_send = client.prepare_command('MC', loop_pargs)
-                    client.send_command('MC', *to_send)
+                    # Overwrite in case char_id changed (e.g., server looping)
+                    loop_pargs['char_id'] = char_id
+                    client.send_music(**loop_pargs)
 
                 if self.music_looper:
                     self.music_looper.cancel()
                 if length > 0:
                     f = lambda: loop(-1) # Server should loop now
                     self.music_looper = asyncio.get_event_loop().call_later(length, f)
-            loop(pargs['cid'])
+            loop(pargs['char_id'])
 
             # Record the character name and the track they played.
             self.current_music_player = client.displayname
@@ -692,7 +711,7 @@ class AreaManager:
                                        .format(client.displayname, client.id, client.area.id),
                                        is_zstaff=True)
 
-        def play_music(self, name, cid, length=-1, showname=''):
+        def play_music(self, name, char_id, length=-1, showname=''):
             """
             Start playing a music track in an area.
 
@@ -700,14 +719,15 @@ class AreaManager:
             ----------
             name: str
                 Name of the track to play.
-            cid: int
+            char_id: int
                 Character ID of the player who played the track, or -1 if the server initiated it.
             length: int
                 Length of the track in seconds to allow for seamless server-managed looping.
                 Defaults to -1 (no looping).
             """
 
-            self.send_command('MC', name, cid, showname)
+            for client in self.clients:
+                client.send_music(name=name, char_id=char_id, showname=showname)
 
             if self.music_looper:
                 self.music_looper.cancel()

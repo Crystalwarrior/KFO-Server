@@ -3,7 +3,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ def main():
 
         logger.log_server('Server is shutting down due to an unhandled exception.')
         logger.log_print('Attempting a graceful shutdown.')
-        
+
         if not server:
             logger.log_pserver('Server has successfully shut down.')
             return
@@ -88,7 +88,7 @@ def main():
             msg = ('Unable to locate the `config` folder. Please make sure the folder exists and '
                    'is named correctly and try again.')
             raise RuntimeError(msg)
-            
+
         current_python_tuple = sys.version_info
         current_python_simple = 'Python {}.{}.{}'.format(*current_python_tuple[:3])
         if current_python_tuple < (3, 7):

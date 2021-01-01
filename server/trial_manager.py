@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,9 +52,9 @@ class _Trial(GameWithAreas):
         Method to perform once a client entered an area of the trial.
     _on_area_destroyed
         Method to perform once an area of the trial is marked for destruction.
-    _on_client_send_ic_check
+    _on_client_inbound_ms_check
         Method to perform once a player of the trial wants to send an IC message.
-    _on_client_send_ic
+    _on_client_inbound_ms
         Method to perform once a player of the trial sends an IC message.
     _on_client_change_character
         Method to perform once a player of the trial has changed character.
@@ -241,19 +241,21 @@ class _Trial(GameWithAreas):
         """
 
         if self.is_player(user):
-            user.send_command('HP', 1, int(self._player_to_focus[user.id][0]))
-            user.send_command('HP', 2, int(self._player_to_influence[user.id][0]))
+            user.send_health(side=1, health=int(self._player_to_focus[user.id][0]))
+            user.send_health(side=2, health=int(self._player_to_influence[user.id][0]))
 
         # If there are any minigames, let them set the splashes, gamemode and timers
         if self.get_minigames():
             return
 
-        user.send_command('GM', 'trial')
-        user.send_command('RT', 'testimony1')
-        user.send_command('TP', self._client_timer_id, 0)
-        user.send_command('TST', self._client_timer_id, 0)
-        user.send_command('TSS', self._client_timer_id, 0)
-        user.send_command('TSF', self._client_timer_id, 0)
+        user.send_gamemode(name='trial')
+        user.send_splash(name='testimony1')
+        user.send_timer_pause(timer_id=self._client_timer_id)
+        user.send_timer_set_time(timer_id=self._client_timer_id, new_time=0)
+        user.send_timer_set_step_length(timer_id=self._client_timer_id,
+                                        new_step_length=0)
+        user.send_timer_set_firing_interval(timer_id=self._client_timer_id,
+                                            new_firing_interval=0)
 
     def remove_player(self, user):
         """
@@ -326,12 +328,12 @@ class _Trial(GameWithAreas):
         # We use .new_area rather than .area as this function may have been called as a result
         # of the user moving, in which case .area still points to the user's old area.
 
-        user.send_command('HP', 1, user.area.hp_pro)
-        user.send_command('HP', 2, user.area.hp_def)
+        user.send_health(side=1, health=user.area.hp_pro)
+        user.send_health(side=2, health=user.area.hp_def)
 
         # If the user is no longer in an area part of an area of the trial, clear out gamemode
         if user.new_area not in self.get_areas():
-            user.send_command('GM', '')
+            user.send_gamemode(name='')
 
     def get_influence(self, user) -> float:
         """
@@ -391,7 +393,7 @@ class _Trial(GameWithAreas):
             raise TrialError.InfluenceIsInvalidError
 
         self._player_to_influence[user.id] = (new_influence, min_influence, max_influence)
-        user.send_command('HP', 2, int(new_influence))
+        user.send_health(side=2, health=int(new_influence))
 
         # If the new influence is 0, warn all trial leaders
         if new_influence == 0:
@@ -541,7 +543,7 @@ class _Trial(GameWithAreas):
             raise TrialError.FocusIsInvalidError
 
         self._player_to_focus[user.id] = (new_focus, min_focus, max_focus)
-        user.send_command('HP', 1, int(new_focus))
+        user.send_health(side=1, health=int(new_focus))
         self._check_structure()
 
     def change_focus_by(self, user, change_by):
@@ -922,7 +924,7 @@ class _Trial(GameWithAreas):
         self.destroy()
 
         for user in users:
-            user.send_command('RT', 'testimony2')
+            user.send_splash(name='testimony2')
 
     def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
                              ignore_bleeding=False):

@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -332,7 +332,7 @@ class _TestClientManager(ClientManager):
                 self.ooc('/area {}'.format(area_id))
             else:
                 name = area.name
-                buffer = 'MC#{}-{}#0#%'.format(area_id, name)
+                buffer = 'MC#{}-{}#{}#%'.format(area_id, name, self.char_id)
                 self.send_command_cts(buffer)
 
             assert self.area.id == area_id, (self.area.id, area_id, as_command)
@@ -600,7 +600,7 @@ class _TestClientManager(ClientManager):
             self.assert_not_packet('CT', (user, message), somewhere=somewhere)
 
         def sic(self, message, msg_type=0, pre='-', folder=None, anim=None, pos=None, sfx=0,
-                anim_type=0, cid=None, sfx_delay=0, button=0, evi=None, flip=0, ding=0, color=0,
+                anim_type=0, char_id=None, sfx_delay=0, button=0, evi=None, flip=0, ding=0, color=0,
                 ignore_timelimit=True):
             if folder is None:
                 folder = self.get_char_name()
@@ -608,8 +608,8 @@ class _TestClientManager(ClientManager):
                 anim = 'happy'
             if pos is None:
                 pos = self.pos if self.pos else 'def'
-            if cid is None:
-                cid = self.char_id
+            if char_id is None:
+                char_id = self.char_id
             if evi is None:
                 evi = 0
 
@@ -621,7 +621,7 @@ class _TestClientManager(ClientManager):
             # 5 = pos
             # 6 = sfx
             # 7 = anim_type
-            # 8 = cid
+            # 8 = char_id
             # 9 = sfx_delay
             # 10 = button
             # 11 = self.client.evi_list[evidence]
@@ -630,7 +630,7 @@ class _TestClientManager(ClientManager):
             # 14 = color
 
             buffer = ('MS#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#%'
-                      .format(msg_type, pre, folder, anim, message, pos, sfx, anim_type, cid,
+                      .format(msg_type, pre, folder, anim, message, pos, sfx, anim_type, char_id,
                               sfx_delay, button, evi, flip, ding, color))
             if ignore_timelimit: # Time wasted here = 4 hours 8/10/19
                 self.area.can_send_message = lambda: True
@@ -655,7 +655,7 @@ class _TestClientManager(ClientManager):
                          'pos': 5,
                          'sfx': 6,
                          'anim_type': 7,
-                         'cid': 8,
+                         'char_id': 8,
                          'sfx_delay': 9,
                          'button': 10,
                          'evi': 11,
@@ -760,7 +760,7 @@ class _TestClientManager(ClientManager):
                 # 5 = pos
                 # 6 = sfx
                 # 7 = anim_type
-                # 8 = cid
+                # 8 = char_id
                 # 9 = sfx_delay
                 # 10 = button
                 # 11 = self.client.evi_list[evidence]

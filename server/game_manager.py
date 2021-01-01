@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -167,9 +167,9 @@ class _Game():
 
     Callback Methods
     ----------------
-    _on_client_send_ic_check
+    _on_client_inbound_ms_check
         Method to perform once a player of the game wants to send an IC message.
-    _on_client_send_ic
+    _on_client_inbound_ms
         Method to perform once a player of the game sends an IC message.
     _on_client_change_character
         Method to perform once a player of the game has changed character.
@@ -290,8 +290,8 @@ class _Game():
         # Implementation detail: the callbacks of the internal objects of the game are (to be)
         # ignored.
         self.listener = Listener(self, {
-            'client_send_ic': self._on_client_send_ic,
-            'client_send_ic_check': self._on_client_send_ic_check,
+            'client_inbound_ms': self._on_client_inbound_ms,
+            'client_inbound_ms_check': self._on_client_inbound_ms_check,
             'client_change_character': self._on_client_change_character,
             'client_destroyed': self._on_client_destroyed,
             })
@@ -1151,7 +1151,7 @@ class _Game():
 
         return self._playergroup.has_ever_had_players()
 
-    def _on_client_send_ic_check(self, player, contents=None):
+    def _on_client_inbound_ms_check(self, player, contents=None):
         """
         Default callback for game player signaling it wants to check if sending an IC message
         is appropriate. The IC arguments can be passed by reference, so this also serves as an
@@ -1175,7 +1175,7 @@ class _Game():
 
         print('Player', player, 'wants to check sent', contents)
 
-    def _on_client_send_ic(self, player, contents=None):
+    def _on_client_inbound_ms(self, player, contents=None):
         """
         Default callback for game player signaling it has sent an IC message.
 

@@ -550,7 +550,8 @@
 * Removed the limit on number of different judge buttons accepted
 * Running /showname with no arguments with no showname set, or attempting to set the same showname as the one previously had, now returns an error instead of running successfully
 * Added /dump to generate a server dump on request
-* Added /slit, alias to /bloodtrail.
+* Added /slit, alias to /bloodtrail
+* Clients sending syntactically correct but otherwise unidentifiable packets now silently log to console and server log rather than propagating an uncaught KeyError
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
@@ -579,5 +580,5 @@
 * Fixed the server attempting to send packets to clients without checking if the client is still online.
 * Fixed /poison, /cure and notifications for effects kicking in not showing the target's ID to the command runner and zone watchers
 * Fixed /charselect notifying of the wrong person running the command to officers
-* Removed deprecated AO commands
+* Removed deprecated AO commands, and deprecated packets opKICK and opBAN
 * Dropped Python 3.6 support

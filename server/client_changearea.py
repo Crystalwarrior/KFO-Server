@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,8 @@ import time
 
 from server import logger
 from server.exceptions import ClientError, AreaError
-from server.constants import Constants, Clients
+from server.constants import Constants
+
 
 class ClientChangeArea:
     def __init__(self, client):
@@ -162,7 +163,7 @@ class ClientChangeArea:
             # If the new area is not part of a zone, send order to go back to original gamemode
             # If the area is part of a zone, that is covered in the next if
             if not area.in_zone:
-                client.send_command('GM', '')
+                client.send_gamemode(name='')
 
             zone_id = old_area.in_zone.get_id()
 
@@ -175,8 +176,7 @@ class ClientChangeArea:
 
         # Check if entering a zone
         if area.in_zone and area.in_zone != old_area.in_zone:
-            client.send_command('GM', area.in_zone.get_mode())
-
+            client.send_gamemode(name=area.in_zone.get_mode())
             zone_id = area.in_zone.get_id()
 
             if client.is_staff() and client.zone_watched != area.in_zone:
@@ -698,14 +698,15 @@ class ClientChangeArea:
 
             # It also returns the character name that the player ended up, if it changed.
             if not ignore_checks:
-                new_cid, mes = client.check_change_area(area, override_passages=override_passages,
-                                                        override_effects=override_effects,
-                                                        more_unavail_chars=more_unavail_chars)
+                new_char_id, mes = client.check_change_area(area,
+                                                            override_passages=override_passages,
+                                                            override_effects=override_effects,
+                                                            more_unavail_chars=more_unavail_chars)
             else:
                 if change_to:
-                    new_cid, mes = change_to, list()
+                    new_char_id, mes = change_to, list()
                 else:
-                    new_cid, mes = client.char_id, list()
+                    new_char_id, mes = client.char_id, list()
 
             # Code after this line assumes that the area change will be successful
             # (but has not yet been performed)
@@ -719,8 +720,8 @@ class ClientChangeArea:
             # or the char is restricted there.
             old_char = client.get_char_name()
             old_dname = client.displayname
-            if new_cid != client.char_id:
-                client.change_character(new_cid, target_area=area, announce_zwatch=False)
+            if new_char_id != client.char_id:
+                client.change_character(new_char_id, target_area=area, announce_zwatch=False)
                 new_char = client.get_char_name()
                 if old_char in area.restricted_chars:
                     client.send_ooc('Your character was restricted in your new area, switched '
@@ -769,13 +770,13 @@ class ClientChangeArea:
         client.new_area = area  # Update again, as the above if may not have run
         area.new_client(client)
 
-        client.send_command('HP', 1, client.area.hp_def)
-        client.send_command('HP', 2, client.area.hp_pro)
+        client.send_health(side=1, health=client.area.hp_def)
+        client.send_health(side=2, health=client.area.hp_pro)
         if client.is_blind:
             client.send_background(name=client.server.config['blackout_background'])
         else:
             client.send_background(name=client.area.background)
-        client.send_command('LE', *client.area.get_evidence_list(client))
+        client.send_evidence_list()
         client.send_ic_blankpost()
 
         if client.followedby and not ignore_followers and not override_all:

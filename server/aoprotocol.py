@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-20 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,15 +17,16 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
-import re
 
 from time import localtime, strftime
 
-from server import logger
-from server.constants import ArgType, Clients, Constants
+from server import logger, clients
+from server.constants import ArgType, Constants
+from server.exceptions import AOProtocolError
 from server.exceptions import AreaError, ClientError, ServerError, PartyError, TsuserverException
 from server.fantacrypt import fanta_decrypt
 from server.evidence import EvidenceList
+
 
 class AOProtocol(asyncio.Protocol):
     """
@@ -100,7 +101,15 @@ class AOProtocol(asyncio.Protocol):
                     print(f'> {self.client.id}: {msg}')
                 self.server.log_packet(self.client, msg, True)
                 cmd, *args = msg.split('#')
-                self.net_cmd_dispatcher[cmd](self, args)
+                try:
+                    dispatched = self.net_cmd_dispatcher[cmd]
+                except KeyError:
+                    logger.log_pserver(f'Client {self.client.id} sent abnormal packet {msg} '
+                                       f'(client version: {self.client.version}).')
+                else:
+                    dispatched(self, args)
+            except AOProtocolError.InvalidInboundPacketArguments:
+                pass
             except Exception as ex:
                 self.server.send_error_report(self.client, cmd, args, ex)
         if not found_message:
@@ -116,9 +125,13 @@ class AOProtocol(asyncio.Protocol):
 
         :param transport: the transport object
         """
+
         self.client = self.server.new_client(transport, my_protocol=my_protocol)
-        self.ping_timeout = asyncio.get_event_loop().call_later(self.server.config['timeout'], self.client.disconnect)
-        self.client.send_command('decryptor', 34)  # just fantacrypt things
+        self.ping_timeout = asyncio.get_event_loop().call_later(self.server.config['timeout'],
+                                                                self.client.disconnect)
+        self.client.send_command_dict('decryptor', {
+            'key': 34,  # just fantacrypt things
+            })
 
     def connection_lost(self, exc, client=None):
         """ User disconnected
@@ -151,7 +164,7 @@ class AOProtocol(asyncio.Protocol):
         :param needs_auth: whether you need to have chosen a character
         :return: returns True if message was validated
         """
-        if needs_auth and self.client.char_id == -1:
+        if needs_auth and self.client.char_id is None:
             return False
         if len(args) != len(types):
             return False
@@ -170,14 +183,18 @@ class AOProtocol(asyncio.Protocol):
             fallback_protocols = list()
 
         packet_type = '{}_INBOUND'.format(identifier.upper())
-        for protocol in [self.client.packet_handler]+fallback_protocols:
-            expected_pairs = protocol[packet_type].value
+        protocols = [self.client.packet_handler]+fallback_protocols+[clients.DefaultAO2Protocol]
+        for protocol in protocols:
+            try:
+                expected_pairs = protocol[packet_type].value
+            except KeyError:
+                continue
             expected_argument_names = [x[0] for x in expected_pairs]
             expected_types = [x[1] for x in expected_pairs]
             if not self.validate_net_cmd(args, *expected_types, needs_auth=needs_auth):
                 continue
             return dict(zip(expected_argument_names, args))
-        return None
+        raise AOProtocolError.InvalidInboundPacketArguments
 
     def net_cmd_hi(self, args):
         """ Handshake.
@@ -186,11 +203,11 @@ class AOProtocol(asyncio.Protocol):
 
         :param args: a list containing all the arguments
         """
-        if not self.validate_net_cmd(args, ArgType.STR, needs_auth=False):
-            return
+
+        pargs = self.process_arguments('HI', args, needs_auth=False)
 
         # Record new HDID and IPID if needed
-        self.client.hdid = args[0]
+        self.client.hdid = pargs['client_hdid']
         if self.client.hdid not in self.client.server.hdid_list:
             self.client.server.hdid_list[self.client.hdid] = []
         if self.client.ipid not in self.client.server.hdid_list[self.client.hdid]:
@@ -204,24 +221,31 @@ class AOProtocol(asyncio.Protocol):
                                             'join the server but was refused entrance.'
                                             .format(self.client.hdid, self.client.ipid),
                                             is_officer=True)
-                self.client.send_command('BD')
+                self.client.send_command_dict('BD', dict())
                 self.client.disconnect()
                 return
 
         if self.client.hdid != 'ms2-prober' or self.server.config['show_ms2-prober']:
             logger.log_server('Connected. HDID: {}.'.format(self.client.hdid), self.client)
-        self.client.send_command('ID', self.client.id, self.server.software,
-                                 self.server.get_version_string())
-        self.client.send_command('PN', self.server.get_player_count(),
-                                 self.server.config['playerlimit'])
-        self.client.can_join += 1 # One of two conditions to allow joining
+        self.client.send_command_dict('ID', {
+            'client_id': self.client.id,
+            'server_software': self.server.software,
+            'server_software_version': self.server.get_version_string(),
+            })
+        self.client.send_command_dict('PN', {
+            'player_count': self.server.get_player_count(),
+            'player_limit': self.server.config['playerlimit'],
+            })
+        self.client.can_join += 1  # One of two conditions to allow joining
 
     def net_cmd_id(self, args):
-        """ Client version and PV
+        """ Client version
 
-        ID#<pv:int>#<software:string>#<version:string>#%
+        ID#<software:string>#<version:string>#%
 
         """
+
+        pargs = self.process_arguments('ID', args, needs_auth=False)
 
         self.client.can_join += 1  # One of two conditions to allow joining
 
@@ -230,10 +254,11 @@ class AOProtocol(asyncio.Protocol):
                 self.client.version = ('DRO', '1.0.0')
                 return False
 
-            self.client.version = (args[0], args[1])
+            raw_software, raw_version = pargs['client_software'], pargs['client_software_version']
+            self.client.version = (raw_software, raw_version)
 
-            software = args[0]
-            version_list = args[1].split('.')
+            software = raw_software
+            version_list = raw_version.split('.')
 
             # Identify version number
             if len(version_list) >= 3:
@@ -249,32 +274,32 @@ class AOProtocol(asyncio.Protocol):
                 # CC has args[1] == 'CC - Update (\d+\.)*\d+'
                 if args[1].startswith('CC'):
                     release = 'CC'
-                    major = float(args[1].split(' ')[-1])
+                    major = float(raw_version.split(' ')[-1])
                     minor = 0
                 else:
                     return False
 
             if software == 'DRO':
-                self.client.packet_handler = Clients.ClientDRO1d0d0
+                self.client.packet_handler = clients.ClientDRO1d0d0
             else:  # AO2 protocol
                 if release == 2:
                     if major >= 8 and major >= 4:
-                        self.client.packet_handler = Clients.ClientAO2d8d4
+                        self.client.packet_handler = clients.ClientAO2d8d4
                     elif major >= 8:  # KFO
-                        self.client.packet_handler = Clients.ClientKFO2d8
+                        self.client.packet_handler = clients.ClientKFO2d8
                     elif major == 7:  # AO 2.7
-                        self.client.packet_handler = Clients.ClientAO2d7
+                        self.client.packet_handler = clients.ClientAO2d7
                     elif major == 6:  # AO 2.6
-                        self.client.packet_handler = Clients.ClientAO2d6
+                        self.client.packet_handler = clients.ClientAO2d6
                     elif major == 4 and minor == 8:  # Older DRO
-                        self.client.packet_handler = Clients.ClientDROLegacy
+                        self.client.packet_handler = clients.ClientDROLegacy
                     else:
                         return False  # Unrecognized
                 elif release == 'CC':
                     if major >= 24:
-                        self.client.packet_handler = Clients.ClientCC24
+                        self.client.packet_handler = clients.ClientCC24
                     elif major >= 22:
-                        self.client.packet_handler = Clients.ClientCC22
+                        self.client.packet_handler = clients.ClientCC22
                     else:
                         return False  # Unrecognized
             # The only way to make it here is if we have not returned False
@@ -284,29 +309,38 @@ class AOProtocol(asyncio.Protocol):
         if not check_client_version():
             # Warn player they are using an unknown client.
             # Assume a DRO client instruction set.
-            self.client.packet_handler = Clients.ClientDRO1d0d0
+            self.client.packet_handler = clients.ClientDRO1d0d0
             self.client.bad_version = True
 
-        self.client.send_command('FL', 'yellowtext', 'customobjections', 'flipping',
-                                 'fastloading', 'noencryption', 'deskmod', 'evidence',
-                                 'cccc_ic_support', 'looping_sfx', 'additive', 'effects')
+        self.client.send_command_dict('FL', {
+            'fl_ao2_list': ['yellowtext', 'customobjections', 'flipping', 'fastloading',
+                            'noencryption', 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx',
+                            'additive', 'effects']
+            })
 
-    def net_cmd_ch(self, _):
+    def net_cmd_ch(self, args):
         """ Periodically checks the connection.
 
-        CHECK#%
+        CHECK#<char_id:int>%
 
         """
-        self.client.send_command('CHECK')
-        self.ping_timeout.cancel()
-        self.ping_timeout = asyncio.get_event_loop().call_later(self.server.config['timeout'], self.client.disconnect)
 
-    def net_cmd_askchaa(self, _):
+        _ = self.process_arguments('CH', args, needs_auth=False)
+
+        self.client.send_command_dict('CHECK', dict())
+        self.ping_timeout.cancel()
+        self.ping_timeout = asyncio.get_event_loop().call_later(self.server.config['timeout'],
+                                                                self.client.disconnect)
+
+    def net_cmd_askchaa(self, args):
         """ Ask for the counts of characters/evidence/music
 
         askchaa#%
 
         """
+
+        _ = self.process_arguments('askchaa', args, needs_auth=False)
+
         # Check if client is ready to actually join, and did not do weird packet shenanigans before
         if self.client.can_join != 2:
             return
@@ -314,7 +348,7 @@ class AOProtocol(asyncio.Protocol):
         if not self.client.can_askchaa:
             return
 
-        self.client.can_askchaa = False # Enforce the joining process happening atomically
+        self.client.can_askchaa = False  # Enforce the joining process happening atomically
 
         # Make sure there is enough room for the client
         char_cnt = len(self.server.char_list)
@@ -322,45 +356,59 @@ class AOProtocol(asyncio.Protocol):
         music_cnt = sum([len(item['songs']) + 1
                          for item in self.server.music_list])  # +1 for category
         area_cnt = len(self.server.area_manager.areas)
-        self.client.send_command('SI', char_cnt, evi_cnt, music_cnt+area_cnt)
+        self.client.send_command_dict('SI', {
+            'char_count': char_cnt,
+            'evidence_count': evi_cnt,
+            'music_list_count': music_cnt+area_cnt,
+            })
 
-    def net_cmd_ae(self, _):
+    def net_cmd_ae(self, args):
         """ Asks for specific pages of the evidence list.
 
         AE#<page:int>#%
 
         """
-        pass  # todo evidence maybe later
 
-    def net_cmd_rc(self, _):
+        _ = self.process_arguments('AE', args, needs_auth=False)
+        # TODO evidence maybe later
+
+    def net_cmd_rc(self, args):
         """ Asks for the whole character list(AO2)
 
         AC#%
 
         """
 
-        self.client.send_command('SC', *self.server.char_list)
+        _ = self.process_arguments('RC', args, needs_auth=False)
+        self.client.send_command_dict('SC', {
+            'chars_ao2_list': self.server.char_list,
+            })
 
-    def net_cmd_rm(self, _):
+    def net_cmd_rm(self, args):
         """ Asks for the whole music list(AO2)
 
         AM#%
 
         """
+
+        _ = self.process_arguments('RM', args, needs_auth=False)
         # Force the server to rebuild the music list, so that clients who just join get the correct
         # music list (as well as every time they request an updated music list directly).
 
         full_music_list = self.server.build_music_list(include_areas=True,
                                                        include_music=True)
-        self.client.send_command('SM', *full_music_list)
+        self.client.send_command_dict('SM', {
+            'music_ao2_list': full_music_list,
+            })
 
-    def net_cmd_rd(self, _):
+    def net_cmd_rd(self, args):
         """ Asks for server metadata(charscheck, motd etc.) and a DONE#% signal(also best packet)
 
         RD#%
 
         """
 
+        _ = self.process_arguments('RD', args, needs_auth=False)
         self.client.send_done()
         if self.server.config['announce_areas']:
             if self.server.config['rp_mode_enabled']:
@@ -368,31 +416,32 @@ class AOProtocol(asyncio.Protocol):
             else:
                 self.client.send_area_list()
         self.client.send_motd()
-        self.client.reload_music_list() # Reload the default area's music list
+        self.client.reload_music_list()  # Reload the default area's music list
         # so that it only includes areas reachable from that default area.
-        self.client.can_askchaa = True # Allow rejoining if left to lobby but did not dc.
+        self.client.can_askchaa = True  # Allow rejoining if left to lobby but did not dc.
 
     def net_cmd_cc(self, args):
         """ Character selection.
 
-        CC#<client_id:int>#<char_id:int>#<hdid:string>#%
+        CC#<client_id:int>#<char_id:int>#<client_hdid:string>#%
 
         """
-        if not self.validate_net_cmd(args, ArgType.INT, ArgType.INT, ArgType.STR,
-                                     needs_auth=False):
+
+        pargs = self.process_arguments('cc', args, needs_auth=False)
+        if pargs is None:
             return
-        cid = args[1]
+        char_id = pargs['char_id']
 
         ever_chose_character = self.client.ever_chose_character  # Store for later
         try:
-            self.client.change_character(cid)
+            self.client.change_character(char_id)
         except ClientError:
             return
         self.client.last_active = Constants.get_time()
 
         if not ever_chose_character:
-            self.client.send_command('GM', '')
-            self.client.send_command('TOD', '')
+            self.client.send_command_dict('GM', {'name': ''})
+            self.client.send_command_dict('TOD', {'name': ''})
 
     def net_cmd_ms(self, args):
         """ IC message.
@@ -401,6 +450,10 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
+        pargs = self.process_arguments('MS', args)
+        if pargs is None:
+            return
+
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You have been muted by a moderator.")
             return
@@ -408,9 +461,6 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc('The IC chat in this area is currently locked.')
             return
         if not self.client.area.can_send_message():
-            return
-        pargs = self.process_arguments('ms', args)
-        if not pargs:
             return
 
         # First, check if the player just sent the same message with the same character and did
@@ -434,11 +484,11 @@ class AOProtocol(asyncio.Protocol):
             return
         if pargs['anim_type'] not in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10):
             return
-        if pargs['cid'] != self.client.char_id:
+        if pargs['char_id'] != self.client.char_id:
             return
         if pargs['sfx_delay'] < 0:
             return
-        if pargs['button'] not in (0, 1, 2, 3, 4, 5, 6, 7, 8): # Shouts
+        if pargs['button'] not in (0, 1, 2, 3, 4, 5, 6, 7, 8):  # Shouts
             return
         if pargs['button'] > 0 and not self.client.area.bullet and not self.client.is_staff():
             self.client.send_ooc('Bullets are disabled in this area.')
@@ -454,12 +504,12 @@ class AOProtocol(asyncio.Protocol):
         if self.client.pos:
             pargs['pos'] = self.client.pos
         else:
-            if pargs['pos']  not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
+            if pargs['pos'] not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
 
         # Make sure the areas are ok with this
         try:
-            self.client.area.publisher.publish('area_client_send_ic_check', {
+            self.client.area.publisher.publish('area_client_inbound_ms_check', {
                 'client': self.client,
                 'contents': pargs,
                 })
@@ -469,7 +519,7 @@ class AOProtocol(asyncio.Protocol):
 
         # Make sure the clients are ok with this
         try:
-            self.client.publisher.publish('client_send_ic_check', {
+            self.client.publisher.publish('client_inbound_ms_check', {
                 'contents': pargs,
                 })
         except TsuserverException as ex:
@@ -487,13 +537,13 @@ class AOProtocol(asyncio.Protocol):
         # Truncate and alter message if message effect is in place
         raw_msg = pargs['text'][:256]
         msg = raw_msg
-        if self.client.gimp: #If you are gimped, gimp message.
+        if self.client.gimp:  # If you are gimped, gimp message.
             msg = Constants.gimp_message()
-        if self.client.disemvowel: #If you are disemvoweled, replace string.
+        if self.client.disemvowel:  # If you are disemvoweled, replace string.
             msg = Constants.disemvowel_message(msg)
-        if self.client.disemconsonant: #If you are disemconsonanted, replace string.
+        if self.client.disemconsonant:  # If you are disemconsonanted, replace string.
             msg = Constants.disemconsonant_message(msg)
-        if self.client.remove_h: #If h is removed, replace string.
+        if self.client.remove_h:  # If h is removed, replace string.
             msg = Constants.remove_h_message(msg)
 
         gag_replaced = False
@@ -541,7 +591,7 @@ class AOProtocol(asyncio.Protocol):
 
         pargs['msg'] = msg
         pargs['evidence'] = self.client.evi_list[pargs['evidence']]
-        pargs['showname'] = '' # Dummy value, actual showname is computed later
+        pargs['showname'] = ''  # Dummy value, actual showname is computed later
 
         # Compute pairs
         # Based on tsuserver3.3 code
@@ -604,7 +654,7 @@ class AOProtocol(asyncio.Protocol):
                 pargs['offset_pair'] = 0
                 pargs['charid_pair_pair_order'] = -1
 
-        self.client.publisher.publish('client_send_ic', {'contents': pargs.copy()})
+        self.client.publisher.publish('client_inbound_ms', {'contents': pargs.copy()})
 
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
@@ -649,36 +699,40 @@ class AOProtocol(asyncio.Protocol):
         CT#<name:string>#<message:string>#%
 
         """
+
+        pargs = self.process_arguments('CT', args)
+        if pargs is None:
+            return
+        username, message = pargs['username'], pargs['message']
+
         if self.client.is_ooc_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You have been muted by a moderator.")
             return
-        if not self.validate_net_cmd(args, ArgType.STR, ArgType.STR, needs_auth=False):
-            return
-        if args[0] == ''  or not self.client.is_valid_name(args[0]):
+        if username == '' or not self.client.is_valid_name(username):
             self.client.send_ooc('You must insert a name with at least one letter.')
             return
-        if args[0].startswith(' '):
+        if username.startswith(' '):
             self.client.send_ooc('You must insert a name that starts with a letter.')
             return
-        if Constants.contains_illegal_characters(args[0]):
+        if Constants.contains_illegal_characters(username):
             self.client.send_ooc('Your name contains an illegal character.')
             return
-        if self.server.config['hostname'] in args[0] or '<dollar>G' in args[0]:
+        if self.server.config['hostname'] in username or '<dollar>G' in username:
             self.client.send_ooc('That name is reserved.')
             return
 
         # After this the name is validated
         self.client.name = args[0]
 
-        if args[1].startswith('/'):
-            spl = args[1][1:].split(' ', 1)
+        if message.startswith('/'):
+            spl = message[1:].split(' ', 1)
             cmd = spl[0]
             arg = ''
             if len(spl) == 2:
                 arg = spl[1][:1024]
             try:
                 called_function = 'ooc_cmd_{}'.format(cmd)
-                function = None # Double assignment to check if it matched to a function later
+                function = None  # Double assignment to check if it matched to a function later
                 function = getattr(self.server.commands, called_function)
             except AttributeError:
                 try:
@@ -700,31 +754,37 @@ class AOProtocol(asyncio.Protocol):
             for password in self.server.all_passwords:
                 for login in ['login ', 'logincm ', 'loginrp ', 'logingm ']:
                     if login + password in args[1]:
-                        args[1] = args[1].replace(password, '[CENSORED]')
-            if self.client.disemvowel: #If you are disemvoweled, replace string.
-                args[1] = Constants.disemvowel_message(args[1])
-            if self.client.disemconsonant: #If you are disemconsonanted, replace string.
-                args[1] = Constants.disemconsonant_message(args[1])
-            if self.client.remove_h: #If h is removed, replace string.
-                args[1] = Constants.remove_h_message(args[1])
+                        message = message.replace(password, '[CENSORED]')
+            if self.client.disemvowel:  # If you are disemvoweled, replace string.
+                message = Constants.disemvowel_message(message)
+            if self.client.disemconsonant:  # If you are disemconsonanted, replace string.
+                message = Constants.disemconsonant_message(message)
+            if self.client.remove_h:  # If h is removed, replace string.
+                message = Constants.remove_h_message(message)
 
-            self.client.area.send_command('CT', self.client.name, args[1])
+            for client in self.client.area.clients:
+                client.send_ooc(message, username=self.client.name)
             self.client.last_ooc_message = args[1]
             logger.log_server('[OOC][{}][{}][{}]{}'
                               .format(self.client.area.id, self.client.get_char_name(),
-                                      self.client.name, args[1]), self.client)
+                                      self.client.name, message), self.client)
         self.client.last_active = Constants.get_time()
 
     def net_cmd_mc(self, args):
         """ Play music.
 
-        MC#<song_name:int>#<???:int>#%
+        MC#<song_name:int>#<char_id:int>#%
 
         """
+        # We have to use fallback protocols for AO2d6 like clients, because if for whatever
+        # reason if they don't set an in-client showname, they send less arguments. In
+        # particular, they behave like Legacy DRO.
+        pargs = self.process_arguments('MC', args, fallback_protocols=[clients.ClientDROLegacy])
+
         # First attempt to switch area,
         # because music lists typically include area names for quick access
         try:
-            delimiter = args[0].find('-')
+            delimiter = pargs['name'].find('-')
             area = self.server.area_manager.get_area_by_name(args[0][delimiter+1:])
             self.client.change_area(area, from_party=True if self.client.party else False)
 
@@ -736,14 +796,8 @@ class AOProtocol(asyncio.Protocol):
             if not self.client.is_dj:
                 self.client.send_ooc('You were blockdj\'d by a moderator.')
                 return
-            # We have to use fallback protocols for AO2d6 like clients, because if for whatever
-            # reason if they don't set an in-client showname, they send less arguments. In
-            # particular, they behave like Legacy DRO.
-            pargs = self.process_arguments('MC', args, fallback_protocols=[Clients.ClientDROLegacy])
-            if not pargs:
-                return
 
-            if 'cid' not in pargs or int(pargs['cid']) != self.client.char_id:
+            if int(pargs['char_id']) != self.client.char_id:
                 return
             if self.client.change_music_cd():
                 self.client.send_ooc('You changed song too many times recently. Please try again '
@@ -768,23 +822,26 @@ class AOProtocol(asyncio.Protocol):
         RT#<type:string>#%
 
         """
+
+        pargs = self.process_arguments('RT', args)
+
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc('You have been muted by a moderator.')
-            return
-        if not self.validate_net_cmd(args, ArgType.STR):
-            return
-        if not args[0].startswith('testimony'):
             return
         if not self.client.is_staff() and self.client.area.lobby_area:
             self.client.send_ooc('Judge buttons are disabled in this area.')
             return
 
-        self.client.area.send_command('RT', args[0])
-        self.client.area.add_to_judgelog(self.client, 'used judge button {}.'.format(args[0]))
-        logger.log_server('[{}]{} used judge button {}.'
-                          .format(self.client.area.id, self.client.get_char_name(), args[0]),
-                          self.client)
+        name = pargs['name']
         self.client.last_active = Constants.get_time()
+
+        for client in self.client.area.clients:
+            client.send_splash(name=name)
+        self.client.publisher.publish('client_send_rt', {'contents': pargs.copy()})
+        self.client.area.add_to_judgelog(self.client, 'used judge button {}.'.format(name))
+        logger.log_server('[{}]{} used judge button {}.'
+                          .format(self.client.area.id, self.client.get_char_name(), name),
+                          self.client)
 
     def net_cmd_hp(self, args):
         """ Sets the penalty bar.
@@ -792,18 +849,20 @@ class AOProtocol(asyncio.Protocol):
         HP#<type:int>#<new_value:int>#%
 
         """
+
+        pargs = self.process_arguments('HP', args)
+
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You have been muted by a moderator")
             return
-        if not self.validate_net_cmd(args, ArgType.INT, ArgType.INT):
-            return
         try:
-            self.client.area.change_hp(args[0], args[1])
-            info = 'changed penalty bar {} to {}.'.format(args[0], args[1])
+            side, health = pargs['side'], pargs['health']
+            self.client.area.change_hp(side, health)
+            info = 'changed penalty bar {} to {}.'.format(side, health)
             self.client.area.add_to_judgelog(self.client, info)
             logger.log_server('[{}]{} changed HP ({}) to {}'
                               .format(self.client.area.id, self.client.get_char_name(),
-                                      args[0], args[1]), self.client)
+                                      side, health), self.client)
         except AreaError:
             return
         self.client.last_active = Constants.get_time()
@@ -814,10 +873,14 @@ class AOProtocol(asyncio.Protocol):
         PE#<name: string>#<description: string>#<image: string>#%
 
         """
-        if len(args) < 3:
-            return
-#        evi = Evidence(args[0], args[1], args[2], self.client.pos)
-        self.client.area.evi_list.add_evidence(self.client, args[0], args[1], args[2], 'all')
+
+        pargs = self.process_arguments('PE', args)
+
+        # evi = Evidence(args[0], args[1], args[2], self.client.pos)
+        self.client.area.evi_list.add_evidence(self.client,
+                                               pargs['name'],
+                                               pargs['description'],
+                                               pargs['image'], 'all')
         self.client.area.broadcast_evidence_list()
         self.client.last_active = Constants.get_time()
 
@@ -828,7 +891,10 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
-        self.client.area.evi_list.del_evidence(self.client, self.client.evi_list[int(args[0])])
+        pargs = self.process_arguments('DE', args)
+
+        self.client.area.evi_list.del_evidence(self.client,
+                                               self.client.evi_list[int(pargs['evi_id'])])
         self.client.area.broadcast_evidence_list()
         self.client.last_active = Constants.get_time()
 
@@ -839,19 +905,22 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
-        if len(args) < 4:
-            return
+        pargs = self.process_arguments('EE', args)
 
-        evi = (args[1], args[2], args[3], 'all')
+        evi = (pargs['name'], pargs['description'], pargs['image'], 'all')
 
-        self.client.area.evi_list.edit_evidence(self.client, self.client.evi_list[int(args[0])], evi)
+        self.client.area.evi_list.edit_evidence(self.client,
+                                                self.client.evi_list[int(pargs['evi_id'])], evi)
         self.client.area.broadcast_evidence_list()
         self.client.last_active = Constants.get_time()
 
-    def net_cmd_zz(self, _):
+    def net_cmd_zz(self, args):
         """ Sent on mod call.
 
         """
+
+        _ = self.process_arguments('ZZ', args)
+
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc('You have been muted by a moderator.')
             return
@@ -866,40 +935,45 @@ class AOProtocol(asyncio.Protocol):
                    .format(current_time, self.client.get_char_name(), self.client.get_ip(),
                            self.client.area.name, self.client.area.id))
 
-        self.server.send_all_cmd_pred('ZZ', message, pred=lambda c: c.is_officer())
+        for c in self.server.client_manager.clients:
+            if c.is_officer():
+                c.send_command_dict('ZZ', {
+                    'message': message
+                    })
+
         self.client.set_mod_call_delay()
         logger.log_server('[{}][{}]{} called a moderator.'
                           .format(self.client.get_ip(), self.client.area.id,
                                   self.client.get_char_name()))
 
-    def net_cmd_re(self, args):
-        # Unsupported
-        raise KeyError('Client using {} {} sent an unsupported RE packet.'
-                       .format(self.client.version[0], self.client.version[1]))
+    def net_cmd_re(self, _):
+        # Ignore packet
+        return
 
-    def net_cmd_pw(self, args):
+    def net_cmd_pw(self, _):
         # Ignore packet
         # For now, TsuserverDR will not implement a character password system
         # However, so that it stops raising errors for clients, an empty method is implemented
         # Well, not empty, there are these comments which makes it not empty
         # but not code is run.
-        pass
+        return
 
     def net_cmd_sp(self, args):
         """
         Set position packet.
         """
 
-        if len(args) < 1:
-            return
+        _ = self.process_arguments('SP', args)
 
         self.client.change_position(args[0])
 
-    def net_cmd_opKICK(self, args):
-        self.net_cmd_ct(['opkick', '/kick {}'.format(args[0])])
+    def net_cmd_opKICK(self, _):
+        # Ignore packet
+        return
 
-    def net_cmd_opBAN(self, args):
-        self.net_cmd_ct(['opban', '/ban {}'.format(args[0])])
+    def net_cmd_opBAN(self, _):
+        # Ignore packet
+        return
 
     net_cmd_dispatcher = {
         'HI': net_cmd_hi,  # handshake
@@ -920,8 +994,8 @@ class AOProtocol(asyncio.Protocol):
         'DE': net_cmd_de,  # delete evidence
         'EE': net_cmd_ee,  # edit evidence
         'ZZ': net_cmd_zz,  # call mod button
-        'RE': net_cmd_re,  # ??? (Unsupported)
-        'PW': net_cmd_pw,  # character password (only on CC/KFO clients)
-        'opKICK': net_cmd_opKICK,  # /kick with guard on
-        'opBAN': net_cmd_opBAN,  # /ban with guard on
+        'RE': net_cmd_re,  # ??? (Unsupported, deprecated)
+        'PW': net_cmd_pw,  # character password (only on CC/KFO clients, deprecated)
+        'opKICK': net_cmd_opKICK,  # /kick with guard on, deprecated
+        'opBAN': net_cmd_opBAN,  # /ban with guard on, deprecated
     }
