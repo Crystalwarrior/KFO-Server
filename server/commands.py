@@ -7256,8 +7256,9 @@ def ooc_cmd_trial(client: ClientManager.Client, arg: str):
             client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
                             f'they must have a character to join this trial.')
 
+    players = sorted(trial.get_players(), key=lambda c: c.displayname)
     player_list = '\n'.join([
-        f'[{player.id}] {player.displayname}' for player in trial.get_players()
+        f'[{player.id}] {player.displayname}' for player in players
         ])
 
     client.send_ooc(f'These players were automatically added to your trial: \n{player_list}')
@@ -7756,8 +7757,9 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
             client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
                             f'they must have a character to join this minigame.')
 
+    players = sorted(nsd.get_players(), key=lambda c: c.displayname)
     player_list = '\n'.join([
-        f'[{player.id}] {player.displayname}' for player in trial.get_players()
+        f'[{player.id}] {player.displayname}' for player in players
         ])
 
     client.send_ooc(f'These players were automatically added to your nonstop debate: '
