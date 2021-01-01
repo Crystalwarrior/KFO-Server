@@ -205,6 +205,7 @@ class AOProtocol(asyncio.Protocol):
         """
 
         pargs = self.process_arguments('HI', args, needs_auth=False)
+        self.client.publish_inbound_command('HI', pargs)
 
         # Record new HDID and IPID if needed
         self.client.hdid = pargs['client_hdid']
@@ -246,6 +247,7 @@ class AOProtocol(asyncio.Protocol):
         """
 
         pargs = self.process_arguments('ID', args, needs_auth=False)
+        self.client.publish_inbound_command('ID', pargs)
 
         self.client.can_join += 1  # One of two conditions to allow joining
 
@@ -325,7 +327,8 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
-        _ = self.process_arguments('CH', args, needs_auth=False)
+        pargs = self.process_arguments('CH', args, needs_auth=False)
+        self.client.publish_inbound_command('CH', pargs)
 
         self.client.send_command_dict('CHECK', dict())
         self.ping_timeout.cancel()
@@ -339,7 +342,8 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
-        _ = self.process_arguments('askchaa', args, needs_auth=False)
+        pargs = self.process_arguments('askchaa', args, needs_auth=False)
+        self.client.publish_inbound_command('askchaa', pargs)
 
         # Check if client is ready to actually join, and did not do weird packet shenanigans before
         if self.client.can_join != 2:
@@ -369,7 +373,8 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
-        _ = self.process_arguments('AE', args, needs_auth=False)
+        pargs = self.process_arguments('AE', args, needs_auth=False)
+        self.client.publish_inbound_command('AE', pargs)
         # TODO evidence maybe later
 
     def net_cmd_rc(self, args):
@@ -379,7 +384,8 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
-        _ = self.process_arguments('RC', args, needs_auth=False)
+        pargs = self.process_arguments('RC', args, needs_auth=False)
+        self.client.publish_inbound_command('RC', pargs)
         self.client.send_command_dict('SC', {
             'chars_ao2_list': self.server.char_list,
             })
@@ -391,10 +397,11 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
-        _ = self.process_arguments('RM', args, needs_auth=False)
+        pargs = self.process_arguments('RM', args, needs_auth=False)
         # Force the server to rebuild the music list, so that clients who just join get the correct
         # music list (as well as every time they request an updated music list directly).
 
+        self.client.publish_inbound_command('RM', pargs)
         full_music_list = self.server.build_music_list(include_areas=True,
                                                        include_music=True)
         self.client.send_command_dict('SM', {
@@ -408,7 +415,8 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
-        _ = self.process_arguments('RD', args, needs_auth=False)
+        pargs = self.process_arguments('RD', args, needs_auth=False)
+        self.client.publish_inbound_command('RD', pargs)
         self.client.send_done()
         if self.server.config['announce_areas']:
             if self.server.config['rp_mode_enabled']:
@@ -427,9 +435,8 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
-        pargs = self.process_arguments('cc', args, needs_auth=False)
-        if pargs is None:
-            return
+        pargs = self.process_arguments('CC', args, needs_auth=False)
+        self.client.publish_inbound_command('CC', pargs)
         char_id = pargs['char_id']
 
         ever_chose_character = self.client.ever_chose_character  # Store for later
@@ -451,8 +458,6 @@ class AOProtocol(asyncio.Protocol):
         """
 
         pargs = self.process_arguments('MS', args)
-        if pargs is None:
-            return
 
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You have been muted by a moderator.")
@@ -495,7 +500,7 @@ class AOProtocol(asyncio.Protocol):
             return
         if pargs['evidence'] < 0:
             return
-        if pargs['ding'] not in (0, 1, 2, 3, 4, 5, 6, 7): # Effects
+        if pargs['ding'] not in (0, 1, 2, 3, 4, 5, 6, 7):  # Effects
             return
         if pargs['color'] not in (0, 1, 2, 3, 4, 5, 6, 7, 8):
             return
@@ -526,9 +531,10 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc(ex)
             return
 
+        # At this point, the message is guaranteed to be sent
+        self.client.publish_inbound_command('MS', pargs)
         self.client.pos = pargs['pos']
 
-        # At this point, the message is guaranteed to be sent
         # First, update last raw message sent *before* any transformations. That is so that the
         # server can accurately ignore client sending the same message over and over again
         self.client.last_ic_raw_message = pargs['text']
@@ -701,8 +707,6 @@ class AOProtocol(asyncio.Protocol):
         """
 
         pargs = self.process_arguments('CT', args)
-        if pargs is None:
-            return
         username, message = pargs['username'], pargs['message']
 
         if self.client.is_ooc_muted:  # Checks to see if the client has been muted by a mod
@@ -722,6 +726,7 @@ class AOProtocol(asyncio.Protocol):
             return
 
         # After this the name is validated
+        self.client.publish_inbound_command('CT', pargs)
         self.client.name = args[0]
 
         if message.startswith('/'):
@@ -780,6 +785,7 @@ class AOProtocol(asyncio.Protocol):
         # reason if they don't set an in-client showname, they send less arguments. In
         # particular, they behave like Legacy DRO.
         pargs = self.process_arguments('MC', args, fallback_protocols=[clients.ClientDROLegacy])
+        self.client.publish_inbound_command('MC', pargs)
 
         # First attempt to switch area,
         # because music lists typically include area names for quick access
@@ -832,16 +838,16 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc('Judge buttons are disabled in this area.')
             return
 
+        self.client.publish_inbound_command('RT', pargs)
         name = pargs['name']
-        self.client.last_active = Constants.get_time()
 
         for client in self.client.area.clients:
             client.send_splash(name=name)
-        self.client.publisher.publish('client_send_rt', {'contents': pargs.copy()})
         self.client.area.add_to_judgelog(self.client, 'used judge button {}.'.format(name))
         logger.log_server('[{}]{} used judge button {}.'
                           .format(self.client.area.id, self.client.get_char_name(), name),
                           self.client)
+        self.client.last_active = Constants.get_time()
 
     def net_cmd_hp(self, args):
         """ Sets the penalty bar.
@@ -855,6 +861,8 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You have been muted by a moderator")
             return
+
+        self.client.publish_inbound_command('HP', pargs)
         try:
             side, health = pargs['side'], pargs['health']
             self.client.area.change_hp(side, health)
@@ -864,7 +872,7 @@ class AOProtocol(asyncio.Protocol):
                               .format(self.client.area.id, self.client.get_char_name(),
                                       side, health), self.client)
         except AreaError:
-            return
+            pass
         self.client.last_active = Constants.get_time()
 
     def net_cmd_pe(self, args):
@@ -875,6 +883,7 @@ class AOProtocol(asyncio.Protocol):
         """
 
         pargs = self.process_arguments('PE', args)
+        self.client.publish_inbound_command('PE', pargs)
 
         # evi = Evidence(args[0], args[1], args[2], self.client.pos)
         self.client.area.evi_list.add_evidence(self.client,
@@ -892,6 +901,7 @@ class AOProtocol(asyncio.Protocol):
         """
 
         pargs = self.process_arguments('DE', args)
+        self.client.publish_inbound_command('DE', pargs)
 
         self.client.area.evi_list.del_evidence(self.client,
                                                self.client.evi_list[int(pargs['evi_id'])])
@@ -906,6 +916,7 @@ class AOProtocol(asyncio.Protocol):
         """
 
         pargs = self.process_arguments('EE', args)
+        self.client.publish_inbound_command('EE', pargs)
 
         evi = (pargs['name'], pargs['description'], pargs['image'], 'all')
 
@@ -919,16 +930,16 @@ class AOProtocol(asyncio.Protocol):
 
         """
 
-        _ = self.process_arguments('ZZ', args)
+        pargs = self.process_arguments('ZZ', args)
 
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc('You have been muted by a moderator.')
             return
-
         if not self.client.can_call_mod():
             self.client.send_ooc('You must wait 30 seconds between mod calls.')
             return
 
+        self.client.publish_inbound_command('ZZ', pargs)
         self.client.send_ooc('You have called for a moderator.')
         current_time = strftime("%H:%M", localtime())
         message = ('[{}] {} ({}) called for a moderator in {} ({}).'
@@ -946,6 +957,16 @@ class AOProtocol(asyncio.Protocol):
                           .format(self.client.get_ip(), self.client.area.id,
                                   self.client.get_char_name()))
 
+    def net_cmd_sp(self, args):
+        """
+        Set position packet.
+        """
+
+        pargs = self.process_arguments('SP', args)
+        self.client.publish_inbound_command('SP', pargs)
+
+        self.client.change_position(pargs['position'])
+
     def net_cmd_re(self, _):
         # Ignore packet
         return
@@ -957,15 +978,6 @@ class AOProtocol(asyncio.Protocol):
         # Well, not empty, there are these comments which makes it not empty
         # but not code is run.
         return
-
-    def net_cmd_sp(self, args):
-        """
-        Set position packet.
-        """
-
-        _ = self.process_arguments('SP', args)
-
-        self.client.change_position(args[0])
 
     def net_cmd_opKICK(self, _):
         # Ignore packet
@@ -994,8 +1006,8 @@ class AOProtocol(asyncio.Protocol):
         'DE': net_cmd_de,  # delete evidence
         'EE': net_cmd_ee,  # edit evidence
         'ZZ': net_cmd_zz,  # call mod button
-        'RE': net_cmd_re,  # ??? (Unsupported, deprecated)
-        'PW': net_cmd_pw,  # character password (only on CC/KFO clients, deprecated)
+        'RE': net_cmd_re,  # ??? (Unsupported), deprecated
+        'PW': net_cmd_pw,  # character password (only on CC/KFO clients), deprecated
         'opKICK': net_cmd_opKICK,  # /kick with guard on, deprecated
         'opBAN': net_cmd_opBAN,  # /ban with guard on, deprecated
     }

@@ -207,6 +207,8 @@ class ClientManager:
                     to_send.append(value)
                 final_dargs[field] = value
 
+            self.publisher.publish(f'client_inbound_{identifier.lower()}_raw',
+                                   {'contents': final_dargs.copy()})
             return final_dargs, to_send
 
         def send_ooc(self, msg, username=None, allow_empty=False,
@@ -616,6 +618,10 @@ class ClientManager:
 
         def send_motd(self):
             self.send_ooc('=== MOTD ===\r\n{}\r\n============='.format(self.server.config['motd']))
+
+        def publish_inbound_command(self, command, dargs):
+            self.publisher.publish(f'client_inbound_{command.lower()}',
+                                   {'contents': dargs.copy()})
 
         def is_valid_name(self, name):
             name_ws = name.replace(' ', '')

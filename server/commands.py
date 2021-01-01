@@ -7397,7 +7397,7 @@ def ooc_cmd_trial_end(client: ClientManager, arg: str):
                            pred=lambda c: c in nonplayers)
     client.send_ooc_others('Your trial was ended.',
                            pred=lambda c: c in regulars)
-    client.send_ooc_others(f'(X) {client.displayname} ended your trial.',
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] ended your trial.',
                            pred=lambda c: c in leaders)
 
 

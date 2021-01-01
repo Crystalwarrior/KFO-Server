@@ -169,6 +169,9 @@ class _Trial(GameWithAreas):
                          team_limit=team_limit, timer_limit=timer_limit,
                          area_concurrent_limit=area_concurrent_limit,
                          playergroup_manager=playergroup_manager)
+        self.listener.update_events({
+            'client_inbound_rt': self._on_client_inbound_rt,
+            })
 
     def add_player(self, user):
         """
@@ -1128,6 +1131,42 @@ class _Trial(GameWithAreas):
                                    is_zstaff_flex=False, part_of=nonplayers)
 
         self._check_structure()
+
+    def _on_client_inbound_rt(self, player, contents):
+        """
+        Callback for trial player signaling they have used a splash button.
+
+        If the splash button is "testimony2" and the player is a leader of the trial, the trial
+        is automatically ended.
+
+        Parameters
+        ----------
+        player : ClientManager.Client
+            Player that signaled it has used a splash button.
+        contents : dict of str to Any
+            Arguments of the splash packet as indicated in AOProtocol.
+
+        Returns
+        -------
+        None.
+
+        """
+        if contents['name'] == 'testimony2':
+            # Trial end button
+            if self.is_leader(player):
+                # Save leaders and regulars before destruction
+                leaders = self.get_leaders()
+                regulars = self.get_regulars()
+                nonplayers = self.get_nonplayer_users_in_areas()
+                self.destroy()
+
+                player.send_ooc('You ended your trial.')
+                player.send_ooc_others('The trial you were watching was ended.',
+                                       pred=lambda c: c in nonplayers)
+                player.send_ooc_others('Your trial was ended.',
+                                       pred=lambda c: c in regulars)
+                player.send_ooc_others(f'(X) {player.displayname} [{player.id}] ended your trial.',
+                                       pred=lambda c: c in leaders)
 
     def _on_areas_loaded(self, area_manager):
         """

@@ -296,7 +296,6 @@ class _Game():
             'client_destroyed': self._on_client_destroyed,
             })
 
-
     def get_id(self):
         """
         Return the ID of this game.
