@@ -575,9 +575,9 @@ def ooc_cmd_blind(client: ClientManager.Client, arg: str):
     if client != target:
         client.send_ooc('You have {} {}.'.format(status[new_blind], target.displayname))
         target.send_ooc('You have been {}.'.format(status[new_blind]))
-        target.send_ooc_others('(X) {} [{}] has {} {} ({}).'
+        target.send_ooc_others('(X) {} [{}] has {} {} [{}] ({}).'
                                .format(client.displayname, client.id, status[new_blind],
-                                       target.displayname, target.area.id),
+                                       target.displayname, target.id, target.area.id),
                                not_to={client}, is_zstaff_flex=True)
     else:
         client.send_ooc('You have {} yourself.'.format(status[new_blind]))
@@ -1605,9 +1605,9 @@ def ooc_cmd_deafen(client: ClientManager.Client, arg: str):
     if client != target:
         client.send_ooc('You have {} {}.'.format(status[new_deaf], target.displayname))
         target.send_ooc('You have been {}.'.format(status[new_deaf]))
-        target.send_ooc_others('(X) {} [{}] has {} {} ({}).'
+        target.send_ooc_others('(X) {} [{}] has {} {} [{}] ({}).'
                                .format(client.displayname, client.id, status[new_deaf],
-                                       target.displayname, target.area.id),
+                                       target.displayname, target.id, target.area.id),
                                is_zstaff_flex=True, not_to={client})
     else:
         client.send_ooc('You have {} yourself.'.format(status[new_deaf]))
@@ -1981,9 +1981,9 @@ def ooc_cmd_gag(client: ClientManager.Client, arg: str):
     if client != target:
         client.send_ooc('You have {} {}.'.format(status[new_gagged], target.displayname))
         target.send_ooc('You have been {}.'.format(status[new_gagged]))
-        target.send_ooc_others('(X) {} [{}] has {} {} ({}).'
+        target.send_ooc_others('(X) {} [{}] has {} {} [{}] ({}).'
                                .format(client.displayname, client.id, status[new_gagged],
-                                       target.displayname, target.area.id),
+                                       target.displayname, target.id, target.area.id),
                                is_zstaff_flex=True, not_to={client})
     else:
         client.send_ooc('You have {} yourself.'.format(status[new_gagged]))

@@ -57,6 +57,7 @@ class TestBlind_01_Common(_UnittestSenseBlock):
         else:
             raise TypeError
 
+
 class TestBlind_02_Effect(_TestBlind):
     def test_01_blindC0(self):
         """
@@ -66,8 +67,8 @@ class TestBlind_02_Effect(_TestBlind):
         self.c1.ooc('/blind {}'.format(0))
         self.c1.assert_ooc('You have blinded {}.'.format(self.c0_dname), over=True)
         self.c0.assert_ooc('You have been blinded.', ooc_over=True)
-        self.c2.assert_ooc('(X) {} [{}] has blinded {} ({}).'
-                           .format(self.c1.displayname, 1, self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] has blinded {} [{}] ({}).'
+                           .format(self.c1.displayname, 1, self.c0_dname, 0, 0), over=True)
         self.c3.assert_no_ooc()
 
         assert self.c0.is_blind
@@ -145,6 +146,7 @@ class TestBlind_02_Effect(_TestBlind):
         self.c1.assert_ic('Cant see you either', folder=self.c0_cname, anim='sad', over=True)
         self.c2.assert_ic('Cant see you either', folder=self.c0_cname, anim='sad', over=True)
         self.c3.assert_no_ic()
+
 
 class TestBlind_03_ChangeArea(_TestBlind):
     @classmethod
@@ -257,6 +259,7 @@ class TestBlind_03_ChangeArea(_TestBlind):
         self.c2.discard_all()
         self.c3.discard_all()
         self.c4.discard_all()
+
 
 class TestBlind_04_Miscellaneous(_TestBlind):
     @classmethod
