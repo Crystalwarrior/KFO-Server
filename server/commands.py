@@ -7046,6 +7046,8 @@ def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
                    bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
 
     members = party.get_members()-{client}
+    pid = party.get_id()
+
     if client.is_visible:
         for target in members:
             target.send_ooc('{} whispered something to your party.'
@@ -7063,8 +7065,8 @@ def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
                            bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
 
         if public_area:
-            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party ({}).'
-                                   .format(client.displayname, client.id, msg, client.area.id),
+            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party {} ({}).'
+                                   .format(client.displayname, client.id, msg, pid, client.area.id),
                                    is_zstaff_flex=True, not_to=members)
             client.send_ooc_others('You see a group of people huddling together.',
                                    in_area=True, to_blind=False, is_zstaff_flex=False,
@@ -7099,8 +7101,9 @@ def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
             target.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
 
         if public_area:
-            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party while sneaking ({}).'
-                                   .format(client.displayname, client.id, msg, client.area.id),
+            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party {} while sneaking '
+                                   '({}).'
+                                   .format(client.displayname, client.id, msg, pid, client.area.id),
                                    is_zstaff_flex=True, not_to=members)
             client.send_ooc_others('You heard a whisper, but you could not seem to tell where it '
                                    'came from.',

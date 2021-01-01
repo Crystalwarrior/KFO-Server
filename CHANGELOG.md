@@ -563,6 +563,7 @@
 * Fixed GMs blinding, deafening or gagging themselves receiving two notifications
 * Fixed area lists containing <ALL> as an area name loading without raising errors
 * Fixed /whisper, /blind, /deafen, /gag not showing client ID of target for GMs+
+* Fixed /party_whisper not showing party ID of target for GMs+
 * Fixed situation where if a player was in first person mode and was blinded, talked themselves but heard no one else talk, and after being unblinded started talking, they would see the sprite of the last person they last saw talked
 * Fixed attempting to load non-YAML files or files with unusual encoding raising an uncaught UnicodeDecode error
 * Fixed /refresh not undoing changes if either the background, character or music list raised errors when loading
