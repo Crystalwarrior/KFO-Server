@@ -56,8 +56,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b114'
-        self.internal_version = 'M210102a'
+        self.segment_version = 'b115'
+        self.internal_version = 'M210102b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -102,10 +102,12 @@ class TsuserverDR:
         self.hdid_list = {}
         self.music_list = None
         self.backgrounds = None
+        self.gimp_list = list()
         self.load_commandhelp()
         self.load_music()
         self.load_backgrounds()
         self.load_ids()
+        self.load_gimp()
 
         self.district_client = None
         self.ms_client = None
@@ -579,6 +581,41 @@ class TsuserverDR:
                 raise ServerError.FileSyntaxError(msg)
 
         return music_list.copy()
+
+    def load_gimp(self):
+        try:
+            with Constants.fopen('config/gimp.yaml', 'r', encoding='utf-8') as gimp:
+                gimp_list = Constants.yaml_load(gimp)
+        except ServerError.FileNotFoundError:
+            gimp_list = [
+                'ERP IS BAN',
+                'HELP ME',
+                '(((((case????)))))',
+                'Anyone else a fan of MLP?',
+                'does this server have sans from undertale?',
+                'what does call mod do',
+                'Join my discord server please',
+                'can I have mod pls?',
+                'why is everyone a missingo?',
+                'how 2 change areas?',
+                '19 years of perfection, i don\'t play games to fucking lose',
+                ('nah... your taunts are fucking useless... only defeat angers me... by trying '
+                 'to taunt just earns you my pitty'),
+                'When do we remove dangits',
+                'MODS STOP GIMPING ME',
+                'PLAY NORMIES PLS',
+                'share if you not afraid of herobrine',
+                'New Killer Choosen! Hold On!!',
+                'The cake killed Nether.',
+                'How you win Class Trials is simple, call your opposition cucks.',
+                ]
+            with Constants.fopen('config/gimp.yaml', 'w') as gimp:
+                Constants.yaml_dump(gimp_list, gimp)
+            message = 'WARNING: Error loading config/gimp.yaml. Will assume default values.\n'
+            logger.log_pdebug(message)
+
+        self.gimp_list = gimp_list
+        return gimp_list.copy()
 
     def dump_ipids(self):
         with Constants.fopen('storage/ip_ids.json', 'w') as whole_list:

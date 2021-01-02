@@ -554,6 +554,7 @@
 * Clients sending syntactically correct but otherwise unidentifiable packets now silently log to console and server log rather than propagating an uncaught KeyError
 * Allowed /cleargm to take a client ID to log out a particular client from their GM rank
 * Improved output of /cleargm and /kickself for the user running the commands: they now see who they logged out or kicked respectively
+* Added config/gimp.yaml so server owners can customize the output of gimped players
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered

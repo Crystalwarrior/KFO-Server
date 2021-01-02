@@ -126,6 +126,11 @@ class Constants():
             raise ServerError.YAMLInvalidError(msg)
 
     @staticmethod
+    def yaml_dump(data, file):
+        dumped = yaml.dump(data, file)
+        return dumped
+
+    @staticmethod
     def get_time():
         return time.asctime(time.localtime(time.time()))
 
@@ -551,6 +556,10 @@ class Constants():
 
     @staticmethod
     def gimp_message():
+        message = ('Code is using old gimp_message syntax. Please change it (or ask your '
+                   'server developer) so that it uses server.gimp_list instead. '
+                   'This old syntax will be removed in 4.4.')
+        warnings.warn(message, category=UserWarning, stacklevel=2)
         message = ['ERP IS BAN',
                    'I\'m fucking gimped because I\'m both autistic and a retard!',
                    'HELP ME',
@@ -698,10 +707,10 @@ class Constants():
     @staticmethod
     def parse_passage_lock(client, areas, bilock=False):
         message = ('Code is using old change_passage_lock syntax. Please change it (or ask your '
-                   'server developer) so that it uses Constants.change_passage_lock instead.')
+                   'server developer) so that it uses Constants.change_passage_lock instead.'
+                   'This old syntax will be removed in 4.4.')
         warnings.warn(message, category=UserWarning, stacklevel=2)
         client.server.area_manager.change_passage_lock(client, areas, bilock=bilock)
-
 
     @staticmethod
     def parse_time_length(time_length):

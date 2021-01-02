@@ -85,25 +85,6 @@ class ClientChangeArea:
                 area.name in client.area.reachable_areas):
             raise ClientError('The passage to this area is locked.',
                               code='ChArUnreachable')
-            """
-            info = ('Selected area cannot be reached from your area without authorization. '
-                    'Try one of the following areas instead: ')
-            if client.area.visible_reachable_areas == {client.area.name}:
-                info += '\r\n*No areas available.'
-            else:
-                get_name = client.server.area_manager.get_area_by_name
-                try:
-                    sorted_areas = sorted(client.area.visible_reachable_areas,
-                                          key=lambda x: get_name(x).id)
-                    for reachable_area in sorted_areas:
-                        if reachable_area != client.area.name:
-                            area_id = client.server.area_manager.get_area_by_name(reachable_area).id
-                            info += '\r\n*({}) {}'.format(area_id, reachable_area)
-                except AreaError:
-                    # When would you ever execute this piece of code is beyond me, but meh
-                    info += '\r\n<ALL>'
-            raise ClientError(info, code='ChArUnreachable')
-            """
 
         # Check if current character is taken in the new area
         new_char_id = client.char_id

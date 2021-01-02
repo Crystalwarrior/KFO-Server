@@ -17,6 +17,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import asyncio
+import random
 
 from time import localtime, strftime
 
@@ -544,7 +545,7 @@ class AOProtocol(asyncio.Protocol):
         raw_msg = pargs['text'][:256]
         msg = raw_msg
         if self.client.gimp:  # If you are gimped, gimp message.
-            msg = Constants.gimp_message()
+            msg = random.choice(self.server.gimp_list)
         if self.client.disemvowel:  # If you are disemvoweled, replace string.
             msg = Constants.disemvowel_message(msg)
         if self.client.disemconsonant:  # If you are disemconsonanted, replace string.
