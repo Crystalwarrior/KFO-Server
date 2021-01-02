@@ -215,18 +215,11 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
         try:
             new_area_file = 'config/area_lists/{}.yaml'.format(arg)
             client.server.area_manager.load_areas(area_list_file=new_area_file)
-        except ServerError as exc:
-            try:
-                code = exc.code
-            except AttributeError:
-                code = None
-
-            if code == 'FileNotFound':
-                raise ArgumentError('Could not find the area list file `{}`.'.format(new_area_file))
-            if code == 'OSError':
-                raise ArgumentError('Unable to open area list file `{}`: `{}`.'
-                                    .format(new_area_file, exc.message))
-            raise  # Weird exception, reraise it
+        except ServerError.FileNotFoundError:
+            raise ArgumentError('Could not find the area list file `{}`.'.format(new_area_file))
+        except ServerError.FileOSError as exc:
+            raise ArgumentError('Unable to open area list file `{}`: `{}`.'
+                                .format(new_area_file, exc.message))
         except AreaError as exc:
             raise ArgumentError('The area list {} returned the following error when loading: `{}`.'
                                 .format(new_area_file, exc))
@@ -284,9 +277,8 @@ def ooc_cmd_area_lists(client: ClientManager.Client, arg: str):
             for line in f:
                 output += '*{}'.format(line)
             client.send_ooc(output)
-    except ServerError as exc:
-        if exc.code == 'FileNotFound':
-            raise ClientError('Server file area_lists.yaml not found.')
+    except ServerError.FileNotFoundError:
+        raise ClientError('Server file area_lists.yaml not found.')
 
 
 def ooc_cmd_autopass(client: ClientManager.Client, arg: str):
@@ -3354,19 +3346,11 @@ def ooc_cmd_music_list(client: ClientManager.Client, arg: str):
         except ServerError.MusicInvalidError as exc:
             raise ArgumentError('The music list {} returned the following error when loading: `{}`.'
                                 .format(new_music_file, exc))
-        except ServerError as exc:
-            try:
-                code = exc.code
-            except AttributeError:
-                code = None
-
-            if code == 'FileNotFound':
-                raise ArgumentError('Could not find the music list file `{}`.'
-                                    .format(new_music_file))
-            if code == 'OSError':
-                raise ArgumentError('Unable to open music list file `{}`: `{}`.'
-                                    .format(new_music_file, exc.message))
-            raise  # Weird exception, reraise it
+        except ServerError.FileNotFoundError:
+            raise ArgumentError('Could not find the music list file `{}`.'.format(new_music_file))
+        except ServerError.FileOSError as exc:
+            raise ArgumentError('Unable to open music list file `{}`: `{}`.'
+                                .format(new_music_file, exc.message))
 
         client.send_ooc('You have loaded the music list {}.'.format(arg))
 
@@ -3396,10 +3380,8 @@ def ooc_cmd_music_lists(client: ClientManager.Client, arg: str):
             for line in f:
                 output += '*{}'.format(line)
             client.send_ooc(output)
-    except ServerError as exc:
-        if exc.code == 'FileNotFound':
-            raise ClientError('Server file music_lists.yaml not found.')
-        raise  # Weird exception, reraise
+    except ServerError.FileNotFoundError:
+        raise ClientError('Server file music_lists.yaml not found.')
 
 
 def ooc_cmd_mute(client: ClientManager.Client, arg: str):

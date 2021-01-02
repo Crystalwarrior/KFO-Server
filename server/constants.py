@@ -97,7 +97,7 @@ class Constants():
             return file
         except FileNotFoundError:
             info = 'File not found: {}'.format(file)
-            raise ServerError(info, code="FileNotFound")
+            raise ServerError.FileNotFoundError(info, code="FileNotFound")
         except OSError as ex:
             raise ServerError(str(ex), code="OSError")
 

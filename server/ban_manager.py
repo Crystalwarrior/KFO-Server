@@ -32,10 +32,8 @@ class BanManager:
         try:
             with Constants.fopen('storage/banlist.json', 'r') as banlist_file:
                 self.bans = json.load(banlist_file)
-        except ServerError as ex:
-            if ex.code == 'FileNotFound':
-                return
-            raise
+        except ServerError.FileNotFoundError:
+            return
 
     def write_banlist(self):
         with open('storage/banlist.json', 'w') as banlist_file:

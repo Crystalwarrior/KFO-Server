@@ -72,7 +72,10 @@ class ServerError(TsuserverException):
     class FileSyntaxError(TsuserverException):
         pass
 
-    class ServerFileNotFoundError(TsuserverException):
+    class FileNotFoundError(TsuserverException):
+        pass
+
+    class FileOSError(TsuserverException):
         pass
 
     class MusicNotFoundError(TsuserverException):

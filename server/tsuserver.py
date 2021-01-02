@@ -56,8 +56,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b113'
-        self.internal_version = 'M210101h'
+        self.segment_version = 'b114'
+        self.internal_version = 'M210102a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -565,13 +565,9 @@ class TsuserverDR:
 
             logger.log_pdebug(message)
 
-    def load_music(self, music_list_file='config/music.yaml', server_music_list=True,
-                   check_only=False):
+    def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
         with Constants.fopen(music_list_file, 'r', encoding='utf-8') as music:
             music_list = Constants.yaml_load(music)
-
-        if check_only:
-            return list()
 
         if server_music_list:
             self.music_list = music_list
