@@ -300,7 +300,7 @@ class ZoneManager:
             area_description = Constants.format_area_ranges(self._areas)
 
             # Obtain watchers
-            watchers = sorted(self._watchers, key=lambda c: c.id)
+            watchers = sorted(self._watchers)
             watcher_infos = ['[{}] {} ({})'
                              .format(c.id, c.displayname, c.area.id) for c in watchers]
             watcher_description = Constants.cjoin(watcher_infos)

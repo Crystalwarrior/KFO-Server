@@ -690,7 +690,7 @@ class TestAuthorization_06_GMSelf(_TestSituation4):
         self.c2.ooc('/gmself')
         self.c0.assert_no_packets()
         self.c1.assert_no_packets()
-        self.c2.assert_ooc('All opened clients are logged in as game master.', over=True)
+        self.c2.assert_ooc('All opened clients are already logged in as game master.', over=True)
         self.c3.assert_no_packets()
 
         self.assertTrue(self.c0.is_gm and not self.c0.is_cm and not self.c0.is_mod)

@@ -1275,7 +1275,7 @@ def ooc_cmd_cleargm(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, is_officer=True)
 
-    gm_list = ''
+    gm_list = list()
     if arg:
         targets = [Constants.parse_id(client, arg)]
     else:
@@ -1283,7 +1283,7 @@ def ooc_cmd_cleargm(client: ClientManager.Client, arg: str):
 
     for c in targets:
         if c.is_gm:
-            gm_list += '{} {} [{}]'.format((':' if not gm_list else ','), c.name, c.id)
+            gm_list.append('{} [{}]'.format(c.name, c.id))
             c.send_ooc('You are no longer a GM.')
             c.logout()
 
@@ -1297,9 +1297,10 @@ def ooc_cmd_cleargm(client: ClientManager.Client, arg: str):
     else:
         if not gm_list:
             raise ClientError('No GMs are currently connected.')
-        client.send_ooc(f'You have logged out the following clients from their GM rank{gm_list}.')
+        output = Constants.cjoin(gm_list, sort=False)
+        client.send_ooc(f'You have logged out the following clients from their GM rank: {output}.')
         client.send_ooc_others(f'{client.name} [{client.id}] has been logged out these clients '
-                               f'from their GM rank{gm_list}.', is_officer=True)
+                               f'from their GM rank: {output}.', is_officer=True)
 
 
 def ooc_cmd_clock(client: ClientManager.Client, arg: str):
@@ -2258,7 +2259,7 @@ def ooc_cmd_gmself(client: ClientManager.Client, arg: str):
 
     targets = [c for c in client.get_multiclients() if not c.is_gm]
     if not targets:
-        raise ClientError('All opened clients are logged in as game master.')
+        raise ClientError('All opened clients are already logged in as game master.')
 
     for target in targets:
         target.login(client.server.config['gmpass'], target.auth_gm, 'game master',
@@ -2638,6 +2639,7 @@ def ooc_cmd_kickself(client: ClientManager.Client, arg: str):
     """
     Kicks other clients opened by the current user. Useful whenever a user loses connection and the
     old client is ghosting.
+    Returns an error if the user does not have other clients open.
 
     SYNTAX
     /kickself
@@ -2651,11 +2653,16 @@ def ooc_cmd_kickself(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, parameters='=0')
 
+    kick_list = list()
     for target in client.get_multiclients():
         if target != client:
+            kick_list.append(f'{target.displayname} [{target.id}]')
             target.disconnect()
 
-    client.send_ooc('Kicked other instances of client.')
+    if not kick_list:
+        raise ClientError('You do not have other clients open.')
+    output = Constants.cjoin(kick_list, sort=False)
+    client.send_ooc(f'You have kicked these other clients of yours: {output}.')
 
 
 def ooc_cmd_knock(client: ClientManager.Client, arg: str):
@@ -3832,7 +3839,7 @@ def ooc_cmd_party_members(client: ClientManager.Client, arg: str):
 
     party = client.get_party(tc=True)
     regulars, leaders = party.get_members_leaders()
-    regulars, leaders = sorted(regulars, key=lambda c: c.id), sorted(leaders, key=lambda c: c.id)
+    regulars, leaders = sorted(regulars), sorted(leaders)
     info = '== Members of party {} =='.format(party.get_id())
     if leaders:
         names = ' '.join([f'[{c.id}] {c.displayname}' for c in leaders])

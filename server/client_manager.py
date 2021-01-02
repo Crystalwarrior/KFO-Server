@@ -1210,7 +1210,7 @@ class ClientManager:
                     zone = self.zone_watched
                     if zone is None:
                         raise ClientError(f'Client {self.id} is not watching a zone.')
-                    areas = sorted(list(zone.get_areas()), key=lambda c: c.id)
+                    areas = sorted(list(zone.get_areas()), key=lambda a: a.id)
                 else:
                     raise ValueError(f'Invalid area_id {area_id}')
 
@@ -1592,9 +1592,20 @@ class ClientManager:
             return (time.time() * 1000.0 - self.mod_call_time) > 0
 
         def get_multiclients(self):
+            """
+            Return all clients connected to the server that share either the same IPID or same
+            HDID as this client, sorted in increasing order by client ID.
+
+            Returns
+            -------
+            list of ClientManager.Client
+                Multiclients.
+
+            """
+
             ipid = self.server.client_manager.get_targets(self, TargetType.IPID, self.ipid, False)
             hdid = self.server.client_manager.get_targets(self, TargetType.HDID, self.hdid, False)
-            return list(set(ipid + hdid))
+            return sorted(set(ipid + hdid))
 
         def get_info(self, as_mod=False, as_cm=False, identifier=None):
             if identifier is None:
@@ -1668,6 +1679,32 @@ class ClientManager:
                 raise ClientError('This client is already watching a zone.')
 
             self._zone_watched = new_zone_value
+
+        def __lt__(self, other):
+            """
+            If other is an instance of ClientManager.Client, return True if self has lower id
+            than other, False otherwise. Otherwise, return the standard Python call of self < other.
+
+            Parameters
+            ----------
+            other : Any
+                Object to compare.
+
+            Raises
+            ------
+            TypeError
+                If self and other cannot be compared.
+
+            Returns
+            -------
+            bool
+                True if self.id < other.id, False otherwise.
+
+            """
+
+            if not isinstance(other, ClientManager.Client):
+                return super().__lt__(other)
+            return self.id < other.id
 
         def __repr__(self):
             return ('C::{}:{}:{}:{}:{}:{}:{}'
@@ -1937,7 +1974,7 @@ class ClientManager:
                 # Otherwise, our identity guess was not precise enough, so keep track of that
                 # for later and continue with the for loop
                 multiple_match_mes = 'Multiple targets match identifier `{}`'.format(identity)
-                for target in sorted(list(targets), key=lambda c: c.id):
+                for target in sorted(list(targets)):
                     char = target.get_char_name()
                     if target.char_folder and target.char_folder != char:  # Show iniswap if needed
                         char = '{}/{}'.format(char, target.char_folder)
