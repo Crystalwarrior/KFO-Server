@@ -52,7 +52,7 @@ class GameWithAreas(_Game):
         Method to perform once an area of the game is marked for destruction.
     _on_client_inbound_ms_check
         Method to perform once a player of the game wants to send an IC message.
-    _on_client_inbound_ms
+    _on_client_inbound_ms_final
         Method to perform once a player of the game sends an IC message.
     _on_client_change_character
         Method to perform once a player of the game has changed character.

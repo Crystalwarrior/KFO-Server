@@ -55,7 +55,7 @@ class TrialMinigame(GameWithAreas):
         Method to perform once an area of the minigame is marked for destruction.
     _on_client_inbound_ms_check
         Method to perform once a player of the minigame wants to send an IC message.
-    _on_client_inbound_ms
+    _on_client_inbound_ms_final
         Method to perform once a player of the minigame sends an IC message.
     _on_client_change_character
         Method to perform once a player of the minigame has changed character.

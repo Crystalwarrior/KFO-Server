@@ -140,6 +140,9 @@ class DefaultAO2Protocol(Enum):
         ('message', ''),  # 1
         ]
 
+    ACKMS_OUTBOUND = [
+        ]
+
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
         ('pre', ArgType.STR_OR_EMPTY),  # 1

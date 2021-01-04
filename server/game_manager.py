@@ -169,7 +169,7 @@ class _Game():
     ----------------
     _on_client_inbound_ms_check
         Method to perform once a player of the game wants to send an IC message.
-    _on_client_inbound_ms
+    _on_client_inbound_ms_final
         Method to perform once a player of the game sends an IC message.
     _on_client_change_character
         Method to perform once a player of the game has changed character.
@@ -290,7 +290,7 @@ class _Game():
         # Implementation detail: the callbacks of the internal objects of the game are (to be)
         # ignored.
         self.listener = Listener(self, {
-            'client_inbound_ms': self._on_client_inbound_ms,
+            'client_inbound_ms_final': self._on_client_inbound_ms_final,
             'client_inbound_ms_check': self._on_client_inbound_ms_check,
             'client_change_character': self._on_client_change_character,
             'client_destroyed': self._on_client_destroyed,
@@ -1174,9 +1174,11 @@ class _Game():
 
         print('Player', player, 'wants to check sent', contents)
 
-    def _on_client_inbound_ms(self, player, contents=None):
+    def _on_client_inbound_ms_final(self, player, contents=None):
         """
         Default callback for game player signaling it has sent an IC message.
+        This callback is executed after the server is done making all modifications to the MS packet
+        sent by the server.
 
         By default does nothing.
 

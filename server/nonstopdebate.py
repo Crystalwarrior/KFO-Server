@@ -63,7 +63,7 @@ class NonStopDebate(TrialMinigame):
         Method to perform once an area of the game is marked for destruction.
     _on_client_inbound_ms_check
         Method to perform once a player of the game wants to send an IC message.
-    _on_client_inbound_ms
+    _on_client_inbound_ms_final
         Method to perform once a player of the game sends an IC message.
     _on_client_change_character
         Method to perform once a player of the game has changed character.
@@ -773,7 +773,7 @@ class NonStopDebate(TrialMinigame):
             func = lambda c: 8 if c in {player}.union(self.get_leaders()) else 7
             contents['PER_CLIENT_button'] = func
 
-    def _on_client_inbound_ms(self, player, contents=None):
+    def _on_client_inbound_ms_final(self, player, contents=None):
         """
         Add message of player to record of messages.
 

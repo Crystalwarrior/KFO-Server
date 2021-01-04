@@ -318,7 +318,9 @@ class AOProtocol(asyncio.Protocol):
         self.client.send_command_dict('FL', {
             'fl_ao2_list': ['yellowtext', 'customobjections', 'flipping', 'fastloading',
                             'noencryption', 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx',
-                            'additive', 'effects']
+                            'additive', 'effects',
+                            # DRO exclusive stuff
+                            'ackMS',]
             })
 
     def net_cmd_ch(self, args):
@@ -534,6 +536,7 @@ class AOProtocol(asyncio.Protocol):
 
         # At this point, the message is guaranteed to be sent
         self.client.publish_inbound_command('MS', pargs)
+        self.client.send_command_dict('ackMS', dict())
         self.client.pos = pargs['pos']
 
         # First, update last raw message sent *before* any transformations. That is so that the
@@ -661,7 +664,7 @@ class AOProtocol(asyncio.Protocol):
                 pargs['offset_pair'] = 0
                 pargs['charid_pair_pair_order'] = -1
 
-        self.client.publisher.publish('client_inbound_ms', {'contents': pargs.copy()})
+        self.client.publish_inbound_command('MS_final', pargs)
 
         for area_id in area_range:
             target_area = self.server.area_manager.get_area_by_id(area_id)
