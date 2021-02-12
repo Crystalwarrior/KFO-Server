@@ -16,24 +16,27 @@ class TestIC_01_Basic(_TestIC):
         Situation: Clients try to send messages
         """
 
-        self.c1.sic('Hello world.')
+        self.c1.sic('Hello world.', check_ackMS_packet=False)
         self.c0.assert_ic('Hello world.', folder=self.c1_cname, over=True)
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ic('Hello world.', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
         self.c4.assert_no_ic()
 
-        self.c0.sic('Hello you.')
+        self.c0.sic('Hello you.', check_ackMS_packet=False)
+        self.c0.assert_packet('ackMS', ())
         self.c0.assert_ic('Hello you.', folder=self.c0_cname, over=True)
         self.c1.assert_ic('Hello you.', folder=self.c0_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
         self.c4.assert_no_ic()
 
-        self.c3.sic('Hello world.')
+        self.c3.sic('Hello world.', check_ackMS_packet=False)
         self.c0.assert_no_ic()
         self.c1.assert_no_ic()
         self.c2.assert_no_ic()
+        self.c3.assert_packet('ackMS', ())
         self.c3.assert_ic('Hello world.', folder=self.c3_cname, over=True)
         self.c4.assert_no_ic()
 
@@ -44,10 +47,11 @@ class TestIC_01_Basic(_TestIC):
 
         self.c3.move_area(0)
 
-        self.c3.sic('Hi there')
+        self.c3.sic('Hi there', check_ackMS_packet=False)
         self.c0.assert_ic('Hi there', folder=self.c3_cname, over=True)
         self.c1.assert_ic('Hi there', folder=self.c3_cname, over=True)
         self.c2.assert_no_ic()
+        self.c3.assert_packet('ackMS', ())
         self.c3.assert_ic('Hi there', folder=self.c3_cname, over=True)
         self.c4.assert_no_ic()
 
@@ -58,10 +62,11 @@ class TestIC_01_Basic(_TestIC):
 
         self.c3.move_area(7)
 
-        self.c3.sic('Anyone in here?')
+        self.c3.sic('Anyone in here?', check_ackMS_packet=False)
         self.c0.assert_no_ic()
         self.c1.assert_no_ic()
         self.c2.assert_no_ic()
+        self.c3.assert_packet('ackMS', ())
         self.c3.assert_ic('Anyone in here?', folder=self.c3_cname, over=True)
         self.c4.assert_no_ic()
 
@@ -71,7 +76,7 @@ class TestIC_01_Basic(_TestIC):
         filters it out, so they do not receive the MS packet and they don't show the message in IC.
         """
 
-        self.c3.sic('Anyone in here?')
+        self.c3.sic('Anyone in here?', check_ackMS_packet=False)
         self.c3.assert_no_packets()
 
 
@@ -164,7 +169,8 @@ class TestIC_02_GlobalIC(_TestIC):
         self.c1.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
         self.assertEqual(self.c1.multi_ic, [self.area1, self.area5])
 
-        self.c1.sic('Hallo mates.')
+        self.c1.sic('Hallo mates.', check_ackMS_packet=False)
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ooc('Sent global IC message "Hallo mates." to areas {} through {}.'
                            .format(self.a1_name, self.a5_name), ooc_over=True)
         self.c0.assert_no_ic()
@@ -173,7 +179,8 @@ class TestIC_02_GlobalIC(_TestIC):
         self.c3.assert_no_ic()
         self.c4.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
 
-        self.c2.sic('Hallo mate.')
+        self.c2.sic('Hallo mate.', check_ackMS_packet=False)
+        self.c2.assert_packet('ackMS', ())
         self.c4.assert_no_ooc()
         self.c0.assert_no_ic()
         self.c1.assert_no_ic()
@@ -190,7 +197,8 @@ class TestIC_02_GlobalIC(_TestIC):
         self.c4.move_area(0)
         self.c3.move_area(5)
 
-        self.c1.sic('Hallo new mates.')
+        self.c1.sic('Hallo new mates.', check_ackMS_packet=False)
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ooc('Sent global IC message "Hallo new mates." to areas {} through {}.'
                            .format(self.a1_name, self.a5_name), ooc_over=True)
         self.c0.assert_no_ic()
@@ -211,7 +219,8 @@ class TestIC_02_GlobalIC(_TestIC):
         self.c1.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
         self.assertEqual(self.c1.multi_ic, [self.area4, self.area5])
 
-        self.c1.sic('Hello players.')
+        self.c1.sic('Hello players.', check_ackMS_packet=False)
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ooc('Sent global IC message "Hello players." to areas {} through {}.'
                            .format(self.a4_name, self.a5_name), over=True)
         self.c0.assert_no_ic()
@@ -254,9 +263,10 @@ class TestIC_02_GlobalIC(_TestIC):
                            over=True)
         self.assertIsNone(self.c1.multi_ic)
 
-        self.c1.sic('Hello?')
+        self.c1.sic('Hello?', check_ackMS_packet=False)
         self.c1.assert_no_ooc()
         self.c0.assert_no_ic()
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ic('Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
@@ -334,7 +344,8 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.ooc('/globalic_pre {}'.format('>>>'))
         self.c1.assert_ooc('You have set your global IC prefix to >>>', over=True)
 
-        self.c1.sic('>>>Hallo mates.')
+        self.c1.sic('>>>Hallo mates.', check_ackMS_packet=False)
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ooc('Sent global IC message "Hallo mates." to areas {} through {}.'
                            .format(self.a1_name, self.a5_name), ooc_over=True)
         self.c0.assert_no_ic()
@@ -343,18 +354,20 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c3.assert_no_ic()
         self.c4.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
 
-        self.c1.sic('Hallo there.')
+        self.c1.sic('Hallo there.', check_ackMS_packet=False)
         self.c1.assert_no_ooc()
         self.c0.assert_no_ic()
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ic('Hallo there.', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
         self.c4.assert_no_ic()
 
-        self.c2.sic('Hallo mate.')
+        self.c2.sic('Hallo mate.', check_ackMS_packet=False)
         self.c4.assert_no_ooc()
         self.c0.assert_no_ic()
         self.c1.assert_no_ic()
+        self.c2.assert_packet('ackMS', ())
         self.c2.assert_ic('Hallo mate.', folder=self.c2_cname, over=True)
         self.c3.assert_no_ic()
         self.c4.assert_ic('Hallo mate.', folder=self.c2_cname, over=True)
@@ -368,7 +381,8 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c4.move_area(0)
         self.c3.move_area(5)
 
-        self.c1.sic('>>>Hallo new mates.')
+        self.c1.sic('>>>Hallo new mates.', check_ackMS_packet=False)
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ooc('Sent global IC message "Hallo new mates." to areas {} through {}.'
                            .format(self.a1_name, self.a5_name), ooc_over=True)
         self.c0.assert_no_ic()
@@ -388,7 +402,8 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
                            .format(self.a4_name, self.a5_name))
         self.c1.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
 
-        self.c1.sic('>>>Hello players.')
+        self.c1.sic('>>>Hello players.', check_ackMS_packet=False)
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ooc('Sent global IC message "Hello players." to areas {} through {}.'
                            .format(self.a4_name, self.a5_name), over=True)
         self.c0.assert_no_ic()
@@ -412,17 +427,19 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.assertIsNone(self.c1.multi_ic)
         self.assertEqual(self.c1.multi_ic_pre, '>>>')
 
-        self.c1.sic('Hello?')
+        self.c1.sic('Hello?', check_ackMS_packet=False)
         self.c1.assert_no_ooc()
         self.c0.assert_no_ic()
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ic('Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
         self.c4.assert_ic('Hello?', folder=self.c1_cname, over=True)
 
-        self.c1.sic('>>>Hello?')
+        self.c1.sic('>>>Hello?', check_ackMS_packet=False)
         self.c1.assert_no_ooc()
         self.c0.assert_no_ic()
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ic('>>>Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
@@ -439,17 +456,19 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.assertIsNone(self.c1.multi_ic)
         self.assertEqual(self.c1.multi_ic_pre, '<<<')
 
-        self.c1.sic('Hello?')
+        self.c1.sic('Hello?', check_ackMS_packet=False)
         self.c1.assert_no_ooc()
         self.c0.assert_no_ic()
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ic('Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
         self.c4.assert_ic('Hello?', folder=self.c1_cname, over=True)
 
-        self.c1.sic('<<<Hello?')
+        self.c1.sic('<<<Hello?', check_ackMS_packet=False)
         self.c1.assert_no_ooc()
         self.c0.assert_no_ic()
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ic('<<<Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
@@ -461,17 +480,19 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.assertIsNone(self.c1.multi_ic)
         self.assertEqual(self.c1.multi_ic_pre, '')
 
-        self.c1.sic('Hello?')
+        self.c1.sic('Hello?', check_ackMS_packet=False)
         self.c1.assert_no_ooc()
         self.c0.assert_no_ic()
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ic('Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
         self.c4.assert_ic('Hello?', folder=self.c1_cname, over=True)
 
-        self.c1.sic('<<<Hello?')
+        self.c1.sic('<<<Hello?', check_ackMS_packet=False)
         self.c1.assert_no_ooc()
         self.c0.assert_no_ic()
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ic('<<<Hello?', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
@@ -492,7 +513,8 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.ooc('/globalic_pre {}'.format('>>>'))
         self.c1.assert_ooc('You have set your global IC prefix to >>>', over=True)
 
-        self.c1.sic('>>>Hallo mates.')
+        self.c1.sic('>>>Hallo mates.', check_ackMS_packet=False)
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ooc('Sent global IC message "Hallo mates." to areas {} through {}.'
                            .format(self.a1_name, self.a5_name), ooc_over=True)
         self.c0.assert_no_ic()
@@ -501,9 +523,10 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c3.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
         self.c4.assert_no_ic()
 
-        self.c1.sic('Hallo there.')
+        self.c1.sic('Hallo there.', check_ackMS_packet=False)
         self.c1.assert_no_ooc()
         self.c0.assert_no_ic()
+        self.c1.assert_packet('ackMS', ())
         self.c1.assert_ic('Hallo there.', folder=self.c1_cname, over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()

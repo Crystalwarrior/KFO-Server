@@ -31,6 +31,7 @@ from server.exceptions import TsuserverException
 from server.tasker import Tasker
 from server.tsuserver import TsuserverDR
 
+
 class _Unittest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -39,7 +40,7 @@ class _Unittest(unittest.TestCase):
         print('\nTesting {}: '.format(cls.__name__), end=' ')
         cls.server = _TestTsuserverDR()
         cls.clients: List[_TestClientManager._Testclient] = cls.server.client_list
-        cls.area0: AreaManager.Area  = cls.server.area_manager.get_area_by_id(0)
+        cls.area0: AreaManager.Area = cls.server.area_manager.get_area_by_id(0)
         cls.area1: AreaManager.Area = cls.server.area_manager.get_area_by_id(1)
         cls.area2: AreaManager.Area = cls.server.area_manager.get_area_by_id(2)
         cls.area3: AreaManager.Area = cls.server.area_manager.get_area_by_id(3)
@@ -51,7 +52,7 @@ class _Unittest(unittest.TestCase):
         cls.a0_name: str = cls.area0.name
         cls.a1_name: str = cls.area1.name
         cls.a2_name: str = cls.area2.name
-        cls.a2_name_s: str = cls.a2_name.replace(', ', ',\ ') # comma in Class Trial Room, 2
+        cls.a2_name_s: str = cls.a2_name.replace(', ', r',\ ')  # comma in Class Trial Room, 2
         cls.a3_name: str = cls.area3.name
         cls.a4_name: str = cls.area4.name
         cls.a5_name: str = cls.area5.name
@@ -63,35 +64,40 @@ class _Unittest(unittest.TestCase):
         cls.server.make_clients(num_clients)
 
         cls.c0: _TestClientManager._TestClient = cls.clients[0]
-        cls.c0_cname: str = cls.c0.get_char_name() #'Kaede Akamatsu_HD'
+        cls.c0_cname: str = cls.c0.get_char_name()  # 'Kaede Akamatsu_HD'
         cls.c0_dname: str = cls.c0.displayname
-        if num_clients == 1: return
+        if num_clients == 1:
+            return
 
         cls.c1: _TestClientManager._TestClient = cls.clients[1]
-        cls.c1_cname: str = cls.c1.get_char_name() #'Shuichi Saihara_HD'
+        cls.c1_cname: str = cls.c1.get_char_name()  # 'Shuichi Saihara_HD'
         cls.c1_dname: str = cls.c1.displayname
-        if num_clients == 2: return
+        if num_clients == 2:
+            return
 
         cls.c2: _TestClientManager._TestClient = cls.clients[2]
         cls.c2.showname = 'showname2'
-        cls.c2_cname: str = cls.c2.get_char_name() #'Maki Harukawa_HD'
+        cls.c2_cname: str = cls.c2.get_char_name()  # 'Maki Harukawa_HD'
         cls.c2_dname: str = cls.c2.displayname
-        if num_clients == 3: return
+        if num_clients == 3:
+            return
 
         cls.c3: _TestClientManager._TestClient = cls.clients[3]
         cls.c3.showname = 'showname3'
-        cls.c3_cname: str = cls.c3.get_char_name() #'Monokuma_HD'
+        cls.c3_cname: str = cls.c3.get_char_name()  # 'Monokuma_HD'
         cls.c3_dname: str = cls.c3.displayname
-        if num_clients == 4: return
+        if num_clients == 4:
+            return
 
         cls.c4: _TestClientManager._TestClient = cls.clients[4]
         cls.c4.showname = 'showname4'
-        cls.c4_cname: str = cls.c4.get_char_name() #'SPECTATOR'
+        cls.c4_cname: str = cls.c4.get_char_name()  # 'SPECTATOR'
         cls.c4_dname: str = cls.c4.displayname
-        if num_clients == 5: return
+        if num_clients == 5:
+            return
 
         cls.c5: _TestClientManager._TestClient = cls.clients[5]
-        cls.c5_cname: str = cls.c5.get_char_name() #'SPECTATOR'
+        cls.c5_cname: str = cls.c5.get_char_name()  # 'SPECTATOR'
         cls.c5_dname: str = cls.c5.displayname
 
     def list2reason(self, exc_list):
@@ -147,11 +153,13 @@ class _Unittest(unittest.TestCase):
             logger.removeHandler(handler)
         cls.server.disconnect_all()
 
+
 class _TestSituation3(_Unittest):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         super().setUpClients(3)
+
 
 class _TestSituation4(_Unittest):
     @classmethod
@@ -159,17 +167,20 @@ class _TestSituation4(_Unittest):
         super().setUpClass()
         super().setUpClients(4)
 
+
 class _TestSituation5(_Unittest):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         super().setUpClients(5)
 
+
 class _TestSituation6(_Unittest):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         super().setUpClients(6)
+
 
 class _TestSituation4Mc12(_TestSituation4):
     @classmethod
@@ -178,12 +189,14 @@ class _TestSituation4Mc12(_TestSituation4):
         cls.c1.make_mod()
         cls.c2.make_mod()
 
+
 class _TestSituation4Mc1Gc2(_TestSituation4):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.c1.make_mod()
         cls.c2.make_gm()
+
 
 class _TestSituation5Mc1Gc2(_TestSituation5):
     @classmethod
@@ -192,6 +205,7 @@ class _TestSituation5Mc1Gc2(_TestSituation5):
         cls.c1.make_mod()
         cls.c2.make_gm()
 
+
 class _TestSituation6Mc1Gc25(_TestSituation6):
     @classmethod
     def setUpClass(cls):
@@ -199,6 +213,7 @@ class _TestSituation6Mc1Gc25(_TestSituation6):
         cls.c1.make_mod()
         cls.c2.make_gm()
         cls.c5.make_gm()
+
 
 class _TestClientManager(ClientManager):
     class _TestClient(ClientManager.Client):
@@ -353,13 +368,13 @@ class _TestClientManager(ClientManager):
 
                 # Discard IC blankpost and OOC standard notification
                 _, x = self.search_match(['MS', None],
-                                          self.received_packets, somewhere=True, remove_match=True,
-                                          allow_partial_match=True)
+                                         self.received_packets, somewhere=True, remove_match=True,
+                                         allow_partial_match=True)
                 self.discard_ic(x[1])
 
                 _, x = self.search_match(['CT', ('<dollar>H', 'Changed area to')],
-                                          self.received_packets, somewhere=True, remove_match=True,
-                                          allow_partial_match=True)
+                                         self.received_packets, somewhere=True, remove_match=True,
+                                         allow_partial_match=True)
                 self.discard_ooc(x[1])
 
             elif discard_packets:
@@ -418,7 +433,7 @@ class _TestClientManager(ClientManager):
         def assert_packet(self, command_type, args, over=False, ooc_over=False, ic_over=False,
                           somewhere=False, allow_partial_match=False):
             """
-            Assert that the client does not have a particular packet among its unaccounted ones.
+            Assert that the client has a particular packet among its unaccounted ones.
 
             Parameters
             ----------
@@ -426,7 +441,7 @@ class _TestClientManager(ClientManager):
                 Packet type
             args: list pf str
                 Packet arguments
-            somewhere: boolean, optional
+            somewhere: bool, optional
                 If True, will assert that the client has not a particular packet among any of its
                 unaccounted ones. If False, will assert that the client has not as its earliest
                 unaccounted packet the given packet.
@@ -601,7 +616,7 @@ class _TestClientManager(ClientManager):
 
         def sic(self, message, msg_type=0, pre='-', folder=None, anim=None, pos=None, sfx=0,
                 anim_type=0, char_id=None, sfx_delay=0, button=0, evi=None, flip=0, ding=0, color=0,
-                ignore_timelimit=True):
+                ignore_timelimit=True, check_ackMS_packet=True):
             if folder is None:
                 folder = self.get_char_name()
             if anim is None:
@@ -632,9 +647,11 @@ class _TestClientManager(ClientManager):
             buffer = ('MS#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#%'
                       .format(msg_type, pre, folder, anim, message, pos, sfx, anim_type, char_id,
                               sfx_delay, button, evi, flip, ding, color))
-            if ignore_timelimit: # Time wasted here = 4 hours 8/10/19
+            if ignore_timelimit:  # Time wasted here = 4 hours 8/10/19
                 self.area.can_send_message = lambda: True
             self.send_command_cts(buffer)
+            if check_ackMS_packet:
+                self.assert_packet('ackMS', None)
 
         def assert_ic(self, message, over=False, ic_over=False, check_MS_packet=True,
                       allow_partial_match=False, **kwargs):
@@ -716,42 +733,42 @@ class _TestClientManager(ClientManager):
 
         def receive_command_stc(self, command_type, *args):
             buffer = ''
-            if command_type == 'decryptor': # Hi
+            if command_type == 'decryptor':  # Hi
                 buffer = 'HI#FAKEHDID#%'
-            elif command_type == 'ID': # Server ID
+            elif command_type == 'ID':  # Server ID
                 buffer = "ID#DRO#1.0.0#%"
                 assert(args[0] == self.id)
-            elif command_type == 'FL': # AO 2.2.5 configs
+            elif command_type == 'FL':  # AO 2.2.5 configs
                 pass
-            elif command_type == 'PN': # Player count
+            elif command_type == 'PN':  # Player count
                 pass
-            elif command_type == 'SI': # Counts for char/evi/music
+            elif command_type == 'SI':  # Counts for char/evi/music
                 pass
-            elif command_type == 'SC': # Character list
+            elif command_type == 'SC':  # Character list
                 pass
-            elif command_type == 'SM': # First timer music/area list
+            elif command_type == 'SM':  # First timer music/area list
                 pass
-            elif command_type == 'CharsCheck': # Available characters
+            elif command_type == 'CharsCheck':  # Available characters
                 pass
-            elif command_type == 'HP': # Def/pro bar
+            elif command_type == 'HP':  # Def/pro bar
                 pass
-            elif command_type == 'BN': # Background file
+            elif command_type == 'BN':  # Background file
                 pass
-            elif command_type == 'LE': # Evidence list
+            elif command_type == 'LE':  # Evidence list
                 pass
-            elif command_type == 'MM': # ?????????????
+            elif command_type == 'MM':  # ?????????????
                 pass
-            elif command_type == 'OPPASS': # Guard pass
+            elif command_type == 'OPPASS':  # Guard pass
                 pass
-            elif command_type == 'DONE': # Done setting up courtroom
+            elif command_type == 'DONE':  # Done setting up courtroom
                 pass
-            elif command_type == 'CT': # OOC message
+            elif command_type == 'CT':  # OOC message
                 self.received_ooc.append((args[0], args[1]))
-            elif command_type == 'FM': # Updated music/area list
+            elif command_type == 'FM':  # Updated music/area list
                 pass
-            elif command_type == 'PV': # Current character
+            elif command_type == 'PV':  # Current character
                 pass
-            elif command_type == 'MS': # IC message
+            elif command_type == 'MS':  # IC message
                 # 0 = msg_type
                 # 1 = pre
                 # 2 = folder
@@ -771,13 +788,15 @@ class _TestClientManager(ClientManager):
                 if not (len(args) == 16):
                     raise ValueError('Malformed MS packet for an IC message {}'.format(args))
                 self.received_ic.append(args)
-            elif command_type == 'MC': # Start playing track
+            elif command_type == 'MC':  # Start playing track
                 pass
-            elif command_type == 'ZZ': # Mod call
+            elif command_type == 'ZZ':  # Mod call
                 pass
-            elif command_type == 'GM': # Gamemode switch
+            elif command_type == 'GM':  # Gamemode switch
                 pass
-            elif command_type == 'TOD': # Time of day switch
+            elif command_type == 'TOD':  # Time of day switch
+                pass
+            elif command_type == 'ackMS':  # Acknowledge MS packet
                 pass
             else:
                 raise KeyError('Unrecognized STC argument `{}` {}'.format(command_type, args))
@@ -799,6 +818,7 @@ class _TestClientManager(ClientManager):
                                my_protocol=my_protocol)
         return c
 
+
 class _TestAOProtocol(AOProtocol):
     def connection_lost(self, exc, client=None):
         """ Overwrites AOProtocol.connection_lost
@@ -813,6 +833,7 @@ class _TestAOProtocol(AOProtocol):
             self.ping_timeout = Mock()
 
         super().connection_lost(exc)
+
 
 class _TestTsuserverDR(TsuserverDR):
     def __init__(self):
@@ -845,7 +866,8 @@ class _TestTsuserverDR(TsuserverDR):
 
         return c
 
-    def make_clients(self, number, hdid_list=None, user_list=None) -> Set[_TestClientManager._TestClient]:
+    def make_clients(self, number, hdid_list=None,
+                     user_list=None) -> Set[_TestClientManager._TestClient]:
         if hdid_list is None:
             hdid_list = ['FAKEHDID'] * number
         else:
