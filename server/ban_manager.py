@@ -19,8 +19,10 @@
 import ipaddress
 import json
 
+from server import logger
 from server.constants import Constants
 from server.exceptions import ServerError
+
 
 class BanManager:
     def __init__(self, server):
@@ -33,7 +35,13 @@ class BanManager:
             with Constants.fopen('storage/banlist.json', 'r') as banlist_file:
                 self.bans = json.load(banlist_file)
         except ServerError.FileNotFoundError:
-            return
+            message = 'WARNING: File not found: storage/banlist.json. Creating a new one...'
+            logger.log_pdebug(message)
+            self.write_banlist()
+        except Exception as ex:
+            message = 'WARNING: Error loading storage/banlist.json. Will assume empty values.\n'
+            message += '{}: {}'.format(type(ex).__name__, ex)
+            logger.log_pdebug(message)
 
     def write_banlist(self):
         with open('storage/banlist.json', 'w') as banlist_file:

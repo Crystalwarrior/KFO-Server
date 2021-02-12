@@ -40,6 +40,7 @@ class TsuserverException(Exception):
         for subexception_name in cls.subexceptions():
             setattr(cls, subexception_name, type(subexception_name, (cls, ), dict()))
 
+
 def recreate_subexceptions(cls):
     """
     Recreate all subexceptions so that their parent is the exception class itself, rather
@@ -52,24 +53,32 @@ def recreate_subexceptions(cls):
         setattr(cls, subexception_name, type(fullname, (cls, ), dict()))
     return cls
 
+
 @recreate_subexceptions
 class ClientError(TsuserverException):
     class UnauthorizedError(TsuserverException):
         pass
 
+
 class AOProtocolError(TsuserverException):
     class InvalidInboundPacketArguments(TsuserverException):
         pass
 
+
 class AreaError(TsuserverException):
     pass
+
 
 class ArgumentError(TsuserverException):
     pass
 
+
 @recreate_subexceptions
 class ServerError(TsuserverException):
     class FileSyntaxError(TsuserverException):
+        pass
+
+    class FileNotCreatedError(TsuserverException):
         pass
 
     class FileNotFoundError(TsuserverException):
@@ -94,8 +103,10 @@ class ServerError(TsuserverException):
     class YAMLInvalidError(TsuserverException):
         pass
 
+
 class PartyError(TsuserverException):
     pass
+
 
 @recreate_subexceptions
 class PlayerGroupError(TsuserverException):
@@ -144,6 +155,7 @@ class PlayerGroupError(TsuserverException):
     class ManagerInvalidGroupIDError(TsuserverException):
         pass
 
+
 @recreate_subexceptions
 class TimerError(TsuserverException):
     class TimerTooLowError(TsuserverException):
@@ -182,6 +194,7 @@ class TimerError(TsuserverException):
     class ManagerInvalidTimerIDError(TsuserverException):
         pass
 
+
 @recreate_subexceptions
 class ZoneError(TsuserverException):
     class AreaConflictError(TsuserverException):
@@ -195,6 +208,7 @@ class ZoneError(TsuserverException):
 
     class WatcherNotInZoneError(TsuserverException):
         pass
+
 
 @recreate_subexceptions
 class GameError(TsuserverException):
@@ -273,6 +287,7 @@ class GameError(TsuserverException):
     class ManagerInvalidGameIDError(TsuserverException):
         pass
 
+
 @recreate_subexceptions
 class GameWithAreasError(GameError):
     class UserNotInAreaError(GameError):
@@ -287,6 +302,7 @@ class GameWithAreasError(GameError):
     class AreaHitGameConcurrentLimitError(TsuserverException):
         pass
 
+
 @recreate_subexceptions
 class TrialError(GameWithAreasError):
     class UserNotInMinigameError(GameWithAreasError):
@@ -297,6 +313,7 @@ class TrialError(GameWithAreasError):
 
     class FocusIsInvalidError(GameWithAreasError):
         pass
+
 
 @recreate_subexceptions
 class NonStopDebateError(GameWithAreasError):

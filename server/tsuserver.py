@@ -56,8 +56,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b117'
-        self.internal_version = 'M210212a'
+        self.segment_version = 'b118'
+        self.internal_version = 'M210212b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -540,21 +540,29 @@ class TsuserverDR:
         #load ipids
         try:
             with Constants.fopen('storage/ip_ids.json', 'r', encoding='utf-8') as whole_list:
-                self.ipid_list = json.loads(whole_list.read())
+                self.ipid_list = json.load(whole_list)
+        except ServerError.FileNotFoundError:
+            with Constants.fopen('storage/ip_ids.json', 'w', encoding='utf-8') as whole_list:
+                json.dump(list(), whole_list)
+            message = 'WARNING: File not found: storage/ip_ids.json. Creating a new one...'
+            logger.log_pdebug(message)
         except Exception as ex:
             message = 'WARNING: Error loading storage/ip_ids.json. Will assume empty values.\n'
             message += '{}: {}'.format(type(ex).__name__, ex)
-
             logger.log_pdebug(message)
 
         #load hdids
         try:
             with Constants.fopen('storage/hd_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.hdid_list = json.loads(whole_list.read())
+        except ServerError.FileNotFoundError:
+            with Constants.fopen('storage/hd_ids.json', 'w', encoding='utf-8') as whole_list:
+                json.dump(list(), whole_list)
+            message = 'WARNING: File not found: storage/hd_ids.json. Creating a new one...'
+            logger.log_pdebug(message)
         except Exception as ex:
             message = 'WARNING: Error loading storage/hd_ids.json. Will assume empty values.\n'
             message += '{}: {}'.format(type(ex).__name__, ex)
-
             logger.log_pdebug(message)
 
     def load_iniswaps(self):
@@ -611,7 +619,7 @@ class TsuserverDR:
                 ]
             with Constants.fopen('config/gimp.yaml', 'w') as gimp:
                 Constants.yaml_dump(gimp_list, gimp)
-            message = 'WARNING: Error loading config/gimp.yaml. Will assume default values.\n'
+            message = 'WARNING: File not found: config/gimp.yaml. Creating a new one...'
             logger.log_pdebug(message)
 
         self.gimp_list = gimp_list
