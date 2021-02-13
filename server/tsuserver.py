@@ -20,9 +20,11 @@
 # This class will suffer major reworkings for 4.3
 
 import asyncio
+import errno
 import importlib
 import json
 import random
+import socket
 import ssl
 import sys
 import traceback
@@ -56,8 +58,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b119'
-        self.internal_version = 'M210212c'
+        self.segment_version = 'b120'
+        self.internal_version = 'M210213a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -140,8 +142,24 @@ class TsuserverDR:
             server_name = self.config['masterserver_name']
             logger.log_print('Starting a nonlocal server...')
 
+        # Check if port is available
+        port = self.config['port']
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((bound_ip, port))
+            except socket.error as exc:
+                if exc.errno == errno.EADDRINUSE:
+                    msg = (f'Port {port} is in use by another application. Make sure to close any '
+                           f'conflicting applications (even another instance of this server) and '
+                           f'try again.')
+                    raise ServerError(msg)
+                raise exc
+
+        # Yes there is a race condition here (between checking if port is available, and actually
+        # using it). The only side effect of a race condition is a slightly less nice error
+        # message, so it's not that big of a deal.
         self._server = await self.loop.create_server(lambda: self.protocol(self),
-                                                     bound_ip, self.config['port'],
+                                                     bound_ip, port,
                                                      start_serving=False)
         asyncio.create_task(self._server.serve_forever())
         logger.log_pserver('Server started successfully!')
