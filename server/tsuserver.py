@@ -47,8 +47,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 5
-        self.segment_version = 'post5'
-        self.internal_version = '201217a'
+        self.segment_version = 'post6'
+        self.internal_version = '210213a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -416,7 +416,14 @@ class TsuserverDR:
         #load ipids
         try:
             with Constants.fopen('storage/ip_ids.json', 'r', encoding='utf-8') as whole_list:
-                self.ipid_list = json.loads(whole_list.read())
+                self.ipid_list = json.load(whole_list)
+        except ServerError as exc:
+            if exc.code != 'FileNotFound':
+                raise exc
+            with Constants.fopen('storage/ip_ids.json', 'w', encoding='utf-8') as whole_list:
+                json.dump(list(), whole_list)
+            message = 'WARNING: File not found: storage/ip_ids.json. Creating a new one...'
+            logger.log_pdebug(message)
         except Exception as ex:
             message = 'WARNING: Error loading storage/ip_ids.json. Will assume empty values.\n'
             message += '{}: {}'.format(type(ex).__name__, ex)
@@ -426,7 +433,14 @@ class TsuserverDR:
         #load hdids
         try:
             with Constants.fopen('storage/hd_ids.json', 'r', encoding='utf-8') as whole_list:
-                self.hdid_list = json.loads(whole_list.read())
+                self.hdid_list = json.load(whole_list)
+        except ServerError as exc:
+            if exc.code != 'FileNotFound':
+                raise exc
+            with Constants.fopen('storage/hd_ids.json', 'w', encoding='utf-8') as whole_list:
+                json.dump(list(), whole_list)
+            message = 'WARNING: File not found: storage/hd_ids.json. Creating a new one...'
+            logger.log_pdebug(message)
         except Exception as ex:
             message = 'WARNING: Error loading storage/hd_ids.json. Will assume empty values.\n'
             message += '{}: {}'.format(type(ex).__name__, ex)

@@ -16,8 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+import errno
+import os
 import random
 import re
+import sys
+import tempfile
 import time
 import warnings
 import yaml
@@ -397,14 +401,183 @@ class Clients():
     ClientCC22 = Enum('ClientCC22', [(m.name, m.value) for m in ClientAO2d6])
     ClientCC24 = Enum('ClientCC24', [(m.name, m.value) for m in ClientAO2d8d4])
 
+
+class FileValidity:
+    # The majority of this class should be credited to Cecil Curry
+    # See original post at https://stackoverflow.com/a/34102855
+    # Chrezm/Iuvee wrote file_exists_or_creatable
+
+    # Sadly, Python fails to provide the following magic number for us.
+    ERROR_INVALID_NAME = 123
+    '''
+    Windows-specific error code indicating an invalid pathname.
+    See Also
+    ----------
+    https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
+        Official listing of all such codes.
+    '''
+
+    @staticmethod
+    def is_pathname_valid(pathname: str) -> bool:
+        '''
+        `True` if the passed pathname is a valid pathname for the current OS;
+        `False` otherwise.
+        '''
+
+        # If this pathname is either not a string or is but is empty, this pathname
+        # is invalid.
+        try:
+            if not isinstance(pathname, str) or not pathname:
+                return False
+
+            # Strip this pathname's Windows-specific drive specifier (e.g., `C:\`)
+            # if any. Since Windows prohibits path components from containing `:`
+            # characters, failing to strip this `:`-suffixed prefix would
+            # erroneously invalidate all valid absolute Windows pathnames.
+            _, pathname = os.path.splitdrive(pathname)
+
+            # Directory guaranteed to exist. If the current OS is Windows, this is
+            # the drive to which Windows was installed (e.g., the "%HOMEDRIVE%"
+            # environment variable); else, the typical root directory.
+            root_dirname = os.environ.get('HOMEDRIVE', 'C:') \
+                if sys.platform == 'win32' else os.path.sep
+            assert os.path.isdir(root_dirname)   # ...Murphy and her ironclad Law
+
+            # Append a path separator to this directory if needed.
+            root_dirname = root_dirname.rstrip(os.path.sep) + os.path.sep
+
+            # Test whether each path component split from this pathname is valid or
+            # not, ignoring non-existent and non-readable path components.
+            for pathname_part in pathname.split(os.path.sep):
+                try:
+                    os.lstat(root_dirname + pathname_part)
+                # If an OS-specific exception is raised, its error code
+                # indicates whether this pathname is valid or not. Unless this
+                # is the case, this exception implies an ignorable kernel or
+                # filesystem complaint (e.g., path not found or inaccessible).
+                #
+                # Only the following exceptions indicate invalid pathnames:
+                #
+                # * Instances of the Windows-specific "WindowsError" class
+                #   defining the "winerror" attribute whose value is
+                #   "ERROR_INVALID_NAME". Under Windows, "winerror" is more
+                #   fine-grained and hence useful than the generic "errno"
+                #   attribute. When a too-long pathname is passed, for example,
+                #   "errno" is "ENOENT" (i.e., no such file or directory) rather
+                #   than "ENAMETOOLONG" (i.e., file name too long).
+                # * Instances of the cross-platform "OSError" class defining the
+                #   generic "errno" attribute whose value is either:
+                #   * Under most POSIX-compatible OSes, "ENAMETOOLONG".
+                #   * Under some edge-case OSes (e.g., SunOS, *BSD), "ERANGE".
+                except OSError as exc:
+                    if hasattr(exc, 'winerror'):
+                        if exc.winerror == FileValidity.ERROR_INVALID_NAME:
+                            return False
+                    elif exc.errno in {errno.ENAMETOOLONG, errno.ERANGE}:
+                        return False
+        # If a "TypeError" exception was raised, it almost certainly has the
+        # error message "embedded NUL character" indicating an invalid pathname.
+        except TypeError:
+            return False
+        # If no exception was raised, all path components and hence this
+        # pathname itself are valid. (Praise be to the curmudgeonly python.)
+        else:
+            return True
+        # If any other exception was raised, this is an unrelated fatal issue
+        # (e.g., a bug). Permit this exception to unwind the call stack.
+        #
+        # Did we mention this should be shipped with Python already?
+
+    @staticmethod
+    def is_path_sibling_creatable(pathname: str) -> bool:
+        '''
+        `True` if the current user has sufficient permissions to create **siblings**
+        (i.e., arbitrary files in the parent directory) of the passed pathname;
+        `False` otherwise.
+        '''
+        # Parent directory of the passed path. If empty, we substitute the current
+        # working directory (CWD) instead.
+        dirname = os.path.dirname(pathname) or os.getcwd()
+
+        try:
+            # For safety, explicitly close and hence delete this temporary file
+            # immediately after creating it in the passed path's parent directory.
+            with tempfile.TemporaryFile(dir=dirname):
+                pass
+            return True
+        # While the exact type of exception raised by the above function depends on
+        # the current version of the Python interpreter, all such types subclass the
+        # following exception superclass.
+        except EnvironmentError:
+            return False
+
+    @staticmethod
+    def is_path_exists_or_creatable(pathname: str) -> bool:
+        '''
+        `True` if the passed pathname is a valid pathname on the current OS _and_
+        either currently exists or is hypothetically creatable in a cross-platform
+        manner optimized for POSIX-unfriendly filesystems; `False` otherwise.
+        This function is guaranteed to _never_ raise exceptions.
+        '''
+        try:
+            # To prevent "os" module calls from raising undesirable exceptions on
+            # invalid pathnames, is_pathname_valid() is explicitly called first.
+            return FileValidity.is_pathname_valid(pathname) and (
+                os.path.exists(pathname) or
+                FileValidity.is_path_sibling_creatable(pathname))
+        # Report failure on non-fatal filesystem complaints (e.g., connection
+        # timeouts, permissions issues) implying this path to be inaccessible. All
+        # other exceptions are unrelated fatal issues and should not be caught here.
+        except OSError:
+            return False
+
+    @staticmethod
+    def file_exists_or_creatable(pathname: str) -> bool:
+        if not FileValidity.is_path_exists_or_creatable(pathname):
+            return False
+        if os.path.isfile(pathname):
+            return True
+
+        # If execution makes it here, we are in one of two situations
+        # pathname exists but is not a file
+        # pathname does not exist as a path
+        # Therefore, os.path.exists(pathname) is True when we don't want it to, and False when we do
+        return not os.path.exists(pathname)
+
+
 class Constants():
     @staticmethod
-    def fopen(file, *args, **kwargs):
+    def fopen(file_name, *args, disallow_parent_folder: bool = True, **kwargs):
+        if disallow_parent_folder:
+            folders = []
+            path = file_name
+            while True:
+                # Based from https://stackoverflow.com/a/3167684
+                path, folder = os.path.split(path)
+
+                if folder:
+                    folders.append(folder)
+                    continue
+                if path:
+                    folders.append(path)
+                break
+
+            if '.' in folders or '..' in folders:
+                info = f'File names may not reference parent or current directories: {file_name}'
+                raise ServerError(info, code='FileInvalidName')
+
+        # # We do this manually to prevent accepting filenames like
+        # *`con.yaml`, which are reserved in Windows and cause a loop if a naive load is attempted.
+        # *`e/f.yaml` if folder 'e' does not exist
+        if not FileValidity.file_exists_or_creatable(file_name):
+            info = 'File not found: {}'.format(file_name)
+            raise ServerError(info, code="FileNotFound")
+
         try:
-            f = open(file, *args, **kwargs)
-            return f
+            file = open(file_name, *args, **kwargs)
+            return file
         except FileNotFoundError:
-            info = 'File not found: {}'.format(file)
+            info = 'File not found: {}'.format(file_name)
             raise ServerError(info, code="FileNotFound")
         except OSError as ex:
             raise ServerError(str(ex), code="OSError")

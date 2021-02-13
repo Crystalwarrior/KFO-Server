@@ -478,3 +478,8 @@
 
 ### 201217a (4.2.5-post5)
 * Backported 4.3.0 recognition of DRO 1.0.0 protocol and clearing of IC on area changes/blinding
+
+### 210213a (4.2.5-post6)
+* Enforced stricter file validation before attempting to open files
+* Enforced file names not referencing current or parent directories in the name
+* Improved error message if ban, IPID or HDID list JSON files are missing.
