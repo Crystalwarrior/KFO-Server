@@ -486,3 +486,6 @@
 
 ### 210213b (4.2.5-post7)
 * Fixed validation introduced in 4.2.5-post6 not working in Python 3.7
+
+### 210213b (4.2.5-post8)
+* Fixed regression where if ip_ids.json or hd_ids.json did not exist, the server would not launch
