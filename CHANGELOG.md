@@ -472,6 +472,21 @@
 * Reworded the /scream OOC notification so it is more in line with other OOC/IC notifications
 * Deaf players now only see an IC notification for screams
 
+### 201215a (4.2.5-post4)
+* Fixed allowing zero-width characters in OOC names and shownames
+* Fixed illegal OOC names being associated with clients, even after being notified they are invalid
+
+### 201217a (4.2.5-post5)
+* Backported 4.3.0 recognition of DRO 1.0.0 protocol and clearing of IC on area changes/blinding
+
+### 210213a (4.2.5-post6)
+* Enforced stricter file validation before attempting to open files
+* Enforced file names not referencing current or parent directories in the name
+* Improved error message if ban, IPID or HDID list JSON files are missing
+
+### 210213b (4.2.5-post7)
+* Fixed validation introduced in 4.2.5-post6 not working in Python 3.7
+
 ### (4.3.0)
 * Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
 * Explicitly allowed Python 3.9 support for server owners

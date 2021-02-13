@@ -20,6 +20,7 @@ import asyncio
 import functools
 import errno
 import os
+import pathlib
 import random
 import re
 import sys
@@ -226,14 +227,13 @@ class FileValidity:
     def file_exists_or_creatable(pathname: str) -> bool:
         if not FileValidity.is_path_exists_or_creatable(pathname):
             return False
-        if os.path.isfile(pathname):
-            return True
-
-        # If execution makes it here, we are in one of two situations
-        # pathname exists but is not a file
-        # pathname does not exist as a path
-        # Therefore, os.path.exists(pathname) is True when we don't want it to, and False when we do
-        return not os.path.exists(pathname)
+        # We use pathlib because 3.7 compatibility
+        try:
+            return pathlib.Path(pathname).is_file()
+        except OSError:
+            # 3.7 in Windows raises an OSError for stuff like `con.yaml` here
+            # In 3.8+ it does not and returns False
+            return False
 
 
 class Constants():
