@@ -482,4 +482,7 @@
 ### 210213a (4.2.5-post6)
 * Enforced stricter file validation before attempting to open files
 * Enforced file names not referencing current or parent directories in the name
-* Improved error message if ban, IPID or HDID list JSON files are missing.
+* Improved error message if ban, IPID or HDID list JSON files are missing
+
+### 210213b (4.2.5-post7)
+* Fixed validation introduced in 4.2.5-post6 not working in Python 3.7
