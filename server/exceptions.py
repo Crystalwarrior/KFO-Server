@@ -78,6 +78,9 @@ class ServerError(TsuserverException):
     class FileSyntaxError(TsuserverException):
         pass
 
+    class FileInvalidNameError(TsuserverException):
+        pass
+
     class FileNotCreatedError(TsuserverException):
         pass
 

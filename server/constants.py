@@ -238,7 +238,25 @@ class FileValidity:
 
 class Constants():
     @staticmethod
-    def fopen(file_name, *args, **kwargs):
+    def fopen(file_name, *args, disallow_parent_folder: bool = True, **kwargs):
+        if disallow_parent_folder:
+            folders = []
+            path = file_name
+            while True:
+                # Based from https://stackoverflow.com/a/3167684
+                path, folder = os.path.split(path)
+
+                if folder:
+                    folders.append(folder)
+                    continue
+                if path:
+                    folders.append(path)
+                break
+
+            if '.' in folders or '..' in folders:
+                info = f'File names may not reference parent or current directories: {file_name}'
+                raise ServerError.FileInvalidNameError(info)
+
         # # We do this manually to prevent accepting filenames like
         # *`con.yaml`, which are reserved in Windows and cause a loop if a naive load is attempted.
         # *`e/f.yaml` if folder 'e' does not exist
@@ -250,6 +268,8 @@ class Constants():
             file = open(file_name, *args, **kwargs)
             return file
         except FileNotFoundError:
+            # This one handles when file_name does not exist but is creatable
+            # This should only be raised if the mode is 'r'
             info = 'File not found: {}'.format(file_name)
             raise ServerError.FileNotFoundError(info, code="FileNotFound")
         except OSError as ex:

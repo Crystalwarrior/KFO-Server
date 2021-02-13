@@ -56,8 +56,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b118'
-        self.internal_version = 'M210212b'
+        self.segment_version = 'b119'
+        self.internal_version = 'M210212c'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -724,7 +724,7 @@ class TsuserverDR:
 
         # Check music list contents is indeed a list
         if not isinstance(raw_music_list, list):
-            msg = (f'Expected the music list to be a list, got a'
+            msg = (f'Expected the music list to be a list, got a '
                    f'{type(raw_music_list).__name__}: {raw_music_list}.')
             raise ServerError.FileSyntaxError(msg)
 
