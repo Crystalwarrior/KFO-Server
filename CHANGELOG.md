@@ -487,6 +487,9 @@
 ### 210213b (4.2.5-post7)
 * Fixed validation introduced in 4.2.5-post6 not working in Python 3.7
 
+### 210213b (4.2.5-post8)
+* Fixed regression where if ip_ids.json or hd_ids.json did not exist, the server would not launch
+
 ### (4.3.0)
 * Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
 * Explicitly allowed Python 3.9 support for server owners
