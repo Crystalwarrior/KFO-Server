@@ -26,7 +26,7 @@ from server.constants import ArgType, Constants
 from server.exceptions import AOProtocolError
 from server.exceptions import AreaError, ClientError, ServerError, PartyError, TsuserverException
 from server.fantacrypt import fanta_decrypt
-from server.evidence import EvidenceList
+# from server.evidence import EvidenceList
 
 
 class AOProtocol(asyncio.Protocol):
@@ -320,7 +320,7 @@ class AOProtocol(asyncio.Protocol):
                             'noencryption', 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx',
                             'additive', 'effects',
                             # DRO exclusive stuff
-                            'ackMS',]
+                            'ackMS', ]
             })
 
     def net_cmd_ch(self, args):
@@ -469,6 +469,12 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc('The IC chat in this area is currently locked.')
             return
         if not self.client.area.can_send_message():
+            return
+
+        # Trim out any leading/trailing whitespace characters up to a chain of spaces
+        pargs['text'] = Constants.trim_extra_whitespace(pargs['text'])
+        # Check if after all of this, the message is empty. If so, ignore
+        if not pargs['text']:
             return
 
         # First, check if the player just sent the same message with the same character and did
@@ -713,6 +719,10 @@ class AOProtocol(asyncio.Protocol):
         pargs = self.process_arguments('CT', args)
         username, message = pargs['username'], pargs['message']
 
+        # Trim out any leading/trailing whitespace characters up to a chain of spaces
+        username = Constants.trim_extra_whitespace(username)
+        message = Constants.trim_extra_whitespace(message)
+
         if self.client.is_ooc_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You have been muted by a moderator.")
             return
@@ -731,7 +741,7 @@ class AOProtocol(asyncio.Protocol):
 
         # After this the name is validated
         self.client.publish_inbound_command('CT', pargs)
-        self.client.name = args[0]
+        self.client.name = username
 
         if message.startswith('/'):
             spl = message[1:].split(' ', 1)
@@ -739,6 +749,7 @@ class AOProtocol(asyncio.Protocol):
             arg = ''
             if len(spl) == 2:
                 arg = spl[1][:1024]
+            arg = Constants.trim_extra_whitespace(arg)  # Do it again because args may be weird
             try:
                 called_function = 'ooc_cmd_{}'.format(cmd)
                 function = None  # Double assignment to check if it matched to a function later
