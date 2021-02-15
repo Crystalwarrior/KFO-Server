@@ -4754,11 +4754,19 @@ def ooc_cmd_scream_set_range(client: ClientManager.Client, arg: str):
         client.area.scream_range = set()
         area_names = '{}'
     else:
-        areas = Constants.parse_area_names(client, arg.split(', '))
-        if client.area in areas:
-            raise ArgumentError('You cannot add the current area to the scream range.')
-        area_names = {area.name for area in areas}
-        client.area.scream_range = area_names
+        raw_areas = arg.split(', ')
+        if '<ALL>' in raw_areas:
+            if len(raw_areas) != 1:
+                raise ArgumentError('You may not include multiple areas when including the <ALL> '
+                                    'tag.')
+            areas = [area for area in client.server.area_manager.areas if area != client.area]
+            area_names = '<ALL>'
+        else:
+            areas = Constants.parse_area_names(client, raw_areas)
+            if client.area in areas:
+                raise ArgumentError('You cannot add the current area to the scream range.')
+            area_names = {area.name for area in areas}
+            client.area.scream_range = area_names
 
     client.send_ooc('Set the scream range of area {} to be: {}.'
                     .format(client.area.name, area_names))
