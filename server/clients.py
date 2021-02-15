@@ -255,15 +255,15 @@ class DefaultAO2Protocol(Enum):
         ('new_time', 0),  # 1
         ]
 
-    TSS_OUTBOUND = {
+    TSS_OUTBOUND = [
         ('timer_id', 0),  # 0
         ('new_step_length', 0),  # 1
-        }
+        ]
 
-    TSF_OUTBOUND = {
+    TSF_OUTBOUND = [
         ('timer_id', 0),  # 0
         ('new_firing_interval', 0),  # 1
-        }
+        ]
 
     GM_OUTBOUND = [
         ('name', ''),  # 0
