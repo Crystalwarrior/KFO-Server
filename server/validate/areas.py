@@ -74,11 +74,18 @@ class ValidateAreas(Validate):
                 info = 'Area {} has no background.'.format(item['area'])
                 raise AreaError(info)
 
-            # Prevent <ALL> as a valid area name (it has a special meaning)
-            if item['area'] == '<ALL>':
-                info = ('An area in your area list is called \'<ALL>\'. This is a reserved name, '
-                        'thus it is not a valid area name. Please change its name and try again.')
-                raise AreaError(info)
+            # Prevent reserved area names (it has a special meaning)
+            reserved_names = {
+                '<ALL>',
+                '<REACHABLE_AREAS>',
+                }
+
+            for name in reserved_names:
+                if item['area'] == name:
+                    info = ('An area in your area list is called "{name}. This is a reserved name, '
+                            'thus it is not a valid area name. Please change its name and try '
+                            'again.')
+                    raise AreaError(info)
 
             # Check unset optional parameters
             for param in default_area_parameters:
@@ -125,6 +132,8 @@ class ValidateAreas(Validate):
                 reachable_areas = temp_area_names.copy()
             if scream_range == {'<ALL>'}:
                 scream_range = temp_area_names.copy()
+            elif scream_range == {'<REACHABLE_AREAS>'}:
+                scream_range = reachable_areas.copy()
 
             area_item['reachable_areas'] = reachable_areas
             area_item['scream_range'] = scream_range

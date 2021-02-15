@@ -558,7 +558,7 @@
 * Clients with compatible clients now no longer see auxiliary extra spaces in IC if deafened nor their own messages with global IC prefixes if they have them on
 * Improved README description of /switch to account for GMs being able to switch to restricted characters, and mods being able to force a player off their character
 * Added area parameter that allows only CMs and mods to send global messages in an area (by default false)
-* Improved type checking of background, music and character lists (they now hopefully fail earlier and more clearly if they have subtle errors)
+* Improved type checking of areas, background, config, music and character lists (they now hopefully fail earlier and more clearly if they have subtle errors)
 * If a character list is changed via /refresh, all clients are switched to spectator and prompted to rejoin the server
 * /banhdid now reports, if a player was already banned, what IPID was banned
 * Judge buttons are now disallowed in lobby areas
@@ -606,7 +606,7 @@
 * Fixed the server not failing early if a server YAML file was empty
 * Fixed /charselect (either as mod or not) not running all spectator actions, like restarting AFK kick timers, updating character folder or notifying zone watchers
 * Fixed the server silently accepting a YAML mapping file (like an area list) with duplicate keys in an item. A helpful error message is now raised
-* Fixed the server indicating the wrong directory for config/config.yaml if the passwords were incorrect (previously showed server/config.yaml)
+* Fixed the server indicating the wrong directory for the configuration file if the passwords were incorrect (previously showed server/config.yaml, now shows 'configuration file')
 * Fixed the server disallowing all IC messages if a daily password was deliberately left empty rather than removed from the configuration file
 * Fixed /party_leave not having short documentation for /help party_leave
 * Fixed the server attempting to send packets to clients without checking if the client is still online.

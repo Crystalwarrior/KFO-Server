@@ -450,6 +450,7 @@ GMs can:
 * **scream_set_range** "area 1", "area 2", ...
     - Sets the current area's scream range to be the areas listed.
     - The special keyword <ALL> means all areas in the server should be able to listen to screams from the current area.
+    - The special keyword <REACHABLE_AREAS> means all areas reachable from the current area.
 * **shoutlog** "area"
     - Lists the last 20 shouts sent in the given area, or from the current area if not given.
     - Each entry includes the time of execution, client ID, character name, client IPID, the shout ID and the IC message sent alongside.

@@ -4727,8 +4727,11 @@ def ooc_cmd_scream_set_range(client: ClientManager.Client, arg: str):
     Passing in no arguments sets the scream range to nothing (i.e. a soundproof room).
     Note that scream ranges are unidirectional, so if you want two areas to hear one another, you
     must use this command twice.
-    Returns an error if an invalid area name or area ID is given, or if the current area is part of
-    the selection.
+    The special keyword <ALL> means all areas in the server should be able to listen to screams
+    from the current area. The special keyword <REACHABLE_AREAS> means all areas reachable from
+    the current area.
+    Returns an error if an invalid area name or area ID is given, if the current area is part of
+    the selection, or if a special keyword is used in conjunction with another argument.
 
     SYNTAX
     /scream_set_range {area_1}, {area_2}, {area_3}, ...
@@ -4747,6 +4750,11 @@ def ooc_cmd_scream_set_range(client: ClientManager.Client, arg: str):
                                                                        "Class Trial Room 3".
     /scream_set_range                                               :: Sets Basement's scream range
                                                                        to no areas.
+    /scream_set_range <ALL>                                         :: Sets Basement's scream range
+                                                                       to be all areas.
+    /scream_set_range <REACHABLE_AREAS>                             :: Sets Basement's scream range
+                                                                       to be all areas reachable
+                                                                       from Basement.
     """
 
     Constants.assert_command(client, arg, is_staff=True)
@@ -4758,10 +4766,17 @@ def ooc_cmd_scream_set_range(client: ClientManager.Client, arg: str):
         raw_areas = arg.split(', ')
         if '<ALL>' in raw_areas:
             if len(raw_areas) != 1:
-                raise ArgumentError('You may not include multiple areas when including the <ALL> '
-                                    'tag.')
-            areas = [area for area in client.server.area_manager.areas if area != client.area]
+                raise ArgumentError('You may not include multiple areas when including a special '
+                                    'keyword.')
             area_names = '<ALL>'
+            client.area.scream_range = {area.name for area in client.server.area_manager.areas
+                                        if area != client.area}
+        elif '<REACHABLE_AREAS>' in raw_areas:
+            if len(raw_areas) != 1:
+                raise ArgumentError('You may not include multiple areas when including a special '
+                                    'keyword.')
+            area_names = '<REACHABLE_AREAS>'
+            client.area.scream_range = client.area.reachable_areas.copy() - {client.area.name}
         else:
             areas = Constants.parse_area_names(client, raw_areas)
             if client.area in areas:
