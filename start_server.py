@@ -104,19 +104,22 @@ def main():
         # If we are done with this coroutine, that means an error was raised
         raise server.error_queue.get_nowait()
     except KeyboardInterrupt:
-        print('') # Lame
+        print('')  # Lame
         logger.log_pdebug('You have initiated a server shut down.')
         loop.run_until_complete(normal_shutdown(server=server))
+        logger.log_pdebug('Server has successfully shut down.')
     except Exception as exception:
         loop.run_until_complete(abnormal_shutdown(exception, server=server))
     finally:
         try:
-            input("Press Enter to continue... ")
-        except:
+            input("Press Enter to exit. ")
+        except Exception:
             # Only errors that could realistically happen are just a bunch of Ctrl+C/Z leaking
             # in the input message and those being sent. We don't really care what happens now,
             # everything has shut down by this point.
             pass
+
+
 if __name__ == '__main__':
     # Make launching via python.exe and python start_server.py possible
     path_to_this = pathlib.Path(__file__).absolute()

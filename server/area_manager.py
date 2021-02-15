@@ -32,6 +32,9 @@ from server.evidence import EvidenceList
 from server.exceptions import AreaError, ServerError
 from server.subscriber import Publisher
 
+from server.validate.areas import ValidateAreas
+
+
 class AreaManager:
     """
     Create a new manager for the areas in a server.
@@ -951,137 +954,19 @@ class AreaManager:
             If the area list could not be found.
         """
 
-        self.area_names = set()
-        current_area_id = 0
-        area_parameters = list()
-        temp_area_names = set()
-
-        # Check if valid area list file
-        with Constants.fopen(area_list_file, 'r') as chars:
-            areas = Constants.yaml_load(chars)
-
-        def_param = {
-            'afk_delay': 0,
-            'afk_sendto': 0,
-            'bglock': False,
-            'bullet': True,
-            'cbg_allowed': False,
-            'change_reachability_allowed': True,
-            'default_description': self.server.config['default_area_description'],
-            'evidence_mod': 'FFA',
-            'gm_iclock_allowed': True,
-            'has_lights': True,
-            'iniswap_allowed': False,
-            'global_allowed': True,
-            'lobby_area': False,
-            'locking_allowed': False,
-            'private_area': False,
-            'reachable_areas': '<ALL>',
-            'restricted_chars': '',
-            'rollp_allowed': True,
-            'rp_getarea_allowed': True,
-            'rp_getareas_allowed': True,
-            'scream_range': '',
-            'song_switch_allowed': False,
-            }
-
-        # Create the areas
-        for item in areas:
-            # Check required parameters
-            if 'area' not in item:
-                info = 'Area {} has no name.'.format(current_area_id)
-                raise AreaError(info)
-            if 'background' not in item:
-                info = 'Area {} has no background.'.format(item['area'])
-                raise AreaError(info)
-
-            # Prevent <ALL> as a valid area name (it has a special meaning)
-            if item['area'] == '<ALL>':
-                info = ('An area in your area list is called \'<ALL>\'. This is a reserved name, '
-                        'thus it is not a valid area name. Please change its name and try again.')
-                raise AreaError(info)
-
-            # Check unset optional parameters
-            for param in def_param:
-                if param not in item:
-                    item[param] = def_param[param]
-
-            # Check use of backwards incompatible parameters
-            if 'sound_proof' in item:
-                info = ('The sound_proof property was defined for area {}. '
-                        'Support for sound_proof was removed in favor of scream_range. '
-                        'Please replace the sound_proof tag with scream_range in '
-                        'your area list and try again.'.format(item['area']))
-                raise AreaError(info)
-
-            # Avoid having areas with the same name
-            if item['area'] in temp_area_names:
-                info = ('Two areas have the same name in area list: {}. '
-                        'Please rename the duplicated areas and try again.'.format(item['area']))
-                raise AreaError(info)
-
-            # Check if any of the items were interpreted as Python Nones (maybe due to empty lines)
-            for parameter in item:
-                if item[parameter] is None:
-                    info = ('Parameter {} is manually undefined for area {}. This can be the case '
-                            'due to having an empty parameter line in your area list. '
-                            'Please fix or remove the parameter from the area definition and try '
-                            'again.'.format(parameter, item['area']))
-                    raise AreaError(info)
-
-            area_parameters.append(item)
-            temp_area_names.add(item['area'])
-            current_area_id += 1
-
-        # Check if a reachable area is not an area name
-        # Can only be done once all areas are created
-        for area_item in area_parameters:
-            name = area_item['area']
-
-            reachable_areas = Constants.fix_and_setify(area_item['reachable_areas'])
-            scream_range = Constants.fix_and_setify(area_item['scream_range'])
-            restricted_chars = Constants.fix_and_setify(area_item['restricted_chars'])
-
-            if reachable_areas == {'<ALL>'}:
-                reachable_areas = temp_area_names.copy()
-            if scream_range == {'<ALL>'}:
-                scream_range = temp_area_names.copy()
-
-            area_item['reachable_areas'] = reachable_areas
-            area_item['scream_range'] = scream_range
-            area_item['restricted_chars'] = restricted_chars
-
-            # Make sure no weird areas were set as reachable by players or by screams
-            unrecognized_areas = reachable_areas-temp_area_names
-            if unrecognized_areas:
-                info = (f'Area {name} has unrecognized areas {unrecognized_areas} defined as '
-                        f'areas a player can reach to. Please rename the affected areas and try '
-                        f'again.')
-                raise AreaError(info)
-
-            unrecognized_areas = scream_range-temp_area_names
-            if unrecognized_areas:
-                info = (f'Area {name} has unrecognized areas {unrecognized_areas} defined as '
-                        f'areas screams can reach to. Please rename the affected areas and try '
-                        f'again.')
-                raise AreaError(info)
-
-            # Make sure only characters that exist are part of the restricted char set
-            unrecognized_characters = restricted_chars-set(self.server.char_list)
-            if unrecognized_characters:
-                info = (f'Area {name} has unrecognized characters {unrecognized_characters} '
-                        f'defined as restricted characters. Please make sure the characters exist '
-                        f'and try again.')
-                raise AreaError(info)
+        areas = ValidateAreas().validate(area_list_file, extra_parameters={
+            'server_character_list': self.server.char_list,
+            'server_default_area_description': self.server.config['default_area_description']
+            })
 
         # Now we are ready to create the areas
         temp_areas = list()
-        for (i, area_item) in enumerate(area_parameters):
+        for (i, area_item) in enumerate(areas):
             temp_areas.append(self.Area(i, self.server, area_item))
 
         old_areas = self.areas
         self.areas = temp_areas
-        self.area_names = temp_area_names
+        self.area_names = [area.name for area in self.areas]
 
         # Only once all areas have been created, actually set the corresponding values
         # Helps avoiding junk area lists if there was an error

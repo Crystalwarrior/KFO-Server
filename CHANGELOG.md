@@ -573,8 +573,15 @@
 * Allowed /cleargm to take a client ID to log out a particular client from their GM rank
 * Improved output of /cleargm and /kickself for the user running the commands: they now see who they logged out or kicked respectively
 * Added config/gimp.yaml so server owners can customize the output of gimped players
-* Improved output of error messages if the port the server tries to use is already in use
+* Improved output of error messages if the port the server tries to use is already in use or that is beyond the range of available ports
 * IC and OOC messages, as well as arguments to OOC commands, now have leading and trailing whitespace characters removed (except a chain of only spaces)
+* The following server asset files may now be validated without launching a server by opening the appropriate file in server/validate, and dragging the file to check in there:
+  - Areas
+  - Backgrounds
+  - Characters
+  - Config
+  - Gimp
+  - Music
 * Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered

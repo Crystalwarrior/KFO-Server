@@ -47,6 +47,12 @@ from server.tasker import Tasker
 from server.trial_manager import TrialManager
 from server.zone_manager import ZoneManager
 
+from server.validate.backgrounds import ValidateBackgrounds
+from server.validate.characters import ValidateCharacters
+from server.validate.config import ValidateConfig
+from server.validate.gimp import ValidateGimp
+from server.validate.music import ValidateMusic
+
 
 class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
@@ -58,8 +64,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b123'
-        self.internal_version = 'M210214b'
+        self.segment_version = 'b124'
+        self.internal_version = 'M210214c'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -154,6 +160,10 @@ class TsuserverDR:
                            f'try again.')
                     raise ServerError(msg)
                 raise exc
+            except OverflowError as exc:
+                msg = str(exc).replace('bind(): ', '').capitalize()
+                msg += ' Make sure to set your port number to an appropriate value and try again.'
+                raise ServerError(msg)
 
         # Yes there is a race condition here (between checking if port is available, and actually
         # using it). The only side effect of a race condition is a slightly less nice error
@@ -326,33 +336,8 @@ class TsuserverDR:
         # Ignore players in the server selection screen.
         return len([client for client in self.client_manager.clients if client.char_id is not None])
 
-    def _validate_backgrounds(self):
-        with Constants.fopen('config/backgrounds.yaml', 'r', encoding='utf-8') as bgs:
-            backgrounds = Constants.yaml_load(bgs)
-
-        # Check background contents is indeed a list of strings
-        if not isinstance(backgrounds, list):
-            msg = (f'Expected the background list to be a list, got a'
-                   f'{type(backgrounds).__name__}: {backgrounds}.')
-            raise ServerError.FileSyntaxError(msg)
-
-        for (i, background) in enumerate(backgrounds.copy()):
-            if background is None:
-                msg = (f'Expected all background names to be defined, but background {i} was not.')
-                raise ServerError.FileSyntaxError(msg)
-            if not isinstance(background, (str, float, int, bool, complex)):
-                msg = (f'Expected all background names to be strings or numbers, but background '
-                       f'{i}: {background} was not a string or number.')
-                raise ServerError.FileSyntaxError(msg)
-
-            # Otherwise, background i is valid. Cast it as string to deal with YAML doing
-            # potential casting of its own
-            backgrounds[i] = str(background)
-
-        return backgrounds
-
     def load_backgrounds(self):
-        backgrounds = self._validate_backgrounds()
+        backgrounds = ValidateBackgrounds().validate('config/backgrounds.yaml')
 
         self.backgrounds = backgrounds
         default_background = self.backgrounds[0]
@@ -368,35 +353,32 @@ class TsuserverDR:
         return backgrounds.copy()
 
     def load_config(self):
-        with Constants.fopen('config/config.yaml', 'r', encoding='utf-8') as cfg:
-            self.config = Constants.yaml_load(cfg)
+        self.config = ValidateConfig().validate('config/config.yaml')
 
         self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
         self.all_passwords = list()
-        # Mandatory passwords must be present in the configuration file. If they are not,
-        # a server error will be raised.
-        mandatory_passwords = ['modpass', 'cmpass', 'gmpass']
-        for password in mandatory_passwords:
-            if password not in self.config or not self.config[password]:
-                err = (f'Password "{password}" is not defined in config/config.yaml. Please '
-                       f'make sure it is set and try again.')
-                raise ServerError(err)
-            self.all_passwords.append(self.config[password])
+        passwords = [
+            'modpass',
+            'cmpass',
+            'gmpass',
+            'gmpass1',
+            'gmpass2',
+            'gmpass3',
+            'gmpass4',
+            'gmpass5',
+            'gmpass6',
+            'gmpass7',
+            ]
 
-        # Daily passwords are handled differently. They may optionally be not available.
-        # What this means is the server does not want a daily password for that day
-        # However, deliberately left empty passwords should still raise an error.
-        optional_passwords = [f'gmpass{i}' for i in range(1, 8)]
-        for password in optional_passwords:
-            if password not in self.config or not self.config[password]:
-                self.config[password] = None
-            else:
-                self.all_passwords.append(self.config[password])
+        self.all_passwords = [self.config[password] for password in passwords]
 
         # Default values to fill in config.yaml if not present
         defaults_for_tags = {
-            'utc_offset': 'local',
+            'show_ms2-prober': True,
+
             'discord_link': None,
+            'utc_offset': 'local',
+
             'max_numdice': 20,
             'max_numfaces': 11037,
             'max_modifier_length': 12,
@@ -404,69 +386,27 @@ class TsuserverDR:
             'def_numdice': 1,
             'def_numfaces': 6,
             'def_modifier': '',
+
             'blackout_background': 'Blackout_HD',
             'default_area_description': 'No description.',
             'party_lights_timeout': 10,
-            'show_ms2-prober': True,
             'showname_max_length': 30,
             'sneak_handicap': 5,
             'spectator_name': 'SPECTATOR',
+
             'music_change_floodguard': {'times_per_interval': 1,
                                         'interval_length': 0,
-                                        'mute_length': 0}}
+                                        'mute_length': 0}
+            }
 
         for (tag, value) in defaults_for_tags.items():
             if tag not in self.config:
                 self.config[tag] = value
 
-        # Check that all passwords were generated are unique
-        passwords = ['guardpass',
-                     'modpass',
-                     'cmpass',
-                     'gmpass',
-                     'gmpass1',
-                     'gmpass2',
-                     'gmpass3',
-                     'gmpass4',
-                     'gmpass5',
-                     'gmpass6',
-                     'gmpass7']
-
-        for (i, password1) in enumerate(passwords):
-            for (j, password2) in enumerate(passwords):
-                if i != j and self.config[password1] == self.config[password2] != None:
-                    info = ('Passwords "{}" and "{}" in config/config.yaml match. '
-                            'Please change them so they are different and try again.'
-                            .format(password1, password2))
-                    raise ServerError(info)
-
-    def _validate_characters(self):
-        with Constants.fopen('config/characters.yaml', 'r', encoding='utf-8') as bgs:
-            characters = Constants.yaml_load(bgs)
-
-        # Check characters contents is indeed a list of strings
-        if not isinstance(characters, list):
-            msg = (f'Expected the characters list to be a list, got a'
-                   f'{type(characters).__name__}: {characters}.')
-            raise ServerError.FileSyntaxError(msg)
-
-        for (i, character) in enumerate(characters.copy()):
-            if character is None:
-                msg = (f'Expected all character names to be defined, but character {i} was not.')
-                raise ServerError.FileSyntaxError(msg)
-            if not isinstance(character, (str, float, int, bool, complex)):
-                msg = (f'Expected all character names to be strings or numbers, but character '
-                       f'{i}: {character} was not a string or number.')
-                raise ServerError.FileSyntaxError(msg)
-
-            # Otherwise, background i is valid. Cast it as string to deal with YAML doing
-            # potential casting of its own
-            characters[i] = str(character)
-
-        return characters
+        return self.config
 
     def load_characters(self):
-        characters = self._validate_characters()
+        characters = ValidateCharacters().validate('config/characters.yaml')
 
         if self.char_list != characters:
             # Inconsistent character list, so change everyone to spectator
@@ -549,13 +489,13 @@ class TsuserverDR:
 
             # Otherwise, we have a line that is a description of the rank
             # Do nothing about them
-            continue # Not really needed, but made explicit
+            continue  # Not really needed, but made explicit
 
     def load_ids(self):
         self.ipid_list = {}
         self.hdid_list = {}
 
-        #load ipids
+        # load ipids
         try:
             with Constants.fopen('storage/ip_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.ipid_list = json.load(whole_list)
@@ -569,7 +509,7 @@ class TsuserverDR:
             message += '{}: {}'.format(type(ex).__name__, ex)
             logger.log_pdebug(message)
 
-        #load hdids
+        # load hdids
         try:
             with Constants.fopen('storage/hd_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.hdid_list = json.loads(whole_list.read())
@@ -594,8 +534,7 @@ class TsuserverDR:
             logger.log_pdebug(message)
 
     def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
-        with Constants.fopen(music_list_file, 'r', encoding='utf-8') as music:
-            music_list = Constants.yaml_load(music)
+        music_list = ValidateMusic().validate(music_list_file)
 
         if server_music_list:
             self.music_list = music_list
@@ -610,8 +549,7 @@ class TsuserverDR:
 
     def load_gimp(self):
         try:
-            with Constants.fopen('config/gimp.yaml', 'r', encoding='utf-8') as gimp:
-                gimp_list = Constants.yaml_load(gimp)
+            gimp_list = ValidateGimp().validate('config/gimp.yaml')
         except ServerError.FileNotFoundError:
             gimp_list = [
                 'ERP IS BAN',
@@ -652,7 +590,7 @@ class TsuserverDR:
             json.dump(self.hdid_list, whole_list)
 
     def get_ipid(self, ip):
-        if not ip in self.ipid_list:
+        if ip not in self.ipid_list:
             while True:
                 ipid = random.randint(0, 10**10-1)
                 if ipid not in self.ipid_list.values():
@@ -732,89 +670,13 @@ class TsuserverDR:
             if c and c.music_list is not None:
                 specific_music_list = c.music_list
 
-        return self._validate_music_list(raw_music_list=specific_music_list)
-
-    def _validate_music_list(self, raw_music_list=None):
-        if raw_music_list is None:
-            raw_music_list = list()
-
         prepared_music_list = list()
-
-        # Check music list contents is indeed a list
-        if not isinstance(raw_music_list, list):
-            msg = (f'Expected the music list to be a list, got a '
-                   f'{type(raw_music_list).__name__}: {raw_music_list}.')
-            raise ServerError.FileSyntaxError(msg)
-
-        # Check top level description is ok
-        for (i, item) in enumerate(raw_music_list.copy()):
-            if item is None:
-                msg = (f'Expected all music list items to be defined, but item {i} was not.')
-                raise ServerError.FileSyntaxError(msg)
-            if not isinstance(item, dict):
-                msg = (f'Expected all music list items to be dictionaries, but item '
-                       f'{i}: {item} was not a dictionary.')
-                raise ServerError.FileSyntaxError(msg)
-            if set(item.keys()) != {'category', 'songs'}:
-                msg = (f'Expected all music list items to have exactly two keys: category and '
-                       f'songs, but item {i} had keys {set(item.keys())}')
-                raise ServerError.FileSyntaxError(msg)
-
-            category, songs = item['category'], item['songs']
-            if category is None:
-                msg = (f'Expected all music list categories to be defined, but category {i} was '
-                       f'not.')
-                raise ServerError.FileSyntaxError(msg)
-            if songs is None:
-                msg = (f'Expected all music list song descriptions to be defined, but song '
-                       f'description {i} was not.')
-                raise ServerError.FileSyntaxError(msg)
-
-            if not isinstance(category, (str, float, int, bool, complex)):
-                msg = (f'Expected all music list category names to be strings or numbers, but '
-                       f'category {i}: {category} was not a string or number.')
-                raise ServerError.FileSyntaxError(msg)
-            if not isinstance(songs, list):
-                msg = (f'Expected all music list song descriptions to be a list, but '
-                       f'description {i}: {songs} was not a list.')
-                raise ServerError.FileSyntaxError(msg)
-
-        # Check each song description dictionary is ok
-        for (i, item) in enumerate(raw_music_list.copy()):
+        for item in specific_music_list:
             category = item['category']
             songs = item['songs']
             prepared_music_list.append(category)
-            for (j, song) in enumerate(songs):
-                if song is None:
-                    msg = (f'Expected all music list song descriptions to be defined, but song '
-                           f'description {j} in category {i}: {category} was not defined.')
-                    raise ServerError.FileSyntaxError(msg)
-                if not isinstance(song, dict):
-                    msg = (f'Expected all music list song descriptions to be dictionaries: but '
-                           f'song description {j} in category {i}: {category} was not a '
-                           f'dictionary: {song}.')
-                    raise ServerError.FileSyntaxError(msg)
-                if set(song.keys()) not in [{'name'}, {'name', 'length'}]:
-                    msg = (f'Expected all music list songs to have exactly keys: name, or name and '
-                           f'length, but song description {j} in category {i}: {category} had keys '
-                           f'{set(song.keys())}.')
-                    raise ServerError.FileSyntaxError(msg)
-
-                if 'length' not in song:
-                    name, length = song['name'], -1
-                else:
-                    name, length = song['name'], song['length']
-
-                if not isinstance(name, (str, float, int, bool, complex)):
-                    msg = (f'Expected all music list song names to be strings or numbers, but '
-                           f'song {j}: {name} in category {i}: {category} was not a string or '
-                           f'number.')
-                    raise ServerError.FileSyntaxError(msg)
-                if not isinstance(length, (int, float)):
-                    msg = (f'Expected all music list song lengths to be numbers, but song {j}: '
-                           f'{name} in category {i}: {category} had non-numerical length {length}.')
-                    raise ServerError.FileSyntaxError(msg)
-
+            for song in songs:
+                name = song['name']
                 prepared_music_list.append(name)
 
         return prepared_music_list
