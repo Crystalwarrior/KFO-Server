@@ -4654,9 +4654,10 @@ def ooc_cmd_scream_range(client: ClientManager.Client, arg: str):
         info += '\r\n*No areas.'
     # Otherwise, build the list of all areas.
     else:
-        for area_name in client.area.scream_range:
-            area = client.server.area_manager.get_area_by_name(area_name)
-            info += '\r\n*({}) {}'.format(area.id, area_name)
+        areas = [client.server.area_manager.get_area_by_name(area_name)
+                 for area_name in client.area.scream_range]
+        for area in sorted(areas, key=lambda area: area.id):
+            info += '\r\n*{}-{}'.format(area.id, area.name)
 
     client.send_ooc(info)
 

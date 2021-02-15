@@ -583,7 +583,7 @@
   - Gimp
   - Music
 * /scream_set_range now allows <ALL> as an argument to indicate all areas should be able to receive a scream coming from the area the person running the command
-* Fixed scream_range in area list yaml files not supporting the keyword '<ALL>' to indicate all areas should be able to receive a scream coming from a particular area
+* Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
 * Fixed /scream bypassing moderation mutes or client mutes
@@ -612,5 +612,6 @@
 * Fixed the server attempting to send packets to clients without checking if the client is still online.
 * Fixed /poison, /cure and notifications for effects kicking in not showing the target's ID to the command runner and zone watchers
 * Fixed /charselect notifying of the wrong person running the command to officers
+* Fixed output of /scream_range being formatted different from /minimap. It now lists areas in order by ID with the format number-name.
 * Removed deprecated AO commands, and deprecated packets opKICK and opBAN
 * Dropped Python 3.6 support
