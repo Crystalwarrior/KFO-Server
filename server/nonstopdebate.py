@@ -307,7 +307,8 @@ class NonStopDebate(TrialMinigame):
         if self._mode == NSDMode.PRERECORDING:
             raise NonStopDebateError.NSDAlreadyInModeError('Nonstop debate is already in this '
                                                            'mode.')
-        if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
+        if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
+                              NSDMode.INTERMISSION_TIMERANOUT]:
             raise NonStopDebateError.NSDNotInModeError('You may not set your nonstop debate to be '
                                                        'prerecording at this moment.')
 
@@ -338,7 +339,7 @@ class NonStopDebate(TrialMinigame):
 
         self._mode = NSDMode.RECORDING
         self._preintermission_mode = NSDMode.RECORDING
-        if self._timer:
+        if self._timer and not self._timer.terminated():
             self._timer.unpause()
         self._player_refresh_timer.unpause()
         for user in self.get_users_in_areas():
@@ -449,7 +450,8 @@ class NonStopDebate(TrialMinigame):
         if self._mode == NSDMode.LOOPING:
             raise NonStopDebateError.NSDAlreadyInModeError('Nonstop debate is already in this '
                                                            'mode.')
-        if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
+        if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
+                              NSDMode.INTERMISSION_TIMERANOUT]:
             raise NonStopDebateError.NSDNotInModeError
         if not self._messages:
             raise NonStopDebateError.NSDNoMessagesError('There are no messages to loop.')
@@ -458,7 +460,7 @@ class NonStopDebate(TrialMinigame):
         self._preintermission_mode = NSDMode.LOOPING
         self._message_index = -1
 
-        if self._timer:
+        if self._timer and not self._timer.terminated():
             self._timer.unpause()
 
         for user in self.get_users_in_areas():
@@ -476,7 +478,8 @@ class NonStopDebate(TrialMinigame):
         self._message_timer.unpause()
 
     def resume(self) -> NSDMode:
-        if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK]:
+        if self._mode not in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
+                              NSDMode.INTERMISSION_TIMERANOUT]:
             raise NonStopDebateError.NSDNotInModeError
         if self._preintermission_mode in [NSDMode.PRERECORDING, NSDMode.RECORDING]:
             self.set_prerecording()
@@ -759,11 +762,6 @@ class NonStopDebate(TrialMinigame):
             raise ClientError('You may not perform that action during a nonstop debate.')
         # Before a message was even sent
         if contents['button'] in {1, 2, 7, 8} and self._message_index == -1:
-            raise ClientError('You may not use a bullet now.')
-        # Trying to bullet during intermission
-        if contents['button'] != 0 and self._mode in [NSDMode.INTERMISSION,
-                                                      NSDMode.INTERMISSION_POSTBREAK,
-                                                      NSDMode.INTERMISSION_TIMERANOUT]:
             raise ClientError('You may not use a bullet now.')
         # Trying to talk during looping mode
         if contents['button'] == 0 and self._mode == NSDMode.LOOPING:
