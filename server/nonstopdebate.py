@@ -179,6 +179,8 @@ class NonStopDebate(TrialMinigame):
         self._breaker = None
         self._timers_are_setup = False
 
+        self._intermission_messages = 0
+
     def introduce_user(self, user):
         """
         Broadcast information relevant for a user entering an area of the NSD, namely current
@@ -410,6 +412,8 @@ class NonStopDebate(TrialMinigame):
         variant_timer._on_max_end = _variant
         variant_timer.start()
 
+        self._intermission_messages = 0
+
     def _set_intermission_postbreak(self, breaker, blankpost=True):
         self.set_intermission(blankpost=blankpost)
         self._mode = NSDMode.INTERMISSION_POSTBREAK
@@ -424,7 +428,8 @@ class NonStopDebate(TrialMinigame):
         for player in self.get_players():
             player.send_ooc('Time ran out for your debate!')
         for leader in self.get_leaders():
-            leader.send_ooc('Type /nsd_end to end the debate.')
+            leader.send_ooc('(X) Type /nsd_resume to resume the debate where it was nonetheless, '
+                            'or /nsd_end to end the debate.')
 
     def set_looping(self):
         """
@@ -800,8 +805,26 @@ class NonStopDebate(TrialMinigame):
                 self._add_message(player, contents=contents)
         elif self._mode in [NSDMode.INTERMISSION, NSDMode.INTERMISSION_POSTBREAK,
                             NSDMode.INTERMISSION_TIMERANOUT]:
-            # Nothing particular
-            pass
+            # Keep track of how many messages were sent during intermission. Every 5 messages,
+            # prompt leaders to end debate
+            self._intermission_messages += 1
+            if self._intermission_messages % 5 == 0:
+                if self._mode == NSDMode.INTERMISSION_POSTBREAK:
+                    msg = ('(X) Your nonstop debate is still in intermission mode after a break. '
+                           "Type /nsd_accept to accept the break and end the debate, "
+                           "/nsd_reject to reject the break and penalize the breaker, "
+                           "/nsd_resume to resume the debate where it was, or "
+                           "/nsd_end to end the debate.")
+                elif self._mode == NSDMode.INTERMISSION_TIMERANOUT:
+                    msg = ('(X) Your nonstop debate is still in intermission mode after time ran '
+                           'out. Type /nsd_resume to resume the debate where it was nonetheless, '
+                           'or /nsd_end to end the debate.')
+                else:
+                    msg = ('(X) Your nonstop debate is still in intermission mode. '
+                           'Type /nsd_resume to resume the debate where it was nonetheless, '
+                           'or /nsd_end to end the debate.')
+                for leader in self.get_leaders():
+                    leader.send_ooc(msg)
         elif self._mode == NSDMode.LOOPING:
             # NSD already verified the IC message should go through
             # This is a break!
@@ -1028,8 +1051,6 @@ class NonStopDebate(TrialMinigame):
 
         if self.is_unmanaged():
             # We check again, because now the NSD may be unmanaged
-            # player.send_ooc(f'Your nonstop debate `{nid}` was automatically '
-            #                 f'deleted as it lost all its players.')
             player.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
                                    f'deleted as it lost all its players.',
                                    is_zstaff_flex=True, not_to=nonplayers)
@@ -1113,8 +1134,8 @@ class NonStopDebate(TrialMinigame):
             for user in self.get_players():
                 user.send_ooc('A loop of your nonstop debate has finished.')
             for leader in self.get_leaders():
-                leader.send_ooc('Type /nsd_loop to loop the debate again, or /nsd_end to end the '
-                                'debate.')
+                leader.send_ooc('(X) Type /nsd_loop to loop the debate again, or /nsd_end to end '
+                                'the debate.')
             self.set_intermission()
 
     def _break_loop(self, player, contents):
@@ -1162,7 +1183,7 @@ class NonStopDebate(TrialMinigame):
                     user.send_ooc(f"{player.displayname} {action} {broken_player.displayname}'s "
                                   f"statement `{broken_ic['text']}`")
                 # But still send leader important information.
-                user.send_ooc("Type /nsd_accept to accept the break and end the debate, "
+                user.send_ooc("(X) Type /nsd_accept to accept the break and end the debate, "
                               "/nsd_reject to reject the break and penalize the breaker, "
                               "/nsd_resume to resume the debate where it was, or "
                               "/nsd_end to end the debate.")
