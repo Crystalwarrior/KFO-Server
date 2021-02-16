@@ -612,6 +612,7 @@
 * Fixed the server attempting to send packets to clients without checking if the client is still online.
 * Fixed /poison, /cure and notifications for effects kicking in not showing the target's ID to the command runner and zone watchers
 * Fixed /charselect notifying of the wrong person running the command to officers
-* Fixed output of /scream_range being formatted different from /minimap. It now lists areas in order by ID with the format number-name.
+* Fixed output of /scream_range being formatted different from /minimap. It now lists areas in order by ID with the format number-name
+* Fixed /scream, /whisper and /party_whisper not sending character folder information, which prevented rendering of showname images
 * Removed deprecated AO commands, and deprecated packets opKICK and opBAN
 * Dropped Python 3.6 support

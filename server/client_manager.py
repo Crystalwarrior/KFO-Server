@@ -261,7 +261,8 @@ class ClientManager:
         def send_ic(self, params=None, sender=None, pred=None, not_to=None, gag_replaced=False,
                     is_staff=None, in_area=None, to_blind=None, to_deaf=None,
                     bypass_replace=False, bypass_deafened_starters=False,
-                    msg=None, pos=None, char_id=None, ding=None, color=None, showname=None):
+                    msg=None, folder=None, pos=None, char_id=None, ding=None, color=None,
+                    showname=None):
 
             # sender is the client who sent the IC message
             # self is who is receiving the IC message at this particular moment
@@ -281,6 +282,7 @@ class ClientManager:
             pargs = {x: y for (x, y) in self.packet_handler.MS_OUTBOUND.value}
             if params is None:
                 pargs['msg'] = msg
+                pargs['folder'] = folder
                 pargs['pos'] = pos
                 pargs['char_id'] = char_id
                 pargs['ding'] = ding
@@ -443,6 +445,10 @@ class ClientManager:
                 elif self.show_shownames and sender:
                     pargs['showname'] = sender.showname
 
+                # Modify folder as needed
+                if self.is_blind and self.is_deaf:
+                    pargs['folder'] = None
+
             # Apply any custom functions
             proper_attributes = {attribute for attribute in pargs
                                  if not attribute.startswith('PER_CLIENT')}
@@ -491,8 +497,8 @@ class ClientManager:
         def send_ic_others(self, params=None, sender=None, bypass_replace=False,
                            bypass_deafened_starters=False, pred=None, not_to=None,
                            gag_replaced=False, is_staff=None, in_area=None, to_blind=None,
-                           to_deaf=None,  msg=None, pos=None, char_id=None, ding=None, color=None,
-                           showname=None):
+                           to_deaf=None, msg=None, folder=None, pos=None, char_id=None, ding=None,
+                           color=None, showname=None):
 
             if not_to is None:
                 not_to = {self}
@@ -504,7 +510,8 @@ class ClientManager:
                           bypass_deafened_starters=bypass_deafened_starters,
                           pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
-                          msg=msg, pos=pos, char_id=char_id, ding=ding, color=color, showname=showname)
+                          msg=msg, folder=folder, pos=pos, char_id=char_id, ding=ding, color=color,
+                          showname=showname)
 
         def send_ic_attention(self):
             self.send_ic(msg='(Something catches your attention)', ding=1)
