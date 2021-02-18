@@ -583,8 +583,9 @@
   - Gimp
   - Music
 * /scream_set_range now allows <ALL> as an argument to indicate all areas should be able to receive a scream coming from the area the person running the command
+* Added /iclock_bypass, allowing GM+ to let non-GMs in an area whose IC chat is locked to talk in IC. The effect disappears as soon as the target moves area or their area has their IC chat unlocked
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
-* Fixed scream_range not checking if the areas a scream can reach to from a particular area exist
+* Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
 * Fixed /scream bypassing moderation mutes or client mutes
 * Fixed /scream bypassing IC chat locks, or being rendered in scream-reachable areas whose IC chats are locked

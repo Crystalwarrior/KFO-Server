@@ -2466,8 +2466,9 @@ def ooc_cmd_help(client: ClientManager.Client, arg: str):
 
 def ooc_cmd_iclock(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
-    Toggles IC messages by non-staff in the current area being allowed/disallowed. Returns an error
-    if not authorized, or if a GM attempts to lock IC in an area where such an action is forbidden.
+    Toggles IC messages by non-staff or players without IC lock bypass in the current area being
+    allowed/disallowed. If now disallowed, any player with an active IC lock bypass will lose it.
+    Returns an error if a GM attempts to lock IC in an area where such an action is forbidden.
 
     SYNTAX
     /iclock
@@ -2487,15 +2488,31 @@ def ooc_cmd_iclock(client: ClientManager.Client, arg: str):
     status = {True: 'locked', False: 'unlocked'}
 
     client.send_ooc('You {} the IC chat in this area.'.format(status[client.area.ic_lock]))
-    client.send_ooc_others('The IC chat has been {} in this area.'
-                           .format(status[client.area.ic_lock]), is_zstaff_flex=False, in_area=True)
-    client.send_ooc_others('(X) {} [{}] has {} the IC chat in area {} ({}).'
-                           .format(client.displayname, client.id, status[client.area.ic_lock],
-                                   client.area.name, client.area.id),
-                           is_zstaff_flex=True)
+    client.send_ooc_others(f'The IC chat has been {status[client.area.ic_lock]} in this area.'
+                           .format(), is_zstaff_flex=False, in_area=True)
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has '
+                           f'{status[client.area.ic_lock]} the IC chat in area {client.area.name} '
+                           f'({client.area.id}).', is_zstaff_flex=True)
 
     logger.log_server('[{}][{}]Changed IC lock to {}'
                       .format(client.area.id, client.get_char_name(), client.area.ic_lock), client)
+
+    if not client.area.ic_lock:
+        # Remove ic lock bypasses
+        affected_players = list()
+        for player in client.area.clients:
+            if player.can_bypass_iclock and not player.is_staff():
+                affected_players.append(player)
+
+        if affected_players:
+            for player in affected_players:
+                player.send_ooc('You have lost your IC lock bypass as the IC chat in '
+                                'your area has been unlocked.')
+                player.send_ooc_others(f'(X) {player.displayname} [{player.id}] has lost their IC '
+                                       f'lock bypass as the IC chat in their area has '
+                                       f'been unlocked ({client.area.id}).',
+                                       is_zstaff_flex=client.area)
+                player.can_bypass_iclock = False
 
 
 def ooc_cmd_invite(client: ClientManager.Client, arg: str):
@@ -8941,6 +8958,51 @@ def ooc_cmd_dump(client: ClientManager.Client, arg: str):
     dump_message = f'Client {client.id} requested a server dump.'
     file = logger.log_error(dump_message, client.server, errortype='D')
     client.send_ooc(f'Generated server dump file {file}.')
+
+
+def ooc_cmd_iclock_bypass(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Provides a non-staff player permission to talk in their current area if the area is IC locked.
+    Returns an error if the given identifier does not correspond to a user, if the target is
+    already staff or if the IC chat in the area of the target is not locked.
+
+    SYNTAX
+    /iclock_bypass <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    Assuming client 1 starts without a bypass...
+    /iclock_bypass 1            :: Grants client 1 an IC lock bypass
+    /iclock_bypass 1            :: Revokes client 1 of their IC lock bypass
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+    target = Constants.parse_id(client, arg)
+
+    if target.is_staff():
+        raise ClientError('Target is already staff and thus does not require an IC lock bypass.')
+    # As we require staff to run the command, but the target cannot be staff, we are guaranteed
+    # that target != client.
+    if not target.area.ic_lock:
+        raise ClientError('The IC chat in the area of the target is not locked.')
+
+    target.can_bypass_iclock = not target.can_bypass_iclock
+
+    if target.can_bypass_iclock:
+        client.send_ooc(f'You have granted {target.displayname} [{target.id}] an IC lock bypass.')
+        target.send_ooc('You have been granted an IC lock bypass.')
+        target.send_ooc_others(f'(X) {client.displayname} [{client.id}] has granted '
+                               f'{target.displayname} [{target.id}] an IC lock bypass '
+                               f'({target.area.id}).', is_zstaff_flex=True, not_to={client})
+    else:
+        client.send_ooc(f'You have revoked {target.displayname} [{target.id}] of their IC lock '
+                        'bypass.')
+        target.send_ooc('You have been revoked of your IC lock bypass.')
+        target.send_ooc_others(f'(X) {client.displayname} [{client.id}] has revoked '
+                               f'{target.displayname} [{target.id}] of their IC lock bypass '
+                               f'({target.area.id}).', is_zstaff_flex=True, not_to={client})
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):

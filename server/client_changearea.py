@@ -721,6 +721,15 @@ class ClientChangeArea:
                                            .format(client.id, old_char, new_char, area.id),
                                            is_zstaff=area)
 
+            # IC lock bypasses only last the old area
+            if client.can_bypass_iclock:
+                client.send_ooc('You have lost your IC lock bypass as you moved to a '
+                                'different area.')
+                client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has lost their IC '
+                                       f'lock bypass as they moved to a different area. '
+                                       f'({area.id})', is_zstaff_flex=old_area)
+                client.can_bypass_iclock = False
+
             if not ignore_notifications:
                 client.send_ooc('Changed area to {}.[{}]'.format(area.name, area.status))
                 logger.log_server('[{}]Changed area from {} ({}) to {} ({}).'

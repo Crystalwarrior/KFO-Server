@@ -376,6 +376,9 @@ GMs can:
 * **iclock**
     - Changes the IC lock status of the current area.
     - If the area has an IC lock, only GMs and above will be able to send IC messages.
+* **iclock_bypass* "ID"
+    - Grants/revokes of an IC lock bypass to the target.
+    - Targets with an IC lock bypass may talk in an area whose IC chat is locked. This effect disappears automatically as soon as they move area or their IC chat is unlocked.
 * **judgelog** "area"
     - Lists the last 20 judge actions performed in the given area (or current area if not given).
     - Each entry includes the time of execution, client ID, character name, client IPID and the judge action performed.

@@ -108,6 +108,7 @@ class ClientManager:
             self.remembered_passages = dict()
             self.remembered_locked_passages = dict()
             self.remembered_statuses = dict()
+            self.can_bypass_iclock = False
 
             # Pairing stuff
             self.charid_pair = -1
@@ -1122,7 +1123,7 @@ class ClientManager:
             for c in area.clients:
                 # Conditions to print out a client in /getarea(s)
                 # * Client is not in the server selection screen and,
-                # * If mods is True, the client is a mod, andm
+                # * If mods is True, the client is a mod, and
                 # * If only_my_multiclients is True, the client is a multiclient of self, and,
                 # * Any of the three
                 # 1. Client is yourself.
@@ -1422,6 +1423,12 @@ class ClientManager:
                     self.server.tasker.remove_task(self, [task])
                 except KeyError:
                     pass
+
+            # No longer need an IC lock bypass
+            if self.can_bypass_iclock:
+                self.send_ooc('(X) You have lost your IC lock bypass as you logged in as a '
+                              'staff member.')
+                self.can_bypass_iclock = False
 
         def auth_mod(self, password, announce_to_officers=True):
             if self.is_mod:
