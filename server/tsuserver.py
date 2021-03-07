@@ -64,8 +64,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b136'
-        self.internal_version = 'M210307d'
+        self.segment_version = 'b137'
+        self.internal_version = 'M210307e'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -492,8 +492,8 @@ class TsuserverDR:
             continue  # Not really needed, but made explicit
 
     def load_ids(self):
-        self.ipid_list = {}
-        self.hdid_list = {}
+        self.ipid_list = dict()
+        self.hdid_list = dict()
 
         # load ipids
         try:
@@ -501,7 +501,7 @@ class TsuserverDR:
                 self.ipid_list = json.load(whole_list)
         except ServerError.FileNotFoundError:
             with Constants.fopen('storage/ip_ids.json', 'w', encoding='utf-8') as whole_list:
-                json.dump(list(), whole_list)
+                json.dump(dict(), whole_list)
             message = 'WARNING: File not found: storage/ip_ids.json. Creating a new one...'
             logger.log_pdebug(message)
         except Exception as ex:
@@ -509,19 +509,37 @@ class TsuserverDR:
             message += '{}: {}'.format(type(ex).__name__, ex)
             logger.log_pdebug(message)
 
+        # If the IPID list is not a dict, fix the file
+        # Why on earth is it called an IPID list if it is a Python dict is beyond me.
+        if not isinstance(self.ipid_list, dict):
+            message = (f'WARNING: File storage/ip_ids.json had a structure of the wrong type: '
+                       f'{self.ipid_list}. Replacing it with a proper type.')
+            logger.log_pdebug(message)
+            self.ipid_list = dict()
+            self.dump_ipids()
+
         # load hdids
         try:
             with Constants.fopen('storage/hd_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.hdid_list = json.loads(whole_list.read())
         except ServerError.FileNotFoundError:
             with Constants.fopen('storage/hd_ids.json', 'w', encoding='utf-8') as whole_list:
-                json.dump(list(), whole_list)
+                json.dump(dict(), whole_list)
             message = 'WARNING: File not found: storage/hd_ids.json. Creating a new one...'
             logger.log_pdebug(message)
         except Exception as ex:
             message = 'WARNING: Error loading storage/hd_ids.json. Will assume empty values.\n'
             message += '{}: {}'.format(type(ex).__name__, ex)
             logger.log_pdebug(message)
+
+        # If the HDID list is not a dict, fix the file
+        # Why on earth is it called an HDID list if it is a Python dict is beyond me.
+        if not isinstance(self.hdid_list, dict):
+            message = (f'WARNING: File storage/hd_ids.json had a structure of the wrong type: '
+                       f'{self.hdid_list}. Replacing it with a proper type.')
+            logger.log_pdebug(message)
+            self.hdid_list = dict()
+            self.dump_hdids()
 
     def load_iniswaps(self):
         try:
