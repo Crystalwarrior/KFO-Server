@@ -754,14 +754,16 @@ class ClientManager:
             else:
                 raw_music_list = self.music_list
 
-            if self.packet_handler not in [clients.ClientAO2d8d4, clients.ClientKFO2d8]:
+            new_protocol = [
+                clients.ClientAO2d8d4,
+                clients.ClientAO2d9d0,
+                clients.ClientKFO2d8
+                ]
+
+            if self.packet_handler not in new_protocol:
                 # DRO and AO2.6< protocol
                 reloaded_music_list = self.server.build_music_list(from_area=self.area, c=self,
                                                                    music_list=raw_music_list)
-
-                # KEEP THE ASTERISK, unless you want a very weird single area comprised
-                # of all areas back to back forming a black hole area of doom and despair
-                # that crashes all clients that dare attempt join this area.
                 self.send_command_dict('FM', {
                     'music_ao2_list': reloaded_music_list,
                     })
