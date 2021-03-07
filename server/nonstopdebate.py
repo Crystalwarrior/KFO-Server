@@ -55,9 +55,9 @@ class NonStopDebate(TrialMinigame):
 
     Callback Methods
     ----------------
-    _on_area_client_left
+    _on_area_client_left_final
         Method to perform once a client left an area of the game.
-    _on_area_client_entered
+    _on_area_client_entered_final
         Method to perform once a client entered an area of the game.
     _on_area_destroyed
         Method to perform once an area of the game is marked for destruction.
@@ -86,8 +86,9 @@ class NonStopDebate(TrialMinigame):
     def __init__(self, server, manager, NSD_id, player_limit=None,
                  player_concurrent_limit=None, require_invitations=False, require_players=True,
                  require_leaders=True, require_character=False, team_limit=None,
-                 timer_limit=None, area_concurrent_limit=1, trial=None, timer_start_value=300,
-                 playergroup_manager=None):
+                 timer_limit=None, area_concurrent_limit=1, autoadd_on_client_enter=False,
+                 trial=None, autoadd_on_trial_player_add=False,
+                 timer_start_value=300, playergroup_manager=None):
         """
         Create a new nonstop debate (NSD) game. An NSD should not be fully initialized anywhere
         else other than some manager code, as otherwise the manager will not recognize the NSD.
@@ -133,17 +134,25 @@ class NonStopDebate(TrialMinigame):
             indicates the NSD has no timer limit. Defaults to None.
         areas : set of AreaManager.Area, optional
             Areas the NSD starts with. Defaults to None.
-        trial : TrialManager.Trial, optional
-            Trial the nonstop debate is a part of. Defaults to None.
-        timer_start_value : float, optional
-            In seconds, the length of time the main timer of this nonstop debate will have at the
-            start. It must be a positive number. Defaults to 300 (5 minutes).
         area_concurrent_limit : int or None, optional
             If an int, it is the maximum number of trials managed by `manager` that any
             area of this trial may belong to, including this trial. If None, it indicates
             that this game does not care about how many other trials managed by
             `manager` each of its areas belongs to. Defaults to 1 (an area may not be a part of
             another trial managed by `manager` while being an area of this trial).
+        autoadd_on_client_enter : bool, optional
+            If True, nonplayer users that enter an area part of the game will be automatically
+            added if permitted by the conditions of the game. If False, no such adding will take
+            place. Defaults to False.
+        trial : TrialManager.Trial, optional
+            Trial the nonstop debate is a part of. Defaults to None.
+        timer_start_value : float, optional
+            In seconds, the length of time the main timer of this nonstop debate will have at the
+            start. It must be a positive number. Defaults to 300 (5 minutes).
+        autoadd_on_trial_player_add : bool, optional
+            If True, players that are added to the trial will be automatically added if permitted
+            by the conditions of the game. If False, no such adding will take place. Defaults to
+            False.
         playergroup_manager : PlayerGroupManager, optional
             The internal playergroup manager of the game manager. Access to this value is
             limited exclusively to this __init__, and is only to initialize the internal
@@ -167,7 +176,9 @@ class NonStopDebate(TrialMinigame):
                          require_players=require_players, require_leaders=require_leaders,
                          require_character=require_character, team_limit=team_limit,
                          timer_limit=timer_limit, area_concurrent_limit=area_concurrent_limit,
-                         trial=trial, playergroup_manager=playergroup_manager)
+                         autoadd_on_client_enter=autoadd_on_client_enter,
+                         trial=trial, autoadd_on_trial_player_add=autoadd_on_trial_player_add,
+                         playergroup_manager=playergroup_manager)
 
         self._timer = None
         self._message_timer = None
@@ -180,6 +191,19 @@ class NonStopDebate(TrialMinigame):
         self._timers_are_setup = False
 
         self._intermission_messages = 0
+
+    def get_name(self) -> str:
+        """
+        Return "nonstop debate"
+
+        Returns
+        -------
+        str
+            "nonstop debate".
+
+        """
+
+        return "nonstop debate"
 
     def introduce_user(self, user):
         """
@@ -832,7 +856,7 @@ class NonStopDebate(TrialMinigame):
         else:
             raise RuntimeError(f'Unrecognized mode {self._mode}')
 
-    def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
+    def _on_area_client_left_final(self, area, client=None, old_displayname=None,
                              ignore_bleeding=False):
         """
         If a player left to an area not part of the NSD, remove the player and warn them and
@@ -847,8 +871,6 @@ class NonStopDebate(TrialMinigame):
             Area that signaled a client has left.
         client : ClientManager.Client, optional
             The client that has left. The default is None.
-        new_area : AreaManager.Area
-            The new area the client has gone to. The default is None.
         old_displayname : str, optional
             The old displayed name of the client before they changed area. This will typically
             change only if the client's character or showname are taken. The default is None.
@@ -861,7 +883,7 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        if new_area in self.get_areas():
+        if client.area in self.get_areas():
             return
 
         if client in self.get_players():
@@ -870,7 +892,7 @@ class NonStopDebate(TrialMinigame):
                             f'NSD.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your NSD and thus was '
-                                   f'automatically removed from it ({area.id}->{new_area.id}).',
+                                   f'automatically removed from it ({area.id}->{client.area.id}).',
                                    pred=lambda c: c in self.get_leaders())
 
             nonplayers = self.get_nonplayer_users_in_areas()
@@ -893,13 +915,13 @@ class NonStopDebate(TrialMinigame):
                             f'`{self.get_id()}`.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to an '
                                    f'area not part of your NSD '
-                                   f'({area.id}->{new_area.id}).',
+                                   f'({area.id}->{client.area.id}).',
                                    pred=lambda c: c in self.get_leaders())
             self.dismiss_user(client)
         self._check_structure()
 
-    def _on_area_client_entered(self, area, client=None, old_area=None, old_displayname=None,
-                                ignore_bleeding=False):
+    def _on_area_client_entered_final(self, area, client=None, old_area=None, old_displayname=None,
+                                      ignore_bleeding=False):
         """
         If a non-player entered, warn them and the leaders of the NSD.
 

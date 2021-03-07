@@ -406,6 +406,9 @@ GMs can:
     - Accepts a break from a player who shot a bullet during looping or recording mode for the NSD you lead, restoring 0.5 influence and ending the NSD.
 * **nsd_add** "ID/char name/edited-to character/showname/OOC name" 
     - Adds a player part of your current trial to your NSD.
+* **nsd_autoadd**
+    - Toggles players who are added to the trial of the NSD being automatically added to the NSD on or off.
+    - By default it is the same as the trial's behavior when a user enters an area part of the trial (refer to /trial_autoadd).
 * **nsd_end**
     - Ends an NSD you lead.
 * **nsd_join** "nsdID"
@@ -477,7 +480,10 @@ GMs can:
 * **trial**
     - Starts a trial with all players in the area, making you leader of the trial.
 * **trial_add** "ID/char name/edited-to character/showname/OOC name" 
-    - Adds a player to a trial you lead.
+    - Adds a player to a trial you lead.* **nsd_autoadd**
+* **trial_autoadd**
+    - Toggles users who enter an area of the trial being automatically added to the trial on or off.
+    - By default it is off.
 * **trial_end**
     - Ends a trial you lead, as well as any minigames that may have be taking place in the trial.
 * **trial_focus** "ID/char name/edited-to character/showname/OOC name" "number"

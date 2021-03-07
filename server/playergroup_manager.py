@@ -432,6 +432,20 @@ class PlayerGroup:
 
         self._manager._check_structure()
 
+    def requires_invitations(self) -> bool:
+        """
+        Return True if the player group requires players be invited before being allowed to join
+        the player group, False otherwise.
+
+        Returns
+        -------
+        bool
+            True if the player group requires players be invited before being allowed to join
+            the player group, False otherwise.
+        """
+
+        return self._require_invitations
+
     def get_leaders(self, cond=None):
         """
         Return (a shallow copy of) the set of leaders of this player group that satisfy a

@@ -38,7 +38,8 @@ from server.constants import Constants
 from server.exceptions import GameError, PlayerGroupError, TimerError
 from server.playergroup_manager import PlayerGroup, PlayerGroupManager
 from server.timer_manager import TimerManager
-from server.subscriber import Listener
+from server.subscriber import Listener, Publisher
+
 
 class _Team(PlayerGroup):
     """
@@ -287,6 +288,7 @@ class _Game():
 
         self._playergroup = group
 
+        self.publisher = Publisher(self)
         # Implementation detail: the callbacks of the internal objects of the game are (to be)
         # ignored.
         self.listener = Listener(self, {
@@ -296,7 +298,7 @@ class _Game():
             'client_destroyed': self._on_client_destroyed,
             })
 
-    def get_id(self):
+    def get_id(self) -> str:
         """
         Return the ID of this game.
 
@@ -310,6 +312,20 @@ class _Game():
         # Development note: This is NOT the ID of the internal player group, but the ID of the
         # game itself. To facilitate your life, these two should be made the same.
         return self._game_id
+
+    def get_name(self) -> str:
+        """
+        Return the name of the game. Names are fully lowercase.
+        Implementations of the class should replace this with a human readable name of the game.
+
+        Returns
+        -------
+        str
+            Name of the game.
+
+        """
+
+        return "game"
 
     def get_player_concurrent_limit(self):
         """
@@ -365,7 +381,7 @@ class _Game():
     def add_player(self, user):
         """
         Make a user a player of the game. By default this player will not be a leader. It will
-        also subscribe the game ot the player so it can listen to its updates.
+        also subscribe the game to the player so it can listen to its updates.
 
         Parameters
         ----------
@@ -575,6 +591,20 @@ class _Game():
             raise GameError.UserNotInvitedError
 
         self._manager._check_structure()
+
+    def requires_invitations(self):
+        """
+        Return True if the game requires players be invited before being allowed to join
+        the game, False otherwise.
+
+        Returns
+        -------
+        bool
+            True if the game requires players be invited before being allowed to join
+            the game, False otherwise.
+        """
+
+        return self._playergroup.requires_invitations()
 
     def get_leaders(self, cond=None):
         """
@@ -1418,7 +1448,7 @@ class GameManager:
 
         Parameters
         ----------
-        game_type : _Game or functools.partial
+        game_type : type or functools.partial
             Class of game that will be produced. Defaults to None (and converted to the default
             game created by this game manager).
         creator : ClientManager.Client, optional
@@ -1578,6 +1608,19 @@ class GameManager:
         """
 
         return game in self._id_to_game.values()
+
+    def get_default_game_type(self) -> type:
+        """
+        Return the default game the game manager will create with a call of new_game.
+
+        Returns
+        -------
+        type
+            Default game type.
+
+        """
+
+        return self._default_game_type
 
     def get_games(self):
         """

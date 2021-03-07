@@ -36,6 +36,9 @@ class GameWithAreas(_Game):
     Each of these games may also impose a concurrent area membership limit, so that every area
     part of a game with areas is at most an area of that many games with areas managed by this
     games's manager.
+    Each of these games may also set an autoadd on client enter flag. If set, nonplayer clients
+    who enter an area part of the game will be added to the game if possible; if this fails,
+    no action is taken and no errors are propagated.
 
     Attributes
     ----------
@@ -44,9 +47,9 @@ class GameWithAreas(_Game):
 
     Callback Methods
     ----------------
-    _on_area_client_left
+    _on_area_client_left_final
         Method to perform once a client left an area of the game.
-    _on_area_client_entered
+    _on_area_client_entered_final
         Method to perform once a client entered an area of the game.
     _on_area_destroyed
         Method to perform once an area of the game is marked for destruction.
@@ -69,12 +72,14 @@ class GameWithAreas(_Game):
     # Invariants
     # ----------
     # 1. For each player of the game, they are in an area part of the game.
-    # 2. The invariants from the parent class Game are satisfied.
+    # 2. It is not true that the game requires invitations and automatically adds users that join
+    # an area part of the game.
+    # 3. The invariants from the parent class Game are satisfied.
 
     def __init__(self, server, manager, game_id, player_limit=None,
                  player_concurrent_limit=None, require_invitations=False, require_players=True,
                  require_leaders=True, require_character=False, team_limit=None,
-                 timer_limit=None, area_concurrent_limit=None,
+                 timer_limit=None, area_concurrent_limit=None, autoadd_on_client_enter=False,
                  playergroup_manager=None):
         """
         Create a new game. A game should not be fully initialized anywhere else other than
@@ -125,6 +130,10 @@ class GameWithAreas(_Game):
             that this game does not care about how many other game with areas managed by
             `manager` each of its areas belongs to. Defaults to 1 (an area may not be a part of
             another game managed by `manager` while being an area of this game).
+        autoadd_on_client_enter : bool, optional
+            If True, nonplayer users that enter an area part of the game will be automatically
+            added if permitted by the conditions of the game. If False, no such adding will take
+            place. Defaults to False.
         playergroup_manager : PlayerGroupManager, optional
             The internal playergroup manager of the game manager. Access to this value is
             limited exclusively to this __init__, and is only to initialize the internal
@@ -143,6 +152,7 @@ class GameWithAreas(_Game):
 
         self._areas = set()
         self._area_concurrent_limit = area_concurrent_limit
+        self._autoadd_on_client_enter = autoadd_on_client_enter
 
         super().__init__(server, manager, game_id, player_limit=player_limit,
                          player_concurrent_limit=player_concurrent_limit,
@@ -154,17 +164,62 @@ class GameWithAreas(_Game):
 
         self.listener.subscribe(self._server.area_manager)
         self.listener.update_events({
-            'area_client_left': self._on_area_client_left,
-            'area_client_entered': self._on_area_client_entered,
+            'area_client_left_final': self._on_area_client_left_final,
+            'area_client_entered_final': self._on_area_client_entered_final,
             'area_client_inbound_ms_check': self._on_area_client_inbound_ms_check,
             'area_destroyed': self._on_area_destroyed,
             'areas_loaded': self._on_areas_loaded,
             })
 
+    def get_name(self) -> str:
+        """
+        Return the name of the game. Names are fully lowercase.
+        Implementations of the class should replace this with a human readable name of the trial.
+
+        Returns
+        -------
+        str
+            Name of the game.
+
+        """
+
+        return "game with areas"
+
+    def get_autoadd_on_client_enter(self) -> bool:
+        """
+        Return True if the game will always attempt to add nonplayer users who enter an area
+        part of the game, False otherwise.
+
+        Returns
+        -------
+        bool
+            True if the game will always attempt to add nonplayer users who enter an area
+            part of the game, False otherwise.
+        """
+
+        return self._autoadd_on_client_enter
+
+    def set_autoadd_on_client_enter(self, new_value: bool):
+        """
+        Set the new status of the autoadd on client enter flag.
+
+        Parameters
+        ----------
+        new_value : bool
+            New value.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        self._autoadd_on_client_enter = new_value
+
     def add_player(self, user):
         """
         Make a user a player of the game. By default this player will not be a leader. It will
-        also subscribe the game ot the player so it can listen to its updates.
+        also subscribe the game to the player so it can listen to its updates.
 
         Parameters
         ----------
@@ -443,10 +498,12 @@ class GameWithAreas(_Game):
                 f'timers={self.get_timers()}, '
                 f'teams={self.get_teams()}')
 
-    def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
-                             ignore_bleeding=False):
+    def _on_area_client_left_final(self, area, client=None, old_displayname=None,
+                                   ignore_bleeding=False):
         """
-        Default callback for game area signaling a client left.
+        Default callback for game area signaling a client left. This is executed after all other
+        actions related to moving the player to a new area have been executed: in particular,
+        client.area holds the new area of the client.
 
         By default it removes the player from the game if their new area is not part of the game.
 
@@ -470,18 +527,19 @@ class GameWithAreas(_Game):
 
         """
 
-        print('Received LEFT', area, client, new_area, old_displayname, ignore_bleeding)
-        if client in self.get_players() and new_area not in self._areas:
+        print('Received LEFT', area, client, client.area, old_displayname, ignore_bleeding)
+        if client in self.get_players() and client.area not in self._areas:
             self.remove_player(client)
 
         self._check_structure()
 
-    def _on_area_client_entered(self, area, client=None, old_area=None, old_displayname=None,
-                                ignore_bleeding=False):
+    def _on_area_client_entered_final(self, area, client=None, old_area=None, old_displayname=None,
+                                      ignore_bleeding=False):
         """
         Default callback for game area signaling a client entered.
 
-        By default does nothing.
+        By default adds a user to the game if the game is meant to automatically add users that
+        enter an area part of the game.
 
         Parameters
         ----------
@@ -504,6 +562,8 @@ class GameWithAreas(_Game):
         """
 
         print('Received ENTERED', area, client, old_area, old_displayname, ignore_bleeding)
+        if client not in self.get_players() and self.get_autoadd_on_client_enter():
+            self.add_player(client)
 
         self._check_structure()
 
@@ -594,6 +654,13 @@ class GameWithAreas(_Game):
             assert player.area in self._areas, err
 
         # 2.
+        if self._autoadd_on_client_enter and self.requires_invitations():
+            err = (f'For game with areas {self}, expected that it did not simultaneously require '
+                   f'invitations for users to join while mandating users be automatically added '
+                   f'if they enter an area of the game, found it did.')
+            raise AssertionError(err)
+
+        # 2.
         super()._check_structure()
 
 
@@ -637,7 +704,8 @@ class GameWithAreasManager(GameManager):
     def new_game(self, game_type=None, creator=None, player_limit=None,
                  player_concurrent_limit=1, require_invitations=False, require_players=True,
                  require_leaders=True, require_character=False, team_limit=None, timer_limit=None,
-                 areas=None, area_concurrent_limit=None):
+                 areas=None, area_concurrent_limit=None,
+                 autoadd_on_client_enter=False):
         """
         Create a new game with areas managed by this manager.
 
@@ -687,6 +755,10 @@ class GameWithAreasManager(GameManager):
             that this game does not care about how many other game with areas managed by
             `manager` each of its areas belongs to. Defaults to 1 (an area may not be a part of
             another game managed by `manager` while being an area of this game).
+        autoadd_on_client_enter : bool, optional
+            If True, nonplayer users that enter an area part of the game will be automatically
+            added if permitted by the conditions of the game. If False, no such adding will take
+            place. Defaults to False.
 
         Returns
         -------
@@ -703,10 +775,11 @@ class GameWithAreasManager(GameManager):
         """
 
         if game_type is None:
-            game_type = self._default_game_type
+            game_type = self.get_default_game_type()
 
         new_game_type = functools.partial(game_type,
-                                          area_concurrent_limit=area_concurrent_limit)
+                                          area_concurrent_limit=area_concurrent_limit,
+                                          autoadd_on_client_enter=autoadd_on_client_enter)
 
         game = super().new_game(game_type=new_game_type, creator=None, player_limit=player_limit,
                                 player_concurrent_limit=player_concurrent_limit,
@@ -756,7 +829,7 @@ class GameWithAreasManager(GameManager):
 
         try:
             return self._area_to_games[area].copy()
-        except:
+        except KeyError:
             return set()
 
     def _find_area_concurrent_limiting_game(self, area):

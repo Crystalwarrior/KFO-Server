@@ -24,7 +24,6 @@ Module that contains the trial manager and trial modules.
 import functools
 
 from server.exceptions import TrialError, GameError
-from server.game_manager import GameManager
 from server.gamewithareas_manager import GameWithAreas, GameWithAreasManager
 from server.trialminigame import TrialMinigame, TRIALMINIGAMES
 from server.nonstopdebate import NonStopDebate
@@ -46,9 +45,9 @@ class _Trial(GameWithAreas):
 
     Callback Methods
     ----------------
-    _on_area_client_left
+    _on_area_client_left_final
         Method to perform once a client left an area of the trial.
-    _on_area_client_entered
+    _on_area_client_entered_final
         Method to perform once a client entered an area of the trial.
     _on_area_destroyed
         Method to perform once an area of the trial is marked for destruction.
@@ -81,7 +80,9 @@ class _Trial(GameWithAreas):
     def __init__(self, server, manager, trial_id, player_limit=None, player_concurrent_limit=None,
                  require_invitations=False, require_players=True, require_leaders=True,
                  require_character=False, team_limit=None, timer_limit=None,
-                 area_concurrent_limit=None, minigame_limit=1, playergroup_manager=None):
+                 area_concurrent_limit=None, autoadd_on_client_enter=False,
+                 autoadd_minigame_on_player_added=False,
+                 minigame_limit=1, playergroup_manager=None):
         """
         Create a new trial. A trial should not be fully initialized anywhere else other than
         some manager code, as otherwise the manager will not recognize the trial.
@@ -132,6 +133,15 @@ class _Trial(GameWithAreas):
             that this game does not care about how many other trials managed by
             `manager` each of its areas belongs to. Defaults to 1 (an area may not be a part of
             another trial managed by `manager` while being an area of this trial).
+        autoadd_on_client_enter : bool, optional
+            If True, nonplayer users that enter an area part of the game will be automatically
+            added if permitted by the conditions of the game. If False, no such adding will take
+            place. Defaults to False.
+        autoadd_minigame_on_player_added: bool, optional
+            If True, any player added to the trial will be automatically added as a player of the
+            latest minigame currently open in the trial. If no such minigame is open or the
+            player addition fails, no action is taken. If False, no such adding will take place.
+            Defaults to False.
         minigame_limit : int or None, optional
             If an int, it is the maximum number of minigames the trial may have simultaneously.
             If None, it indicates the trial has no minigame limit. Defaults to 1.
@@ -168,10 +178,44 @@ class _Trial(GameWithAreas):
                          require_character=require_character,
                          team_limit=team_limit, timer_limit=timer_limit,
                          area_concurrent_limit=area_concurrent_limit,
+                         autoadd_on_client_enter=autoadd_on_client_enter,
                          playergroup_manager=playergroup_manager)
+
+        self._autoadd_minigame_on_player_added = autoadd_minigame_on_player_added
+
         self.listener.update_events({
             'client_inbound_rt': self._on_client_inbound_rt,
             })
+
+    def get_name(self) -> str:
+        """
+        Return the name of the game. Names are fully lowercase.
+        Implementations of the class should replace this with a human readable name of the trial.
+
+        Returns
+        -------
+        str
+            Name of the game.
+
+        """
+
+        return "trial"
+
+    def get_autoadd_minigame_on_player_added(self) -> bool:
+        """
+        Get the default behavior to do when a player is added to a trial:
+        * If True, the trial will automatically try to add any players that are added to the
+        trial to all minigames it hosts in some arbitrary order.
+        * If False, no such automatic attempts are done.
+
+        Returns
+        -------
+        bool
+            True if an attempt will be made, False otherwise.
+
+        """
+
+        return self._autoadd_minigame_on_player_added
 
     def add_player(self, user):
         """
@@ -225,6 +269,9 @@ class _Trial(GameWithAreas):
             raise ex
 
         self.introduce_user(user)
+        self.publisher.publish('trial_player_added', {
+            'player': user,
+            })
 
     def introduce_user(self, user):
         """
@@ -635,6 +682,7 @@ class _Trial(GameWithAreas):
     def new_nsd(self, creator=None, player_limit=None, add_players=False,
                 require_invitations=False, require_players=True,
                 require_character=False, team_limit=None, timer_limit=None,
+                autoadd_on_trial_player_add=None,
                 timer_start_value=300) -> NonStopDebate:
         """
         Create a new NSD managed by this trial. Overriden default parameters include:
@@ -663,6 +711,10 @@ class _Trial(GameWithAreas):
         team_limit : int or None, optional
             If an int, it is the maximum number of teams the NSD will support. If None, it
             indicates the NSD will have no team limit. Defaults to None.
+        autoadd_on_trial_player_add : bool, optional
+            If True, players that are added to the trial will be automatically added if permitted
+            by the conditions of the game. If False, no such adding will take place. Defaults to
+            None (use self.autoadd_minigame_on_player_added).
         timer_limit : int or None, optional
             If an int, it is the maximum number of timers the NSD will support. If None, it
             indicates the NSD will have no timer limit. Defaults to None.
@@ -684,9 +736,15 @@ class _Trial(GameWithAreas):
 
         """
 
+        if autoadd_on_trial_player_add is None:
+            autoadd_on_trial_player_add = self.get_autoadd_minigame_on_player_added()
+
         areas = {creator.area} if creator else set()
-        nsd_factory = functools.partial(NonStopDebate, trial=self,
-                                        timer_start_value=timer_start_value)
+        nsd_factory = functools.partial(
+            NonStopDebate,
+            trial=self,
+            autoadd_on_trial_player_add=autoadd_on_trial_player_add,
+            timer_start_value=timer_start_value)
 
         nsd = self._minigame_manager.new_game(game_type=nsd_factory,
                                               player_limit=player_limit,
@@ -696,7 +754,8 @@ class _Trial(GameWithAreas):
                                               require_leaders=False,
                                               require_character=require_character,
                                               team_limit=team_limit, timer_limit=timer_limit,
-                                              areas=areas)
+                                              areas=areas,
+                                              autoadd_on_client_enter=False)
         nsd.setup_timers()
         # Add creator manually. This is because otherwise the creator does not get access to
         # the timer info.
@@ -932,8 +991,8 @@ class _Trial(GameWithAreas):
         for user in users:
             user.send_splash(name='testimony2')
 
-    def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
-                             ignore_bleeding=False):
+    def _on_area_client_left_final(self, area, client=None, old_displayname=None,
+                                   ignore_bleeding=False):
         """
         If a player left to an area not part of the trial, remove the player and warn them and
         the leaders of the trial.
@@ -947,8 +1006,6 @@ class _Trial(GameWithAreas):
             Area that signaled a client has left.
         client : ClientManager.Client, optional
             The client that has left. The default is None.
-        new_area : AreaManager.Area
-            The new area the client has gone to. The default is None.
         old_displayname : str, optional
             The old displayed name of the client before they changed area. This will typically
             change only if the client's character or showname are taken. The default is None.
@@ -961,7 +1018,7 @@ class _Trial(GameWithAreas):
 
         """
 
-        if new_area in self.get_areas():
+        if client.area in self.get_areas():
             return
 
         if client in self.get_players():
@@ -969,7 +1026,7 @@ class _Trial(GameWithAreas):
                             f'thus were automatically removed from the trial.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your trial and thus was automatically '
-                                   f'removed it ({area.id}->{new_area.id}).',
+                                   f'removed it ({area.id}->{client.area.id}).',
                                    pred=lambda c: c in self.get_leaders())
 
             nonplayers = self.get_nonplayer_users_in_areas()
@@ -989,14 +1046,14 @@ class _Trial(GameWithAreas):
         else:
             client.send_ooc(f'You have left to an area not part of trial `{self.get_id()}`.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
-                                   f'an area not part of your trial ({area.id}->{new_area.id}).',
+                                   f'an area not part of your trial ({area.id}->{client.area.id}).',
                                    pred=lambda c: c in self.get_leaders())
             self.dismiss_user(client)
 
         self._check_structure()
 
-    def _on_area_client_entered(self, area, client=None, old_area=None, old_displayname=None,
-                                ignore_bleeding=False):
+    def _on_area_client_entered_final(self, area, client=None, old_area=None, old_displayname=None,
+                                      ignore_bleeding=False):
         """
         If a non-player entered, warn them and the leaders of the trial.
 
@@ -1025,13 +1082,7 @@ class _Trial(GameWithAreas):
             client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] has entered '
                                    f'an area part of your trial ({old_area.id}->{area.id}).',
                                    pred=lambda c: c in self.get_leaders())
-            if not self._require_character or client.has_character():
-                if client.is_staff():
-                    client.send_ooc(f'Join this trial with /trial_join {self.get_id()}')
-                client.send_ooc_others(f'(X) Add {client.displayname} to your trial with '
-                                       f'/trial_add {client.id}',
-                                       pred=lambda c: c in self.get_leaders())
-            else:
+            if self._require_character and not client.has_character():
                 if client.is_staff():
                     client.send_ooc(f'This trial requires you have a character to join. Join this '
                                     f'trial with /trial_join {self.get_id()} after choosing a '
@@ -1040,7 +1091,50 @@ class _Trial(GameWithAreas):
                                        f'Add {client.displayname} to your trial with '
                                        f'/trial_add {client.id} after they choose a character.',
                                        pred=lambda c: c in self.get_leaders())
-            self.introduce_user(client)
+                self.introduce_user(client)
+            elif self.get_autoadd_on_client_enter():
+                try:
+                    msg = ''
+                    self.add_player(client)
+                except TrialError.UserHitGameConcurrentLimitError:
+                    msg = 'Player is concurrently in too many trials.'
+                except TrialError.GameIsFullError:
+                    msg = 'The trial is full.'
+                if msg:
+                    client.send_ooc(f'Unable to automatically add you to the trial: {msg}')
+                    client.send_ooc_others(f'(X) Unable to automatically add non-player '
+                                           f'{client.displayname} [{client.id}] to your trial: '
+                                           f'{msg}', pred=lambda c: c in self.get_leaders())
+                else:
+                    client.send_ooc(f'You were automatically added to trial `{self.get_id()}`.')
+                    client.send_ooc_others(f'(X) Non-player {client.displayname} [{client.id}] '
+                                           'was automatically added to your trial.',
+                                           pred=lambda c: c in self.get_leaders())
+
+                # Check if client was added to any minigames automatically or not.
+                # If so, notifidy leaders
+                for minigame in self.get_minigames():
+                    name = minigame.get_name()
+                    if minigame.is_player(client):
+                        client.send_ooc(f'You were automatically added to {name} '
+                                        f'`{minigame.get_id()}`.')
+                        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] was '
+                                               f'automatically added to your {name}.',
+                                               pred=lambda c: c in minigame.get_leaders())
+                    else:
+                        client.send_ooc(f'Unable to be automatically added to {name} '
+                                        f'`{minigame.get_id()}`.')
+                        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] could not '
+                                               f'be automatically added to your {name}.',
+                                               pred=lambda c: c in minigame.get_leaders())
+
+            else:
+                if client.is_staff():
+                    client.send_ooc(f'Join this trial with /trial_join {self.get_id()}')
+                client.send_ooc_others(f'(X) Add {client.displayname} to your trial with '
+                                       f'/trial_add {client.id}',
+                                       pred=lambda c: c in self.get_leaders())
+                self.introduce_user(client)
         self._check_structure()
 
     def _on_client_change_character(self, player, old_char_id=None, new_char_id=None):
@@ -1287,8 +1381,7 @@ class _Trial(GameWithAreas):
             assert player_id in player_ids, err
 
         # 4.
-        for (player_id, value) in self._player_to_influence.items():
-            influences = self._player_to_influence[player_id]
+        for (player_id, influences) in self._player_to_influence.items():
             err = (f'For trial {self}, expected that the player with ID {player_id} had a '
                    f'3-tuple of current influence, min influence and max influence associated '
                    f'to it in the player to influence map, found it was {influences} instead.')
@@ -1307,8 +1400,7 @@ class _Trial(GameWithAreas):
                    f'found it was {influence} instead.')
             assert min_influence <= influence <= max_influence, err
 
-        for (player_id, value) in self._player_to_focus.items():
-            focuses = self._player_to_focus[player_id]
+        for (player_id, focuses) in self._player_to_focus.items():
             err = (f'For trial {self}, expected that the player with ID {player_id} had a '
                    f'3-tuple of current focus, min focus and max focus associated '
                    f'to it in the player to focus map, found it was {focuses} instead.')
@@ -1343,7 +1435,8 @@ class TrialManager(GameWithAreasManager):
     def new_trial(self, creator=None, player_limit=None, player_concurrent_limit=1,
                   add_players=False, require_invitations=False, require_players=True,
                   require_character=False, team_limit=None, timer_limit=None,
-                  area_concurrent_limit=1) -> _Trial:
+                  area_concurrent_limit=1, autoadd_on_client_enter=False,
+                  autoadd_minigame_on_player_added=False) -> _Trial:
         """
         Create a new trial managed by this manager. Overriden default parameters include:
         * A trial does not require leaders.
@@ -1380,7 +1473,15 @@ class TrialManager(GameWithAreasManager):
             area of the created trial may belong to, including the created trial. If None, it
             indicates that this trial does not care about how many other trials managed by
             `manager` each of its areas belongs to. Defaults to 1 (an area may not be a part of
-            another trials managed by `manager` while being an area of this trials).
+            another trial managed by `manager` while being an area of this trials).
+        autoadd_on_client_enter : bool, optional
+            If True, nonplayer users that enter an area part of the game will be automatically
+            added if permitted by the conditions of the game. If False, no such adding will take
+            place. Defaults to False.
+        autoadd_minigame_on_player_added : bool, optional
+            If True, nonplayer users that are added to the trial will also be automatically added
+            to the minigame if permitted by its conditions. If False, no such adding will take
+            place. Defaults to False.
 
         Returns
         -------
@@ -1397,7 +1498,10 @@ class TrialManager(GameWithAreasManager):
         """
 
         areas = {creator.area} if creator else set()
-        trial_factory = functools.partial(_Trial)
+        trial_factory = functools.partial(
+            _Trial,
+            autoadd_minigame_on_player_added=autoadd_minigame_on_player_added
+            )
         trial = self.new_game(game_type=trial_factory, creator=creator,
                               player_limit=player_limit,
                               player_concurrent_limit=player_concurrent_limit,
@@ -1406,7 +1510,8 @@ class TrialManager(GameWithAreasManager):
                               require_leaders=False,
                               require_character=require_character,
                               team_limit=team_limit, timer_limit=timer_limit,
-                              areas=areas, area_concurrent_limit=area_concurrent_limit)
+                              areas=areas, area_concurrent_limit=area_concurrent_limit,
+                              autoadd_on_client_enter=autoadd_on_client_enter)
 
         if add_players:
             clients_to_add = {client for area in areas for client in area.clients}

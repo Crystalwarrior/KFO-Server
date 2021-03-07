@@ -2756,11 +2756,11 @@ def ooc_cmd_lasterror(client: ClientManager.Client, arg: str):
     *Client status: C::0:1639795399:Iuvee:Kaede Akamatsu_HD:True:0
     *Area status: A::0:Basement:1
     Traceback (most recent call last):
-    File "...\server\aoprotocol.py", line 88, in data_received
+    File ".../server/aoprotocol.py", line 88, in data_received
     self.net_cmd_dispatcher[cmd](self, args)
-    File "...\server\aoprotocol.py", line 500, in net_cmd_ct
+    File ".../server/aoprotocol.py", line 500, in net_cmd_ct
     function(self.client, arg)
-    File "...\server\commands.py", line 4210, in ooc_cmd_lasterror
+    File ".../server/commands.py", line 4210, in ooc_cmd_lasterror
     final_trace = "".join(traceback.format_exc(etype, evalue, etraceback))
     TypeError: format_exc() takes from 0 to 2 positional arguments but 3 were given
 
@@ -2881,7 +2881,7 @@ def ooc_cmd_login(client: ClientManager.Client, arg: str):
     /login <mod_password>
 
     PARAMETERS
-    <mod_password>: Mod password, found in \config\config.yaml
+    <mod_password>: Mod password, found in config/config.yaml
 
     EXAMPLES
     /login Mod      :: Attempt to log in as mod with "Mod" as password.
@@ -2898,7 +2898,7 @@ def ooc_cmd_logincm(client: ClientManager.Client, arg: str):
     /logincm <cm_password>
 
     PARAMETERS
-    <cm_password>: Community manager password, found in \config\config.yaml
+    <cm_password>: Community manager password, found in config/config.yaml
 
     EXAMPLES
     /logincm CM     :: Attempt to log in as community maanger with "CM" as password.
@@ -2915,7 +2915,7 @@ def ooc_cmd_loginrp(client: ClientManager.Client, arg: str):
     /loginrp <gm_password>
 
     PARAMETERS
-    <gm_password>: Game master password, found in \config\config.yaml
+    <gm_password>: Game master password, found in config/config.yaml
 
     EXAMPLES
     /loginrp GM     :: Attempt to log in as game master with "GM" as password.
@@ -7296,7 +7296,9 @@ def ooc_cmd_trial(client: ClientManager.Client, arg: str):
 
     try:
         trial = client.server.trial_manager.new_trial(creator=client, add_players=False,
-                                                      require_character=True)
+                                                      require_character=True,
+                                                      autoadd_on_client_enter=False,
+                                                      autoadd_minigame_on_player_added=False)
     except TrialError.AreaHitGameConcurrentLimitError:
         raise ClientError('This area already hosts another trial.')
     except TrialError.ManagerTooManyGamesError:
@@ -7385,48 +7387,44 @@ def ooc_cmd_trial_add(client: ClientManager.Client, arg: str):
     target.send_ooc(f'You were added to trial `{trial.get_id()}`.')
 
 
-def ooc_cmd_trial_join(client: ClientManager, arg: str):
+def ooc_cmd_trial_autoadd(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
-    Enrolls you into a trial by trial ID.
-    Returns an error if the trial ID is invalid, if you are not part of an area part of the trial,
-    if you do not have a character when trying to join the trial, or if you are already part of
-    this or another trial.
+    Toggles the trial of the player automatically attempting to add users who join an area part of
+    the trial on/off.
+    Returns an error if the player is not part of a trial or is not a leader of it.
 
     SYNTAX
-    /trial_join <trial_id>
+    /trial_autoadd
 
     PARAMETERS
-    <trial_id>: Trial ID
+    None
 
     EXAMPLES
-    /trial_join trial0      :: You will join trial trial0.
+    /trial_autoadd
     """
 
-    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     try:
-        trial = client.server.trial_manager.get_game_by_id(arg)
-    except TrialError.ManagerInvalidGameIDError:
-        raise ClientError(f'Unrecognized trial ID `{arg}`.')
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if not trial.is_leader(client):
+        raise ClientError('You are not a leader of your trial.')
 
-    try:
-        trial.add_player(client)
-    except TrialError.UserNotInAreaError:
-        raise ClientError('You are not part of an area part of this trial.')
-    except TrialError.UserHasNoCharacterError:
-        raise ClientError('You must have a character to join this trial.')
-    except TrialError.UserHitGameConcurrentLimitError:
-        raise ClientError('You are already part of another trial.')
-    except TrialError.UserAlreadyPlayerError:
-        raise ClientError('You are already part of this trial.')
+    status = {True: 'now', False: 'no longer'}
+    new_autoadd = not trial.get_autoadd_on_client_enter()
+    trial.set_autoadd_on_client_enter(new_autoadd)
 
-    client.send_ooc(f'You joined trial `{arg}`.')
-    client.send_ooc('Become a leader of your trial with /trial_lead')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] joined your trial.',
+    client.send_ooc(f'Your trial will {status[new_autoadd]} attempt to automatically add future '
+                    f'users who enter an area part of your trial.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has set your trial so that it '
+                           f'will {status[new_autoadd]} attempt to automatically add future '
+                           f'users who enter an area part of your trial.',
                            pred=lambda c: c in trial.get_leaders())
 
 
-def ooc_cmd_trial_end(client: ClientManager, arg: str):
+def ooc_cmd_trial_end(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Ends the trial of the player. Every player of the trial is ordered to switch back to the
     'default' gamemode.
@@ -7466,7 +7464,7 @@ def ooc_cmd_trial_end(client: ClientManager, arg: str):
                            pred=lambda c: c in leaders)
 
 
-def ooc_cmd_trial_focus(client: ClientManager, arg: str):
+def ooc_cmd_trial_focus(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Sets the focus level of a player in your trial by ID.
     Returns an error if you are not part of a trial or leader of it, if the target is not found or
@@ -7517,7 +7515,7 @@ def ooc_cmd_trial_focus(client: ClientManager, arg: str):
                            pred=lambda c: c != target and c in trial.get_leaders())
 
 
-def ooc_cmd_trial_influence(client: ClientManager, arg: str):
+def ooc_cmd_trial_influence(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Sets the influence level of a player in your trial by ID.
     Returns an error if you are not part of a trial or leader of it, if the target is not found or
@@ -7568,7 +7566,7 @@ def ooc_cmd_trial_influence(client: ClientManager, arg: str):
                            pred=lambda c: c != target and c in trial.get_leaders())
 
 
-def ooc_cmd_trial_info(client: ClientManager, arg: str):
+def ooc_cmd_trial_info(client: ClientManager.Client, arg: str):
     """ (VARYING REQUIREMENTS)
     Returns information about your current trial. Trial leaders also obtain influence and focus
     values of the players.
@@ -7595,79 +7593,45 @@ def ooc_cmd_trial_info(client: ClientManager, arg: str):
     client.send_ooc(info)
 
 
-def ooc_cmd_trial_lead(client: ClientManager, arg: str):
+def ooc_cmd_trial_join(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
-    Makes you a leader of your trial.
-    Returns an error if you are not part of a trial or if you are already leader of that trial.
+    Enrolls you into a trial by trial ID.
+    Returns an error if the trial ID is invalid, if you are not part of an area part of the trial,
+    if you do not have a character when trying to join the trial, or if you are already part of
+    this or another trial.
 
     SYNTAX
-    /trial_lead
+    /trial_join <trial_id>
 
     PARAMETERS
-    None
-
-    EXAMPLE
-    /trial_lead         :: Makes you leader of the trial.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-
-    try:
-        trial.add_leader(client)
-    except TrialError.UserAlreadyLeaderError:
-        raise ClientError('You are already a leader of this trial.')
-
-    client.send_ooc('You are now a leader of your trial.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
-                           f'trial.', pred=lambda c: c in trial.get_leaders())
-
-
-def ooc_cmd_trial_leave(client: ClientManager, arg: str):
-    """
-    Makes you leave your current trial and any minigames you may have been a part of. It will
-    also notify all other remaining trial leaders of your departure.
-    If you were the only member of the trial, the trial will be destroyed.
-    Returns an error if you are not part of a trial.
-
-    SYNTAX
-    /trial_leave
-
-    PARAMETERS
-    None
+    <trial_id>: Trial ID
 
     EXAMPLES
-    /trial_leave        :: Makes you leave your current trial.
+    /trial_join trial0      :: You will join trial trial0.
     """
 
-    Constants.assert_command(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
 
     try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
+        trial = client.server.trial_manager.get_game_by_id(arg)
+    except TrialError.ManagerInvalidGameIDError:
+        raise ClientError(f'Unrecognized trial ID `{arg}`.')
 
-    tid = trial.get_id()  # Get ID now because trial may be deleted
-    nonplayers = trial.get_nonplayer_users_in_areas()
+    try:
+        trial.add_player(client)
+    except TrialError.UserNotInAreaError:
+        raise ClientError('You are not part of an area part of this trial.')
+    except TrialError.UserHasNoCharacterError:
+        raise ClientError('You must have a character to join this trial.')
+    except TrialError.UserHitGameConcurrentLimitError:
+        raise ClientError('You are already part of another trial.')
+    except TrialError.UserAlreadyPlayerError:
+        raise ClientError('You are already part of this trial.')
 
-    client.send_ooc(f'You have left trial `{tid}`.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your trial.',
+    client.send_ooc(f'You joined trial `{arg}`.')
+    client.send_ooc('Become a leader of your trial with /trial_lead')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] joined your trial.',
                            pred=lambda c: c in trial.get_leaders())
-    trial.remove_player(client)
-
-    if trial.is_unmanaged():
-        client.send_ooc(f'Your trial `{tid}` was automatically '
-                        f'deleted as it lost all its players.')
-        client.send_ooc_others(f'(X) Trial `{tid}` was automatically '
-                               f'deleted as it lost all its players.',
-                               is_zstaff_flex=True, not_to=nonplayers)
-        client.send_ooc_others('The trial you were watching was automatically deleted '
-                               'as it lost all its players.',
-                               is_zstaff_flex=False, pred=lambda c: c in nonplayers)
 
 
 def ooc_cmd_trial_kick(client: ClientManager.Client, arg: str):
@@ -7713,7 +7677,82 @@ def ooc_cmd_trial_kick(client: ClientManager.Client, arg: str):
                            pred=lambda c: c != target and c in trial.get_leaders())
 
 
-def ooc_cmd_trial_unlead(client: ClientManager, arg: str):
+def ooc_cmd_trial_lead(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Makes you a leader of your trial.
+    Returns an error if you are not part of a trial or if you are already leader of that trial.
+
+    SYNTAX
+    /trial_lead
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /trial_lead         :: Makes you leader of the trial.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    try:
+        trial.add_leader(client)
+    except TrialError.UserAlreadyLeaderError:
+        raise ClientError('You are already a leader of this trial.')
+
+    client.send_ooc('You are now a leader of your trial.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
+                           f'trial.', pred=lambda c: c in trial.get_leaders())
+
+
+def ooc_cmd_trial_leave(client: ClientManager.Client, arg: str):
+    """
+    Makes you leave your current trial and any minigames you may have been a part of. It will
+    also notify all other remaining trial leaders of your departure.
+    If you were the only member of the trial, the trial will be destroyed.
+    Returns an error if you are not part of a trial.
+
+    SYNTAX
+    /trial_leave
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /trial_leave        :: Makes you leave your current trial.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    tid = trial.get_id()  # Get ID now because trial may be deleted
+    nonplayers = trial.get_nonplayer_users_in_areas()
+
+    client.send_ooc(f'You have left trial `{tid}`.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your trial.',
+                           pred=lambda c: c in trial.get_leaders())
+    trial.remove_player(client)
+
+    if trial.is_unmanaged():
+        client.send_ooc(f'Your trial `{tid}` was automatically '
+                        f'deleted as it lost all its players.')
+        client.send_ooc_others(f'(X) Trial `{tid}` was automatically '
+                               f'deleted as it lost all its players.',
+                               is_zstaff_flex=True, not_to=nonplayers)
+        client.send_ooc_others('The trial you were watching was automatically deleted '
+                               'as it lost all its players.',
+                               is_zstaff_flex=False, pred=lambda c: c in nonplayers)
+
+
+def ooc_cmd_trial_unlead(client: ClientManager.Client, arg: str):
     """
     Removes your trial leader role.
     Returns an error if you are not part of a trial or if you are already not leader of that trial.
@@ -7788,7 +7827,8 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
 
     try:
         nsd = trial.new_nsd(creator=client, add_players=False, timer_start_value=seconds,
-                            require_character=True)
+                            require_character=True,
+                            autoadd_on_trial_player_add=trial.get_autoadd_on_client_enter())
     except TrialError.ManagerTooManyGamesError:
         raise ClientError('The trial has reached its NSD limit.')
     except NonStopDebateError.AreaHitGameConcurrentLimitError:
@@ -7894,53 +7934,49 @@ def ooc_cmd_nsd_add(client: ClientManager.Client, arg: str):
     target.send_ooc(f'You were added to the nonstop debate `{nsd.get_id()}`.')
 
 
-def ooc_cmd_nsd_join(client: ClientManager, arg: str):
+def ooc_cmd_nsd_autoadd(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
-    Enrolls you into a nonstop debate by nonstop debate ID.
-    Returns an error if you are not part of a trial, if the NSD ID is invalid, if you are not part
-    of an area part of the NSD, if you do not have a character when trying to join the NSD, or if
-    you are already part of this or another NSD.
+    Toggles the nonstop debate of the player automatically attempting to add users as players who
+    themselves are added as players of the parent trial on/off.
+    Returns an error if the player is not part of a trial or a nonstop debate, or is not a leader
+    of their nonstop debate.
 
     SYNTAX
-    /nsd_join <nsd_id>
+    /nsd_autoadd
 
     PARAMETERS
-    <nsd_id>: NSD ID
+    None
 
     EXAMPLES
-    /nsd_join trial0g0      :: You will join NSD trial0g0.
+    /nsd_autoadd
     """
 
-    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     try:
         trial = client.server.trial_manager.get_trial_of_user(client)
     except TrialError.UserNotPlayerError:
         raise ClientError('You are not part of a trial.')
-
     try:
-        nsd = trial.get_minigame_by_id(arg)
-    except TrialError.ManagerInvalidGameIDError:
-        raise ClientError(f'Unrecognized nonstop debate ID `{arg}`.')
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    if not nsd.is_leader(client):
+        raise ClientError('You are not a leader of your nonstop debate.')
 
-    try:
-        nsd.add_player(client)
-    except NonStopDebateError.UserNotInAreaError:
-        raise ClientError('You are not part of an area part of this nonstop debate.')
-    except NonStopDebateError.UserHasNoCharacterError:
-        raise ClientError('You must have a character to join this nonstop debate.')
-    except NonStopDebateError.UserHitGameConcurrentLimitError:
-        raise ClientError('You are already part of another nonstop debate.')
-    except NonStopDebateError.UserAlreadyPlayerError:
-        raise ClientError('You are already part of this nonstop debate.')
+    status = {True: 'now', False: 'no longer'}
+    new_autoadd = not nsd.get_autoadd_on_trial_player_add()
+    nsd.set_autoadd_on_trial_player_add(new_autoadd)
 
-    client.send_ooc(f'You joined nonstop debate `{arg}`.')
-    client.send_ooc('Become a leader of your nonstop debate with /nsd_lead')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] joined your nonstop debate.',
+    client.send_ooc(f'Your nonstop debate will {status[new_autoadd]} attempt to automatically add '
+                    f'future users who are added as players of your trial.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has set your nonstop debate so '
+                           f'that it will {status[new_autoadd]} attempt to automatically add '
+                           f'future users who are added as players of your trial.',
                            pred=lambda c: c in nsd.get_leaders())
 
 
-def ooc_cmd_nsd_end(client: ClientManager, arg: str):
+def ooc_cmd_nsd_end(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Ends the NSD of the player. Every player of the NSD is ordered to switch back to the
     'trial' gamemode.
@@ -7984,7 +8020,7 @@ def ooc_cmd_nsd_end(client: ClientManager, arg: str):
                            pred=lambda c: c in leaders)
 
 
-def ooc_cmd_nsd_info(client: ClientManager, arg: str):
+def ooc_cmd_nsd_info(client: ClientManager.Client, arg: str):
     """
     Returns information about your current NSD.
     Returns an error if you are not part of a trial or an NSD.
@@ -8023,61 +8059,24 @@ def ooc_cmd_nsd_info(client: ClientManager, arg: str):
     client.send_ooc(info)
 
 
-def ooc_cmd_nsd_lead(client: ClientManager, arg: str):
+def ooc_cmd_nsd_join(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
-    Makes you a leader of your NSD.
-    Returns an error if you are not part of a trial or an NSD, or if you are already leader of
-    the NSD.
+    Enrolls you into a nonstop debate by nonstop debate ID.
+    Returns an error if you are not part of a trial, if the NSD ID is invalid, if you are not part
+    of an area part of the NSD, if you do not have a character when trying to join the NSD, or if
+    you are already part of this or another NSD.
 
     SYNTAX
-    /nsd_lead
+    /nsd_join <nsd_id>
 
     PARAMETERS
-    None
-
-    EXAMPLE
-    /nsd_lead         :: Makes you leader of the NSD.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-
-    try:
-        nsd.add_leader(client)
-    except NonStopDebateError.UserAlreadyLeaderError:
-        raise ClientError('You are already a leader of this nonstop debate.')
-
-    client.send_ooc('You are now a leader of your nonstop debate.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
-                           f'nonstop debate.', pred=lambda c: c in nsd.get_leaders())
-
-
-def ooc_cmd_nsd_leave(client: ClientManager, arg: str):
-    """
-    Makes you leave your current NSD. It will also notify all other remaining trial leaders of
-    your departure.
-    If you were the only member of the NSD, the NSD will be destroyed.
-    Returns an error if you are not part of a trial or an NSD.
-
-    SYNTAX
-    /nsd_leave
-
-    PARAMETERS
-    None
+    <nsd_id>: NSD ID
 
     EXAMPLES
-    /nsd_leave        :: Makes you leave your current nonstop debate.
+    /nsd_join trial0g0      :: You will join NSD trial0g0.
     """
 
-    Constants.assert_command(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
 
     try:
         trial = client.server.trial_manager.get_trial_of_user(client)
@@ -8085,25 +8084,25 @@ def ooc_cmd_nsd_leave(client: ClientManager, arg: str):
         raise ClientError('You are not part of a trial.')
 
     try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-    nid = nsd.get_id()  # Get ID now because NSD may be deleted
-    nonplayers = nsd.get_nonplayer_users_in_areas()  # Get nonplayers now because NSD may be deleted
-    client.send_ooc(f'You have left nonstop debate `{nid}`.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your nonstop debate.',
-                           pred=lambda c: c in nsd.get_leaders())
-    nsd.remove_player(client)
+        nsd = trial.get_minigame_by_id(arg)
+    except TrialError.ManagerInvalidGameIDError:
+        raise ClientError(f'Unrecognized nonstop debate ID `{arg}`.')
 
-    if nsd.is_unmanaged():
-        client.send_ooc(f'Your nonstop debate `{nid}` was automatically '
-                        f'deleted as it lost all its players.')
-        client.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
-                               f'deleted as it lost all its players.',
-                               is_zstaff_flex=True, not_to=nonplayers)
-        client.send_ooc_others('The nonstop debate you were watching was automatically deleted '
-                               'as it lost all its players.',
-                               is_zstaff_flex=False, pred=lambda c: c in nonplayers)
+    try:
+        nsd.add_player(client)
+    except NonStopDebateError.UserNotInAreaError:
+        raise ClientError('You are not part of an area part of this nonstop debate.')
+    except NonStopDebateError.UserHasNoCharacterError:
+        raise ClientError('You must have a character to join this nonstop debate.')
+    except NonStopDebateError.UserHitGameConcurrentLimitError:
+        raise ClientError('You are already part of another nonstop debate.')
+    except NonStopDebateError.UserAlreadyPlayerError:
+        raise ClientError('You are already part of this nonstop debate.')
+
+    client.send_ooc(f'You joined nonstop debate `{arg}`.')
+    client.send_ooc('Become a leader of your nonstop debate with /nsd_lead')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] joined your nonstop debate.',
+                           pred=lambda c: c in nsd.get_leaders())
 
 
 def ooc_cmd_nsd_kick(client: ClientManager.Client, arg: str):
@@ -8151,6 +8150,89 @@ def ooc_cmd_nsd_kick(client: ClientManager.Client, arg: str):
     client.send_ooc_others(f'(X) {client.name} [{client.id}] has kicked {target.displayname} '
                            f'[{target.id}] off your nonstop debate.',
                            pred=lambda c: c != target and c in trial.get_leaders())
+
+
+def ooc_cmd_nsd_lead(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Makes you a leader of your NSD.
+    Returns an error if you are not part of a trial or an NSD, or if you are already leader of
+    the NSD.
+
+    SYNTAX
+    /nsd_lead
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /nsd_lead         :: Makes you leader of the NSD.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+
+    try:
+        nsd.add_leader(client)
+    except NonStopDebateError.UserAlreadyLeaderError:
+        raise ClientError('You are already a leader of this nonstop debate.')
+
+    client.send_ooc('You are now a leader of your nonstop debate.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
+                           f'nonstop debate.', pred=lambda c: c in nsd.get_leaders())
+
+
+def ooc_cmd_nsd_leave(client: ClientManager.Client, arg: str):
+    """
+    Makes you leave your current NSD. It will also notify all other remaining trial leaders of
+    your departure.
+    If you were the only member of the NSD, the NSD will be destroyed.
+    Returns an error if you are not part of a trial or an NSD.
+
+    SYNTAX
+    /nsd_leave
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /nsd_leave        :: Makes you leave your current nonstop debate.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    nid = nsd.get_id()  # Get ID now because NSD may be deleted
+    nonplayers = nsd.get_nonplayer_users_in_areas()  # Get nonplayers now because NSD may be deleted
+    client.send_ooc(f'You have left nonstop debate `{nid}`.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your nonstop debate.',
+                           pred=lambda c: c in nsd.get_leaders())
+    nsd.remove_player(client)
+
+    if nsd.is_unmanaged():
+        client.send_ooc(f'Your nonstop debate `{nid}` was automatically '
+                        f'deleted as it lost all its players.')
+        client.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
+                               f'deleted as it lost all its players.',
+                               is_zstaff_flex=True, not_to=nonplayers)
+        client.send_ooc_others('The nonstop debate you were watching was automatically deleted '
+                               'as it lost all its players.',
+                               is_zstaff_flex=False, pred=lambda c: c in nonplayers)
 
 
 def ooc_cmd_nsd_pause(client: ClientManager.Client, arg: str):
@@ -8411,7 +8493,7 @@ def ooc_cmd_nsd_reject(client: ClientManager.Client, arg: str):
                            pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
 
 
-def ooc_cmd_nsd_unlead(client: ClientManager, arg: str):
+def ooc_cmd_nsd_unlead(client: ClientManager.Client, arg: str):
     """
     Removes your NSD leader role.
     Returns an error if you are not part of a trial or an NSD, or if you are already not leader

@@ -39,6 +39,9 @@ class TrialMinigame(GameWithAreas):
     """
     A trial minigame is a game with areas that is part of a trial. Any players of the minigame
     must be players of the trial, and any areas of the minigame must be areas of the trial.
+    Each of these minigames may also set an autoadd on trial adding player flag. If set, if the
+    parent trial adds a player, they will also be added to the game if possible; if this fails,
+    no action is taken and no errors are propagated.
 
     Attributes
     ----------
@@ -47,9 +50,9 @@ class TrialMinigame(GameWithAreas):
 
     Callback Methods
     ----------------
-    _on_area_client_left
+    _on_area_client_left_final
         Method to perform once a client left an area of the minigame.
-    _on_area_client_entered
+    _on_area_client_entered_final
         Method to perform once a client entered an area of the minigame.
     _on_area_destroyed
         Method to perform once an area of the minigame is marked for destruction.
@@ -76,7 +79,8 @@ class TrialMinigame(GameWithAreas):
     def __init__(self, server, manager, minigame_id, player_limit=None,
                  player_concurrent_limit=None, require_invitations=False, require_players=True,
                  require_leaders=True, require_character=False, team_limit=None, timer_limit=None,
-                 area_concurrent_limit=1, trial=None, playergroup_manager=None):
+                 area_concurrent_limit=1, autoadd_on_client_enter=False,
+                 trial=None, autoadd_on_trial_player_add=False, playergroup_manager=None):
         """
         Create a trial minigame. A trial minigame should not be fully initialized anywhere
         else other than some manager code, as otherwise the manager will not recognize the minigame.
@@ -127,8 +131,16 @@ class TrialMinigame(GameWithAreas):
             that this game does not care about how many other trials managed by
             `manager` each of its areas belongs to. Defaults to 1 (an area may not be a part of
             another trial managed by `manager` while being an area of this trial).
+        autoadd_on_client_enter : bool, optional
+            If True, nonplayer users that enter an area part of the game will be automatically
+            added if permitted by the conditions of the game. If False, no such adding will take
+            place. Defaults to False.
         trial : TrialManager.Trial, optional
             Trial the non-stop debate is a part of.
+        autoadd_on_trial_player_add : bool, optional
+            If True, players that are added to the trial will be automatically added if permitted
+            by the conditions of the game. If False, no such adding will take place. Defaults to
+            False.
         playergroup_manager : PlayerGroupManager, optional
             The internal playergroup manager of the game manager. Access to this value is
             limited exclusively to this __init__, and is only to initialize the internal
@@ -142,6 +154,8 @@ class TrialMinigame(GameWithAreas):
         """
 
         self._trial = trial
+        self._autoadd_on_trial_player_add = autoadd_on_trial_player_add
+
         super().__init__(server, manager, minigame_id, player_limit=player_limit,
                          player_concurrent_limit=player_concurrent_limit,
                          require_invitations=require_invitations,
@@ -150,12 +164,32 @@ class TrialMinigame(GameWithAreas):
                          require_character=require_character,
                          team_limit=team_limit, timer_limit=timer_limit,
                          area_concurrent_limit=area_concurrent_limit,
+                         autoadd_on_client_enter=autoadd_on_client_enter,
                          playergroup_manager=playergroup_manager)
+        self.listener.subscribe(trial)
+
+        self.listener.update_events({
+            'trial_player_added': self._on_trial_player_added,
+            })
+
+    def get_name(self) -> str:
+        """
+        Return the name of the game. Names are fully lowercase.
+        Implementations of the class should replace this with a human readable name of the trial.
+
+        Returns
+        -------
+        str
+            Name of the game.
+
+        """
+
+        return "trial minigame"
 
     def add_player(self, user):
         """
-        Make a user a player of the trial. By default this player will not be a leader. It will
-        also subscribe the game ot the player so it can listen to its updates.
+        Make a user a player of the trial minigame. By default this player will not be a leader.
+        It will also subscribe the game to the player so it can listen to its updates.
 
         Parameters
         ----------
@@ -238,6 +272,36 @@ class TrialMinigame(GameWithAreas):
 
         return self._trial
 
+    def get_autoadd_on_trial_player_add(self):
+        """
+        Return whether the minigame will attempt to add players to it if the parent trial added it
+        as player.
+
+        Returns
+        -------
+        bool.
+            True if an attempt will be made automatically, False otherwise.
+        """
+
+        return self._autoadd_on_trial_player_add
+
+    def set_autoadd_on_trial_player_add(self, new_value: bool):
+        """
+        Set the new value of the autoadd on trial adding a player flag.
+
+        Parameters
+        ----------
+        new_value : bool
+            New value.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        self._autoadd_on_trial_player_add = new_value
+
     def get_type(self) -> TRIALMINIGAMES:
         """
         Return the type of the minigame.
@@ -276,8 +340,8 @@ class TrialMinigame(GameWithAreas):
             for user in area.clients:
                 user.send_gamemode(name='trial')
 
-    def _on_area_client_left(self, area, client=None, new_area=None, old_displayname=None,
-                             ignore_bleeding=False):
+    def _on_area_client_left_final(self, area, client=None, old_displayname=None,
+                                   ignore_bleeding=False):
         """
         If a player left to an area not part of the minigame, remove the player and warn them and
         the leaders of the minigame.
@@ -291,8 +355,6 @@ class TrialMinigame(GameWithAreas):
             Area that signaled a client has left.
         client : ClientManager.Client, optional
             The client that has left. The default is None.
-        new_area : AreaManager.Area
-            The new area the client has gone to. The default is None.
         old_displayname : str, optional
             The old displayed name of the client before they changed area. This will typically
             change only if the client's character or showname are taken. The default is None.
@@ -306,13 +368,14 @@ class TrialMinigame(GameWithAreas):
         """
 
         was_leader = self.is_leader(client) if self.is_player(client) else False
-        if client in self.get_players() and new_area not in self.get_areas():
+        if client in self.get_players() and client.area not in self.get_areas():
             client.send_ooc(f'You have left to an area not part of trial minigame '
                             f'`{self.get_id()}` and thus were automatically removed from the '
                             f'minigame.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to '
                                    f'an area not part of your trial minigame and thus was '
-                                   f'automatically removed from it ({area.id}->{new_area.id}).',
+                                   f'automatically removed from it '
+                                   f'({area.id}->{client.area.id}).',
                                    pred=lambda c: c in self.get_leaders())
 
             self.remove_player(client)
@@ -324,18 +387,18 @@ class TrialMinigame(GameWithAreas):
                                        f'deleted as it lost all its players.',
                                        is_zstaff_flex=True)
 
-        elif new_area not in self.get_areas():
+        elif client.area not in self.get_areas():
             client.send_ooc(f'You have left to an area not part of trial minigame '
                             f'`{self.get_id()}`.')
             client.send_ooc_others(f'(X) Player {old_displayname} [{client.id}] has left to an '
                                    f'area not part of your trial minigame '
-                                   f'({area.id}->{new_area.id}).',
+                                   f'({area.id}->{client.area.id}).',
                                    pred=lambda c: c in self.get_leaders())
 
         self._check_structure()
 
-    def _on_area_client_entered(self, area, client=None, old_area=None, old_displayname=None,
-                                ignore_bleeding=False):
+    def _on_area_client_entered_final(self, area, client=None, old_area=None, old_displayname=None,
+                                      ignore_bleeding=False):
         """
         If a non-player entered, warn them and the leaders of the trial minigame.
 
@@ -365,6 +428,34 @@ class TrialMinigame(GameWithAreas):
                                    f'an area part of your trial minigame '
                                    f'({old_area.id}->{area.id}).',
                                    pred=lambda c: c in self.get_leaders())
+
+    def _on_trial_player_added(self, trial, player=None):
+        """
+        Default callback when the parent trial adds a player.
+        If a player was added to the trial of the minigame, attempt to add the player to the
+        minigame as well. If unsuccessful, do nothing.
+        Do note the player may already be part of the minigame by this point: if another thread
+        was also listening to this callback and acted upon it before the current thread by adding
+        the player to the minigame.
+
+        Parameters
+        ----------
+        trial : TrialManager._Trial
+            Trial that generated the callback. Typically is self._trial
+        player : ClientManager.Client, optional
+            Player that was added to the trial.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if self.get_autoadd_on_trial_player_add():
+            try:
+                self.add_player(player)
+            except GameError:
+                pass
 
     def __str__(self):
         """

@@ -750,7 +750,6 @@ class ClientChangeArea:
                     })
                 area.publisher.publish('area_client_entered', {
                     'client': client,
-                    'old_area': old_area,
                     'old_displayname': old_dname,
                     'ignore_bleeding': ignore_bleeding,
                     })
@@ -802,3 +801,15 @@ class ClientChangeArea:
 
         if area.id not in client.remembered_locked_passages:
             client.remembered_locked_passages[area.id] = set()
+
+        old_area.publisher.publish('area_client_left_final', {
+            'client': client,
+            'old_displayname': old_dname,
+            'ignore_bleeding': ignore_bleeding,
+            })
+        area.publisher.publish('area_client_entered_final', {
+            'client': client,
+            'old_area': old_area,
+            'old_displayname': old_dname,
+            'ignore_bleeding': ignore_bleeding,
+            })
