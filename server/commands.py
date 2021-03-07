@@ -2976,19 +2976,23 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
     /look               :: Returns "Literally a courtroom"
     """
 
-    if not client.is_staff() and client.is_blind:
-        raise ClientError('You are blind, so you cannot see anything.')
-    if not client.is_staff() and not client.area.lights:
-        raise ClientError('The lights are off, so you cannot see anything.')
+    msg = ''
+    if client.is_blind:
+        if not client.is_staff():
+            raise ClientError('You are blind, so you cannot see anything.')
+        msg = '(X) '
+    if not client.area.lights:
+        if not client.is_staff():
+            raise ClientError('The lights are off, so you cannot see anything.')
+        msg = '(X) '
 
     if arg:
         cm = client.server.client_manager
         target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
         if not target.status:
-            client.send_ooc(f'You look at {target.displayname} and find nothing particularly '
-                            f'remarkable.')
+            msg += f'You look at {target.displayname} and find nothing particularly remarkable.'
         else:
-            client.send_ooc(f'You look at {target.displayname} and note this: {target.status}')
+            msg += f'You look at {target.displayname} and note this: {target.status}'
     else:
         if client.area.description == client.server.config['default_area_description']:
             area_description = 'Nothing particularly interesting.'
@@ -3031,10 +3035,12 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
             if not player.is_visible:
                 player_description += ' (S)'
 
-        client.send_ooc(
+        msg += (
             f"""=== Look results for {client.area.name} ===
             *About the people: you see {player_description}
             *About the area: {area_description}""")
+
+    client.send_ooc(msg)
 
 
 def ooc_cmd_look_clean(client: ClientManager.Client, arg: str):
@@ -8555,25 +8561,31 @@ def ooc_cmd_status(client: ClientManager.Client, arg: str):
         $HOST: You note the following about Phantom_HD: 'Phantom is carrying a bag.'
     """
 
-    if not client.is_staff():
-        if client.is_blind:
+    msg = ''
+    if client.is_blind:
+        if not client.is_staff():
             raise ClientError('You are blind, so you cannot see anything.')
-        if not client.area.lights:
+        msg = '(X) '
+    if not client.area.lights:
+        if not client.is_staff():
             raise ClientError('The lights are off, so you cannot see anything.')
+        msg = '(X) '
 
     if arg:
         cm = client.server.client_manager
         target, _, _ = cm.get_target_public(client, arg, only_in_area=not client.is_staff())
 
         if target.status:
-            client.send_ooc(f'You note the following about {target.displayname}: {target.status}')
+            msg += (f'You note the following about {target.displayname}: {target.status}')
         else:
-            client.send_ooc(f'You do not note anything unusual about {target.displayname}.')
+            msg += (f'You do not note anything unusual about {target.displayname}.')
     else:
         if client.status:
-            client.send_ooc(f'You note the following about yourself: {client.status}')
+            msg += (f'You note the following about yourself: {client.status}')
         else:
-            client.send_ooc('You do not note anything unusual about yourself.')
+            msg += ('You do not note anything unusual about yourself.')
+
+    client.send_ooc(msg)
 
 
 def ooc_cmd_status_set(client: ClientManager.Client, arg: str):
