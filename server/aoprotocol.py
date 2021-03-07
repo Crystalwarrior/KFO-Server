@@ -596,11 +596,14 @@ class AOProtocol(asyncio.Protocol):
                 if login + password in msg:
                     msg = msg.replace(password, '[CENSORED]')
 
-        if pargs['evidence']:
+        if pargs['evidence'] and pargs['evidence'] in self.client.evi_list:
             evidence_position = self.client.evi_list[pargs['evidence']] - 1
             if self.client.area.evi_list.evidences[evidence_position].pos != 'all':
                 self.client.area.evi_list.evidences[evidence_position].pos = 'all'
                 self.client.area.broadcast_evidence_list()
+            pargs['evidence'] = self.client.evi_list[pargs['evidence']]
+        else:
+            pargs['evidence'] = 0
 
         # If client has GlobalIC enabled, set area range target to intended range and remove
         # GlobalIC prefix if needed.
@@ -622,7 +625,6 @@ class AOProtocol(asyncio.Protocol):
                                      .format(truncated_msg, start_area.name))
 
         pargs['msg'] = msg
-        pargs['evidence'] = self.client.evi_list[pargs['evidence']]
         pargs['showname'] = ''  # Dummy value, actual showname is computed later
 
         # Compute pairs
