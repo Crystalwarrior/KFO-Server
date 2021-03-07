@@ -1,11 +1,13 @@
 from .structures import _TestSituation4Mc12
 
+
 class _TestSenseBlock(_TestSituation4Mc12):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.c2.move_area(4)
         cls.c3.move_area(4)
+
 
 class _UnittestSenseBlock(_TestSenseBlock):
     def test_01_wrongarguments(self):
@@ -20,7 +22,7 @@ class _UnittestSenseBlock(_TestSenseBlock):
         self.c3.assert_no_ooc()
 
         self.c1.ooc('/{}'.format(self.sense))
-        self.c1.assert_ooc('Expected client ID.', over=True)
+        self.c1.assert_ooc('This command has 1 argument.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -31,8 +33,8 @@ class _UnittestSenseBlock(_TestSenseBlock):
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
-        self.c1.ooc('/{} aa bb'.format(self.sense))
-        self.c1.assert_ooc('`aa bb` does not look like a valid client ID.', over=True)
+        self.c1.ooc('/{} aa'.format(self.sense))
+        self.c1.assert_ooc('`aa` does not look like a valid client ID.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -107,7 +109,7 @@ class _UnittestSenseBlock(_TestSenseBlock):
         self.c3.assert_no_ooc()
 
         self.c1.ooc('/{}'.format(self.sense))
-        self.c1.assert_ooc('Expected client ID.', over=True)
+        self.c1.assert_ooc('This command has 1 argument.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
@@ -118,8 +120,8 @@ class _UnittestSenseBlock(_TestSenseBlock):
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
 
-        self.c1.ooc('/{} aa bb'.format(self.sense))
-        self.c1.assert_ooc('`aa bb` does not look like a valid client ID.', over=True)
+        self.c1.ooc('/{} aa'.format(self.sense))
+        self.c1.assert_ooc('`aa` does not look like a valid client ID.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()

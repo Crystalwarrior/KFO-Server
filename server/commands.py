@@ -561,7 +561,7 @@ def ooc_cmd_blind(client: ClientManager.Client, arg: str):
     /blind 1            :: Unblinds client 1
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
     target = Constants.parse_id(client, arg)
 
     status = {False: 'unblinded', True: 'blinded'}
@@ -1610,7 +1610,7 @@ def ooc_cmd_deafen(client: ClientManager.Client, arg: str):
     /deafen 1            :: Undeafens client 1
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
     target = Constants.parse_id(client, arg)
 
     status = {False: 'undeafened', True: 'deafened'}
@@ -1986,7 +1986,7 @@ def ooc_cmd_gag(client: ClientManager.Client, arg: str):
     /gag 1            :: Ungags client 1
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
     target = Constants.parse_id(client, arg)
 
     status = {False: 'ungagged', True: 'gagged'}
