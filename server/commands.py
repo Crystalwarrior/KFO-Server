@@ -568,7 +568,8 @@ def ooc_cmd_blind(client: ClientManager.Client, arg: str):
     new_blind = not target.is_blind
 
     if client != target:
-        client.send_ooc('You have {} {}.'.format(status[new_blind], target.displayname))
+        client.send_ooc('You have {} {} [{}].'
+                        .format(status[new_blind], target.displayname, target.id))
         target.send_ooc('You have been {}.'.format(status[new_blind]))
         target.send_ooc_others('(X) {} [{}] has {} {} [{}] ({}).'
                                .format(client.displayname, client.id, status[new_blind],
@@ -651,8 +652,9 @@ def ooc_cmd_bloodtrail(client: ClientManager.Client, arg: str):
         connector = '(X) '
 
     if target != client:
-        client.send_ooc('{}You made {} {} bleeding.'
-                        .format(connector, target.displayname, status2[target.is_bleeding]))
+        client.send_ooc('{}You made {} [{}] {} bleeding.'
+                        .format(connector, target.displayname, target.id,
+                                status2[target.is_bleeding]))
         target.send_ooc_others('(X) {} [{}] made {} {} bleeding ({}).'
                                .format(client.displayname, client.id, target.displayname,
                                        status2[target.is_bleeding], target.area.id),
@@ -1617,7 +1619,8 @@ def ooc_cmd_deafen(client: ClientManager.Client, arg: str):
     new_deaf = not target.is_deaf
 
     if client != target:
-        client.send_ooc('You have {} {}.'.format(status[new_deaf], target.displayname))
+        client.send_ooc('You have {} {} [{}].'
+                        .format(status[new_deaf], target.displayname, target.id))
         target.send_ooc('You have been {}.'.format(status[new_deaf]))
         target.send_ooc_others('(X) {} [{}] has {} {} [{}] ({}).'
                                .format(client.displayname, client.id, status[new_deaf],
@@ -1993,7 +1996,8 @@ def ooc_cmd_gag(client: ClientManager.Client, arg: str):
     new_gagged = not target.is_gagged
 
     if client != target:
-        client.send_ooc('You have {} {}.'.format(status[new_gagged], target.displayname))
+        client.send_ooc('You have {} {} [{}].'
+                        .format(status[new_gagged], target.displayname, target.id))
         target.send_ooc('You have been {}.'.format(status[new_gagged]))
         target.send_ooc_others('(X) {} [{}] has {} {} [{}] ({}).'
                                .format(client.displayname, client.id, status[new_gagged],

@@ -54,7 +54,7 @@ class TestDeafen_02_Effect(_TestSenseBlock):
         """
 
         self.c1.ooc('/deafen {}'.format(0))
-        self.c1.assert_ooc('You have deafened {}.'.format(self.c0_dname), over=True)
+        self.c1.assert_ooc('You have deafened {} [{}].'.format(self.c0_dname, 0), over=True)
         self.c0.assert_ooc('You have been deafened.', ooc_over=True)
         self.c2.assert_ooc('(X) {} [{}] has deafened {} [{}] ({}).'
                            .format(self.c1.displayname, 1, self.c0_dname, 0, 0), over=True)
