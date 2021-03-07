@@ -18,6 +18,7 @@
 
 import asyncio
 import random
+import re
 
 from time import localtime, strftime
 
@@ -68,6 +69,7 @@ class AOProtocol(asyncio.Protocol):
         buf = data
         if buf is None:
             buf = b''
+
         # try to decode as utf-8, ignore any erroneous characters
         self.buffer += buf.decode('utf-8', 'ignore')
         self.buffer = self.buffer.translate({ord(c): None for c in '\0'})
@@ -268,8 +270,14 @@ class AOProtocol(asyncio.Protocol):
                 # Such versions include DRO and AO
                 release = int(version_list[0])
                 major = int(version_list[1])
-                minor = int(version_list[2])
-
+                # Strip out any extra identifiers (like -b1) from minor
+                match = re.match(r'(?P<minor>\d+)(?P<rest>.*)', version_list[2])
+                if match:
+                    minor = int(match['minor'])
+                    rest = match['rest']
+                else:
+                    minor = 0
+                    rest = version_list[2]
                 if args[0] not in ['DRO', 'AO2']:
                     return False
             else:
@@ -279,8 +287,14 @@ class AOProtocol(asyncio.Protocol):
                     release = 'CC'
                     major = float(raw_version.split(' ')[-1])
                     minor = 0
+                    rest = ''
                 else:
                     return False
+
+            # While we grab rest for the sake of the future-proofing, right now it is not used.
+            # I added this useless if so my IDE wouldn't complain of an unused variable.
+            if rest:
+                pass
 
             if software == 'DRO':
                 self.client.packet_handler = clients.ClientDRO1d0d0
@@ -347,7 +361,6 @@ class AOProtocol(asyncio.Protocol):
 
         pargs = self.process_arguments('askchaa', args, needs_auth=False)
         self.client.publish_inbound_command('askchaa', pargs)
-
         # Check if client is ready to actually join, and did not do weird packet shenanigans before
         if self.client.can_join != 2:
             return
