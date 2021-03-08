@@ -114,7 +114,7 @@ def main():
     finally:
         try:
             input("Press Enter to exit. ")
-        except Exception:
+        except (Exception, KeyboardInterrupt):
             # Only errors that could realistically happen are just a bunch of Ctrl+C/Z leaking
             # in the input message and those being sent. We don't really care what happens now,
             # everything has shut down by this point.
