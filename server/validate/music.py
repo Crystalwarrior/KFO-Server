@@ -20,6 +20,7 @@ import sys
 if r'../..' not in sys.path:
     sys.path.append(r'../..')
 
+from server.constants import Constants
 from server.exceptions import ServerError
 from server.validate_assets import Validate
 
@@ -100,6 +101,13 @@ class ValidateMusic(Validate):
                            f'{name} in category {i}: {category} had non-numerical length {length}.')
                     raise ServerError.FileSyntaxError(msg)
 
+                # Prevent names that may be interpreted as a directory with . or ..
+                # This prevents sending the client an entry to their music list which may be read as
+                # including a relative directory
+                if Constants.includes_relative_directories(name):
+                    info = (f'Music {name} could be interpreted as referencing current or '
+                            f'parent directories, so it is invalid.')
+                    raise ServerError.FileSyntaxError(info)
         return contents
 
 

@@ -659,6 +659,8 @@ class AreaManager:
 
             Raises
             ------
+            ServerError.FileInvalidNameError:
+                If `name` references parent or current directories (e.g. "../hi.mp3")
             ServerError.MusicNotFoundError:
                 If `name` is not a music track in the server or client's music list and
                 `raise_if_not_found` is True.
@@ -666,6 +668,9 @@ class AreaManager:
 
             if not pargs:
                 pargs = dict()
+            if Constants.includes_relative_directories(name):
+                info = f'Music names may not reference parent or current directories: {name}'
+                raise ServerError.FileInvalidNameError(info)
 
             try:
                 name, length = self.server.get_song_data(name, c=client)

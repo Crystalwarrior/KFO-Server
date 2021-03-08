@@ -82,10 +82,19 @@ class ValidateAreas(Validate):
 
             for name in reserved_names:
                 if item['area'] == name:
-                    info = ('An area in your area list is called "{name}. This is a reserved name, '
-                            'thus it is not a valid area name. Please change its name and try '
+                    info = ('An area in your area list is called "{name}". This is a reserved '
+                            'name, so it is not a valid area name. Please change its name and try '
                             'again.')
                     raise AreaError(info)
+
+            # Prevent names that may be interpreted as a directory with . or ..
+            # This prevents sending the client an entry to their music list which may be read as
+            # including a relative directory
+            if Constants.includes_relative_directories(item['area']):
+                info = (f'Area {item["area"]} could be interpreted as referencing the current or '
+                        f'parent directories, so it is invalid. Please rename the area and try '
+                        f'again.')
+                raise AreaError(info)
 
             # Check unset optional parameters
             for param in default_area_parameters:

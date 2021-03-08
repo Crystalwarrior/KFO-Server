@@ -516,6 +516,10 @@ class AOProtocol(asyncio.Protocol):
             return
         if pargs['char_id'] != self.client.char_id:
             return
+        if Constants.includes_relative_directories(pargs['sfx']):
+            self.client.send_ooc(f'Sound effects and voicelines may not not reference parent or '
+                                 f'current directories: {pargs["sfx"]}')
+            return
         if pargs['sfx_delay'] < 0:
             return
         if pargs['button'] not in (0, 1, 2, 3, 4, 5, 6, 7, 8):  # Shouts

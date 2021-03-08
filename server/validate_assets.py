@@ -74,7 +74,7 @@ class Validate():
 
         """
 
-        with Constants.fopen(file_name, disallow_parent_folder=False, mode='r',
+        with Constants.fopen(file_name, disallow_parent_folder=True, mode='r',
                              encoding='utf-8') as file:
             contents = Constants.yaml_load(file)
 
