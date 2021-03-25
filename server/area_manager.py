@@ -616,10 +616,15 @@ class AreaManager:
             ServerError.MusicNotFoundError:
                 If `name` is not a music track in the server or client's music list and
                 `raise_if_not_found` is True.
+            ServerError (with code 'FileInvalidName')
+                If `name` references parent or current directories (e.g. "../hi.mp3")
             """
 
             if not pargs:
                 pargs = dict()
+            if False: # Constants.includes_relative_directories(name):
+                info = f'Music names may not reference parent or current directories: {name}'
+                raise ServerError(info, code='FileInvalidName')
 
             try:
                 name, length = self.server.get_song_data(name, c=client)
@@ -945,6 +950,15 @@ class AreaManager:
             for param in def_param:
                 if param not in item:
                     item[param] = def_param[param]
+
+            # Prevent names that may be interpreted as a directory with . or ..
+            # This prevents sending the client an entry to their music list which may be read as
+            # including a relative directory
+            if False: # Constants.includes_relative_directories(item['area']):
+                info = (f'Area {item["area"]} could be interpreted as referencing the current or '
+                        f'parent directories, so it is invalid. Please rename the area and try '
+                        f'again.')
+                raise AreaError(info)
 
             # Check use of backwards incompatible parameters
             if 'sound_proof' in item:

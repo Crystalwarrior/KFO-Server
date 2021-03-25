@@ -47,8 +47,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 5
-        self.segment_version = 'post8'
-        self.internal_version = '210213c'
+        self.segment_version = 'post9'
+        self.internal_version = '210325a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -410,10 +410,10 @@ class TsuserverDR:
             continue # Not really needed, but made explicit
 
     def load_ids(self):
-        self.ipid_list = {}
-        self.hdid_list = {}
+        self.ipid_list = dict()
+        self.hdid_list = dict()
 
-        #load ipids
+        # load ipids
         try:
             with Constants.fopen('storage/ip_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.ipid_list = json.load(whole_list)
@@ -421,7 +421,7 @@ class TsuserverDR:
             if exc.code != 'FileNotFound':
                 raise exc
             with Constants.fopen('storage/ip_ids.json', 'w', encoding='utf-8') as whole_list:
-                json.dump(list(), whole_list)
+                json.dump(dict(), whole_list)
             message = 'WARNING: File not found: storage/ip_ids.json. Creating a new one...'
             logger.log_pdebug(message)
         except Exception as ex:
@@ -430,7 +430,16 @@ class TsuserverDR:
 
             logger.log_pdebug(message)
 
-        #load hdids
+        # If the IPID list is not a dict, fix the file
+        # Why on earth is it called an IPID list if it is a Python dict is beyond me.
+        if not isinstance(self.ipid_list, dict):
+            message = (f'WARNING: File storage/ip_ids.json had a structure of the wrong type: '
+                       f'{self.ipid_list}. Replacing it with a proper type.')
+            logger.log_pdebug(message)
+            self.ipid_list = dict()
+            self.dump_ipids()
+
+        # load hdids
         try:
             with Constants.fopen('storage/hd_ids.json', 'r', encoding='utf-8') as whole_list:
                 self.hdid_list = json.load(whole_list)
@@ -438,7 +447,7 @@ class TsuserverDR:
             if exc.code != 'FileNotFound':
                 raise exc
             with Constants.fopen('storage/hd_ids.json', 'w', encoding='utf-8') as whole_list:
-                json.dump(list(), whole_list)
+                json.dump(dict(), whole_list)
             message = 'WARNING: File not found: storage/hd_ids.json. Creating a new one...'
             logger.log_pdebug(message)
         except Exception as ex:
@@ -446,6 +455,15 @@ class TsuserverDR:
             message += '{}: {}'.format(type(ex).__name__, ex)
 
             logger.log_pdebug(message)
+
+        # If the HDID list is not a dict, fix the file
+        # Why on earth is it called an HDID list if it is a Python dict is beyond me.
+        if not isinstance(self.hdid_list, dict):
+            message = (f'WARNING: File storage/hd_ids.json had a structure of the wrong type: '
+                       f'{self.hdid_list}. Replacing it with a proper type.')
+            logger.log_pdebug(message)
+            self.hdid_list = dict()
+            self.dump_hdids()
 
     def load_iniswaps(self):
         try:
@@ -605,6 +623,13 @@ class TsuserverDR:
                         msg = ("The music list expected a numerical length for track '{}', but "
                                "found it had length '{}'.").format(song['name'], song['length'])
                         raise ServerError.MusicInvalidError(msg)
+                    # Prevent names that may be interpreted as a directory with . or ..
+                    # This prevents sending the client an entry to their music list which may be
+                    # read as including a relative directory
+                    if False: # Constants.includes_relative_directories(name):
+                        info = (f'Music {name} could be interpreted as referencing current or '
+                                f'parent directories, so it is invalid.')
+                        raise ServerError(info, code='FileInvalidName')
 
                     prepared_music_list.append(name)
 

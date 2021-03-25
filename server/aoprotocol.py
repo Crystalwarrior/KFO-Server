@@ -239,7 +239,14 @@ class AOProtocol(asyncio.Protocol):
                 # Such versions include DRO and AO
                 release = int(version_list[0])
                 major = int(version_list[1])
-                minor = int(version_list[2])
+                # Strip out any extra identifiers (like -b1) from minor
+                match = re.match(r'(?P<minor>\d+)(?P<rest>.*)', version_list[2])
+                if match:
+                    minor = int(match['minor'])
+                    rest = match['rest']
+                else:
+                    minor = 0
+                    rest = version_list[2]
 
                 if args[0] not in ['DRO', 'AO2']:
                     return False
@@ -252,6 +259,11 @@ class AOProtocol(asyncio.Protocol):
                     minor = 0
                 else:
                     return False
+
+            # While we grab rest for the sake of the future-proofing, right now it is not used.
+            # I added this useless if so my IDE wouldn't complain of an unused variable.
+            if rest:
+                pass
 
             if software == 'DRO':
                 self.client.packet_handler = Clients.ClientDRO1d0d0
@@ -463,6 +475,9 @@ class AOProtocol(asyncio.Protocol):
             return
         if pargs['cid'] != self.client.char_id:
             return
+        if False: #Constants.includes_relative_directories(pargs['sfx']):
+            self.client.send_ooc(f'Sound effects and voicelines may not not reference parent or '
+                                 f'current directories: {pargs["sfx"]}')
         if pargs['sfx_delay'] < 0:
             return
         if pargs['button'] not in (0, 1, 2, 3, 4, 5, 6, 7): # Shouts
@@ -474,18 +489,10 @@ class AOProtocol(asyncio.Protocol):
             return
         if pargs['ding'] not in (0, 1, 2, 3, 4, 5, 6, 7): # Effects
             return
-        if pargs['color'] not in (0, 1, 2, 3, 4, 5, 6):
+        if pargs['color'] not in (0, 1, 2, 3, 4, 5, 6, 7, 8):
             return
         if pargs['color'] == 5 and not self.client.is_mod and not self.client.is_cm:
             pargs['color'] = 0
-        if pargs['color'] == 6:
-            # Remove all unicode to prevent now yellow text abuse
-            pargs['text'] = re.sub(r'[^\x00-\x7F]+', ' ', pargs['text'])
-            if len(pargs['text'].strip(' ')) == 1:
-                pargs['color'] = 0
-            else:
-                if pargs['text'].strip(' ') in ('<num>', '<percent>', '<dollar>', '<and>'):
-                    pargs['color'] = 0
         if self.client.pos:
             pargs['pos'] = self.client.pos
         else:
@@ -529,11 +536,14 @@ class AOProtocol(asyncio.Protocol):
                 if login + password in msg:
                     msg = msg.replace(password, '[CENSORED]')
 
-        if pargs['evidence']:
+        if pargs['evidence'] and pargs['evidence'] in self.client.evi_list:
             evidence_position = self.client.evi_list[pargs['evidence']] - 1
             if self.client.area.evi_list.evidences[evidence_position].pos != 'all':
                 self.client.area.evi_list.evidences[evidence_position].pos = 'all'
                 self.client.area.broadcast_evidence_list()
+            pargs['evidence'] = self.client.evi_list[pargs['evidence']]
+        else:
+            pargs['evidence'] = 0
 
         # If client has GlobalIC enabled, set area range target to intended range and remove
         # GlobalIC prefix if needed.
@@ -555,7 +565,6 @@ class AOProtocol(asyncio.Protocol):
                                      .format(truncated_msg, start_area.name))
 
         pargs['msg'] = msg
-        pargs['evidence'] = self.client.evi_list[pargs['evidence']]
         pargs['showname'] = '' # Dummy value, actual showname is computed later
 
         # Compute pairs
@@ -785,7 +794,7 @@ class AOProtocol(asyncio.Protocol):
             return
         if not self.validate_net_cmd(args, ArgType.STR):
             return
-        if args[0] not in ('testimony1', 'testimony2', 'testimony3', 'testimony4'):
+        if not args[0].startswith('testimony'):
             return
         self.client.area.send_command('RT', args[0])
         self.client.area.add_to_judgelog(self.client, 'used judge button {}.'.format(args[0]))
@@ -892,6 +901,17 @@ class AOProtocol(asyncio.Protocol):
         # but not code is run.
         pass
 
+    def net_cmd_sp(self, args):
+        """
+        Set position packet.
+        """
+
+        if len(args) < 1:
+            return
+
+        self.client.change_position(args[0])
+        self.client.send_ooc('Position changed.')
+
     def net_cmd_opKICK(self, args):
         self.net_cmd_ct(['opkick', '/kick {}'.format(args[0])])
 
@@ -922,6 +942,7 @@ class AOProtocol(asyncio.Protocol):
         'ZZ': net_cmd_zz,  # call mod button
         'RE': net_cmd_re,  # ??? (Unsupported)
         'PW': net_cmd_pw,  # character password (only on CC/KFO clients)
+        'SP': net_cmd_sp,  # set position
         'opKICK': net_cmd_opKICK,  # /kick with guard on
         'opBAN': net_cmd_opBAN,  # /ban with guard on
     }

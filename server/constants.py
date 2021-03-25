@@ -556,23 +556,9 @@ class FileValidity:
 class Constants():
     @staticmethod
     def fopen(file_name, *args, disallow_parent_folder: bool = True, **kwargs):
-        if disallow_parent_folder:
-            folders = []
-            path = file_name
-            while True:
-                # Based from https://stackoverflow.com/a/3167684
-                path, folder = os.path.split(path)
-
-                if folder:
-                    folders.append(folder)
-                    continue
-                if path:
-                    folders.append(path)
-                break
-
-            if '.' in folders or '..' in folders:
-                info = f'File names may not reference parent or current directories: {file_name}'
-                raise ServerError(info, code='FileInvalidName')
+        if disallow_parent_folder and Constants.includes_relative_directories(file_name):
+            info = f'File names may not reference parent or current directories: {file_name}'
+            raise ServerError(info, code='FileInvalidName')
 
         # # We do this manually to prevent accepting filenames like
         # *`con.yaml`, which are reserved in Windows and cause a loop if a naive load is attempted.
@@ -589,6 +575,22 @@ class Constants():
             raise ServerError(info, code="FileNotFound")
         except OSError as ex:
             raise ServerError(str(ex), code="OSError")
+
+    @staticmethod
+    def includes_relative_directories(path):
+        path = str(path)
+        folders = []
+        while True:
+            # Based from https://stackoverflow.com/a/3167684
+            path, folder = os.path.split(path)
+
+            if folder:
+                folders.append(folder)
+                continue
+            if path:
+                folders.append(path)
+            break
+        return ('.' in folders or '..' in folders)
 
     @staticmethod
     def yaml_load(file):
