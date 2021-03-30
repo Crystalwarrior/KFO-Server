@@ -540,7 +540,9 @@ class AOProtocol(asyncio.Protocol):
         else:
             if pargs['pos'] not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
-
+        # AO 2.7-2.8.5 issue
+        if 'frame_sfx' in pargs and pargs['frame_sfx'] < 0:
+            return
         # Make sure the areas are ok with this
         try:
             self.client.area.publisher.publish('area_client_inbound_ms_check', {
