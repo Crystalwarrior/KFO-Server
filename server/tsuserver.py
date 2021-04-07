@@ -64,8 +64,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b144'
-        self.internal_version = 'M210406a'
+        self.segment_version = 'b145'
+        self.internal_version = 'M210406b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -753,6 +753,8 @@ class TsuserverDR:
         current_time = Constants.get_time()
         file, line_num, module, func = tb[-1]
         file = file[file.rfind('\\')+1:]  # Remove unnecessary directories
+        version = self.version
+        info += '\r\n*Server version: {}'.format(version)
         info += '\r\n*Server time: {}'.format(current_time)
         info += '\r\n*Packet details: {} {}'.format(cmd, args)
         info += '\r\n*Client status: {}'.format(client)
