@@ -64,8 +64,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b143'
-        self.internal_version = 'M210330a'
+        self.segment_version = 'b144'
+        self.internal_version = 'M210406a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -370,7 +370,7 @@ class TsuserverDR:
             'gmpass7',
             ]
 
-        self.all_passwords = [self.config[password] for password in passwords]
+        self.all_passwords = [self.config[password] for password in passwords if self.config[password]]
 
         # Default values to fill in config.yaml if not present
         defaults_for_tags = {
