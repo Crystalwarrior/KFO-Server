@@ -140,6 +140,8 @@ class ValidateConfig(Validate):
             }
 
         for (field_name, field_type) in expected_types.items():
+            if field_name not in contents:
+                continue
             if not isinstance(contents[field_name], field_type):
                 msg = (f'Expected field "{field_name}" to be of type {field_type.__name__}, '
                        f'found it was a {type(contents[field_name]).__name__}.')
