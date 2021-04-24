@@ -162,7 +162,7 @@ class DefaultAO2Protocol(Enum):
         ]
 
     MS_OUTBOUND = [
-        ('msg_type', 0),  # 0
+        ('msg_type', 1),  # 0
         ('pre', '-'),  # 1
         ('folder', '<NOCHAR>'),  # 2
         ('anim', '../../misc/blank'),  # 3
@@ -297,7 +297,7 @@ class ClientDROLegacy(Enum):
         ]
 
     MS_OUTBOUND = [
-        ('msg_type', 0),  # 0
+        ('msg_type', 1),  # 0
         ('pre', '-'),  # 1
         ('folder', '<NOCHAR>'),  # 2
         ('anim', '../../misc/blank'),  # 3
@@ -354,7 +354,7 @@ class ClientAO2d6(Enum):
         ]
 
     MS_OUTBOUND = [
-        ('msg_type', 0),  # 0
+        ('msg_type', 1),  # 0
         ('pre', '-'),  # 1
         ('folder', '<NOCHAR>'),  # 2
         ('anim', '../../misc/blank'),  # 3
@@ -425,7 +425,7 @@ class ClientAO2d7(Enum):
         ]
 
     MS_OUTBOUND = [
-        ('msg_type', 0),  # 0
+        ('msg_type', 1),  # 0
         ('pre', '-'),  # 1
         ('folder', '<NOCHAR>'),  # 2
         ('anim', '../../misc/blank'),  # 3
@@ -507,7 +507,7 @@ class ClientAO2d8d4(Enum):
         ]
 
     MS_OUTBOUND = [
-        ('msg_type', 0),  # 0
+        ('msg_type', 1),  # 0
         ('pre', '-'),  # 1
         ('folder', '<NOCHAR>'),  # 2
         ('anim', '../../misc/blank'),  # 3
@@ -616,7 +616,7 @@ class ClientAO2d9d0(Enum):
         ]
 
     MS_OUTBOUND = [
-        ('msg_type', 0),  # 0
+        ('msg_type', 1),  # 0
         ('pre', '-'),  # 1
         ('folder', '<NOCHAR>'),  # 2
         ('anim', '../../misc/blank'),  # 3

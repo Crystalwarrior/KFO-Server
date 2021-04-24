@@ -588,6 +588,7 @@
 * Made /blind, /deafen, /gag, /bloodtrail echo the ID of the affected target as part of output message
 * GMs are no longer subject to the server music flood guard
 * Added /randommusic, which plays a randomly chosen track from the player's current music list
+* Server initiated messages will now attempt to include desks wherever possible
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
