@@ -212,6 +212,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Positions: 'def', 'pro', 'hld', 'hlp', 'jud', 'wit'
 * **randomchar**
     - Changes your character to a randomly chosen one.
+* **randommusic**
+    - Plays a randomly chosen song from your current music list.
 * **reload**
     - Reloads your character ini file.
 * **roll** "number of dice"d"number of faces" "modifiers"

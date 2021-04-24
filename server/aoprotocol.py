@@ -854,7 +854,7 @@ class AOProtocol(asyncio.Protocol):
             delay = self.client.change_music_cd()
             if delay:
                 self.client.send_ooc(f'You changed song too many times recently. Please try again '
-                                     f'after {Constants.time_format(delay)}')
+                                     f'after {Constants.time_format(delay)}.')
                 return
 
             try:
