@@ -850,9 +850,11 @@ class AOProtocol(asyncio.Protocol):
 
             if int(pargs['char_id']) != self.client.char_id:
                 return
-            if self.client.change_music_cd():
-                self.client.send_ooc('You changed song too many times recently. Please try again '
-                                     'after {} seconds.'.format(int(self.client.change_music_cd())))
+
+            delay = self.client.change_music_cd()
+            if delay:
+                self.client.send_ooc(f'You changed song too many times recently. Please try again '
+                                     f'after {Constants.time_format(delay)}')
                 return
 
             try:

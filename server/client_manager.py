@@ -132,12 +132,11 @@ class ClientManager:
             # necessarily equivalent to self.get_char_name()
 
             # music flood-guard stuff
-            self.mus_counter = 0
             self.mute_time = 0
             self.mflood_interval = self.server.config['music_change_floodguard']['interval_length']
             self.mflood_times = self.server.config['music_change_floodguard']['times_per_interval']
             self.mflood_mutelength = self.server.config['music_change_floodguard']['mute_length']
-            self.mus_change_time = [x * self.mflood_interval for x in range(self.mflood_times)]
+            self.mflood_log = list()
 
         def send_raw_message(self, msg: str):
             # Only send messages to players that are.. players who are still connected
@@ -737,18 +736,37 @@ class ClientManager:
         def change_music_cd(self) -> int:
             if self.is_officer():
                 return 0
+
+            now = time.time()
+            # If we have not played too many tracks recently, return immediately (after recording)
+            if len(self.mflood_log) < self.mflood_times:
+                self.mflood_log.append(now)
+                return 0
+
+            # Otherwise, check if we have changed music too many times.
+            earliest = self.mflood_log[0]
+            if (now - earliest) < self.mflood_interval:
+                # We have flooded the period. Set a mute
+                if not self.mute_time:
+                    self.mute_time = now
+                    return self.mflood_mutelength
+
+            # Check if serving a mute.
             if self.mute_time:
-                if time.time() - self.mute_time < self.mflood_mutelength:
-                    return self.mflood_mutelength - (time.time() - self.mute_time)
+                mute_wait_time = self.mflood_mutelength - (now - self.mute_time)
+                if mute_wait_time > 0:
+                    return mute_wait_time
+
+            # Otherwise, we haven't changed music too many times nor serving a mute.
+            # 1. If we were previously muted, clear mflood_log
+            # 2. Otherwise, only pop first entry
+            # In either case, add now time afterwards
+            if self.mute_time:
                 self.mute_time = 0
-
-            index = (self.mus_counter - self.mflood_times + 1) % self.mflood_times
-            if time.time() - self.mus_change_time[index] < self.mflood_interval:
-                self.mute_time = time.time()
-                return self.mflood_mutelength
-
-            self.mus_counter = (self.mus_counter + 1) % self.mflood_times
-            self.mus_change_time[self.mus_counter] = time.time()
+                self.mflood_log.clear()
+            else:
+                self.mflood_log.pop(0)
+            self.mflood_log.append(now)
             return 0
 
         def reload_character(self):
