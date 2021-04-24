@@ -16,6 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+import typing
+from typing import List
+if typing.TYPE_CHECKING:
+    # Avoid circular referencing
+    from server.tsuserver import TsuserverDR
+
 import asyncio
 import random
 import re
@@ -29,13 +36,12 @@ from server.exceptions import AreaError, ClientError, ServerError, PartyError, T
 from server.fantacrypt import fanta_decrypt
 # from server.evidence import EvidenceList
 
-
 class AOProtocol(asyncio.Protocol):
     """
     The main class that deals with the AO protocol.
     """
 
-    def __init__(self, server):
+    def __init__(self, server: TsuserverDR):
         super().__init__()
         self.server = server
         self.client = None
@@ -199,7 +205,7 @@ class AOProtocol(asyncio.Protocol):
             return dict(zip(expected_argument_names, args))
         raise AOProtocolError.InvalidInboundPacketArguments
 
-    def net_cmd_hi(self, args):
+    def net_cmd_hi(self, args: List[str]):
         """ Handshake.
 
         HI#<hdid:string>#%
@@ -242,7 +248,7 @@ class AOProtocol(asyncio.Protocol):
             })
         self.client.can_join += 1  # One of two conditions to allow joining
 
-    def net_cmd_id(self, args):
+    def net_cmd_id(self, args: List[str]):
         """ Client version
 
         ID#<software:string>#<version:string>#%
@@ -339,7 +345,7 @@ class AOProtocol(asyncio.Protocol):
                             'ackMS', ]
             })
 
-    def net_cmd_ch(self, args):
+    def net_cmd_ch(self, args: List[str]):
         """ Periodically checks the connection.
 
         CHECK#<char_id:int>%
@@ -354,7 +360,7 @@ class AOProtocol(asyncio.Protocol):
         self.ping_timeout = asyncio.get_event_loop().call_later(self.server.config['timeout'],
                                                                 self.client.disconnect)
 
-    def net_cmd_askchaa(self, args):
+    def net_cmd_askchaa(self, args: List[str]):
         """ Ask for the counts of characters/evidence/music
 
         askchaa#%
@@ -384,7 +390,7 @@ class AOProtocol(asyncio.Protocol):
             'music_list_count': music_cnt+area_cnt,
             })
 
-    def net_cmd_ae(self, args):
+    def net_cmd_ae(self, args: List[str]):
         """ Asks for specific pages of the evidence list.
 
         AE#<page:int>#%
@@ -395,7 +401,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.publish_inbound_command('AE', pargs)
         # TODO evidence maybe later
 
-    def net_cmd_rc(self, args):
+    def net_cmd_rc(self, args: List[str]):
         """ Asks for the whole character list(AO2)
 
         AC#%
@@ -408,7 +414,7 @@ class AOProtocol(asyncio.Protocol):
             'chars_ao2_list': self.server.char_list,
             })
 
-    def net_cmd_rm(self, args):
+    def net_cmd_rm(self, args: List[str]):
         """ Asks for the whole music list(AO2)
 
         AM#%
@@ -426,7 +432,7 @@ class AOProtocol(asyncio.Protocol):
             'music_ao2_list': full_music_list,
             })
 
-    def net_cmd_rd(self, args):
+    def net_cmd_rd(self, args: List[str]):
         """ Asks for server metadata(charscheck, motd etc.) and a DONE#% signal(also best packet)
 
         RD#%
@@ -446,7 +452,7 @@ class AOProtocol(asyncio.Protocol):
         # so that it only includes areas reachable from that default area.
         self.client.can_askchaa = True  # Allow rejoining if left to lobby but did not dc.
 
-    def net_cmd_cc(self, args):
+    def net_cmd_cc(self, args: List[str]):
         """ Character selection.
 
         CC#<client_id:int>#<char_id:int>#<client_hdid:string>#%
@@ -468,7 +474,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_command_dict('GM', {'name': ''})
             self.client.send_command_dict('TOD', {'name': ''})
 
-    def net_cmd_ms(self, args):
+    def net_cmd_ms(self, args: List[str]):
         """ IC message.
 
         Refer to the implementation for details.
@@ -733,7 +739,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.last_ic_message = msg
         self.client.last_active = Constants.get_time()
 
-    def net_cmd_ct(self, args):
+    def net_cmd_ct(self, args: List[str]):
         """ OOC Message
 
         CT#<name:string>#<message:string>#%
@@ -814,7 +820,7 @@ class AOProtocol(asyncio.Protocol):
                                       self.client.name, message), self.client)
         self.client.last_active = Constants.get_time()
 
-    def net_cmd_mc(self, args):
+    def net_cmd_mc(self, args: List[str]):
         """ Play music.
 
         MC#<song_name:int>#<char_id:int>#%
@@ -861,7 +867,7 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.last_active = Constants.get_time()
 
-    def net_cmd_rt(self, args):
+    def net_cmd_rt(self, args: List[str]):
         """ Plays the Testimony/CE animation.
 
         RT#<type:string>#%
@@ -888,7 +894,7 @@ class AOProtocol(asyncio.Protocol):
                           self.client)
         self.client.last_active = Constants.get_time()
 
-    def net_cmd_hp(self, args):
+    def net_cmd_hp(self, args: List[str]):
         """ Sets the penalty bar.
 
         HP#<type:int>#<new_value:int>#%
@@ -914,7 +920,7 @@ class AOProtocol(asyncio.Protocol):
             pass
         self.client.last_active = Constants.get_time()
 
-    def net_cmd_pe(self, args):
+    def net_cmd_pe(self, args: List[str]):
         """ Adds a piece of evidence.
 
         PE#<name: string>#<description: string>#<image: string>#%
@@ -932,7 +938,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.broadcast_evidence_list()
         self.client.last_active = Constants.get_time()
 
-    def net_cmd_de(self, args):
+    def net_cmd_de(self, args: List[str]):
         """ Deletes a piece of evidence.
 
         DE#<id: int>#%
@@ -947,7 +953,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.broadcast_evidence_list()
         self.client.last_active = Constants.get_time()
 
-    def net_cmd_ee(self, args):
+    def net_cmd_ee(self, args: List[str]):
         """ Edits a piece of evidence.
 
         EE#<id: int>#<name: string>#<description: string>#<image: string>#%
@@ -964,7 +970,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.broadcast_evidence_list()
         self.client.last_active = Constants.get_time()
 
-    def net_cmd_zz(self, args):
+    def net_cmd_zz(self, args: List[str]):
         """ Sent on mod call.
 
         """
@@ -996,7 +1002,7 @@ class AOProtocol(asyncio.Protocol):
                           .format(self.client.get_ip(), self.client.area.id,
                                   self.client.get_char_name()))
 
-    def net_cmd_sp(self, args):
+    def net_cmd_sp(self, args: List[str]):
         """
         Set position packet.
         """

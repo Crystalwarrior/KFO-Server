@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from typing import List
+
 import sys
 if r'../..' not in sys.path:
     sys.path.append(r'../..')
@@ -25,7 +27,7 @@ from server.validate_assets import Validate
 
 
 class ValidateGimp(Validate):
-    def validate_contents(self, contents, extra_parameters=None):
+    def validate_contents(self, contents, extra_parameters=None) -> List[str]:
         # Check gimp contents is indeed a list of strings
         if not isinstance(contents, list):
             msg = (f'Expected the gimp list to be a list, got a '

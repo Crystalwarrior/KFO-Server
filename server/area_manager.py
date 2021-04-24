@@ -23,6 +23,16 @@ As Attorney Online clients have no concept of areas, it is the task of the serve
 all necessary actions in order to simulate different rooms.
 """
 
+from __future__ import annotations
+import typing
+from typing import Callable, Dict, List, Set, Tuple
+if typing.TYPE_CHECKING:
+    # Avoid circular referencing
+    from server.client_manager import ClientManager
+    from server.party_manager import PartyManager
+    from server.tsuserver import TsuserverDR
+    from server.zone_manager import ZoneManager
+
 import asyncio
 import time
 
@@ -46,7 +56,7 @@ class AreaManager:
         Create a new area for the server.
         """
 
-        def __init__(self, area_id, server, parameters):
+        def __init__(self, area_id: int, server: TsuserverDR, parameters: Dict[Str, Any]):
             """
             Parameters
             ----------
@@ -58,7 +68,7 @@ class AreaManager:
                 Area parameters as specified in the loaded area list.
             """
 
-            self.clients = set()
+            self._clients = set()
             self.id = area_id
             self.server = server
             self.publisher = Publisher(self)
@@ -128,19 +138,40 @@ class AreaManager:
 
             self.reachable_areas.add(self.name) # Area can always reach itself
 
-        def new_client(self, client):
+        @property
+        def clients(self) -> Set[ClientManager.Client]:
+            """
+            Declarator for a public clients attribute.
+            """
+
+            return self._clients
+
+        @clients.setter
+        def clients(self, new_clients) -> Set[ClientManager.Client]:
+            """
+            Set the clients parameter to the given one.
+
+            Parameters
+            ----------
+            new_clients: Set[ClientManager.Client]
+                New set of clients.
+            """
+
+            self._clients = new_clients
+
+        def new_client(self, client: ClientManager.Client):
             """
             Add a client to the client list of the current area.
 
             Parameters
             ----------
-            client: server.ClientManager.Client
+            client: ClientManager.Client
                 Client to add.
             """
 
             self.clients.add(client)
 
-        def remove_client(self, client):
+        def remove_client(self, client: ClientManager.Client):
             """
             Remove a client of the client list of the current area.
 
@@ -148,7 +179,6 @@ class AreaManager:
             ----------
             client: server.ClientManager.Client
                 Client to remove.
-
 
             Raises
             ------
@@ -166,7 +196,7 @@ class AreaManager:
             if not self.clients:
                 self.unlock()
 
-        def send_command(self, cmd, *args):
+        def send_command(self, cmd: str, *args: List):
             """
             Send a network packet to all clients in the area.
 
@@ -181,7 +211,7 @@ class AreaManager:
             for c in self.clients:
                 c.send_command(cmd, *args)
 
-        def send_command_dict(self, cmd, dargs):
+        def send_command_dict(self, cmd: str, dargs: Dict[str, Any]):
             """
             Send a network packet to all clients in the area.
 
@@ -196,7 +226,7 @@ class AreaManager:
             for client in self.clients:
                 client.send_command_dict(cmd, dargs)
 
-        def broadcast_ooc(self, msg):
+        def broadcast_ooc(self, msg: str):
             """
             Send an OOC server message to the clients in the area.
 
@@ -209,7 +239,7 @@ class AreaManager:
             for client in self.clients:
                 client.send_ooc(msg)
 
-        def broadcast_ic_attention(self, cond=None):
+        def broadcast_ic_attention(self, cond: Callable[[ClientManager.Client], bool] = None):
             """
             Send an IC message with a ding to everyone in the area indicating something catches
             their attention, *except* if the player is blind or deaf, or if the area is a lobby
@@ -232,7 +262,6 @@ class AreaManager:
 
             if cond is None:
                 cond = lambda client: True
-
             for player in self.clients:
                 if player.is_deaf and player.is_blind:
                     continue
@@ -240,7 +269,7 @@ class AreaManager:
                 if cond(player):
                     player.send_ic_attention()
 
-        def change_background(self, bg, validate=True, override_blind=False):
+        def change_background(self, bg: str, validate: bool = True, override_blind: bool = False):
             """
             Change the background of the current area.
 
@@ -275,7 +304,8 @@ class AreaManager:
                 else:
                     c.send_background(name=self.background)
 
-        def get_chars_unusable(self, allow_restricted=False, more_unavail_chars=None):
+        def get_chars_unusable(self, allow_restricted: bool = False,
+                               more_unavail_chars: Set[int] = None) -> Set[int]:
             """
             Obtain all characters that a player in the current area may NOT change to.
 
@@ -284,13 +314,13 @@ class AreaManager:
             allow_restricted: bool, optional
                 Whether to include characters whose usage has been manually restricted in the area.
                 Defaults to False.
-            more_unavail_chars: set, optional
+            more_unavail_chars: set of int, optional
                 Additional characters to mark as taken (and thus unusuable) in the area. Defaults
                 to None.
 
             Returns
             -------
-            unavailable: set
+            unavailable: set of int
                 Character IDs of all unavailable characters in the area.
             """
 
@@ -307,8 +337,8 @@ class AreaManager:
 
             return unavailable
 
-        def get_rand_avail_char_id(self, allow_restricted=False,
-                                   more_unavail_chars=None):
+        def get_rand_avail_char_id(self, allow_restricted: bool = False,
+                                   more_unavail_chars: Set[int] = None) -> int:
             """
             Obtain a random available character in the area.
 
@@ -317,7 +347,7 @@ class AreaManager:
             allow_restricted: bool, optional
                 Whether to include characters whose usage has been manually restricted in the area.
                 Defaults to false.
-            more_unavail_chars: set, optional
+            more_unavail_chars: set of int, optional
                 Additional characters to mark as taken (and thus unsuable) in the area. Defaults to
                 None.
 
@@ -341,7 +371,8 @@ class AreaManager:
 
             return self.server.random.choice(tuple(available))
 
-        def is_char_available(self, char_id, allow_restricted=False, more_unavail_chars=None):
+        def is_char_available(self, char_id: int, allow_restricted: bool = False,
+                              more_unavail_chars: Set[int] = None) -> bool:
             """
             Decide whether a character can be selected in the current area.
 
@@ -366,7 +397,7 @@ class AreaManager:
                                                         more_unavail_chars=more_unavail_chars)
             return char_id == -1 or not unused
 
-        def add_to_dicelog(self, client, msg):
+        def add_to_dicelog(self, client: ClientManager.Client, msg: str):
             """
             Add a dice roll to the dice log of the area.
 
@@ -385,7 +416,7 @@ class AreaManager:
                                                  client.displayname, client.get_ip(), msg)
             self.dicelog.append(info)
 
-        def get_dicelog(self):
+        def get_dicelog(self) -> str:
             """
             Return the dice log of the area.
             """
@@ -399,7 +430,7 @@ class AreaManager:
                     info += '\r\n*{}'.format(log)
             return info
 
-        def change_doc(self, doc='No document.'):
+        def change_doc(self, doc: str = 'No document.'):
             """
             Changes the casing document of the area, usually a URL.
 
@@ -410,7 +441,7 @@ class AreaManager:
             """
             self.doc = doc
 
-        def get_evidence_list(self, client):
+        def get_evidence_list(self, client: ClientManager.Client):
             """
             Obtain the evidence list for a client.
 
@@ -433,7 +464,7 @@ class AreaManager:
             for client in self.clients:
                 client.send_evidence_list()
 
-        def change_hp(self, side, health):
+        def change_hp(self, side: int, health: int):
             """
             Change a penalty healthbar.
 
@@ -464,7 +495,8 @@ class AreaManager:
             for client in self.clients:
                 client.send_health(side=side, health=health)
 
-        def is_iniswap(self, client, anim1, anim2, char):
+        def is_iniswap(self, client: ClientManager.Client, anim1: str, anim2: str,
+                       char: str) -> bool:
             """
             Decide if a client is iniswapping or using files outside their claimed character folder.
 
@@ -472,7 +504,7 @@ class AreaManager:
 
             Parameters
             ----------
-            client: server.ClientManager.Client
+            client: ClientManager.Client
                 Client to test.
             anim1: str
                 Location of the preanimation the client used.
@@ -499,13 +531,13 @@ class AreaManager:
                     return False
             return True
 
-        def add_to_judgelog(self, client, msg):
+        def add_to_judgelog(self, client: ClientManager.Client, msg: str):
             """
             Add a judge action to the judge log of the area.
 
             Parameters
             ----------
-            client: server.ClientManager.Client
+            client: ClientManager.Client
                 Client to record.
             msg: str
                 Judge action to record.
@@ -518,7 +550,7 @@ class AreaManager:
                                                  client.displayname, client.get_ip(), msg)
             self.judgelog.append(info)
 
-        def get_judgelog(self):
+        def get_judgelog(self) -> str:
             """
             Return the judge log of the area.
             """
@@ -532,7 +564,8 @@ class AreaManager:
                     info += '\r\n*{}'.format(log)
             return info
 
-        def change_lights(self, new_lights, initiator=None, area=None):
+        def change_lights(self, new_lights: bool, initiator: ClientManager.Client = None,
+                          area: AreaManager.Area = None):
             """
             Change the light status of the area and send related announcements.
 
@@ -605,7 +638,7 @@ class AreaManager:
                 if found_something and new_lights:
                     c.send_ic_attention()
 
-        def set_next_msg_delay(self, msg_length):
+        def set_next_msg_delay(self, msg_length: int):
             """
             Set a message delay for the next IC message in the area based on the length of the
             current message, so new messages sent before this delay expires are discarded.
@@ -619,7 +652,7 @@ class AreaManager:
             delay = min(3000, 100 + 60 * msg_length)
             self.next_message_time = round(time.time() * 1000.0 + delay)
 
-        def can_send_message(self):
+        def can_send_message(self) -> bool:
             """
             Decide if an incoming IC message does not violate the area's established delay for
             the previously received IC message.
@@ -632,8 +665,9 @@ class AreaManager:
 
             return (time.time() * 1000.0 - self.next_message_time) > 0
 
-        def play_track(self, name, client, raise_if_not_found=False, reveal_sneaked=False,
-                       pargs=None):
+        def play_track(self, name: str, client: ClientManager.Client,
+                       raise_if_not_found: bool = False, reveal_sneaked: bool = False,
+                       pargs: Dict[str, Any] = None):
             """
             Wrapper function to play a music track in an area.
 
@@ -645,11 +679,11 @@ class AreaManager:
                 Client who initiated the track change request.
             effect : int, optional
                 Accompanying effect to the track (only used by AO 2.8.4+). Defaults to 0.
-            raise_if_not_found : boolean, optional
+            raise_if_not_found : bool, optional
                 If True, it will raise ServerError if the track name is not in the server's music
                 list nor the client's music list. If False, it will not care about it. Defaults to
                 False.
-            reveal_sneaked : boolean, optional
+            reveal_sneaked : bool, optional
                 If True, it will change the visibility status of the sender client to True (reveal
                 them). If False, it will keep their visibility as it was. Defaults to False.
             pargs : dict of str to Any
@@ -719,7 +753,7 @@ class AreaManager:
                                        .format(client.displayname, client.id, client.area.id),
                                        is_zstaff=True)
 
-        def play_music(self, name, char_id, length=-1, showname=''):
+        def play_music(self, name: str, char_id: int, length: int = -1, showname: str = ''):
             """
             Start playing a music track in an area.
 
@@ -729,9 +763,12 @@ class AreaManager:
                 Name of the track to play.
             char_id: int
                 Character ID of the player who played the track, or -1 if the server initiated it.
-            length: int
+            length: int, optional
                 Length of the track in seconds to allow for seamless server-managed looping.
                 Defaults to -1 (no looping).
+            showname: str, optional
+                Showname to include with the notification of changed music. Defaults to '' (use
+                default showname of character).
             """
 
             for client in self.clients:
@@ -743,13 +780,13 @@ class AreaManager:
                 f = lambda: self.play_music(name, -1, length)
                 self.music_looper = asyncio.get_event_loop().call_later(length, f)
 
-        def add_to_shoutlog(self, client, msg):
+        def add_to_shoutlog(self, client: ClientManager.Client, msg: str):
             """
             Add a shout message to the shout log of the area.
 
             Parameters
             ----------
-            client: server.ClientManager.Client
+            client: ClientManager.Client
                 Client to record.
             msg: str
                 Shout message to record.
@@ -762,13 +799,13 @@ class AreaManager:
                                                  client.displayname, client.get_ip(), msg)
             self.shoutlog.append(info)
 
-        def add_party(self, party):
+        def add_party(self, party: PartyManager.Party):
             """
             Adds a party to the area's party list.
 
             Parameters
             ----------
-            party: server.PartyManager.Party
+            party: PartyManager.Party
                 Party to record.
 
             Raises
@@ -782,7 +819,7 @@ class AreaManager:
                                 .format(party.get_id()))
             self.parties.add(party)
 
-        def remove_party(self, party):
+        def remove_party(self, party: PartyManager.Party):
             """
             Removes a party from the area's party list.
 
@@ -802,7 +839,7 @@ class AreaManager:
                                 .format(party.get_id()))
             self.parties.remove(party)
 
-        def get_shoutlog(self):
+        def get_shoutlog(self) -> str:
             """
             Get the shout log of the area.
             """
@@ -816,7 +853,7 @@ class AreaManager:
             return info
 
 
-        def change_status(self, value):
+        def change_status(self, value: str):
             """
             Change the casing status of the area to one of predetermined values.
 
@@ -876,7 +913,7 @@ class AreaManager:
             return self._in_zone
 
         @in_zone.setter
-        def in_zone(self, new_zone_value):
+        def in_zone(self, new_zone_value: ZoneManager.Zone):
             """
             Set the in_zone parameter to the given one
 
@@ -920,13 +957,13 @@ class AreaManager:
 
             return 'A::{}:{}:{}'.format(self.id, self.name, len(self.clients))
 
-    def __init__(self, server):
+    def __init__(self, server: TsuserverDR):
         """
         Create an area manager object.
 
         Parameters
         ----------
-        server: server.TsuserverDR
+        server: TsuserverDR
             The server this area belongs to.
         """
 
@@ -936,7 +973,7 @@ class AreaManager:
         self.publisher = Publisher(self)
         self.load_areas()
 
-    def load_areas(self, area_list_file='config/areas.yaml'):
+    def load_areas(self, area_list_file: str = 'config/areas.yaml'):
         """
         Load an area list.
 
@@ -1053,14 +1090,14 @@ class AreaManager:
         self.server.old_area_list = self.server.area_list
         self.server.area_list = area_list_file
 
-    def default_area(self):
+    def default_area(self) -> AreaManager.Area:
         """
         Return the Area object corresponding to the server's default area.
         """
 
         return self.areas[self.server.default_area]
 
-    def get_area_by_name(self, name):
+    def get_area_by_name(self, name: str) -> AreaManager.Area:
         """
         Return the Area object corresponding to the area that has the given name.
 
@@ -1068,6 +1105,11 @@ class AreaManager:
         ----------
         name: str
             Area name to look for.
+
+        Returns
+        -------
+        AreaManager.Area
+            Area.
 
         Raises
         ------
@@ -1080,14 +1122,19 @@ class AreaManager:
                 return area
         raise AreaError('Area not found.')
 
-    def get_area_by_id(self, num):
+    def get_area_by_id(self, area_id: int) -> AreaManager.Area:
         """
         Return the Area object corresponding to the area that has the given ID.
 
         Parameters
         ----------
-        id: num
+        area_id: int
             Area ID to look for.
+
+        Returns
+        -------
+        AreaManager.Area
+            Area.
 
         Raises
         ------
@@ -1096,13 +1143,14 @@ class AreaManager:
         """
 
         for area in self.areas:
-            if area.id == num:
+            if area.id == area_id:
                 return area
         raise AreaError('Area not found.')
 
-    def get_areas_in_range(self, area1, area2):
+    def get_areas_in_range(self, area1: AreaManager.Area,
+                           area2: AreaManager.Area) -> Set[AreaManager.Area]:
         """
-        Return all areas whose ID is at least area1's and at most area2's.
+        Return all areas whose ID is at least area1's and at most area2's (both inclusive).
         If both areas have the same ID, return just the given area.
         If area2's ID is smaller than area1's, return the empty set.
 
@@ -1121,7 +1169,10 @@ class AreaManager:
 
         return {self.get_area_by_id(i) for i in range(area1.id, area2.id+1)}
 
-    def change_passage_lock(self, client, areas, bilock=False, change_passage_visibility=False):
+    def change_passage_lock(self, client: ClientManager.Client,
+                            areas: List[AreaManager.Area],
+                            bilock: bool = False,
+                            change_passage_visibility: bool = False):
         now_reachable = []
         num_areas = 2 if bilock else 1
 

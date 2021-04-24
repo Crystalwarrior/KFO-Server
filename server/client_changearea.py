@@ -16,6 +16,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+import typing
+from typing import List, Set, Tuple
+if typing.TYPE_CHECKING:
+    # Avoid circular referencing
+    from server.area_manager import AreaManager
+    from server.client_manager import ClientManager
+
 import time
 
 from server import logger
@@ -24,11 +32,13 @@ from server.constants import Constants
 
 
 class ClientChangeArea:
-    def __init__(self, client):
+    def __init__(self, client: ClientManager.Client):
         self.client = client
 
-    def check_change_area(self, area, override_passages=False, override_effects=False,
-                          more_unavail_chars=None):
+    def check_change_area(self, area: AreaManager.Area,
+                          override_passages: bool = False,
+                          override_effects: bool = False,
+                          more_unavail_chars: Set[int] = None) -> Tuple[int, List[str]]:
         """
         Perform all checks that would prevent an area change.
         Right now there is, (in this order)
@@ -99,7 +109,8 @@ class ClientChangeArea:
 
         return new_char_id, captured_messages
 
-    def notify_change_area(self, area, old_dname, ignore_bleeding=False, just_me=False) -> bool:
+    def notify_change_area(self, area: AreaManager.Area, old_dname: str,
+                           ignore_bleeding: bool = False, just_me: bool = False) -> bool:
         """
         Send all OOC notifications that come from switching areas.
         Right now there is
@@ -132,7 +143,8 @@ class ClientChangeArea:
 
         return found_something
 
-    def notify_me(self, area, old_dname, ignore_bleeding=False) -> bool:
+    def notify_me(self, area: AreaManager.Area, old_dname: str,
+                  ignore_bleeding: bool = False) -> bool:
         client = self.client
 
         # Code here assumes successful area change, so it will be sending client notifications
@@ -195,7 +207,8 @@ class ClientChangeArea:
         found_something = self.notify_me_rp(area)
         return found_something
 
-    def notify_me_rp(self, area, changed_visibility=True, changed_hearing=True) -> bool:
+    def notify_me_rp(self, area: AreaManager.Area, changed_visibility: bool = True,
+                     changed_hearing: bool = True) -> bool:
         ###########
         # Check bleeding status
         blood = self.notify_me_blood(area, changed_visibility=changed_visibility,
@@ -214,7 +227,8 @@ class ClientChangeArea:
 
         return blood or statuses or area_noteworthy
 
-    def notify_me_blood(self, area, changed_visibility=True, changed_hearing=True) -> bool:
+    def notify_me_blood(self, area: AreaManager.Area, changed_visibility: bool = True,
+                        changed_hearing: bool = True) -> bool:
         client = self.client
         changed_area = (client.area != area)
         found_something = False
@@ -323,7 +337,8 @@ class ClientChangeArea:
 
         return found_something
 
-    def notify_me_status(self, area, changed_visibility=True, changed_hearing=True) -> bool:
+    def notify_me_status(self, area: AreaManager.Area, changed_visibility: bool = True,
+                         changed_hearing: bool = True) -> bool:
         client = self.client
         normal_visibility = changed_visibility and area.lights and not client.is_blind
         info = ''
@@ -386,7 +401,9 @@ class ClientChangeArea:
 
         return found_something
 
-    def notify_me_area_noteworthy(self, area, changed_visibility=True, changed_hearing=True) -> bool:
+    def notify_me_area_noteworthy(self, area: AreaManager.Area,
+                                  changed_visibility: bool = True,
+                                  changed_hearing: bool = True) -> bool:
         if not area.noteworthy:
             return False
 
@@ -395,7 +412,8 @@ class ClientChangeArea:
         client.send_ooc('Something in the area catches your attention.')
         return True
 
-    def notify_others(self, area, old_dname, ignore_bleeding=False):
+    def notify_others(self, area: AreaManager.Area, old_dname: str,
+                      ignore_bleeding: bool = False):
         client = self.client
 
         # Code here assumes successful area change, so it will be sending client notifications
@@ -456,7 +474,8 @@ class ClientChangeArea:
         area.broadcast_ic_attention(cond=lambda c: (ic_attention_others or
                                                     c in status_refreshed_clients))
 
-    def notify_others_moving(self, client, area, autopass_mes, blind_mes):
+    def notify_others_moving(self, client: ClientManager.Client, area: AreaManager.Area,
+                             autopass_mes: str, blind_mes: str):
         staff = nbnd = ybnd = nbyd = '' # nbnd = notblindnotdeaf ybnd=yesblindnotdeaf
 
         # Autopass: at most footsteps if no lights
@@ -503,7 +522,8 @@ class ClientChangeArea:
                                to_deaf=True)
         # Blind and deaf get nothing
 
-    def notify_others_blood(self, client, area, char, status='stay', send_to_staff=True):
+    def notify_others_blood(self, client: ClientManager.Client, area: AreaManager.Area,
+                            char: str, status: str = 'stay', send_to_staff: bool = True):
         # Assume client's bleeding status is worth announcing (for example, it changed or lights on)
         # If bleeding, send reminder, and notify everyone in the area if not sneaking
         # (otherwise, just send vague message).
@@ -588,7 +608,8 @@ class ClientChangeArea:
         if send_to_staff:
             client.send_ooc_others(staff, is_zstaff_flex=True, in_area=area)
 
-    def notify_others_status(self, client, area, name, status='stay'):
+    def notify_others_status(self, client: ClientManager.Client, area: AreaManager.Area,
+                             name: str, status: str = 'stay'):
         # Assume client's special status is worth announcing
         # If client has custom status, send reminder in OOC to everyone but those not staff,
         # blind and deaf simultaneously.
@@ -640,10 +661,12 @@ class ClientChangeArea:
                                to_deaf=True)
         client.send_ooc_others(staff, is_zstaff_flex=True, in_area=area)
 
-    def change_area(self, area, override_all=False, override_passages=False,
-                    override_effects=False, ignore_bleeding=False, ignore_followers=False,
-                    ignore_checks=False, ignore_notifications=False, more_unavail_chars=None,
-                    change_to=None, from_party=False):
+    def change_area(self, area: AreaManager.Area, override_all: bool = False,
+                    override_passages: bool = False, override_effects: bool = False,
+                    ignore_bleeding: bool = False, ignore_followers: bool = False,
+                    ignore_checks: bool = False, ignore_notifications: bool = False,
+                    more_unavail_chars: Set[int] = None, change_to: int = None,
+                    from_party: bool = False):
         """
         PARAMETERS:
         *override_passages: ignore passages existing from the source area to the target area

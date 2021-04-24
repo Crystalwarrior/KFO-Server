@@ -1,4 +1,4 @@
-from .test_senseblock import _TestSenseBlock, _UnittestSenseBlock
+from .test_senseblock import _TestSenseBlock, _TestSenseBlockCommon
 
 
 class _TestBlind(_TestSenseBlock):
@@ -36,7 +36,7 @@ class _TestBlind(_TestSenseBlock):
                 c.assert_no_ic()
 
 
-class TestBlind_01_Common(_UnittestSenseBlock):
+class TestBlind_01_Common(_TestSenseBlockCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()

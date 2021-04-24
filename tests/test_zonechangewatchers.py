@@ -43,8 +43,8 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         self.c1.ooc('/zone 4, 6')  # Creates zone z0
         self.c1.discard_all()
         self.c2.discard_all()  # staff in zone
-        self.assertEquals(1, len(self.zm.get_zones()))
-        self.assertEquals({self.c1}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual(1, len(self.zm.get_zones()))
+        self.assertEqual({self.c1}, self.zm.get_zone('z0').get_watchers())
 
         self.c2.ooc('/zone_watch {}'.format('z0'))
         self.c0.assert_no_packets()
@@ -54,8 +54,8 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
-        self.assertEquals(1, len(self.zm.get_zones()))
-        self.assertEquals({self.c1, self.c2}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual(1, len(self.zm.get_zones()))
+        self.assertEqual({self.c1, self.c2}, self.zm.get_zone('z0').get_watchers())
 
     def test_03_anothernewwatcher(self):
         """
@@ -71,8 +71,8 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_ooc('You are now watching zone `{}`.'.format('z0'), over=True)
-        self.assertEquals(1, len(self.zm.get_zones()))
-        self.assertEquals({self.c1, self.c2, self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual(1, len(self.zm.get_zones()))
+        self.assertEqual({self.c1, self.c2, self.c5}, self.zm.get_zone('z0').get_watchers())
 
     def test_04_differentzonedifferentwatchers(self):
         """
@@ -97,9 +97,9 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_ooc('You are now watching zone `{}`.'.format('z1'), over=True)
         self.c5.assert_no_packets()  # In other zone
-        self.assertEquals(2, len(self.zm.get_zones()))
-        self.assertEquals({self.c1, self.c2, self.c5}, self.zm.get_zone('z0').get_watchers())
-        self.assertEquals({self.c0, self.c4}, self.zm.get_zone('z1').get_watchers())
+        self.assertEqual(2, len(self.zm.get_zones()))
+        self.assertEqual({self.c1, self.c2, self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual({self.c0, self.c4}, self.zm.get_zone('z1').get_watchers())
 
     def test_05_nodoublewatching(self):
         """
@@ -114,9 +114,9 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
-        self.assertEquals(2, len(self.zm.get_zones()))
-        self.assertEquals({self.c1, self.c2, self.c5}, self.zm.get_zone('z0').get_watchers())
-        self.assertEquals({self.c0, self.c4}, self.zm.get_zone('z1').get_watchers())
+        self.assertEqual(2, len(self.zm.get_zones()))
+        self.assertEqual({self.c1, self.c2, self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual({self.c0, self.c4}, self.zm.get_zone('z1').get_watchers())
 
         self.c1.ooc('/zone_watch {}'.format('z1'))
         self.c0.assert_no_packets()
@@ -125,9 +125,9 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
-        self.assertEquals(2, len(self.zm.get_zones()))
-        self.assertEquals({self.c1, self.c2, self.c5}, self.zm.get_zone('z0').get_watchers())
-        self.assertEquals({self.c0, self.c4}, self.zm.get_zone('z1').get_watchers())
+        self.assertEqual(2, len(self.zm.get_zones()))
+        self.assertEqual({self.c1, self.c2, self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual({self.c0, self.c4}, self.zm.get_zone('z1').get_watchers())
 
 
 class TestZoneChangeWatchers_02_Unwatch(_TestZone):
@@ -165,7 +165,7 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c1.discard_all()
         self.c2.discard_all()
         self.c5.discard_all()
-        self.assertEquals({self.c1, self.c2, self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual({self.c1, self.c2, self.c5}, self.zm.get_zone('z0').get_watchers())
 
         self.c2.ooc('/zone_unwatch')
         self.c0.assert_no_packets()
@@ -176,8 +176,8 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c4.assert_no_packets()
         self.c5.assert_ooc('(X) {} [{}] is no longer watching your zone.'
                            .format(self.c2_dname, 2), over=True)
-        self.assertEquals(1, len(self.zm.get_zones()))
-        self.assertEquals({self.c1, self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual(1, len(self.zm.get_zones()))
+        self.assertEqual({self.c1, self.c5}, self.zm.get_zone('z0').get_watchers())
 
     def test_03_cannotunwatchifnotwatching(self):
         """
@@ -192,8 +192,8 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
-        self.assertEquals(1, len(self.zm.get_zones()))
-        self.assertEquals({self.c1, self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual(1, len(self.zm.get_zones()))
+        self.assertEqual({self.c1, self.c5}, self.zm.get_zone('z0').get_watchers())
 
         self.c4.make_mod(over=False)
         self.c4.discard_all()  # Discard notification for logging in while in zone
@@ -205,8 +205,8 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_ooc('You are not watching any zone.', over=True)
         self.c5.assert_no_packets()
-        self.assertEquals(1, len(self.zm.get_zones()))
-        self.assertEquals({self.c1, self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual(1, len(self.zm.get_zones()))
+        self.assertEqual({self.c1, self.c5}, self.zm.get_zone('z0').get_watchers())
 
     def test_04_unwatchercancreate(self):
         """
@@ -217,9 +217,9 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c1.discard_all()  # Discard mod notification for zone creation
         self.c2.discard_all()
         self.c4.discard_all()  # Discard mod notification for zone creation
-        self.assertEquals(2, len(self.zm.get_zones()))
-        self.assertEquals({self.c1, self.c5}, self.zm.get_zone('z0').get_watchers())
-        self.assertEquals({self.c2}, self.zm.get_zone('z1').get_watchers())
+        self.assertEqual(2, len(self.zm.get_zones()))
+        self.assertEqual({self.c1, self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual({self.c2}, self.zm.get_zone('z1').get_watchers())
 
     def test_05_creatorunwatches(self):
         """
@@ -235,9 +235,9 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c4.assert_no_packets()
         self.c5.assert_ooc('(X) {} [{}] is no longer watching your zone.'
                            .format(self.c1_dname, 1), over=True)
-        self.assertEquals(2, len(self.zm.get_zones()))
-        self.assertEquals({self.c5}, self.zm.get_zone('z0').get_watchers())
-        self.assertEquals({self.c2}, self.zm.get_zone('z1').get_watchers())
+        self.assertEqual(2, len(self.zm.get_zones()))
+        self.assertEqual({self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual({self.c2}, self.zm.get_zone('z1').get_watchers())
 
     def test_06_unwatchercanwatchothers(self):
         """
@@ -247,9 +247,9 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c1.ooc('/zone_watch {}'.format('z1'))
         self.c1.discard_all()
         self.c2.discard_all()
-        self.assertEquals(2, len(self.zm.get_zones()))
-        self.assertEquals({self.c5}, self.zm.get_zone('z0').get_watchers())
-        self.assertEquals({self.c2, self.c1}, self.zm.get_zone('z1').get_watchers())
+        self.assertEqual(2, len(self.zm.get_zones()))
+        self.assertEqual({self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual({self.c2, self.c1}, self.zm.get_zone('z1').get_watchers())
 
     def test_07_unwatchthenwatch(self):
         """
@@ -264,16 +264,16 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
-        self.assertEquals(2, len(self.zm.get_zones()))
-        self.assertEquals({self.c5}, self.zm.get_zone('z0').get_watchers())
-        self.assertEquals({self.c2}, self.zm.get_zone('z1').get_watchers())
+        self.assertEqual(2, len(self.zm.get_zones()))
+        self.assertEqual({self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual({self.c2}, self.zm.get_zone('z1').get_watchers())
 
         self.c1.ooc('/zone_watch {}'.format('z1'))
         self.c1.discard_all()
         self.c2.discard_all()
-        self.assertEquals(2, len(self.zm.get_zones()))
-        self.assertEquals({self.c5}, self.zm.get_zone('z0').get_watchers())
-        self.assertEquals({self.c2, self.c1}, self.zm.get_zone('z1').get_watchers())
+        self.assertEqual(2, len(self.zm.get_zones()))
+        self.assertEqual({self.c5}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual({self.c2, self.c1}, self.zm.get_zone('z1').get_watchers())
 
     def test_08_lastpersonunwatches(self):
         """
@@ -321,8 +321,8 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
-        self.assertEquals(1, len(self.zm.get_zones()))
-        self.assertEquals({self.c2, self.c1}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual(1, len(self.zm.get_zones()))
+        self.assertEqual({self.c2, self.c1}, self.zm.get_zone('z0').get_watchers())
 
     def test_02_afterdccancreatemorezones(self):
         """
@@ -334,9 +334,9 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         self.c4.ooc('/zone 3')
         self.c1.discard_all()  # Discard mod notification for zone creation
         self.c4.discard_all()
-        self.assertEquals(2, len(self.zm.get_zones()))
-        self.assertEquals({self.c2, self.c1}, self.zm.get_zone('z0').get_watchers())
-        self.assertEquals({self.c4}, self.zm.get_zone('z1').get_watchers())
+        self.assertEqual(2, len(self.zm.get_zones()))
+        self.assertEqual({self.c2, self.c1}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual({self.c4}, self.zm.get_zone('z1').get_watchers())
 
     def test_03_solewatcherdcs(self):
         """
@@ -353,8 +353,8 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
 
-        self.assertEquals(1, len(self.zm.get_zones()))
-        self.assertEquals({self.c2, self.c1}, self.zm.get_zone('z0').get_watchers())
+        self.assertEqual(1, len(self.zm.get_zones()))
+        self.assertEqual({self.c2, self.c1}, self.zm.get_zone('z0').get_watchers())
 
     def test_04_watcherlogsout(self):
         """

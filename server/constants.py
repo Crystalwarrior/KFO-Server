@@ -16,6 +16,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+from typing import Awaitable, Any, Callable, Iterable, List, Optional, Set, Tuple
+import typing
+if typing.TYPE_CHECKING:
+    # Avoid circular referencing
+    from server.area_manager import AreaManager
+    from server.client_manager import ClientManager
+    from server.tsuserver import TsuserverDR
+
 import asyncio
 import functools
 import errno
@@ -244,7 +253,7 @@ class FileValidity:
 
 class Constants():
     @staticmethod
-    def fopen(file_name, *args, disallow_parent_folder: bool = True, **kwargs):
+    def fopen(file_name: str, *args, disallow_parent_folder: bool = True, **kwargs):
         if disallow_parent_folder and Constants.includes_relative_directories(file_name):
             info = f'File names may not reference parent or current directories: {file_name}'
             raise ServerError.FileInvalidNameError(info)
@@ -268,7 +277,7 @@ class Constants():
             raise ServerError.FileOSError(str(ex), code="OSError")
 
     @staticmethod
-    def includes_relative_directories(path):
+    def includes_relative_directories(path: str) -> bool:
         folders = []
         while True:
             # Based from https://stackoverflow.com/a/3167684
@@ -283,7 +292,7 @@ class Constants():
         return ('.' in folders or '..' in folders)
 
     @staticmethod
-    def yaml_load(file):
+    def yaml_load(file: str) -> Any:
         # Extract the name of the yaml in case of errors
         separator = max(file.name.rfind('\\'), file.name.rfind('/'))
         file_name = file.name[separator+1:]
@@ -307,7 +316,7 @@ class Constants():
             raise ServerError.YAMLInvalidError(msg)
 
     @staticmethod
-    def yaml_dump(data, file):
+    def yaml_dump(data: Any, file: str):
         if not FileValidity.file_exists_or_creatable(file.name):
             msg = f'Unable to create file {file.name}.'
             raise ServerError.FileNotCreatedError(msg)
@@ -318,26 +327,26 @@ class Constants():
             raise ServerError.FileNotCreatedError(msg)
 
     @staticmethod
-    def get_time():
+    def get_time() -> str:
         return time.asctime(time.localtime(time.time()))
 
     @staticmethod
-    def get_time_iso():
+    def get_time_iso() -> str:
         return time.strftime('[%Y-%m-%dT%H:%M:%S]')
 
     @staticmethod
-    def time_remaining(start, length):
+    def time_remaining(start: float, length: float) -> Tuple[float, str]:
         current = time.time()
         remaining = start+length-current
         return remaining, Constants.time_format(remaining)
 
     @staticmethod
-    def time_elapsed(start):
+    def time_elapsed(start: float) -> str:
         current = time.time()
         return Constants.time_format(current-start)
 
     @staticmethod
-    def time_format(length):
+    def time_format(length: float) -> str:
         if length < 10:
             text = "{} seconds".format('{0:.1f}'.format(length))
         elif length < 60:
@@ -352,7 +361,7 @@ class Constants():
         return text
 
     @staticmethod
-    def trim_extra_whitespace(text):
+    def trim_extra_whitespace(text: str) -> str:
         # Trim out any leading whitespace characters up to a chain of spaces
         text = re.sub(r'^[\r\n\t\f\v ]*[\r\n\t\f\v]', '', text)
         # And same thing for trailing
@@ -360,7 +369,8 @@ class Constants():
         return text
 
     @staticmethod
-    def assert_command(client, arg, is_staff=None, is_officer=None, is_mod=None, parameters=None,
+    def assert_command(client: ClientManager.Client, arg: str, is_staff=None, is_officer=None,
+                       is_mod=None, parameters=None,
                        split_spaces=None, split_commas=False):
         if is_staff is not None:
             if is_staff is True and not client.is_staff():
@@ -421,9 +431,9 @@ class Constants():
                 raise ArgumentError(error[0].format(error[1], 's' if error[1] != 1 else ''))
 
     @staticmethod
-    def build_cond(sender, is_staff=None, is_officer=None, is_mod=None, in_area=None, pred=None,
-                   part_of=None, not_to=None, to_blind=None, to_deaf=None, is_zstaff=None,
-                   is_zstaff_flex=None):
+    def build_cond(sender: ClientManager.Client, is_staff=None, is_officer=None, is_mod=None,
+                   in_area=None, pred=None, part_of=None, not_to=None, to_blind=None, to_deaf=None,
+                   is_zstaff=None, is_zstaff_flex=None) -> Callable[[ClientManager.Client], bool]:
         """
         Acceptable conditions:
             is_staff: If target is GM, CM or Mod
@@ -585,7 +595,7 @@ class Constants():
         return cond
 
     @staticmethod
-    def dice_roll(arg, command_type, server):
+    def dice_roll(arg: str, command_type: str, server: TsuserverDR) -> Tuple[str, int]:
         """
         Calculate roll results.
         Confront /roll documentation for more details.
@@ -727,15 +737,15 @@ class Constants():
         return roll, num_faces
 
     @staticmethod
-    def disemvowel_message(message):
+    def disemvowel_message(message: str) -> str:
         return Constants.remove_letters(message, 'aeiou')
 
     @staticmethod
-    def disemconsonant_message(message):
+    def disemconsonant_message(message: str) -> str:
         return Constants.remove_letters(message, 'bcdfghjklmnpqrstvwxyz')
 
     @staticmethod
-    def fix_and_setify(csv_values):
+    def fix_and_setify(csv_values: str) -> Set[str]:
         """
         For the area parameters that include lists of comma-separated values, parse them
         appropiately before turning them into sets.
@@ -785,7 +795,7 @@ class Constants():
         return random.choice(message)
 
     @staticmethod
-    def gagged_message():
+    def gagged_message() -> str:
         length = random.randint(5, 9)
         letters = ['g', 'h', 'm', 'r']
         starters = ['G', 'M']
@@ -793,7 +803,7 @@ class Constants():
         return message
 
     @staticmethod
-    def cjoin(structure, the=False, sort=True):
+    def cjoin(structure: Iterable, the: str = False, sort: bool = True) -> str:
         connector = 'the ' if the else ''
         new_structure = sorted(structure) if sort else list(structure)
 
@@ -805,7 +815,8 @@ class Constants():
         return info
 
     @staticmethod
-    def parse_area_names(client, areas):
+    def parse_area_names(client: ClientManager.Client,
+                         areas: AreaManager.Area) -> List[AreaManager.Area]:
         """
         Convert a list of area names or IDs into area objects.
         """
@@ -831,7 +842,7 @@ class Constants():
         return area_list
 
     @staticmethod
-    def parse_effects(client, effects):
+    def parse_effects(client: ClientManager.Client, effects: List[str]) -> Set[str]:
         """
         Convert a sequence of characters to their associated effect names.
         """
@@ -851,7 +862,7 @@ class Constants():
         return parsed_effects
 
     @staticmethod
-    def parse_id(client, identifier):
+    def parse_id(client: ClientManager.Client, identifier: str) -> ClientManager.Client:
         """
         Given a client ID, returns the client that matches this identifier.
         """
@@ -870,7 +881,7 @@ class Constants():
         return targets[0]
 
     @staticmethod
-    def parse_id_or_ipid(client, identifier):
+    def parse_id_or_ipid(client: ClientManager.Client, identifier: str) -> ClientManager.Client:
         """
         Given either a client ID or IPID, returns all clients that match this identifier.
 
@@ -908,7 +919,7 @@ class Constants():
         client.server.area_manager.change_passage_lock(client, areas, bilock=bilock)
 
     @staticmethod
-    def parse_time_length(time_length):
+    def parse_time_length(time_length: str) -> float:
         """
         Convert seconds into a formatted string representing timelength.
         """
@@ -936,7 +947,10 @@ class Constants():
         return length
 
     @staticmethod
-    def parse_two_area_names(client, raw_areas, area_duplicate=True, check_valid_range=True):
+    def parse_two_area_names(client: ClientManager.Client,
+                             raw_areas: List[AreaManager.Area],
+                             area_duplicate: bool = True,
+                             check_valid_range: bool = True) -> List[AreaManager.Area]:
         """
         Convert the area passage commands inputs into inputs for parse_area_names.
         and check for the different cases it needs to possibly handle
@@ -965,16 +979,16 @@ class Constants():
         return areas
 
     @staticmethod
-    def remove_h_message(message):
+    def remove_h_message(message: str) -> str:
         return Constants.remove_letters(message, 'h')
 
     @staticmethod
-    def remove_letters(message, target):
+    def remove_letters(message: str, target: str) -> str:
         message = re.sub("[{}]".format(target), "", message, flags=re.IGNORECASE)
         return re.sub(r"\s+", " ", message)
 
     @staticmethod
-    def format_area_ranges(areas) -> str:
+    def format_area_ranges(areas: Iterable[AreaManager.Area]) -> str:
         # Obtain area ranges from an iterable containing area objects
         # Ex. If areas contains area 1, 2, 3, 5, 6 and 8, this will return "1-3, 5-6 and 8"
         # If areas is None or empty, returns None
@@ -1004,7 +1018,8 @@ class Constants():
         return Constants.cjoin(area_ranges)
 
     @staticmethod
-    def create_fragile_task(coro_or_future, client=None, exception_cleanup=None):
+    def create_fragile_task(coro_or_future: Awaitable, client: ClientManager.Client = None,
+                            exception_cleanup: Callable[[], ] = None):
         """
         Schedule the execution of a coroutine object in a spawned task with a done callback that
         checks if an exception was raised after the coroutine finished.
@@ -1065,7 +1080,7 @@ class Constants():
         return task
 
     @staticmethod
-    def cancel_and_await_task(task):
+    def cancel_and_await_task(task: asyncio.Task):
         """
         Function that schedules the cancellation of `task` and awaiting it until it is able to
         properly retrieve the cancellation exception from `task`. This function assumes the task
@@ -1107,7 +1122,7 @@ class Constants():
         return functools.partial(new_func, *new_args, **new_keywords)
 
     @staticmethod
-    def make_partial_from(current_type, default_type, *args, **kwargs):
+    def make_partial_from(current_type, default_type: type, *args, **kwargs) -> Callable:
         """
         Make a merged functools.partial function based on current_type if it is also a partial
         function by returning self.complete_partial_arguments(current_type, *args, **kwargs).
@@ -1144,7 +1159,7 @@ class Constants():
         raise ValueError(current_type, type(current_type))
 
     @staticmethod
-    def contains_illegal_characters(text) -> bool:
+    def contains_illegal_characters(text: str) -> bool:
         """
         Returns True if `text` contains a zero-width character, False otherwise.
 

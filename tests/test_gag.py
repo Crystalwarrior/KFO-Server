@@ -1,5 +1,5 @@
 from .structures import _TestSituation5Mc1Gc2
-from .test_senseblock import _TestSenseBlock, _UnittestSenseBlock
+from .test_senseblock import _TestSenseBlock, _TestSenseBlockCommon
 
 
 class _TestGag(_TestSenseBlock):
@@ -32,7 +32,7 @@ class _TestGag(_TestSenseBlock):
         client.assert_ic(msg, over=over, ic_over=ic_over, check_MS_packet=check_MS_packet, **kwargs)
 
 
-class TestGag_01_Common(_UnittestSenseBlock):
+class TestGag_01_Common(_TestSenseBlockCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()

@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from typing import Dict, Any
+
 import sys
 if r'../..' not in sys.path:
     sys.path.append(r'../..')
@@ -25,7 +27,7 @@ from server.validate_assets import Validate
 
 
 class ValidateConfig(Validate):
-    def validate_contents(self, contents, extra_parameters=None):
+    def validate_contents(self, contents, extra_parameters=None) -> Dict[str, Any]:
         # Check characters contents is indeed a list of strings
         if not isinstance(contents, dict):
             msg = (f'Expected the configurations to be a dictionary, found a '

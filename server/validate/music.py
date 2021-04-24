@@ -16,6 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from typing import Any, Dict, List
+
 import sys
 if r'../..' not in sys.path:
     sys.path.append(r'../..')
@@ -26,7 +28,7 @@ from server.validate_assets import Validate
 
 
 class ValidateMusic(Validate):
-    def validate_contents(self, contents, extra_parameters=None):
+    def validate_contents(self, contents, extra_parameters=None) -> List[Dict[str, Any]]:
         # Check music list contents is indeed a list
         if not isinstance(contents, list):
             msg = (f'Expected the music list to be a list, got a '

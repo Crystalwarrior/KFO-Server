@@ -1,4 +1,4 @@
-from .test_senseblock import _TestSenseBlock, _UnittestSenseBlock
+from .test_senseblock import _TestSenseBlock, _TestSenseBlockCommon
 
 
 class _TestDeafen(_TestSenseBlock):
@@ -33,7 +33,7 @@ class _TestDeafen(_TestSenseBlock):
                 c.assert_no_ic()
 
 
-class TestDeafen_01_Common(_UnittestSenseBlock):
+class TestDeafen_01_Common(_TestSenseBlockCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()

@@ -9,11 +9,15 @@ class _TestSenseBlock(_TestSituation4Mc12):
         cls.c3.move_area(4)
 
 
-class _UnittestSenseBlock(_TestSenseBlock):
+class _TestSenseBlockCommon(_TestSenseBlock):
     def test_01_wrongarguments(self):
         """
         Situation: Unauthorized user attempts to sense block, or wrong arguments are passed.
         """
+
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
 
         self.c0.ooc('/{} {}'.format(self.sense, 0))
         self.c0.assert_ooc('You must be authorized to do that.', over=True)
@@ -44,6 +48,10 @@ class _UnittestSenseBlock(_TestSenseBlock):
         Situation: Authorized user attempts to sense block C0 and succeeds.
         """
 
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
+
         self.c1.ooc('/{} {}'.format(self.sense, 0))
         self.c1.assert_ooc('You have {} {} [{}].'.format(self.sense_pp, self.c0_dname, 0),
                            over=True)
@@ -65,6 +73,10 @@ class _UnittestSenseBlock(_TestSenseBlock):
         Situation: Authorized user attempts to sense block a staff member and succeeds.
         """
 
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
+
         self.c2.ooc('/{} {}'.format(self.sense, 1))
         self.c2.assert_ooc('You have {} {} [{}].'.format(self.sense_pp, self.c1_dname, 1),
                            over=True)
@@ -83,6 +95,10 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
         Situation: Authorized user attempts to sense block themselves and succeeds.
         """
+
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
 
         self.c2.ooc('/{} {}'.format(self.sense, 2))
         self.c2.assert_ooc('You have {} yourself.'.format(self.sense_pp), ooc_over=True)
@@ -103,6 +119,10 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
         Situation: Unauthorized user attempts to sense unblock, or wrong arguments are passed.
         """
+
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
 
         self.c0.ooc('/{} {}'.format(self.sense, 0))
         self.c0.assert_ooc('You must be authorized to do that.', over=True)
@@ -138,6 +158,10 @@ class _UnittestSenseBlock(_TestSenseBlock):
         Situation: Authorized user attempts to sense unblock C0 and succeeds.
         """
 
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
+
         self.c1.ooc('/{} {}'.format(self.sense, 0))
         self.c1.assert_ooc('You have un{} {} [{}].'.format(self.sense_pp, self.c0_dname, 0),
                            over=True)
@@ -159,6 +183,10 @@ class _UnittestSenseBlock(_TestSenseBlock):
         Situation: Authorized user attempts to sense unblock a staff member and succeeds.
         """
 
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
+
         self.c2.ooc('/{} {}'.format(self.sense, 1))
         self.c2.assert_ooc('You have un{} {} [{}].'.format(self.sense_pp, self.c1_dname, 1),
                            over=True)
@@ -177,6 +205,10 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
         Situation: Authorized user attempts to sense block themselves and succeeds.
         """
+
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
 
         self.c2.ooc('/{} {}'.format(self.sense, 2))
         self.c2.assert_ooc('You have un{} yourself.'.format(self.sense_pp), ooc_over=True)
@@ -198,6 +230,10 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
         Situation: Another authorized user attempts to sense block and unblock, and succeeds.
         """
+
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
 
         self.c2.ooc('/{} {}'.format(self.sense, 3))
         self.c2.assert_ooc('You have {} {} [{}].'.format(self.sense_pp, self.c3_dname, 3),
@@ -236,6 +272,10 @@ class _UnittestSenseBlock(_TestSenseBlock):
         Situation: Sense blocked client changes area, and their sense block persists.
         """
 
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
+
         self.c2.ooc('/{} {}'.format(self.sense, 3))
         self.c2.assert_ooc('You have {} {} [{}].'.format(self.sense_pp, self.c3_dname, 3),
                            over=True)
@@ -264,6 +304,11 @@ class _UnittestSenseBlock(_TestSenseBlock):
         """
         Situation: Sense blocked client disconnects and on reconnection are no longer sense blocked.
         """
+
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
+
         self.server.disconnect_client(3)
         assert not self.sense_attribute(self.c0)
         assert not self.sense_attribute(self.c1)
@@ -283,3 +328,9 @@ class _UnittestSenseBlock(_TestSenseBlock):
 
     def sense_unaffect(self, client):
         pass
+
+    def tearDown(self):
+        # For Pytest
+        if not hasattr(self, 'server'):
+            return
+        super().tearDown()

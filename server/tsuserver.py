@@ -19,6 +19,9 @@
 # WARNING!
 # This class will suffer major reworkings for 4.3
 
+from __future__ import annotations
+from typing import Any, Dict, List, Tuple
+
 import asyncio
 import errno
 import importlib
@@ -55,7 +58,8 @@ from server.validate.music import ValidateMusic
 
 
 class TsuserverDR:
-    def __init__(self, protocol=None, client_manager=None, in_test=False):
+    def __init__(self, protocol: AOProtocol = None,
+                 client_manager: ClientManager.Client = None, in_test: bool = False):
         self.logged_packet_limit = 100  # Arbitrary
         self.logged_packets = []
         self.print_packets = False  # For debugging purposes
@@ -64,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b146'
-        self.internal_version = 'M210423a'
+        self.segment_version = 'b147'
+        self.internal_version = 'M210424a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -245,7 +249,7 @@ class TsuserverDR:
         logger.log_print('Kicking {} remaining client{}.'
                          .format(players, 's' if players != 1 else ''))
 
-        for client in self.client_manager.clients:
+        for client in self.get_clients():
             client.disconnect()
 
         if self._server:
@@ -296,13 +300,13 @@ class TsuserverDR:
         except Exception as error:
             return error
 
-    def log_packet(self, client, packet, incoming):
+    def log_packet(self, client: ClientManager.Client, packet: str, incoming: bool):
         while len(self.logged_packets) > self.logged_packet_limit:
             self.logged_packets.pop(0)
         entry = ('R:' if incoming else 'S:', Constants.get_time_iso(), str(client.id), packet)
         self.logged_packets.append(entry)
 
-    def new_client(self, transport, ip=None, my_protocol=None):
+    def new_client(self, transport, ip=None, my_protocol=None) -> ClientManager.Client:
         c = self.client_manager.new_client(transport, my_protocol=my_protocol)
         if self.rp_mode:
             c.in_rp = True
@@ -311,15 +315,15 @@ class TsuserverDR:
         c.area.new_client(c)
         return c
 
-    def remove_client(self, client):
+    def remove_client(self, client: ClientManager.Client):
         client.area.remove_client(client)
         self.client_manager.remove_client(client)
 
-    def is_client(self, client):
+    def is_client(self, client: ClientManager.Client):
         # This should only be False for clients that have been disconnected.
         return self.client_manager.is_client(client)
 
-    def get_clients(self):
+    def get_clients(self) -> List[ClientManager.Client]:
         """
         Return a copy of all the clients connected to the server, sorted in ascending order by
         client ID.
@@ -332,11 +336,11 @@ class TsuserverDR:
         """
         return sorted(self.client_manager.clients)
 
-    def get_player_count(self):
+    def get_player_count(self) -> int:
         # Ignore players in the server selection screen.
-        return len([client for client in self.client_manager.clients if client.char_id is not None])
+        return len([client for client in self.get_clients() if client.char_id is not None])
 
-    def load_backgrounds(self):
+    def load_backgrounds(self) -> List[str]:
         backgrounds = ValidateBackgrounds().validate('config/backgrounds.yaml')
 
         self.backgrounds = backgrounds
@@ -352,7 +356,7 @@ class TsuserverDR:
 
         return backgrounds.copy()
 
-    def load_config(self):
+    def load_config(self) -> Dict[str, Any]:
         self.config = ValidateConfig().validate('config/config.yaml')
 
         self.config['motd'] = self.config['motd'].replace('\\n', ' \n')
@@ -370,7 +374,8 @@ class TsuserverDR:
             'gmpass7',
             ]
 
-        self.all_passwords = [self.config[password] for password in passwords if self.config[password]]
+        self.all_passwords = [self.config[password]
+                              for password in passwords if self.config[password]]
 
         # Default values to fill in config.yaml if not present
         defaults_for_tags = {
@@ -405,12 +410,12 @@ class TsuserverDR:
 
         return self.config
 
-    def load_characters(self):
+    def load_characters(self) -> List[str]:
         characters = ValidateCharacters().validate('config/characters.yaml')
 
         if self.char_list != characters:
             # Inconsistent character list, so change everyone to spectator
-            for client in self.client_manager.clients:
+            for client in self.get_clients():
                 if client.char_id != -1:
                     # Except those that are already spectators
                     client.change_character(-1)
@@ -551,7 +556,8 @@ class TsuserverDR:
 
             logger.log_pdebug(message)
 
-    def load_music(self, music_list_file='config/music.yaml', server_music_list=True):
+    def load_music(self, music_list_file: str = 'config/music.yaml',
+                   server_music_list: bool = True) -> List[Dict[str, Any]]:
         music_list = ValidateMusic().validate(music_list_file)
 
         if server_music_list:
@@ -607,7 +613,7 @@ class TsuserverDR:
         with Constants.fopen('storage/hd_ids.json', 'w') as whole_list:
             json.dump(self.hdid_list, whole_list)
 
-    def get_ipid(self, ip):
+    def get_ipid(self, ip: str) -> int:
         if ip not in self.ipid_list:
             while True:
                 ipid = random.randint(0, 10**10-1)
@@ -617,8 +623,9 @@ class TsuserverDR:
             self.dump_ipids()
         return self.ipid_list[ip]
 
-    def build_music_list(self, from_area=None, c=None, music_list=None, include_areas=True,
-                         include_music=True):
+    def build_music_list(self, from_area: AreaManager.Area = None, c: ClientManager.Client = None,
+                         music_list: List[Dict[str, Any]] = None, include_areas: bool = True,
+                         include_music: bool = True) -> List[str]:
         built_music_list = list()
 
         # add areas first, if needed
@@ -631,7 +638,8 @@ class TsuserverDR:
 
         return built_music_list
 
-    def prepare_area_list(self, c=None, from_area=None):
+    def prepare_area_list(self, c: ClientManager.Client = None,
+                          from_area: AreaManager.Area = None) -> List[str]:
         """
         Return the area list of the server. If given c and from_area, it will send an area list
         that matches the perspective of client `c` as if they were in area `from_area`.
@@ -645,7 +653,7 @@ class TsuserverDR:
 
         Returns
         -------
-        list of AreaManager.Area
+        list of str
             Area list that matches intended perspective.
         """
 
@@ -660,7 +668,8 @@ class TsuserverDR:
 
         return prepared_area_list
 
-    def prepare_music_list(self, c=None, specific_music_list=None):
+    def prepare_music_list(self, c: ClientManager.Client = None,
+                           specific_music_list: List[Dict[str, Any]] = None) -> List[str]:
         """
         If `specific_music_list` is not None, return a client-ready version of that music list.
         Else, if `c` is a client with a custom chosen music list, return their latest music list.
@@ -699,10 +708,10 @@ class TsuserverDR:
 
         return prepared_music_list
 
-    def is_valid_char_id(self, char_id):
+    def is_valid_char_id(self, char_id: int) -> bool:
         return len(self.char_list) > char_id >= -1
 
-    def get_char_id_by_name(self, name):
+    def get_char_id_by_name(self, name: str) -> int:
         if name == self.config['spectator_name']:
             return -1
         for i, ch in enumerate(self.char_list):
@@ -710,7 +719,7 @@ class TsuserverDR:
                 return i
         raise ServerError('Character not found.')
 
-    def get_song_data(self, music, c=None):
+    def get_song_data(self, music: str, c: ClientManager.Client = None) -> Tuple[str, int]:
         # The client's personal music list should also be a valid place to search
         # so search in there too if possible
         if c and c.music_list:
@@ -729,17 +738,21 @@ class TsuserverDR:
                         return song['name'], -1
         raise ServerError.MusicNotFoundError('Music not found.')
 
-    def send_all_cmd_pred(self, cmd, *args, pred=lambda x: True):
-        for client in self.client_manager.clients:
+    def send_all_cmd_pred(self, cmd: str, *args: List[str],
+                          pred: Callable[[ClientManager.Client], bool] = lambda x: True):
+        for client in self.get_clients():
             if pred(client):
                 client.send_command(cmd, *args)
 
-    def make_all_clients_do(self, function, *args, pred=lambda x: True, **kwargs):
-        for client in self.client_manager.clients:
+    def make_all_clients_do(self, function: str, *args: List[str],
+                            pred: Callable[[ClientManager.Client], bool] = lambda x: True,
+                            **kwargs):
+        for client in self.get_clients():
             if pred(client):
                 getattr(client, function)(*args, **kwargs)
 
-    def send_error_report(self, client, cmd, args, ex):
+    def send_error_report(self, client: ClientManager.Client, cmd: str, args: List[str],
+                          ex: Exception):
         """
         In case of an error caused by a client packet, send error report to user, notify moderators
         and have full traceback available on console and through /lasterror
@@ -787,25 +800,26 @@ class TsuserverDR:
         if self.in_test:
             raise ex
 
-    def broadcast_global(self, client, msg, as_mod=False,
-                         mtype="<dollar>G", condition=lambda x: not x.muted_global):
+    def broadcast_global(self, client: ClientManager.Client, msg: str, as_mod: bool = False,
+                         mtype: str = "<dollar>G",
+                         condition: Constants.ClientBool = lambda x: not x.muted_global):
         username = client.name
         ooc_name = '{}[{}][{}]'.format(mtype, client.area.id, username)
         if as_mod:
             ooc_name += '[M]'
-        targets = [c for c in self.client_manager.clients if condition(c)]
+        targets = [c for c in self.get_clients() if condition(c)]
         for c in targets:
             c.send_ooc(msg, username=ooc_name)
         if self.config['use_district']:
             msg = 'GLOBAL#{}#{}#{}#{}'.format(int(as_mod), client.area.id, username, msg)
             self.district_client.send_raw_message(msg)
 
-    def broadcast_need(self, client, msg):
+    def broadcast_need(self, client: ClientManager.Client, msg: str):
         char_name = client.displayname
         area_name = client.area.name
         area_id = client.area.id
 
-        targets = [c for c in self.client_manager.clients if not c.muted_adverts]
+        targets = [c for c in self.get_clients() if not c.muted_adverts]
         msg = ('=== Advert ===\r\n{} in {} [{}] needs {}\r\n==============='
                .format(char_name, area_name, area_id, msg))
         for c in targets:

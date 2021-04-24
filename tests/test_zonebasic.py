@@ -37,10 +37,10 @@ class _TestZone(_TestSituation6Mc1Gc25):
             self.assertTrue(expected_zone_id in self.zm.get_zones().keys())
 
             actual_zone = self.zm.get_zone(expected_zone_id)
-            self.assertEquals(expected_zone_id, actual_zone.get_id())
+            self.assertEqual(expected_zone_id, actual_zone.get_id())
 
             actual_zone_areas = {area.id for area in actual_zone.get_areas()}
-            self.assertEquals(expected_zone_areas, actual_zone_areas)
+            self.assertEqual(expected_zone_areas, actual_zone_areas)
 
         self.zm._check_structure() # Remove later
 
