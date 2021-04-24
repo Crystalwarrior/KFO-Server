@@ -734,7 +734,7 @@ class ClientManager:
                               .format(self.area.id, old_char, self.get_char_name()), self)
 
         def change_music_cd(self) -> int:
-            if self.is_officer():
+            if self.is_staff():
                 return 0
 
             now = time.time()

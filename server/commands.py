@@ -4017,7 +4017,10 @@ def ooc_cmd_play(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Plays a given track, even if not explicitly in the music list. It is the way to play custom
     music. If the area parameter 'song_switch_allowed' is set to true, anyone in the area can use
-    this command even if they are not logged in.
+    this command even if they are not logged in as game master.
+    Returns an error if the player is not a game master and the area does not allow the use of
+    /play, if the player is IC-muted, if the player does not have DJ privileges, or if the player
+    triggers the server music flood guard.
 
     SYNTAX
     /play <track_name>
@@ -4038,6 +4041,16 @@ def ooc_cmd_play(client: ClientManager.Client, arg: str):
             raise
     except ArgumentError:
         raise ArgumentError('You must specify a song.')
+
+    if client.is_muted:  # Checks to see if the client has been muted by a mod
+        raise ClientError("You have been muted by a moderator.")
+    if not client.is_dj:
+        raise ClientError('You were blockdj\'d by a moderator.')
+
+    delay = client.change_music_cd()
+    if delay:
+        raise ClientError(f'You changed song too many times recently. Please try again after '
+                          f'{Constants.time_format(delay)}')
 
     client.area.play_track(arg, client, raise_if_not_found=False, reveal_sneaked=False)
 
