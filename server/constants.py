@@ -881,7 +881,8 @@ class Constants():
         return targets[0]
 
     @staticmethod
-    def parse_id_or_ipid(client: ClientManager.Client, identifier: str) -> ClientManager.Client:
+    def parse_id_or_ipid(client: ClientManager.Client,
+                         identifier: str) -> List[ClientManager.Client]:
         """
         Given either a client ID or IPID, returns all clients that match this identifier.
 

@@ -115,11 +115,15 @@ class Validate():
 
                 # First resolve. If it can't resolve, later step would fail anyway.
                 try:
+                    if file_name.startswith('"') and file_name.endswith('"'):
+                        # Windows adds leading and trailing " " if the filename contains space.
+                        # This causes issues with .resolve(), so we get rid of those now
+                        file_name = file_name[1:-1]
                     full_path = pathlib.Path(file_name).resolve()
                     print(f'**Checking {full_path}...')
 
-                except OSError:
-                    # Should only land here for paths that cannot be resolved wo
+                except OSError as exc:
+                    # Should only land here for paths that cannot be resolved
                     print(f'Invalid file name {file_name}.')
                 else:
                     if not file_name.upper().endswith('.YAML'):
@@ -138,7 +142,7 @@ class Validate():
                     # Prompt the user to try again.
                     do_again = ''
                     while do_again not in ['Y', 'N']:
-                        do_again = self._safe_input('Try again? (y/n) ').upper()
+                        do_again = self._safe_input('Try again? (y/n): ').upper()
                     if do_again == 'N':
                         break
                     print('\r\n\r\n\r\n')
