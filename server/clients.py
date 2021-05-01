@@ -273,6 +273,13 @@ class DefaultAO2Protocol(Enum):
         ('name', ''),  # 0
         ]
 
+    SN_INBOUND = [
+        ('showname', ArgType.STR),  # 0
+    ]
+
+    SN_OUTBOUND = [
+        ('showname', ''),  # 0
+    ]
 
 ClientDRO1d0d0 = Enum('ClientDRO1d0d0', [(m.name, m.value) for m in DefaultAO2Protocol])
 

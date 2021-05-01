@@ -4893,38 +4893,7 @@ def ooc_cmd_showname(client: ClientManager.Client, arg: str):
     /showname               :: Clears your showname
     """
 
-    if client.server.showname_freeze and not client.is_staff():
-        raise ClientError('Shownames are frozen.')
-
-    old_showname = client.showname
-    if old_showname == arg == '':
-        raise ClientError('You already do not have a showname.')
-    if old_showname == arg:
-        raise ClientError('You already have that showname.')
-
-    try:
-        client.change_showname(arg, forced=False)
-    except ValueError:
-        raise ClientError('Given showname `{}` is already in use in this area.'.format(arg))
-
-    if arg:
-        s_message = 'You have set your showname to `{}`.'.format(arg)
-        if old_showname:
-            w_message = ('(X) Client {} changed their showname from `{}` to `{}` in your zone ({}).'
-                         .format(client.id, old_showname, client.showname, client.area.id))
-        else:
-            w_message = ('(X) Client {} set their showname to `{}` in your zone ({}).'
-                         .format(client.id, client.showname, client.area.id))
-        l_message = '{} set their showname to `{}`.'.format(client.ipid, arg)
-    else:
-        s_message = 'You have removed your showname.'
-        w_message = ('(X) Client {} removed their showname `{}` in your zone ({}).'
-                     .format(client.id, old_showname, client.area.id))
-        l_message = '{} removed their showname.'.format(client.ipid)
-
-    client.send_ooc(s_message)
-    client.send_ooc_others(w_message, is_zstaff=True)
-    logger.log_server(l_message, client)
+    client.command_change_showname(arg, True)
 
 
 def ooc_cmd_showname_area(client: ClientManager.Client, arg: str):

@@ -798,6 +798,8 @@ class _TestClientManager(ClientManager):
                 pass
             elif command_type == 'ackMS':  # Acknowledge MS packet
                 pass
+            elif command_type == 'SN':  # Showname change
+                pass
             else:
                 raise KeyError('Unrecognized STC argument `{}` {}'.format(command_type, args))
 

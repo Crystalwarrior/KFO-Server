@@ -188,6 +188,7 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
         self.c1.assert_no_packets()
         self.c2.assert_ooc('(X) Client {} changed their showname from `{}` to `{}` in your zone '
                            '({}).'.format(3, o_showname, n_showname, self.c3.area.id), over=True)
+        self.c3.assert_packet('SN', n_showname)
         self.c3.assert_ooc('You have set your showname to `{}`.'.format(n_showname), over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
@@ -198,6 +199,7 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
         self.c1.assert_no_packets()
         self.c2.assert_ooc('(X) Client {} removed their showname `{}` in your zone ({}).'
                            .format(3, n_showname, self.c3.area.id), over=True)
+        self.c3.assert_packet('SN', '')
         self.c3.assert_ooc('You have removed your showname.', over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
@@ -208,6 +210,7 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
         self.c1.assert_no_packets()
         self.c2.assert_ooc('(X) Client {} set their showname to `{}` in your zone ({}).'
                            .format(3, n_showname, self.c3.area.id), over=True)
+        self.c3.assert_packet('SN', n_showname)
         self.c3.assert_ooc('You have set your showname to `{}`.'.format(n_showname), over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
@@ -230,6 +233,7 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
                            'your zone ({}).'
                            .format(self.c1_dname, 1, 3, o_showname, n_showname, self.c3.area.id),
                            over=True)
+        self.c3.assert_packet('SN', n_showname)
         self.c3.assert_ooc('Your showname was set to `{}` by a staff member.'
                            .format(n_showname), over=True)
         self.c4.assert_no_packets()
@@ -241,6 +245,7 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
         self.c1.assert_ooc('You have removed the showname of client {}.'.format(3), over=True)
         self.c2.assert_ooc('(X) {} [{}] removed the showname `{}` of client {} in your zone ({}).'
                            .format(self.c1_dname, 1, n_showname, 3, self.c3.area.id), over=True)
+        self.c3.assert_packet('SN', '')
         self.c3.assert_ooc('Your showname was removed by a staff member.', over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
@@ -252,6 +257,7 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
                            .format(3, n_showname), over=True)
         self.c2.assert_ooc('(X) {} [{}] set the showname of client {} to `{}` in your zone ({}).'
                            .format(self.c1_dname, 1, 3, n_showname, self.c3.area.id), over=True)
+        self.c3.assert_packet('SN', n_showname)
         self.c3.assert_ooc('Your showname was set to `{}` by a staff member.'
                            .format(n_showname), over=True)
         self.c4.assert_no_packets()
@@ -275,7 +281,8 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
                            'conflicting with the showname of another player in the same area ({}).'
                            .format(3, b_showname, self.c3.area.id), over=True)
         self.c3.assert_ooc('Your showname `{}` was already used in this area, so it has been '
-                           'removed.'.format(b_showname), over=True)
+                           'removed.'.format(b_showname), ooc_over=True)
+        self.c3.assert_packet('SN', '', over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 

@@ -1014,6 +1014,19 @@ class AOProtocol(asyncio.Protocol):
 
         self.client.change_position(pargs['position'])
 
+    def net_cmd_sn(self, args: List[str]):
+        """
+        Set showname packet.
+        """
+
+        pargs = self.process_arguments('SN', args)
+        self.client.publish_inbound_command('SN', pargs)
+
+        try:
+            self.client.command_change_showname(pargs['showname'], False)
+        except ClientError as exc:
+            self.send_ooc(exc)
+
     def net_cmd_re(self, _):
         # Ignore packet
         return
