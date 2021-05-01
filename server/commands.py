@@ -9101,7 +9101,7 @@ def ooc_cmd_randommusic(client: ClientManager.Client, arg: str):
     /randommusic       :: May play 'Ikoroshia.mp3', 'Despair Searching.mp3', etc.
     """
 
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+    Constants.assert_command(client, arg, parameters='=0')
 
     if client.is_muted:  # Checks to see if the client has been muted by a mod
         raise ClientError("You have been muted by a moderator.")
@@ -9137,6 +9137,12 @@ def ooc_cmd_randommusic(client: ClientManager.Client, arg: str):
                            .format(client.displayname, client.id, random_music),
                            is_zstaff_flex=True, in_area=True)
 
+
+def ooc_cmd_exit(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, parameters='=0')
+
+    client.send_ooc('You have exited the server.')
+    client.disconnect()
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

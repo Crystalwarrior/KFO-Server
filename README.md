@@ -16,7 +16,7 @@ It is highly recommended you read through all the installation steps first befor
   - If prompted during the installation to add `python` as a PATH environment variable, accept this option. You may see this option appear on the very first screen during the installation process.
   - If you know what a virtual environment is and your system supports it, it is recommended that you use one, such as [Anaconda](https://www.continuum.io/downloads) for Windows, or [virtualenv](https://virtualenv.pypa.io/en/stable/) for everyone else (it runs itself using Python). If you do not know what a virtual environment is, you may skip this point.
   - If you have Python 3.6 or lower, you will be prompted on server launch to update to a newer version of Python. That is because the server requires Python 3.7 or higher. Follow instructions under Updating to update your Python version.
-  
+
 * Open Command Prompt, PowerShell or your preferred terminal, and change to the directory where you downloaded TsuserverDR to. You can do this in two ways:
   - On Windows 10, go up one folder above the TsuserverDR folder, Shift + right click the TsuserverDR folder, and click `Open PowerShell window here`. This is the easiest method. Alternatively...
   - On most operating systems, copy the path of the TsuserverDR folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackets, but including the quotation marks if the path contains spaces.
@@ -34,40 +34,40 @@ It is highly recommended you read through all the installation steps first befor
   ```
 
   This operation should not require administrator privileges, unless you decide to remove the `--user` option.
-  
+
 * Rename the folder `config_sample` to `config` and edit the values in the provided YAML files to your liking. Be sure to check the YAML files for syntax errors after you are done. *Use spaces only; do not use tabs.*
 
 ### Running
 
-* To launch a server, you may either 
+* To launch a server, you may either
   - Double-click `start_server.py` in your TsuserverDR folder, or...
   - In PowerShell, Command Prompt or your preferred terminal, change directory to your TsuserverDR folder and type `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. For instructions on how to launch any of the above programs or change directory, refer to the second point in the Installing section.
-  
+
 * If everything was set up correctly, you will see something like this appear:
 
-\[2020-12-17T10:20:20\]: Starting...  
-\[2020-12-17T10:20:20\]: Launching TsuserverDR 4.3.0-b100 (M201217a)...  
-\[2020-12-17T10:20:20\]: Loading server configurations...  
-\[2020-12-17T10:20:20\]: Server configurations loaded successfully!  
-\[2020-12-17T10:20:20\]: Starting a nonlocal server...  
-\[2020-12-17T10:20:20\]: Server started successfully!  
-\[2020-12-17T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
+\[2020-12-17T10:20:20\]: Starting...
+\[2020-12-17T10:20:20\]: Launching TsuserverDR 4.3.0-b100 (M201217a)...
+\[2020-12-17T10:20:20\]: Loading server configurations...
+\[2020-12-17T10:20:20\]: Server configurations loaded successfully!
+\[2020-12-17T10:20:20\]: Starting a nonlocal server...
+\[2020-12-17T10:20:20\]: Server started successfully!
+\[2020-12-17T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server
 
 * If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:
 
-\[2020-12-17T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
-\[2020-12-17T10:20:21\]: *Server name: My First DR Server  
-\[2020-12-17T10:20:21\]: *Server description: This is my flashy new DR server  
-\[2020-12-17T10:20:22\]: Connected to the master server.  
+\[2020-12-17T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:
+\[2020-12-17T10:20:21\]: *Server name: My First DR Server
+\[2020-12-17T10:20:21\]: *Server description: This is my flashy new DR server
+\[2020-12-17T10:20:22\]: Connected to the master server.
 
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If it fails to do that, it will let you know that, as it means there is probably something wrong with your internet connection and that other players may not be able to connect to your server.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
-\[2020-12-17T22:23:04\]: You have initiated a server shut down.  
-\[2020-12-17T22:23:04\]: Kicking 12 remaining clients.  
-\[2020-12-17T22:23:04\]: Server has successfully shut down.  
+\[2020-12-17T22:23:04\]: You have initiated a server shut down.
+\[2020-12-17T22:23:04\]: Kicking 12 remaining clients.
+\[2020-12-17T22:23:04\]: Server has successfully shut down.
 
 * If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
@@ -123,6 +123,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Displays the invite link of the server's Discord server.
 * **doc** "url"
     - Gives the doc url if blank, updates the doc url otherwise.
+* **exit**
+    - Exits the server.
 * **files** "ID/char name/edited-to character/showname/OOC name"
     - Gives a download link set by the target that links to their files, or gives your own download link if not given an argument.
 * **files_set** "url"
@@ -254,7 +256,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
 * **toggle_fp**
     - Changes your setting to be in first person mode (your character does not appear to you when you send IC messages) or normal mode (your character does appear). By default it is in normal mode.
 * **toggle_fs**
-    - Changes your setting to have forward sprites mode off (your character sprites are not sent to anyone, everyone sees the last sprites they last saw) or on (your character appears normally). By default it is on. 
+    - Changes your setting to have forward sprites mode off (your character sprites are not sent to anyone, everyone sees the last sprites they last saw) or on (your character appears normally). By default it is on.
 * **toggle_global**
     - Changes your setting to receive global messages. By default it is on.
 * **toggle_pm**
@@ -332,11 +334,11 @@ GMs can:
 * **clock_pause** "ID"
     - Pauses the day cycle initiated by the target or yourself if not given a target.
 * **clock_period** "name" "hour start"
-    - Initializes a clock period that starts at the given hour for your day cycle. 
+    - Initializes a clock period that starts at the given hour for your day cycle.
     - Whenever the clock ticks into the period, players in the clock range will be ordered to switch to that time of day's version of their theme.
     - Clock period names are automatically made all lowercase.
 * **clock_set** "hour length" "hour"
-    - Modifies the hour length and current hour of your day cycle without restarting it. This is the way to move the day cycle out of unknown time if needed as well. 
+    - Modifies the hour length and current hour of your day cycle without restarting it. This is the way to move the day cycle out of unknown time if needed as well.
     - Acts just like doing /clock again, but does not erase already set periods.
 * **clock_unknown**
     - Sets the time of your day cycle to be unknown, a special time where hours do not tick.
@@ -406,7 +408,7 @@ GMs can:
     - Nonplayers may not talk IC while an NSD is taking place.
 * **nsd_accept**
     - Accepts a break from a player who shot a bullet during looping or recording mode for the NSD you lead, restoring 0.5 influence and ending the NSD.
-* **nsd_add** "ID/char name/edited-to character/showname/OOC name" 
+* **nsd_add** "ID/char name/edited-to character/showname/OOC name"
     - Adds a player part of your current trial to your NSD.
 * **nsd_autoadd**
     - Toggles players who are added to the trial of the NSD being automatically added to the NSD on or off.
@@ -419,12 +421,12 @@ GMs can:
     - Makes you a leader of your NSD.
 * **nsd_loop**
     - Sets the NSD you lead to be in looping mode: messages saved during recording mode will be played Danganronpa style one after the other until a bullet is shot or all messages are seen.
-* **nsd_kick** "ID/char name/edited-to character/showname/OOC name" 
+* **nsd_kick** "ID/char name/edited-to character/showname/OOC name"
     - Kicks a player off the NSD you lead.
 * **nsd_pause**
     - Pauses the NSD you lead, putting it in intermission mode.
 * **nsd_reject**
-    - Rejects a break from a player who shot a bullet during looping or recording mode for the NSD you lead, draining 1 influence from them. 
+    - Rejects a break from a player who shot a bullet during looping or recording mode for the NSD you lead, draining 1 influence from them.
     - The NSD will not end or resume automatically, you will be prompted to decide what to do.
 * **nsd_resume**
     - Sets the NSD you lead to be in the mode prior to intermission mode: if it was recording mode, previously recorded messages will be saved and future messages will be saved on top of the older ones; if it was looping, messages will be played from the first one.
@@ -481,7 +483,7 @@ GMs can:
     - Changes a player's ability to ignore passage locks and thus access all areas from any given area. By default it is off.
 * **trial**
     - Starts a trial with all players in the area, making you leader of the trial.
-* **trial_add** "ID/char name/edited-to character/showname/OOC name" 
+* **trial_add** "ID/char name/edited-to character/showname/OOC name"
     - Adds a player to a trial you lead.* **nsd_autoadd**
 * **trial_autoadd**
     - Toggles users who enter an area of the trial being automatically added to the trial on or off.
@@ -501,7 +503,7 @@ GMs can:
     - Enrolls in the trial by ID occurring in your area.
 * **trial_lead**
     - Makes you a leader of your trial.
-* **trial_kick** "ID/char name/edited-to character/showname/OOC name" 
+* **trial_kick** "ID/char name/edited-to character/showname/OOC name"
     - Kicks a player off your trial.
 * **trial_unlead**
     - Removes your trial leader role.

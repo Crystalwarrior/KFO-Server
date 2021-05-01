@@ -96,7 +96,7 @@
 * Fixed "Knock" client effect not being sent
 
 ### 190630 (3.10)
-* Added support for user initiated day cycles with 
+* Added support for user initiated day cycles with
   - /clock
   - /clock_cancel
   - /clock_pause
@@ -200,7 +200,7 @@
 * Minor bugfixes with respect to bleeding
   - Blood cleaning notifications will no longer be sent with lights off
   - Blood will now automatically be spilled on the area as soon as /bloodtrail is executed, not only on area change
- 
+
 ### 190820 (4.1.1)
 * Added special marks to more staff privileged RP notifications
 * Reworded global IC notification messages
@@ -215,7 +215,7 @@
 * Fixed /multiclients failing for GMs/CMs on non-staff targets while in RP mode
 
 ### 190904 (4.1.4)
-* Gagged messages are now randomly generated 
+* Gagged messages are now randomly generated
 * Staff get new messages when using /bloodtrail, with privilege marks added where needed
 
 ## TsuserverDR 4.2 (The DRO 2nd Anniversary Update/The Zone and Poison Update)
@@ -260,7 +260,7 @@
   - /knock (which has been restricted to non-lobby areas only)
   - /scream
 * Private servers will now include the masterserver name when showing the server IP in the terminal
-* Fixed clients with same HDID but different IPID not being recognized as multiclients. This fixes the following: 
+* Fixed clients with same HDID but different IPID not being recognized as multiclients. This fixes the following:
   - Players getting a new IP can now kick ghosting clients under their old IP with /kickself
   - Staff can now recognize such situations with /whois or /multiclients
 * Fixed /play and /rplay not looping music tracks that appear in the server music list
@@ -303,9 +303,9 @@
   - **toggle_rpgetareas**: Same as /can_rpgetareas.
 * Added /files and /files_set for custom file linking
 * Added logging messages to the server logs when the server starts up, shuts down, or it crashes and the server can manage to save the log
-* Server logs files are now separated by month. Logging information will go to the file associated with the month and year the server was last launched on (so if in one session the server was launched December 2019 and was shut down January 2020, all logs for that session would go in `logs/server-2019-12.log`). 
+* Server logs files are now separated by month. Logging information will go to the file associated with the month and year the server was last launched on (so if in one session the server was launched December 2019 and was shut down January 2020, all logs for that session would go in `logs/server-2019-12.log`).
   - `logs/server.log` will now go unused, but server owners may keep this file for their archives.
-* Improved cross-compatibility between multiple AO-like clients. For client-exclusive features, a best-effort-like approach will be taken to adapt to clients that do not have said features. 
+* Improved cross-compatibility between multiple AO-like clients. For client-exclusive features, a best-effort-like approach will be taken to adapt to clients that do not have said features.
 * Improved /help message so that it suggests to use the extended syntax (/help "command name") to get help with a particular command
 * Improved README.md instructions so that server installation steps are more clear
 * Fixed minor typos in `config_sample/config.yaml`
@@ -493,8 +493,8 @@
 ### (4.3.0)
 * Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
 * Explicitly allowed Python 3.9 support for server owners
-* Added basic DR-style trials (confront readme for command instructions):    
-  - /trial 
+* Added basic DR-style trials (confront readme for command instructions):
+  - /trial
   - /trial_add <identifier>
   - /trial_end
   - /trial_focus <identifier> <value>
@@ -545,11 +545,11 @@
   - Has sneaked, and it is not the case the player is sneaking and they are both in a party
 * Added explicit 'forwards sprite mode' via /toggle_fs. When a player has forwards sprites disabled, all recipients of their IC message will not see the player's sprite, but the last one they saw (or blank if any of the conditions described for first person mode blanks applies). By default it is on.
 * Day cycle clocks are now more linked with DRO 1.0.0 by supporting time of day periods. Players in the clock range playing with compatible clients will automatically change to their time of day's version of their theme when entering a custom period or unknown time:
-  - /clock_period 
+  - /clock_period
   - /clock_unknown
 * Day cycle clocks can now have their hour length and current hour be modified via /clock_set
 * Day cycle clock unpauses now take place as soon as processed rather than at most 1 second after being processed
-* Added /zone_mode to set up the gamemode of a zone. Players part of an area in that zone with compatible clients will automatically change to their gamemode's version of their theme. 
+* Added /zone_mode to set up the gamemode of a zone. Players part of an area in that zone with compatible clients will automatically change to their gamemode's version of their theme.
 * Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players
 * Non-GM players that are spectators may now follow players.
   - Players that were GM and not spectators who then logged out, or non-GMs who were spectators and switched to a character stop following whoever they were following.
@@ -588,6 +588,7 @@
 * Made /blind, /deafen, /gag, /bloodtrail echo the ID of the affected target as part of output message
 * GMs are no longer subject to the server music flood guard
 * Added /randommusic, which plays a randomly chosen track from the player's current music list
+* Added /exit, which lets you exit the server from OOC
 * Server initiated messages will now attempt to include desks wherever possible
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
