@@ -32,15 +32,15 @@ class TestBlood_01_Basic(_TestBlood):
 
         # Empty
         self.c1.ooc('/bloodtrail')
-        self.c1.assert_ooc('Expected client ID.', over=True)
+        self.c1.assert_ooc('This command has 1 argument.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()
         self.assert_bleeding(0, 1)
 
         # Wrong client ID
-        self.c1.ooc('/bloodtrail aa bb')
-        self.c1.assert_ooc('`aa bb` does not look like a valid client ID.', over=True)
+        self.c1.ooc('/bloodtrail aa')
+        self.c1.assert_ooc('`aa` does not look like a valid client ID.', over=True)
         self.c0.assert_no_ooc()
         self.c2.assert_no_ooc()
         self.c3.assert_no_ooc()

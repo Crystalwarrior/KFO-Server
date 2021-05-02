@@ -593,6 +593,7 @@
 * Added /zone_handicap and /zone_unhandicap. Players who enter an area part of a zone with a handicap will be subject to the imposed movement handicap automatically
     - Also added /zone_handicap_add, which makes a player be subject to a zone handicap if their handicap was removed
 * Running /sneak on an already sneaked player will now fail. Similarly, running /reveal on an already not sneaked player will now fail
+* All commands that require a specific number of arguments now validate that the correct number of arguments was passed
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered

@@ -635,7 +635,7 @@ def ooc_cmd_bloodtrail(client: ClientManager.Client, arg: str):
     /bloodtrail 0            :: This player will now leave a blood trail wherever they go.
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
     target = Constants.parse_id(client, arg)
 
     status = {False: 'no longer', True: 'now'}
@@ -1384,7 +1384,7 @@ def ooc_cmd_clock_cancel(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, is_staff=True)
 
-    if len(arg) == 0:
+    if not arg:
         arg = str(client.id)
 
     try:
@@ -1417,7 +1417,7 @@ def ooc_cmd_clock_pause(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, is_staff=True)
 
-    if len(arg) == 0:
+    if not arg:
         arg = str(client.id)
 
     try:
@@ -1459,7 +1459,7 @@ def ooc_cmd_clock_unpause(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, is_staff=True)
 
-    if len(arg) == 0:
+    if not arg:
         arg = str(client.id)
 
     try:
@@ -1671,10 +1671,10 @@ def ooc_cmd_dicelog(client: ClientManager.Client, arg: str):
 
     SYNTAX
     /dicelog
-    /dicelog <client_id>
+    /dicelog {client_id}
 
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
 
     EXAMPLES
     /dicelog        :: Returns the user's last 20 rolls
@@ -1682,7 +1682,7 @@ def ooc_cmd_dicelog(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True)
-    if len(arg) == 0:
+    if not arg:
         arg = str(client.id)
 
     # Obtain target's dicelog
@@ -1699,10 +1699,10 @@ def ooc_cmd_dicelog_area(client: ClientManager.Client, arg: str):
 
     SYNTAX
     /dicelog_area
-    /dicelog_area <target_area>
+    /dicelog_area {target_area}
 
-    PARAMETERS
-    <target_area>: Area whose rolls will be listed
+    OPTIONAL PARAMETERS
+    {target_area}: Area whose rolls will be listed
 
     EXAMPLES
     /dicelog_area       :: Returns the last 20 rolls of the user's current area
@@ -1710,7 +1710,7 @@ def ooc_cmd_dicelog_area(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True)
-    if len(arg) == 0:
+    if not arg:
         arg = str(client.area.id)
 
     # Obtain target area's dicelog
@@ -1816,7 +1816,7 @@ def ooc_cmd_doc(client: ClientManager.Client, arg: str):
     """
 
     # Clear doc case
-    if len(arg) == 0:
+    if not arg:
         client.send_ooc('Document: {}'.format(client.area.doc))
         logger.log_server('[{}][{}]Requested document. Link: {}'
                           .format(client.area.id, client.get_char_name(), client.area.doc), client)
@@ -2600,7 +2600,7 @@ def ooc_cmd_judgelog(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True)
-    if len(arg) == 0:
+    if not arg:
         arg = client.area.name
 
     # Obtain matching area's judgelog
@@ -3058,7 +3058,7 @@ def ooc_cmd_look_clean(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, is_staff=True)
 
-    if len(arg) == 0:
+    if not arg:
         areas_to_clean = [client.area]
     else:
         # Make sure the input is valid before starting
@@ -3149,7 +3149,7 @@ def ooc_cmd_look_set(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, is_staff=True)
 
-    if len(arg) == 0:
+    if not arg:
         client.area.description = client.area.default_description
         client.send_ooc('Reset the area description to its original value.')
         client.send_ooc_others('(X) {} [{}] reset the area description of your area to its '
@@ -3193,7 +3193,7 @@ def ooc_cmd_make_gm(client: ClientManager.Client, arg: str):
     /make_gm 3      :: Makes the client with ID 3 a GM
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     target = Constants.parse_id(client, arg)
 
@@ -3807,7 +3807,7 @@ def ooc_cmd_party_list(client: ClientManager.Client, arg: str):
     *Party 11037 [2/7] (3). Leaders: Phantom_HD. Regular members: Spam_HD
     """
 
-    Constants.assert_command(client, arg, parameters='=0', is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     info = '== Active parties =='
     for party in client.server.party_manager.get_parties():
@@ -4214,7 +4214,7 @@ def ooc_cmd_pos(client: ClientManager.Client, arg: str):
     """
 
     # Resetting to original position
-    if len(arg) == 0:
+    if not arg:
         client.change_position()
         client.send_ooc('Position reset.')
 
@@ -4372,7 +4372,7 @@ def ooc_cmd_reveal(client: ClientManager.Client, arg: str):
                                      to no longer be sneaking.
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     # Unsneak matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -4802,7 +4802,7 @@ def ooc_cmd_scream_set_range(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, is_staff=True)
 
-    if len(arg) == 0:
+    if not arg:
         client.area.scream_range = set()
         area_names = '{}'
     else:
@@ -4861,7 +4861,7 @@ def ooc_cmd_shoutlog(client: ClientManager.Client, arg: str):
     """
 
     Constants.assert_command(client, arg, is_staff=True)
-    if len(arg) == 0:
+    if not arg:
         arg = client.area.name
 
     # Obtain matching area's shoutlog
@@ -5095,7 +5095,7 @@ def ooc_cmd_showname_set(client: ClientManager.Client, arg: str):
     /showname_set 1234567890    :: Clears the showname of the client(s) whose IPID is 1234567890.
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
 
     try:
         separator = arg.index(" ")
@@ -5165,7 +5165,7 @@ def ooc_cmd_sneak(client: ClientManager.Client, arg: str):
                                     be sneaking.
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     # Sneak matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -5488,7 +5488,7 @@ def ooc_cmd_timer_get(client: ClientManager.Client, arg: str):
             # This case happens when a non-authorized user attempts to check
             # all timers and all timers are non-public or non-viewable.
             string_of_timers = "No timers available.  "  # Double space intentional
-    elif len(arg) == 0:  # Used /timer_get
+    elif not arg:  # Used /timer_get
         string_of_timers = "Current active timers:\n*" + string_of_timers  # Add lead
 
     client.send_ooc(string_of_timers[:-2])  # Ignore last newline character
@@ -5661,7 +5661,7 @@ def ooc_cmd_transient(client: ClientManager.Client, arg: str):
     /transient 1234567890   :: This player can now only access only reachable areas.
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     # Invert current transient status of matching targets
     status = {False: 'no longer', True: 'now'}
@@ -6220,7 +6220,7 @@ def ooc_cmd_whereis(client: ClientManager.Client, arg: str):
     /whereis 1234567890  :: May return something like this: Client 1 (1234567890) is in Basement (0)
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     for c in Constants.parse_id_or_ipid(client, arg):
         client.send_ooc("Client {} ({}) is in {} ({})."
@@ -6366,10 +6366,11 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
-    /whois <target_id>
+    /whois
+    /whois {target_id}
 
-    PARAMETER
-    <target_id>: Either client ID, IPID, OOC username or character name
+    OPTIONAL PARAMETERS
+    {target_id}: Either client ID, IPID, OOC username or character name
 
     EXAMPLES
     For player with client ID 1, IPID 1234567890, HDID abb0011, OOC username Phantom, character
@@ -7248,7 +7249,7 @@ def ooc_cmd_lurk_cancel(client: ClientManager.Client, arg: str):
                        10 seconds and not be called out.
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     if client.area.lurk_length == 0:
         raise ClientError('This area has no active lurk callout timer.')
