@@ -2387,13 +2387,8 @@ def ooc_cmd_handicap(client: ClientManager.Client, arg: str):
                                .format(client.displayname, client.id, name, length, c.displayname,
                                        client.area.name, client.area.id),
                                is_zstaff_flex=True, pred=lambda x: x != c)
-        c.send_ooc('You were imposed a movement handicap "{}" of length {} seconds when '
-                   'changing areas.'.format(name, length))
 
-        client.server.tasker.create_task(c, ['as_handicap', time.time(), length, name,
-                                             announce_if_over])
-        c.handicap_backup = (client.server.tasker.get_task(c, ['as_handicap']),
-                             client.server.tasker.get_task_args(c, ['as_handicap']))
+        c.change_handicap(True, length=length, name=name, announce_if_over=announce_if_over)
 
 
 def ooc_cmd_help(client: ClientManager.Client, arg: str):
@@ -4064,7 +4059,7 @@ def ooc_cmd_play(client: ClientManager.Client, arg: str):
     try:
         client.server.get_song_data(arg, c=client)
     except ServerError.MusicNotFoundError:
-        client.send_ooc(f'(X) Warning: `{arg}` is not a recognized track name, so it will not '
+        client.send_ooc(f'Warning: `{arg}` is not a recognized track name, so it will not '
                         'loop.')
 
 
@@ -5940,13 +5935,13 @@ def ooc_cmd_unhandicap(client: ClientManager.Client, arg: str):
                                1234567890
     """
 
-    Constants.assert_command(client, arg, is_staff=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     # Obtain targets
     for c in Constants.parse_id_or_ipid(client, arg):
         try:
-            _, _, name, _ = client.server.tasker.get_task_args(c, ['as_handicap'])
-        except KeyError:
+            name = c.change_handicap(False)
+        except ClientError:
             client.send_ooc('{} does not have an active movement handicap.'
                             .format(c.displayname))
         else:
@@ -5957,9 +5952,6 @@ def ooc_cmd_unhandicap(client: ClientManager.Client, arg: str):
                                    .format(client.displayname, client.id, name, c.displayname,
                                            client.area.name, client.area.id),
                                    is_zstaff_flex=True)
-            c.send_ooc('Your movement handicap "{}" when changing areas was removed.'.format(name))
-            c.handicap_backup = None
-            client.server.tasker.remove_task(c, ['as_handicap'])
 
 
 def ooc_cmd_unilock(client: ClientManager.Client, arg: str):
@@ -9139,10 +9131,190 @@ def ooc_cmd_randommusic(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_exit(client: ClientManager.Client, arg: str):
+    """
+    Makes you exit the server.
+
+    SYNTAX
+    /exit
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /exit      :: Makes you exit the server.
+    """
+
     Constants.assert_command(client, arg, parameters='=0')
 
     client.send_ooc('You have exited the server.')
     client.disconnect()
+
+
+def ooc_cmd_zone_handicap(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
+    Sets a movement handicap on the zone you are watching so that they need to wait a set amount of
+    time between changing areas. This will override any previous handicaps the client(s) may have
+    had, including custom ones and server ones (such as through sneak). Server handicaps will
+    override custom handicaps if the server handicap is longer. However, as soon as the server
+    handicap is over, it will recover the old custom handicap.
+    Players in an area part of the zone you are watching when the command is run, or who later join
+    an area part of the zone will be made subject to the movement handicap. Players subject to this
+    handicap that then leave to an area not part of the zone will be made no longer subject to the
+    movement handicap.
+    Requires /zone_unhandicap to undo.
+    Returns an error if you are not watching a zone, or if given a non-positive length of time.
+
+    SYNTAX
+    /zone_handicap <length> {name} {announce_if_over}
+
+    PARAMETERS
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
+    <length>: Handicap length (in seconds)
+
+    OPTIONAL PARAMETERS
+    {name}: Name of the handicap (e.g. "Injured", "Sleepy", etc.). By default it is "ZoneHandicap".
+    {announce_if_over}: If the server will send a notification once the player may move areas after
+    waiting for their handicap timer. By default it is true. For the server not to send them, put
+    one of these keywords: False, false, 0, No, no
+
+    EXAMPLES
+    /zone_handicap 5                   :: Sets a 5 second movement handicap for your current zone.
+    /zone_handicap 10 Injured          :: Sets a 10 second movement handicap called "Injured" for
+                                          your current zone.
+    /zone_handicap 15 StabWound False  :: Sets a 15 second movement handicap called "StabWound" for
+                                          your current zone which will not send notifications once
+                                          the timer expires.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='&1-3', split_spaces=True)
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    # Obtain targets
+    targets = zone.get_players()
+
+    args = arg.split(' ')
+
+    # Check if valid length and convert to seconds
+    length = Constants.parse_time_length(args[0])  # Also internally validates
+
+    # Check name
+    if len(args) >= 2:
+        name = args[1]
+    else:
+        name = "ZoneHandicap"  # No spaces!
+
+    # Check announce_if_over status
+    if len(args) >= 3 and args[2] in ['False', 'false', '0', 'No', 'no']:
+        announce_if_over = False
+    else:
+        announce_if_over = True
+
+    client.send_ooc('You imposed a movement handicap "{}" of length {} seconds in your zone.'
+                    .format(name, length))
+    client.send_ooc_others('(X) {} [{}] imposed a movement handicap "{}" of length {} seconds '
+                            'in your zone. ({}).'
+                            .format(client.displayname, client.id, name, length, client.area.id),
+                            is_zstaff=True)
+
+    zone.set_property('Handicap', (length, name, announce_if_over))
+
+    for c in targets:
+        c.change_handicap(True, length=length, name=name, announce_if_over=announce_if_over)
+
+
+def ooc_cmd_zone_handicap_add(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
+    Makes a client by client ID be subject to the movement handicap imposed in the zone you are
+    watching. This command is ideal to restore zone handicaps if handicaps were removed.
+    Returns an error if you are not watching a zone, if the zone you are watching does not have a
+    movement handicap set up, if the given identifier does not correspond to a client, or if the
+    client is not in an area part of the zone.
+
+    SYNTAX
+    /zone_handicap_add <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /zone_handicap_add 0  :: Readds the zone's movement handicaps to the player whose client ID is 0
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    if not zone.is_property('Handicap'):
+        raise ZoneError('Your zone currently does not have a handicap set up.')
+
+    current_zlength, current_zname, current_zannounce_if_over = zone.get_property('Handicap')
+
+    target = Constants.parse_id(client, arg)
+    if not zone.is_area(target.area):
+        raise ZoneError('Target client is not in an area part of your zone.')
+
+    client.send_ooc('You made the movement handicap "{}" of length {} seconds in your zone apply '
+                    'to {} [{}].'
+                    .format(current_zname, current_zlength, target.displayname, target.id))
+    client.send_ooc_others('(X) {} [{}] made the movement handicap "{}" of length {} seconds '
+                            'in your zone apply to {} [{}]. ({}).'
+                            .format(client.displayname, client.id, current_zname, current_zlength,
+                                    client.area.id, target.displayname, target.id),
+                            is_zstaff=True, not_to={target})
+
+    target.change_handicap(True, length=current_zlength, name=current_zname,
+                           announce_if_over=current_zannounce_if_over)
+
+
+def ooc_cmd_zone_unhandicap(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Removes movement handicaps in the zone you are watching so that players in an area part of the
+    zone no longer need to wait a set amount of time between changing areas. This will also remove
+    server handicaps, if any (such as automatic sneak handicaps).
+    Requires /zone_handicap to undo.
+    Search by IPID can only be performed by CMs and mods.
+    Returns an error if you are not watching a zone, or if the zone does not have a movement
+    handicap set up.
+
+    SYNTAX
+    /zone_unhandicap
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /zone_unhandicap  :: Removes the current zone's zone handicap and all handicaps players in an
+                         area part of the zone may have had.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    if not zone.is_property('Handicap'):
+        raise ZoneError('Your zone currently does not have a handicap set up.')
+
+    zone.remove_property('Handicap')
+    targets = zone.get_players()
+
+    client.send_ooc('You removed the movement handicap in your zone.')
+    client.send_ooc_others('(X) {} [{}] removed the movement handicap in your zone ({}).'
+                            .format(client.displayname, client.id, client.area.id),
+                            is_zstaff=True)
+
+    for c in targets:
+        try:
+            c.change_handicap(False)
+        except ClientError:
+            continue
+
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

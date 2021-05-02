@@ -166,6 +166,16 @@ class ClientChangeArea:
             else:
                 client.send_ooc('You have left zone `{}`.'.format(zone_id))
 
+            if old_area.in_zone.is_property('Handicap'):
+                if not (area.in_zone and area.in_zone.is_property('Handicap')):
+                    # Avoid double notification
+                    try:
+                        client.change_handicap(False)
+                    except ClientError:
+                        # If the client no longer had a handicap, no need to do anything
+                        # This can happen if /unhandicap was run with a client in an area part of
+                        # a zone with a handicap
+                        pass
 
         # Check if entering a zone
         if area.in_zone and area.in_zone != old_area.in_zone:
@@ -178,6 +188,12 @@ class ClientChangeArea:
                                 .format(zone_id, zone_id))
             else:
                 client.send_ooc('You have entered zone `{}`.'.format(zone_id))
+
+            if area.in_zone.is_property('Handicap'):
+                length, name, announce_if_over = area.in_zone.get_property('Handicap')
+                client.change_handicap(True, length=length, name=name,
+                                       announce_if_over=announce_if_over)
+
 
         # Check if someone in the new area has the same showname
         try: # Verify that showname is still valid

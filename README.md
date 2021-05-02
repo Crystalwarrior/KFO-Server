@@ -377,6 +377,7 @@ GMs can:
     - Sets a movement handicap on a client by ID so that they need to wait a set amount of time in seconds between changing areas.
     - If name is given, the handicap announcement will use it as the name of the handicap.
     - If announce if over is set to any of "False, false, 0, No, no", no announcements will be sent to the player indicating that they may now move areas.
+    - If the player had an existing handicap, it will be overwritten with this one.
 * **iclock**
     - Changes the IC lock status of the current area.
     - If the area has an IC lock, only GMs and above will be able to send IC messages.
@@ -532,6 +533,15 @@ GMs can:
     - Adds an area by name or ID to the zone you are watching.
 * **zone_delete**
     - Deletes the zone you are watching.
+* **zone_handicap** "length" "name" "announce if over"
+    - Sets a movement handicap on all clients part of the zone (now or later) you are watching so that they need to wait a set amount of time in seconds between changing areas.
+    - Players who are subject to a zone handicap that then leave the zone will have their handicap removed.
+    - If name is given, the handicap announcement will use it as the name of the handicap.
+    - If announce if over is set to any of "False, false, 0, No, no", no announcements will be sent to the player indicating that they may now move areas.
+    - If a player in the zone had an existing handicap, it will be overwritten with this one.
+* **zone_handicap_add** "ID"
+    - Makes the player subject to the zone's movement handicap.
+    - This is useful if the player lost the zone handicap because another handicap was removed.
 * **zone_info**
     - Lists brief description of the zone you are watching, as well as lists all players in areas part of the zone.
 * **zone_lights** "on/off"
@@ -546,6 +556,8 @@ GMs can:
     - Plays a track in all areas in the zone you are watching.
 * **zone_remove** "area"
     - Removes an area by name or ID from the zone you are watching.
+* **zone_unhandicap**
+    - Removes the zone's movement handicap.
 * **zone_unwatch**
     - Makes you stop watching the zone you were watching.
 * **zone_watch** "zone"

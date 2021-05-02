@@ -93,6 +93,7 @@ class ClientManager:
             self.music_list = None
             self.showname_history = list()
             self.is_transient = False
+            self.handicap = None
             self.handicap_backup = None  # Use if custom handicap is overwritten with a server one
             self.is_movement_handicapped = False
             self.show_shownames = True
@@ -1060,6 +1061,45 @@ class ClientManager:
                         resulting_effects[name] = (old_remaining, False)
 
             return resulting_effects
+
+        def change_handicap(self, setting: bool, length: int = 1, name: str = '',
+                            announce_if_over: bool = True):
+            if setting:
+                self.send_ooc('You were imposed a movement handicap "{}" of length {} seconds when '
+                              'changing areas.'.format(name, length))
+
+                self.server.tasker.create_task(self, ['as_handicap', time.time(), length, name,
+                                                      announce_if_over])
+                self.handicap = (self.server.tasker.get_task(self, ['as_handicap']),
+                                 self.server.tasker.get_task_args(self, ['as_handicap']))
+                self.handicap_backup = (self.server.tasker.get_task(self, ['as_handicap']),
+                                        self.server.tasker.get_task_args(self, ['as_handicap']))
+                return name
+            else:
+                try:
+                    _, _, old_name, _ = self.server.tasker.get_task_args(self, ['as_handicap'])
+                except KeyError:
+                    raise ClientError
+                else:
+                    self.send_ooc('Your movement handicap "{}" when changing areas was removed.'
+                                  .format(old_name))
+                    self.handicap = None
+                    self.handicap_backup = None
+                    self.server.tasker.remove_task(self, ['as_handicap'])
+
+                if self.area.in_zone and self.area.in_zone.is_property('Handicap'):
+                    length, name, announce_if_over = self.area.in_zone.get_property('Handicap')
+                    self.send_ooc_others(f'(X) Warning: {self.displayname} [{self.id}] lost '
+                        f'their zone movement handicap by virtue of having their '
+                        f'handicap removed. Add it again with /zone_handicap_add {self.id}',
+                        is_zstaff_flex=True)
+                if not self.is_visible and self.server.config['sneak_handicap'] > 0:
+                    self.send_ooc_others(f'(X) Warning: {self.displayname} [{self.id}] lost '
+                                         f'their sneaking handicap by virtue of having their '
+                                         f'handicap removed. Add it again with /handicap '
+                                         f'{self.id} {self.server.config["sneak_handicap"]} '
+                                         f'Sneaking', is_zstaff_flex=True)
+                return old_name
 
         def refresh_remembered_status(self,
                                       area: AreaManager.Area=None) -> List[ClientManager.Client]:

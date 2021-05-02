@@ -23,6 +23,15 @@ Zones group areas together such that it allows notifications to only propagate t
 as well as perform tasks only on the areas of the zone.
 """
 
+from __future__ import annotations
+import typing
+from typing import Any, Set
+if typing.TYPE_CHECKING:
+    # Avoid circular referencing
+    from server.area_manager import AreaManager
+    from server.client_manager import ClientManager
+    from server.tsuserver import TsuserverDR
+
 from server.constants import Constants
 from server.exceptions import ZoneError
 
@@ -38,7 +47,8 @@ class ZoneManager:
         that occur in areas in the zone.
         """
 
-        def __init__(self, server, zone_id, areas, watchers):
+        def __init__(self, server: TsuserverDR, zone_id: str, areas: Set[AreaManager.Area],
+                     watchers: Set[ClientManager.Client]):
             """
             Initialization method for a zone.
 
@@ -59,11 +69,13 @@ class ZoneManager:
             self._areas = set()
             self._watchers = set()
 
+            self._properties = dict()
             self._mode = ''
+
             self.add_areas(areas, check_structure=False)
             self.add_watchers(watchers, check_structure=False)
 
-        def add_area(self, area):
+        def add_area(self, area: AreaManager.Area):
             """
             Add an area to the zone area set if it was not there already.
 
@@ -77,7 +89,7 @@ class ZoneManager:
 
             self.add_areas({area})
 
-        def add_areas(self, areas, check_structure=True):
+        def add_areas(self, areas: Set[AreaManager.Area], check_structure: bool = True):
             """
             Add a set of areas to the zone area set if ALL areas were not part of a zone already.
 
@@ -87,7 +99,7 @@ class ZoneManager:
             ----------
             areas: set of AreaManager.Area
                 Areas to add to the zone area set.
-            check_structure: boolean, optional
+            check_structure: bool, optional
                 If set to False, the manager will skip the structural integrity test.
 
             Raises
@@ -108,7 +120,7 @@ class ZoneManager:
             if check_structure:
                 self._server.zone_manager._check_structure()
 
-        def get_areas(self):
+        def get_areas(self) -> Set[AreaManager.Area]:
             """
             Return all of the zone's areas.
 
@@ -120,7 +132,24 @@ class ZoneManager:
 
             return self._areas.copy()
 
-        def remove_area(self, area):
+        def is_area(self, area: AreaManager.Area) -> bool:
+            """
+            Return True if the area is part of the zone's area list, False otherwise.
+
+            Parameters
+            ----------
+            area : AreaManager.Area
+                Area to check.
+
+            Returns
+            -------
+            bool
+                True if the area is part of the zone's area list, False otherwise.
+            """
+
+            return area in self._areas
+
+        def remove_area(self, area: AreaManager.Area):
             """
             Remove an area from the zone area set if it was there.
 
@@ -153,7 +182,7 @@ class ZoneManager:
                 self._server.zone_manager.delete_zone(self._zone_id)
             self._server.zone_manager._check_structure()
 
-        def get_id(self):
+        def get_id(self) -> str:
             """
             Return the zone ID.
 
@@ -165,7 +194,7 @@ class ZoneManager:
 
             return self._zone_id
 
-        def add_watcher(self, watcher):
+        def add_watcher(self, watcher: ClientManager.Client):
             """
             Add a watcher to the zone watcher set if it was not there already.
 
@@ -179,7 +208,7 @@ class ZoneManager:
 
             self.add_watchers({watcher})
 
-        def add_watchers(self, watchers, check_structure=True):
+        def add_watchers(self, watchers: Set[ClientManager.Client], check_structure: bool = True):
             """
             Add a set of watchers to the zone watcher set if ALL watchers were not watching some
             zone already.
@@ -211,7 +240,7 @@ class ZoneManager:
             if check_structure:
                 self._server.zone_manager._check_structure()
 
-        def get_watchers(self):
+        def get_watchers(self) -> Set[ClientManager.Client]:
             """
             Return all of the zone's watchers.
 
@@ -223,7 +252,24 @@ class ZoneManager:
 
             return self._watchers.copy()
 
-        def remove_watcher(self, watcher):
+        def is_watcher(self, watcher: ClientManager.Client) -> bool:
+            """
+            Return True if the watcher is part of the zone's watcher list, False otherwise.
+
+            Parameters
+            ----------
+            watcher : ClientManager.Client
+                Watcher to check.
+
+            Returns
+            -------
+            bool
+                True if the watcher is part of the zone's watcher list, False otherwise.
+            """
+
+            return watcher in self._watchers
+
+        def remove_watcher(self, watcher: ClientManager.Client):
             """
             Remove a client from the zone watcher set if it was there.
 
@@ -252,7 +298,24 @@ class ZoneManager:
                 self._server.zone_manager.delete_zone(self._zone_id)
             self._server.zone_manager._check_structure()
 
-        def set_mode(self, new_mode):
+        def get_players(self) -> Set[ClientManager.Client]:
+            """
+            Return the set of players in an area part of the current zone.
+
+            Returns
+            -------
+            Set[ClientManager.Client]
+                Set of players in an area part of the current zone.
+            """
+
+            players = set()
+            for area in self.get_areas():
+                for player in area.clients:
+                    players.add(player)
+
+            return players
+
+        def set_mode(self, new_mode: str):
             """
             Set the mode of the zone.
 
@@ -273,7 +336,7 @@ class ZoneManager:
                 for client in area.clients:
                     client.send_gamemode(name=new_mode)
 
-        def get_mode(self):
+        def get_mode(self) -> str:
             """
             Get the mode of the zone.
 
@@ -286,7 +349,88 @@ class ZoneManager:
 
             return self._mode
 
-        def get_info(self):
+        def set_property(self, property_name: str, property_value: Any):
+            """
+            Set a property of the zone.
+
+            Parameters
+            ----------
+            property_name : str
+                Name of the property.
+            property_value : Any
+                Value of the property.
+            """
+
+            self._properties[property_name] = property_value
+
+        def get_property(self, property_name: str) -> Any:
+            """
+            Return a previously set property of the zone.
+
+            Parameters
+            ----------
+            property_name : str
+                Property to fetch.
+
+            Returns
+            -------
+            Any
+                Stored value of the property.
+
+            Raises
+            ------
+            ZoneError.PropertyNotFoundError
+                If no such property was set for the zone.
+            """
+
+            try:
+                return self._properties[property_name]
+            except KeyError:
+                raise ZoneError.PropertyNotFoundError(property_name)
+
+        def is_property(self, property_name: str) -> bool:
+            """
+            Return whether `property_name` is a set property of the zone.
+
+            Parameters
+            ----------
+            property_name : str
+                Property to decide.
+
+            Returns
+            -------
+            bool
+                True if it is a set property, False otherwise.
+            """
+
+            return property_name in self._properties
+
+        def remove_property(self, property_name: str) -> Any:
+            """
+            Remove a previously set property of the zone.
+
+            Parameters
+            ----------
+            property_name : str
+                Property to remove.
+
+            Returns
+            -------
+            Any
+                Previously stored value of the property.
+
+            Raises
+            ------
+            ZoneError.PropertyNotFoundError
+                If the property to remove is already not a property.
+            """
+
+            try:
+                return self._properties.pop(property_name)
+            except KeyError:
+                raise ZoneError.PropertyNotFoundError(property_name)
+
+        def get_info(self) -> str:
             """
             Obtain the zone details (ID, areas, watchers) as a human readable string.
 
@@ -308,7 +452,7 @@ class ZoneManager:
             return ('Zone {}. Contains areas: {}. Is watched by: {}.'
                     .format(self._zone_id, area_description, watcher_description))
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             """
             Return a debugging expression for the zone.
 
@@ -320,7 +464,7 @@ class ZoneManager:
 
             return 'Z::{}:{}:{}'.format(self._zone_id, self._areas, self._watchers)
 
-    def __init__(self, server):
+    def __init__(self, server: TsuserverDR):
         """
         Create a zone manager object.
 
@@ -334,7 +478,7 @@ class ZoneManager:
         self._zones = dict()
         self._zone_limit = 10000
 
-    def new_zone(self, areas, watchers):
+    def new_zone(self, areas: Set[AreaManager.Area], watchers: Set[ClientManager.Client]) -> str:
         """
         Create a zone with the given area set and given watchers set and return its ID.
 
@@ -382,7 +526,7 @@ class ZoneManager:
         self._check_structure()
         return zone_id
 
-    def get_zones(self):
+    def get_zones(self) -> Set[ZoneManager.Zone]:
         """
         Return all of the zones this manager is handling.
 
@@ -420,7 +564,7 @@ class ZoneManager:
 
         self._check_structure()
 
-    def get_zone(self, zone_tag):
+    def get_zone(self, zone_tag) -> ZoneManager.Zone:
         """
         Get the zone object associated with the given tag.
 
@@ -448,7 +592,7 @@ class ZoneManager:
             return self._zones[zone_tag]
         raise KeyError('{} is not a valid zone tag.'.format(zone_tag))
 
-    def get_zone_id(self, zone_tag):
+    def get_zone_id(self, zone_tag) -> str:
         """
         Get the zone object associated with the given tag.
 
@@ -476,7 +620,7 @@ class ZoneManager:
             return zone_tag.zone_id
         raise KeyError('{} is not a valid zone tag.'.format(zone_tag))
 
-    def get_info(self):
+    def get_info(self) -> str:
         """
         List all zones in the server, as well as some of their properties.
         If there are no zones, return a special message instead.
@@ -495,7 +639,7 @@ class ZoneManager:
             message += '\r\n*{}'.format(zone.get_info())
         return message
 
-    def areas_in_some_zone(self, areas):
+    def areas_in_some_zone(self, areas: Set[AreaManager.Area]) -> Set[AreaManager.Area]:
         """
         Return all of the areas among the given areas that are in a zone.
 
@@ -512,7 +656,8 @@ class ZoneManager:
 
         return {area for area in areas if area.in_zone}
 
-    def watchers_in_some_zone(self, watchers):
+    def watchers_in_some_zone(self,
+                              watchers: Set[ClientManager.Client]) -> Set[ClientManager.Client]:
         """
         Return all of the watchers among the given watchers that are watching a zone.
 

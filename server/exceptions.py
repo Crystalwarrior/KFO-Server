@@ -212,6 +212,9 @@ class ZoneError(TsuserverException):
     class WatcherNotInZoneError(TsuserverException):
         pass
 
+    class PropertyNotFoundError(TsuserverException):
+        pass
+
 
 @recreate_subexceptions
 class GameError(TsuserverException):
