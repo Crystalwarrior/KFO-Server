@@ -4354,6 +4354,7 @@ def ooc_cmd_reveal(client: ClientManager.Client, arg: str):
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
     the given client.
     Search by IPID can only be performed by CMs and mods.
+    If the target is not sneaking, the reveal will fail.
     Requires /sneak to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -4375,6 +4376,10 @@ def ooc_cmd_reveal(client: ClientManager.Client, arg: str):
 
     # Unsneak matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
+        if c.is_visible:
+            client.send_ooc('Target client is already not sneaking.')
+            continue
+
         if c != client:
             client.send_ooc("{} is no longer sneaking.".format(c.displayname))
         c.change_visibility(True)
@@ -5141,6 +5146,8 @@ def ooc_cmd_sneak(client: ClientManager.Client, arg: str):
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
     the given client.
     Search by IPID can only be performed by CMs and mods.
+    If the target is in a private area, or in a lobby area and you are not an officer, or is
+    already sneaked, the sneak will fail.
     Requires /reveal to undo.
     Returns an error if the given identifier does not correspond to a user.
 
@@ -5169,6 +5176,9 @@ def ooc_cmd_sneak(client: ClientManager.Client, arg: str):
         if c.area.private_area:
             client.send_ooc('Target client is in a private area. You are not allowed to hide '
                             'someone in such an area.')
+            continue
+        if not c.is_visible:
+            client.send_ooc('Target client is already sneaking.')
             continue
 
         if c != client:
