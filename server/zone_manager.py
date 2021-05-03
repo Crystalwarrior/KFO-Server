@@ -33,7 +33,7 @@ if typing.TYPE_CHECKING:
     from server.tsuserver import TsuserverDR
 
 from server.constants import Constants
-from server.exceptions import ZoneError
+from server.exceptions import ClientError, ZoneError
 from server.subscriber import Listener
 
 class ZoneManager:
@@ -364,8 +364,8 @@ class ZoneManager:
 
             if self.is_property('Handicap'):
                 length, name, announce_if_over = self.get_property('Handicap')
-                client.change_handicap(True, length=length, name=name,
-                                       announce_if_over=announce_if_over)
+                user.change_handicap(True, length=length, name=name,
+                                     announce_if_over=announce_if_over)
 
         def get_players(self) -> Set[ClientManager.Client]:
             """
@@ -443,9 +443,9 @@ class ZoneManager:
             if self.is_property('Handicap'):
                 # Avoid double notification
                 try:
-                    client.change_handicap(False)
+                    player.change_handicap(False)
                 except ClientError:
-                    # If the client no longer had a handicap, no need to do anything
+                    # If the player no longer had a handicap, no need to do anything
                     # This can happen if /unhandicap was run with a client in an area part of
                     # a zone with a handicap
                     pass
