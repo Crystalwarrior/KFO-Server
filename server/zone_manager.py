@@ -34,6 +34,7 @@ if typing.TYPE_CHECKING:
 
 from server.constants import Constants
 from server.exceptions import ZoneError
+from server.subscriber import Listener
 
 class ZoneManager:
     """
@@ -69,11 +70,19 @@ class ZoneManager:
             self._areas = set()
             self._watchers = set()
 
+            self._players = set()
             self._properties = dict()
             self._mode = ''
 
-            self.add_areas(areas, check_structure=False)
-            self.add_watchers(watchers, check_structure=False)
+            self._is_deleted = False
+            self.listener = Listener(self, {
+                        'area_client_left_final': self._on_area_client_left_final,
+                        'area_client_entered_final': self._on_area_client_entered_final,
+                        'client_destroyed': self._on_client_destroyed,
+                        })
+
+            self._add_areas(areas)
+            self._add_watchers(watchers)
 
         def add_area(self, area: AreaManager.Area):
             """
@@ -89,7 +98,7 @@ class ZoneManager:
 
             self.add_areas({area})
 
-        def add_areas(self, areas: Set[AreaManager.Area], check_structure: bool = True):
+        def add_areas(self, areas: Set[AreaManager.Area]):
             """
             Add a set of areas to the zone area set if ALL areas were not part of a zone already.
 
@@ -99,8 +108,6 @@ class ZoneManager:
             ----------
             areas: set of AreaManager.Area
                 Areas to add to the zone area set.
-            check_structure: bool, optional
-                If set to False, the manager will skip the structural integrity test.
 
             Raises
             ------
@@ -108,6 +115,10 @@ class ZoneManager:
                 If any of the given areas is already a part of some zone area set.
             """
 
+            self._add_areas(areas)
+            self._check_structure()
+
+        def _add_areas(self, areas: Set[AreaManager.Area]):
             for area in areas:
                 if area.in_zone:
                     raise ZoneError.AreaConflictError('Area {} is already part of zone {}.'
@@ -115,10 +126,10 @@ class ZoneManager:
 
             for area in areas:
                 self._areas.add(area)
+                self.listener.subscribe(area)
                 area.in_zone = self
-
-            if check_structure:
-                self._server.zone_manager._check_structure()
+                for client in area.clients:
+                    self._add_player(client)
 
         def get_areas(self) -> Set[AreaManager.Area]:
             """
@@ -166,21 +177,27 @@ class ZoneManager:
                 If the area is not part of the zone area set.
             """
 
+            self._remove_area(area)
+            self._check_structure()
+
+        def _remove_area(self, area: AreaManager.Area):
             if area not in self._areas:
                 raise ZoneError.AreaNotInZoneError('Area {} is not part of zone {}.'
                                                    .format(area, self))
 
             self._areas.remove(area)
-            area.in_zone = None
+            self._cleanup_removed_area(area)
 
-            # For each player that was in that area, restore their gamemode
             for client in area.clients:
-                client.send_gamemode(name='')
+                self._remove_player(client)
 
             # If no more areas, delete the zone
             if not self._areas:
                 self._server.zone_manager.delete_zone(self._zone_id)
-            self._server.zone_manager._check_structure()
+
+        def _cleanup_removed_area(self, area: AreaManager.Area):
+            self.listener.unsubscribe(area)
+            area.in_zone = None
 
         def get_id(self) -> str:
             """
@@ -194,51 +211,55 @@ class ZoneManager:
 
             return self._zone_id
 
-        def add_watcher(self, watcher: ClientManager.Client):
+        def add_watcher(self, user: ClientManager.Client):
             """
-            Add a watcher to the zone watcher set if it was not there already.
+            Add a user to the zone watcher set if it was not there already.
 
             This also sets the watched zone of the watcher to the current zone.
 
             Parameters
             ----------
-            watcher: ClientManager.Client
-                Client to add to the zone watcher set.
-            """
-
-            self.add_watchers({watcher})
-
-        def add_watchers(self, watchers: Set[ClientManager.Client], check_structure: bool = True):
-            """
-            Add a set of watchers to the zone watcher set if ALL watchers were not watching some
-            zone already.
-
-            This also sets the watched zone of the watchers to the current zone.
-
-            Parameters
-            ----------
-            watcher: set of ClientManager.Client
-                Watchers to add to the zone watcher set.
-            check_structure: boolean, optional
-                If set to False, the manager will skip the structural integrity test.
+            user: ClientManager.Client
+                User to add to the zone watcher set.
 
             Raises
             ------
             ZoneError.WatcherConflictError:
-                If any of the given watchers is already watching some other zone
+                If the user is already watching some other zone
             """
 
-            for watcher in watchers:
-                if watcher.zone_watched:
+            self.add_watchers({user})
+
+        def add_watchers(self, users: Set[ClientManager.Client]):
+            """
+            Add a set of users to the zone watcher set if ALL users were not watching some
+            zone already.
+
+            This also sets the watched zone of the users to the current zone.
+
+            Parameters
+            ----------
+            users: set of ClientManager.Client
+                Users to add to the zone watcher set.
+
+            Raises
+            ------
+            ZoneError.WatcherConflictError:
+                If any of the given users is already watching some other zone
+            """
+
+            self._add_watchers(users)
+            self._check_structure()
+
+        def _add_watchers(self, users: Set[ClientManager.Client]):
+            for user in users:
+                if user.zone_watched:
                     raise ZoneError.WatcherConflictError('Watcher {} is already watching zone {}.'
-                                                         .format(watcher, watcher.zone_watched))
+                                                         .format(user, user.zone_watched))
 
-            for watcher in watchers:
-                self._watchers.add(watcher)
-                watcher.zone_watched = self
-
-            if check_structure:
-                self._server.zone_manager._check_structure()
+            for user in users:
+                self._watchers.add(user)
+                user.zone_watched = self
 
         def get_watchers(self) -> Set[ClientManager.Client]:
             """
@@ -252,51 +273,99 @@ class ZoneManager:
 
             return self._watchers.copy()
 
-        def is_watcher(self, watcher: ClientManager.Client) -> bool:
+        def is_watcher(self, user: ClientManager.Client) -> bool:
             """
-            Return True if the watcher is part of the zone's watcher list, False otherwise.
+            Return True if the iser is part of the zone's watcher list, False otherwise.
 
             Parameters
             ----------
-            watcher : ClientManager.Client
-                Watcher to check.
+            user : ClientManager.Client
+                User to check.
 
             Returns
             -------
             bool
-                True if the watcher is part of the zone's watcher list, False otherwise.
+                True if the user is part of the zone's watcher list, False otherwise.
             """
 
-            return watcher in self._watchers
+            return user in self._watchers
 
-        def remove_watcher(self, watcher: ClientManager.Client):
+        def remove_watcher(self, user: ClientManager.Client):
             """
-            Remove a client from the zone watcher set if it was there.
+            Remove a user from the zone watcher set if it was there.
 
             This also sets the watched zone of the client to None.
 
             Parameters
             ----------
-            watcher: ClientManager.Client
-                Watcher to remove from the zone watcher set.
+            user: ClientManager.Client
+                User to remove from the zone watcher set.
 
             Raises
             ------
             ZoneError.WatcherNotInZoneError:
-                If the watcher is not part of the zone watcher set.
+                If the user is not part of the zone watcher set.
             """
 
-            if watcher not in self._watchers:
+            self._remove_watcher(user)
+            self._check_structure()
+
+        def _remove_watcher(self, user: ClientManager.Client):
+            if user not in self._watchers:
                 raise ZoneError.WatcherNotInZoneError('Watcher {} is not watching zone {}.'
-                                                      .format(watcher, self))
+                                                      .format(user, self))
 
-            self._watchers.remove(watcher)
-            watcher.zone_watched = None
+            self._watchers.remove(user)
+            self._cleanup_removed_watcher(user)
 
-            # If no more watchers, delete the zone
-            if not self._watchers:
+            # If no more watchers nor players, delete the zone
+            if not self._watchers and not self._players:
                 self._server.zone_manager.delete_zone(self._zone_id)
-            self._server.zone_manager._check_structure()
+                user.send_ooc('(X) Zone `{}` that you were in was automatically deleted as no one '
+                              'was in an area part of it or was watching it anymore.'
+                              .format(self._zone_id), is_staff=True)
+                user.send_ooc_others('Zone `{}` was automatically deleted as no one was in an '
+                                     'area part of it or was watching it anymore.'
+                                     .format(self._zone_id), is_officer=True)
+
+        def _cleanup_removed_watcher(self, user: ClientManager.Client):
+            user.zone_watched = None
+
+        def add_player(self, user: ClientManager.Client):
+            """
+            Add a user to the zone's player list.
+
+            Parameters
+            ----------
+            user : ClientManager.Client
+                User to add.
+
+            Raises
+            ------
+            ZoneError.PlayerConflictError
+                If the user is already a player of the zone.
+            ZoneError.PlayerNotInZoneError
+                If the user is in an area not part of the zone.
+            """
+
+            self._add_player(user)
+            self._check_structure()
+
+        def _add_player(self, user: ClientManager.Client):
+            if user in self._players:
+                raise ZoneError.PlayerConflictError('User is already a player in the zone.')
+            if user.area not in self._areas:
+                raise ZoneError.PlayerNotInZoneError('User is in an area not part of the zone.')
+
+            self._players.add(user)
+            self.listener.subscribe(user)
+
+            user.send_gamemode(name=self.get_mode())
+
+            if self.is_property('Handicap'):
+                length, name, announce_if_over = self.get_property('Handicap')
+                client.change_handicap(True, length=length, name=name,
+                                       announce_if_over=announce_if_over)
 
         def get_players(self) -> Set[ClientManager.Client]:
             """
@@ -308,12 +377,79 @@ class ZoneManager:
                 Set of players in an area part of the current zone.
             """
 
-            players = set()
-            for area in self.get_areas():
-                for player in area.clients:
-                    players.add(player)
+            return self._players.copy()
 
-            return players
+        def is_player(self, user: ClientManager.Client) -> bool:
+            """
+            Return True if the user is part of the zone's player list, False otherwise.
+
+            Parameters
+            ----------
+            user : ClientManager.Client
+                User to check.
+
+            Returns
+            -------
+            bool
+                True if the user is part of the zone's player list, False otherwise.
+            """
+
+            return user in self._players
+
+        def remove_player(self, user: ClientManager.Client):
+            """
+            Remove a user from the zone player set if it was there.
+
+            Parameters
+            ----------
+            user: ClientManager.Client
+                User to remove from the zone player set.
+
+            Raises
+            ------
+            ZoneError.PlayerNotInZoneError:
+                If the user is not part of the zone watcher set.
+            """
+
+            self._remove_player(user)
+            self._check_structure()
+
+        def _remove_player(self, user: ClientManager.Client):
+            if user not in self._players:
+                raise ZoneError.PlayerNotInZoneError('User {} is not a player of zone {}.'
+                                                      .format(user, self))
+
+            self._players.remove(user)
+            self._cleanup_removed_player(user)
+
+            # If no more watchers nor players, delete the zone
+            if not self._watchers and not self._players:
+                self._server.zone_manager.delete_zone(self._zone_id)
+                user.send_ooc('(X) Zone `{}` that you were in was automatically deleted as no one '
+                              'was in an area part of it or was watching it anymore.'
+                              .format(self._zone_id), is_staff=True)
+                user.send_ooc_others('Zone `{}` was automatically deleted as no one was in an '
+                                     'area part of it or was watching it anymore.'
+                                     .format(self._zone_id), is_officer=True)
+
+        def _cleanup_removed_player(self, player: ClientManager.Client):
+            self.listener.unsubscribe(player)
+            # Restore their gamemode if needed (if player moved to a new zone, this zone will
+            # be in charge of updating the gamemode)
+            if not player.area.in_zone or player.area.in_zone == self:
+                player.send_gamemode(name='')
+
+            # Remove handicap
+            if self.is_property('Handicap'):
+                # Avoid double notification
+                try:
+                    client.change_handicap(False)
+                except ClientError:
+                    # If the client no longer had a handicap, no need to do anything
+                    # This can happen if /unhandicap was run with a client in an area part of
+                    # a zone with a handicap
+                    pass
+
 
         def set_mode(self, new_mode: str):
             """
@@ -445,12 +581,147 @@ class ZoneManager:
 
             # Obtain watchers
             watchers = sorted(self._watchers)
-            watcher_infos = ['[{}] {} ({})'
-                             .format(c.id, c.displayname, c.area.id) for c in watchers]
-            watcher_description = Constants.cjoin(watcher_infos)
+            if watchers:
+                watcher_infos = ['[{}] {} ({})'
+                                .format(c.id, c.displayname, c.area.id) for c in watchers]
+                watcher_description = Constants.cjoin(watcher_infos)
+            else:
+                watcher_description = 'None'
 
-            return ('Zone {}. Contains areas: {}. Is watched by: {}.'
-                    .format(self._zone_id, area_description, watcher_description))
+            # Obtain players
+            player_description = len(self._players)
+
+            return ('Zone {}. Contains areas: {}. Is watched by: {}. Players in zone: {}.'
+                    .format(self._zone_id, area_description, watcher_description,
+                            player_description))
+
+        def delete(self):
+            """
+            Delete the current zone.
+
+            If the zone is already deleted, do nothing.
+            """
+
+            # Implementation detail: Do this check now to prevent infinite recursion
+            if self.is_deleted():
+                return
+
+            self._is_deleted = True
+            self._server.zone_manager.delete_zone(self._zone_id)
+
+            for area in self._areas:
+                self._cleanup_removed_area(area)
+            for player in self._players:
+                self._cleanup_removed_player(player)
+            for watcher in self._watchers:
+                self._cleanup_removed_watcher(watcher)
+
+            return
+
+        def is_deleted(self) -> bool:
+            """
+            Returns whether the zone was previously deleted.
+
+            Returns
+            -------
+            bool
+                True if the zone was previously deleted, False otherwise.
+            """
+
+            return self._is_deleted
+
+        def _on_area_client_left_final(self, area, client=None, old_displayname=None,
+                                    ignore_bleeding=False):
+            """
+            Default callback for zone signaling a client left. This is executed after all other
+            actions related to moving the player to a new area have been executed: in particular,
+            client.area holds the new area of the client.
+
+            By default it removes the player from the zone if their new area is not part of the
+            zone.
+
+            Parameters
+            ----------
+            area : AreaManager.Area
+                Area that signaled a client has left.
+            client : ClientManager.Client, optional
+                The client that has left. The default is None.
+            new_area : AreaManager.Area
+                The new area the client has gone to. The default is None.
+            old_displayname : str, optional
+                The old displayed name of the client before they changed area. This will typically
+                change only if the client's character or showname are taken. The default is None.
+            ignore_bleeding : bool, optional
+                If the code should ignore actions regarding bleeding. The default is False.
+
+            """
+
+            if client in self.get_players() and client.area not in self._areas:
+                self._remove_player(client)
+
+            self._check_structure()
+
+        def _on_area_client_entered_final(self, area, client=None, old_area=None,
+                                          old_displayname=None, ignore_bleeding=False):
+            """
+            Default callback for zone signaling a client entered.
+
+            By default adds a user to the zone's player list.
+
+            Parameters
+            ----------
+            area : AreaManager.Area
+                Area that signaled a client has entered.
+            client : ClientManager.Client, optional
+                The client that has entered. The default is None.
+            old_area : AreaManager.Area
+                The old area the client has come from. The default is None.
+            old_displayname : str, optional
+                The old displayed name of the client before they changed area. This will typically
+                change only if the client's character or showname are taken. The default is None.
+            ignore_bleeding : bool, optional
+                If the code should ignore actions regarding bleeding. The default is False.
+
+            Returns
+            -------
+            None.
+
+            """
+
+            if client not in self.get_players():
+                self._add_player(client)
+
+            self._check_structure()
+
+        def _on_client_destroyed(self, player):
+            """
+            Default callback for zone player signaling it was destroyed, for example, as a result
+            of a disconnection.
+
+            By default it only removes the player from the zone. If the zone is already deleted or
+            the player is not in the zone, this callback does nothing.
+
+            Parameters
+            ----------
+            player : ClientManager.Client
+                Player that signaled it was destroyed.
+
+            Returns
+            -------
+            None.
+
+            """
+
+            if self.is_deleted():
+                return
+            if player not in self.get_players():
+                return
+            self._remove_player(player)
+
+            self._check_structure()
+
+        def _check_structure(self):
+            self._server.zone_manager._check_structure()
 
         def __repr__(self) -> str:
             """
@@ -553,14 +824,12 @@ class ZoneManager:
             If the zone ID is invalid.
         """
 
-        zone = self._zones.pop(zone_id)
-        for area in zone._areas:
-            area.in_zone = None
-            # For each player that was in an area part of the zone, restore their gamemode
-            for client in area.clients:
-                client.send_gamemode(name='')
-        for watcher in zone._watchers:
-            watcher.zone_watched = None
+        zone = self._zones[zone_id]
+        # Avoid infinite recursive calls
+        if zone.is_deleted():
+            return
+        zone.delete()
+        self._zones.pop(zone_id)
 
         self._check_structure()
 

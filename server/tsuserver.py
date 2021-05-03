@@ -68,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b158'
-        self.internal_version = 'M210502b'
+        self.segment_version = 'b159'
+        self.internal_version = 'M210502c'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -321,7 +321,7 @@ class TsuserverDR:
 
     def is_client(self, client: ClientManager.Client):
         # This should only be False for clients that have been disconnected.
-        return self.client_manager.is_client(client)
+        return not client.disconnected and self.client_manager.is_client(client)
 
     def get_clients(self) -> List[ClientManager.Client]:
         """

@@ -6472,13 +6472,12 @@ def ooc_cmd_zone(client: ClientManager.Client, arg: str):
     client.send_ooc_others('(X) {} [{}] has created zone `{}` containing {} ({}).'
                            .format(client.displayname, client.id, zone_id, output, client.area.id),
                            is_officer=True)
-    for area in areas:
-        for c in area.clients:
-            if c.is_staff() and c != client:
-                c.send_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
-                           'its notifications, start watching it with /zone_watch {}'
-                           .format(zone_id, zone_id))
 
+    client.send_ooc_others('(X) Your area has been made part of zone `{}`. To be able to receive '
+                           'its notifications, start watching it with /zone_watch {}'
+                           .format(zone_id, zone_id), is_staff=True, in_area=areas)
+    client.send_ooc_others('Your area has been made part of zone `{}`.'.format(zone_id),
+                           is_staff=False, in_area=areas)
 
 def ooc_cmd_zone_add(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
@@ -6517,10 +6516,15 @@ def ooc_cmd_zone_add(client: ClientManager.Client, arg: str):
 
     zone_id = client.zone_watched.get_id()
     for c in area.clients:
+        if c == client:
+            continue
+
         if c.is_staff() and c != client and c.zone_watched != client.zone_watched:
             c.send_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
                        'its notifications, start watching it with /zone_watch {}'
                        .format(zone_id, zone_id))
+        else:
+            c.send_ooc('Your area has been made part of zone `{}`.'.format(zone_id))
 
 
 def ooc_cmd_zone_delete(client: ClientManager.Client, arg: str):
@@ -6621,7 +6625,7 @@ def ooc_cmd_zone_info(client: ClientManager.Client, arg: str):
     * Name of the zone.
     * Areas of the zone.
     * Watchers of the zone.
-    * Players in areas part of the zone.
+    * Number of players in areas part of the zone.
     Returns an error if the user is not watching a zone.
 
     SYNTAX
@@ -6815,9 +6819,13 @@ def ooc_cmd_zone_remove(client: ClientManager.Client, arg: str):
     # Otherwise, suggest zone watchers who were in the removed area to stop watching the zone
     else:
         for c in area.clients:
-            if c.is_staff() and c != client and c in backup_watchers:
+            if c == client:
+                continue
+            if c.is_staff() and c in backup_watchers:
                 c.send_ooc('(X) Your area has been removed from your zone. To stop receiving its '
                            'notifications, stop watching it with /zone_unwatch')
+            else:
+                c.send_ooc('Your area has been removed from your zone.')
 
 
 def ooc_cmd_zone_unwatch(client: ClientManager.Client, arg: str):
@@ -6847,10 +6855,14 @@ def ooc_cmd_zone_unwatch(client: ClientManager.Client, arg: str):
         client.send_ooc_others('(X) {} [{}] is no longer watching your zone.'
                                .format(client.displayname, client.id),
                                part_of=target_zone.get_watchers())
+    elif target_zone.get_players():
+        client.send_ooc('(X) Warning: The zone no longer has any watchers.')
     else:
-        client.send_ooc('As you were the last person watching it, your zone has been deleted.')
-        client.send_ooc_others('(X) Zone `{}` was automatically deleted as no one was watching it '
-                               'anymore.'.format(target_zone.get_id()), is_officer=True)
+        client.send_ooc('(X) As you were the last person in an area part of it or who was watching '
+                        'it, your zone has been deleted.')
+        client.send_ooc_others('Zone `{}` was automatically deleted as no one was in an '
+                                'area part of it or was watching it anymore.'
+                                .format(target_zone.get_id()), is_officer=True)
 
 
 def ooc_cmd_zone_watch(client: ClientManager.Client, arg: str):

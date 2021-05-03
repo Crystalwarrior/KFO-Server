@@ -804,6 +804,9 @@ class Constants():
 
     @staticmethod
     def cjoin(structure: Iterable, the: str = False, sort: bool = True) -> str:
+        if not structure:
+            return ''
+
         connector = 'the ' if the else ''
         new_structure = sorted(structure) if sort else list(structure)
 

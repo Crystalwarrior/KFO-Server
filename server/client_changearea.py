@@ -153,11 +153,6 @@ class ClientChangeArea:
         ###########
         # Check if exiting a zone
         if old_area.in_zone and area.in_zone != old_area.in_zone:
-            # If the new area is not part of a zone, send order to go back to original gamemode
-            # If the area is part of a zone, that is covered in the next if
-            if not area.in_zone:
-                client.send_gamemode(name='')
-
             zone_id = old_area.in_zone.get_id()
 
             if client.is_staff() and client.zone_watched == old_area.in_zone:
@@ -166,20 +161,10 @@ class ClientChangeArea:
             else:
                 client.send_ooc('You have left zone `{}`.'.format(zone_id))
 
-            if old_area.in_zone.is_property('Handicap'):
-                if not (area.in_zone and area.in_zone.is_property('Handicap')):
-                    # Avoid double notification
-                    try:
-                        client.change_handicap(False)
-                    except ClientError:
-                        # If the client no longer had a handicap, no need to do anything
-                        # This can happen if /unhandicap was run with a client in an area part of
-                        # a zone with a handicap
-                        pass
+            # old_area.in_zone.remove_player(client)
 
         # Check if entering a zone
         if area.in_zone and area.in_zone != old_area.in_zone:
-            client.send_gamemode(name=area.in_zone.get_mode())
             zone_id = area.in_zone.get_id()
 
             if client.is_staff() and client.zone_watched != area.in_zone:
@@ -189,11 +174,7 @@ class ClientChangeArea:
             else:
                 client.send_ooc('You have entered zone `{}`.'.format(zone_id))
 
-            if area.in_zone.is_property('Handicap'):
-                length, name, announce_if_over = area.in_zone.get_property('Handicap')
-                client.change_handicap(True, length=length, name=name,
-                                       announce_if_over=announce_if_over)
-
+            # area.in_zone.add_player(client)
 
         # Check if someone in the new area has the same showname
         try: # Verify that showname is still valid

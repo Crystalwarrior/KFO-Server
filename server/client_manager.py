@@ -51,6 +51,7 @@ class ClientManager:
             self.bad_version = False
             self.publisher = Publisher(self)
 
+            self.disconnected = False
             self.hdid = ''
             self.ipid = ipid
             self.id = user_id
@@ -144,7 +145,7 @@ class ClientManager:
             # This should only be relevant in the case there is a function that requests packets
             # be sent to multiple clients, but the function does not check if all targets are
             # still clients.
-            if self.server.is_client(self) and not self.transport.is_closing():
+            if self.server.is_client(self):
                 if self.server.print_packets:
                     print(f'< {self.id}: {msg}')
                 self.server.log_packet(self, msg, False)
@@ -638,6 +639,7 @@ class ClientManager:
                 })
 
         def disconnect(self):
+            self.disconnected = True
             self.transport.close()
 
         def send_motd(self):
@@ -1659,12 +1661,15 @@ class ClientManager:
                     self.send_ooc_others('(X) {} [{}] is no longer watching your zone.'
                                          .format(self.displayname, self.id),
                                          part_of=target_zone.get_watchers())
+                elif target_zone.get_players():
+                    client.send_ooc('(X) Warning: The zone no longer has any watchers.')
                 else:
-                    self.send_ooc('As you were the last person watching it, your zone has been '
-                                  'deleted.')
-                    self.send_ooc_others('Zone `{}` was automatically deleted as no one was '
-                                         'watching it anymore.'.format(target_zone.get_id()),
-                                         is_officer=True)
+                    client.send_ooc('(X) As you were the last person in an area part of it or who '
+                                    'was watching it, your zone has been deleted.')
+                    # Not needed, ran in remove_watcher
+                    # client.send_ooc_others('Zone `{}` was automatically deleted as no one was in '
+                    #                        'an area part of it or was watching it anymore.'
+                    #                        .format(target_zone.get_id()), is_officer=True)
 
             # If managing a day cycle clock, cancel it
             try:
@@ -1914,22 +1919,37 @@ class ClientManager:
         # the zone is now empty.
         backup_zone = client.zone_watched
 
-        if client.zone_watched:
-            client.zone_watched.remove_watcher(client)
-            client.send_ooc_others('(X) {} [{}] disconnected while watching your zone ({}).'
-                                   .format(client.displayname, client.id, client.area.id),
-                                   part_of=backup_zone.get_watchers())
-            if not backup_zone.get_watchers():
-                client.send_ooc_others('Zone `{}` was automatically deleted as no one was watching '
-                                       'it anymore.'.format(backup_zone.get_id()), is_officer=True)
+        if backup_zone:
+            backup_zone.remove_watcher(client)
 
-        # If the client was in an area part of a zone, notify all of its watchers, except if they
-        # have been already notified. This would happen if a client is in an area part of zone A
-        # but they are watching some different zone B instead.
-        if client.area.in_zone and backup_zone != client.area.in_zone:
-            client.send_ooc_others('(X) {} [{}] disconnected in your zone ({}).'
-                                   .format(client.displayname, client.id, client.area.id),
-                                   is_zstaff=True)
+            if backup_zone.get_watchers():
+                client.send_ooc_others('(X) {} [{}] disconnected while watching your zone ({}).'
+                                    .format(client.displayname, client.id, client.area.id),
+                                    part_of=backup_zone.get_watchers())
+            elif backup_zone.get_players():
+                # Do nothing, client would not receive anything anyway as it dc'd
+                # client.send_ooc('(X) Warning: The zone no longer has any watchers.')
+                pass
+            else:
+                pass
+                # Not needed, ran in remove_watcher
+                # client.send_ooc('(X) As you were the last person in an area part of it or who '
+                #                 'was watching it, your zone has been deleted.')
+                # client.send_ooc_others('Zone `{}` was automatically deleted as no one was in '
+                #                        'an area part of it or was watching it anymore.'
+                #                        .format(backup_zone.get_id()), is_officer=True)
+
+        if client.area.in_zone:
+            if client.area.in_zone.is_player(client):
+                client.area.in_zone.remove_player(client)
+
+            # If the client was in an area part of a zone, notify all of its watchers except if they
+            # have been already notified. This would happen if a client is in an area part of zone A
+            # but they are watching some different zone B instead.
+            if backup_zone != client.area.in_zone:
+                client.send_ooc_others('(X) {} [{}] disconnected in your zone ({}).'
+                                    .format(client.displayname, client.id, client.area.id),
+                                    is_zstaff=True)
 
         client.publisher.publish('client_destroyed', {})
 

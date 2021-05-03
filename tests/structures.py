@@ -232,6 +232,7 @@ class _TestClientManager(ClientManager):
         def disconnect(self, assert_no_outstanding=False):
             """ Overwrites client_manager.ClientManager.Client.disconnect """
 
+            self.disconnected = True
             self.my_protocol.connection_lost(None, client=self)
 
             if assert_no_outstanding:
@@ -246,6 +247,10 @@ class _TestClientManager(ClientManager):
             self.send_command_stc(command, *args)
 
         def send_command_stc(self, command_type, *args):
+            if not self.server.is_client(self):
+                # Ignore commands sent to disconnected clients
+                return
+
             if len(args) > 1 and isinstance(args[1], TsuserverException):
                 new_args = [args[0], args[1].message]
                 args = tuple(new_args)
@@ -425,7 +430,9 @@ class _TestClientManager(ClientManager):
                     connector = 'somewhere among'
                 else:
                     connector = 'at the start of'
-                err = 'Cannot find \r\n {} \r\n{} the packets of {}'.format(exp_args, connector, self)
+                err = '{} had a packet not found.'.format(self)
+                err += ('\r\nCannot find \r\n {} \r\n{} the unhandled packets list'
+                        .format(exp_args, connector))
                 err += ('\r\nCurrent packets: \r\n*{}'
                         .format('\r\n*'.join([str(x) for x in structure])))
                 raise AssertionError(err)
@@ -453,7 +460,8 @@ class _TestClientManager(ClientManager):
                               allow_partial_match=allow_partial_match)
 
             if over:
-                err = ('{} expected no more packets (did you accidentally put over=True?)'
+                err = ('{} expected no more packets, found some '
+                       '(did you accidentally put over=True?)'
                        .format(self))
                 err += ('\r\nCurrent packets: \r\n*{}'
                         .format('\r\n*'.join([str(x) for x in self.received_packets])))
@@ -462,7 +470,7 @@ class _TestClientManager(ClientManager):
                 # Assumes actual over checks are done manually
                 pass
             else:
-                err = ('{} expected more packets (did you forget to put over=True?)'
+                err = ('{} expected more packets, found none (did you forget to put over=True?)'
                        .format(self))
                 assert len(self.received_packets) != 0, err
 

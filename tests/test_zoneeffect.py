@@ -22,8 +22,12 @@ class TestZoneEffect_01_Global(_TestZone):
         """
 
         self.c1.ooc('/zone 3, 5')
+        self.c0.discard_all()
         self.c1.discard_all()
         self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
+        self.c5.discard_all()
 
         self.c0.ooc('/zone_global Hello players.')
         self.c0.assert_ooc('Hello players.', username='<dollar>ZG[{}][{}]'.format(4, self.c0_dname),
@@ -144,6 +148,11 @@ class TestZoneEffect_01_Global(_TestZone):
         """
 
         self.c5.ooc('/zone 6')
+        self.c0.discard_all()
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
         self.c5.discard_all()
         self.c5.move_area(4)
         self.c1.discard_all() # Discard mod notification for zone creation and C5 moving into zone
@@ -252,8 +261,12 @@ class TestZoneEffect_02_Play(_TestZone):
         """
 
         self.c1.ooc('/zone 3, 5')
+        self.c0.discard_all()
         self.c1.discard_all()
         self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
+        self.c5.discard_all()
 
         self.c1.ooc('/zone_play BOX 15.mp3')
         self.c0.assert_packet('MC', ('BOX 15.mp3', 1, ''), over=True)
@@ -349,8 +362,12 @@ class TestZoneEffect_03_RPNotifications(_TestZone):
         """
 
         self.c1.ooc('/zone 3, 5')
+        self.c0.discard_all()
         self.c1.discard_all()
         self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
+        self.c5.discard_all()
 
         self.c1.ooc('/iclock')
         self.c0.assert_ooc(self.mes_b, over=True)

@@ -206,6 +206,12 @@ class ZoneError(TsuserverException):
     class AreaNotInZoneError(TsuserverException):
         pass
 
+    class PlayerConflictError(TsuserverException):
+        pass
+
+    class PlayerNotInZoneError(TsuserverException):
+        pass
+
     class WatcherConflictError(TsuserverException):
         pass
 

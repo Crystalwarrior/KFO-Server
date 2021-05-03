@@ -41,8 +41,12 @@ class TestZoneChangeWatchers_01_Watch(_TestZone):
         """
 
         self.c1.ooc('/zone 4, 6')  # Creates zone z0
+        self.c0.discard_all()
         self.c1.discard_all()
-        self.c2.discard_all()  # staff in zone
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
+        self.c5.discard_all()
         self.assertEqual(1, len(self.zm.get_zones()))
         self.assertEqual({self.c1}, self.zm.get_zone('z0').get_watchers())
 
@@ -162,8 +166,11 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         self.c1.ooc('/zone 4, 6')  # Creates zone z0
         self.c2.ooc('/zone_watch {}'.format('z0'))
         self.c5.ooc('/zone_watch {}'.format('z0'))
+        self.c0.discard_all()
         self.c1.discard_all()
         self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
         self.c5.discard_all()
         self.assertEqual({self.c1, self.c2, self.c5}, self.zm.get_zone('z0').get_watchers())
 
@@ -279,21 +286,18 @@ class TestZoneChangeWatchers_02_Unwatch(_TestZone):
         """
         Situation: C5 unwatches their zone. As they were the last person watching it, they get a
         special message about their zone being removed. C1/4 also gets a message by being a mod.
-        C0-C4, being in an area part of the zone, are ordered to switch back to no gamemode.
+        As C0-C4 are still in an area part of the zone, the zone is not deleted, but C5 gets a
+        warning.
         """
 
         self.c5.ooc('/zone_unwatch')
-        self.c0.assert_packet('GM', '', over=True)
-        self.c1.assert_packet('GM', '')
-        self.c1.assert_ooc('(X) Zone `{}` was automatically deleted as no one was watching it '
-                           'anymore.'.format('z0'), over=True)
-        self.c2.assert_packet('GM', '', over=True)
-        self.c3.assert_packet('GM', '', over=True)
-        self.c4.assert_packet('GM', '')
-        self.c4.assert_ooc('(X) Zone `{}` was automatically deleted as no one was watching it '
-                           'anymore.'.format('z0'), over=True)
+        self.c0.assert_no_packets()
+        self.c1.assert_no_packets()
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
         self.c5.assert_ooc('You are no longer watching zone `{}`.'.format('z0'))
-        self.c5.assert_ooc('As you were the last person watching it, your zone has been deleted.',
+        self.c5.assert_ooc('(X) Warning: The zone no longer has any watchers.',
                            over=True)
 
 
@@ -307,8 +311,11 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         self.c1.ooc('/zone 4, 6')  # Creates zone z0
         self.c2.ooc('/zone_watch {}'.format('z0'))
         self.c5.ooc('/zone_watch {}'.format('z0'))
+        self.c0.discard_all()
         self.c1.discard_all()
         self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
         self.c5.discard_all()
 
         self.c5.disconnect()
@@ -344,7 +351,8 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         """
 
         self.c4.disconnect()
-        self.c1.assert_ooc('Zone `{}` was automatically deleted as no one was watching it anymore.'
+        self.c1.assert_ooc('Zone `{}` was automatically deleted as no one was in an area part of '
+                           'it or was watching it anymore.'
                            .format('z1'))
         self.c1.assert_ooc('(X) {} [{}] disconnected in your zone ({}).'
                            .format(self.c4_dname, 4, self.c4.area.id), over=True)

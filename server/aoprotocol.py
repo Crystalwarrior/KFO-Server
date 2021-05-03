@@ -147,6 +147,7 @@ class AOProtocol(asyncio.Protocol):
 
         :param exc: reason
         """
+        self.client.disconnected = True
         self.server.remove_client(self.client)
         self.ping_timeout.cancel()
 
