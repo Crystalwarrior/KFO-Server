@@ -5080,6 +5080,7 @@ def ooc_cmd_showname_set(client: ClientManager.Client, arg: str):
     If given IPID, it will set the shownames of all the clients opened by the user. Otherwise, it
     will just set the showname of the given client.
     Returns an error if the given identifier does not correspond to a user.
+    Does nothing for targets whose shownames could not be set to the given value.
 
     SYNTAX
     /showname_set <client_id> {new_showname}
@@ -5108,30 +5109,48 @@ def ooc_cmd_showname_set(client: ClientManager.Client, arg: str):
     # Set matching targets's showname
     for c in Constants.parse_id_or_ipid(client, user_id):
         old_showname = c.showname
+        if old_showname == showname == '':
+            client.send_ooc('Unable to set the showname of client {}: target already does not '
+                            'have a showname.').format(c.id)
+            continue
+        if old_showname == showname:
+            client.send_ooc('Unable to set the showname of client {}: target already has that '
+                            'a showname.').format(c.id)
+            continue
+
         try:
             c.change_showname(showname)
-        except ValueError:
-            raise ClientError('Unable to set the showname of client {}: Given showname `{}` is '
-                              'already in use in area {}.'.format(c.id, showname, c.area.name))
+        except (ClientError, ValueError) as exc:
+            client.send_ooc('Unable to set the showname of client {}: {}'.format(c.id, exc))
+            continue
+            # This also handles the case where old_showname == showname (possibly == '')
 
         if showname:
-            s_message = 'You have set the showname of client {} to `{}`.'.format(c.id, showname)
             if old_showname:
+                s_message = ('You have changed the showname of client {} from `{}` to `{}`.'
+                             .format(c.id, old_showname, showname))
                 w_message = ('(X) {} [{}] changed the showname of client {} from `{}` to `{}` in '
                              'your zone ({}).'
                              .format(client.displayname, client.id, c.id, old_showname, c.showname,
                                      c.area.id))
+                o_message = ('Your showname was changed from `{}` to `{}` by a staff member.'
+                            .format(old_showname, showname))
+                l_message = ('Changed showname of {} from {} to {}.'
+                            .format(c.ipid, old_showname, showname))
             else:
+                s_message = 'You have set the showname of client {} to `{}`.'.format(c.id, showname)
                 w_message = ('(X) {} [{}] set the showname of client {} to `{}` in your zone ({}).'
                              .format(client.displayname, client.id, c.id, c.showname, c.area.id))
-            o_message = 'Your showname was set to `{}` by a staff member.'.format(showname)
-            l_message = 'Set showname of {} to {}.'.format(c.ipid, showname)
+                o_message = ('Your showname was set to `{}` by a staff member.'
+                            .format(showname))
+                l_message = ('Set showname of {} to {}.'
+                            .format(c.ipid, showname))
         else:
             s_message = 'You have removed the showname of client {}.'.format(c.id)
             w_message = ('(X) {} [{}] removed the showname `{}` of client {} in your zone ({}).'
                          .format(client.displayname, client.id, old_showname, c.id, c.area.id))
-            o_message = 'Your showname was removed by a staff member.'
-            l_message = 'Removed showname {} of {}.'.format(showname, c.ipid)
+            o_message = 'Your showname `{}` was removed by a staff member.'.format(old_showname)
+            l_message = 'Removed showname {} of {}.'.format(old_showname, c.ipid)
 
         client.send_ooc(s_message)
         client.send_ooc_others(w_message, not_to={c}, is_zstaff=c.area)

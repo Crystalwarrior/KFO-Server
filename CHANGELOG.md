@@ -596,6 +596,7 @@
 * All commands that require a specific number of arguments now validate that the correct number of arguments was passed
 * Zones that lose all their watchers but still have players in areas part of the zone will no longer be automatically deleted
 * If an area is made part of a zone via /zone or /zone_add, all players are now notified about it. A similar behavior occurs now with /zone_remove
+* All /showname_set notifications now include the old showname of the affected user if applicable
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
@@ -628,5 +629,6 @@
 * Fixed output of /scream_range being formatted different from /minimap. It now lists areas in order by ID with the format number-name
 * Fixed /scream, /whisper and /party_whisper not sending character folder information, which prevented rendering of showname images
 * Fixed /play bypassing IC mutes, blockdj and the server music flood guard
+* Fixed /showname_set stopping early if multiple targets needed to be updated but an early one failed
 * Removed deprecated AO commands, and deprecated packets opKICK and opBAN
 * Dropped Python 3.6 support
