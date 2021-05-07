@@ -274,7 +274,7 @@ class DefaultAO2Protocol(Enum):
         ]
 
     SN_INBOUND = [
-        ('showname', ArgType.STR),  # 0
+        ('showname', ArgType.STR_OR_EMPTY),  # 0
     ]
 
     SN_OUTBOUND = [

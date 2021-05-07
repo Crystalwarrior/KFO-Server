@@ -929,40 +929,45 @@ class ClientManager:
             self.showname = showname
 
         def command_change_showname(self, showname: str, disallow_same_name: bool):
-            if self.server.showname_freeze and not self.is_staff():
-                raise ClientError('Shownames are frozen.')
-
-            old_showname = self.showname
-            if old_showname == showname == '':
-                raise ClientError('You already do not have a showname.')
-            if old_showname == showname:
-                raise ClientError('You already have that showname.')
-
             try:
-                self.change_showname(showname, forced=False)
-            except ValueError:
-                raise ClientError('Given showname `{}` is already in use in this area.'
-                                  .format(showname))
+                if self.server.showname_freeze and not self.is_staff():
+                    raise ClientError('Shownames are frozen.')
 
-            if showname:
-                s_message = 'You have set your showname to `{}`.'.format(showname)
-                if old_showname:
-                    w_message = ('(X) Client {} changed their showname from `{}` to `{}` in '
-                                 'your zone ({}).'
-                                .format(self.id, old_showname, self.showname, self.area.id))
+                old_showname = self.showname
+                if old_showname == showname == '':
+                    raise ClientError('You already do not have a showname.')
+                if old_showname == showname:
+                    raise ClientError('You already have that showname.')
+
+                try:
+                    self.change_showname(showname, forced=False)
+                except ValueError:
+                    raise ClientError('Given showname `{}` is already in use in this area.'
+                                    .format(showname))
+
+                if showname:
+                    s_message = 'You have set your showname to `{}`.'.format(showname)
+                    if old_showname:
+                        w_message = ('(X) Client {} changed their showname from `{}` to `{}` in '
+                                    'your zone ({}).'
+                                    .format(self.id, old_showname, self.showname, self.area.id))
+                    else:
+                        w_message = ('(X) Client {} set their showname to `{}` in your zone ({}).'
+                                    .format(self.id, self.showname, self.area.id))
+                    l_message = '{} set their showname to `{}`.'.format(self.ipid, showname)
                 else:
-                    w_message = ('(X) Client {} set their showname to `{}` in your zone ({}).'
-                                .format(self.id, self.showname, self.area.id))
-                l_message = '{} set their showname to `{}`.'.format(self.ipid, showname)
-            else:
-                s_message = 'You have removed your showname.'
-                w_message = ('(X) Client {} removed their showname `{}` in your zone ({}).'
-                            .format(self.id, old_showname, self.area.id))
-                l_message = '{} removed their showname.'.format(self.ipid)
+                    s_message = 'You have removed your showname.'
+                    w_message = ('(X) Client {} removed their showname `{}` in your zone ({}).'
+                                .format(self.id, old_showname, self.area.id))
+                    l_message = '{} removed their showname.'.format(self.ipid)
 
-            self.send_ooc(s_message)
-            self.send_ooc_others(w_message, is_zstaff=True)
-            logger.log_server(l_message, self)
+                self.send_ooc(s_message)
+                self.send_ooc_others(w_message, is_zstaff=True)
+                logger.log_server(l_message, self)
+            except ClientError as exc:
+                # Make the client have their old showname
+                self.send_showname(showname=self.showname)
+                raise exc
 
         def change_visibility(self, new_status: bool):
             if new_status:  # Changed to visible (e.g. through /reveal)

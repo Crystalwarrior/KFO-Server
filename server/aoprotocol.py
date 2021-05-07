@@ -343,7 +343,7 @@ class AOProtocol(asyncio.Protocol):
                             'noencryption', 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx',
                             'additive', 'effects',
                             # DRO exclusive stuff
-                            'ackMS', ]
+                            'ackMS', 'showname']
             })
 
     def net_cmd_ch(self, args: List[str]):
@@ -1026,7 +1026,7 @@ class AOProtocol(asyncio.Protocol):
         try:
             self.client.command_change_showname(pargs['showname'], False)
         except ClientError as exc:
-            self.send_ooc(exc)
+            self.client.send_ooc(exc)
 
     def net_cmd_re(self, _):
         # Ignore packet
@@ -1069,6 +1069,8 @@ class AOProtocol(asyncio.Protocol):
         'ZZ': net_cmd_zz,  # call mod button
         'RE': net_cmd_re,  # ??? (Unsupported), deprecated
         'PW': net_cmd_pw,  # character password (only on CC/KFO clients), deprecated
+        'SP': net_cmd_sp,  # set position
+        'SN': net_cmd_sn,  # set showname
         'opKICK': net_cmd_opKICK,  # /kick with guard on, deprecated
         'opBAN': net_cmd_opBAN,  # /ban with guard on, deprecated
     }
