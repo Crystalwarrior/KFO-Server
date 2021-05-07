@@ -325,7 +325,7 @@ def ooc_cmd_ban(client: ClientManager.Client, arg: str):
     """
 
     arg = arg.strip()
-    Constants.assert_command(client, arg, parameters='>0', is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='>0')
 
     # Guesses that any number is an IPID
     # and that any non-numerical entry is an IP address.
@@ -378,7 +378,7 @@ def ooc_cmd_banhdid(client: ClientManager.Client, arg: str):
     /banhdid abcd1234             :: Bans the user whose HDID is abcd1234
     """
 
-    Constants.assert_command(client, arg, parameters='=1', is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
 
     if arg not in client.server.hdid_list:
         raise ClientError('Unrecognized HDID {}.'.format(arg))
@@ -607,7 +607,7 @@ def ooc_cmd_blockdj(client: ClientManager.Client, arg: str):
                                       whose IPID is 1234567890.
     """
 
-    Constants.assert_command(client, arg, is_officer=True)
+    Constants.assert_command(client, arg, is_officer=True, parameters='=1')
 
     # Block DJ permissions to matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -1760,7 +1760,7 @@ def ooc_cmd_disemconsonant(client: ClientManager.Client, arg: str):
                                    1234567890.
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
 
     # Disemconsonant matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -1791,7 +1791,7 @@ def ooc_cmd_disemvowel(client: ClientManager.Client, arg: str):
                                          1234567890.
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
 
     # Disemvowel matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -2093,7 +2093,7 @@ def ooc_cmd_gimp(client: ClientManager.Client, arg: str):
     /gimp 1234567890            :: Gimps all clients opened by the user whose IPID is 1234567890.
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
 
     # Gimp matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -2629,7 +2629,7 @@ def ooc_cmd_kick(client: ClientManager.Client, arg: str):
     /kick 1234567890            :: Kick all clients opened by the user whose IPID is 1234567890.
     """
 
-    Constants.assert_command(client, arg, is_officer=True)
+    Constants.assert_command(client, arg, is_officer=True, parameters='=1')
 
     # Kick matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -3427,7 +3427,7 @@ def ooc_cmd_mute(client: ClientManager.Client, arg: str):
     /mute 1234567890            :: Mutes all clients opened by the user whose IPID is 1234567890.
     """
 
-    Constants.assert_command(client, arg, is_officer=True)
+    Constants.assert_command(client, arg, is_officer=True, parameters='=1')
 
     # Mute matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -4338,7 +4338,7 @@ def ooc_cmd_remove_h(client: ClientManager.Client, arg: str):
                              is 1234567890 have their H's removed.
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
 
     # Removes H's to matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -5036,7 +5036,7 @@ def ooc_cmd_showname_history(client: ClientManager.Client, arg: str):
     *Sat Jun 1 18:54:46 2019 | Was cleared
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
 
     # Obtain matching targets's showname history
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -5711,7 +5711,7 @@ def ooc_cmd_unban(client: ClientManager.Client, arg: str):
     """
 
     arg = arg.strip()
-    Constants.assert_command(client, arg, parameters='>0', is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='>0')
 
     if arg.isdigit():
         # IPID
@@ -5743,7 +5743,7 @@ def ooc_cmd_unbanhdid(client: ClientManager.Client, arg: str):
     /unbanhdid abcd1234         :: Unbans user whose HDID is abcd1234
     """
 
-    Constants.assert_command(client, arg, parameters='=1', is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
 
     if arg not in client.server.hdid_list:
         raise ClientError('Unrecognized HDID {}.'.format(arg))
@@ -5788,7 +5788,7 @@ def ooc_cmd_unblockdj(client: ClientManager.Client, arg: str):
                                         whose IPID is 1234567890.
     """
 
-    Constants.assert_command(client, arg, is_officer=True)
+    Constants.assert_command(client, arg, is_officer=True, parameters='=1')
 
     # Restore DJ permissions to matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -5820,7 +5820,7 @@ def ooc_cmd_undisemconsonant(client: ClientManager.Client, arg: str):
                                      is 1234567890.
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
 
     # Undisemconsonant matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -5852,7 +5852,7 @@ def ooc_cmd_undisemvowel(client: ClientManager.Client, arg: str):
                                  1234567890.
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
 
     # Undisemvowel matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -5909,7 +5909,7 @@ def ooc_cmd_ungimp(client: ClientManager.Client, arg: str):
     /ungimp 1234567890            :: Gimps all clients opened by the user whose IPID is 1234567890.
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
 
     # Ungimp matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -6155,7 +6155,7 @@ def ooc_cmd_unmute(client: ClientManager.Client, arg: str):
                                      1234567890.
     """
 
-    Constants.assert_command(client, arg, is_officer=True)
+    Constants.assert_command(client, arg, is_officer=True, parameters='=1')
 
     # Mute matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -6187,7 +6187,7 @@ def ooc_cmd_unremove_h(client: ClientManager.Client, arg: str):
                                whose IPID is 1234567890.
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
 
     # Remove the 'Remove H' effect on matching targets
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -9059,7 +9059,7 @@ def ooc_cmd_dump(client: ClientManager.Client, arg: str):
     SYNTAX
     /dump
 
-    OPTIONAL PARAMETERS
+    PARAMETERS
     None
 
     EXAMPLES
@@ -9067,7 +9067,7 @@ def ooc_cmd_dump(client: ClientManager.Client, arg: str):
     $HOST: Generated server dump file logs/[2020-12-23T200220]D.log.
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_mod=True, parameters='=0')
 
     dump_message = f'Client {client.id} requested a server dump.'
     file = logger.log_error(dump_message, client.server, errortype='D')
