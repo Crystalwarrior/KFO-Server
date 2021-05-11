@@ -72,6 +72,7 @@ def_numfaces: 6
 def_modifier: ''
         
 # RP configurations
+# announce_areas: list all areas of the server in OOC when the player joins
 # rp_mode_enabled: if RP mode should be enabled (restricts certain commands)
 # blackout_background: background to display if lights are turned off/player is blinded
 # default_area_description: description to show with /look if no description is set
@@ -80,6 +81,7 @@ def_modifier: ''
 # sneak_handicap: automatic handicap to impose players who start sneaking
 # spectator_name: name spectators get in /getarea(s)
 
+announce_areas: true
 rp_mode_enabled: true
 blackout_background: Blackout_HD
 default_area_description: No description.
@@ -104,7 +106,6 @@ use_district: false
 district_ip: 127.0.0.1
 district_port: 11037
 district_password: enter_password
-announce_areas: true
 debug: false
 guardpass: Guard
 help_msg: TODO

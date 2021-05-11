@@ -150,7 +150,7 @@ class DefaultAO2Protocol(Enum):
         ('anim', ArgType.STR),  # 3
         ('text', ArgType.STR),  # 4
         ('pos', ArgType.STR),  # 5
-        ('sfx', ArgType.STR),  # 6
+        ('sfx', ArgType.STR_OR_EMPTY),  # 6
         ('anim_type', ArgType.INT),  # 7
         ('char_id', ArgType.INT),  # 8
         ('sfx_delay', ArgType.INT),  # 9
