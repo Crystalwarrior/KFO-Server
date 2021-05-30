@@ -4485,8 +4485,8 @@ def ooc_cmd_rollp(client: ClientManager.Client, arg: str):
     client.add_to_dicelog(roll_message + '.')
     client.area.add_to_dicelog(client, roll_message + '.')
 
-    SALT = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
-    encoding = hashlib.sha1((str(roll_result) + SALT).encode('utf-8')).hexdigest() + '|' + SALT
+    salt = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
+    encoding = hashlib.sha1((str(roll_result) + salt).encode('utf-8')).hexdigest() + '|' + salt
     logger.log_server('[{}][{}]Used /rollp and got {} out of {}.'
                       .format(client.area.id, client.get_char_name(), encoding, num_faces), client)
 
@@ -5006,7 +5006,7 @@ def ooc_cmd_showname_freeze(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_showname_history(client: ClientManager.Client, arg: str):
-    """ (MOD ONLY)
+    """ (STAFF ONLY)
     List all shownames a client by ID or IPID has had during the session. Output differentiates
     between self-initiated showname changes (such as the ones via /showname) by using "Self"
     and third-party-initiated ones by using "Was" (such as /showname_set, or by changing areas and
@@ -5036,7 +5036,7 @@ def ooc_cmd_showname_history(client: ClientManager.Client, arg: str):
     *Sat Jun 1 18:54:46 2019 | Was cleared
     """
 
-    Constants.assert_command(client, arg, is_mod=True, parameters='=1')
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     # Obtain matching targets's showname history
     for c in Constants.parse_id_or_ipid(client, arg):
@@ -9358,6 +9358,38 @@ def ooc_cmd_zone_unhandicap(client: ClientManager.Client, arg: str):
             continue
 
 
+def ooc_cmd_charlog(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    List all character details a client by ID or IPID has had during the session.
+
+    If given IPID, it will obtain the character details log of all the clients opened by the user.
+    Otherwise, it will just obtain the log of the given client.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /charlog <client_id>
+    /charlog <client_ipid>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
+
+    EXAMPLE
+    /charlog 1         :: For the client whose ID is 1, you may get something like this
+
+    == Character details log of client 1 ==
+    *Sat Jun 1 18:52:32 2021 | Changed character to Phantom_HD
+    *Sat Jun 1 18:52:32 2021 | Changed character ini to Phantom_HD/Phantom
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    # Obtain matching targets's character details log
+    for c in Constants.parse_id_or_ipid(client, arg):
+        info = c.get_charlog()
+        client.send_ooc(info)
+    
+    
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

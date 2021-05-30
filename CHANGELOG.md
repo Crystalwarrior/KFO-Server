@@ -490,7 +490,7 @@
 ### 210213b (4.2.5-post8)
 * Fixed regression where if ip_ids.json or hd_ids.json did not exist, the server would not launch
 
-### (4.3.0)
+## (4.3.0)
 * Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
 * Explicitly allowed Python 3.9 support for server owners
 * Added basic DR-style trials (confront readme for command instructions):
@@ -598,6 +598,9 @@
 * If an area is made part of a zone via /zone or /zone_add, all players are now notified about it. A similar behavior occurs now with /zone_remove
 * All /showname_set notifications now include the old showname of the affected user if applicable
 * Clients may now send empty sound effects
+* Made /showname_history be available to all staff members (previously it was for moderators only)
+* Added /charlog, which lists all character changes a player has gone through in a session (including character showname or iniswap changes)
+* Made /whois identifiers follow the same identifier type lookup logic as other commands
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
@@ -632,5 +635,6 @@
 * Fixed /play bypassing IC mutes, blockdj and the server music flood guard
 * Fixed /showname_set stopping early if multiple targets needed to be updated but an early one failed
 * Fixed the default config.yaml listing 'announce_areas' as an unused parameter (it is actively used)
+* Fixed /showname_set being listed as a moderator only command in the README (it was always staff only)
 * Removed deprecated AO commands, and deprecated packets opKICK and opBAN
 * Dropped Python 3.6 support

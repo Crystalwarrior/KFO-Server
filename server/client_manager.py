@@ -18,7 +18,7 @@
 
 from __future__ import annotations
 import typing
-from typing import Callable, List, Optional, Set, Tuple
+from typing import Any, Callable, List, Optional, Set, Tuple
 if typing.TYPE_CHECKING:
     # Avoid circular referencing
     from server.area_manager import AreaManager
@@ -58,6 +58,7 @@ class ClientManager:
             self.char_id = None
             self.name = ''
             self.char_folder = ''
+            self.char_showname = ''
             self.pos = ''
             self.showname = ''
             self.ever_chose_character = False
@@ -119,6 +120,7 @@ class ClientManager:
             self.remembered_locked_passages = dict()
             self.remembered_statuses = dict()
             self.can_bypass_iclock = False
+            self.char_log = list()
 
             # Pairing stuff
             self.charid_pair = -1
@@ -663,6 +665,8 @@ class ClientManager:
         def displayname(self) -> str:
             if self.showname:
                 return self.showname
+            if self.char_showname:
+                return self.char_showname
             return self.get_char_name()
 
         def change_character(self, char_id: int, force: bool = False,
@@ -721,7 +725,8 @@ class ClientManager:
                 self.check_lurk()
 
             self.char_id = char_id
-            self.char_folder = self.get_char_name()  # Assumes players are not iniswapped initially
+            self.char_folder = self.get_char_name()  # Assumes players are not iniswapped initially, waiting for chrini packet
+            self.char_showname = ''  # Assumes players are not iniswapped initially, waiting for chrini packet
             self.pos = ''
             if announce_zwatch:
                 self.send_ooc_others('(X) Client {} has changed from character `{}` to `{}` in '
@@ -740,7 +745,8 @@ class ClientManager:
                 })
             logger.log_server('[{}]Changed character from {} to {}.'
                               .format(self.area.id, old_char, self.get_char_name()), self)
-
+            self.add_to_charlog(f'Changed character to {self.get_char_name()}.')
+ 
         def change_music_cd(self) -> int:
             if self.is_staff():
                 return 0
@@ -893,13 +899,13 @@ class ClientManager:
             # changed = (self.is_gagged != gagged)
             self.is_gagged = gagged
 
-        def change_showname(self, showname: str, target_area: AreaManager.Area = None,
-                            forced: bool = True):
-            # forced=True means that someone else other than the user themselves requested the
-            # showname change. Should only be false when using /showname.
+        def check_change_showname(self, showname: str, target_area: AreaManager.Area = None):
+            if not showname:
+                # Empty shownames are always fine
+                return
             if target_area is None:
                 target_area = self.area
-
+            
             if Constants.contains_illegal_characters(showname):
                 raise ClientError(f'Showname `{showname}` contains an illegal character.')
 
@@ -908,14 +914,40 @@ class ClientManager:
                 raise ClientError("Showname `{}` exceeds the server's character limit of {}."
                                   .format(showname, self.server.config['showname_max_length']))
 
-            # Check if non-empty showname is already used within area
-            if showname != '':
-                for c in target_area.clients:
-                    if c.showname == showname and c != self:
-                        raise ValueError("Showname `{}` is already in use in this area."
-                                         .format(showname))
-                        # This ValueError must be recaught, otherwise the client will crash.
+            # Check if showname is already used within area
+            for c in target_area.clients:
+                if c == self:
+                    continue
+                if c.showname == showname or c.char_showname == showname:
+                    raise ValueError("Showname `{}` is already in use in this area."
+                                        .format(showname))
+                    # This ValueError must be recaught, otherwise the client will crash.
+            
+        def change_character_ini_details(self, char_folder: str, char_showname: str):
+            self.char_folder = char_folder
+            
+            # Check if new character showname is valid before updating.
+            try:
+                if char_showname and self.server.showname_freeze and not self.is_staff():
+                    raise ClientError('Shownames are frozen.')
+                self.check_change_showname(char_showname, target_area=self.area)
+            except (ClientError, ValueError) as exc:
+                self.send_ooc(f'Unable to update character showname: {exc}')
+            else:
+                self.char_showname = char_showname
+            
+            self.add_to_charlog(
+                f'Changed character ini to {self.char_folder}/{self.char_showname}.')
+        
+        def change_showname(self, showname: str, target_area: AreaManager.Area = None,
+                            forced: bool = True):
+            # forced=True means that someone else other than the user themselves requested the
+            # showname change. Should only be false when using /showname.
+            if target_area is None:
+                target_area = self.area
 
+            self.check_change_showname(showname, target_area=target_area)
+            
             if self.showname != showname:
                 status = {True: 'Was', False: 'Self'}
                 ctime = Constants.get_time()
@@ -1667,9 +1699,9 @@ class ClientManager:
                                          .format(self.displayname, self.id),
                                          part_of=target_zone.get_watchers())
                 elif target_zone.get_players():
-                    client.send_ooc('(X) Warning: The zone no longer has any watchers.')
+                    self.send_ooc('(X) Warning: The zone no longer has any watchers.')
                 else:
-                    client.send_ooc('(X) As you were the last person in an area part of it or who '
+                    self.send_ooc('(X) As you were the last person in an area part of it or who '
                                     'was watching it, your zone has been deleted.')
                     # Not needed, ran in remove_watcher
                     # client.send_ooc_others('Zone `{}` was automatically deleted as no one was in '
@@ -1755,7 +1787,25 @@ class ClientManager:
             ipid = self.server.client_manager.get_targets(self, TargetType.IPID, self.ipid, False)
             hdid = self.server.client_manager.get_targets(self, TargetType.HDID, self.hdid, False)
             return sorted(set(ipid + hdid))
+            
+        def add_to_charlog(self, text: str):
+            ctime = Constants.get_time()
+            if len(self.char_log) >= 20:
+                self.char_log.pop(0)
+                
+            self.char_log.append(f'{ctime} | {text}')
+            
+        def get_charlog(self) -> str:
+            info = '== Character details log of client {} =='.format(self.id)
 
+            if not self.char_log:
+                info += ('\r\nClient has not changed their character information since joining the '
+                         'server.')
+            else:
+                for log in self.char_log:
+                    info += '\r\n*{}'.format(log)
+            return info
+                           
         def get_info(self, as_mod: bool = False, as_cm: bool = False, identifier=None):
             if identifier is None:
                 identifier = self.id
@@ -1764,11 +1814,10 @@ class ClientManager:
             ipid = self.ipid if as_mod or as_cm else "-"
             hdid = self.hdid if as_mod or as_cm else "-"
             info += '\n*CID: {}. IPID: {}. HDID: {}'.format(self.id, ipid, hdid)
-            char_info = self.get_char_name()
-            if self.char_folder and self.char_folder != char_info:  # Indicate iniswap if needed
-                char_info = '{} ({})'.format(char_info, self.char_folder)
             info += ('\n*Character name: {}. Showname: {}. OOC username: {}'
-                     .format(char_info, self.showname, self.name))
+                     .format(self.get_char_name(), self.showname, self.name))
+            info += ('\n*Actual character folder: {}. Character showname: {}.'
+                     .format(self.char_folder, self.char_showname))
             info += '\n*In area: {}-{}'.format(self.area.id, self.area.name)
             info += '\n*Last IC message: {}'.format(self.last_ic_message)
             info += '\n*Last OOC message: {}'.format(self.last_ooc_message)

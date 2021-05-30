@@ -178,7 +178,7 @@ class ClientChangeArea:
 
         # Check if someone in the new area has the same showname
         try: # Verify that showname is still valid
-            client.change_showname(client.showname, target_area=area)
+            client.check_change_showname(client.showname, target_area=area)
         except ValueError:
             client.send_ooc('Your showname `{}` was already used in this area, so it has been '
                             'removed.'.format(client.showname))
@@ -189,6 +189,20 @@ class ClientChangeArea:
             client.change_showname('', target_area=area)
             logger.log_server('{} had their showname removed due it being used in the new area.'
                               .format(client.ipid), client)
+            
+        # Check if someone in the new area has the same character showname
+        try: # Verify that the character showname is still valid
+            client.check_change_showname(client.char_showname, target_area=area)
+        except ValueError:
+            client.send_ooc('Your character showname `{}` was already used in this area, so it has '
+                            'been removed.'.format(client.char_showname))
+            client.send_ooc_others('(X) Client {} had their character showname `{}` removed in '
+                                   'your zone due to it conflicting with the showname of another '
+                                   'player in the same area ({}).'
+                                   .format(client.id, client.showname, area.id), is_zstaff=area)
+            client.change_character_ini_details(client.char_folder, '')
+            logger.log_server('{} had their character showname removed due it being used in the '
+                              'new area.'.format(client.ipid), client)
 
         ###########
         # Check if the lights were turned off, and if so, let you know, if you are not blind

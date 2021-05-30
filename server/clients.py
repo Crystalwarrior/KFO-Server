@@ -280,6 +280,11 @@ class DefaultAO2Protocol(Enum):
     SN_OUTBOUND = [
         ('showname', ''),  # 0
     ]
+    
+    CHRINI_INBOUND = [
+        ('actual_folder_name', ArgType.STR),  # 0
+        ('actual_character_showname', ArgType.STR),  # 1
+    ]
 
 ClientDRO1d0d0 = Enum('ClientDRO1d0d0', [(m.name, m.value) for m in DefaultAO2Protocol])
 

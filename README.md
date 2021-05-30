@@ -327,6 +327,8 @@ GMs can:
 * **char_restrict** "character name"
     - Changes the restricted status of a character in the current area.
     - If a character is restricted, only GMs and above can use the character in the current area.
+* **charlog** "ID"
+    - Lists all character changes (including iniswaps and character name changes) a target has gone through since connecting, including the time they were changed.
 * **clock** "area range start" "area range end" "hour length" "hour start"
     - Sets up a day cycle that, starting from the given hour, will tick one hour every given number of seconds and provide a time announcement to a given range of areas.
 * **clock_cancel** "ID"
@@ -381,7 +383,7 @@ GMs can:
 * **iclock**
     - Changes the IC lock status of the current area.
     - If the area has an IC lock, only GMs and above will be able to send IC messages.
-* **iclock_bypass* "ID"
+* **iclock_bypass** "ID"
     - Grants/revokes of an IC lock bypass to the target.
     - Targets with an IC lock bypass may talk in an area whose IC chat is locked. This effect disappears automatically as soon as they move area or their IC chat is unlocked.
 * **judgelog** "area"
@@ -465,8 +467,10 @@ GMs can:
 * **shoutlog** "area"
     - Lists the last 20 shouts sent in the given area, or from the current area if not given.
     - Each entry includes the time of execution, client ID, character name, client IPID, the shout ID and the IC message sent alongside.
-* **showname_area** "area"
-    - Similar to /getarea, but lists shownames along with character names.
+* **showname_history** "ID"
+    - Lists all shownames a target has gone through since connecting, including the time they were changed.
+* **showname_set** "ID" "showname"
+    - Sets a target's showname to be the given one, or clears it if not given one.
 * **sneak** "ID"
     - Sets a target to be sneaking if they were visible.
     - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
@@ -570,6 +574,8 @@ GMs can:
     - If not given a target area, it will use the server's default area (usually area 0).
 * **blockdj** "ID/IPID"
     - Mutes the target from changing music.
+* **charlog** "ID/IPID"
+    - Lists all character changes (including iniswaps and character name changes) a target has gone through since connecting, including the time they were changed.
 * **cleargm** "ID"
     - Logs out the target from their GM rank, or all GMs in the server if not given a target, and puts them in RP mode if needed.
 * **g** "message"
@@ -603,6 +609,10 @@ GMs can:
     - Similar to /getarea, but lists shownames along with character names as well as their IPIDs.
 * **showname_areas**
     - Similar to /getareas, but lists shownames along with character names as well as their IPIDs.
+* **showname_history** "ID/IPID"
+    - Lists all shownames a target has gone through since connecting, including the time they were changed.
+* **showname_set** "ID/IPID" "showname"
+    - Sets a target's showname to be the given one, or clears it if not given one.
 * **sneak** "ID/IPID"
     - Sets a target to be sneaking if they were visible.
     - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
@@ -659,12 +669,8 @@ GMs can:
     - Reloads the server's default character, music and background lists.
 * **showname_freeze**
     - Changes the ability of non-staff members of being able to change or remove their own shownames.
-* **showname_history** "ID/IPID"
-    - Lists all shownames a target has gone through since connecting, including the time they were changed.
 * **showname_nuke**
     - Clears all shownames from non-staff members.
-* **showname_set** "ID/IPID" "showname"
-    - Sets a target's showname to be the given one, or clears it if not given one.* **switch** "character name"
 * **switch** "character name"
     - Switches you to the given character. If some other player in the area is using it, they will be forced to the character select screen.
 * **unban** "IPID/IP"

@@ -343,7 +343,7 @@ class AOProtocol(asyncio.Protocol):
                             'noencryption', 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx',
                             'additive', 'effects',
                             # DRO exclusive stuff
-                            'ackMS', 'showname']
+                            'ackMS', 'showname', 'chrini']
             })
 
     def net_cmd_ch(self, args: List[str]):
@@ -664,7 +664,8 @@ class AOProtocol(asyncio.Protocol):
         self.client.charid_pair = pargs['charid_pair'] if 'charid_pair' in pargs else -1
         self.client.offset_pair = pargs['offset_pair'] if 'offset_pair' in pargs else 0
         self.client.flip = pargs['flip']
-        self.client.char_folder = pargs['folder']
+        if not self.client.char_folder:
+            self.client.char_folder = pargs['folder']
 
         if pargs['anim_type'] not in (5, 6):
             self.client.last_sprite = pargs['anim']
@@ -1023,11 +1024,27 @@ class AOProtocol(asyncio.Protocol):
         pargs = self.process_arguments('SN', args)
         self.client.publish_inbound_command('SN', pargs)
 
+        if self.client.showname == pargs['showname']:
+            return
+        
         try:
             self.client.command_change_showname(pargs['showname'], False)
         except ClientError as exc:
             self.client.send_ooc(exc)
 
+    def net_cmd_chrini(self, args: List[str]):
+        """
+        Char.ini information
+        """
+        
+        pargs = self.process_arguments('chrini', args)
+        self.client.publish_inbound_command('chrini', pargs)
+        
+        self.client.change_character_ini_details(
+            pargs['actual_folder_name'],
+            pargs['actual_character_showname'],
+        )
+        
     def net_cmd_re(self, _):
         # Ignore packet
         return
@@ -1071,6 +1088,7 @@ class AOProtocol(asyncio.Protocol):
         'PW': net_cmd_pw,  # character password (only on CC/KFO clients), deprecated
         'SP': net_cmd_sp,  # set position
         'SN': net_cmd_sn,  # set showname
+        'chrini': net_cmd_chrini,  # char.ini information
         'opKICK': net_cmd_opKICK,  # /kick with guard on, deprecated
         'opBAN': net_cmd_opBAN,  # /ban with guard on, deprecated
     }

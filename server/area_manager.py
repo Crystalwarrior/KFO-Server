@@ -25,7 +25,7 @@ all necessary actions in order to simulate different rooms.
 
 from __future__ import annotations
 import typing
-from typing import Callable, Dict, List, Set, Tuple
+from typing import Any, Callable, Dict, List, Set, Tuple
 if typing.TYPE_CHECKING:
     # Avoid circular referencing
     from server.client_manager import ClientManager
@@ -56,7 +56,7 @@ class AreaManager:
         Create a new area for the server.
         """
 
-        def __init__(self, area_id: int, server: TsuserverDR, parameters: Dict[Str, Any]):
+        def __init__(self, area_id: int, server: TsuserverDR, parameters: Dict[str, Any]):
             """
             Parameters
             ----------
