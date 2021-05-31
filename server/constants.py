@@ -59,7 +59,8 @@ class TargetType(Enum):
     HDID = 5
     SHOWNAME = 6
     CHAR_FOLDER = 7
-    ALL = 8
+    CHAR_SHOWNAME = 8
+    ALL = 9
 
 
 class Effects(Enum):

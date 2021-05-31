@@ -113,7 +113,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Lists all characters that are restricted in the current area.
 * **cleardoc**
     - Clears the doc url of the current area.
-* **cid** "ID/char name/edited-to character/showname/OOC name"
+* **cid** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Gives you the client ID of the target, or your own client ID if not given an argument.
 * **coinflip** "call"
     - Flips a coin and returns its result, as well as whatever it is called with (e.g. a prediction, consequences for heads/tails, etc.) if given.
@@ -125,7 +125,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Gives the doc url if blank, updates the doc url otherwise.
 * **exit**
     - Exits the server.
-* **files** "ID/char name/edited-to character/showname/OOC name"
+* **files** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Gives a download link set by the target that links to their files, or gives your own download link if not given an argument.
 * **files_set** "url"
     - Sets a download link for your character files, or clears it if not given an argument.
@@ -137,7 +137,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Shows the current characters in your area.
 * **getareas**
     - Shows all characters in all areas reachable from your own.
-* **invite** "ID/char name/edited-to character/showname/OOC name"
+* **invite** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Adds target to the invite list of your locked area so they may join.
 * **kickself**
     - Removes all of of the user's clients except the one that used the command.
@@ -181,11 +181,11 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Disbands your party.
 * **party_id**
     - Returns your party ID.
-* **party_invite** "ID/char name/edited-to character/showname/OOC name"
+* **party_invite** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Invites a player in the same area to your party.
 * **party_join** "party ID"
     - Makes you join a party you were invited to.
-* **party_kick** "ID/char name/edited-to character/showname/OOC name"
+* **party_kick** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Kicks a player off your party.
 * **party_lead**
     - Makes you a leader of your party.
@@ -195,7 +195,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - If you are the last player to leave the party, it will be automatically disbanded.
 * **party_members**
     - Lists the leaders and regular members of your party.
-* **party_uninvite** "ID/char name/edited-to character/showname/OOC name"
+* **party_uninvite** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Revokes an invitation sent to a player to join your player.
 * **party_unlead**
     - Removes your party leader role.
@@ -207,7 +207,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Returns "Pong", used to check for server connection.
 * **play** "song.mp3"
     - Plays a song, provided the area you are in allows non-staff members to run this command.
-* **pm** "ID/char name/edited-to character/showname/OOC name" "message"
+* **pm** "ID/char name/edited-to character/showname/char showname/OOC name" "message"
     - PMs the target.
 * **pos** "position"
     - Changes your position in the court.
@@ -231,7 +231,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Similar to /getarea, but lists shownames along with character names.
 * **showname_areas**
     - Similar to /getareas, but lists shownames along with character names.
-* **status** "ID/char name/edited-to character/showname/OOC name"
+* **status** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Check the custom status of a player
 * **status_set** "status"
     - Sets a custom status for your character, or clears it if not given an argument.
@@ -273,13 +273,13 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Stops following whoever you were following, provided you were a spectator.
 * **unilock** "area number/name"
     - Changes the passage status (locked/unlocked) from the current area to the given one.
-* **uninvite** "ID/char name/edited-to character/showname/OOC name"
+* **uninvite** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**
     - Unlocks your area, provided the lock came as a result of /lock.
 * **version**
     - Obtains the current version of the server software.
-* **whisper** "ID/char name/edited-to character/showname/OOC name" "message"
+* **whisper** "ID/char name/edited-to character/showname/char showname/OOC name" "message"
     - Sends an IC private message to the target, provided they are in the area.
     - Other people in the area are warned that a whisper has taken place (but not the message content). However, staff members do get message contents, so this command should only be used in RP settings.
     - Messages are limited to 256 characters.
@@ -371,7 +371,7 @@ GMs can:
     - Locks your area. Prevents CMs and normal users from entering. WARNING: Pending deprecation.
 * **gmself**
     - Logs all opened multiclients as GM.
-* **guide** "ID/char name/edited-to character/showname/OOC name" "message"
+* **guide** "ID/char name/edited-to character/showname/char showname/OOC name" "message"
     - Sends an IC private 'guiding' message to the target.
     - Unlike /whisper, other people in the area are not warned that a whisper has taken place. However, staff members do get message contents, so this command should only be used in RP settings.
 	- Messages are limited to 256 characters.
@@ -411,7 +411,7 @@ GMs can:
     - Nonplayers may not talk IC while an NSD is taking place.
 * **nsd_accept**
     - Accepts a break from a player who shot a bullet during looping or recording mode for the NSD you lead, restoring 0.5 influence and ending the NSD.
-* **nsd_add** "ID/char name/edited-to character/showname/OOC name"
+* **nsd_add** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Adds a player part of your current trial to your NSD.
 * **nsd_autoadd**
     - Toggles players who are added to the trial of the NSD being automatically added to the NSD on or off.
@@ -424,7 +424,7 @@ GMs can:
     - Makes you a leader of your NSD.
 * **nsd_loop**
     - Sets the NSD you lead to be in looping mode: messages saved during recording mode will be played Danganronpa style one after the other until a bullet is shot or all messages are seen.
-* **nsd_kick** "ID/char name/edited-to character/showname/OOC name"
+* **nsd_kick** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Kicks a player off the NSD you lead.
 * **nsd_pause**
     - Pauses the NSD you lead, putting it in intermission mode.
@@ -476,7 +476,7 @@ GMs can:
     - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
 * **st** "message"
     - Sends a message to all active staff members.
-* **status_set_other** "ID/char name/edited-to character/showname/OOC name" "status"
+* **status_set_other** "ID/char name/edited-to character/showname/char showname/OOC name" "status"
     - Sets the player status of another user, or clears it if not given a status.
 * **switch** "character name"
     - Switches you to the given character, provided no other player is using it in the area.
@@ -488,17 +488,17 @@ GMs can:
     - Changes a player's ability to ignore passage locks and thus access all areas from any given area. By default it is off.
 * **trial**
     - Starts a trial with all players in the area, making you leader of the trial.
-* **trial_add** "ID/char name/edited-to character/showname/OOC name"
+* **trial_add** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Adds a player to a trial you lead.* **nsd_autoadd**
 * **trial_autoadd**
     - Toggles users who enter an area of the trial being automatically added to the trial on or off.
     - By default it is off.
 * **trial_end**
     - Ends a trial you lead, as well as any minigames that may have be taking place in the trial.
-* **trial_focus** "ID/char name/edited-to character/showname/OOC name" "number"
+* **trial_focus** "ID/char name/edited-to character/showname/char showname/OOC name" "number"
     - Sets the focus level of a player in your trial to the given value.
     - Number must be an integer from 0 to 10.
-* **trial_influence** "ID/char name/edited-to character/showname/OOC name" "number"
+* **trial_influence** "ID/char name/edited-to character/showname/char showname/OOC name" "number"
     - Sets the influence level of a player in your trial to the given value.
     - Number must be an integer from 0 to 10.
 * **trial_info**
@@ -508,7 +508,7 @@ GMs can:
     - Enrolls in the trial by ID occurring in your area.
 * **trial_lead**
     - Makes you a leader of your trial.
-* **trial_kick** "ID/char name/edited-to character/showname/OOC name"
+* **trial_kick** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Kicks a player off your trial.
 * **trial_unlead**
     - Removes your trial leader role.
@@ -522,7 +522,7 @@ GMs can:
     - Changes the passage status (locked/unlocked) from area 1 to area 2 if given two areas, or from the current area to area 1 if just given one area. Locking a passage in such a way does not change its current visibility to non-GMs.
 * **unilockh** "area 1", "area 2"
     - Changes the passage status (locked/unlocked) from area 1 to area 2, or from the current area to area 1 if just given one area. Locking a passage in such a way hides it from non-GMs; unlocking it reveals it to non-GMs.
-* **uninvite** "ID/char name/edited-to character/showname/OOC name"
+* **uninvite** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unlock**
     - Unlocks an area, provided the lock came as a result of /gmlock or /lock.
@@ -588,7 +588,7 @@ GMs can:
     - Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of time in seconds between changing areas.
     - If name is given, the handicap announcement will use it as the name of the handicap.
     - If announce if over is set to any of "False, false, 0, No, no", no announcements will be sent to the player indicating that they may now move areas.
-* **invite** "ID/IPID/char name/edited-to character/showname/OOC name"
+* **invite** "ID/IPID/char name/edited-to character/showname/char showname/OOC name"
     - Adds target to the invite list of your area.
 * **kick** "ID/IPID"
     - Kicks the target from the server.
@@ -622,7 +622,7 @@ GMs can:
     - Allows the target to change music again.
 * **unhandicap** "ID/IPID"
     - Removes movement handicaps on a target.
-* **uninvite** "ID/IPID/char name/edited-to character/showname/OOC name"
+* **uninvite** "ID/IPID/char name/edited-to character/showname/char showname/OOC name"
     - Removes a target from your locked area's invite list, so that if they leave, they will not be allowed back until the area is unlocked.
 * **unmute** "ID/IPID"
     - Unmutes the target from the IC chat.

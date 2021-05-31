@@ -3000,6 +3000,8 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
         for player in players:
             if player.showname:
                 name = player.showname
+            elif player.char_showname:
+                name = player.char_showname
             elif player.char_folder != player.get_char_name():
                 name = player.char_folder
             else:
@@ -6375,8 +6377,9 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
 def ooc_cmd_whois(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY+VARYING REQUIREMENTS)
     Lists A LOT of a client properties. CMs and mods additionally get access to a client's HDID.
-    The player can be filtered by either client ID, IPID, HDID, OOC username (in the same area),
-    character name (in the same area) or custom showname (in the same area).
+    The player can be filtered by either client ID, IPID, HDID, character name (in the same area), 
+    edited-to character name (in the same area), showname (in the same area), character showname 
+    (in the same area) or OOC username (in the same area).
     However, only CMs and mods can search through IPID or HDID.
     If multiple clients match the given identifier, only one of them will be returned.
     For best results, use client ID (number in brackets), as this is the only tag that is
@@ -6389,17 +6392,19 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
     /whois {target_id}
 
     OPTIONAL PARAMETERS
-    {target_id}: Either client ID, IPID, OOC username or character name
+    {target_id}: Either client ID, IPID, character name, iniedited-to character name, showname, 
+    character showname or OOC name
 
     EXAMPLES
     For player with client ID 1, IPID 1234567890, HDID abb0011, OOC username Phantom, character
-    name Phantom_HD, and showname The phantom, all of these do the same
+    name Phantom_HD, showname The phantom, character showname Menace all of these do the same
     /whois 1            :: Returns client info.
     /whois 1234567890   :: Returns client info.
     /whois abb0011      :: Returns client info.
     /whois Phantom      :: Returns client info.
     /whois The Phantom  :: Returns client info.
     /whois Phantom_HD   :: Returns client info.
+    /whois Menace       :: Returns client info.
     """
 
     Constants.assert_command(client, arg, is_staff=True)
@@ -6421,17 +6426,27 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
     if not targets and client.is_officer():
         targets = client.server.client_manager.get_targets(client, TargetType.HDID, arg, False)
 
-    # If still needed, pretend the identifier is an OOC username
-    if not targets:
-        targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, True)
-
     # If still needed, pretend the identifier is a character name
     if not targets:
         targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, arg, True)
 
+    # If still needed, pretend the identifier is an edited-to name
+    if not targets:
+        targets = client.server.client_manager.get_targets(client, TargetType.CHAR_FOLDER, arg, 
+                                                           True)
+        
     # If still needed, pretend the identifier is a showname
     if not targets:
         targets = client.server.client_manager.get_targets(client, TargetType.SHOWNAME, arg, True)
+        
+    # If still needed, pretend the identifier is a character showname
+    if not targets:
+        targets = client.server.client_manager.get_targets(client, TargetType.CHAR_SHOWNAME, arg, 
+                                                           True)
+
+    # If still needed, pretend the identifier is an OOC username
+    if not targets:
+        targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, True)
 
     # If still not found, too bad
     if not targets:

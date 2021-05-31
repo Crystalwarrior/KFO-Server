@@ -725,9 +725,11 @@ class ClientManager:
                 self.check_lurk()
 
             self.char_id = char_id
-            self.char_folder = self.get_char_name()  # Assumes players are not iniswapped initially, waiting for chrini packet
-            self.char_showname = ''  # Assumes players are not iniswapped initially, waiting for chrini packet
+            # Assumes players are not iniswapped initially, waiting for chrini packet
+            self.char_folder = self.get_char_name()  
+            self.char_showname = ''
             self.pos = ''
+            
             if announce_zwatch:
                 self.send_ooc_others('(X) Client {} has changed from character `{}` to `{}` in '
                                      'your zone ({}).'
@@ -2029,7 +2031,7 @@ class ClientManager:
             areas = client.server.area_manager.areas
         targets = []
         if key == TargetType.ALL:
-            for nkey in range(7):
+            for nkey in range(8):
                 targets += self.get_targets(client, nkey, value, local)
         for area in areas:
             for target in area.clients:
@@ -2056,6 +2058,9 @@ class ClientManager:
                         targets.append(target)
                 elif key == TargetType.SHOWNAME:
                     if target.showname.lower().startswith(value.lower()):
+                        targets.append(target)
+                elif key == TargetType.CHAR_SHOWNAME:
+                    if target.char_showname.lower().startswith(value.lower()):
                         targets.append(target)
         return targets
 
@@ -2158,11 +2163,13 @@ class ClientManager:
                     break
 
             # Otherwise, other identifiers may not be unique, so consider all possibilities
-            # Pretend the identity is a character name, iniswapped to folder, a showname or OOC name
+            # Pretend the identity is a character name, iniswapped to folder, 
+            # a showname or OOC name
             possibilities = [
                 (TargetType.CHAR_NAME, lambda target: target.get_char_name()),
                 (TargetType.CHAR_FOLDER, lambda target: target.char_folder),
                 (TargetType.SHOWNAME, lambda target: target.showname),
+                (TargetType.CHAR_SHOWNAME, lambda target: target.char_showname),
                 (TargetType.OOC_NAME, lambda target: target.name)]
             targets = set()
 
