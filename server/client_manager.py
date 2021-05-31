@@ -165,7 +165,13 @@ class ClientManager:
                             lst[11] = evi_num
                             args = tuple(lst)
                             break
-                self.send_raw_message('{}#{}#%'.format(command, '#'.join([str(x) for x in args])))
+                # Encode for AO clients
+                final_args = [
+                    (str(arg).replace('#', '<num>').replace('%', '<percent>')
+                     .replace('$', '<dollar>').replace('&', '<and>'))
+                    for arg in args
+                ]
+                self.send_raw_message('{}#{}#%'.format(command, '#'.join([x for x in final_args])))
             else:
                 self.send_raw_message('{}#%'.format(command))
 
@@ -726,10 +732,10 @@ class ClientManager:
 
             self.char_id = char_id
             # Assumes players are not iniswapped initially, waiting for chrini packet
-            self.char_folder = self.get_char_name()  
+            self.char_folder = self.get_char_name()
             self.char_showname = ''
             self.pos = ''
-            
+
             if announce_zwatch:
                 self.send_ooc_others('(X) Client {} has changed from character `{}` to `{}` in '
                                      'your zone ({}).'
@@ -748,7 +754,7 @@ class ClientManager:
             logger.log_server('[{}]Changed character from {} to {}.'
                               .format(self.area.id, old_char, self.get_char_name()), self)
             self.add_to_charlog(f'Changed character to {self.get_char_name()}.')
- 
+
         def change_music_cd(self) -> int:
             if self.is_staff():
                 return 0
@@ -907,7 +913,7 @@ class ClientManager:
                 return
             if target_area is None:
                 target_area = self.area
-            
+
             if Constants.contains_illegal_characters(showname):
                 raise ClientError(f'Showname `{showname}` contains an illegal character.')
 
@@ -924,10 +930,10 @@ class ClientManager:
                     raise ValueError("Showname `{}` is already in use in this area."
                                         .format(showname))
                     # This ValueError must be recaught, otherwise the client will crash.
-            
+
         def change_character_ini_details(self, char_folder: str, char_showname: str):
             self.char_folder = char_folder
-            
+
             # Check if new character showname is valid before updating.
             try:
                 if char_showname and self.server.showname_freeze and not self.is_staff():
@@ -937,10 +943,10 @@ class ClientManager:
                 self.send_ooc(f'Unable to update character showname: {exc}')
             else:
                 self.char_showname = char_showname
-            
+
             self.add_to_charlog(
                 f'Changed character ini to {self.char_folder}/{self.char_showname}.')
-        
+
         def change_showname(self, showname: str, target_area: AreaManager.Area = None,
                             forced: bool = True):
             # forced=True means that someone else other than the user themselves requested the
@@ -949,7 +955,7 @@ class ClientManager:
                 target_area = self.area
 
             self.check_change_showname(showname, target_area=target_area)
-            
+
             if self.showname != showname:
                 status = {True: 'Was', False: 'Self'}
                 ctime = Constants.get_time()
@@ -1789,14 +1795,14 @@ class ClientManager:
             ipid = self.server.client_manager.get_targets(self, TargetType.IPID, self.ipid, False)
             hdid = self.server.client_manager.get_targets(self, TargetType.HDID, self.hdid, False)
             return sorted(set(ipid + hdid))
-            
+
         def add_to_charlog(self, text: str):
             ctime = Constants.get_time()
             if len(self.char_log) >= 20:
                 self.char_log.pop(0)
-                
+
             self.char_log.append(f'{ctime} | {text}')
-            
+
         def get_charlog(self) -> str:
             info = '== Character details log of client {} =='.format(self.id)
 
@@ -1807,7 +1813,7 @@ class ClientManager:
                 for log in self.char_log:
                     info += '\r\n*{}'.format(log)
             return info
-                           
+
         def get_info(self, as_mod: bool = False, as_cm: bool = False, identifier=None):
             if identifier is None:
                 identifier = self.id
@@ -2163,7 +2169,7 @@ class ClientManager:
                     break
 
             # Otherwise, other identifiers may not be unique, so consider all possibilities
-            # Pretend the identity is a character name, iniswapped to folder, 
+            # Pretend the identity is a character name, iniswapped to folder,
             # a showname or OOC name
             possibilities = [
                 (TargetType.CHAR_NAME, lambda target: target.get_char_name()),

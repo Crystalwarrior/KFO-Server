@@ -102,14 +102,22 @@ class AOProtocol(asyncio.Protocol):
             if msg[0] in ('#', '3', '4'):
                 if msg[0] == '#':
                     msg = msg[1:]
-                spl = msg.split('#', 1)
-                msg = '#'.join([fanta_decrypt(spl[0])] + spl[1:])
-                logger.log_debug('[INC][RAW]{}'.format(msg), self.client)
+                raw_parameters = msg.split('#')
+                raw_parameters[0] = fanta_decrypt(raw_parameters[0])
+                msg = '#'.join(raw_parameters)
+
+            logger.log_debug('[INC][RAW]{}'.format(msg), self.client)
             try:
                 if self.server.print_packets:
                     print(f'> {self.client.id}: {msg}')
                 self.server.log_packet(self.client, msg, True)
-                cmd, *args = msg.split('#')
+                parameters = msg.split('#')
+                # Decode AO clients' encoding
+                cmd, *args = [
+                    (arg.replace('<num>', '#').replace('<percent>', '%').replace('<dollar>', '$')
+                        .replace('<and>', '&'))
+                    for arg in parameters
+                ]
                 try:
                     dispatched = self.net_cmd_dispatcher[cmd]
                 except KeyError:
@@ -1026,7 +1034,7 @@ class AOProtocol(asyncio.Protocol):
 
         if self.client.showname == pargs['showname']:
             return
-        
+
         try:
             self.client.command_change_showname(pargs['showname'], False)
         except ClientError as exc:
@@ -1036,15 +1044,15 @@ class AOProtocol(asyncio.Protocol):
         """
         Char.ini information
         """
-        
+
         pargs = self.process_arguments('chrini', args)
         self.client.publish_inbound_command('chrini', pargs)
-        
+
         self.client.change_character_ini_details(
             pargs['actual_folder_name'],
             pargs['actual_character_showname'],
         )
-        
+
     def net_cmd_re(self, _):
         # Ignore packet
         return
