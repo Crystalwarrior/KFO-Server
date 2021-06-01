@@ -27,6 +27,7 @@ from unittest.mock import Mock
 from server.aoprotocol import AOProtocol
 from server.area_manager import AreaManager
 from server.client_manager import ClientManager
+from server.constants import Constants
 from server.exceptions import TsuserverException
 from server.tasker import Tasker
 from server.tsuserver import TsuserverDR
@@ -254,7 +255,9 @@ class _TestClientManager(ClientManager):
             if len(args) > 1 and isinstance(args[1], TsuserverException):
                 new_args = [args[0], args[1].message]
                 args = tuple(new_args)
-            self.received_packets.append([command_type, args])
+
+            command_type, *args = Constants.encode_ao_packet([command_type] + list(args))
+            self.received_packets.append([command_type, tuple(args)])
             self.receive_command_stc(command_type, *args)
 
         def send_command_cts(self, buffer):
@@ -446,8 +449,8 @@ class _TestClientManager(ClientManager):
             ----------
             command_type: str
                 Packet type
-            args: list pf str
-                Packet arguments
+            args: Tuple of str, str, or None
+                Packet arguments. If str, converted to a tuple of one str.
             somewhere: bool, optional
                 If True, will assert that the client has not a particular packet among any of its
                 unaccounted ones. If False, will assert that the client has not as its earliest
@@ -456,8 +459,21 @@ class _TestClientManager(ClientManager):
 
             err = '{} expected packets, found none'.format(self)
             assert len(self.received_packets) > 0, err
-            self.search_match([command_type, args], self.received_packets, somewhere=somewhere,
-                              allow_partial_match=allow_partial_match)
+
+            if args is not None and not isinstance(args, tuple):
+                args = (args, )
+            if isinstance(args, tuple):
+                new_args = tuple()
+                for arg in args:
+                    if arg is None:
+                        new_args += (None, )
+                    else:
+                        new_args += (str(arg), )
+            else:
+                new_args = args
+
+            self.search_match([command_type, new_args], self.received_packets, somewhere=somewhere,
+                               allow_partial_match=allow_partial_match)
 
             if over:
                 err = ('{} expected no more packets, found some '
@@ -693,7 +709,7 @@ class _TestClientManager(ClientManager):
                 kwargs['msg'] = message
 
             for (item, val) in kwargs.items():
-                expected = val
+                expected = str(val)
                 got = params[param_ids[item]]
                 if allow_partial_match and isinstance(got, str):
                     err = ('Wrong IC parameter {} for {}\nExpected that it began with "{}"\n'
@@ -745,7 +761,9 @@ class _TestClientManager(ClientManager):
                 buffer = 'HI#FAKEHDID#%'
             elif command_type == 'ID':  # Server ID
                 buffer = "ID#DRO#1.0.0#%"
-                assert(args[0] == self.id)
+                err = ('Wrong client ID for {}.\nExpected {}\nGot {}'
+                       .format(self, args[0], self.id))
+                assert args[0] == str(self.id), err
             elif command_type == 'FL':  # AO 2.2.5 configs
                 pass
             elif command_type == 'PN':  # Player count

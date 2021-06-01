@@ -111,13 +111,8 @@ class AOProtocol(asyncio.Protocol):
                 if self.server.print_packets:
                     print(f'> {self.client.id}: {msg}')
                 self.server.log_packet(self.client, msg, True)
-                parameters = msg.split('#')
                 # Decode AO clients' encoding
-                cmd, *args = [
-                    (arg.replace('<num>', '#').replace('<percent>', '%').replace('<dollar>', '$')
-                        .replace('<and>', '&'))
-                    for arg in parameters
-                ]
+                cmd, *args = Constants.decode_ao_packet(msg.split('#'))
                 try:
                     dispatched = self.net_cmd_dispatcher[cmd]
                 except KeyError:
@@ -775,7 +770,8 @@ class AOProtocol(asyncio.Protocol):
         if Constants.contains_illegal_characters(username):
             self.client.send_ooc('Your name contains an illegal character.')
             return
-        if self.server.config['hostname'] in username or '<dollar>G' in username:
+        if (Constants.decode_ao_packet([self.server.config['hostname']])[0] in username
+            or '$G' in username):
             self.client.send_ooc('That name is reserved.')
             return
 

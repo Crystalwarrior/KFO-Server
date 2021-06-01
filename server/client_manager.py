@@ -165,15 +165,12 @@ class ClientManager:
                             lst[11] = evi_num
                             args = tuple(lst)
                             break
-                # Encode for AO clients
-                final_args = [
-                    (str(arg).replace('#', '<num>').replace('%', '<percent>')
-                     .replace('$', '<dollar>').replace('&', '<and>'))
-                    for arg in args
-                ]
-                self.send_raw_message('{}#{}#%'.format(command, '#'.join([x for x in final_args])))
-            else:
-                self.send_raw_message('{}#%'.format(command))
+
+            command, *args = Constants.encode_ao_packet([command] + list(args))
+            message = f'{command}#'
+            for arg in args:
+                message += f'{arg}#'
+            self.send_raw_message(message + '%')
 
         def send_command_dict(self, command, dargs):
             _, to_send = self.prepare_command(command, dargs)

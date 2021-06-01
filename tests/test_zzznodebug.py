@@ -1,6 +1,6 @@
 from .structures import _TestSituation4Mc12
 
-class TestNoDebug_01_Basic(_TestSituation4Mc12):
+class TestZZZNoDebug_01_Basic(_TestSituation4Mc12):
     def test_01_noprintpackets(self):
         """
         Situation: Make sure server does not print packets

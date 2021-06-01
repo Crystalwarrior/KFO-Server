@@ -254,6 +254,24 @@ class FileValidity:
 
 class Constants():
     @staticmethod
+    def decode_ao_packet(params: List[str]) -> List[str]:
+        new_params = [
+                (arg.replace('<num>', '#').replace('<percent>', '%')
+                    .replace('<dollar>', '$').replace('<and>', '&'))
+                for arg in params
+        ]
+        return new_params
+
+    @staticmethod
+    def encode_ao_packet(params: List) -> List[str]:
+        new_params = [
+             (str(arg).replace('#', '<num>').replace('%', '<percent>')
+                      .replace('$', '<dollar>').replace('&', '<and>'))
+             for arg in params
+        ]
+        return new_params
+
+    @staticmethod
     def fopen(file_name: str, *args, disallow_parent_folder: bool = True, **kwargs):
         if disallow_parent_folder and Constants.includes_relative_directories(file_name):
             info = f'File names may not reference parent or current directories: {file_name}'
