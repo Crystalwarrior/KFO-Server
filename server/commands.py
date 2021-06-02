@@ -9282,7 +9282,7 @@ def ooc_cmd_zone_handicap(client: ClientManager.Client, arg: str):
         c.change_handicap(True, length=length, name=name, announce_if_over=announce_if_over)
 
 
-def ooc_cmd_zone_handicap_add(client: ClientManager.Client, arg: str):
+def ooc_cmd_zone_handicap_affect(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY+VARYING REQUIREMENTS)
     Makes a client by client ID be subject to the movement handicap imposed in the zone you are
     watching. This command is ideal to restore zone handicaps if handicaps were removed.
@@ -9297,7 +9297,8 @@ def ooc_cmd_zone_handicap_add(client: ClientManager.Client, arg: str):
     <client_id>: Client identifier (number in brackets in /getarea)
 
     EXAMPLES
-    /zone_handicap_add 0  :: Readds the zone's movement handicaps to the player whose client ID is 0
+    /zone_handicap_affect 0  :: Readds the zone's movement handicaps to the player whose client ID
+    is 0
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=1')

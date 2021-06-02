@@ -543,7 +543,7 @@ GMs can:
     - If name is given, the handicap announcement will use it as the name of the handicap.
     - If announce if over is set to any of "False, false, 0, No, no", no announcements will be sent to the player indicating that they may now move areas.
     - If a player in the zone had an existing handicap, it will be overwritten with this one.
-* **zone_handicap_add** "ID"
+* **zone_handicap_affect** "ID"
     - Makes the player subject to the zone's movement handicap.
     - This is useful if the player lost the zone handicap because another handicap was removed.
 * **zone_info**

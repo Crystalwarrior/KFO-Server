@@ -591,7 +591,7 @@
 * Added /exit, which lets you exit the server from OOC
 * Server initiated messages will now attempt to include desks wherever possible
 * Added /zone_handicap and /zone_unhandicap. Players who enter an area part of a zone with a handicap will be subject to the imposed movement handicap automatically
-    - Also added /zone_handicap_add, which makes a player be subject to a zone handicap if their handicap was removed
+    - Also added /zone_handicap_affect, which makes a player be subject to a zone handicap if their handicap was removed
 * Running /sneak on an already sneaked player will now fail. Similarly, running /reveal on an already not sneaked player will now fail
 * All commands that require a specific number of arguments now validate that the correct number of arguments was passed
 * Zones that lose all their watchers but still have players in areas part of the zone will no longer be automatically deleted
