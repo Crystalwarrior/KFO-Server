@@ -5285,7 +5285,7 @@ def ooc_cmd_switch(client: ClientManager.Client, arg: str):
     # Obtain char_id if character exists and then try and change to given char if available
     char_id = client.server.get_char_id_by_name(arg)
     client.change_character(char_id, force=client.is_mod)
-    client.send_ooc('Character changed.')
+    client.send_ooc(f'Changed character to {arg}.')
 
 
 def ooc_cmd_time(client: ClientManager.Client, arg: str):

@@ -68,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b169'
-        self.internal_version = 'M210602b'
+        self.segment_version = 'b170'
+        self.internal_version = 'M210602c'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -717,7 +717,7 @@ class TsuserverDR:
         for i, ch in enumerate(self.char_list):
             if ch.lower() == name.lower():
                 return i
-        raise ServerError('Character not found.')
+        raise ServerError(f'Character {name} not found.')
 
     def get_song_data(self, music: str, c: ClientManager.Client = None) -> Tuple[str, int]:
         # The client's personal music list should also be a valid place to search
