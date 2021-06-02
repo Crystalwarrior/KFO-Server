@@ -367,6 +367,10 @@ class ZoneManager:
                 user.change_handicap(True, length=length, name=name,
                                      announce_if_over=announce_if_over)
 
+            if self.is_property('Chat_tick_rate'):
+                chat_tick_rate = self.get_property('Chat_tick_rate')
+                user.send_chat_tick_rate(chat_tick_rate=chat_tick_rate)
+
         def get_players(self) -> Set[ClientManager.Client]:
             """
             Return the set of players in an area part of the current zone.
@@ -450,6 +454,9 @@ class ZoneManager:
                     # a zone with a handicap
                     pass
 
+            # Remove chat tick rate
+            if self.is_property('Chat_tick_rate'):
+                player.send_chat_tick_rate(chat_tick_rate=None)
 
         def set_mode(self, new_mode: str):
             """

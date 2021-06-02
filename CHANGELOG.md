@@ -601,6 +601,8 @@
 * Made /showname_history be available to all staff members (previously it was for moderators only)
 * Added /charlog, which lists all character changes a player has gone through in a session (including character showname or iniswap changes)
 * Made /whois identifiers follow the same identifier type lookup logic as other commands
+* RP notifications that typically show player shownames will now try to use character shownames if available before defaulting to the character folder name
+* Added /zone_tick and /zone_tick_remove to set the chat tick rate of a zone, so all players in an area part of the zone see messages with the same chat tick rate, or their own chat tick rate
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered

@@ -214,6 +214,8 @@ class ClientManager:
             for (field, default_value) in outbound_args:
                 try:
                     value = dargs[field]
+                    if value is None:
+                        value = default_value
                 except KeyError:
                     value = default_value
                 if field.endswith('ao2_list'):
@@ -641,6 +643,11 @@ class ClientManager:
         def send_showname(self, showname=None):
             self.send_command_dict('SN', {
                 'showname': showname,
+                })
+
+        def send_chat_tick_rate(self, chat_tick_rate: int = None):
+            self.send_command_dict('chat_tick_rate', {
+                'chat_tick_rate': chat_tick_rate,
                 })
 
         def disconnect(self):

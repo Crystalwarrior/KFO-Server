@@ -560,6 +560,10 @@ GMs can:
     - Plays a track in all areas in the zone you are watching.
 * **zone_remove** "area"
     - Removes an area by name or ID from the zone you are watching.
+* **zone_tick** "chat tick rate"
+    - Sets the chat tick rate in milliseconds in your zone. All players in an area part of a zone will render IC messages with this chat tick rate.
+* **zone_tick_remove**
+    - Removes the chat tick rate in your zone. All players in an area part of a zone will render IC messages with their own chat tick rate.
 * **zone_unhandicap**
     - Removes the zone's movement handicap.
 * **zone_unwatch**

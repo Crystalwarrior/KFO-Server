@@ -6377,8 +6377,8 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
 def ooc_cmd_whois(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY+VARYING REQUIREMENTS)
     Lists A LOT of a client properties. CMs and mods additionally get access to a client's HDID.
-    The player can be filtered by either client ID, IPID, HDID, character name (in the same area), 
-    edited-to character name (in the same area), showname (in the same area), character showname 
+    The player can be filtered by either client ID, IPID, HDID, character name (in the same area),
+    edited-to character name (in the same area), showname (in the same area), character showname
     (in the same area) or OOC username (in the same area).
     However, only CMs and mods can search through IPID or HDID.
     If multiple clients match the given identifier, only one of them will be returned.
@@ -6392,7 +6392,7 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
     /whois {target_id}
 
     OPTIONAL PARAMETERS
-    {target_id}: Either client ID, IPID, character name, iniedited-to character name, showname, 
+    {target_id}: Either client ID, IPID, character name, iniedited-to character name, showname,
     character showname or OOC name
 
     EXAMPLES
@@ -6432,16 +6432,16 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
 
     # If still needed, pretend the identifier is an edited-to name
     if not targets:
-        targets = client.server.client_manager.get_targets(client, TargetType.CHAR_FOLDER, arg, 
+        targets = client.server.client_manager.get_targets(client, TargetType.CHAR_FOLDER, arg,
                                                            True)
-        
+
     # If still needed, pretend the identifier is a showname
     if not targets:
         targets = client.server.client_manager.get_targets(client, TargetType.SHOWNAME, arg, True)
-        
+
     # If still needed, pretend the identifier is a character showname
     if not targets:
-        targets = client.server.client_manager.get_targets(client, TargetType.CHAR_SHOWNAME, arg, 
+        targets = client.server.client_manager.get_targets(client, TargetType.CHAR_SHOWNAME, arg,
                                                            True)
 
     # If still needed, pretend the identifier is an OOC username
@@ -9208,7 +9208,7 @@ def ooc_cmd_exit(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_zone_handicap(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY+VARYING REQUIREMENTS)
+    """ (STAFF ONLY)
     Sets a movement handicap on the zone you are watching so that they need to wait a set amount of
     time between changing areas. This will override any previous handicaps the client(s) may have
     had, including custom ones and server ones (such as through sneak). Server handicaps will
@@ -9403,8 +9403,95 @@ def ooc_cmd_charlog(client: ClientManager.Client, arg: str):
     for c in Constants.parse_id_or_ipid(client, arg):
         info = c.get_charlog()
         client.send_ooc(info)
-    
-    
+
+
+def ooc_cmd_zone_tick(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets the chat tick rate of the zone in milliseconds. All players in an area part of the zone
+    will use the imposed chat tick rate to render IC messages.
+    Requires /zone_tick_remove to undo.
+    Returns an error if you are not watching a zone, or if given a length of time that is either not
+    an integer or not a number between 0 and 1000 exclusive.
+
+    SYNTAX
+    /zone_tick <length>
+
+    PARAMETERS
+    <length>: Chat tick rate (in milliseconds)
+
+    EXAMPLES
+    /zone_tick 20   :: Sets the zone chat tick rate to 20 ms.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+
+    try:
+        chat_tick_rate = int(arg)
+    except ValueError:
+        raise ClientError(f'Invalid chat tick rate {arg}')
+
+    if chat_tick_rate <= 0 or chat_tick_rate >= 1000:
+        raise ClientError(f'The chat tick rate must be a number between 0 and 1000 exclusive.')
+
+    targets = zone.get_players()
+    client.send_ooc('You have set the zone chat tick rate to {} ms.'.format(chat_tick_rate))
+    client.send_ooc_others('(X) {} [{}] have set the chat tick rate of your zone to {} ms. ({}).'
+                            .format(client.displayname, client.id, chat_tick_rate, client.area.id),
+                            is_zstaff=True)
+
+    zone.set_property('Chat_tick_rate', chat_tick_rate)
+
+    for c in targets:
+        c.send_chat_tick_rate(chat_tick_rate=chat_tick_rate)
+
+
+def ooc_cmd_zone_tick_remove(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Removes the zone chat tick rate. All players in an area part of a zone will now use their own
+    chat tick rate set by their clients to render IC messages.
+    Returns an error if you are not watching a zone, or if the zone already does not have a zone
+    chat tick rate.
+
+    SYNTAX
+    /zone_tick_remove
+
+    PARAMETERS
+    None
+
+    OPTIONAL PARAMETERS
+    None
+
+    EXAMPLES
+    /zone_tick_remove  :: Removes the zone chat tick rate.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+
+    if not zone.is_property('Chat_tick_rate'):
+        raise ClientError('Your zone already has no chat tick rate defined.')
+
+    zone.remove_property('Chat_tick_rate')
+
+    targets = zone.get_players()
+    client.send_ooc('You have removed the chat tick rate of your zone.')
+    client.send_ooc_others('(X) {} [{}] removed the chat tick rate of your zone. ({}).'
+                            .format(client.displayname, client.id, client.area.id),
+                            is_zstaff=True)
+
+    for c in targets:
+        c.send_chat_tick_rate(chat_tick_rate=None)
+
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
