@@ -349,7 +349,9 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ooc('Sent global IC message "Hallo mates." to areas {} through {}.'
                            .format(self.a1_name, self.a5_name), ooc_over=True)
         self.c0.assert_no_ic()
-        self.c1.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
+        # TEMPORARY: Remove for 4.3+Client update
+        # Workaround for client not clearing messages
+        self.c1.assert_ic('>>>Hallo mates.', folder=self.c1_cname, over=True)
         self.c2.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
         self.c3.assert_no_ic()
         self.c4.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
@@ -386,7 +388,9 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ooc('Sent global IC message "Hallo new mates." to areas {} through {}.'
                            .format(self.a1_name, self.a5_name), ooc_over=True)
         self.c0.assert_no_ic()
-        self.c1.assert_ic('Hallo new mates.', folder=self.c1_cname, over=True)
+        # TEMPORARY: Remove for 4.3+Client update
+        # Workaround for client not clearing messages
+        self.c1.assert_ic('>>>Hallo new mates.', folder=self.c1_cname, over=True)
         self.c2.assert_ic('Hallo new mates.', folder=self.c1_cname, over=True)
         self.c3.assert_ic('Hallo new mates.', folder=self.c1_cname, over=True)
         self.c4.assert_no_ic()
@@ -518,7 +522,9 @@ class TestIC_03_GlobalIC_Pre(_TestIC):
         self.c1.assert_ooc('Sent global IC message "Hallo mates." to areas {} through {}.'
                            .format(self.a1_name, self.a5_name), ooc_over=True)
         self.c0.assert_no_ic()
-        self.c1.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
+        # TEMPORARY: Remove for 4.3+Client update
+        # Workaround for client not clearing messages
+        self.c1.assert_ic('>>>Hallo mates.', folder=self.c1_cname, over=True)
         self.c2.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
         self.c3.assert_ic('Hallo mates.', folder=self.c1_cname, over=True)
         self.c4.assert_no_ic()

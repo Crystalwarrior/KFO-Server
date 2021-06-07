@@ -93,7 +93,8 @@ class ServerError(TsuserverException):
     class MusicNotFoundError(TsuserverException):
         pass
 
-    class MusicInvalidError(TsuserverException):
+    class MusicInvalid(TsuserverException):
+        # Remove, kept for backwards compatibility
         pass
 
     class MusicInvalid(TsuserverException):

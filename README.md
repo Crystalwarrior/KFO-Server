@@ -34,7 +34,6 @@ It is highly recommended you read through all the installation steps first befor
   ```
 
   This operation should not require administrator privileges, unless you decide to remove the `--user` option.
-
 * Rename the folder `config_sample` to `config` and edit the values in the provided YAML files to your liking. Be sure to check the YAML files for syntax errors after you are done. *Use spaces only; do not use tabs.*
 
 ### Running

@@ -650,6 +650,42 @@ class ClientManager:
                 'chat_tick_rate': chat_tick_rate,
                 })
 
+        def send_ic_blankpost(self):
+            if self.packet_handler == clients.ClientDRO1d0d0:
+                self.send_ic(msg='', bypass_replace=True)
+
+        def send_background(self, name=None, pos=None):
+            """
+            Send a background packet to a client.
+
+            Parameters
+            ----------
+            name : str, optional
+                Background name. The default is None, and converted to the background of the
+                client's area.
+            pos : str, optional
+                Position of the background to send. The default is None, and converted to the
+                position of the client.
+
+            Returns
+            -------
+            None.
+
+            """
+
+            if name is None:
+                name = self.area.background
+            if pos is None:
+                pos = self.pos
+
+            pargs = {
+                'name': name,
+                'pos': pos
+                }
+
+            _, to_send = self.prepare_command('BN', pargs)
+            self.send_command('BN', *to_send)
+
         def disconnect(self):
             self.disconnected = True
             self.transport.close()
@@ -1505,6 +1541,10 @@ class ClientManager:
                 self.send_ooc(f'Unknown client detected {self.version}. '
                               f'Assuming standard DRO client protocol.')
 
+            if self.bad_version:
+                self.send_ooc(f'Unknown client detected {self.version}. '
+                              f'Assuming standard DRO client protocol.')
+
         def char_select(self):
             # By running the change_character code, all checks and actions for switching to
             # spectator are made
@@ -1545,7 +1585,8 @@ class ClientManager:
             """
             return self.is_mod or self.is_cm
 
-        def login(self, arg: str, auth_command: Callable[[str, Optional[bool]]], role, announce_to_officers=True):
+        def login(self, arg: str, auth_command: Callable[[str, Optional[bool]]], role,
+                  announce_to_officers=True):
             """
             Wrapper function for the login method for all roles (GM, CM, Mod)
             """

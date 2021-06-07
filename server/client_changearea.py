@@ -189,7 +189,7 @@ class ClientChangeArea:
             client.change_showname('', target_area=area)
             logger.log_server('{} had their showname removed due it being used in the new area.'
                               .format(client.ipid), client)
-            
+
         # Check if someone in the new area has the same character showname
         try: # Verify that the character showname is still valid
             client.check_change_showname(client.char_showname, target_area=area)

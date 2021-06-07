@@ -4434,7 +4434,6 @@ def ooc_cmd_roll(client: ClientManager.Client, arg: str):
                                    client.area.name, client.area.id),
                            is_zstaff_flex=client.area, in_area=False,
                            pred=lambda c: c.get_foreign_rolls)
-
     client.add_to_dicelog(roll_message + '.')
     client.area.add_to_dicelog(client, roll_message + '.')
     logger.log_server('[{}][{}]Used /roll and got {} out of {}.'

@@ -65,7 +65,7 @@
 # rp_getareas_allowed: true
 # scream_range: NO AREAS OTHER THAN THIS ONE
 # song_switch_allowed: false
-            
+
 - area: Basement
   background: Class Trial Debate Room V3-1_HD
   bglock: true

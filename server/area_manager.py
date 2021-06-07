@@ -320,7 +320,11 @@ class AreaManager:
 
             Returns
             -------
+<<<<<<< HEAD
             unavailable: set of int
+=======
+            unavailable: set
+>>>>>>> master
                 Character IDs of all unavailable characters in the area.
             """
 
@@ -679,11 +683,19 @@ class AreaManager:
                 Client who initiated the track change request.
             effect : int, optional
                 Accompanying effect to the track (only used by AO 2.8.4+). Defaults to 0.
+<<<<<<< HEAD
             raise_if_not_found : bool, optional
                 If True, it will raise ServerError if the track name is not in the server's music
                 list nor the client's music list. If False, it will not care about it. Defaults to
                 False.
             reveal_sneaked : bool, optional
+=======
+            raise_if_not_found : boolean, optional
+                If True, it will raise ServerError if the track name is not in the server's music
+                list nor the client's music list. If False, it will not care about it. Defaults to
+                False.
+            reveal_sneaked : boolean, optional
+>>>>>>> master
                 If True, it will change the visibility status of the sender client to True (reveal
                 them). If False, it will keep their visibility as it was. Defaults to False.
             pargs : dict of str to Any
@@ -698,6 +710,8 @@ class AreaManager:
             ServerError.MusicNotFoundError:
                 If `name` is not a music track in the server or client's music list and
                 `raise_if_not_found` is True.
+            ServerError (with code 'FileInvalidName')
+                If `name` references parent or current directories (e.g. "../hi.mp3")
             """
 
             if not pargs:

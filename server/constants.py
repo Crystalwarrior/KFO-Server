@@ -1190,7 +1190,6 @@ class Constants():
         ----------
         text : str
             Text to check.
-
         Returns
         -------
         bool

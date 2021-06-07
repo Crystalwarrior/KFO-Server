@@ -487,8 +487,17 @@
 ### 210213b (4.2.5-post7)
 * Fixed validation introduced in 4.2.5-post6 not working in Python 3.7
 
-### 210213b (4.2.5-post8)
+### 210213c (4.2.5-post8)
 * Fixed regression where if ip_ids.json or hd_ids.json did not exist, the server would not launch
+
+### 210325a (4.2.5-post9)
+* Fixed server not recognizing the new DRO 1.0.0 colors
+* Fixed server not accepting the SP packet
+* Fixed server not accepting the new DRO splash buttons
+* Fixed clients with letters included in their minor version throwing an error when joining a server
+* Fixed server creating an ip_ids.json or hd_ids.json file with the wrong structure
+* Fixed server accepting ip_ids.json or hd_ids.json files with wrong structure
+* Fixed AO clients sending IC messages presenting with no evidence selected throwing an error
 
 ## (4.3.0)
 * Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
