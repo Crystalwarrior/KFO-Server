@@ -93,14 +93,6 @@ class ServerError(TsuserverException):
     class MusicNotFoundError(TsuserverException):
         pass
 
-    class MusicInvalid(TsuserverException):
-        # Remove, kept for backwards compatibility
-        pass
-
-    class MusicInvalid(TsuserverException):
-        # Remove, kept for backwards compatibility
-        pass
-
     class YAMLNotFoundError(TsuserverException):
         pass
 

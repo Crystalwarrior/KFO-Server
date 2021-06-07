@@ -273,7 +273,7 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
         self.c2.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
 
         self.c2.sic('Hi')
-        self.c0.assert_ic('(Your ears are ringing) ', folder=self.c2_cname, over=True)
+        self.c0.assert_ic('(Your ears are ringing)', folder=self.c2_cname, over=True)
         self.c1.assert_ic('Hi', folder=self.c2_cname, over=True)
         self.c2.assert_ooc('Sent global IC message "Hi" to area {}.'
                            .format(self.a0_name), over=True)

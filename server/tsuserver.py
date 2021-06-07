@@ -32,7 +32,7 @@ import ssl
 import sys
 import traceback
 import urllib.request, urllib.error
-import warnings
+# import warnings
 
 from server import logger
 from server.aoprotocol import AOProtocol
@@ -68,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b171'
-        self.internal_version = 'M210607a'
+        self.segment_version = 'b172'
+        self.internal_version = 'M210607b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -535,15 +535,6 @@ class TsuserverDR:
             message = 'WARNING: Error loading storage/hd_ids.json. Will assume empty values.\n'
             message += '{}: {}'.format(type(ex).__name__, ex)
             logger.log_pdebug(message)
-
-        # If the HDID list is not a dict, fix the file
-        # Why on earth is it called an HDID list if it is a Python dict is beyond me.
-        if not isinstance(self.hdid_list, dict):
-            message = (f'WARNING: File storage/hd_ids.json had a structure of the wrong type: '
-                       f'{self.hdid_list}. Replacing it with a proper type.')
-            logger.log_pdebug(message)
-            self.hdid_list = dict()
-            self.dump_hdids()
 
         # If the HDID list is not a dict, fix the file
         # Why on earth is it called an HDID list if it is a Python dict is beyond me.

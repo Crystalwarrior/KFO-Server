@@ -320,7 +320,8 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
         self.c2.make_normie()
 
         self.c0.ooc('/party')
-        _, p = self.c0.search_match((self.server.config['hostname'], 'You have created party'),
+        host = self.c0.convert_word_to_symbol(self.server.config['hostname'])
+        _, p = self.c0.search_match((host, 'You have created party'),
                                     self.c0.received_ooc, somewhere=True, remove_match=False,
                                     allow_partial_match=True)
         party_number = p[1].split(' ')[-1][:-1]  # Temporary, will improve later
@@ -542,7 +543,8 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
         self.c2.make_normie()
 
         self.c0.ooc('/party')
-        _, p = self.c0.search_match((self.server.config['hostname'], 'You have created party'),
+        host = self.c0.convert_word_to_symbol(self.server.config['hostname'])
+        _, p = self.c0.search_match((host, 'You have created party'),
                                     self.c0.received_ooc, somewhere=True, remove_match=False,
                                     allow_partial_match=True)
         party_number = p[1].split(' ')[-1][:-1]  # Temporary, will improve later

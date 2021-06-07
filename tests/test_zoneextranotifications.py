@@ -498,7 +498,7 @@ class TestZoneExtraNotifications_03_ChangeCharacter(_TestZone):
                            over=True)
         self.c3.assert_no_packets()
         self.c4.assert_packet('PV', (4, 'CID', 2))
-        self.c4.assert_ooc('Character changed.', over=True)
+        self.c4.assert_ooc('Changed character to {}.'.format(self.server.char_list[2]), over=True)
         self.c5.assert_no_packets()
 
 class TestZoneExtraNotifications_04_Disconnection(_TestZone):

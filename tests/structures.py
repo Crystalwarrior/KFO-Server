@@ -64,41 +64,49 @@ class _Unittest(unittest.TestCase):
     def setUpClients(cls, num_clients):
         cls.server.make_clients(num_clients)
 
+        err_characters = 'Invalid characters.yaml for the purposes of testing (must be original).'
+
         cls.c0: _TestClientManager._TestClient = cls.clients[0]
-        cls.c0_cname: str = cls.c0.get_char_name()  # 'Kaede Akamatsu_HD'
+        cls.c0_cname: str = cls.c0.get_char_name()
+        assert cls.c0_cname == 'Kaede Akamatsu_HD', err_characters
         cls.c0_dname: str = cls.c0.displayname
         if num_clients == 1:
             return
 
         cls.c1: _TestClientManager._TestClient = cls.clients[1]
-        cls.c1_cname: str = cls.c1.get_char_name()  # 'Shuichi Saihara_HD'
+        cls.c1_cname: str = cls.c1.get_char_name()
+        assert cls.c1_cname == 'Shuichi Saihara_HD', err_characters
         cls.c1_dname: str = cls.c1.displayname
         if num_clients == 2:
             return
 
         cls.c2: _TestClientManager._TestClient = cls.clients[2]
         cls.c2.showname = 'showname2'
-        cls.c2_cname: str = cls.c2.get_char_name()  # 'Maki Harukawa_HD'
+        cls.c2_cname: str = cls.c2.get_char_name()
+        assert cls.c2_cname == 'Maki Harukawa_HD', err_characters
         cls.c2_dname: str = cls.c2.displayname
         if num_clients == 3:
             return
 
         cls.c3: _TestClientManager._TestClient = cls.clients[3]
         cls.c3.showname = 'showname3'
-        cls.c3_cname: str = cls.c3.get_char_name()  # 'Monokuma_HD'
+        cls.c3_cname: str = cls.c3.get_char_name()
+        assert cls.c3_cname == 'Monokuma_HD', err_characters
         cls.c3_dname: str = cls.c3.displayname
         if num_clients == 4:
             return
 
         cls.c4: _TestClientManager._TestClient = cls.clients[4]
         cls.c4.showname = 'showname4'
-        cls.c4_cname: str = cls.c4.get_char_name()  # 'SPECTATOR'
+        cls.c4_cname: str = cls.c4.get_char_name()
+        assert cls.c4_cname == 'SPECTATOR', err_characters
         cls.c4_dname: str = cls.c4.displayname
         if num_clients == 5:
             return
 
         cls.c5: _TestClientManager._TestClient = cls.clients[5]
-        cls.c5_cname: str = cls.c5.get_char_name()  # 'SPECTATOR'
+        cls.c5_cname: str = cls.c5.get_char_name()
+        assert cls.c5_cname == 'SPECTATOR', err_characters
         cls.c5_dname: str = cls.c5.displayname
 
     def list2reason(self, exc_list):
@@ -257,7 +265,6 @@ class _TestClientManager(ClientManager):
                 args = tuple(new_args)
 
             command_type, *args = Constants.encode_ao_packet([command_type] + list(args))
-            self.received_packets.append([command_type, tuple(args)])
             self.receive_command_stc(command_type, *args)
 
         def send_command_cts(self, buffer):
@@ -276,17 +283,13 @@ class _TestClientManager(ClientManager):
         def convert_symbol_to_word(mes):
             if mes is None:
                 return None
-            mes = mes.replace('#', '<num>')
-            mes = mes.replace('$', '<dollar>')
-            return mes
+            return Constants.encode_ao_packet([mes])[0]
 
         @staticmethod
         def convert_word_to_symbol(mes):
             if mes is None:
                 return None
-            mes = mes.replace('<num>', '#')
-            mes = mes.replace('<dollar>', '$')
-            return mes
+            return Constants.decode_ao_packet([mes])[0]
 
         def make_mod(self, over=True):
             if self.is_mod:
@@ -379,7 +382,8 @@ class _TestClientManager(ClientManager):
                                          allow_partial_match=True)
                 self.discard_ic(x[1])
 
-                _, x = self.search_match(['CT', ('<dollar>H', 'Changed area to')],
+                host = self.convert_word_to_symbol(self.server.config['hostname'])
+                _, x = self.search_match(['CT', (host, 'Changed area to')],
                                          self.received_packets, somewhere=True, remove_match=True,
                                          allow_partial_match=True)
                 self.discard_ooc(x[1])
@@ -569,8 +573,7 @@ class _TestClientManager(ClientManager):
             if username is None:
                 username = self.server.config['hostname']
 
-            user = self.convert_symbol_to_word(username)
-            message = self.convert_symbol_to_word(message)
+            user = self.convert_word_to_symbol(username)
 
             if check_CT_packet:
                 self.assert_packet('CT', (user, message), over=over, ooc_over=ooc_over,
@@ -632,9 +635,7 @@ class _TestClientManager(ClientManager):
             if username is None:
                 username = self.server.config['hostname']
 
-            user = self.convert_symbol_to_word(username)
-            message = self.convert_symbol_to_word(message)
-
+            user = self.convert_word_to_symbol(username)
             self.assert_not_packet('CT', (user, message), somewhere=somewhere)
 
         def sic(self, message, msg_type=0, pre='-', folder=None, anim=None, pos=None, sfx=0,
@@ -755,6 +756,9 @@ class _TestClientManager(ClientManager):
             self.received_ic = list()
 
         def receive_command_stc(self, command_type, *args):
+            command_type, *args = Constants.decode_ao_packet([command_type] + list(args))
+            self.received_packets.append([command_type, tuple(args)])
+
             buffer = ''
             if command_type == 'decryptor':  # Hi
                 buffer = 'HI#FAKEHDID#%'
@@ -770,6 +774,7 @@ class _TestClientManager(ClientManager):
             elif command_type == 'SI':  # Counts for char/evi/music
                 pass
             elif command_type == 'SC':  # Character list
+                # TODO: RC!!!
                 pass
             elif command_type == 'SM':  # First timer music/area list
                 pass

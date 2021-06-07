@@ -512,14 +512,6 @@ class AOProtocol(asyncio.Protocol):
             and self.client.get_char_name() == self.client.last_ic_char):
             return
 
-        # First, check if the player just sent the same message with the same character and did
-        # not receive any other messages in the meantime.
-        # This helps prevent record these messages and retransmit it to clients who may want to
-        # filter these out
-        if (pargs['text'] == self.client.last_ic_raw_message and self.client.last_ic_received_mine
-            and self.client.get_char_name() == self.client.last_ic_char):
-            return
-
         if not self.client.area.iniswap_allowed:
             if self.client.area.is_iniswap(self.client, pargs['pre'], pargs['anim'],
                                            pargs['folder']):
@@ -538,9 +530,6 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc(f'Sound effects and voicelines may not not reference parent or '
                                  f'current directories: {pargs["sfx"]}')
             return
-        if False: #Constants.includes_relative_directories(pargs['sfx']):
-            self.client.send_ooc(f'Sound effects and voicelines may not not reference parent or '
-                                 f'current directories: {pargs["sfx"]}')
         if pargs['sfx_delay'] < 0:
             return
         if pargs['button'] not in (0, 1, 2, 3, 4, 5, 6, 7, 8):  # Shouts
