@@ -575,6 +575,11 @@ GMs can:
 * **area_kick** "ID/IPID" "area number"
     - Kicks target from your area to the intended area and remove them from its invite-list.
     - If not given a target area, it will use the server's default area (usually area 0).
+* **area_list** "area list"
+    - Sets the server's current area list.
+    - If not given an area list, it will restore the original area list as it was on server bootup.
+* **area_lists**
+    - Lists all available area lists as established in `config/area_lists.yaml`.
 * **blockdj** "ID/IPID"
     - Mutes the target from changing music.
 * **charlog** "ID/IPID"
@@ -640,11 +645,6 @@ GMs can:
 
 * **announce** "message"
     - Sends a serverwide announcement
-* **area_list** "area list"
-    - Sets the server's current area list.
-    - If not given an area list, it will restore the original area list as it was on server bootup.
-* **area_lists**
-    - Lists all available area lists as established in `config/area_lists.yaml`.
 * **ban** "IPID"/"IP"
     - Bans the specified IPID/IP (hdid is linked to ipid so all bans happen at the same time).
 * **banhdid** "HDID"

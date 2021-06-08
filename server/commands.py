@@ -180,7 +180,7 @@ def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
-    """ (MOD ONLY)
+    """ (OFFICER ONLY)
     Sets the server's current area list (what areas exist at any given time). If given no arguments,
     it will return the area list to its original value (in areas.yaml). The list of area lists can
     be accessed with /area_lists. Clients that do not process 'SM' packets can be in servers that
@@ -199,7 +199,7 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
     /area_list              :: Reset the area list to its original value.
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_officer=True)
 
     # lists which areas are locked before the reload
     old_locked_areas = [area.name for area in client.server.area_manager.areas if area.is_locked]
@@ -254,7 +254,7 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_area_lists(client: ClientManager.Client, arg: str):
-    """ (MOD ONLY)
+    """ (OFFICER ONLY)
     Lists all available area lists as established in config/area_lists.yaml. Note that, as this
     file is updated independently from the other area lists, an area list does not need to be in
     this file in order to be usable, and an area list in this list may no longer exist.
@@ -269,7 +269,7 @@ def ooc_cmd_area_lists(client: ClientManager.Client, arg: str):
     /area_lists             :: Return all available area lists
     """
 
-    Constants.assert_command(client, arg, is_mod=True, parameters='=0')
+    Constants.assert_command(client, arg, is_officer=True, parameters='=0')
 
     try:
         with Constants.fopen('config/area_lists.yaml', 'r') as f:
