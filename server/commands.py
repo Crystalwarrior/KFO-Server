@@ -6901,7 +6901,8 @@ def ooc_cmd_zone_unwatch(client: ClientManager.Client, arg: str):
 def ooc_cmd_zone_watch(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Makes the user start watching a zone by ID.
-    Returns an error if the user is already watching a zone or if the zone ID does not exist.
+    Returns an error if the zone ID does not exist or if the user is already watching the target
+    zone or some other zone.
 
     SYNTAX
     /zone_watch <zone_ID>
@@ -6919,6 +6920,9 @@ def ooc_cmd_zone_watch(client: ClientManager.Client, arg: str):
         target_zone = client.server.zone_manager.get_zone(arg)
     except KeyError:
         raise ZoneError('`{}` is not a valid zone ID.'.format(arg))
+
+    if target_zone.is_watcher(client):
+        raise ZoneError('You are already watching this zone.')
 
     try:
         target_zone.add_watcher(client)
