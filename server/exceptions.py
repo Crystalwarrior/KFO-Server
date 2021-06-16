@@ -310,6 +310,9 @@ class GameWithAreasError(GameError):
 
 @recreate_subexceptions
 class TrialError(GameWithAreasError):
+    class AreaDisallowsBulletsError(GameWithAreasError):
+        pass
+
     class UserNotInMinigameError(GameWithAreasError):
         pass
 

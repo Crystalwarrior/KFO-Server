@@ -7343,6 +7343,8 @@ def ooc_cmd_trial(client: ClientManager.Client, arg: str):
                                                       require_character=True,
                                                       autoadd_on_client_enter=False,
                                                       autoadd_minigame_on_player_added=False)
+    except TrialError.AreaDisallowsBulletsError:
+        raise ClientError('This area disallows bullets.')
     except TrialError.AreaHitGameConcurrentLimitError:
         raise ClientError('This area already hosts another trial.')
     except TrialError.ManagerTooManyGamesError:
@@ -7835,7 +7837,7 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
     Players in the area not part of the trial, already part of a minigame or that do not have a
     character are not added to the NSD. Players added to the NSD are ordered to switch to the
     'nsd' gamemode.
-    Returns an error if the player osnot part of a trial or leader of one, if the trial reached its
+    Returns an error if the player is not part of a trial or leader of one, if the trial reached its
     NSD limit, if the player is already part of a minigame or does not have a character, or if the
     time is negative or above the server time limit.
 

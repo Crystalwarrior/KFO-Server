@@ -385,6 +385,40 @@ class _Trial(GameWithAreas):
         if user.new_area not in self.get_areas():
             user.send_gamemode(name='')
 
+    def add_area(self, area):
+        """
+        Add an area to this trial's set of areas.
+
+        Parameters
+        ----------
+        area : AreaManager.Area
+            Area to add.
+
+        Raises
+        ------
+        TrialError.AreaDisallowsBulletsError
+            If the area to add disallows bullets.
+        GameError.GameIsUnmanagedError
+            If the game was scheduled for deletion and thus does not accept any mutator
+            public method calls.
+        GameWithAreasError.AreaAlreadyInGameError
+            If the area is already part of the game.
+        GameWithAreasError.AreaHitGameConcurrentLimitError.
+            If `area` has reached the concurrent area membership limit of any of the games it
+            belongs to managed by this manager, or by virtue of adding this area it will violate
+            this game's concurrent area membership limit.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if not area.bullet:
+            raise TrialError.AreaDisallowsBulletsError
+
+        super().add_area(area)
+
     def get_influence(self, user) -> float:
         """
         Get the current influence of a player of the trial.
@@ -1490,6 +1524,8 @@ class TrialManager(GameWithAreasManager):
 
         Raises
         ------
+        TrialError.AreaDisallowsBulletsError
+            If `creator` is given and the area of the creator disallows bullets.
         GameError.ManagerTooManyGamesError
             If the manager is already managing its maximum number of minigames.
         Any error from the created trial's add_player(creator)
@@ -1498,6 +1534,7 @@ class TrialManager(GameWithAreasManager):
         """
 
         areas = {creator.area} if creator else set()
+
         trial_factory = functools.partial(
             _Trial,
             autoadd_minigame_on_player_added=autoadd_minigame_on_player_added
