@@ -1944,7 +1944,8 @@ def ooc_cmd_g(client: ClientManager.Client, arg: str):
     Sends a global message in the OOC chat visible to all users in the server who have not disabled
     global chat.
     Returns an error if the user has global chat off, sends an empty message, or is not an officer
-    and attempts to send a message in an area where global messages are disallowed.
+    and attempts to send a message in an area where global messages are disallowed or when the
+    server disallows global messages.
 
     SYNTAX
     /g <message>
@@ -1961,6 +1962,8 @@ def ooc_cmd_g(client: ClientManager.Client, arg: str):
     except ArgumentError:
         raise ArgumentError("You cannot send an empty message.")
 
+    if not client.is_officer() and not client.server.global_allowed:
+        raise ClientError('Global chat is currently locked.')
     if not client.is_officer() and not client.area.global_allowed:
         raise ClientError('You must be authorized to send global messages in this area.')
     if client.muted_global:
@@ -6642,6 +6645,13 @@ def ooc_cmd_zone_global(client: ClientManager.Client, arg: str):
     else:
         raise ZoneError('You are not in a zone.')
 
+    if not client.is_officer() and not client.server.global_allowed:
+        raise ClientError('Global chat is currently locked.')
+    if not client.is_officer() and not client.area.global_allowed:
+        raise ClientError('You must be authorized to send global messages in this area.')
+    if client.muted_global:
+        raise ClientError('You have the global chat muted.')
+
     targets = target_zone.get_watchers()
     for area in target_zone.get_areas():
         targets.update({c for c in area.clients if c.zone_watched in [None, target_zone]})
@@ -9562,6 +9572,21 @@ def ooc_cmd_unignore(client: ClientManager.Client, arg: str):
     client.ignored_players.remove(target)
     client.send_ooc(f'You are no longer ignoring {target.displayname} [{target.id}].')
 
+
+def ooc_cmd_glock(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_officer=True, parameters='=0')
+
+    client.server.global_allowed = not client.server.global_allowed
+    status = {False: 'locked', True: 'unlocked'}
+
+    client.send_ooc('You have {} the global chat'.format(status[client.server.global_allowed]))
+    client.send_ooc_others('A mod has {} the global chat.'
+                           .format(status[client.server.global_allowed]), is_officer=False)
+    client.send_ooc_others('{} [{}] has {} the global chat.'
+                           .format(client.name, client.id, status[client.server.global_allowed]),
+                           is_officer=True)
+    logger.log_server('{} has {} the global chat.'
+                      .format(client.name, status[client.server.global_allowed]), client)
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

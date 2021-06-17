@@ -598,6 +598,9 @@ GMs can:
     - Shows the current characters in your area as well as their IPIDs.
 * **getareas**
     - Shows all characters in all areas of the server as well as their IPIDs.
+* **glock**
+    - Changes the global chat lock status of the server.
+    - If the server has its global chat locked, only CMs and above can use /g and /zone_global.
 * **handicap** "ID/IPID" "length" "name" "announce if over"
     - Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of time in seconds between changing areas.
     - If name is given, the handicap announcement will use it as the name of the handicap.

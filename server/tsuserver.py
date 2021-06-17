@@ -68,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b176'
-        self.internal_version = 'M210616b'
+        self.segment_version = 'b177'
+        self.internal_version = 'M210617a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -96,6 +96,7 @@ class TsuserverDR:
         self.old_area_list = None
         self.default_area = 0
         self.all_passwords = list()
+        self.global_allowed = True
 
         self.load_config()
         self.client_manager: ClientManager = client_manager(self)
