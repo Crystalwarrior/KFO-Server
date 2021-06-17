@@ -59,7 +59,7 @@ from server.validate.music import ValidateMusic
 
 class TsuserverDR:
     def __init__(self, protocol: AOProtocol = None,
-                 client_manager: ClientManager.Client = None, in_test: bool = False):
+                 client_manager: ClientManager = None, in_test: bool = False):
         self.logged_packet_limit = 100  # Arbitrary
         self.logged_packets = []
         self.print_packets = False  # For debugging purposes
@@ -68,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b175'
-        self.internal_version = 'M210616a'
+        self.segment_version = 'b176'
+        self.internal_version = 'M210616b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -98,7 +98,7 @@ class TsuserverDR:
         self.all_passwords = list()
 
         self.load_config()
-        self.client_manager = client_manager(self)
+        self.client_manager: ClientManager = client_manager(self)
         self.char_list = list()
         self.load_iniswaps()
         self.load_characters()

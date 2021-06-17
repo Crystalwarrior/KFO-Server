@@ -136,6 +136,9 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Shows the current characters in your area.
 * **getareas**
     - Shows all characters in all areas reachable from your own.
+* **ignore** "ID/char name/edited-to character/showname/char showname/OOC name"
+    - Marks a target as ignored, so you will no longer receive any IC messages from them.
+    - The target is not notified of you marking them as ignored.
 * **invite** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Adds target to the invite list of your locked area so they may join.
 * **kickself**
@@ -270,6 +273,9 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - If you are the last player to leave the trial, it will be automatically destroyed.
 * **unfollow**
     - Stops following whoever you were following, provided you were a spectator.
+* **unignore** "ID/char name/edited-to character/showname/char showname/OOC name"
+    - Marks a target as no longer ignored, so you will now receive any IC messages from them.
+    - The target is not notified of you marking them as no longer ignored.
 * **unilock** "area number/name"
     - Changes the passage status (locked/unlocked) from the current area to the given one.
 * **uninvite** "ID/char name/edited-to character/showname/char showname/OOC name"

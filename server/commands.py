@@ -9498,6 +9498,71 @@ def ooc_cmd_zone_tick_remove(client: ClientManager.Client, arg: str):
         c.send_chat_tick_rate(chat_tick_rate=None)
 
 
+def ooc_cmd_ignore(client: ClientManager.Client, arg: str):
+    """
+    Marks another user as ignored. You will no longer receive any IC messages from that user,
+    even those that come as a result of OOC commands. The target will not be notified of the
+    ignore command being executed on them.
+    Requires /unignore to undo.
+    Returns an error if the given identifier does not correspond to a user, if the target is
+    yourself, or if you are already ignoring the target.
+
+    SYNTAX
+    /ignore <user_id>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+
+    EXAMPLES
+    /ignore 1           :: Ignores client 1
+    """
+
+    Constants.assert_command(client, arg, parameters='>0')
+
+    target, _, _ = client.server.client_manager.get_target_public(client, arg)
+
+    if target == client:
+        raise ClientError('You may not ignore yourself.')
+    if target in client.ignored_players:
+        raise ClientError(f'You are already ignoring {target.displayname} [{target.id}].')
+
+    client.ignored_players.add(target)
+    client.send_ooc(f'You are now ignoring {target.displayname} [{target.id}].')
+
+
+def ooc_cmd_unignore(client: ClientManager.Client, arg: str):
+    """
+    Marks another user as unignored. You will now receive any IC messages sent from that user.
+    The target will not be notified of the unignore command being executed on them.
+    Requires /ignore to undo.
+    Returns an error if the given identifier does not correspond to a user, if the target is
+    yourself, or if you are already not ignoring the target.
+
+    SYNTAX
+    /unignore <user_id>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+
+    EXAMPLES
+    /unignore 1           :: Unignores client 1
+    """
+
+    Constants.assert_command(client, arg, parameters='>0')
+
+    target, _, _ = client.server.client_manager.get_target_public(client, arg)
+
+    if target == client:
+        raise ClientError('You are already not ignoring yourself.')
+    if target not in client.ignored_players:
+        raise ClientError(f'You are already not ignoring {target.displayname} [{target.id}].')
+
+    client.ignored_players.remove(target)
+    client.send_ooc(f'You are no longer ignoring {target.displayname} [{target.id}].')
+
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

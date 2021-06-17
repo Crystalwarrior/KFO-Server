@@ -121,6 +121,7 @@ class ClientManager:
             self.remembered_statuses = dict()
             self.can_bypass_iclock = False
             self.char_log = list()
+            self.ignored_players = set()
 
             # Pairing stuff
             self.charid_pair = -1
@@ -320,6 +321,20 @@ class ClientManager:
                                         to_blind=to_blind, to_deaf=to_deaf, pred=pred)
             if not cond(self):
                 return
+
+            # If self is ignoring sender, now is the moment to discard
+            if sender and sender in self.ignored_players:
+                return
+            # FIXME: Workaround because lazy. Proper fix is change all send_ic that specify
+            # char_id to also specify sender. However, there are potentially ugly issues lurking
+            # with first person/forward sprites mode here which I don't have the heart to figure
+            # out right now. Once fixed, remove the upcoming lines.
+            # Right now, this feature makes it emulate the old client behavior of ignoring based
+            # on character match.
+            if char_id:
+                for ignored_player in self.ignored_players:
+                    if char_id == ignored_player.char_id:
+                        return
 
             # Remove None values from pargs, which could have happened while setting default values
             # from the function call
@@ -2023,6 +2038,13 @@ class ClientManager:
                                     is_zstaff=True)
 
         client.publisher.publish('client_destroyed', {})
+
+        # Moreover, free up the client ID from the set of ignored IDs for all players
+        for other in self.clients:
+            if client == other:
+                continue
+            if client.id in other.ignored_players:
+                other.ignored_players.remove(client.id)
 
         # Finally, for every other client, remove the remembered status
         for other in self.clients:
