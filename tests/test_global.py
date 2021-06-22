@@ -174,8 +174,9 @@ class TestGlobal_03_Global(_TestOOC):
         self.c1.ooc('/g Hallo from C1.')
         self.c0.assert_ooc('Hallo from C1.',
                            username='<dollar>G[{}][{}]'.format(1, self.c1.name), over=True)
-        self.c1.assert_ooc('Hallo from C1.',
-                           username='<dollar>G[{}][{}]'.format(1, self.c1.name), over=True)
+        self.c1.assert_ooc(
+            'Hallo from C1.',
+            username='<dollar>G[{}][{}][{}]'.format(1, self.c1.name, self.c1.ipid), over=True)
         self.c2.assert_ooc('Hallo from C1.',
                            username='<dollar>G[{}][{}]'.format(1, self.c1.name), over=True)
         self.c3.assert_ooc('Hallo from C1.',
