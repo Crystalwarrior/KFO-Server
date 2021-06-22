@@ -331,9 +331,9 @@ class ClientManager:
             # out right now. Once fixed, remove the upcoming lines.
             # Right now, this feature makes it emulate the old client behavior of ignoring based
             # on character match.
-            if cid:
+            if char_id:
                 for ignored_player in self.ignored_players:
-                    if cid == ignored_player.char_id:
+                    if char_id == ignored_player.char_id:
                         return
 
             # If self is ignoring sender, now is the moment to discard

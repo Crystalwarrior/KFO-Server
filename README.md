@@ -44,29 +44,29 @@ It is highly recommended you read through all the installation steps first befor
 
 * If everything was set up correctly, you will see something like this appear:
 
-\[2020-12-17T10:20:20\]: Starting...
-\[2020-12-17T10:20:20\]: Launching TsuserverDR 4.3.0-b100 (M201217a)...
-\[2020-12-17T10:20:20\]: Loading server configurations...
-\[2020-12-17T10:20:20\]: Server configurations loaded successfully!
-\[2020-12-17T10:20:20\]: Starting a nonlocal server...
-\[2020-12-17T10:20:20\]: Server started successfully!
-\[2020-12-17T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server
+\[2021-06-22T10:20:20\]: Starting...
+\[2021-06-22T10:20:20\]: Launching TsuserverDR 4.3.0-b180 (M210622a)...
+\[2021-06-22T10:20:20\]: Loading server configurations...
+\[2021-06-22T10:20:20\]: Server configurations loaded successfully!
+\[2021-06-22T10:20:20\]: Starting a nonlocal server...
+\[2021-06-22T10:20:20\]: Server started successfully!
+\[2021-06-22T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server
 
 * If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:
 
-\[2020-12-17T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:
-\[2020-12-17T10:20:21\]: *Server name: My First DR Server
-\[2020-12-17T10:20:21\]: *Server description: This is my flashy new DR server
-\[2020-12-17T10:20:22\]: Connected to the master server.
+\[2021-06-22T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:
+\[2021-06-22T10:20:21\]: *Server name: My First DR Server
+\[2021-06-22T10:20:21\]: *Server description: This is my flashy new DR server
+\[2021-06-22T10:20:22\]: Connected to the master server.
 
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If it fails to do that, it will let you know that, as it means there is probably something wrong with your internet connection and that other players may not be able to connect to your server.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
-\[2020-12-17T22:23:04\]: You have initiated a server shut down.
-\[2020-12-17T22:23:04\]: Kicking 12 remaining clients.
-\[2020-12-17T22:23:04\]: Server has successfully shut down.
+\[2021-06-22T22:23:04\]: You have initiated a server shut down.
+\[2021-06-22T22:23:04\]: Kicking 12 remaining clients.
+\[2021-06-22T22:23:04\]: Server has successfully shut down.
 
 * If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 

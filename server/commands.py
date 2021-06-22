@@ -7244,7 +7244,7 @@ def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
             client.send_ooc_others('(X) You see a group of people huddling together',
                                    in_area=True, is_zstaff_flex=True, not_to=members)
 
-            
+
 def ooc_cmd_lurk(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Initiates an area lurk callout timer in the area so that non-spectator regular players who do
@@ -9609,7 +9609,7 @@ def ooc_cmd_glock(client: ClientManager.Client, arg: str):
                            is_officer=True)
     logger.log_server('{} has {} the global chat.'
                       .format(client.name, status[client.server.global_allowed]), client)
-    
+
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
