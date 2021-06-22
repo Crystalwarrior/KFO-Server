@@ -1942,7 +1942,8 @@ def ooc_cmd_follow(client: ClientManager.Client, arg: str):
 def ooc_cmd_g(client: ClientManager.Client, arg: str):
     """ (VARYING REQUIREMENTS)
     Sends a global message in the OOC chat visible to all users in the server who have not disabled
-    global chat.
+    global chat. The message includes the sender's area and display name. Moderators and community
+    managers also get to see the IPID of the sender.
     Returns an error if the user has global chat off, sends an empty message, or is not an officer
     and attempts to send a message in an area where global messages are disallowed or when the
     server disallows global messages.
@@ -2203,7 +2204,7 @@ def ooc_cmd_gm(client: ClientManager.Client, arg: str):
     if client.muted_global:
         raise ClientError('You have the global chat muted.')
 
-    client.server.broadcast_global(client, arg, True)
+    client.server.broadcast_global(client, arg, as_mod=True)
     logger.log_server('[{}][{}][GLOBAL-MOD]{}.'
                       .format(client.area.id, client.get_char_name(), arg), client)
 
@@ -6619,7 +6620,8 @@ def ooc_cmd_zone_delete(client: ClientManager.Client, arg: str):
 def ooc_cmd_zone_global(client: ClientManager.Client, arg: str):
     """
     Sends a global message in the OOC chat visible to all users in the zone the user area's belongs
-    to who have not disabled global chat.
+    to who have not disabled global chat. The message includes the sender's area and display name.
+    Moderators and community managers also get to see the IPID of the sender.
     Returns an error if the user has global chat off, sends an empty message, or is in an area
     not part of a zone.
 
@@ -6657,9 +6659,14 @@ def ooc_cmd_zone_global(client: ClientManager.Client, arg: str):
         targets.update({c for c in area.clients if c.zone_watched in [None, target_zone]})
 
     for target in targets:
-        target.send_ooc(arg, username='<dollar>ZG[{}][{}]'
-                        .format(client.area.id, client.displayname),
-                        pred=lambda c: not c.muted_global)
+        if target.is_mod or target.is_cm:
+            target.send_ooc(arg, username='<dollar>ZG[{}][{}][{}]'
+                            .format(client.area.id, client.displayname, client.ipid),
+                            pred=lambda c: not c.muted_global)
+        else:
+            target.send_ooc(arg, username='<dollar>ZG[{}][{}]'
+                            .format(client.area.id, client.displayname),
+                            pred=lambda c: not c.muted_global)
 
 
 def ooc_cmd_zone_info(client: ClientManager.Client, arg: str):
@@ -7237,7 +7244,7 @@ def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
             client.send_ooc_others('(X) You see a group of people huddling together',
                                    in_area=True, is_zstaff_flex=True, not_to=members)
 
-
+            
 def ooc_cmd_lurk(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Initiates an area lurk callout timer in the area so that non-spectator regular players who do
@@ -9574,12 +9581,27 @@ def ooc_cmd_unignore(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_glock(client: ClientManager.Client, arg: str):
+    """ (OFFICER ONLY)
+    Toggles players that are not CM or mod being able to use /g and /zg or not.
+
+    SYNTAX
+    /glock
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    Assuming global chat was not locked originally...
+    /glock        :: Locks the global chat.
+    /glock        :: Unlocks the global chat.
+    """
+
     Constants.assert_command(client, arg, is_officer=True, parameters='=0')
 
     client.server.global_allowed = not client.server.global_allowed
     status = {False: 'locked', True: 'unlocked'}
 
-    client.send_ooc('You have {} the global chat'.format(status[client.server.global_allowed]))
+    client.send_ooc('You have {} the global chat.'.format(status[client.server.global_allowed]))
     client.send_ooc_others('A mod has {} the global chat.'
                            .format(status[client.server.global_allowed]), is_officer=False)
     client.send_ooc_others('{} [{}] has {} the global chat.'
@@ -9587,6 +9609,7 @@ def ooc_cmd_glock(client: ClientManager.Client, arg: str):
                            is_officer=True)
     logger.log_server('{} has {} the global chat.'
                       .format(client.name, status[client.server.global_allowed]), client)
+    
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

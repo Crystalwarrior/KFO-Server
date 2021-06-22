@@ -519,6 +519,9 @@ GMs can:
     - Removes your trial leader role.
 * **unfollow**
     - Stops following whoever you were following.
+* **unignore** "ID/char name/edited-to character/showname/char showname/OOC name"
+    - Marks a target as no longer ignored, so you will now receive any IC messages from them.
+    - The target is not notified of you marking them as no longer ignored.
 * **unglobalic**
     - Stops sending subsequent IC messages to the area range specified in a previous /globalic command.
 * **unhandicap** "ID"
@@ -653,7 +656,7 @@ GMs can:
 ### Moderator Commands
 
 * **announce** "message"
-    - Sends a serverwide announcement
+    - Sends a serverwide announcement.
 * **ban** "IPID"/"IP"
     - Bans the specified IPID/IP (hdid is linked to ipid so all bans happen at the same time).
 * **banhdid** "HDID"

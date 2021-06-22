@@ -499,6 +499,15 @@
 * Fixed server accepting ip_ids.json or hd_ids.json files with wrong structure
 * Fixed AO clients sending IC messages presenting with no evidence selected throwing an error
 
+### 210621 (4.2.6)
+* Community managers now have access to /area_list and /area_lists
+* Added /ignore and /unignore to toggle ignoring IC messages from players
+* Added /glock to lock the global and zone chats
+* Moderators and community managers now see the IPID of players using /g or /zone_global
+* Updated TsuserverDR so it uses travis-ci.com
+* Fixed servers not accepting IC messages if they did not set some daily gmpasses
+* Fixed some special characters not being accepted properly
+  
 ## (4.3.0)
 * Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
 * Explicitly allowed Python 3.9 support for server owners
@@ -614,7 +623,6 @@
 * Added /zone_tick and /zone_tick_remove to set the chat tick rate of a zone, so all players in an area part of the zone see messages with the same chat tick rate, or their own chat tick rate
 * Made /switch indicate the target character, regardless of whether the switch was successful or not
 * Made /zone_watch return a more specific error if the player is already watching the target zone
-* Added /ignore and /unignore to toggle ignoring IC messages from players
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered

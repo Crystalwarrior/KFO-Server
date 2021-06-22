@@ -36,9 +36,10 @@ import sys
 import tempfile
 import time
 import warnings
+import yaml
+
 from enum import Enum
 
-import yaml
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 from server.exceptions import TsuserverException
 

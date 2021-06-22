@@ -137,7 +137,7 @@ class TestGlobal_03_Global(_TestOOC):
 
     def test_02_sendglobal(self):
         """
-        Situation: C0-4 send correct globals. They all receive one another's globals, even if they
+        Situation: C0-3 send correct globals. They all receive one another's globals, even if they
         are in different areas, as they are all in areas that allow for global messages.
         """
 
@@ -145,8 +145,15 @@ class TestGlobal_03_Global(_TestOOC):
             c.ooc('/g Hello.')
             name = c.name
             area = c.area.id
-            for x in self.clients[:4]:
-                x.assert_ooc('Hello.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
+
+            # Non officers
+            self.c0.assert_ooc('Hello.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
+            self.c2.assert_ooc('Hello.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
+            self.c3.assert_ooc('Hello.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
+
+            # Officers
+            self.c1.assert_ooc(
+                'Hello.', username='<dollar>G[{}][{}][{}]'.format(area, name, c.ipid), over=True)
 
     def test_03_sendglobal_globalallowed(self):
         """
@@ -198,8 +205,10 @@ class TestGlobal_03_Global(_TestOOC):
         self.c2.ooc('/g Hello C0.')
         name = self.c2.name
         area = self.c2.area.id
+        ipid = self.c2.ipid
         self.c0.assert_no_ooc()
-        self.c1.assert_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
+        self.c1.assert_ooc(
+            'Hello C0.', username='<dollar>G[{}][{}][{}]'.format(area, name, ipid), over=True)
         self.c2.assert_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
         self.c3.assert_ooc('Hello C0.', username='<dollar>G[{}][{}]'.format(area, name), over=True)
 
@@ -240,30 +249,30 @@ class TestGlobal_04_GlobalMod(_TestOOC):
         self.c1.ooc('/gm Hi')
         self.c0.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
                                            .format(0, self.c1.name)), over=True)
-        self.c1.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
-                                           .format(0, self.c1.name)), over=True)
-        self.c2.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
-                                           .format(0, self.c1.name)), over=True)
+        self.c1.assert_ooc('Hi', username=('<dollar>G[{}][{}][M][{}]'
+                                           .format(0, self.c1.name, self.c1.ipid)), over=True)
+        self.c2.assert_ooc('Hi', username=('<dollar>G[{}][{}][M][{}]'
+                                           .format(0, self.c1.name, self.c1.ipid)), over=True)
         self.c3.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
                                            .format(0, self.c1.name)), over=True)
 
         self.c2.ooc('/gm Hi')
         self.c0.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
                                            .format(4, self.c2.name)), over=True)
-        self.c1.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
-                                           .format(4, self.c2.name)), over=True)
-        self.c2.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
-                                           .format(4, self.c2.name)), over=True)
+        self.c1.assert_ooc('Hi', username=('<dollar>G[{}][{}][M][{}]'
+                                           .format(4, self.c2.name, self.c2.ipid)), over=True)
+        self.c2.assert_ooc('Hi', username=('<dollar>G[{}][{}][M][{}]'
+                                           .format(4, self.c2.name, self.c2.ipid)), over=True)
         self.c3.assert_ooc('Hi', username=('<dollar>G[{}][{}][M]'
                                            .format(4, self.c2.name)), over=True)
 
         self.c2.ooc('/gm Bye')
         self.c0.assert_ooc('Bye', username=('<dollar>G[{}][{}][M]'
                                             .format(4, self.c2.name)), over=True)
-        self.c1.assert_ooc('Bye', username=('<dollar>G[{}][{}][M]'
-                                            .format(4, self.c2.name)), over=True)
-        self.c2.assert_ooc('Bye', username=('<dollar>G[{}][{}][M]'
-                                            .format(4, self.c2.name)), over=True)
+        self.c1.assert_ooc('Bye', username=('<dollar>G[{}][{}][M][{}]'
+                                            .format(4, self.c2.name, self.c2.ipid)), over=True)
+        self.c2.assert_ooc('Bye', username=('<dollar>G[{}][{}][M][{}]'
+                                            .format(4, self.c2.name, self.c2.ipid)), over=True)
         self.c3.assert_ooc('Bye', username=('<dollar>G[{}][{}][M]'
                                             .format(4, self.c2.name)), over=True)
 
@@ -295,8 +304,8 @@ class TestGlobal_04_GlobalMod(_TestOOC):
         area = self.c2.area.id
         self.c0.assert_no_ooc()
         self.c1.assert_no_ooc()
-        self.c2.assert_ooc('Welcome.', username=('<dollar>G[{}][{}][M]'
-                                                 .format(area, name)), over=True)
+        self.c2.assert_ooc('Welcome.', username=('<dollar>G[{}][{}][M][{}]'
+                                                 .format(area, name, self.c2.ipid)), over=True)
         self.c3.assert_ooc('Welcome.', username=('<dollar>G[{}][{}][M]'
                                                  .format(area, name)), over=True)
 

@@ -321,6 +321,20 @@ class ClientManager:
                                         to_blind=to_blind, to_deaf=to_deaf, pred=pred)
             if not cond(self):
                 return
+            # If self is ignoring sender, now is the moment to discard
+            if sender and sender in self.ignored_players:
+                return
+
+            # FIXME: Workaround because lazy. Proper fix is change all send_ic that specify
+            # char_id to also specify sender. However, there are potentially ugly issues lurking
+            # with first person/forward sprites mode here which I don't have the heart to figure
+            # out right now. Once fixed, remove the upcoming lines.
+            # Right now, this feature makes it emulate the old client behavior of ignoring based
+            # on character match.
+            if cid:
+                for ignored_player in self.ignored_players:
+                    if cid == ignored_player.char_id:
+                        return
 
             # If self is ignoring sender, now is the moment to discard
             if sender and sender in self.ignored_players:
@@ -697,6 +711,10 @@ class ClientManager:
         def change_character(self, char_id: int, force: bool = False,
                              target_area: AreaManager.Area = None,
                              announce_zwatch: bool = True):
+            # Do not run this code if player is still doing server handshake
+            if self.char_id is None:
+                return
+
             # Added target_area parameter because when switching areas, the change character code
             # is run before the character's area actually changes, so it would look for the wrong
             # area if I just did self.area
@@ -1773,7 +1791,7 @@ class ClientManager:
             if char_id == -1:
                 return self.server.config['spectator_name']
             if char_id is None:
-                return 'SERVER_SELECT'
+                return self.server.server_select_name
             return self.server.char_list[char_id]
 
         def has_character(self) -> bool:
@@ -2052,6 +2070,13 @@ class ClientManager:
                 continue
             if client.id in other.remembered_statuses:
                 other.remembered_statuses.pop(client.id)
+
+        # Moreover, free up the client ID from the set of ignored IDs for all players
+        for other in self.clients:
+            if client == other:
+                continue
+            if client.id in other.ignored_players:
+                other.ignored_players.remove(client.id)
 
         self.clients.remove(client)
 
