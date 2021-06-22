@@ -68,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b178'
-        self.internal_version = 'M210621a'
+        self.segment_version = 'b179'
+        self.internal_version = 'M210621b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -815,7 +815,7 @@ class TsuserverDR:
                 c.send_ooc(msg, username=ooc_name_ipid)
             else:
                 c.send_ooc(msg, username=ooc_name)
-                
+
         if self.config['use_district']:
             msg = 'GLOBAL#{}#{}#{}#{}'.format(int(as_mod), client.area.id, username, msg)
             self.district_client.send_raw_message(msg)
