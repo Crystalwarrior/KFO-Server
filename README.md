@@ -3,7 +3,7 @@
 
 A Python-based server for Danganronpa Online. It is a fork from [tsuserver3](https://github.com/AttorneyOnline/tsuserver3) which is targeted towards Attorney Online.
 
-Requires Python 3.6-3.8 and PyYAML (follow instructions below to install).
+Requires Python 3.6-3.9 and PyYAML (follow instructions below to install).
 
 ## How to use
 
@@ -35,35 +35,35 @@ It is highly recommended you read through all the installation steps first befor
 
 ### Running
 
-* To launch a server, you may either 
+* To launch a server, you may either
   - Double-click `start_server.py` in your TsuserverDR folder.
   - In PowerShell, Command Prompt or your preferred terminal, change directory to your TsuserverDR folder and type `python start_server.py`, or `py -3 start_server.py` if you use both Python 2 and 3. For instructions on how to launch any of the above programs or change directory, refer to the second point in the Installing section.
-  
+
 * If everything was set up correctly, you will see something like this appear:
 
-\[2020-07-31T10:20:20\]: Starting...  
-\[2020-07-31T10:20:20\]: Launching TsuserverDR 4.2.5 (200731a)...  
-\[2020-07-31T10:20:20\]: Loading server configurations...  
-\[2020-07-31T10:20:20\]: Server configurations loaded successfully!  
-\[2020-07-31T10:20:20\]: Starting a nonlocal server...  
-\[2020-07-31T10:20:20\]: Server started successfully!  
-\[2020-07-31T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server  
+\[2021-06-21T10:20:20\]: Starting...
+\[2021-06-21T10:20:20\]: Launching TsuserverDR 4.2.6 (210621a)...
+\[2021-06-21T10:20:20\]: Loading server configurations...
+\[2021-06-21T10:20:20\]: Server configurations loaded successfully!
+\[2021-06-21T10:20:20\]: Starting a nonlocal server...
+\[2021-06-21T10:20:20\]: Server started successfully!
+\[2021-06-21T10:20:21\]: Server should be now accessible from 192.0.2.0:50000:My First DR Server
 
 * If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:
 
-\[2020-07-31T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:  
-\[2020-07-31T10:20:21\]: *Server name: My First DR Server  
-\[2020-07-31T10:20:21\]: *Server description: This is my flashy new DR server  
-\[2020-07-31T10:20:22\]: Connected to the master server.  
+\[2021-06-21T10:20:21\]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:
+\[2021-06-21T10:20:21\]: *Server name: My First DR Server
+\[2021-06-21T10:20:21\]: *Server description: This is my flashy new DR server
+\[2021-06-21T10:20:22\]: Connected to the master server.
 
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If it fails to do that, it will let you know that, as it means there is probably something wrong with your internet connection and that other players may not be able to connect to your server.
   - Successful connection or getting a spot in the master server list does not imply that your server will be accessible to other players. In particular, you must make sure that your external port in `config\config.yaml` is open and accepting connections, which usually involves a combination of router and firewall settings. In case of doubt, you can use websites such as [Can You See Me](https://canyouseeme.org) to check if your port is visible.
 
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
-\[2020-07-31T22:23:04\]: You have initiated a server shut down.  
-\[2020-07-31T22:23:04\]: Kicking 12 remaining clients.  
-\[2020-07-31T22:23:04\]: Server has successfully shut down.  
+\[2021-06-21T22:23:04\]: You have initiated a server shut down.
+\[2021-06-21T22:23:04\]: Kicking 12 remaining clients.
+\[2021-06-21T22:23:04\]: Server has successfully shut down.
 
 * If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
 
@@ -77,7 +77,7 @@ It is highly recommended you read through all the installation steps first befor
 
   - This process will not overwrite your server configurations inside the `config` folder, your existing logs inside the `logs` folder, or the user information inside the `storage` folder. However, it will overwrite other files including the Python files inside the `server` folder. Therefore, make sure to save backups of those files before overwriting in case you have modified them and wish to keep an archive of your changes.
 
-* If you want to update **Python** itself, you can get the latest Python download [from their website here](https://www.python.org/downloads/) and then follow the instructions under the Installing section in this readme. To check your current version of Python, you can run ``python`` on its own and look at the first line. The latest stable major Python release is *Python 3.8* as of October 31, 2019.
+* If you want to update **Python** itself, you can get the latest Python download [from their website here](https://www.python.org/downloads/) and then follow the instructions under the Installing section in this readme. To check your current version of Python, you can run ``python`` on its own and look at the first line. The latest stable major Python release is *Python 3.9* as of October 5, 2020.
 
   - Please follow the installation instructions again even if you had successfully ran a server before, because your new Python installation may be missing libraries that TsuserverDR expects there to exist. You should not need to change any server configuration files though.
   - In general, updating to a Python version beyond what is specified as supported may lead to unstable behavior, so for active servers try to keep your Python version among the ones specifically labeled as supported.
@@ -129,6 +129,9 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Shows the current characters in your area.
 * **getareas**
     - Shows all characters in all areas reachable from your own.
+* **ignore** "ID/char name/edited-to character/showname/char showname/OOC name"
+    - Marks a target as ignored, so you will no longer receive any IC messages from them.
+    - The target is not notified of you marking them as ignored.
 * **invite** "ID/char name/edited-to character/showname/OOC name"
     - Adds target to the invite list of your locked area so they may join.
 * **kickself**
@@ -392,6 +395,9 @@ GMs can:
     - Changes a player's ability to ignore passage locks and thus access all areas from any given area. By default it is off.
 * **unfollow**
     - Stops following whoever you were following.
+* **unignore** "ID/char name/edited-to character/showname/char showname/OOC name"
+    - Marks a target as no longer ignored, so you will now receive any IC messages from them.
+    - The target is not notified of you marking them as no longer ignored.
 * **unglobalic**
     - Stops sending subsequent IC messages to the area range specified in a previous /globalic command.
 * **unhandicap** "ID"
@@ -433,6 +439,11 @@ GMs can:
 * **area_kick** "ID/IPID" "area number"
     - Kicks target from your area to the intended area and remove them from its invite-list.
     - If not given a target area, it will use the server's default area (usually area 0).
+* **area_list** "area list"
+    - Sets the server's current area list.
+    - If not given an area list, it will restore the original area list as it was on server bootup.
+* **area_lists**
+    - Lists all available area lists as established in `config/area_lists.yaml`.
 * **blockdj** "ID/IPID"
     - Mutes the target from changing music.
 * **cleargm**
@@ -441,6 +452,9 @@ GMs can:
     - Shows the current characters in your area as well as their IPIDs.
 * **getareas**
     - Shows all characters in all areas of the server as well as their IPIDs.
+* **glock**
+    - Changes the global chat lock status of the server.
+    - If the server has its global chat locked, only CMs and above can use /g and /zone_global.
 * **handicap** "ID/IPID" "length" "name" "announce if over"
     - Sets a movement handicap on a client by ID or IPID so that they need to wait a set amount of time in seconds between changing areas.
     - If name is given, the handicap announcement will use it as the name of the handicap.
@@ -489,12 +503,7 @@ GMs can:
 ### Moderator Commands
 
 * **announce** "message"
-    - Sends a serverwide announcement
-* **area_list** "area list"
-    - Sets the server's current area list.
-    - If not given an area list, it will restore the original area list as it was on server bootup.
-* **area_lists**
-    - Lists all available area lists as established in `config/area_lists.yaml`.
+    - Sends a serverwide announcement.
 * **ban** "IPID"/"IP"
     - Bans the specified IPID/IP (hdid is linked to ipid so all bans happen at the same time).
 * **banhdid** "HDID"

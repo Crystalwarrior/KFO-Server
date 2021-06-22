@@ -96,7 +96,7 @@
 * Fixed "Knock" client effect not being sent
 
 ### 190630 (3.10)
-* Added support for user initiated day cycles with 
+* Added support for user initiated day cycles with
   - /clock
   - /clock_cancel
   - /clock_pause
@@ -200,7 +200,7 @@
 * Minor bugfixes with respect to bleeding
   - Blood cleaning notifications will no longer be sent with lights off
   - Blood will now automatically be spilled on the area as soon as /bloodtrail is executed, not only on area change
- 
+
 ### 190820 (4.1.1)
 * Added special marks to more staff privileged RP notifications
 * Reworded global IC notification messages
@@ -215,7 +215,7 @@
 * Fixed /multiclients failing for GMs/CMs on non-staff targets while in RP mode
 
 ### 190904 (4.1.4)
-* Gagged messages are now randomly generated 
+* Gagged messages are now randomly generated
 * Staff get new messages when using /bloodtrail, with privilege marks added where needed
 
 ## TsuserverDR 4.2 (The DRO 2nd Anniversary Update/The Zone and Poison Update)
@@ -260,7 +260,7 @@
   - /knock (which has been restricted to non-lobby areas only)
   - /scream
 * Private servers will now include the masterserver name when showing the server IP in the terminal
-* Fixed clients with same HDID but different IPID not being recognized as multiclients. This fixes the following: 
+* Fixed clients with same HDID but different IPID not being recognized as multiclients. This fixes the following:
   - Players getting a new IP can now kick ghosting clients under their old IP with /kickself
   - Staff can now recognize such situations with /whois or /multiclients
 * Fixed /play and /rplay not looping music tracks that appear in the server music list
@@ -303,9 +303,9 @@
   - **toggle_rpgetareas**: Same as /can_rpgetareas.
 * Added /files and /files_set for custom file linking
 * Added logging messages to the server logs when the server starts up, shuts down, or it crashes and the server can manage to save the log
-* Server logs files are now separated by month. Logging information will go to the file associated with the month and year the server was last launched on (so if in one session the server was launched December 2019 and was shut down January 2020, all logs for that session would go in `logs/server-2019-12.log`). 
+* Server logs files are now separated by month. Logging information will go to the file associated with the month and year the server was last launched on (so if in one session the server was launched December 2019 and was shut down January 2020, all logs for that session would go in `logs/server-2019-12.log`).
   - `logs/server.log` will now go unused, but server owners may keep this file for their archives.
-* Improved cross-compatibility between multiple AO-like clients. For client-exclusive features, a best-effort-like approach will be taken to adapt to clients that do not have said features. 
+* Improved cross-compatibility between multiple AO-like clients. For client-exclusive features, a best-effort-like approach will be taken to adapt to clients that do not have said features.
 * Improved /help message so that it suggests to use the extended syntax (/help "command name") to get help with a particular command
 * Improved README.md instructions so that server installation steps are more clear
 * Fixed minor typos in `config_sample/config.yaml`
@@ -498,3 +498,12 @@
 * Fixed server creating an ip_ids.json or hd_ids.json file with the wrong structure
 * Fixed server accepting ip_ids.json or hd_ids.json files with wrong structure
 * Fixed AO clients sending IC messages presenting with no evidence selected throwing an error
+
+### 210621 (4.2.6)
+* Community managers now have access to /area_list and /area_lists
+* Added /ignore and /unignore to toggle ignoring IC messages from players
+* Added /glock to lock the global and zone chats
+* Moderators and community managers now see the IPID of players using /g or /zone_global
+* Updated TsuserverDR so it uses travis-ci.com
+* Fixed servers not accepting IC messages if they did not set some daily gmpasses
+* Fixed some special characters not being accepted properly

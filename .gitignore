@@ -10,3 +10,4 @@
 /.coverage
 /.pylint.d/
 /server/.pylint.d/
+/.vscode/*

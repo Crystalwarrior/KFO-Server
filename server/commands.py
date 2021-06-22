@@ -170,7 +170,7 @@ def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):
                     member.send_ooc('{} was area kicked off your party.'.format(current_char))
 
 def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
-    """ (MOD ONLY)
+    """ (CM AND MOD ONLY)
     Sets the server's current area list (what areas exist at any given time). If given no arguments,
     it will return the area list to its original value (in areas.yaml). The list of area lists can
     be accessed with /area_lists. Clients that do not process 'SM' packets can be in servers that
@@ -189,7 +189,7 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
     /area_list              :: Reset the area list to its original value.
     """
 
-    Constants.assert_command(client, arg, is_mod=True)
+    Constants.assert_command(client, arg, is_officer=True)
 
     # lists which areas are locked before the reload
     old_locked_areas = [area.name for area in client.server.area_manager.areas if area.is_locked]
@@ -239,7 +239,7 @@ def ooc_cmd_area_list(client: ClientManager.Client, arg: str):
             pass
 
 def ooc_cmd_area_lists(client: ClientManager.Client, arg: str):
-    """ (MOD ONLY)
+    """ (CM AND MOD ONLY)
     Lists all available area lists as established in config/area_lists.yaml. Note that, as this
     file is updated independently from the other area lists, an area list does not need to be in
     this file in order to be usable, and an area list in this list may no longer exist.
@@ -254,7 +254,7 @@ def ooc_cmd_area_lists(client: ClientManager.Client, arg: str):
     /area_lists             :: Return all available area lists
     """
 
-    Constants.assert_command(client, arg, is_mod=True, parameters='=0')
+    Constants.assert_command(client, arg, is_officer=True, parameters='=0')
 
     try:
         with Constants.fopen('config/area_lists.yaml', 'r') as f:
@@ -1828,7 +1828,11 @@ def ooc_cmd_follow(client: ClientManager.Client, arg: str):
 def ooc_cmd_g(client: ClientManager.Client, arg: str):
     """
     Sends a global message in the OOC chat visible to all users in the server who have not disabled
-    global chat. Returns an error if the user has global chat off or sends an empty message.
+    global chat. The message includes the sender's area and display name. Moderators and community
+    managers also get to see the IPID of the sender.
+    Returns an error if the user has global chat off, sends an empty message, or is not an officer
+    and attempts to send a message in an area where global messages are disallowed or when the
+    server disallows global messages.
 
     SYNTAX
     /g <message>
@@ -1840,10 +1844,15 @@ def ooc_cmd_g(client: ClientManager.Client, arg: str):
     /g Hello World      :: Sends Hello World to global chat.
     """
 
+    try:
+        Constants.assert_command(client, arg, parameters='>0')
+    except ArgumentError:
+        raise ArgumentError("You cannot send an empty message.")
+
+    if not client.is_mod and not client.is_cm and not client.server.global_allowed:
+        raise ClientError('Global chat is currently locked.')
     if client.muted_global:
         raise ClientError('You have the global chat muted.')
-    if len(arg) == 0:
-        raise ArgumentError("You cannot send an empty message.")
 
     client.server.broadcast_global(client, arg)
     logger.log_server('[{}][{}][GLOBAL]{}.'
@@ -2062,7 +2071,7 @@ def ooc_cmd_gm(client: ClientManager.Client, arg: str):
     if client.muted_global:
         raise ClientError('You have the global chat muted.')
 
-    client.server.broadcast_global(client, arg, True)
+    client.server.broadcast_global(client, arg, as_mod=True)
     logger.log_server('[{}][{}][GLOBAL-MOD]{}.'
                       .format(client.area.id, client.get_char_name(), arg), client)
 
@@ -6146,7 +6155,8 @@ def ooc_cmd_zone_delete(client: ClientManager.Client, arg: str):
 def ooc_cmd_zone_global(client: ClientManager.Client, arg: str):
     """
     Sends a global message in the OOC chat visible to all users in the zone the user area's belongs
-    to who have not disabled global chat.
+    to who have not disabled global chat. The message includes the sender's area and display name.
+    Moderators and community managers also get to see the IPID of the sender.
     Returns an error if the user has global chat off, sends an empty message, or is in an area
     not part of a zone.
 
@@ -6172,14 +6182,24 @@ def ooc_cmd_zone_global(client: ClientManager.Client, arg: str):
     else:
         raise ZoneError('You are not in a zone.')
 
+    if not client.is_mod and not client.is_cm and not client.server.global_allowed:
+        raise ClientError('Global chat is currently locked.')
+    if client.muted_global:
+        raise ClientError('You have the global chat muted.')
+
     targets = target_zone.get_watchers()
     for area in target_zone.get_areas():
         targets.update({c for c in area.clients if c.zone_watched in [None, target_zone]})
 
     for target in targets:
-        target.send_ooc(arg, username='<dollar>ZG[{}][{}]'
-                        .format(client.area.id, client.displayname),
-                        pred=lambda c: not c.muted_global)
+        if target.is_mod or target.is_cm:
+            target.send_ooc(arg, username='<dollar>ZG[{}][{}][{}]'
+                            .format(client.area.id, client.displayname, client.ipid),
+                            pred=lambda c: not c.muted_global)
+        else:
+            target.send_ooc(arg, username='<dollar>ZG[{}][{}]'
+                            .format(client.area.id, client.displayname),
+                            pred=lambda c: not c.muted_global)
 
 def ooc_cmd_zone_info(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
@@ -6688,6 +6708,96 @@ def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
             # area.
             client.send_ooc_others('(X) You see a group of people huddling together',
                                    in_area=True, is_zstaff_flex=True, not_to=members)
+
+def ooc_cmd_ignore(client: ClientManager.Client, arg: str):
+    """
+    Marks another user as ignored. You will no longer receive any IC messages from that user,
+    even those that come as a result of OOC commands. The target will not be notified of the
+    ignore command being executed on them.
+    Requires /unignore to undo.
+    Returns an error if the given identifier does not correspond to a user, if the target is
+    yourself, or if you are already ignoring the target.
+    SYNTAX
+    /ignore <user_id>
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+    EXAMPLES
+    /ignore 1           :: Ignores client 1
+    """
+
+    Constants.assert_command(client, arg, parameters='>0')
+
+    target, _, _ = client.server.client_manager.get_target_public(client, arg)
+
+    if target == client:
+        raise ClientError('You may not ignore yourself.')
+    if target in client.ignored_players:
+        raise ClientError(f'You are already ignoring {target.displayname} [{target.id}].')
+
+    client.ignored_players.add(target)
+    client.send_ooc(f'You are now ignoring {target.displayname} [{target.id}].')
+
+
+def ooc_cmd_unignore(client: ClientManager.Client, arg: str):
+    """
+    Marks another user as unignored. You will now receive any IC messages sent from that user.
+    The target will not be notified of the unignore command being executed on them.
+    Requires /ignore to undo.
+    Returns an error if the given identifier does not correspond to a user, if the target is
+    yourself, or if you are already not ignoring the target.
+    SYNTAX
+    /unignore <user_id>
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+    EXAMPLES
+    /unignore 1           :: Unignores client 1
+    """
+
+    Constants.assert_command(client, arg, parameters='>0')
+
+    target, _, _ = client.server.client_manager.get_target_public(client, arg)
+
+    if target == client:
+        raise ClientError('You are already not ignoring yourself.')
+    if target not in client.ignored_players:
+        raise ClientError(f'You are already not ignoring {target.displayname} [{target.id}].')
+
+    client.ignored_players.remove(target)
+    client.send_ooc(f'You are no longer ignoring {target.displayname} [{target.id}].')
+
+
+def ooc_cmd_glock(client: ClientManager.Client, arg: str):
+    """ (CM AND MOD ONLY)
+    Toggles players that are not CM or mod being able to use /g and /zg or not.
+
+    SYNTAX
+    /glock
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    Assuming global chat was not locked originally...
+    /glock        :: Locks the global chat.
+    /glock        :: Unlocks the global chat.
+    """
+
+    Constants.assert_command(client, arg, is_officer=True, parameters='=0')
+
+    client.server.global_allowed = not client.server.global_allowed
+    status = {False: 'locked', True: 'unlocked'}
+
+    client.send_ooc('You have {} the global chat.'.format(status[client.server.global_allowed]))
+    client.send_ooc_others('A mod has {} the global chat.'
+                           .format(status[client.server.global_allowed]), is_officer=False)
+    client.send_ooc_others('{} [{}] has {} the global chat.'
+                           .format(client.name, client.id, status[client.server.global_allowed]),
+                           is_officer=True)
+    logger.log_server('{} has {} the global chat.'
+                      .format(client.name, status[client.server.global_allowed]), client)
+
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """

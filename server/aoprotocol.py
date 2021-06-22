@@ -92,12 +92,15 @@ class AOProtocol(asyncio.Protocol):
             if msg[0] in ('#', '3', '4'):
                 if msg[0] == '#':
                     msg = msg[1:]
-                spl = msg.split('#', 1)
-                msg = '#'.join([fanta_decrypt(spl[0])] + spl[1:])
-                logger.log_debug('[INC][RAW]{}'.format(msg), self.client)
+                raw_parameters = msg.split('#')
+                raw_parameters[0] = fanta_decrypt(raw_parameters[0])
+                msg = '#'.join(raw_parameters)
+
+            logger.log_debug('[INC][RAW]{}'.format(msg), self.client)
             try:
                 # print(f'> {self.client.id}: {msg}')
-                cmd, *args = msg.split('#')
+                # Decode AO clients' encoding
+                cmd, *args = Constants.decode_ao_packet(msg.split('#'))
                 self.net_cmd_dispatcher[cmd](self, args)
             except Exception as ex:
                 self.server.send_error_report(self.client, cmd, args, ex)
@@ -682,7 +685,8 @@ class AOProtocol(asyncio.Protocol):
         if Constants.contains_illegal_characters(args[0]):
             self.client.send_ooc('Your name contains an illegal character.')
             return
-        if self.server.config['hostname'] in args[0] or '<dollar>G' in args[0]:
+        if (Constants.decode_ao_packet([self.server.config['hostname']])[0] in args[0]
+            or '$G' in args[0]):
             self.client.send_ooc('That name is reserved.')
             return
 

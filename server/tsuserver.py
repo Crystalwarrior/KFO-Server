@@ -46,9 +46,9 @@ class TsuserverDR:
     def __init__(self, protocol=None, client_manager=None, in_test=False):
         self.release = 4
         self.major_version = 2
-        self.minor_version = 5
-        self.segment_version = 'post9'
-        self.internal_version = '210325a'
+        self.minor_version = 6
+        self.segment_version = ''
+        self.internal_version = '210621a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -75,6 +75,8 @@ class TsuserverDR:
         self.old_area_list = None
         self.default_area = 0
         self.all_passwords = list()
+        self.global_allowed = True
+        self.server_select_name = 'SERVER_SELECT'
 
         self.load_config()
         self.load_iniswaps()
@@ -269,22 +271,28 @@ class TsuserverDR:
             # a server error will be raised.
             mandatory_passwords = ['modpass', 'cmpass', 'gmpass']
             for password in mandatory_passwords:
-                if not (password not in self.config or not str(self.config[password])):
+                if password in self.config and self.config[password]:
                     self.all_passwords.append(self.config[password])
                 else:
                     err = (f'Password "{password}" is not defined in server/config.yaml. Please '
                            f'make sure it is set and try again.')
                     raise ServerError(err)
 
-            # Daily (and guard) passwords are handled differently. They may optionally be left
-            # blank or be not available. What this means is the server does not want a daily
+            # Daily (and guard) passwords are handled differently. They may optionally be not available.
+            # What this means is the server does not want a daily
             # password for that day (or a guard password)
             optional_passwords = ['guardpass'] + [f'gmpass{i}' for i in range(1, 8)]
             for password in optional_passwords:
-                if not (password not in self.config or not str(self.config[password])):
+                if password in self.config and self.config[password]:
                     self.all_passwords.append(self.config[password])
-                else:
+                elif password not in self.config:
                     self.config[password] = None
+                else:
+                    err = (f'Password "{password}" is not defined in server/config.yaml. Please '
+                           f'make sure it is set and not blank and try again. If you meant to '
+                           f'not have a daily password, remove its line completely.')
+                    raise ServerError(err)
+
 
         # Default values to fill in config.yaml if not present
         defaults_for_tags = {
@@ -736,7 +744,11 @@ class TsuserverDR:
         ooc_name = '{}[{}][{}]'.format(mtype, client.area.id, username)
         if as_mod:
             ooc_name += '[M]'
-        self.send_all_cmd_pred('CT', ooc_name, msg, pred=condition)
+        ooc_name_ipid = f'{ooc_name}[{client.ipid}]'
+
+        self.send_all_cmd_pred('CT', ooc_name_ipid, msg, pred=lambda x: condition(x) and (x.is_mod or x.is_cm))
+        self.send_all_cmd_pred('CT', ooc_name, msg, pred=lambda x: condition(x) and not (x.is_mod or x.is_cm))
+
         if self.config['use_district']:
             self.district_client.send_raw_message(
                 'GLOBAL#{}#{}#{}#{}'.format(int(as_mod), client.area.id, username, msg))

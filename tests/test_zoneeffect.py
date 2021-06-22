@@ -28,7 +28,8 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c0.ooc('/zone_global Hello players.')
         self.c0.assert_ooc('Hello players.', username='<dollar>ZG[{}][{}]'.format(4, self.c0_dname),
                            over=True)
-        self.c1.assert_ooc('Hello players.', username='<dollar>ZG[{}][{}]'.format(4, self.c0_dname),
+        self.c1.assert_ooc('Hello players.',
+                           username='<dollar>ZG[{}][{}][{}]'.format(4, self.c0_dname, self.c0.ipid),
                            over=True)
         self.c2.assert_ooc('Hello players.', username='<dollar>ZG[{}][{}]'.format(4, self.c0_dname),
                            over=True)
@@ -40,7 +41,8 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c1.ooc('/zone_global Hello c0.')
         self.c0.assert_ooc('Hello c0.', username='<dollar>ZG[{}][{}]'.format(4, self.c1_dname),
                            over=True)
-        self.c1.assert_ooc('Hello c0.', username='<dollar>ZG[{}][{}]'.format(4, self.c1_dname),
+        self.c1.assert_ooc('Hello c0.',
+                           username='<dollar>ZG[{}][{}][{}]'.format(4, self.c1_dname, self.c1.ipid),
                            over=True)
         self.c2.assert_ooc('Hello c0.', username='<dollar>ZG[{}][{}]'.format(4, self.c1_dname),
                            over=True)
@@ -52,7 +54,8 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c2.ooc('/zone_global Hello c0!')
         self.c0.assert_ooc('Hello c0!', username='<dollar>ZG[{}][{}]'.format(5, self.c2_dname),
                            over=True)
-        self.c1.assert_ooc('Hello c0!', username='<dollar>ZG[{}][{}]'.format(5, self.c2_dname),
+        self.c1.assert_ooc('Hello c0!',
+                           username='<dollar>ZG[{}][{}][{}]'.format(5, self.c2_dname, self.c2.ipid),
                            over=True)
         self.c2.assert_ooc('Hello c0!', username='<dollar>ZG[{}][{}]'.format(5, self.c2_dname),
                            over=True)
@@ -64,7 +67,8 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c3.ooc('/zone_global Oi c0.')
         self.c0.assert_ooc('Oi c0.', username='<dollar>ZG[{}][{}]'.format(5, self.c3_dname),
                            over=True)
-        self.c1.assert_ooc('Oi c0.', username='<dollar>ZG[{}][{}]'.format(5, self.c3_dname),
+        self.c1.assert_ooc('Oi c0.',
+                           username='<dollar>ZG[{}][{}][{}]'.format(5, self.c3_dname, self.c3.ipid),
                            over=True)
         self.c2.assert_ooc('Oi c0.', username='<dollar>ZG[{}][{}]'.format(5, self.c3_dname),
                            over=True)
@@ -87,7 +91,8 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c3.ooc('/zone_global Oi c5.')
         self.c0.assert_ooc('Oi c5.', username='<dollar>ZG[{}][{}]'.format(5, self.c3_dname),
                            over=True)
-        self.c1.assert_ooc('Oi c5.', username='<dollar>ZG[{}][{}]'.format(5, self.c3_dname),
+        self.c1.assert_ooc('Oi c5.',
+                           username='<dollar>ZG[{}][{}][{}]'.format(5, self.c3_dname, self.c3.ipid),
                            over=True)
         self.c2.assert_ooc('Oi c5.', username='<dollar>ZG[{}][{}]'.format(5, self.c3_dname),
                            over=True)
@@ -100,7 +105,8 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c5.ooc('/zone_global Hallo')
         self.c0.assert_ooc('Hallo', username='<dollar>ZG[{}][{}]'.format(7, self.c5_dname),
                            over=True)
-        self.c1.assert_ooc('Hallo', username='<dollar>ZG[{}][{}]'.format(7, self.c5_dname),
+        self.c1.assert_ooc('Hallo',
+                           username='<dollar>ZG[{}][{}][{}]'.format(7, self.c5_dname, self.c5.ipid),
                            over=True)
         self.c2.assert_ooc('Hallo', username='<dollar>ZG[{}][{}]'.format(7, self.c5_dname),
                            over=True)
@@ -176,7 +182,8 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c0.ooc('/zg Hello players.')
         self.c0.assert_ooc('Hello players.', username='<dollar>ZG[{}][{}]'.format(4, self.c0_dname),
                            over=True)
-        self.c1.assert_ooc('Hello players.', username='<dollar>ZG[{}][{}]'.format(4, self.c0_dname),
+        self.c1.assert_ooc('Hello players.',
+                           username='<dollar>ZG[{}][{}][{}]'.format(4, self.c0_dname, self.c0.ipid),
                            over=True)
         self.c2.assert_ooc('Hello players.', username='<dollar>ZG[{}][{}]'.format(4, self.c0_dname),
                            over=True)
@@ -188,7 +195,8 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c1.ooc('/zg Hello c0.')
         self.c0.assert_ooc('Hello c0.', username='<dollar>ZG[{}][{}]'.format(4, self.c1_dname),
                            over=True)
-        self.c1.assert_ooc('Hello c0.', username='<dollar>ZG[{}][{}]'.format(4, self.c1_dname),
+        self.c1.assert_ooc('Hello c0.',
+                           username='<dollar>ZG[{}][{}][{}]'.format(4, self.c1_dname, self.c1.ipid),
                            over=True)
         self.c2.assert_ooc('Hello c0.', username='<dollar>ZG[{}][{}]'.format(4, self.c1_dname),
                            over=True)
@@ -200,7 +208,8 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c2.ooc('/zg Hello c0!')
         self.c0.assert_ooc('Hello c0!', username='<dollar>ZG[{}][{}]'.format(5, self.c2_dname),
                            over=True)
-        self.c1.assert_ooc('Hello c0!', username='<dollar>ZG[{}][{}]'.format(5, self.c2_dname),
+        self.c1.assert_ooc('Hello c0!',
+                           username='<dollar>ZG[{}][{}][{}]'.format(5, self.c2_dname, self.c2.ipid),
                            over=True)
         self.c2.assert_ooc('Hello c0!', username='<dollar>ZG[{}][{}]'.format(5, self.c2_dname),
                            over=True)
@@ -212,7 +221,8 @@ class TestZoneEffect_01_Global(_TestZone):
         self.c3.ooc('/zg Oi c0.')
         self.c0.assert_ooc('Oi c0.', username='<dollar>ZG[{}][{}]'.format(5, self.c3_dname),
                            over=True)
-        self.c1.assert_ooc('Oi c0.', username='<dollar>ZG[{}][{}]'.format(5, self.c3_dname),
+        self.c1.assert_ooc('Oi c0.',
+                           username='<dollar>ZG[{}][{}][{}]'.format(5, self.c3_dname, self.c3.ipid),
                            over=True)
         self.c2.assert_ooc('Oi c0.', username='<dollar>ZG[{}][{}]'.format(5, self.c3_dname),
                            over=True)
