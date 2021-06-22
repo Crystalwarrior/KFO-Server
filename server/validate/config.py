@@ -183,6 +183,8 @@ class ValidateConfig(Validate):
             }
 
         for field_name in nonnegative_number_fields:
+            if field_name not in contents:
+                continue
             if contents[field_name] < 0:
                 msg = (f'Expected field "{field_name}" to be a nonnegative number, found it was '
                        f'not: {contents[field_name]}')
