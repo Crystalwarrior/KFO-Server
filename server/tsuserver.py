@@ -68,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b180'
-        self.internal_version = 'M210622a'
+        self.segment_version = 'b181'
+        self.internal_version = 'M210626a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -292,7 +292,7 @@ class TsuserverDR:
             msg = ('The new music list returned the following error when loading: `{}`. Fix the '
                    'error and try again. Reload was undone.'
                    .format(exc))
-            raise ServerError.MusicInvalidError(msg)
+            raise ServerError.FileSyntaxError(msg)
 
     def reload_commands(self):
         try:
