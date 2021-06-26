@@ -11,3 +11,4 @@
 /.pylint.d/
 /server/.pylint.d/
 /.vscode/*
+/server/validate/__pycache__/*.pyc

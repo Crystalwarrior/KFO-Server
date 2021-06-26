@@ -909,7 +909,7 @@ class AreaManager:
         temp_reachable_area_names = set()
 
         # Check if valid area list file
-        with Constants.fopen(area_list_file, 'r') as chars:
+        with Constants.fopen(area_list_file, 'r', encoding='utf-8') as chars:
             areas = Constants.yaml_load(chars)
 
         def_param = {

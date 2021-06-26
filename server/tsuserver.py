@@ -47,8 +47,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 2
         self.minor_version = 6
-        self.segment_version = ''
-        self.internal_version = '210621a'
+        self.segment_version = 'post1'
+        self.internal_version = '210626a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -225,13 +225,13 @@ class TsuserverDR:
         return mes
 
     def reload(self):
-        with Constants.fopen('config/characters.yaml', 'r') as chars:
+        with Constants.fopen('config/characters.yaml', 'r', encoding='utf-8') as chars:
             self.char_list = Constants.yaml_load(chars)
-        with Constants.fopen('config/music.yaml', 'r') as music:
+        with Constants.fopen('config/music.yaml', 'r', encoding='utf-8') as music:
             self.music_list = Constants.yaml_load(music)
         self.build_music_pages_ao1()
         self.build_music_list_ao2()
-        with Constants.fopen('config/backgrounds.yaml', 'r') as bgs:
+        with Constants.fopen('config/backgrounds.yaml', 'r', encoding='utf-8') as bgs:
             self.backgrounds = Constants.yaml_load(bgs)
 
     def reload_commands(self):
@@ -495,11 +495,11 @@ class TsuserverDR:
         return music_list
 
     def dump_ipids(self):
-        with Constants.fopen('storage/ip_ids.json', 'w') as whole_list:
+        with Constants.fopen('storage/ip_ids.json', 'w', encoding='utf-8') as whole_list:
             json.dump(self.ipid_list, whole_list)
 
     def dump_hdids(self):
-        with Constants.fopen('storage/hd_ids.json', 'w') as whole_list:
+        with Constants.fopen('storage/hd_ids.json', 'w', encoding='utf-8') as whole_list:
             json.dump(self.hdid_list, whole_list)
 
     def get_ipid(self, ip):
