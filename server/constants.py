@@ -1108,8 +1108,7 @@ class Constants():
         """
         Function that schedules the cancellation of `task` and awaiting it until it is able to
         properly retrieve the cancellation exception from `task`. This function assumes the task
-        has not been
-        cancelled yet.
+        has not been cancelled yet.
 
         Parameters
         ----------

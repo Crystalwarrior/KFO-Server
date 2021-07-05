@@ -1303,7 +1303,7 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
     announcement to a given range of areas. Starting hour is also given. The clock ID is by default
     the client ID of the player who started the clock. Doing /clock while running an active clock
     will silently overwrite the old clock with the new one.
-    Requires /clock_cancel to undo.
+    Requires /clock_end to undo.
 
     SYNTAX
     /clock <area_range_start> <area_range_end> <hour_length> <hour_start>
@@ -1367,19 +1367,19 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
                                               hour_length, hour_start, normie_notif])
 
 
-def ooc_cmd_clock_cancel(client: ClientManager.Client, arg: str):
+def ooc_cmd_clock_end(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
-    Cancel the day cycle established by a player by client ID (or own if not given ID)
+    End the day cycle established by a player by client ID (or own if not given ID)
     Returns an error if the given player has no associated active day cycle.
 
     SYNTAX
-    /clock_cancel {client_id}
+    /clock_end {client_id}
 
     OPTIONAL PARAMETERS
     {client_id}: Client identifier (number in brackets in /getarea)
 
     EXAMPLE
-    /clock_cancel 0         :: Cancels the day cycle established by the player whose client ID is 0.
+    /clock_end 0         :: Cancels the day cycle established by the player whose client ID is 0.
     """
 
     Constants.assert_command(client, arg, is_staff=True)
@@ -3559,24 +3559,24 @@ def ooc_cmd_party(client: ClientManager.Client, arg: str):
                            is_zstaff_flex=True)
 
 
-def ooc_cmd_party_disband(client: ClientManager.Client, arg: str):
+def ooc_cmd_party_end(client: ClientManager.Client, arg: str):
     """ (VARYING REQUIREMENTS)
-    Disbands your party if not given arguments, or (STAFF ONLY) disbands a party by party ID.
+    Ends your party if not given arguments, or (STAFF ONLY) ends a party by party ID.
     Also sends notifications to the former members if you were visible.
-    Returns an error for non-authorized users if they try to disband other parties or they are not
+    Returns an error for non-authorized users if they try to end other parties or they are not
     a leader of their own party.
 
     SYNTAX
-    /party_disband {party_id}
+    /party_end {party_id}
 
     OPTIONAL PARAMETERS
-    {party_id}: Party to disband
+    {party_id}: Party to end
 
     EXAMPLES
     If you were part of party 11037...
-    /party_disband          :: Disbands party 11037
-    /party_disband 11037    :: Disbands party 11037
-    /party_disband 73011    :: Disbands party 73011
+    /party_end          :: ends party 11037
+    /party_end 11037    :: ends party 11037
+    /party_end 73011    :: ends party 73011
     """
 
     try:
@@ -3592,16 +3592,16 @@ def ooc_cmd_party_disband(client: ClientManager.Client, arg: str):
     if not party.is_leader(client) and not client.is_staff():
         raise PartyError('You are not a leader of your party.')
 
-    client.server.party_manager.disband_party(party)
+    client.server.party_manager.end_party(party)
     if arg:
-        client.send_ooc('You have disbanded party {}.'.format(party.get_id()))
+        client.send_ooc('You have ended party {}.'.format(party.get_id()))
     else:
-        client.send_ooc('You have disbanded your party.')
+        client.send_ooc('You have ended your party.')
 
     culprit = client.displayname if not arg else 'A staff member'
     for x in party.get_members(uninclude={client}):
         if x.is_staff() or client.is_visible:
-            x.send_ooc('{} has disbanded your party.'.format(culprit))
+            x.send_ooc('{} has ended your party.'.format(culprit))
 
 
 def ooc_cmd_party_id(client: ClientManager.Client, arg: str):
@@ -3769,7 +3769,7 @@ def ooc_cmd_party_lead(client: ClientManager.Client, arg: str):
 def ooc_cmd_party_leave(client: ClientManager.Client, arg: str):
     """
     Makes you leave your current party. It will also notify all other remaining members if you were
-    not sneaking. If instead you were the only member of the party, the party will be disbanded.
+    not sneaking. If instead you were the only member of the party, the party will be ended.
     Returns an error if you are not part of a party.
 
     SYNTAX
@@ -5412,21 +5412,21 @@ def ooc_cmd_timer(client: ClientManager.Client, arg: str):
     client.server.tasker.create_task(client, ['as_timer', time.time(), length, name, is_public])
 
 
-def ooc_cmd_timer_cancel(client: ClientManager.Client, arg: str):
+def ooc_cmd_timer_end(client: ClientManager.Client, arg: str):
     """
-    Cancel given timer by timer name. Requires logging in to cancel timers initiated by other users.
-    Returns an error if timer does not exist or if the user is not authorized to cancel the timer.
+    End given timer by timer name. Requires logging in to end timers initiated by other users.
+    Returns an error if timer does not exist or if the user is not authorized to end the timer.
 
     SYNTAX
-    /timer_cancel <timername>
+    /timer_end <timername>
 
     PARAMETERS
     <timername>: Timer name to cancel
 
     EXAMPLES
     Assuming player Spam started a timer "S", and the moderator Phantom started a timer "P"...
-    /timer_cancel S     :: Both Spam and Phantom would cancel timer S if either ran this.
-    /timer_cancel P     :: Only Phantom would cancel timer P if either ran this.
+    /timer_end S     :: Both Spam and Phantom would end timer S if either ran this.
+    /timer_end P     :: Only Phantom would end timer P if either ran this.
     """
 
     Constants.assert_command(client, arg, parameters='=1', split_spaces=True)
@@ -5439,7 +5439,7 @@ def ooc_cmd_timer_cancel(client: ClientManager.Client, arg: str):
     except KeyError:
         raise ClientError('Timer {} is not an active timer.'.format(timer_name))
 
-    # Non-staff are only allowed to cancel their own timers
+    # Non-staff are only allowed to end their own timers
     if not client.is_staff() and client != timer_client:
         raise ClientError('You must be authorized to do that.')
 
@@ -6564,21 +6564,21 @@ def ooc_cmd_zone_add(client: ClientManager.Client, arg: str):
             c.send_ooc('Your area has been made part of zone `{}`.'.format(zone_id))
 
 
-def ooc_cmd_zone_delete(client: ClientManager.Client, arg: str):
+def ooc_cmd_zone_end(client: ClientManager.Client, arg: str):
     """ (VARYING REQUIREMENTS)
     Deletes the zone the user is watching, so that it is no longer part of the server's zone list,
     if no argument is given (GM OR ABOVE ONLY), or deletes the zone by its name (CM OR MOD ONLY)
     Returns an error if the user gives no zone name and is not watching a zone.
 
     SYNTAX
-    /zone_delete
+    /zone_end
 
     PARAMETERS
     None
 
     EXAMPLES
     If the user is watching zone 1000
-    /zone_delete       :: Deletes the zone 1000
+    /zone_end       :: Deletes the zone 1000
     """
 
     try:
@@ -6607,12 +6607,12 @@ def ooc_cmd_zone_delete(client: ClientManager.Client, arg: str):
     client.server.zone_manager.delete_zone(backup_id)
 
     if arg:
-        client.send_ooc('You have deleted zone `{}`.'.format(backup_id))
+        client.send_ooc('You have ended zone `{}`.'.format(backup_id))
     else:
-        client.send_ooc('You have deleted your zone.')
-    client.send_ooc_others('(X) {} [{}] has deleted your zone.'
+        client.send_ooc('You have ended your zone.')
+    client.send_ooc_others('(X) {} [{}] has ended your zone.'
                            .format(client.displayname, client.id), part_of=backup_watchers)
-    client.send_ooc_others('(X) {} [{}] has deleted zone `{}`.'
+    client.send_ooc_others('(X) {} [{}] has ended zone `{}`.'
                            .format(client.displayname, client.id, backup_id),
                            is_officer=True, not_to=backup_watchers)
 
@@ -6863,7 +6863,7 @@ def ooc_cmd_zone_remove(client: ClientManager.Client, arg: str):
     if not target_zone.get_areas():
         for c in backup_watchers:
             c.send_ooc('(X) As your zone no longer covers any areas, it has been deleted.')
-        client.send_ooc_others('(X) Zone `{}` was automatically deleted as it no longer covered '
+        client.send_ooc_others('(X) Zone `{}` was automatically ended as it no longer covered '
                                'any areas.'.format(zone_id), is_officer=True,
                                not_to=backup_watchers)
     # Otherwise, suggest zone watchers who were in the removed area to stop watching the zone
@@ -6910,7 +6910,7 @@ def ooc_cmd_zone_unwatch(client: ClientManager.Client, arg: str):
     else:
         client.send_ooc('(X) As you were the last person in an area part of it or who was watching '
                         'it, your zone has been deleted.')
-        client.send_ooc_others('Zone `{}` was automatically deleted as no one was in an '
+        client.send_ooc_others('Zone `{}` was automatically ended as no one was in an '
                                 'area part of it or was watching it anymore.'
                                 .format(target_zone.get_id()), is_officer=True)
 
@@ -7297,21 +7297,21 @@ def ooc_cmd_lurk(client: ClientManager.Client, arg: str):
                            is_zstaff_flex=True, in_area=False)
 
 
-def ooc_cmd_lurk_cancel(client: ClientManager.Client, arg: str):
+def ooc_cmd_lurk_end(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Cancels an existing area lurk callout timer in the area, and all non-spectator regular players'
     personal lurk callout timers in the area.
     Returns an error if no area lurk callout timer is active in the area.
 
     SYNTAX
-    /lurk_cancel
+    /lurk_end
 
     PARAMETERS
     None
 
     EXAMPLE
     For current area with an active 10-second area lurk callout timer
-    /lurk_cancel    :: Cancels the area lurk callout timer, players may now remain silent for
+    /lurk_end    :: Cancels the area lurk callout timer, players may now remain silent for
                        10 seconds and not be called out.
     """
 
@@ -7321,14 +7321,14 @@ def ooc_cmd_lurk_cancel(client: ClientManager.Client, arg: str):
         raise ClientError('This area has no active lurk callout timer.')
 
     client.area.lurk_length = 0
-    # Cancel all clients who have active lurk callout timers in the area
+    # End the lurk timer of all clients who have active lurk callout timers in the area
     for c in client.area.clients:
         c.check_lurk()
 
-    client.send_ooc('(X) You have canceled the lurk callout timer in this area.')
-    client.send_ooc_others('(X) {} has canceled the lurk callout timer in your area.'
+    client.send_ooc('(X) You have ended the lurk callout timer in this area.')
+    client.send_ooc_others('(X) {} has ended the lurk callout timer in your area.'
                            .format(client.name), is_zstaff_flex=True, in_area=True)
-    client.send_ooc_others('(X) {} has canceled the lurk callout timer in area {} ({}).'
+    client.send_ooc_others('(X) {} has ended the lurk callout timer in area {} ({}).'
                            .format(client.name, client.area.name, client.area.id),
                            is_zstaff_flex=True, in_area=False)
 
@@ -7806,11 +7806,11 @@ def ooc_cmd_trial_leave(client: ClientManager.Client, arg: str):
 
     if trial.is_unmanaged():
         client.send_ooc(f'Your trial `{tid}` was automatically '
-                        f'deleted as it lost all its players.')
+                        f'ended as it lost all its players.')
         client.send_ooc_others(f'(X) Trial `{tid}` was automatically '
-                               f'deleted as it lost all its players.',
+                               f'ended as it lost all its players.',
                                is_zstaff_flex=True, not_to=nonplayers)
-        client.send_ooc_others('The trial you were watching was automatically deleted '
+        client.send_ooc_others('The trial you were watching was automatically ended '
                                'as it lost all its players.',
                                is_zstaff_flex=False, pred=lambda c: c in nonplayers)
 
@@ -8289,11 +8289,11 @@ def ooc_cmd_nsd_leave(client: ClientManager.Client, arg: str):
 
     if nsd.is_unmanaged():
         client.send_ooc(f'Your nonstop debate `{nid}` was automatically '
-                        f'deleted as it lost all its players.')
+                        f'ended as it lost all its players.')
         client.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
-                               f'deleted as it lost all its players.',
+                               f'ended as it lost all its players.',
                                is_zstaff_flex=True, not_to=nonplayers)
-        client.send_ooc_others('The nonstop debate you were watching was automatically deleted '
+        client.send_ooc_others('The nonstop debate you were watching was automatically ended '
                                'as it lost all its players.',
                                is_zstaff_flex=False, pred=lambda c: c in nonplayers)
 

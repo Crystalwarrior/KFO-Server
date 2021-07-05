@@ -179,8 +179,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Returns how many players are online.
 * **party**
     - Creates a party and makes you its leader.
-* **party_disband**
-    - Disbands your party.
+* **party_end**
+    - Ends your party.
 * **party_id**
     - Returns your party ID.
 * **party_invite** "ID/char name/edited-to character/showname/char showname/OOC name"
@@ -194,7 +194,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
 * **party_leave**
     - Makes you leave your party.
     - Other people in the party are warned of your departure if you are not sneaking.
-    - If you are the last player to leave the party, it will be automatically disbanded.
+    - If you are the last player to leave the party, it will be automatically ended.
 * **party_members**
     - Lists the leaders and regular members of your party.
 * **party_uninvite** "ID/char name/edited-to character/showname/char showname/OOC name"
@@ -249,8 +249,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Starts a timer of the given length in seconds, which will send a notification to people in the area once it expires.
     - If given a timer name, it will override the default timer name (OOCNameTimer).
     - If public is set to any of the following: "False, false, 0, No, no", the timer details will be hidden from non-staff players.
-* **timer_cancel** "timer name"
-    - Cancels the timer by name, provided it is yours.
+* **timer_end** "timer name"
+    - Ends the timer by name, provided it is yours.
 * **timer_get** "timer name"
     - Obtains the remaining time of the given timer by name, provided it is public, or list all remaining times in all public timers if not given a name.
 * **ToD**
@@ -336,8 +336,8 @@ GMs can:
     - Lists all character changes (including iniswaps and character name changes) a target has gone through since connecting, including the time they were changed.
 * **clock** "area range start" "area range end" "hour length" "hour start"
     - Sets up a day cycle that, starting from the given hour, will tick one hour every given number of seconds and provide a time announcement to a given range of areas.
-* **clock_cancel** "ID"
-    - Cancels the day cycle initiated by the target or yourself if not given a target.
+* **clock_end** "ID"
+    - Ends the day cycle initiated by the target or yourself if not given a target.
 * **clock_pause** "ID"
     - Pauses the day cycle initiated by the target or yourself if not given a target.
 * **clock_period** "name" "hour start"
@@ -402,8 +402,8 @@ GMs can:
     - Sets the area's description to the given one, or restores the default one if not given.
 * **lurk** "length"
     - Sets the area's lurk callout timer to the given length in seconds, so players who remain silent for that long are called out in OOC.
-* **lurk_cancel**
-    - Cancels the area's lurk callout timer if there is one active.
+* **lurk_end**
+    - Ends the area's lurk callout timer if there is one active.
 * **make_gm** "ID"
     - Makes the target a GM, provided the target is a multiclient of the player.
 * **multiclients** "ID"
@@ -440,8 +440,8 @@ GMs can:
     - Sets the NSD you lead to be in the mode prior to intermission mode: if it was recording mode, previously recorded messages will be saved and future messages will be saved on top of the older ones; if it was looping, messages will be played from the first one.
 * **nsd_unlead**
     - Removes your NSD leader role.
-* **party_disband** "party ID"
-    - Disbands a party.
+* **party_end** "party ID"
+    - Ends a party.
 * **party_join** "party ID"
     - Makes you join a party, even if you were not invited to it.
 * **party_list**
@@ -543,8 +543,8 @@ GMs can:
     - You are automatically set to watch the zones you create like this.
 * **zone_add** "area"
     - Adds an area by name or ID to the zone you are watching.
-* **zone_delete**
-    - Deletes the zone you are watching.
+* **zone_end**
+    - Ends the zone you are watching.
 * **zone_handicap** "length" "name" "announce if over"
     - Sets a movement handicap on all clients part of the zone (now or later) you are watching so that they need to wait a set amount of time in seconds between changing areas.
     - Players who are subject to a zone handicap that then leave the zone will have their handicap removed.
@@ -650,7 +650,7 @@ GMs can:
     - Obtains the area a target is.
 * **whois** "ID/IPID/char name/showname/OOC name"
     - Obtains a lot of properties of the target, including HDID and IPID.
-* **zone_delete** "zone"
+* **zone_end** "zone"
     - Deletes a zone by its ID, or the zone you are watching if not given a zone.
 
 ### Moderator Commands
@@ -725,12 +725,16 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 * **yell**: Same as /scream.
 * **zg**: Same as /zone_global.
 * **zi**: Same as /zone_info.
+* **timer_cancel**: Same as /timer_end. (Deprecated July 5, 2021)
 
 #### GM+
 
 * **logingm**: Same as /loginrp.
 * **slit**: Same as /bloodtrail.
 * **unsneak**: Same as /reveal.
+* **clock_cancel**: Same as /clock_end. (Deprecated July 5, 2021)
+* **lurk_cancel**: Same as /lurk_end. (Deprecated July 5, 2021)
+* **zone_delete**: Same as /zone_end. (Deprecated July 5, 2021)
 
 ### Notes
 

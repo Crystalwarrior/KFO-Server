@@ -507,7 +507,7 @@
 * Updated TsuserverDR so it uses travis-ci.com
 * Fixed servers not accepting IC messages if they did not set some daily gmpasses
 * Fixed some special characters not being accepted properly
-  
+
 ## (4.3.0)
 * Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
 * Explicitly allowed Python 3.9 support for server owners
@@ -623,6 +623,11 @@
 * Added /zone_tick and /zone_tick_remove to set the chat tick rate of a zone, so all players in an area part of the zone see messages with the same chat tick rate, or their own chat tick rate
 * Made /switch indicate the target character, regardless of whether the switch was successful or not
 * Made /zone_watch return a more specific error if the player is already watching the target zone
+* Renamed certain commands that end certain features so they have a standard format:
+  - /clock_cancel -> /clock_end
+  - /party_disband -> /party_end
+  - /timer_cancel -> /timer_end
+  - /zone_delete -> /zone_end
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered

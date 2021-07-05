@@ -67,9 +67,9 @@ class PartyManager:
             self.leaders.discard(member)
             member.party = None
 
-            # Check if empty party and if so, disband it
+            # Check if empty party and if so, end it
             if not self.members:
-                self.server.party_manager.disband_party(self)
+                self.server.party_manager.end_party(self)
             # Otherwise, check if there are no more leaders left, and if so, choose a new one
             elif not self.leaders:
                 new_leader = self.get_random_member()
@@ -163,15 +163,15 @@ class PartyManager:
         def check_lights_timeout(self):
             if not self.area.lights:
                 for member in self.members:
-                    member.send_ooc('Your party has been disbanded for being in a dark room for '
+                    member.send_ooc('Your party has been ended for being in a dark room for '
                                     'too long.')
 
                 rando = self.get_random_member() # Just need a client for this next part
-                rando.send_ooc_others('(X) Party {} was disbanded for being in a dark room for too '
+                rando.send_ooc_others('(X) Party {} was ended for being in a dark room for too '
                                       'long ({}).'.format(self.get_id(), self.area.id),
                                       is_zstaff_flex=True)
 
-                self.server.party_manager.disband_party(self)
+                self.server.party_manager.end_party(self)
 
         @staticmethod
         def _f(text, tc=False):
@@ -210,7 +210,7 @@ class PartyManager:
 
         return party
 
-    def disband_party(self, party):
+    def end_party(self, party):
         pid = self.get_party_id(party)
         party = self.parties.pop(pid)
         for member in party.members:
@@ -411,10 +411,10 @@ class PartyManager:
         LIGHTS
         1. No one moves
         2. Should be no
-        3. Party disbands
+        3. Party ends
         4. No one moves
         5. Affected user switches
-        6. Party disbands
+        6. Party ends
         """
         new_chars = set()
         movers = {True: dict(), False: dict()}
@@ -514,7 +514,7 @@ class PartyManager:
         if not members1 or not members2:
             raise PartyError('Invalid party split: One of the new parties would be empty.')
 
-        self.disband_party(party)
+        self.end_party(party)
         creator1 = random.choice(tuple(members1))
         creator2 = random.choice(tuple(members2))
 

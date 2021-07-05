@@ -382,9 +382,9 @@ class TrialMinigame(GameWithAreas):
             if self.is_unmanaged():
                 if was_leader:
                     client.send_ooc(f'Your trial minigame `{self.get_id()}` was automatically '
-                                    f'deleted as it lost all its players.')
+                                    f'ended as it lost all its players.')
                 client.send_ooc_others(f'(X) Trial minigame `{self.get_id()}` was automatically '
-                                       f'deleted as it lost all its players.',
+                                       f'ended as it lost all its players.',
                                        is_zstaff_flex=True)
 
         elif client.area not in self.get_areas():

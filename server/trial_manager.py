@@ -1070,11 +1070,11 @@ class _Trial(GameWithAreas):
 
             if self.is_unmanaged():
                 client.send_ooc(f'Your trial `{tid}` was automatically '
-                                f'deleted as it lost all its players.')
+                                f'ended as it lost all its players.')
                 client.send_ooc_others(f'(X) Trial `{tid}` was automatically '
-                                       f'deleted as it lost all its players.',
+                                       f'ended as it lost all its players.',
                                        is_zstaff_flex=True, not_to=nonplayers)
-                client.send_ooc_others('The trial you were watching was automatically deleted '
+                client.send_ooc_others('The trial you were watching was automatically ended '
                                        'as it lost all its players.',
                                        is_zstaff_flex=False, part_of=nonplayers)
         else:
@@ -1207,11 +1207,11 @@ class _Trial(GameWithAreas):
 
             if self.is_unmanaged():
                 player.send_ooc(f'Your trial `{tid}` was automatically '
-                                f'deleted as it lost all its players.')
+                                f'ended as it lost all its players.')
                 player.send_ooc_others(f'(X) Trial `{tid}` was automatically '
-                                       f'deleted as it lost all its players.',
+                                       f'ended as it lost all its players.',
                                        is_zstaff_flex=True, not_to=nonplayers)
-                player.send_ooc_others('The trial you were watching was automatically deleted '
+                player.send_ooc_others('The trial you were watching was automatically ended '
                                        'as it lost all its players.',
                                        is_zstaff_flex=False, part_of=nonplayers)
         else:
@@ -1250,11 +1250,11 @@ class _Trial(GameWithAreas):
 
         if self.is_unmanaged():
             # player.send_ooc(f'Your trial `{tid}` was automatically '
-            #                 f'deleted as it lost all its players.')
+            #                 f'ended as it lost all its players.')
             player.send_ooc_others(f'(X) Trial `{tid}` was automatically '
-                                   f'deleted as it lost all its players.',
+                                   f'ended as it lost all its players.',
                                    is_zstaff_flex=True, not_to=nonplayers)
-            player.send_ooc_others('The trial you were watching was automatically deleted '
+            player.send_ooc_others('The trial you were watching was automatically ended '
                                    'as it lost all its players.',
                                    is_zstaff_flex=False, part_of=nonplayers)
 

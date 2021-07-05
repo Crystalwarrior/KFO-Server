@@ -321,10 +321,10 @@ class ZoneManager:
             # If no more watchers nor players, delete the zone
             if not self._watchers and not self._players:
                 self._server.zone_manager.delete_zone(self._zone_id)
-                user.send_ooc('(X) Zone `{}` that you were in was automatically deleted as no one '
+                user.send_ooc('(X) Zone `{}` that you were in was automatically ended as no one '
                               'was in an area part of it or was watching it anymore.'
                               .format(self._zone_id), is_staff=True)
-                user.send_ooc_others('Zone `{}` was automatically deleted as no one was in an '
+                user.send_ooc_others('Zone `{}` was automatically ended as no one was in an '
                                      'area part of it or was watching it anymore.'
                                      .format(self._zone_id), is_officer=True)
 
@@ -429,10 +429,10 @@ class ZoneManager:
             # If no more watchers nor players, delete the zone
             if not self._watchers and not self._players:
                 self._server.zone_manager.delete_zone(self._zone_id)
-                user.send_ooc('(X) Zone `{}` that you were in was automatically deleted as no one '
+                user.send_ooc('(X) Zone `{}` that you were in was automatically ended as no one '
                               'was in an area part of it or was watching it anymore.'
                               .format(self._zone_id), is_staff=True)
-                user.send_ooc_others('Zone `{}` was automatically deleted as no one was in an '
+                user.send_ooc_others('Zone `{}` was automatically ended as no one was in an '
                                      'area part of it or was watching it anymore.'
                                      .format(self._zone_id), is_officer=True)
 

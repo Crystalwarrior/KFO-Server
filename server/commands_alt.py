@@ -36,7 +36,7 @@ def do_command_deprecated(command, client, arg):
     """
     Wrapper function for commands that are deprecated and pending removal.
     """
-    client.send_ooc('This command is deprecated and pending removal in 4.3. '
+    client.send_ooc('This command is deprecated and pending removal in 4.4. '
                     'Please use /{} next time.'.format(command))
     do_command(command, client, arg)
 
@@ -48,6 +48,52 @@ def ooc_cmd_slit(client, arg):
     """
 
     do_command('bloodtrail', client, arg)
+
+
+def ooc_cmd_clock_cancel(client, arg):
+    """
+    Old name for /clock_end.
+
+    """
+
+    do_command('clock_end', client, arg)
+
+
+def ooc_cmd_lurk_cancel(client, arg):
+    """
+    Old name for /lurk_end.
+
+    """
+
+    do_command('lurk_end', client, arg)
+
+
+def ooc_cmd_party_disband(client, arg):
+    """
+    Old name for /party_end.
+
+    """
+
+    do_command('party_end', client, arg)
+
+
+def ooc_cmd_timer_cancel(client, arg):
+    """
+    Old name for /timer_end.
+
+    """
+
+    do_command('timer_end', client, arg)
+
+
+def ooc_cmd_zone_delete(client, arg):
+    """
+    Old name for /zone_end.
+
+    """
+
+    do_command('zone_end', client, arg)
+
 
 
 def ooc_cmd_pw(client, arg):

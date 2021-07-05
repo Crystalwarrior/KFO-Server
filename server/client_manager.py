@@ -897,7 +897,7 @@ class ClientManager:
         def check_lurk(self):
             if self.area.lurk_length > 0 and not self.is_staff() and self.char_id >= 0:
                 self.server.tasker.create_task(self, ['as_lurk', self.area.lurk_length])
-            else:  # Otherwise, cancel any existing lurk, if there is one
+            else:  # Otherwise, end any existing lurk, if there is one
                 try:
                     self.server.tasker.remove_task(self, ['as_lurk'])
                 except KeyError:
@@ -1754,11 +1754,11 @@ class ClientManager:
                     self.send_ooc('(X) As you were the last person in an area part of it or who '
                                     'was watching it, your zone has been deleted.')
                     # Not needed, ran in remove_watcher
-                    # client.send_ooc_others('Zone `{}` was automatically deleted as no one was in '
+                    # client.send_ooc_others('Zone `{}` was automatically ended as no one was in '
                     #                        'an area part of it or was watching it anymore.'
                     #                        .format(target_zone.get_id()), is_officer=True)
 
-            # If managing a day cycle clock, cancel it
+            # If managing a day cycle clock, end it
             try:
                 self.server.tasker.remove_task(self, ['as_day_cycle'])
             except KeyError:
@@ -2039,7 +2039,7 @@ class ClientManager:
                 # Not needed, ran in remove_watcher
                 # client.send_ooc('(X) As you were the last person in an area part of it or who '
                 #                 'was watching it, your zone has been deleted.')
-                # client.send_ooc_others('Zone `{}` was automatically deleted as no one was in '
+                # client.send_ooc_others('Zone `{}` was automatically ended as no one was in '
                 #                        'an area part of it or was watching it anymore.'
                 #                        .format(backup_zone.get_id()), is_officer=True)
 

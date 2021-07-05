@@ -351,7 +351,7 @@ class TestZoneChangeWatchers_03_Disconnections(_TestZone):
         """
 
         self.c4.disconnect()
-        self.c1.assert_ooc('Zone `{}` was automatically deleted as no one was in an area part of '
+        self.c1.assert_ooc('Zone `{}` was automatically ended as no one was in an area part of '
                            'it or was watching it anymore.'
                            .format('z1'))
         self.c1.assert_ooc('(X) {} [{}] disconnected in your zone ({}).'

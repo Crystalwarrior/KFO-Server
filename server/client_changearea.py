@@ -824,11 +824,11 @@ class ClientChangeArea:
                                              ['as_handicap', time.time(), length, name,
                                               announce_if_over])
 
-        # For old area, check if there are no remaining clients, and if so, cancel any existing
+        # For old area, check if there are no remaining clients, and if so, end any existing
         # lurk callout timer that may have been imposed on the area
         if not old_area.clients and old_area.lurk_length > 0:
             old_area.lurk_length = 0
-            mes = ('(X) The lurk callout timer in area {} has been cancelled as there is no one '
+            mes = ('(X) The lurk callout timer in area {} has been ended as there is no one '
                    'left there.'.format(old_area.name))
             client.send_ooc(mes, is_zstaff_flex=old_area)
             client.send_ooc_others(mes, is_zstaff_flex=old_area)

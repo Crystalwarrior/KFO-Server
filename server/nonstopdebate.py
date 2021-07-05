@@ -902,12 +902,12 @@ class NonStopDebate(TrialMinigame):
 
             if self.is_unmanaged():
                 client.send_ooc(f'Your nonstop debate `{nid}` was automatically '
-                                f'deleted as it lost all its players.')
+                                f'ended as it lost all its players.')
                 client.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
-                                       f'deleted as it lost all its players.',
+                                       f'ended as it lost all its players.',
                                        is_zstaff_flex=True, not_to=nonplayers)
                 client.send_ooc_others('The nonstop debate you were watching was automatically '
-                                       'deleted as it lost all its players.',
+                                       'ended as it lost all its players.',
                                        is_zstaff_flex=False, part_of=nonplayers)
 
         else:
@@ -1021,12 +1021,12 @@ class NonStopDebate(TrialMinigame):
 
             if self.is_unmanaged():
                 player.send_ooc(f'Your nonstop debate `{nid}` was automatically '
-                                f'deleted as it lost all its players.')
+                                f'ended as it lost all its players.')
                 player.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
-                                       f'deleted as it lost all its players.',
+                                       f'ended as it lost all its players.',
                                        is_zstaff_flex=True, not_to=nonplayers)
                 player.send_ooc_others('The nonstop debate you were watching was automatically '
-                                       'deleted as it lost all its players.',
+                                       'ended as it lost all its players.',
                                        is_zstaff_flex=False, part_of=nonplayers)
         else:
             player.send_ooc_others(f'(X) Player {player.id} changed character from {old_char} to '
@@ -1074,9 +1074,9 @@ class NonStopDebate(TrialMinigame):
         if self.is_unmanaged():
             # We check again, because now the NSD may be unmanaged
             player.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
-                                   f'deleted as it lost all its players.',
+                                   f'ended as it lost all its players.',
                                    is_zstaff_flex=True, not_to=nonplayers)
-            player.send_ooc_others('The nonstop debate you were watching was automatically deleted '
+            player.send_ooc_others('The nonstop debate you were watching was automatically ended '
                                    'as it lost all its players.',
                                    is_zstaff_flex=False, part_of=nonplayers)
 

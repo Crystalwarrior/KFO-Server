@@ -336,7 +336,7 @@ class Tasker:
 
             except (asyncio.CancelledError, KeyError):
                 # Code can run here for a few reasons
-                # 1. The timer was canceled
+                # 1. The timer was ended
                 # 2. The clock was manually set
                 # 3. The clock was set to be at an unknown time
                 # 4. A new period was added
@@ -352,10 +352,10 @@ class Tasker:
                     for c in targets:
                         c.send_clock(client_id=client.id, hour=-1)
                         c.send_time_of_day(name='')  # Reset time of day
-                    client.send_ooc('Your day cycle in areas {} through {} has been canceled.'
+                    client.send_ooc('Your day cycle in areas {} through {} has been ended.'
                                     .format(area_1, area_2))
                     client.send_ooc_others('(X) The day cycle initiated by {} in areas {} through '
-                                           '{} has been canceled.'
+                                           '{} has been ended.'
                                            .format(client.name, area_1, area_2),
                                            is_zstaff_flex=True)
                     targets = [c for c in self.server.get_clients() if c == client or
@@ -566,8 +566,8 @@ class Tasker:
         try:
             await asyncio.sleep(length)
         except asyncio.CancelledError:
-            client.send_ooc(f'Your timer {client_name} has been canceled.')
-            client.send_ooc_others(f'Timer "{name}" initiated by {client_name} has been canceled.',
+            client.send_ooc(f'Your timer {client_name} has been ended.')
+            client.send_ooc_others(f'Timer "{name}" initiated by {client_name} has been ended.',
                                    pred=lambda c: (c.is_staff() or
                                                    (is_public and c.area == client.area)))
         else:

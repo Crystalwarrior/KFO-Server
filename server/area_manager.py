@@ -1022,7 +1022,7 @@ class AreaManager:
                 client.send_ooc('Your zone has been automatically deleted due to an area list '
                                 'load.')
 
-        # And cancel all existing day cycles
+        # And end all existing day cycles
         for client in self.server.get_clients():
             try:
                 client.server.tasker.remove_task(client, ['as_day_cycle'])
