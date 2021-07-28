@@ -59,14 +59,15 @@ class ClientError(TsuserverException):
     class UnauthorizedError(TsuserverException):
         pass
 
-
+@recreate_subexceptions
 class AOProtocolError(TsuserverException):
     class InvalidInboundPacketArguments(TsuserverException):
         pass
 
-
+@recreate_subexceptions
 class AreaError(TsuserverException):
-    pass
+    class ClientNotFound(TsuserverException):
+        pass
 
 
 class ArgumentError(TsuserverException):

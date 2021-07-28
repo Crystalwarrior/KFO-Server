@@ -854,7 +854,6 @@ class AreaManager:
                     info += '\r\n*{}'.format(log)
             return info
 
-
         def change_status(self, value: str):
             """
             Change the casing status of the area to one of predetermined values.
@@ -876,6 +875,54 @@ class AreaManager:
                 raise AreaError('Invalid status. Possible values: {}'
                                 .format(', '.join(allowed_values)))
             self.status = value.upper()
+
+        def get_clock_creator(self) -> ClientManager.Client:
+            """
+            Return a client that has an active day cycle involving the current area.
+            If multiple clients satisfy this condition, it returns the client with the smallest ID.
+            If no clients satisfy the condition, it raises AreaError.ClientNotFound.
+
+            Returns
+            -------
+            ClientManager.Client
+                Client that has an active day cycle involving the current area.
+
+            Raises
+            ------
+            AreaError.ClientNotFound
+                If no client has an active day cycle involving the current area.
+            """
+
+            for client in self.server.get_clients():
+                try:
+                    args = self.server.tasker.get_task_args(client, ['as_day_cycle'])
+                except KeyError:
+                    pass
+                else:
+                    area_1, area_2 = args[1], args[2]
+                    if area_1 <= self.id <= area_2:
+                        return client
+            raise AreaError.ClientNotFound
+
+        def get_clock_period(self) -> str:
+            """
+            Return the period of a clock initiated by the user with the smallest ID that involves
+            the current area.
+            If no such users exists, return an empty string.
+
+            Returns
+            -------
+            str
+                Period name.
+            """
+
+            try:
+                client = self.get_clock_creator()
+            except AreaError.ClientNotFound:
+                return ''
+            else:
+                period = self.server.tasker.get_task_attr(client, ['as_day_cycle'], 'period')
+                return period
 
         def unlock(self):
             """

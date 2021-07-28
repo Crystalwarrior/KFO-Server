@@ -795,6 +795,12 @@ class ClientChangeArea:
 
         client.send_health(side=1, health=client.area.hp_def)
         client.send_health(side=2, health=client.area.hp_pro)
+
+        old_area_clock_period = old_area.get_clock_period()
+        new_area_clock_period = area.get_clock_period()
+        if old_area_clock_period != new_area_clock_period:
+            client.send_time_of_day(name=new_area_clock_period)
+
         if client.is_blind:
             client.send_background(name=client.server.config['blackout_background'])
         else:

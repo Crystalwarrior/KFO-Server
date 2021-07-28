@@ -259,6 +259,7 @@ class Tasker:
         self.set_task_attr(client, ['as_day_cycle'], 'is_paused', False)
         self.set_task_attr(client, ['as_day_cycle'], 'is_unknown', False)
         self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', '')
+        self.set_task_attr(client, ['as_day_cycle'], 'period', '')
 
         # Manually notify for the very first hour (if needed)
         targets = [c for c in self.server.get_clients() if c == client or
@@ -321,6 +322,7 @@ class Tasker:
                     if period_start == hour or force_period_refresh:
                         force_period_refresh = False
                         for c in targets:
+                            self.set_task_attr(client, ['as_day_cycle'], 'period', period_name)
                             c.send_time_of_day(name=period_name)
                             c.send_ooc(f'It is now {period_name}.')
                         break
@@ -349,6 +351,7 @@ class Tasker:
                 except KeyError:
                     # refresh_reason may be undefined or the empty string.
                     # Both cases imply cancelation
+                    # self.set_task_attr(client, ['as_day_cycle'], 'period', '')  # Raises an error!
                     for c in targets:
                         c.send_clock(client_id=client.id, hour=-1)
                         c.send_time_of_day(name='')  # Reset time of day
@@ -403,6 +406,7 @@ class Tasker:
                     client.send_ooc_others('You seem to have lost track of time.', is_staff=False,
                                            pred=lambda c: area_1 <= c.area.id <= area_2)
 
+                    self.set_task_attr(client, ['as_day_cycle'], 'period', 'unknown')
                     targets = [c for c in self.server.get_clients() if c == client or
                                (area_1 <= c.area.id <= area_2)]
                     for c in targets:
@@ -461,6 +465,7 @@ class Tasker:
                         if changed_current_period:
                             targets = [c for c in self.server.get_clients()
                                        if c == client or area_1 <= c.area.id <= area_2]
+                            self.set_task_attr(client, ['as_day_cycle'], 'period', new_period_name)
                             for c in targets:
                                 c.send_time_of_day(name=new_period_name)
 
