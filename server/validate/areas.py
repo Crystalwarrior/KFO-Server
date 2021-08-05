@@ -37,6 +37,7 @@ class ValidateAreas(Validate):
         default_area_parameters = {
             'afk_delay': 0,
             'afk_sendto': 0,
+            'background_tod': dict(),
             'bglock': False,
             'bullet': True,
             'cbg_allowed': False,
@@ -123,6 +124,49 @@ class ValidateAreas(Validate):
                             'Please fix or remove the parameter from the area definition and try '
                             'again.'.format(parameter, item['area']))
                     raise AreaError(info)
+
+            # Check and fix background tods if needed, as YAML parses this as a list of
+            if item['background_tod'] != dict():
+                raw_background_tod_map = item['background_tod']
+                if not isinstance(raw_background_tod_map, dict):
+                    info = (f'Expected background TOD for area {item["area"]} be '
+                            f'one dictionary, found it was of type '
+                            f'{type(raw_background_tod_map).__name__}: {raw_background_tod_map}')
+                    raise AreaError(info)
+
+                new_background_tod = dict()
+                if not isinstance(raw_background_tod_map, dict):
+                    info = (f'Expected background TOD for area {item["area"]} be a dictionary, '
+                            f'found it was of type {type(raw_background_tod_map).__name__}: '
+                            f'{raw_background_tod_map}')
+                    raise AreaError(info)
+
+                for (key, value) in raw_background_tod_map.items():
+                    tod_name = str(key)
+                    tod_background = str(value)
+                    if not tod_name.strip():
+                        info = (f'TOD name `{tod_name}` invalid for area {item["area"]}. '
+                                f'Make sure the TOD name has non-space characters and try '
+                                f'again.')
+                        raise AreaError(info)
+                    if ' ' in tod_name:
+                        info = (f'TOD name `{tod_name}` invalid for area {item["area"]}. '
+                                f'Make sure the TOD name has no space characters and try '
+                                f'again.')
+                        raise AreaError(info)
+                    if '|' in tod_name:
+                        info = (f'TOD name `{tod_name}` contains invalid character |.'
+                                f'Make sure the TOD name does not have that character and '
+                                f'try again.')
+                        raise AreaError(info)
+                    if '|' in tod_background:
+                        info = (f'TOD background `{tod_background}` contains invalid '
+                                f'character |. Make sure the TOD name does not have that '
+                                f'character and try again.')
+                        raise AreaError(tod_background)
+
+                    new_background_tod[tod_name] = tod_background
+                item['background_tod'] = new_background_tod
 
             area_parameters.append(item.copy())
             temp_area_names.add(item['area'])

@@ -104,6 +104,7 @@ class AreaManager:
 
             self.name = parameters['area']
             self.background = parameters['background']
+            self.background_tod = parameters['background_tod']
             self.bg_lock = parameters['bglock']
             self.evidence_mod = parameters['evidence_mod']
             self.locking_allowed = parameters['locking_allowed']
@@ -269,6 +270,12 @@ class AreaManager:
                 if cond(player):
                     player.send_ic_attention()
 
+        def get_background_tod(self) -> Dict[str, str]:
+            if not self.lights:
+                return dict()
+
+            return self.background_tod.copy()
+
         def change_background(self, bg: str, validate: bool = True, override_blind: bool = False):
             """
             Change the background of the current area.
@@ -302,7 +309,8 @@ class AreaManager:
                 if c.is_blind and not override_blind:
                     c.send_background(name=self.server.config['blackout_background'])
                 else:
-                    c.send_background(name=self.background)
+                    c.send_background(name=self.background,
+                                      tod_backgrounds=self.get_background_tod())
 
         def get_chars_unusable(self, allow_restricted: bool = False,
                                more_unavail_chars: Set[int] = None) -> Set[int]:

@@ -97,6 +97,7 @@ class DefaultAO2Protocol(Enum):
 
     BN_OUTBOUND = [
         ('name', ''),  # 0
+        ('tod_backgrounds_ao2_list', list()),  # 1
         ]
 
     LE_OUTBOUND = [

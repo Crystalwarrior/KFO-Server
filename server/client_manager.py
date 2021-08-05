@@ -18,7 +18,7 @@
 
 from __future__ import annotations
 import typing
-from typing import Any, Callable, List, Optional, Set, Tuple
+from typing import Any, Callable, List, Optional, Set, Tuple, Dict
 if typing.TYPE_CHECKING:
     # Avoid circular referencing
     from server.area_manager import AreaManager
@@ -569,7 +569,8 @@ class ClientManager:
             if self.packet_handler == clients.ClientDRO1d0d0:
                 self.send_ic(msg='', bypass_replace=True)
 
-        def send_background(self, name: str = None, pos: str = None):
+        def send_background(self, name: str = None, pos: str = None,
+                            tod_backgrounds: Dict[str, str] = None):
             """
             Send a background packet to a client.
 
@@ -592,10 +593,18 @@ class ClientManager:
                 name = self.area.background
             if pos is None:
                 pos = self.pos
+            if tod_backgrounds is None:
+                tod_backgrounds = dict()
+
+            tod_backgrounds_ao2_list = list()
+            for (tod_name, tod_background) in tod_backgrounds.items():
+                argument = f'{tod_name}|{tod_background}'
+                tod_backgrounds_ao2_list.append(argument)
 
             self.send_command_dict('BN', {
                 'name': name,
                 'pos': pos,
+                'tod_backgrounds_ao2_list': tod_backgrounds_ao2_list,
                 })
 
         def send_evidence_list(self):
@@ -924,7 +933,8 @@ class ClientManager:
                 self.send_background(name=self.server.config['blackout_background'])
                 self.send_ic_blankpost()  # Clear screen
             else:
-                self.send_background(name=self.area.background)
+                self.send_background(name=self.area.background,
+                                     tod_backgrounds=self.area.get_background_tod())
 
             found_something = self.area_changer.notify_me_rp(self.area, changed_visibility=changed,
                                                              changed_hearing=False)
@@ -1519,7 +1529,8 @@ class ClientManager:
             if self.is_blind:
                 self.send_background(name=self.server.config['blackout_background'])
             else:
-                self.send_background(name=self.area.background)
+                self.send_background(name=self.area.background,
+                                     tod_backgrounds=self.area.get_background_tod())
             self.send_command_dict('LE', {
                 'evidence_ao2_list': self.area.get_evidence_list(self),
                 })
