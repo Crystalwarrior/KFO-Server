@@ -9611,6 +9611,89 @@ def ooc_cmd_glock(client: ClientManager.Client, arg: str):
                       .format(client.name, status[client.server.global_allowed]), client)
 
 
+def ooc_cmd_files_area(client: ClientManager.Client, arg: str):
+    """ (VARYING REQUIREMENTS)
+    Obtains the download link of the files of all other players visible to the player in the area
+    who have set them.
+    If the visible name of the player is not the same as the folder of their actual character,
+    both are displayed.
+    A warning is also given in either case reminding the user to be careful of clicking external
+    links, as the server provides no guarantee on the safety of the link.
+    Returns an error if the player is not staff and is either blind or their area's lights are off,
+    or if no visible players in the area set their files.
+
+    SYNTAX
+    /files_area
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /files_area 1           :: May return something like this:
+    $H: (X) === Players in area Basement who have set their files ===
+    [1] Phantom (Spam_HD): hhh
+    [0] Eggs_HD: Hi
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    msg = ''
+    if client.is_blind:
+        if not client.is_staff():
+            raise ClientError('You are blind, so you cannot see anything.')
+        msg = '(X) '
+    if not client.area.lights:
+        if not client.is_staff():
+            raise ClientError('The lights are off, so you cannot see anything.')
+        msg = '(X) '
+
+    players = [player for player in client.get_visible_clients(client.area) if player.files]
+
+    if not players:
+        raise ClientError(msg + 'No players in the area have set their files.')
+
+    player_list = list()
+    player_description = ''
+    for player in players:
+        if player.showname:
+            name = player.showname
+        elif player.char_showname:
+            name = player.char_showname
+        elif player.char_folder != player.get_char_name():
+            name = player.char_folder
+        else:
+            name = player.get_char_name()
+
+        priority = 0
+        if player.status:
+            priority -= 2**2
+        if player.party and player.party == client.party:
+            priority -= 2**1
+
+        player_list.append([priority, name, player.id, player])
+        # We add player.id as a tiebreaker if both priority and name are the same
+        # This can be the case if, say, two SPECTATOR are in the same area.
+        # player.id is unique, so it helps break ties
+        # player instances do not have order, so they are a bad way to sort ties.
+
+    player_list.sort()
+    for (_, name, _, player) in player_list:
+        if player.files[0] == name:
+            player_description += (
+                '\r\n[{}] {}: {}'.format(player.id, name, player.files[1])
+            )
+        else:
+            player_description += (
+                '\r\n[{}] {} ({}): {}'.format(player.id, name, player.files[0], player.files[1])
+            )
+
+    msg += (
+        f"=== Players in area {client.area.name} who have set their files ==={player_description}"
+        )
+    client.send_ooc(msg)
+    client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
+
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

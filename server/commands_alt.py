@@ -182,3 +182,11 @@ def ooc_cmd_showname_list(client, arg):
     """
 
     do_command('showname_areas', client, arg)
+
+
+def ooc_cmd_fa(client, arg):
+    """
+    Alias for /files_area.
+    """
+
+    do_command('files_area', client, arg)

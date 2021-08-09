@@ -126,6 +126,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Exits the server.
 * **files** "ID/char name/edited-to character/showname/char showname/OOC name"
     - Gives a download link set by the target that links to their files, or gives your own download link if not given an argument.
+* **files_area**
+    - Gives the download link of the character files of all players visible in your area.
 * **files_set** "url"
     - Sets a download link for your character files, or clears it if not given an argument.
 * **follow** "ID"

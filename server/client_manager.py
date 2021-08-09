@@ -1334,7 +1334,8 @@ class ClientManager:
             self.send_ooc(msg)
 
         def get_visible_clients(self, area: AreaManager.Area,
-                                mods=False, as_mod=None, only_my_multiclients=False):
+                                mods=False, as_mod=None,
+                                only_my_multiclients=False) -> Set[ClientManager.Client]:
             clients = set()
 
             for c in area.clients:
