@@ -2740,9 +2740,9 @@ def ooc_cmd_lasterror(client: ClientManager.Client, arg: str):
     Obtain the latest uncaught error as a result of a client packet. This message emulates what is
     output on the server console (i.e. it includes the full traceback as opposed to just the last
     error which is what is usually sent to the offending client).
-    Note that ClientErrors, ServerErrors, AreaErrors and Argumenterrors are usually caught by the
-    client itself, and would not normally cause issues.
-    Returns a (Client)error if no errors had been raised and not been caught since server bootup.
+    Note that ClientErrors, ServerErrors, AreaErrors and ArgumentErrors are usually caught by the
+    server itself, and would not normally cause issues.
+    Returns a ClientError if no errors had been raised and not been caught since server bootup.
 
     SYNTAX
     /lasterror

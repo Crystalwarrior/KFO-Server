@@ -711,7 +711,7 @@ GMs can:
     - (DEBUG) Reloads the `server/commands.py` file.
 
 ### Deprecated commands and aliases
-Commands marked with (D) are marked as deprecated. They will continue to serve their original purpose as usual for three months after the stated date. If an alternative command name is given to a deprecated command, please try and use that command instead.
+Commands marked with (D) are marked as deprecated. They will continue to serve their original purpose as usual for at least three months after the stated date. If an alternative command name is given to a deprecated command, please try and use that command instead.
 
 Commands without (D) are aliases to commands and can be freely used (subject to the parent command's conditions).
 
@@ -727,16 +727,18 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 * **yell**: Same as /scream.
 * **zg**: Same as /zone_global.
 * **zi**: Same as /zone_info.
-* **timer_cancel**: Same as /timer_end. (Deprecated July 5, 2021)
+* **timer_cancel**: Same as /timer_end. (D) (Deprecated July 5, 2021)
+* **fa**: Same as /files_area.
+* **l**: Same as /look.
 
 #### GM+
 
 * **logingm**: Same as /loginrp.
 * **slit**: Same as /bloodtrail.
 * **unsneak**: Same as /reveal.
-* **clock_cancel**: Same as /clock_end. (Deprecated July 5, 2021)
-* **lurk_cancel**: Same as /lurk_end. (Deprecated July 5, 2021)
-* **zone_delete**: Same as /zone_end. (Deprecated July 5, 2021)
+* **clock_cancel**: Same as /clock_end. (D) (Deprecated July 5, 2021)
+* **lurk_cancel**: Same as /lurk_end. (D) (Deprecated July 5, 2021)
+* **zone_delete**: Same as /zone_end. (D) (Deprecated July 5, 2021)
 
 ### Notes
 

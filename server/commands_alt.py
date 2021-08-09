@@ -56,7 +56,7 @@ def ooc_cmd_clock_cancel(client, arg):
 
     """
 
-    do_command('clock_end', client, arg)
+    do_command_deprecated('clock_end', client, arg)
 
 
 def ooc_cmd_lurk_cancel(client, arg):
@@ -65,7 +65,7 @@ def ooc_cmd_lurk_cancel(client, arg):
 
     """
 
-    do_command('lurk_end', client, arg)
+    do_command_deprecated('lurk_end', client, arg)
 
 
 def ooc_cmd_party_disband(client, arg):
@@ -74,7 +74,7 @@ def ooc_cmd_party_disband(client, arg):
 
     """
 
-    do_command('party_end', client, arg)
+    do_command_deprecated('party_end', client, arg)
 
 
 def ooc_cmd_timer_cancel(client, arg):
@@ -83,7 +83,7 @@ def ooc_cmd_timer_cancel(client, arg):
 
     """
 
-    do_command('timer_end', client, arg)
+    do_command_deprecated('timer_end', client, arg)
 
 
 def ooc_cmd_zone_delete(client, arg):
@@ -190,3 +190,11 @@ def ooc_cmd_fa(client, arg):
     """
 
     do_command('files_area', client, arg)
+
+
+def ooc_cmd_l(client, arg):
+    """
+    Alias for /look.
+    """
+
+    do_command('look', client, arg)
