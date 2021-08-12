@@ -1880,6 +1880,10 @@ class ClientManager:
                      .format(self.get_char_name(), self.showname, self.name))
             info += ('\n*Actual character folder: {}. Character showname: {}.'
                      .format(self.char_folder, self.char_showname))
+            if self.files is None:
+                info += ('\n*Character files: Not set.')
+            else:
+                info += ('\n*Character files: {} | {}'.format(self.files[0], self.files[1]))
             info += '\n*In area: {}-{}'.format(self.area.id, self.area.name)
             info += '\n*Last IC message: {}'.format(self.last_ic_message)
             info += '\n*Last OOC message: {}'.format(self.last_ooc_message)

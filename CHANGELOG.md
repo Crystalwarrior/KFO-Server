@@ -631,6 +631,7 @@
 * Added `background_tod` as an area parameter. Subparameters defined within it will indicate compatible clients to switch to a given background according to the current time of day present in the client's area.
 * Added /files_area (command alias /fa), which returns all visible players in the area who have set their files.
 * Added command alias /l for /look.
+* Made /whois also return the files the target player set for their character, if they set them
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
