@@ -1339,15 +1339,16 @@ class ClientManager:
             clients = set()
 
             for c in area.clients:
-                # Conditions to print out a client in /getarea(s)
-                # * Client is not in the server selection screen and,
-                # * If mods is True, the client is a mod, and
-                # * If only_my_multiclients is True, the client is a multiclient of self, and,
-                # * Any of the three
-                # 1. Client is yourself.
-                # 2. self is a staff member (or acting as mod).
-                # 3. Client is visible, or they are not but self is not visible either and part of
-                # the same party as client
+                # Conditions to print out a target in /getarea(s). All of the following are true:
+                # 1. Target is not in the server selection screen and,
+                # 2. If mods is True, the target is a mod, and
+                # 3. If only_my_multiclients is True, the target is a multiclient of self, and
+                # 4. Any of the two:
+                # 4.1. self is a staff member (or acting as mod).
+                # 4.2. self is not blind, self's area lights are on, and any of the three:
+                # 4.2.1. Target is self.
+                # 4.2.2. Target is visible.
+                # 4.2.3. Target and self are not visible, and are part of the same party.
 
                 if c.char_id is None:
                     continue
@@ -1356,12 +1357,15 @@ class ClientManager:
                 if only_my_multiclients and c not in self.get_multiclients():
                     continue
 
-                if c == self:
+                if self.is_staff() or as_mod:
                     clients.add(c)
-                elif self.is_staff():
-                    clients.add(c)
-                elif c.is_visible or (not self.is_visible and self.party and self.party == c.party):
-                    clients.add(c)
+                elif not self.is_blind and self.area.lights:
+                    if c == self:
+                        clients.add(c)
+                    elif c.is_visible:
+                        clients.add(c)
+                    elif not self.is_visible and self.party and self.party == c.party:
+                        clients.add(c)
             return clients
 
         def get_area_info(self, area_id: int, mods, as_mod=None, include_shownames=False,
@@ -1517,8 +1521,26 @@ class ClientManager:
                 'chars_status_ao2_list': char_list,
                 })
 
+        def refresh_visible_char_list(self):
+            char_list = [0] * len(self.server.char_list)
+            unusable_ids = {c.char_id for c in self.get_visible_clients(self.area)
+                            if c.char_id >= 0}
+            if not self.is_staff():
+                unusable_ids |= {self.server.char_list.index(name)
+                                for name in self.area.restricted_chars}
+
+            for x in unusable_ids:
+                char_list[x] = -1
+
+            # Self is always available
+            if self.char_id is not None and self.char_id >= 0:
+                char_list[self.char_id] = 0
+            self.send_command_dict('CharsCheck', {
+                'chars_status_ao2_list': char_list,
+                })
+
         def send_done(self):
-            self.refresh_char_list()
+            self.refresh_visible_char_list()
             self.send_command_dict('HP', {
                 'side': 1,
                 'health': self.area.hp_def

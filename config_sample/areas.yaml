@@ -23,7 +23,7 @@
 # *global_allowed: If false, only CM+ may use /g in the area. If true, anyone can use it.
 # *has_lights: If false, the area cannot have its lights turned off via /light or similar. If true, no such restriction is imposed.
 # *lobby_area: If true, the area is marked as lobby (which disallows non-GMs+ from sneaking or /knock'ing from or to the area). If false, no such restriction is placed.
-# *locking_allowed: If false, everyone can lock the area; if true, no one can lock it.
+# *locking_allowed: If true, everyone can lock the area; if false, no one can lock it.
 # *private_area: If true, the area is marked as private (which disallows everyone from sneaking and GMs+ reading /whisper messages).
 # *reachable_areas: If <ALL>, a passage will be created from this area to every other area. If it is a comma-separated list of areas (by name), a passage will be created from this area only to the listed areas.
 # *restricted_chars: If a list of folder names, it prevents non-GMs using said characters from joining the area, and prompts them to choose another one if they are kicked to the area, they attempt to switch to that character while in the area, or their character is marked as restricted while they are in the area.

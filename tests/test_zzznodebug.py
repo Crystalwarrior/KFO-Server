@@ -14,7 +14,7 @@ class TestZZZNoDebug_01_Basic(_TestSituation4Mc12):
         Situation: Make sure server disallows /exec
         """
 
-        # Disallowed from a non-logged in client
+        # Disallowed for a non-logged in client
         self.c0.ooc('/exec 1+1')
         self.c0.assert_no_packets()
 

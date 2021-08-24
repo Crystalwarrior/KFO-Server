@@ -346,7 +346,7 @@ class AOProtocol(asyncio.Protocol):
                             'noencryption', 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx',
                             'additive', 'effects',
                             # DRO exclusive stuff
-                            'ackMS', 'showname', 'chrini']
+                            'ackMS', 'showname', 'chrini', 'charscheck']
             })
 
     def net_cmd_ch(self, args: List[str]):
@@ -1050,6 +1050,16 @@ class AOProtocol(asyncio.Protocol):
         # Ignore packet
         return
 
+    def net_cmd_charscheck(self, args: List[str]):
+        """
+        Character availability request.
+        """
+
+        pargs = self.process_arguments('charscheck', args)
+        self.client.publish_inbound_command('charscheck', pargs)
+
+        self.client.refresh_visible_char_list()
+
     def net_cmd_pw(self, _):
         # Ignore packet
         # For now, TsuserverDR will not implement a character password system
@@ -1090,6 +1100,7 @@ class AOProtocol(asyncio.Protocol):
         'SP': net_cmd_sp,  # set position
         'SN': net_cmd_sn,  # set showname
         'chrini': net_cmd_chrini,  # char.ini information
+        'CharsCheck': net_cmd_charscheck,  # character availability request
         'opKICK': net_cmd_opKICK,  # /kick with guard on, deprecated
         'opBAN': net_cmd_opBAN,  # /ban with guard on, deprecated
     }
