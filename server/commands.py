@@ -9694,6 +9694,80 @@ def ooc_cmd_files_area(client: ClientManager.Client, arg: str):
     client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
 
 
+def ooc_cmd_zone_iclock(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Toggles IC messages by non-staff or players without IC lock bypass in the current zone being
+    allowed/disallowed. If for a particular area it is the case the IC lock status already matches
+    the zone's new IC lock status, no action is taken in that area. Otherwise, the area's IC lock
+    status will now be the zone's new IC lock status and, if now disallowed, any player with an
+    active IC lock bypass will lose it.
+    Returns an error if you are not watching a zone, or if you are a GM and an area part of the zone
+    you are watching is such that locking IC in there is forbidden.
+
+    SYNTAX
+    /zone_iclock
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    Assuming some (if not all) areas in the zone have IC chat not locked...
+    /zone_iclock    :: Locks IC chat in all areas
+    /zone_iclock    :: Unlocks IC chat in all areas
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    if not client.is_officer() and client.is_gm:
+        for area in zone.get_areas():
+            if not area.gm_iclock_allowed:
+                raise ClientError(f'GMs are not authorized to change IC locks in area '
+                                  f'{area.name} part of your zone.')
+
+    try:
+        zone_ic_lock = zone.get_property('Ic_lock')
+    except ZoneError.PropertyNotFoundError:
+        zone_ic_lock = False
+
+    zone_ic_lock = not zone_ic_lock
+    zone.set_property('Ic_lock', zone_ic_lock)
+
+    status = {True: 'locked', False: 'unlocked'}
+    client.send_ooc('You {} the IC chat in your zone.'.format(status[zone_ic_lock]))
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has '
+                           f'{status[zone_ic_lock]} the IC chat in your zone.'
+                           f'({client.area.id}).', is_zstaff_flex=True)
+
+    for area in zone.get_areas():
+        area.ic_lock = zone_ic_lock
+
+        client.send_ooc_others(f'The IC chat has been {status[area.ic_lock]} in this area.'
+                            .format(), is_zstaff_flex=False, in_area=area)
+
+        logger.log_server('[{}][{}]Changed IC lock in zone to {}'
+                          .format(area.id, client.get_char_name(), area.ic_lock), client)
+
+        if not area.ic_lock:
+            # Remove ic lock bypasses
+            affected_players = list()
+            for player in area.clients:
+                if player.can_bypass_iclock and not player.is_staff():
+                    affected_players.append(player)
+
+            if affected_players:
+                for player in affected_players:
+                    player.send_ooc('You have lost your IC lock bypass as the IC chat in '
+                                    'your area has been unlocked.')
+                    player.send_ooc_others(f'(X) {player.displayname} [{player.id}] has lost their '
+                                           f'IC lock bypass as the IC chat in their area has '
+                                           f'been unlocked ({area.id}).', is_zstaff_flex=area)
+                    player.can_bypass_iclock = False
+
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

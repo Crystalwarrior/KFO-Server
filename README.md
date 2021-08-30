@@ -556,6 +556,8 @@ GMs can:
 * **zone_handicap_affect** "ID"
     - Makes the player subject to the zone's movement handicap.
     - This is useful if the player lost the zone handicap because another handicap was removed.
+* **zone_iclock**
+    - Applies the same lock/unlock status to all areas part of the zone.
 * **zone_info**
     - Lists brief description of the zone you are watching, as well as lists all players in areas part of the zone.
 * **zone_lights** "on/off"
