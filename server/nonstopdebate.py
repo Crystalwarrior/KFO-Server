@@ -787,7 +787,7 @@ class NonStopDebate(TrialMinigame):
         """
 
         # Trying to do anything other than counter/consent
-        if contents['button'] not in {0, 1, 2, 7, 8}:
+        if contents['button'] not in {0, 1, 2, 3, 7, 8}:
             raise ClientError('You may not perform that action during a nonstop debate.')
         # Before a message was even sent
         if contents['button'] in {1, 2, 7, 8} and self._message_index == -1:
@@ -1181,7 +1181,7 @@ class NonStopDebate(TrialMinigame):
         bullet_actions = {
             1: 'consented with',
             2: 'countered',
-            # 3: 'argued',
+            3: 'indicated they want to argue against',
             # 4: 'mc'd',
             # 5: 'got it',
             # 6: 'cut',
@@ -1195,15 +1195,17 @@ class NonStopDebate(TrialMinigame):
         action = bullet_actions[contents['button']]
         regular_action = regular_bullet_actions[contents['button']]
 
-        player.send_ooc(f"You {action} {broken_player.displayname}'s statement "
-                        f"`{broken_ic['text']}`")
+        you_action = action.replace(' they ', ' you ')
+
+        player.send_ooc(f"You {you_action} {broken_player.displayname}'s statement "
+                        f"`{broken_ic['text']}` and halted the debate.")
 
         for user in self.get_users_in_areas():
             if user in self.get_leaders():
                 if user != player:
-                    # Do not send duplicate messages
+                    # Do not send duplicate messafges
                     user.send_ooc(f"{player.displayname} {action} {broken_player.displayname}'s "
-                                  f"statement `{broken_ic['text']}`")
+                                  f"statement `{broken_ic['text']}` and halted the debate.")
                 # But still send leader important information.
                 user.send_ooc("(X) Type /nsd_accept to accept the break and end the debate, "
                               "/nsd_reject to reject the break and penalize the breaker, "
@@ -1214,7 +1216,7 @@ class NonStopDebate(TrialMinigame):
             if regular != player:
                 regular.send_ooc(f"{player.displayname} {regular_action} "
                                  f"{broken_player.displayname}'s statement "
-                                 f"`{broken_ic['text']}`")
+                                 f"`{broken_ic['text']}` and halted the debate.")
         self._set_intermission_postbreak(player, blankpost=False)
 
     def _check_structure(self):

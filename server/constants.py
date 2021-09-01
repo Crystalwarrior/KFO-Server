@@ -1043,7 +1043,7 @@ class Constants():
 
     @staticmethod
     def create_fragile_task(coro_or_future: Awaitable, client: ClientManager.Client = None,
-                            exception_cleanup: Callable[[], ] = None):
+                            exception_cleanup: Callable[[], None] = None):
         """
         Schedule the execution of a coroutine object in a spawned task with a done callback that
         checks if an exception was raised after the coroutine finished.
