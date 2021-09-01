@@ -761,7 +761,7 @@ class NonStopDebate(TrialMinigame):
     def _on_client_inbound_ms_check(self, player, contents=None):
         """
         Check if any of the following situations occur:
-        * If they want to send a message with a bullet other than consent/counter at any point.
+        * If they want to send a message with some types of bullets ('MC', 'CUT') at any point.
         * If they want to send a message with a bullet before any messages were recorded.
         * If they want to send a message with a bullet during intermission mode.
         * If they want to send a message without a bullet during looping mode.
@@ -786,11 +786,11 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        # Trying to do anything other than counter/consent
-        if contents['button'] not in {0, 1, 2, 3, 7, 8}:
+        # Trying to do an MC or CUT.
+        if contents['button'] not in {0, 1, 2, 3, 5, 7, 8}:
             raise ClientError('You may not perform that action during a nonstop debate.')
         # Before a message was even sent
-        if contents['button'] in {1, 2, 7, 8} and self._message_index == -1:
+        if contents['button'] > 0 and self._message_index == -1:
             raise ClientError('You may not use a bullet now.')
         # Trying to talk during looping mode
         if contents['button'] == 0 and self._mode == NSDMode.LOOPING:
@@ -832,7 +832,7 @@ class NonStopDebate(TrialMinigame):
             # Keep track of how many messages were sent during intermission. Every 5 messages,
             # prompt leaders to end debate
             self._intermission_messages += 1
-            if self._intermission_messages % 5 == 0:
+            if self._intermission_messages % 5 == 0 or contents['button'] > 0:
                 if self._mode == NSDMode.INTERMISSION_POSTBREAK:
                     msg = ('(X) Your nonstop debate is still in intermission mode after a break. '
                            "Type /nsd_accept to accept the break and end the debate, "
@@ -849,6 +849,7 @@ class NonStopDebate(TrialMinigame):
                            'or /nsd_end to end the debate.')
                 for leader in self.get_leaders():
                     leader.send_ooc(msg)
+                self._intermission_messages = 0
         elif self._mode == NSDMode.LOOPING:
             # NSD already verified the IC message should go through
             # This is a break!
@@ -1183,7 +1184,7 @@ class NonStopDebate(TrialMinigame):
             2: 'countered',
             3: 'indicated they want to argue against',
             # 4: 'mc'd',
-            # 5: 'got it',
+            5: 'indicated they got it after hearing',
             # 6: 'cut',
             7: 'countered',
             8: 'committed perjury by countering',
