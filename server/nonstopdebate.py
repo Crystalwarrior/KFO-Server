@@ -1198,15 +1198,29 @@ class NonStopDebate(TrialMinigame):
 
         you_action = action.replace(' they ', ' you ')
 
-        player.send_ooc(f"You {you_action} {broken_player.displayname}'s statement "
-                        f"`{broken_ic['text']}` and halted the debate.")
+        if broken_player == player:
+            player.send_ooc(f"You {you_action} your own statement "
+                            f"`{broken_ic['text']}` and halted the debate.")
+        else:
+            player.send_ooc(f"You {you_action} {broken_player.displayname}'s statement "
+                            f"`{broken_ic['text']}` and halted the debate.")
 
         for user in self.get_users_in_areas():
             if user in self.get_leaders():
                 if user != player:
-                    # Do not send duplicate messafges
-                    user.send_ooc(f"{player.displayname} {action} {broken_player.displayname}'s "
-                                  f"statement `{broken_ic['text']}` and halted the debate.")
+                    # Do not send duplicate messages
+                    if broken_player == user:
+                        user.send_ooc(f"{player.displayname} {action} "
+                                      f"your statement "
+                                      f"`{broken_ic['text']}` and halted the debate.")
+                    elif broken_player == player:
+                        user.send_ooc(f"{player.displayname} {action} "
+                                      f"their own statement "
+                                      f"`{broken_ic['text']}` and halted the debate.")
+                    else:
+                        user.send_ooc(f"{player.displayname} {action} "
+                                      f"{broken_player.displayname}'s statement "
+                                      f"`{broken_ic['text']}` and halted the debate.")
                 # But still send leader important information.
                 user.send_ooc("(X) Type /nsd_accept to accept the break and end the debate, "
                               "/nsd_reject to reject the break and penalize the breaker, "
@@ -1215,9 +1229,19 @@ class NonStopDebate(TrialMinigame):
 
         for regular in self.get_nonleader_users_in_areas():
             if regular != player:
-                regular.send_ooc(f"{player.displayname} {regular_action} "
-                                 f"{broken_player.displayname}'s statement "
-                                 f"`{broken_ic['text']}` and halted the debate.")
+                if broken_player == regular:
+                    regular.send_ooc(f"{player.displayname} {regular_action} "
+                                    f"your statement "
+                                    f"`{broken_ic['text']}` and halted the debate.")
+                elif broken_player == player:
+                    regular.send_ooc(f"{player.displayname} {regular_action} "
+                                    f"their own statement "
+                                    f"`{broken_ic['text']}` and halted the debate.")
+                else:
+                    regular.send_ooc(f"{player.displayname} {regular_action} "
+                                    f"{broken_player.displayname}'s statement "
+                                    f"`{broken_ic['text']}` and halted the debate.")
+
         self._set_intermission_postbreak(player, blankpost=False)
 
     def _check_structure(self):
