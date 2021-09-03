@@ -554,7 +554,7 @@ class NonStopDebate(TrialMinigame):
 
         """
 
-        print('NSD adding', user)
+        # print('NSD adding', user)
         super().add_player(user)
 
         self.introduce_user(user)
@@ -697,7 +697,7 @@ class NonStopDebate(TrialMinigame):
                                                     auto_restart=True)
 
         def _refresh():
-            print(f'NSD refreshed the timer for everyone at {time.time()}.')
+            # print(f'NSD refreshed the timer for everyone at {time.time()}.')
             for user in self.get_users_in_areas():
                 self._update_player_timer(user)
 

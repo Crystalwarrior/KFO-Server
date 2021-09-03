@@ -527,7 +527,7 @@ class GameWithAreas(_Game):
 
         """
 
-        print('Received LEFT', area, client, client.area, old_displayname, ignore_bleeding)
+        # print('Received LEFT', area, client, client.area, old_displayname, ignore_bleeding)
         if client in self.get_players() and client.area not in self._areas:
             self.remove_player(client)
 
@@ -561,7 +561,7 @@ class GameWithAreas(_Game):
 
         """
 
-        print('Received ENTERED', area, client, old_area, old_displayname, ignore_bleeding)
+        # print('Received ENTERED', area, client, old_area, old_displayname, ignore_bleeding)
         if client not in self.get_players() and self.get_autoadd_on_client_enter():
             self.add_player(client)
 
@@ -591,7 +591,7 @@ class GameWithAreas(_Game):
 
         """
 
-        print('User', client, 'in area', area, 'wants to check sent', contents)
+        # print('User', client, 'in area', area, 'wants to check sent', contents)
 
         self._check_structure()
 
@@ -612,7 +612,7 @@ class GameWithAreas(_Game):
 
         """
 
-        print('Received DESTRUCTION', area)
+        # print('Received DESTRUCTION', area)
         self.remove_area(area)
 
         self._check_structure()

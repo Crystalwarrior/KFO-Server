@@ -1202,7 +1202,7 @@ class _Game():
 
         """
 
-        print('Player', player, 'wants to check sent', contents)
+        # print('Player', player, 'wants to check sent', contents)
 
     def _on_client_inbound_ms_final(self, player, contents=None):
         """
@@ -1225,7 +1225,7 @@ class _Game():
 
         """
 
-        print('Player', player, 'sent', contents)
+        # print('Player', player, 'sent', contents)
 
     def _on_client_change_character(self, player, old_char_id=None, new_char_id=None):
         """
@@ -1250,7 +1250,7 @@ class _Game():
 
         """
 
-        print('Player', player, 'changed character from', old_char_id, 'to', new_char_id)
+        # print('Player', player, 'changed character from', old_char_id, 'to', new_char_id)
         if self._require_character and not player.has_character():
             self.remove_player(player)
 
@@ -1275,7 +1275,7 @@ class _Game():
 
         """
 
-        print('Player', player, 'was destroyed', self)
+        # print('Player', player, 'was destroyed', self)
         if self.is_unmanaged():
             return
         if player not in self.get_players():
