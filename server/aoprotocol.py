@@ -791,8 +791,7 @@ class AOProtocol(asyncio.Protocol):
                 try:
                     function = getattr(self.server.commands_alt, called_function)
                 except AttributeError:
-                    logger.log_print('Attribute error with ' + called_function)
-                    self.client.send_ooc('Invalid command.')
+                    self.client.send_ooc(f'Invalid command `{cmd}`.')
 
             if function:
                 try:

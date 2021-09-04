@@ -634,6 +634,8 @@
 * Made /whois also return the files the target player set for their character, if they set them
 * Added support for incoming client packet "CharsCheck", which if received forwards the sender the list of characters their client is meant to see, so they can update their available characters list
 * Added /zone_iclock, which applies the same lock/unlock status to all areas part of your zone
+* Removed the AttributeError warning from console when a player inputs a command that does not exist
+* Added the command name that was used whenever an "Invalid command" error message is triggered
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
