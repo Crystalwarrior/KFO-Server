@@ -459,6 +459,7 @@ GMs can:
 * **reveal** "ID"
     - Reveals a target if they were previously sneaking.
     - Also restores their formerly assigned handicap if they had one that was shorter than the server's automatic sneaking handicap.
+    - If no ID is given, target is yourself.
 * **rplay** "song.mp3"
     - Plays a song in all areas reachable from the current one.
 * **rpmode** "on/off"
@@ -481,6 +482,7 @@ GMs can:
 * **sneak** "ID"
     - Sets a target to be sneaking if they were visible.
     - If the target was subject to a handicap shorter than the server's automatic sneak handicap length, they will be imposed this handicap.
+    - If no ID is given, target is yourself.
 * **st** "message"
     - Sends a message to all active staff members.
 * **status_set_other** "ID/char name/edited-to character/showname/char showname/OOC name" "status"

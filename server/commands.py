@@ -4360,11 +4360,13 @@ def ooc_cmd_reveal(client: ClientManager.Client, arg: str):
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
     the given client.
     Search by IPID can only be performed by CMs and mods.
+    If no target is given, the target will be yourself.
     If the target is not sneaking, the reveal will fail.
     Requires /sneak to undo.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
+    /reveal
     /reveal <client_id>
     /reveal <client_ipid>
 
@@ -4378,21 +4380,29 @@ def ooc_cmd_reveal(client: ClientManager.Client, arg: str):
                                      to no longer be sneaking.
     """
 
-    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+    Constants.assert_command(client, arg, is_staff=True)
 
+    if arg:
+        targets = Constants.parse_id_or_ipid(client, arg)
+    else:
+        targets = [client]
     # Unsneak matching targets
-    for c in Constants.parse_id_or_ipid(client, arg):
+    for c in targets:
         if c.is_visible:
             client.send_ooc('Target client is already not sneaking.')
             continue
 
         if c != client:
             client.send_ooc("{} is no longer sneaking.".format(c.displayname))
+            client.send_ooc_others('(X) {} [{}] revealed {} [{}] ({}).'
+                                   .format(client.displayname, client.id, c.displayname, client.id,
+                                           c.area.id),
+                                   not_to={c}, is_zstaff=True)
+        else:
+            client.send_ooc_others('(X) {} [{}] revealed themselves ({}).'
+                                   .format(client.displayname, client.id, c.area.id),
+                                   is_zstaff=True)
         c.change_visibility(True)
-        client.send_ooc_others('(X) {} [{}] revealed {} [{}] ({}).'
-                               .format(client.displayname, client.id, c.displayname, client.id,
-                                       c.area.id),
-                               not_to={c}, is_zstaff=True)
 
 
 def ooc_cmd_roll(client: ClientManager.Client, arg: str):
@@ -5170,12 +5180,14 @@ def ooc_cmd_sneak(client: ClientManager.Client, arg: str):
     If given IPID, it will affect all clients opened by the user. Otherwise, it will just affect
     the given client.
     Search by IPID can only be performed by CMs and mods.
+    If no target is given, the target will be yourself.
     If the target is in a private area, or in a lobby area and you are not an officer, or is
     already sneaked, the sneak will fail.
     Requires /reveal to undo.
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
+    /sneak
     /sneak <client_id>
     /sneak <client_ipid>
 
@@ -5189,10 +5201,15 @@ def ooc_cmd_sneak(client: ClientManager.Client, arg: str):
                                     be sneaking.
     """
 
-    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+    Constants.assert_command(client, arg, is_staff=True)
+
+    if arg:
+        targets = Constants.parse_id_or_ipid(client, arg)
+    else:
+        targets = [client]
 
     # Sneak matching targets
-    for c in Constants.parse_id_or_ipid(client, arg):
+    for c in targets:
         if client.is_gm and c.area.lobby_area:
             client.send_ooc('Target client is in a lobby area. You have insufficient permissions '
                             'to hide someone in such an area.')
@@ -5207,11 +5224,15 @@ def ooc_cmd_sneak(client: ClientManager.Client, arg: str):
 
         if c != client:
             client.send_ooc("{} is now sneaking.".format(c.displayname))
+            client.send_ooc_others('(X) {} [{}] sneaked {} [{}] ({}).'
+                                   .format(client.displayname, client.id, c.displayname,
+                                           c.id, c.area.id),
+                                   not_to={c}, is_zstaff=True)
+        else:
+            client.send_ooc_others('(X) {} [{}] sneaked themselves ({}).'
+                                .format(client.displayname, client.id, c.area.id),
+                                is_zstaff=True)
         c.change_visibility(False)
-        client.send_ooc_others('(X) {} [{}] sneaked {} [{}] ({}).'
-                               .format(client.displayname, client.id, c.displayname,
-                                       c.id, c.area.id),
-                               not_to={c}, is_zstaff=True)
 
 
 def ooc_cmd_spectate(client: ClientManager.Client, arg: str):
