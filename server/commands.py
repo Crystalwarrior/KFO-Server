@@ -1571,7 +1571,9 @@ def ooc_cmd_cure(client: ClientManager.Client, arg: str):
 
 def ooc_cmd_currentmusic(client: ClientManager.Client, arg: str):
     """
-    Returns the music currently playing and who played it, or None if no music is playing.
+    Returns the music currently playing, who played it, and its source if available in the music
+    list file.
+    Returns an error if no music is playing.
 
     SYNTAX
     /currentmusic
@@ -1585,10 +1587,18 @@ def ooc_cmd_currentmusic(client: ClientManager.Client, arg: str):
 
     Constants.assert_command(client, arg, parameters='=0')
 
-    if client.area.current_music == '':
+    if not client.area.current_music:
         raise ClientError('There is no music currently playing.')
-    client.send_ooc('The current music is {} and was played by {}.'
-                    .format(client.area.current_music, client.area.current_music_player))
+
+    current_music = client.area.current_music
+    current_music_player = client.area.current_music_player
+    current_music_source = client.area.current_music_source
+    if current_music_source:
+        client.send_ooc(f'The current music is {current_music}, was sourced from '
+                        f'{current_music_source}, and was played by {current_music_player}.')
+    else:
+        client.send_ooc(f'The current music is {current_music} and was played by '
+                        f'{current_music_player}.')
 
 
 def ooc_cmd_deafen(client: ClientManager.Client, arg: str):

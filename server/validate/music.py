@@ -82,16 +82,20 @@ class ValidateMusic(Validate):
                            f'song description {j} in category {i}: {category} was not a '
                            f'dictionary: {song}.')
                     raise ServerError.FileSyntaxError(msg)
-                if set(song.keys()) not in [{'name'}, {'name', 'length'}]:
-                    msg = (f'Expected all music list songs to have exactly the keys: name, or name '
-                           f'and length, but song description {j} in category {i}: {category} had '
-                           f'keys {set(song.keys())}.')
+                if 'name' not in song.keys():
+                    msg = (f'Expected all music lists song descriptions to have a name as key, but '
+                           f'song description {j} in category {i}: {category} '
+                           f'had keys {set(song.keys())}.')
+                    raise ServerError.FileSyntaxError(msg)
+                if not set(song.keys()).issubset({'name', 'length', 'source'}):
+                    msg = (f'Expected all music list song description keys be contained in the set '
+                           f"{{'name', 'length', 'source'}} but song description {j} in category "
+                           f'{i}: {category} had keys {set(song.keys())}.')
                     raise ServerError.FileSyntaxError(msg)
 
-                if 'length' not in song:
-                    name, length = song['name'], -1
-                else:
-                    name, length = song['name'], song['length']
+                name = song['name']
+                length = song['length'] if 'length' in song else -1
+                source = song['source'] if 'source' in song else ''
 
                 if not isinstance(name, (str, float, int, bool, complex)):
                     msg = (f'Expected all music list song names to be strings or numbers, but '
@@ -102,6 +106,10 @@ class ValidateMusic(Validate):
                     msg = (f'Expected all music list song lengths to be numbers, but song {j}: '
                            f'{name} in category {i}: {category} had non-numerical length {length}.')
                     raise ServerError.FileSyntaxError(msg)
+                if not isinstance(source, (str, float, int, bool, complex)):
+                    msg = (f'Expected all music list song sources to be strings or numbers, but '
+                           f'song {j}: {name} in category {i}: {category} was not a string or '
+                           f'number.')
 
                 # Prevent names that may be interpreted as a directory with . or ..
                 # This prevents sending the client an entry to their music list which may be read as

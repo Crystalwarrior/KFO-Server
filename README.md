@@ -117,7 +117,7 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
 * **coinflip** "call"
     - Flips a coin and returns its result, as well as whatever it is called with (e.g. a prediction, consequences for heads/tails, etc.) if given.
 * **currentmusic**
-    - Displays the current music and who played it.
+    - Displays the current music, who played it, and its source if given in the music list.
 * **discord**
     - Displays the invite link of the server's Discord server.
 * **doc** "url"

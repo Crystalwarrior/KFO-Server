@@ -68,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b196'
-        self.internal_version = 'M210904b'
+        self.segment_version = 'b197'
+        self.internal_version = 'M210905a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -720,7 +720,7 @@ class TsuserverDR:
                 return i
         raise ServerError(f'Character {name} not found.')
 
-    def get_song_data(self, music: str, c: ClientManager.Client = None) -> Tuple[str, int]:
+    def get_song_data(self, music: str, c: ClientManager.Client = None) -> Tuple[str, int, str]:
         # The client's personal music list should also be a valid place to search
         # so search in there too if possible
         if c and c.music_list:
@@ -730,13 +730,13 @@ class TsuserverDR:
 
         for item in valid_music:
             if item['category'] == music:
-                return item['category'], -1
+                return item['category'], -1, ''
             for song in item['songs']:
                 if song['name'] == music:
-                    try:
-                        return song['name'], song['length']
-                    except KeyError:
-                        return song['name'], -1
+                    name = song['name']
+                    length = song['length'] if 'length' in song else -1
+                    source = song['source'] if 'source' in song else ''
+                    return name, length, source
         raise ServerError.MusicNotFoundError('Music not found.')
 
     def send_all_cmd_pred(self, cmd: str, *args: List[str],

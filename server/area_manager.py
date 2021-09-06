@@ -84,6 +84,7 @@ class AreaManager:
             self.shoutlog = []
             self.current_music = ''
             self.current_music_player = ''
+            self.current_music_source = ''
             self.evi_list = EvidenceList()
             self.is_recording = False
             self.recorded_messages = []
@@ -717,11 +718,11 @@ class AreaManager:
                 raise ServerError.FileInvalidNameError(info)
 
             try:
-                name, length = self.server.get_song_data(name, c=client)
+                name, length, source = self.server.get_song_data(name, c=client)
             except ServerError.MusicNotFoundError:
                 if raise_if_not_found:
                     raise
-                name, length = name, -1
+                name, length, source = name, -1, ''
 
             if 'name' not in pargs:
                 pargs['name'] = name
@@ -752,6 +753,7 @@ class AreaManager:
             # Record the character name and the track they played.
             self.current_music_player = client.displayname
             self.current_music = name
+            self.current_music_source = source
 
             logger.log_server('[{}][{}]Changed music to {}.'
                               .format(self.id, client.get_char_name(), name), client)
