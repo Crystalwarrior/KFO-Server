@@ -499,7 +499,7 @@
 * Fixed server accepting ip_ids.json or hd_ids.json files with wrong structure
 * Fixed AO clients sending IC messages presenting with no evidence selected throwing an error
 
-### 210621 (4.2.6)
+### 210621a (4.2.6)
 * Community managers now have access to /area_list and /area_lists
 * Added /ignore and /unignore to toggle ignoring IC messages from players
 * Added /glock to lock the global and zone chats
@@ -508,6 +508,9 @@
 * Fixed servers not accepting IC messages if they did not set some daily gmpasses
 * Fixed some special characters not being accepted properly
 
+### 210626a (4.2.6-post1)
+* Fixed various commands not loading server YAML files with UTF-8 encoding
+  
 ## (4.3.0)
 * Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
 * Explicitly allowed Python 3.9 support for server owners

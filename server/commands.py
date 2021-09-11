@@ -272,7 +272,7 @@ def ooc_cmd_area_lists(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, is_officer=True, parameters='=0')
 
     try:
-        with Constants.fopen('config/area_lists.yaml', 'r') as f:
+        with Constants.fopen('config/area_lists.yaml', 'r', encoding='utf-8') as f:
             output = 'Available area lists:\n'
             for line in f:
                 output += '*{}'.format(line)
@@ -3413,7 +3413,7 @@ def ooc_cmd_music_lists(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, parameters='=0')
 
     try:
-        with Constants.fopen('config/music_lists.yaml', 'r') as f:
+        with Constants.fopen('config/music_lists.yaml', 'r', encoding='utf-8') as f:
             output = 'Available music lists:\n'
             for line in f:
                 output += '*{}'.format(line)

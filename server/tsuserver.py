@@ -68,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = 'b197'
-        self.internal_version = 'M210905a'
+        self.segment_version = 'b198'
+        self.internal_version = 'M210911a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -607,11 +607,11 @@ class TsuserverDR:
         return gimp_list.copy()
 
     def dump_ipids(self):
-        with Constants.fopen('storage/ip_ids.json', 'w') as whole_list:
+        with Constants.fopen('storage/ip_ids.json', 'w', encoding='utf-8') as whole_list:
             json.dump(self.ipid_list, whole_list)
 
     def dump_hdids(self):
-        with Constants.fopen('storage/hd_ids.json', 'w') as whole_list:
+        with Constants.fopen('storage/hd_ids.json', 'w', encoding='utf-8') as whole_list:
             json.dump(self.hdid_list, whole_list)
 
     def get_ipid(self, ip: str) -> int:
