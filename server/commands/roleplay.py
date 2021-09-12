@@ -163,7 +163,7 @@ def ooc_cmd_rollp(client, arg):
     """
     roll, num_dice, chosen_max, modifiers, Sum = rtd(arg)
 
-    client.send_ooc(f'[Hidden] You rolled {roll} out of {chosen_max}.\nThe total sum is {Sum}.' + f'\nThe total sum is {Sum}.' if num_dice > 1 else '')
+    client.send_ooc(f'[Hidden] You rolled {roll} out of {chosen_max}.' + f'\nThe total sum is {Sum}.' if num_dice > 1 else '')
     for c in client.area.owners:
         c.send_ooc(f'[{client.area.id}]{client.showname} secretly rolled {roll} out of {chosen_max}.')
 
