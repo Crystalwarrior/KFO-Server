@@ -540,6 +540,63 @@ def ooc_cmd_bilock(client: ClientManager.Client, arg: str):
                           .format(client.area.id, client.get_char_name(), now0, name0, name1, now1))
 
 
+def ooc_cmd_bilockh(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Similar to /bilock. However, passages that are locked in this way are hidden from area lists
+    and /minimap; and passages that are unlocked are revealed in area lists and /minimap.
+
+    SYNTAX
+    /bilockh <target_area>
+    /bilockh <target_area_1>, <target_area_2>
+
+    PARAMETERS
+    <target_area>: Area whose passage status with the current area will be changed.
+    <target_area_1>: Area whose passage status with <target_area_2> will be changed.
+    <target_area_2>: Area whose passage status with <target_area_1> will be changed.
+
+    EXAMPLES
+    Assuming the player is in area 0 when executing these commands and originally the only existing
+    passage lock is from area 1 'Class Trial Room' to area 2 'Class Trial Room, 2'...
+    /bilockh Class Trial Room            :: Locks the passage between area 0 and Class Trial Room.
+    /bilockh 1, 2                        :: Unlocks the passage from Class Trial Room to Class Trial
+                                            Room, 2; and locks it from Class Trial Room, 2 to Class
+                                            Trial Room.
+    /bilockh Class Trial Room,\ 2, 0     :: Locks the passage in both directions between areas 0
+                                            and Class Trial Room, 2 (note the ,\ in the command.
+    """
+
+    Constants.assert_command(client, arg, parameters='&1-2', is_staff=True, split_commas=True)
+
+    areas = Constants.parse_two_area_names(client, arg.split(', '), area_duplicate=False,
+                                           check_valid_range=False)
+    now_reachable = client.server.area_manager.change_passage_lock(client, areas, bilock=True,
+                                                                   change_passage_visibility=True)
+
+    status = {True: 'unlocked and revealed', False: 'locked and hid'}
+    now0, now1 = status[now_reachable[0]], status[now_reachable[1]]
+    name0, name1 = areas[0].name, areas[1].name
+
+    if now_reachable[0] == now_reachable[1]:
+        client.send_ooc('You have {} the passage between {} and {}.'.format(now0, name0, name1))
+        client.send_ooc_others('(X) {} [{}] has {} the passage between {} and {} ({}).'
+                               .format(client.displayname, client.id, now0,
+                                       name0, name1, client.area.id),
+                               is_zstaff_flex=True)
+        logger.log_server('[{}][{}]Has {} the passage between {} and {}.'
+                          .format(client.area.id, client.get_char_name(), now0, name0, name1))
+
+    else:
+        client.send_ooc('You have {} the passage from {} to {} and {} it the other way around.'
+                        .format(now0, name0, name1, now1))
+        client.send_ooc_others('(X) {} [{}] has {} the passage from {} and {} and {} it the other '
+                               'way around ({}).'
+                               .format(client.displayname, client.id, now0,
+                                       name0, name1, now1, client.area.id),
+                               is_zstaff_flex=True)
+        logger.log_server('[{}][{}]Has {} the passage from {} to {} and {} it the other way around.'
+                          .format(client.area.id, client.get_char_name(), now0, name0, name1, now1))
+
+
 def ooc_cmd_blind(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Changes the blind status of a player by client ID.
@@ -1095,6 +1152,38 @@ def ooc_cmd_can_rpgetareas(client: ClientManager.Client, arg: str):
                               status[client.area.rp_getareas_allowed].capitalize()), client)
 
 
+def ooc_cmd_charlog(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    List all character details a client by ID or IPID has had during the session.
+
+    If given IPID, it will obtain the character details log of all the clients opened by the user.
+    Otherwise, it will just obtain the log of the given client.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /charlog <client_id>
+    /charlog <client_ipid>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
+
+    EXAMPLE
+    /charlog 1         :: For the client whose ID is 1, you may get something like this
+
+    == Character details log of client 1 ==
+    *Sat Jun 1 18:52:32 2021 | Changed character to Phantom_HD
+    *Sat Jun 1 18:52:32 2021 | Changed character ini to Phantom_HD/Phantom
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    # Obtain matching targets's character details log
+    for c in Constants.parse_id_or_ipid(client, arg):
+        info = c.get_charlog()
+        client.send_ooc(info)
+
+
 def ooc_cmd_charselect(client: ClientManager.Client, arg: str):
     """ (VARYING REQUIREMENTS)
     Opens the character selection screen for the current user
@@ -1225,6 +1314,39 @@ def ooc_cmd_chars_restricted(client: ClientManager.Client, arg: str):
             info += '\r\n*{}'.format(char_name)
 
     client.send_ooc(info)
+
+
+def ooc_cmd_cid(client: ClientManager.Client, arg: str):
+    """
+    Returns the client ID of the given target (number in brackets in /getarea), or the player's if
+    not given a target.
+    Returns an error if, given a target identifier, it does not match any identifiers visible to
+    the player among players in the same area.
+
+    SYNTAX
+    /cid <user_ID>
+
+    PARAMETERS
+    <user_id>: Either the client ID, character name, edited-to character, custom showname or OOC
+    name of the intended recipient.
+
+    EXAMPLES
+    If Phantom_HD is in the same area as the player, iniswapped to Spam_HD, has client ID 3, has
+    showname Phantom and OOC Name ThePhantom
+    /cid Phantom_HD     :: Returns 'The client ID of Phantom_HD is 3.'
+    /cid Spam_HD        :: Returns 'The client ID of Spam_HD is 3.'
+    /cid 3              :: Returns 'The client ID of 3 is 3.'
+    /cid Phantom        :: Returns 'The client ID of Phantom is 3.'
+    /cid ThePhantom     :: Returns 'The client ID of ThePhantom is 3.'
+    /cid                :: Returns 'Your client ID is 0.' (assuming your client ID is actually 0)
+    """
+
+    if not arg:
+        client.send_ooc('Your client ID is {}.'.format(client.id))
+    else:
+        cm = client.server.client_manager
+        target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+        client.send_ooc('The client ID of {} is {}.'.format(arg, target.id))
 
 
 def ooc_cmd_cleardoc(client: ClientManager.Client, arg: str):
@@ -1436,6 +1558,137 @@ def ooc_cmd_clock_pause(client: ClientManager.Client, arg: str):
         raise ClientError('Day cycle is already paused.')
 
     client.server.tasker.set_task_attr(c, ['as_day_cycle'], 'refresh_reason', 'pause')
+    client.server.tasker.cancel_task(task)
+
+
+def ooc_cmd_clock_period(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Adds a period to the day cycle established by the player. Whenever the day cycle clock ticks
+    into a time part of the period, all clients in the affected areas will be ordered to change
+    to that time of day's version of their theme. Time of day periods go from their given hour
+    start all the way until the next period.
+    If the period name already exists, its hour start will be overwritten.
+    If some period already starts at the given hour start, its name will be overwritten.
+    Returns an error if the client has not started a day cycle, or if the hour start is not an
+    integer from 0 to 23.
+
+    SYNTAX
+    /clock_period <name> <hour_start>
+
+    PARAMETERS
+    <name>: Name of the period.
+    <hour_start>: Start time of the period (integer from 0 to 23).
+
+    EXAMPLE
+    Assuming the commands are run in order.
+    /clock_period day 8     :: Sets up a period that goes from 8 AM to 8 AM.
+    /clock_period night 22  :: Sets up a night period that goes from 10 PM to 8 AM. Day period
+                               now goes from 8 AM to 10 PM.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='&1-2')
+
+    try:
+        task = client.server.tasker.get_task(client, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('You have not initiated any day cycles.')
+
+    try:
+        args = arg.split()
+        if len(args) == 1:
+            name, pre_start, start = args[0].lower(), "-1", -1
+        else:
+            name, pre_start = args[0].lower(), args[1]
+            start = int(pre_start)  # Do it separately so ValueError exception may read args[1]
+            if not 0 <= start <= 23:
+                start = args[1]
+                raise ValueError
+    except ValueError:
+        raise ArgumentError('Invalid period start hour {}.'.format(pre_start))
+
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'new_period_start', (start, name))
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'period')
+    client.server.tasker.cancel_task(task)
+
+
+def ooc_cmd_clock_set(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Updates the hour length and current hour of the client's day cycle without restarting it,
+    changing its area range or notifying normal players. If the day cycle time was unknown, the
+    time is updated in the same manner (effectively taking it out of unknown mode).
+    Returns an error if the client has not started a day cycle, or if the hour is not an
+    integer from 0 to 23.
+
+    SYNTAX
+    /clock_set <hour_length> <hour>
+
+    PARAMETERS
+    <hour_length>: Length of each ingame hour (in seconds)
+    <hour>: New hour (integer from 0 to 23)
+
+    EXAMPLES
+    /clock_set 900 8  :: Update the day cycle to be a 900-second hour clock with current time 8 a.m.
+    /clock_set 10 19  :: Update the day cycle to be a 10-second hour clock with current time 7 p.m.
+
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=2')
+
+    try:
+        task = client.server.tasker.get_task(client, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('You have not initiated any day cycles.')
+
+    pre_hour_length, pre_hour_start = arg.split(' ')
+    try:
+        hour_length = int(pre_hour_length)
+        if hour_length <= 0:
+            raise ValueError
+    except ValueError:
+        raise ArgumentError('Invalid hour length {}.'.format(pre_hour_length))
+
+    try:
+        hour_start = int(pre_hour_start)
+        if hour_start < 0 or hour_start >= 24:
+            raise ValueError
+    except ValueError:
+        raise ArgumentError('Invalid hour start {}.'.format(pre_hour_start))
+
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'new_day_cycle_args',
+                                       (hour_length, hour_start))
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'set')
+    client.server.tasker.cancel_task(task)
+
+
+def ooc_cmd_clock_unknown(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets the client's day cycle time to unknown. Time does not flow in this mode, and clients in
+    the area range will be ordered to switch to their unknown time of day version of their theme.
+    Requires /clock_set to undo.
+    Returns an error if the client has not started a day cycle, or if the time is already unknown.
+
+    SYNTAX
+    /clock_unknown
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /clock_unknown :: Set the time to be unknown
+
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        task = client.server.tasker.get_task(client, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('You have not initiated any day cycles.')
+
+    if client.server.tasker.get_task_attr(client, ['as_day_cycle'], 'is_unknown'):
+        raise ClientError('Your day cycle already has unknown time.')
+
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'unknown')
     client.server.tasker.cancel_task(task)
 
 
@@ -1838,6 +2091,49 @@ def ooc_cmd_doc(client: ClientManager.Client, arg: str):
                           .format(client.area.id, client.get_char_name(), arg), client)
 
 
+def ooc_cmd_dump(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Prepares a server dump containing debugging information about the server and saves it in the
+    server log files.
+
+    SYNTAX
+    /dump
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /dump           :: May return something like this:
+    $HOST: Generated server dump file logs/[2020-12-23T200220]D.log.
+    """
+
+    Constants.assert_command(client, arg, is_mod=True, parameters='=0')
+
+    dump_message = f'Client {client.id} requested a server dump.'
+    file = logger.log_error(dump_message, client.server, errortype='D')
+    client.send_ooc(f'Generated server dump file {file}.')
+
+
+def ooc_cmd_exit(client: ClientManager.Client, arg: str):
+    """
+    Makes you exit the server.
+
+    SYNTAX
+    /exit
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /exit      :: Makes you exit the server.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    client.send_ooc('You have exited the server.')
+    client.disconnect()
+
+
 def ooc_cmd_files(client: ClientManager.Client, arg: str):
     """
     Obtains the download link of a player by client ID (number in brackets).
@@ -1883,6 +2179,89 @@ def ooc_cmd_files(client: ClientManager.Client, arg: str):
             client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
         else:
             raise ClientError('You have not provided a download link for your files.')
+
+
+def ooc_cmd_files_area(client: ClientManager.Client, arg: str):
+    """ (VARYING REQUIREMENTS)
+    Obtains the download link of the files of all other players visible to the player in the area
+    who have set them.
+    If the visible name of the player is not the same as the folder of their actual character,
+    both are displayed.
+    A warning is also given in either case reminding the user to be careful of clicking external
+    links, as the server provides no guarantee on the safety of the link.
+    Returns an error if the player is not staff and is either blind or their area's lights are off,
+    or if no visible players in the area set their files.
+
+    SYNTAX
+    /files_area
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /files_area 1           :: May return something like this:
+    $H: (X) === Players in area Basement who have set their files ===
+    [1] Phantom (Spam_HD): hhh
+    [0] Eggs_HD: Hi
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    msg = ''
+    if client.is_blind:
+        if not client.is_staff():
+            raise ClientError('You are blind, so you cannot see anything.')
+        msg = '(X) '
+    if not client.area.lights:
+        if not client.is_staff():
+            raise ClientError('The lights are off, so you cannot see anything.')
+        msg = '(X) '
+
+    players = [player for player in client.get_visible_clients(client.area) if player.files]
+
+    if not players:
+        raise ClientError(msg + 'No players in the area have set their files.')
+
+    player_list = list()
+    player_description = ''
+    for player in players:
+        if player.showname:
+            name = player.showname
+        elif player.char_showname:
+            name = player.char_showname
+        elif player.char_folder != player.get_char_name():
+            name = player.char_folder
+        else:
+            name = player.get_char_name()
+
+        priority = 0
+        if player.status:
+            priority -= 2**2
+        if player.party and player.party == client.party:
+            priority -= 2**1
+
+        player_list.append([priority, name, player.id, player])
+        # We add player.id as a tiebreaker if both priority and name are the same
+        # This can be the case if, say, two SPECTATOR are in the same area.
+        # player.id is unique, so it helps break ties
+        # player instances do not have order, so they are a bad way to sort ties.
+
+    player_list.sort()
+    for (_, name, _, player) in player_list:
+        if player.files[0] == name:
+            player_description += (
+                '\r\n[{}] {}: {}'.format(player.id, name, player.files[1])
+            )
+        else:
+            player_description += (
+                '\r\n[{}] {} ({}): {}'.format(player.id, name, player.files[0], player.files[1])
+            )
+
+    msg += (
+        f"=== Players in area {client.area.name} who have set their files ==={player_description}"
+        )
+    client.send_ooc(msg)
+    client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
 
 
 def ooc_cmd_files_set(client: ClientManager.Client, arg: str):
@@ -2187,6 +2566,37 @@ def ooc_cmd_globalic_pre(client: ClientManager.Client, arg: str):
         client.send_ooc('You have set your global IC prefix to {}'.format(arg))
     else:
         client.send_ooc('You have removed your global IC prefix.')
+
+
+def ooc_cmd_glock(client: ClientManager.Client, arg: str):
+    """ (OFFICER ONLY)
+    Toggles players that are not CM or mod being able to use /g and /zg or not.
+
+    SYNTAX
+    /glock
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    Assuming global chat was not locked originally...
+    /glock        :: Locks the global chat.
+    /glock        :: Unlocks the global chat.
+    """
+
+    Constants.assert_command(client, arg, is_officer=True, parameters='=0')
+
+    client.server.global_allowed = not client.server.global_allowed
+    status = {False: 'locked', True: 'unlocked'}
+
+    client.send_ooc('You have {} the global chat.'.format(status[client.server.global_allowed]))
+    client.send_ooc_others('A mod has {} the global chat.'
+                           .format(status[client.server.global_allowed]), is_officer=False)
+    client.send_ooc_others('{} [{}] has {} the global chat.'
+                           .format(client.name, client.id, status[client.server.global_allowed]),
+                           is_officer=True)
+    logger.log_server('{} has {} the global chat.'
+                      .format(client.name, status[client.server.global_allowed]), client)
 
 
 def ooc_cmd_gm(client: ClientManager.Client, arg: str):
@@ -2526,6 +2936,84 @@ def ooc_cmd_iclock(client: ClientManager.Client, arg: str):
                                        f'been unlocked ({client.area.id}).',
                                        is_zstaff_flex=client.area)
                 player.can_bypass_iclock = False
+
+
+def ooc_cmd_iclock_bypass(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Provides a non-staff player permission to talk in their current area if the area is IC locked.
+    Returns an error if the given identifier does not correspond to a user, if the target is
+    already staff or if the IC chat in the area of the target is not locked.
+
+    SYNTAX
+    /iclock_bypass <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    Assuming client 1 starts without a bypass...
+    /iclock_bypass 1            :: Grants client 1 an IC lock bypass
+    /iclock_bypass 1            :: Revokes client 1 of their IC lock bypass
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+    target = Constants.parse_id(client, arg)
+
+    if target.is_staff():
+        raise ClientError('Target is already staff and thus does not require an IC lock bypass.')
+    # As we require staff to run the command, but the target cannot be staff, we are guaranteed
+    # that target != client.
+    if not target.area.ic_lock:
+        raise ClientError('The IC chat in the area of the target is not locked.')
+
+    target.can_bypass_iclock = not target.can_bypass_iclock
+
+    if target.can_bypass_iclock:
+        client.send_ooc(f'You have granted {target.displayname} [{target.id}] an IC lock bypass.')
+        target.send_ooc('You have been granted an IC lock bypass.')
+        target.send_ooc_others(f'(X) {client.displayname} [{client.id}] has granted '
+                               f'{target.displayname} [{target.id}] an IC lock bypass '
+                               f'({target.area.id}).', is_zstaff_flex=True, not_to={client})
+    else:
+        client.send_ooc(f'You have revoked {target.displayname} [{target.id}] of their IC lock '
+                        'bypass.')
+        target.send_ooc('You have been revoked of your IC lock bypass.')
+        target.send_ooc_others(f'(X) {client.displayname} [{client.id}] has revoked '
+                               f'{target.displayname} [{target.id}] of their IC lock bypass '
+                               f'({target.area.id}).', is_zstaff_flex=True, not_to={client})
+
+
+def ooc_cmd_ignore(client: ClientManager.Client, arg: str):
+    """
+    Marks another user as ignored. You will no longer receive any IC messages from that user,
+    even those that come as a result of OOC commands. The target will not be notified of the
+    ignore command being executed on them.
+    Requires /unignore to undo.
+    Returns an error if the given identifier does not correspond to a user, if the target is
+    yourself, or if you are already ignoring the target.
+
+    SYNTAX
+    /ignore <user_id>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+
+    EXAMPLES
+    /ignore 1           :: Ignores client 1
+    """
+
+    Constants.assert_command(client, arg, parameters='>0')
+
+    target, _, _ = client.server.client_manager.get_target_public(client, arg)
+
+    if target == client:
+        raise ClientError('You may not ignore yourself.')
+    if target in client.ignored_players:
+        raise ClientError(f'You are already ignoring {target.displayname} [{target.id}].')
+
+    client.ignored_players.add(target)
+    client.send_ooc(f'You are now ignoring {target.displayname} [{target.id}].')
 
 
 def ooc_cmd_invite(client: ClientManager.Client, arg: str):
@@ -3193,6 +3681,94 @@ def ooc_cmd_look_set(client: ClientManager.Client, arg: str):
                           .format(client.area.id, client.get_char_name(), arg), client)
 
 
+def ooc_cmd_lurk(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Initiates an area lurk callout timer in the area so that non-spectator regular players who do
+    not speak IC after a set amount of seconds are called out in OOC to other players in the area
+    (but not themselves).
+    Actions that reset a player's personal callout timer are: speaking IC (even if gagged), using
+    /whisper or /guide, changing character, changing area and switching to spectator.
+    Actions that start a player's personal callout timer are: moving to an area with an active lurk
+    callout timer, switching from spectator to a character, or logging out from a ranked position.
+    Deaf and blind players in the area do not receive callout notifications from other players.
+    If a called out player is gagged, a special message is sent instead.
+    If an area had an active lurk callout timer and all players leave the area, the lurk callout
+    timer is deactivated and no players will be subject to one when moving to the area until a new
+    area lurk callout timer is started.
+    If an active area lurk callout timer is present when running the command, it will overwrite
+    the existing area lurk callout timer and reset all valid targets' callout timers.
+    Returns an error if the lurk callout length is non-positive or exceeds the server limit (6
+    hours).
+
+    SYNTAX
+    /lurk <length>
+
+    PARAMETERS
+    <length>: Area lurk callout time length (in seconds)
+
+    EXAMPLES
+    /lurk 60    :: Sets a 60-second area lurk callout timer, players who remain silent for a
+                   minute will be called out
+    /lurk 2     :: Sets a 2-second area lurk callout timer, players who remain silent for 2
+                   seconds will be called out
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    # Check if valid length and convert to seconds
+    lurk_length = Constants.parse_time_length(arg)  # Also internally validates
+    client.area.lurk_length = lurk_length
+
+    for c in client.area.clients:
+        c.check_lurk()
+
+    client.send_ooc('(X) You have enabled a lurk callout timer of length {} seconds in this area.'
+                    .format(lurk_length))
+    client.send_ooc_others('(X) {} has enabled a lurk callout timer of length {} seconds in your '
+                           'area.'.format(client.name, lurk_length),
+                           is_zstaff_flex=True, in_area=True)
+    client.send_ooc_others('(X) {} has enabled a lurk callout timer of length {} seconds in area '
+                           '{} ({}).'
+                           .format(client.name, lurk_length, client.area.name, client.area.id),
+                           is_zstaff_flex=True, in_area=False)
+
+
+def ooc_cmd_lurk_end(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Cancels an existing area lurk callout timer in the area, and all non-spectator regular players'
+    personal lurk callout timers in the area.
+    Returns an error if no area lurk callout timer is active in the area.
+
+    SYNTAX
+    /lurk_end
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    For current area with an active 10-second area lurk callout timer
+    /lurk_end    :: Cancels the area lurk callout timer, players may now remain silent for
+                       10 seconds and not be called out.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if client.area.lurk_length == 0:
+        raise ClientError('This area has no active lurk callout timer.')
+
+    client.area.lurk_length = 0
+    # End the lurk timer of all clients who have active lurk callout timers in the area
+    for c in client.area.clients:
+        c.check_lurk()
+
+    client.send_ooc('(X) You have ended the lurk callout timer in this area.')
+    client.send_ooc_others('(X) {} has ended the lurk callout timer in your area.'
+                           .format(client.name), is_zstaff_flex=True, in_area=True)
+    client.send_ooc_others('(X) {} has ended the lurk callout timer in area {} ({}).'
+                           .format(client.name, client.area.name, client.area.id),
+                           is_zstaff_flex=True, in_area=False)
+
+
 def ooc_cmd_make_gm(client: ClientManager.Client, arg: str):
     """ (VARYING REQUIREMENTS)
     Makes a player by ID a GM without them needing to put in a GM password.
@@ -3450,6 +4026,790 @@ def ooc_cmd_mute(client: ClientManager.Client, arg: str):
         logger.log_server('Muted {}.'.format(c.ipid), client)
         client.area.broadcast_ooc("{} was muted.".format(c.displayname))
         c.is_muted = True
+
+
+def ooc_cmd_noteworthy(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Toggles the area being noteworthy or not. If made noteworthy, all players in the area will
+    be notified in OOC and IC (as well as all watchers of a zone having the area but only in OOC),
+    except those simultaneously blind and deaf, who receive no notifications.
+
+    SYNTAX
+    /noteworthy
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /noteworthy
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    client.area.noteworthy = not client.area.noteworthy
+    status = '' if client.area.noteworthy else 'no longer '
+    client.send_ooc(f'You have marked your area as {status}noteworthy.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has marked your area as '
+                           f'{status}noteworthy.',
+                           is_zstaff_flex=True, in_area=True)
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has marked their area as '
+                           f'{status}noteworthy ({client.area.id}).',
+                           is_zstaff_flex=True, in_area=False)
+    if client.area.noteworthy:
+        client.send_ooc_others('Something catches your attention.', is_zstaff_flex=False,
+                               in_area=True, pred=lambda c: not (c.is_deaf and c.is_blind))
+        client.area.broadcast_ic_attention()
+
+    logger.log_server('[{}][{}]Set noteworthy status to {}'
+                      .format(client.area.id, client.get_char_name(), client.area.noteworthy),
+                      client)
+
+
+def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Starts an NSD with the players of your trial in your area with time limit if given, defaulting
+    to no time limit if not given. The NSD creator is automatically added as a NSD leader.
+    Players in the area not part of the trial, already part of a minigame or that do not have a
+    character are not added to the NSD. Players added to the NSD are ordered to switch to the
+    'nsd' gamemode.
+    Returns an error if the player is not part of a trial or leader of one, if the trial reached its
+    NSD limit, if the player is already part of a minigame or does not have a character, or if the
+    time is negative or above the server time limit.
+
+    SYNTAX
+    /nsd {length}
+
+    OPTIONAL PARAMETERS
+    {length}: time in seconds, or in mm:ss, or in h:mm:ss; limited to TIMER_LIMIT in function
+              Constants.parse_time_length. If given, it must be a positive integer.
+
+    EXAMPLE
+    /nsd 3:00       :: Starts an NSD with 3 minutes of time.
+    /nsd 120        :: Starts an NSD with 120 seconds of time.
+    """
+
+    try:
+        Constants.assert_command(client, arg, is_staff=True, parameters='<2')
+    except ArgumentError:
+        seconds = 300
+    else:
+        if not arg or arg == "0":
+            seconds = 0
+        else:
+            seconds = Constants.parse_time_length(arg)  # Also internally validates
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial. You must start a trial with /trial before '
+                          'starting a nonstop debate.')
+    if not trial.is_leader(client):
+        raise ClientError('You are not a leader of your trial.')
+
+    try:
+        nsd = trial.new_nsd(creator=client, add_players=False, timer_start_value=seconds,
+                            require_character=True,
+                            autoadd_on_trial_player_add=trial.get_autoadd_on_client_enter())
+    except TrialError.ManagerTooManyGamesError:
+        raise ClientError('The trial already has an active nonstop debate. End the previous one '
+                          'with /nsd_end.')
+    except NonStopDebateError.AreaHitGameConcurrentLimitError:
+        raise ClientError('This area already hosts another nonstop debate.')
+    except NonStopDebateError.UserHitGameConcurrentLimitError:
+        raise ClientError('You are already part of another minigame in your trial.')
+    except NonStopDebateError.UserHasNoCharacterError:
+        raise ClientError('You must have a character to create a nonstop debate.')
+
+    if seconds > 0:
+        client.send_ooc(f'You have created nonstop debate `{nsd.get_id()}` in area '
+                        f'{client.area.name} with time limit {seconds} seconds.')
+    else:
+        client.send_ooc(f'You have created nonstop debate `{nsd.get_id()}` in area '
+                        f'{client.area.name} with no time limit.')
+
+    nsd.add_leader(client)
+
+    for user in client.area.clients:
+        if user == client:
+            continue
+        try:
+            nsd.add_player(user)
+        except NonStopDebateError.UserNotPlayerError:
+            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
+                            f'they are not part of your trial.')
+        except NonStopDebateError.UserHitGameConcurrentLimitError:
+            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
+                            f'they are already part of another minigame.')
+        except NonStopDebateError.UserHasNoCharacterError:
+            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
+                            f'they must have a character to join this minigame.')
+
+    players = sorted(nsd.get_players(), key=lambda c: c.displayname)
+    player_list = '\n'.join([
+        f'[{player.id}] {player.displayname}' for player in players
+        ])
+
+    client.send_ooc(f'These players were automatically added to your nonstop debate: '
+                    f'\n{player_list}')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] created a nonstop debate '
+                           f'`{nsd.get_id()}` in area {client.area.name} ({client.area.id}).',
+                           is_zstaff_flex=True)
+    client.send_ooc_others(f'You were added to nonstop debate `{nsd.get_id()}`.',
+                           pred=lambda c: c in trial.get_players())
+    client.send_ooc_others(f'Nonstop debate `{nsd.get_id()}` started in your area.',
+                           pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
+
+
+def ooc_cmd_nsd_accept(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Accepts a break response given by a player of your NSD and ends it. That player's influence is
+    restored by 0.5 points.
+    Returns an error if you are not part of a trial or an NSD or leader of it, or if the NSD is in
+    not in post-break intermission mode.
+
+    SYNTAX
+    /nsd_accept
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /nsd_accept      :: Accepts a break response from the NSD and automatically ends the NSD.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    if not nsd.is_leader(client):
+        raise ClientError('You are not a leader of your nonstop debate.')
+
+    # Save because NSD is destroyed!
+    leaders, regulars = nsd.get_leaders(), nsd.get_regulars()
+    nonplayers = nsd.get_nonplayer_users_in_areas()
+
+    try:
+        existing = nsd.accept_break()
+    except NonStopDebateError.NSDNotInModeError:
+        raise ClientError('You may not accept a break for your nonstop debate at this moment.')
+
+    if existing:
+        client.send_ooc('You accepted the break and ended the nonstop debate. The breaker '
+                        'recovered 0.5 influence.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] accepted the break and '
+                               f'ended the nonstop debate. The breaker recovered 0.5 influence.',
+                               pred=lambda c: c in leaders)
+    else:
+        client.send_ooc('You accepted the break and ended the nonstop debate. Since the breaker '
+                        'had since disconnected or left the nonstop debate, their influence '
+                        'remained unchanged.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] accepted the break and '
+                               f'ended the nonstop debate. Since the breaker had since '
+                               f'disconnected or left the nonstop debate, their influence '
+                               f'remained unchanged.',
+                               pred=lambda c: c in leaders)
+    client.send_ooc_others('Your nonstop debate was ended by an accepted break.',
+                           pred=lambda c: c in regulars)
+    client.send_ooc_others('The nonstop debate you were watching was ended by an accepted break.',
+                           pred=lambda c: c in nonplayers)
+
+
+def ooc_cmd_nsd_add(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Adds another player to the NSD of the player.
+    Returns an error if the player is not a part of a trial or an NSD or is not a leader, if the
+    NSD reached its player limit, or if the target cannot be found, is not part of the trial, does
+    not have a character or is part of this or another NSD.
+
+    SYNTAX
+    /nsd_add <user_ID> <message>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+    <message>: Message to be sent.
+
+    EXAMPLES
+    /nsd_add 1  :: Adds the player with client ID 1 to the trial.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    if not nsd.is_leader(client):
+        raise ClientError('You are not a leader of your nonstop debate.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+
+    try:
+        nsd.add_player(target)
+    except NonStopDebateError.UserNotPlayerError:
+        raise ClientError('This player is not part of your trial.')
+    except NonStopDebateError.UserNotInAreaError:
+        raise ClientError('This player is not part of an area part of this nonstop debate.')
+    except NonStopDebateError.UserHasNoCharacterError:
+        raise ClientError('This player must have a character to join this nonstop debate.')
+    except NonStopDebateError.UserHitGameConcurrentLimitError:
+        raise ClientError('This player is already part of another nonstop debate.')
+    except NonStopDebateError.UserAlreadyPlayerError:
+        raise ClientError('This player is already part of this nonstop debate.')
+
+    client.send_ooc(f'You added {target.displayname} [{target.id}] to your nonstop debate.')
+    client.send_ooc_others(f'(X) {client.displayname} added {target.displayname} [{target.id}] '
+                           'to your nonstop '
+                           f'debate.', pred=lambda c: c in trial.get_leaders())
+    target.send_ooc(f'You were added to the nonstop debate `{nsd.get_id()}`.')
+
+
+def ooc_cmd_nsd_autoadd(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Toggles the nonstop debate of the player automatically attempting to add users as players who
+    themselves are added as players of the parent trial on/off.
+    Returns an error if the player is not part of a trial or a nonstop debate, or is not a leader
+    of their nonstop debate.
+
+    SYNTAX
+    /nsd_autoadd
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /nsd_autoadd
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    if not nsd.is_leader(client):
+        raise ClientError('You are not a leader of your nonstop debate.')
+
+    status = {True: 'now', False: 'no longer'}
+    new_autoadd = not nsd.get_autoadd_on_trial_player_add()
+    nsd.set_autoadd_on_trial_player_add(new_autoadd)
+
+    client.send_ooc(f'Your nonstop debate will {status[new_autoadd]} attempt to automatically add '
+                    f'future users who are added as players of your trial.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has set your nonstop debate so '
+                           f'that it will {status[new_autoadd]} attempt to automatically add '
+                           f'future users who are added as players of your trial.',
+                           pred=lambda c: c in nsd.get_leaders())
+
+
+def ooc_cmd_nsd_end(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Ends the NSD of the player. Every player of the NSD is ordered to switch back to the
+    'trial' gamemode.
+    Returns an error if the player is not a part of a trial or NSD, or is not a leader of it.
+
+    SYNTAX
+    /nsd_end
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /nsd_end      :: Ends the current NSD.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    if not nsd.is_leader(client):
+        raise ClientError('You are not a leader of your nonstop debate.')
+
+    leaders = nsd.get_leaders()
+    regulars = nsd.get_regulars()
+    nonplayers = nsd.get_nonplayer_users_in_areas()
+
+    nsd.destroy()
+
+    client.send_ooc('You ended your nonstop debate.')
+    client.send_ooc_others('The nonstop debate you were watching was ended.',
+                           pred=lambda c: c in nonplayers)
+    client.send_ooc_others('Your nonstop debate was ended.',
+                           pred=lambda c: c in regulars)
+    client.send_ooc_others(f'(X) {client.displayname} ended your nonstop debate.',
+                           pred=lambda c: c in leaders)
+
+
+def ooc_cmd_nsd_info(client: ClientManager.Client, arg: str):
+    """
+    Returns information about your current NSD.
+    Returns an error if you are not part of a trial or an NSD.
+
+    SYNTAX
+    /nsd_info
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /nsd_info         :: Returns NSD info.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+
+    nid = nsd.get_id()
+    area = next(iter(nsd.get_areas()))
+    leaders = nsd.get_leaders()
+    regulars = nsd.get_regulars()
+
+    num_members = len(leaders.union(regulars))
+    leaders = ', '.join([f'{c.displayname} [{c.id}]' for c in leaders]) if leaders else 'None'
+    regulars = ', '.join([f'{c.displayname} [{c.id}]' for c in regulars]) if regulars else 'None'
+    info = (f'Nonstop debate {nid} [{num_members}/-] ({area.id}). '
+            f'Leaders: {leaders}. Regular members: {regulars}.')
+    client.send_ooc(info)
+
+
+def ooc_cmd_nsd_join(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Enrolls you into a nonstop debate by nonstop debate ID.
+    Returns an error if you are not part of a trial, if the NSD ID is invalid, if you are not part
+    of an area part of the NSD, if you do not have a character when trying to join the NSD, or if
+    you are already part of this or another NSD.
+
+    SYNTAX
+    /nsd_join <nsd_id>
+
+    PARAMETERS
+    <nsd_id>: NSD ID
+
+    EXAMPLES
+    /nsd_join trial0g0      :: You will join NSD trial0g0.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    try:
+        nsd = trial.get_minigame_by_id(arg)
+    except TrialError.ManagerInvalidGameIDError:
+        raise ClientError(f'Unrecognized nonstop debate ID `{arg}`.')
+
+    try:
+        nsd.add_player(client)
+    except NonStopDebateError.UserNotInAreaError:
+        raise ClientError('You are not part of an area part of this nonstop debate.')
+    except NonStopDebateError.UserHasNoCharacterError:
+        raise ClientError('You must have a character to join this nonstop debate.')
+    except NonStopDebateError.UserHitGameConcurrentLimitError:
+        raise ClientError('You are already part of another nonstop debate.')
+    except NonStopDebateError.UserAlreadyPlayerError:
+        raise ClientError('You are already part of this nonstop debate.')
+
+    client.send_ooc(f'You joined nonstop debate `{arg}`.')
+    client.send_ooc('Become a leader of your nonstop debate with /nsd_lead')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] joined your nonstop debate.',
+                           pred=lambda c: c in nsd.get_leaders())
+
+
+def ooc_cmd_nsd_kick(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Kicks a player by ID off your NSD.
+    Returns an error if you are not part of a trial or NSD or leader of it, if the target is not
+    found or already not a part of your NSD, or if the target is the player.
+
+    SYNTAX
+    /nsd_kick <user_id>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+
+    EXAMPLES
+    /nsd_kick 1 5                :: Kicks client ID 1 off your trial.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    if not nsd.is_leader(client):
+        raise ClientError('You are not a leader of your nonstop debate.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+    if client == target:
+        raise ClientError('You cannot kick yourself off your nonstop debate.')
+
+    try:
+        nsd.remove_player(target)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('This player is not part of your nonstop debate.')
+
+    client.send_ooc(f'You have kicked {target.displayname} [{target.id}] off your nonstop debate.')
+    target.send_ooc('You were kicked off your nonstop debate.')
+    client.send_ooc_others(f'(X) {client.name} [{client.id}] has kicked {target.displayname} '
+                           f'[{target.id}] off your nonstop debate.',
+                           pred=lambda c: c != target and c in trial.get_leaders())
+
+
+def ooc_cmd_nsd_lead(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Makes you a leader of your NSD.
+    Returns an error if you are not part of a trial or an NSD, or if you are already leader of
+    the NSD.
+
+    SYNTAX
+    /nsd_lead
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /nsd_lead         :: Makes you leader of the NSD.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+
+    try:
+        nsd.add_leader(client)
+    except NonStopDebateError.UserAlreadyLeaderError:
+        raise ClientError('You are already a leader of this nonstop debate.')
+
+    client.send_ooc('You are now a leader of your nonstop debate.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
+                           f'nonstop debate.', pred=lambda c: c in nsd.get_leaders())
+
+
+def ooc_cmd_nsd_leave(client: ClientManager.Client, arg: str):
+    """
+    Makes you leave your current NSD. It will also notify all other remaining trial leaders of
+    your departure.
+    If you were the only member of the NSD, the NSD will be destroyed.
+    Returns an error if you are not part of a trial or an NSD.
+
+    SYNTAX
+    /nsd_leave
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /nsd_leave        :: Makes you leave your current nonstop debate.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    nid = nsd.get_id()  # Get ID now because NSD may be deleted
+    nonplayers = nsd.get_nonplayer_users_in_areas()  # Get nonplayers now because NSD may be deleted
+    client.send_ooc(f'You have left nonstop debate `{nid}`.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your nonstop debate.',
+                           pred=lambda c: c in nsd.get_leaders())
+    nsd.remove_player(client)
+
+    if nsd.is_unmanaged():
+        client.send_ooc(f'Your nonstop debate `{nid}` was automatically '
+                        f'ended as it lost all its players.')
+        client.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
+                               f'ended as it lost all its players.',
+                               is_zstaff_flex=True, not_to=nonplayers)
+        client.send_ooc_others('The nonstop debate you were watching was automatically ended '
+                               'as it lost all its players.',
+                               is_zstaff_flex=False, pred=lambda c: c in nonplayers)
+
+
+def ooc_cmd_nsd_loop(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets your current NSD to be in looping mode. While in looping mode, messages recorded during
+    recording mode will be played one after another, and no IC messages that do not have
+    counter, consent or perjury bullets are allowed. Such bulleted messages if sent while in
+    looping mode will put the NSD in intermission mode; and so will playing all of the recorded
+    messages.
+    Returns an error if you are not part of a trial or NSD or leader for it, or if the NSD is not
+    in intermission or post-break intermission mode.
+
+    SYNTAX
+    /nsd_loop
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /nsd_loop      :: Loops your NSD
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    if not nsd.is_leader(client):
+        raise ClientError('You are not a leader of your nonstop debate.')
+
+    try:
+        nsd.set_looping()
+    except NonStopDebateError.NSDAlreadyInModeError:
+        raise ClientError('The nonstop debate is already in this mode.')
+    except NonStopDebateError.NSDNotInModeError:
+        raise ClientError('You may not loop a nonstop debate at this moment.')
+    else:
+        client.send_ooc('You have set your nonstop debate to start looping.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has set your nonstop '
+                               f'debate to start looping.', pred=lambda c: c in nsd.get_leaders())
+        client.send_ooc_others('Your nonstop debate is now looping.',
+                               pred=lambda c: c in nsd.get_regulars())
+        client.send_ooc_others('The nonstop debate you are watching is now looping.',
+                               pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
+
+
+def ooc_cmd_nsd_pause(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Pauses your current NSD and puts it in intermission mode. Players part of the NSD are put in
+    the 'trial' gamemode.
+    Returns an error if you are not part of a trial or NSD or leader for it, or if the NSD is not
+    in recording or looping mode.
+
+    SYNTAX
+    /nsd_pause
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /nsd_pause      :: Pauses your NSD
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    if not nsd.is_leader(client):
+        raise ClientError('You are not a leader of your nonstop debate.')
+
+    try:
+        nsd.set_intermission()
+    except NonStopDebateError.NSDAlreadyInModeError:
+        raise ClientError('The nonstop debate is already in this mode.')
+    except NonStopDebateError.NSDNotInModeError:
+        raise ClientError('You may not pause a nonstop debate at this moment.')
+    else:
+        client.send_ooc('You have paused your nonstop debate.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has paused your nonstop '
+                               f'debate.', pred=lambda c: c in nsd.get_leaders())
+        client.send_ooc_others('Your nonstop debate was paused.',
+                               pred=lambda c: c in nsd.get_regulars())
+        client.send_ooc_others('The nonstop debate you were watching was paused.',
+                               pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
+
+
+def ooc_cmd_nsd_resume(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Resumes the mode the NSD was in before it was put in intermission mode.
+    Returns an error if you are not part of a trial or an NSD or leader of it, or if the NSD is in
+    not in intermission or post-break intermission mode.
+
+    SYNTAX
+    /nsd_loop
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /nsd_loop      :: Loops your NSD
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    if not nsd.is_leader(client):
+        raise ClientError('You are not a leader of your nonstop debate.')
+
+    try:
+        resumed_mode = nsd.resume()
+    except NonStopDebateError.NSDNotInModeError:
+        raise ClientError('You may not resume a nonstop debate at this moment.')
+    else:
+        mode = resumed_mode.name.lower()
+        if mode == 'prerecording':
+            mode = 'recording'
+        client.send_ooc(f'You have put your nonstop debate back in {mode} mode.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has put your nonstop '
+                               f'debate back in {mode} mode.',
+                               pred=lambda c: c in nsd.get_leaders())
+        client.send_ooc_others(f'Your nonstop debate is now in {mode} mode again.',
+                               pred=lambda c: c in nsd.get_regulars())
+        client.send_ooc_others(f'The nonstop debate you are watching is now in {mode} mode again.',
+                               pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
+
+
+def ooc_cmd_nsd_reject(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Rejects a break response given by a player of your NSD. That player's influence is decreased
+    by 1 point. The NSD will remain in post-break intermission mode, but NSD leaders will be
+    prompted to end or resume the NSD.
+    Returns an error if you are not part of a trial or an NSD or leader of it, or if the NSD is in
+    not in post-break intermission mode.
+
+    SYNTAX
+    /nsd_reject
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /nsd_reject      :: Rejects a break response from the NSD
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+    if not nsd.is_leader(client):
+        raise ClientError('You are not a leader of your nonstop debate.')
+
+    try:
+        existing = nsd.reject_break()
+    except NonStopDebateError.NSDNotInModeError:
+        raise ClientError('You may not reject a break for your nonstop debate at this moment.')
+
+    if existing:
+        client.send_ooc('You rejected the break. The breaker lost 1 influence.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] rejected the break. The '
+                               f'breaker lost 1 influence.',
+                               pred=lambda c: c in nsd.get_leaders())
+    else:
+        client.send_ooc('You rejected the break. Since the breaker had since disconnected or left '
+                        'the nonstop debate, their influence remained unchanged.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] rejected the break. Since '
+                               f'the breaker had since disconnected or left the nonstop debate, '
+                               f'their influence remained unchanged.',
+                               pred=lambda c: c in nsd.get_leaders())
+
+    client.send_ooc('Send /nsd_resume to resume the debate, /nsd_end to end the debate.')
+    client.send_ooc_others('The break was rejected, so the debate continues!',
+                           pred=lambda c: c in nsd.get_regulars())
+    client.send_ooc_others('The break was rejected, so the debate continues!',
+                           pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
+
+
+def ooc_cmd_nsd_unlead(client: ClientManager.Client, arg: str):
+    """
+    Removes your NSD leader role.
+    Returns an error if you are not part of a trial or an NSD, or if you are already not leader
+    of that NSD.
+
+    SYNTAX
+    /nsd_unlead
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /nsd_unlead         :: Removes your trial leader role.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    try:
+        nsd = trial.get_nsd_of_user(client)
+    except TrialError.UserNotInMinigameError:
+        raise ClientError('You are not part of a nonstop debate.')
+
+    try:
+        nsd.remove_leader(client)
+    except TrialError.UserNotLeaderError:
+        raise ClientError('You are already not a leader of this NSD.')
+
+    client.send_ooc('You are no longer a leader of your NSD.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is no longer a leader of your '
+                           f'NSD.', pred=lambda c: c in nsd.get_leaders())
 
 
 def ooc_cmd_online(client: ClientManager.Client, arg: str):
@@ -3932,6 +5292,136 @@ def ooc_cmd_party_unlead(client: ClientManager.Client, arg: str):
             x.send_ooc('{} is no longer a leader of your party.'.format(client.displayname))
 
 
+def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
+    """
+    Sends an IC personal message to everyone in the sender's party. The messages have the showname
+    of the sender and their message, but does not include their sprite.
+    Elevated notifications are sent to zone watchers/staff members on whispers to other people,
+    which include the message content, so this is not meant to act as a private means of
+    communication between players, for which /pm is recommended.
+    Whispers sent by sneaked players include an empty showname so as to not reveal their identity,
+    except if some members of the party are sneaking as well, in which case they will receive the
+    message with showname.
+    Deafened recipients will receive a nerfed message if whispered to.
+    Non-zone watchers/non-staff players in the same area as the whisperer will be notified that
+    they whispered to their target (but will not receive the content of the message), provided they
+    are not blind (in which case no notification is sent) and that this was not a self-whisper.
+    Returns an error if the player is not part of a party, if the message is empty or if the
+    sender is gagged or IC-muted.
+
+    SYNTAX
+    /party_whisper <user_ID> <message>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+    <message>: Message to be sent.
+
+    EXAMPLES
+    /party_whisper Hey, all!   :: Sends that message to all players of the party.
+    """
+
+    try:
+        Constants.assert_command(client, arg, parameters='>0')
+    except ArgumentError:
+        raise ArgumentError('Not enough arguments. Use /party_whisper <message>. Target should '
+                            'be ID, char-name, edited-to character, custom showname or OOC-name.')
+
+    party = client.get_party(tc=True)
+    if client.is_muted:
+        raise ClientError('You have been muted by a moderator.')
+    if client.is_gagged:
+        raise ClientError('Your attempt at whispering failed because you are gagged.')
+
+    msg = arg[:256]  # Cap
+    public_area = not client.area.private_area
+
+    client.send_ooc('You whispered `{}` to your party members.'.format(msg))
+    client.send_ic(msg=msg, pos=client.pos, folder=client.char_folder, char_id=client.char_id,
+                   showname=client.showname,
+                   bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
+
+    members = party.get_members()-{client}
+    pid = party.get_id()
+
+    if client.is_visible:
+        for target in members:
+            target.send_ooc('{} whispered something to your party.'
+                            .format(client.displayname), to_deaf=False)
+            target.send_ooc('{} seemed to whisper something to your party, but you could not make '
+                            'it out.'
+                            .format(client.displayname), to_deaf=True, to_blind=False)
+            target.send_ooc('Someone seemed to whisper something to your party, but you could '
+                            'not make it out.',
+                            to_deaf=True, to_blind=True)
+
+            target.send_ic(msg=msg, pos=client.pos, char_id=client.char_id,
+                           folder=client.char_folder, showname=client.showname,
+                           pred=lambda _: not (target.is_deaf and target.is_blind),
+                           bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
+            target.send_ic(msg=msg, pos=client.pos, char_id=client.char_id,
+                           folder=None, showname='???',
+                           pred=lambda _: (target.is_deaf and target.is_blind),
+                           bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
+        if public_area:
+            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party {} ({}).'
+                                   .format(client.displayname, client.id, msg, pid, client.area.id),
+                                   is_zstaff_flex=True, not_to=members)
+            client.send_ooc_others('You see a group of people huddling together.',
+                                   in_area=True, to_blind=False, is_zstaff_flex=False,
+                                   not_to=members)
+        else:
+            # For private areas, zone watchers and staff get normal whisper reports if in the same
+            # area.
+            client.send_ooc_others('(X) You see a group of people huddling together.',
+                                   in_area=True, is_zstaff_flex=True, not_to=members)
+    else:
+        sneaked = {member for member in members if not member.is_visible}
+        not_sneaked = members-sneaked
+        for target in sneaked:
+            target.send_ooc('{} whispered something to your party while sneaking.'
+                            .format(client.displayname), to_deaf=False)
+            target.send_ooc('{} seemed to whisper something to your party while sneaking, but you '
+                            'could not make it out.'
+                            .format(client.displayname), to_deaf=True, to_blind=False)
+            # No different notification
+            target.send_ooc('Someone seemed to whisper something to your party, but you could '
+                            'not make it out.',
+                            to_deaf=True, to_blind=True)
+            target.send_ic(msg=msg, pos=client.pos, char_id=client.char_id,
+                           folder=client.char_folder, showname=client.showname,
+                           pred=lambda _: not (target.is_deaf and target.is_blind),
+                           bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
+            target.send_ic(msg=msg, pos=client.pos, char_id=client.char_id,
+                           folder=None, showname='???',
+                           pred=lambda _: (target.is_deaf and target.is_blind),
+                           bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
+
+        for target in not_sneaked:
+            target.send_ooc('You heard a whisper, but you could not seem to tell where it came '
+                            'from.', to_deaf=False)
+            target.send_ooc('Your ears seemed to pick up something.', to_deaf=True)
+            target.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
+
+        if public_area:
+            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party {} while sneaking '
+                                   '({}).'
+                                   .format(client.displayname, client.id, msg, pid, client.area.id),
+                                   is_zstaff_flex=True, not_to=members)
+            client.send_ooc_others('You heard a whisper, but you could not seem to tell where it '
+                                   'came from.',
+                                   in_area=True, to_deaf=False, is_zstaff_flex=False,
+                                   not_to=members)
+            client.send_ooc_others('Your ears seemed to pick up something.',
+                                   in_area=True, to_deaf=True, is_zstaff_flex=True,
+                                   not_to=members)
+        else:
+            # For private areas, zone watchers and staff get normal whisper reports if in the same
+            # area.
+            client.send_ooc_others('(X) You see a group of people huddling together',
+                                   in_area=True, is_zstaff_flex=True, not_to=members)
+
+
 def ooc_cmd_passage_clear(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Clears all the passage locks that start in the areas between two given ones by name or ID, or
@@ -4261,6 +5751,59 @@ def ooc_cmd_randomchar(client: ClientManager.Client, arg: str):
     free_id = client.area.get_rand_avail_char_id(allow_restricted=client.is_staff())
     client.change_character(free_id)
     client.send_ooc('Randomly switched to `{}`.'.format(client.get_char_name()))
+
+
+def ooc_cmd_randommusic(client: ClientManager.Client, arg: str):
+    """
+    Plays a randomly chosen track from the player's current music list.
+    Returns an error if the player is IC-muted, if the player does not have DJ privileges, or
+    if the player triggers the server music flood guard.
+
+    SYNTAX
+    /randommusic
+
+    PARAMETERS:
+    None
+
+    EXAMPLES:
+    /randommusic       :: May play 'Ikoroshia.mp3', 'Despair Searching.mp3', etc.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    if client.is_muted:  # Checks to see if the client has been muted by a mod
+        raise ClientError("You have been muted by a moderator.")
+    if not client.is_dj:
+        raise ClientError('You were blockdj\'d by a moderator.')
+
+    delay = client.change_music_cd()
+    if delay:
+        raise ClientError(f'You changed song too many times recently. Please try again after '
+                          f'{Constants.time_format(delay)}.')
+
+    # Find all music tracks
+    music_names = list()
+    music_list = client.music_list
+    if music_list is None:
+        music_list = client.server.music_list
+
+    for item in music_list:
+        songs = item['songs']
+        for song in songs:
+            name = song['name']
+            music_names.append(name)
+
+    if not music_names:
+        raise ClientError('No music tracks found in the current music list.')
+
+    random_music = random.choice(music_names)
+    client.area.play_track(random_music, client, raise_if_not_found=False, reveal_sneaked=False)
+
+    client.send_ooc('You have played the randomly chosen track `{}` in your area.'
+                    .format(random_music))
+    client.send_ooc_others('(X) {} [{}] has played the randomly chosen track `{}` in your area.'
+                           .format(client.displayname, client.id, random_music),
+                           is_zstaff_flex=True, in_area=True)
 
 
 def ooc_cmd_refresh(client: ClientManager.Client, arg: str):
@@ -5296,6 +6839,166 @@ def ooc_cmd_st(client: ClientManager.Client, arg: str):
                       .format(client.area.id, client.get_char_name(), client.name, arg), client)
 
 
+def ooc_cmd_status(client: ClientManager.Client, arg: str):
+    """ (VARYING REQUIREMENTS)
+    Obtains the status of a player by ther ID. If given no identifier, it will return your status.
+    Returns an error if the given identifier does not correspond to a user, if the target has not
+    set their status or if the sender is not a staff and would not be able to see the target in
+    /getarea (regardless of whether /getarea is allowed in the area or not).
+
+    SYNTAX
+    /status
+    /status <user_id>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+
+    EXAMPLES
+    Assuming client 1 on character Phantom_HD has a custom description
+    /status 1           :: May return something like this:
+        $HOST: You note the following about Phantom_HD: 'Phantom is carrying a bag.'
+    """
+
+    msg = ''
+    if client.is_blind:
+        if not client.is_staff():
+            raise ClientError('You are blind, so you cannot see anything.')
+        msg = '(X) '
+    if not client.area.lights:
+        if not client.is_staff():
+            raise ClientError('The lights are off, so you cannot see anything.')
+        msg = '(X) '
+
+    if arg:
+        cm = client.server.client_manager
+        target, _, _ = cm.get_target_public(client, arg, only_in_area=not client.is_staff())
+
+        if target.status:
+            msg += (f'You note the following about {target.displayname}: {target.status}')
+        else:
+            msg += (f'You do not note anything unusual about {target.displayname}.')
+    else:
+        if client.status:
+            msg += (f'You note the following about yourself: {client.status}')
+        else:
+            msg += ('You do not note anything unusual about yourself.')
+
+    client.send_ooc(msg)
+
+
+def ooc_cmd_status_set(client: ClientManager.Client, arg: str):
+    """
+    Sets your player status as the given argument; otherwise, clears it.
+    Returns an error if the player attempts to clear an already empty player status.
+
+    SYNTAX
+    /status_set
+    /status_set <status>
+
+    PARAMETERS
+    <status>: New status
+
+    EXAMPLES
+    If client 1 is on character Phantom_HD and iniswapped to Spam_HD
+    /status_set Phantom is carrying a bag  :: Sets the status to `Phantom is carrying a bag.`
+    """
+
+    if not arg and not client.status:
+        raise ClientError('You already have no player status.')
+
+    if arg:
+        client.status = arg
+        client.send_ooc(f'You have set your player status to {arg}')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set their player status '
+                               f'to `{client.status}` ({client.area.id}).',
+                               is_zstaff_flex=True)
+
+        refreshed_clients = client.refresh_remembered_status()
+        for c in refreshed_clients:
+            c.send_ooc(f'You note something different about {client.displayname}.',
+                       is_zstaff_flex=False)
+
+        client.area.broadcast_ic_attention(cond=lambda c: c in refreshed_clients)
+
+    else:
+        client.status = ''
+        client.send_ooc('You have removed your player status.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] removed their player '
+                               f'status ({client.area.id}).', is_zstaff_flex=True)
+
+        refreshed_clients = client.refresh_remembered_status()
+        for c in refreshed_clients:
+            c.send_ooc(f'You no longer note something different about {client.displayname}.',
+                       is_zstaff_flex=False)
+
+
+def ooc_cmd_status_set_other(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets another player status by ID as the given argument; otherwise, clears it.
+    Returns an error if the target is not found, the target is the player or the player attempts to
+    clear an already empty player status.
+
+    SYNTAX
+    /status_set_other <user_id>
+    /status_set_other <user_id> <status>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+    <status>: New status
+
+    EXAMPLES
+    If client 1 is on character Phantom_HD and iniswapped to Spam_HD
+    /status_set_other Phantom_HD Phantom is carrying a bag  :: Sets the status of Phantom to
+                                                               `Phantom is carrying a bag.`
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    cm = client.server.client_manager
+    target, _, new_status = cm.get_target_public(client, arg)
+    new_status = new_status[:1024]  # Cap
+
+    if client == target:
+        raise ClientError('You cannot set your own status with this command.')
+    if not new_status and not target.status:
+        raise ClientError(f'{target.displayname} already does not have a player status.')
+
+    client.send_ooc(f'You set the player status of {target.displayname} to `{new_status}`.')
+    if not (target.is_blind and target.is_deaf):
+        target.send_ooc('Your status was updated. Do /status to check it out.')
+
+    if new_status:
+        target.status = new_status
+        client.send_ooc_others(f'(X) {client.displayname} [{target.id}] set the player status '
+                               f'of {target.displayname} to `{new_status}` ({client.area.id}).',
+                               is_zstaff_flex=True, not_to={target})
+
+        refreshed_clients = target.refresh_remembered_status()
+        for c in refreshed_clients:
+            if c == client:
+                continue
+
+            c.send_ooc(f'You now note something about {target.displayname}.',
+                       is_zstaff_flex=False)
+        target.area.broadcast_ic_attention()
+
+    else:
+        # By previous if, player must have had a status before
+        target.status = ''
+        client.send_ooc_others(f'(X) {client.displayname} [{target.id}] cleared the player '
+                               f'status of {target.displayname} ({client.area.id}).',
+                               is_zstaff_flex=True, not_to={target})
+
+        refreshed_clients = target.refresh_remembered_status()
+        for c in refreshed_clients:
+            if c == client:
+                continue
+            c.send_ooc(f'You no longer note something different about {target.displayname}.',
+                       is_zstaff_flex=False)
+
+
 def ooc_cmd_switch(client: ClientManager.Client, arg: str):
     """
     Switches current user's character to a different one.
@@ -5572,6 +7275,31 @@ def ooc_cmd_ToD(client: ClientManager.Client, arg: str):
                       .format(client.area.id, client.get_char_name(), flip), client)
 
 
+def ooc_cmd_toggle_allpasses(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Toggles receiving autopass notifications from players who do not have autopass on. Note this
+    does not toggle autopass for everyone.
+    Receiving such notifications is turned off by default.
+
+    SYNTAX
+    /toggle_allpasses
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /toggle_allpasses
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    client.get_nonautopass_autopass = not client.get_nonautopass_autopass
+    status = {False: 'no longer', True: 'now'}
+
+    client.send_ooc('You are {} receiving autopass notifications from players without autopass.'
+                    .format(status[client.get_nonautopass_autopass]))
+
+
 def ooc_cmd_toggle_allrolls(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Toggles receiving /roll and /rollp notifications from areas other than the current one.
@@ -5619,6 +7347,32 @@ def ooc_cmd_toggle_fp(client: ClientManager.Client, arg: str):
     status = {True: 'now', False: 'no longer'}
 
     client.send_ooc('You are {} in first person mode.'.format(status[client.first_person]))
+
+
+def ooc_cmd_toggle_fs(client: ClientManager.Client, arg: str):
+    """
+    Toggles forward sprites mode on or off. If off, no matter what message the player sends, their
+    sprite will not be forwarded to target players, but instead they will see whatever the last
+    sprite used was onscreen appear with the message.
+
+    SYNTAX
+    /toggle_fs
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    Assuming you start in normal mode...
+    /toggle_fs          :: Toggles first person mode on.
+    /toggle_fs          :: Toggles first person mode off.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    client.forward_sprites = not client.forward_sprites
+    status = {True: 'now', False: 'no longer'}
+
+    client.send_ooc('You are {} in forward sprites mode.'.format(status[client.forward_sprites]))
 
 
 def ooc_cmd_toggle_global(client: ClientManager.Client, arg: str):
@@ -5726,6 +7480,520 @@ def ooc_cmd_transient(client: ClientManager.Client, arg: str):
                         .format(c.displayname, c.area.id, status[c.is_transient]))
         c.send_ooc('You are {} transient to passage locks.'.format(status[c.is_transient]))
         c.reload_music_list()  # Update their music list to reflect their new status
+
+
+def ooc_cmd_trial(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Starts a trial with all players in the area. Players that are already part of a trial or that
+    lack a character are not added to a trial. The trial creator is automatically added as a
+    trial leader.
+    Players added to a trial are ordered to switch to the 'trial' theme gamemode.
+    Returns an error if the server has reached its trial limit, or if the player is part of another
+    trial or has no character.
+
+    SYNTAX
+    /trial
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    Assuming the player is in area 4
+    /trial  :: Starts a trial and adds everyone in the area to the trial
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.new_trial(creator=client, add_players=False,
+                                                      require_character=True,
+                                                      autoadd_on_client_enter=False,
+                                                      autoadd_minigame_on_player_added=False)
+    except TrialError.AreaDisallowsBulletsError:
+        raise ClientError('This area disallows bullets.')
+    except TrialError.AreaHitGameConcurrentLimitError:
+        raise ClientError('This area already hosts another trial.')
+    except TrialError.ManagerTooManyGamesError:
+        raise ClientError('The server has reached its trial limit.')
+    except TrialError.UserHitGameConcurrentLimitError:
+        raise ClientError('You are already part of another trial.')
+    except TrialError.UserHasNoCharacterError:
+        raise ClientError('You must have a character to create a trial.')
+
+    client.send_ooc(f'You have created trial `{trial.get_id()}` in area {client.area.name}.')
+    trial.add_leader(client)
+
+    for user in client.area.clients:
+        if user == client:
+            continue
+        try:
+            trial.add_player(user)
+        except TrialError.UserHitGameConcurrentLimitError:
+            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
+                            f'they are already part of another trial.')
+        except TrialError.UserHasNoCharacterError:
+            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
+                            f'they must have a character to join this trial.')
+
+    players = sorted(trial.get_players(), key=lambda c: c.displayname)
+    player_list = '\n'.join([
+        f'[{player.id}] {player.displayname}' for player in players
+        ])
+
+    client.send_ooc(f'These players were automatically added to your trial: \n{player_list}')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] created trial '
+                           f'`{trial.get_id()}` in area {client.area.name} ({client.area.id}).',
+                           is_zstaff_flex=True)
+    client.send_ooc_others(f'You were added to trial `{trial.get_id()}`.',
+                           pred=lambda c: c in trial.get_players())
+    client.send_ooc_others(f'Trial `{trial.get_id()}` started in your area.',
+                           pred=lambda c: c in trial.get_nonplayer_users_in_areas())
+
+
+def ooc_cmd_trial_add(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Adds another player to the trial of the player.
+    Returns an error if the player is not a part of a trial or is not a leader, if the trial
+    reached its player limit, or if the target cannot be found, does not have a character or is
+    part of this or another trial.
+
+    SYNTAX
+    /trial_add <user_ID> <message>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+    <message>: Message to be sent.
+
+    EXAMPLES
+    /trial_add 1  :: Adds the player with client ID 1 to the trial.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if not trial.is_leader(client):
+        raise ClientError('You are not a leader of your trial.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+
+    try:
+        trial.add_player(target)
+    except TrialError.UserNotInAreaError:
+        raise ClientError('This player is not part of an area part of this trial.')
+    except TrialError.UserHasNoCharacterError:
+        raise ClientError('This player must have a character to join this trial.')
+    except TrialError.UserHitGameConcurrentLimitError:
+        raise ClientError('This player is already part of another trial.')
+    except TrialError.UserAlreadyPlayerError:
+        raise ClientError('This player is already part of this trial.')
+
+    client.send_ooc(f'You added {target.displayname} [{target.id}] to your trial.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] added {target.displayname} '
+                           f'[{target.id}] to your trial.',
+                           pred=lambda c: c in trial.get_leaders())
+    target.send_ooc(f'You were added to trial `{trial.get_id()}`.')
+
+
+def ooc_cmd_trial_autoadd(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Toggles the trial of the player automatically attempting to add users who join an area part of
+    the trial on/off.
+    Returns an error if the player is not part of a trial or is not a leader of it.
+
+    SYNTAX
+    /trial_autoadd
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /trial_autoadd
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if not trial.is_leader(client):
+        raise ClientError('You are not a leader of your trial.')
+
+    status = {True: 'now', False: 'no longer'}
+    new_autoadd = not trial.get_autoadd_on_client_enter()
+    trial.set_autoadd_on_client_enter(new_autoadd)
+
+    client.send_ooc(f'Your trial will {status[new_autoadd]} attempt to automatically add future '
+                    f'users who enter an area part of your trial.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has set your trial so that it '
+                           f'will {status[new_autoadd]} attempt to automatically add future '
+                           f'users who enter an area part of your trial.',
+                           pred=lambda c: c in trial.get_leaders())
+
+
+def ooc_cmd_trial_end(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Ends the trial of the player. Every player of the trial is ordered to switch back to the
+    'default' gamemode.
+    Returns an error if the player is not a part of a trial or is not a leader of it.
+
+    SYNTAX
+    /trial_end
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /trial_end      :: Ends the current trial.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if not trial.is_leader(client):
+        raise ClientError('You are not a leader of your trial.')
+
+    # Save leaders and regulars before destruction
+    leaders = trial.get_leaders()
+    regulars = trial.get_regulars()
+    nonplayers = trial.get_nonplayer_users_in_areas()
+    trial.end()
+
+    client.send_ooc('You ended your trial.')
+    client.send_ooc_others('The trial you were watching was ended.',
+                           pred=lambda c: c in nonplayers)
+    client.send_ooc_others('Your trial was ended.',
+                           pred=lambda c: c in regulars)
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] ended your trial.',
+                           pred=lambda c: c in leaders)
+
+
+def ooc_cmd_trial_focus(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets the focus level of a player in your trial by ID.
+    Returns an error if you are not part of a trial or leader of it, if the target is not found or
+    not part of your trial, or if the focus value is not a number from 0 to 10.
+
+    SYNTAX
+    /trial_focus <user_id>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+    <message>: Message to be sent.
+
+    EXAMPLES
+    /trial_focus 1 5                :: Sets the focus level of client ID 1 to 5.
+    /trial_focus Phantom_HD 0       :: Sets the focus level of Phantom_HD to 0.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='>1')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if not trial.is_leader(client):
+        raise ClientError('You are not a leader of your trial.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+    try:
+        new_focus = float(arg.split(' ')[-1])
+    except ValueError:
+        raise ClientError('New focus value must be a number.')
+
+    try:
+        trial.set_focus(target, new_focus)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('This player is not part of your trial.')
+    except TrialError.FocusIsInvalidError:
+        raise ClientError(f'This new focus value {new_focus} is outside the valid range.')
+
+    client.send_ooc(f'You have set the focus level of {target.displayname} [{target.id}] to '
+                    f'{new_focus}.')
+    if client != target:
+        target.send_ooc(f'Your focus level was set to {new_focus}.')
+    client.send_ooc_others(f'(X) {client.name} [{client.id}] has set the focus level of '
+                           f'{target.displayname} [{target.id}] to {new_focus}.',
+                           pred=lambda c: c != target and c in trial.get_leaders())
+
+
+def ooc_cmd_trial_influence(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets the influence level of a player in your trial by ID.
+    Returns an error if you are not part of a trial or leader of it, if the target is not found or
+    not part of your trial, or if the influence value is not a number from 0 to 10.
+
+    SYNTAX
+    /trial_influence <user_id>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+    <message>: Message to be sent.
+
+    EXAMPLES
+    /trial_influence 1 5                :: Sets the influence level of client ID 1 to 5.
+    /trial_influence Phantom_HD 0       :: Sets the influence level of Phantom_HD to 0.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='>1')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if not trial.is_leader(client):
+        raise ClientError('You are not a leader of your trial.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+    try:
+        new_influence = float(arg.split(' ')[-1])
+    except ValueError:
+        raise ClientError('New influence value must be a number.')
+
+    try:
+        trial.set_influence(target, new_influence)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('This player is not part of your trial.')
+    except TrialError.InfluenceIsInvalidError:
+        raise ClientError(f'This new influence value {new_influence} is outside the valid range.')
+
+    client.send_ooc(f'You have set the influence level of {target.displayname} [{target.id}] to '
+                    f'{new_influence}.')
+    if client != target:
+        target.send_ooc(f'Your influence level was set to {new_influence}.')
+    client.send_ooc_others(f'(X) {client.name} [{client.id}] has set the influence level of '
+                           f'{target.displayname} [{target.id}] to {new_influence}.',
+                           pred=lambda c: c != target and c in trial.get_leaders())
+
+
+def ooc_cmd_trial_info(client: ClientManager.Client, arg: str):
+    """ (VARYING REQUIREMENTS)
+    Returns information about your current trial. Trial leaders also obtain influence and focus
+    values of the players.
+    Returns an error if you are not part of a trial.
+
+    SYNTAX
+    /trial_info
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /trial_info         :: Returns trial info.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    info = trial.get_info(include_health=trial.is_leader(client))
+    client.send_ooc(info)
+
+
+def ooc_cmd_trial_join(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Enrolls you into a trial by trial ID.
+    Returns an error if the trial ID is invalid, if you are not part of an area part of the trial,
+    if you do not have a character when trying to join the trial, or if you are already part of
+    this or another trial.
+
+    SYNTAX
+    /trial_join <trial_id>
+
+    PARAMETERS
+    <trial_id>: Trial ID
+
+    EXAMPLES
+    /trial_join trial0      :: You will join trial trial0.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_game_by_id(arg)
+    except TrialError.ManagerInvalidGameIDError:
+        raise ClientError(f'Unrecognized trial ID `{arg}`.')
+
+    try:
+        trial.add_player(client)
+    except TrialError.UserNotInAreaError:
+        raise ClientError('You are not part of an area part of this trial.')
+    except TrialError.UserHasNoCharacterError:
+        raise ClientError('You must have a character to join this trial.')
+    except TrialError.UserHitGameConcurrentLimitError:
+        raise ClientError('You are already part of another trial.')
+    except TrialError.UserAlreadyPlayerError:
+        raise ClientError('You are already part of this trial.')
+
+    client.send_ooc(f'You joined trial `{arg}`.')
+    client.send_ooc('Become a leader of your trial with /trial_lead')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] joined your trial.',
+                           pred=lambda c: c in trial.get_leaders())
+
+
+def ooc_cmd_trial_kick(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Kicks a player by ID off your trial.
+    Returns an error if you are not part of a trial or leader of it, if the target is not found
+    or already not a part of your trial, or if the target is the player.
+
+    SYNTAX
+    /trial_kick <user_id>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+
+    EXAMPLES
+    /trial_kick 1 5                :: Kicks client ID 1 off your trial.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+    if not trial.is_leader(client):
+        raise ClientError('You are not a leader of your trial.')
+
+    cm = client.server.client_manager
+    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
+    if client == target:
+        raise TrialError('You cannot kick yourself off your trial (consider using /trial_leave).')
+
+    try:
+        trial.remove_player(target)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('This player is not part of your trial.')
+
+    client.send_ooc(f'You have kicked {target.displayname} [{target.id}] off your trial.')
+    target.send_ooc('You were kicked off your trial.')
+    client.send_ooc_others(f'(X) {client.name} [{client.id}] has kicked {target.displayname} '
+                           f'[{target.id}] off your trial.',
+                           pred=lambda c: c != target and c in trial.get_leaders())
+
+
+def ooc_cmd_trial_lead(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Makes you a leader of your trial.
+    Returns an error if you are not part of a trial or if you are already leader of that trial.
+
+    SYNTAX
+    /trial_lead
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /trial_lead         :: Makes you leader of the trial.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    try:
+        trial.add_leader(client)
+    except TrialError.UserAlreadyLeaderError:
+        raise ClientError('You are already a leader of this trial.')
+
+    client.send_ooc('You are now a leader of your trial.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
+                           f'trial.', pred=lambda c: c in trial.get_leaders())
+
+
+def ooc_cmd_trial_leave(client: ClientManager.Client, arg: str):
+    """
+    Makes you leave your current trial and any minigames you may have been a part of. It will
+    also notify all other remaining trial leaders of your departure.
+    If you were the only member of the trial, the trial will be destroyed.
+    Returns an error if you are not part of a trial.
+
+    SYNTAX
+    /trial_leave
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /trial_leave        :: Makes you leave your current trial.
+    """
+
+    Constants.assert_command(client, arg, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    tid = trial.get_id()  # Get ID now because trial may be deleted
+    nonplayers = trial.get_nonplayer_users_in_areas()
+
+    client.send_ooc(f'You have left trial `{tid}`.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your trial.',
+                           pred=lambda c: c in trial.get_leaders())
+    trial.remove_player(client)
+
+    if trial.is_unmanaged():
+        client.send_ooc(f'Your trial `{tid}` was automatically '
+                        f'ended as it lost all its players.')
+        client.send_ooc_others(f'(X) Trial `{tid}` was automatically '
+                               f'ended as it lost all its players.',
+                               is_zstaff_flex=True, not_to=nonplayers)
+        client.send_ooc_others('The trial you were watching was automatically ended '
+                               'as it lost all its players.',
+                               is_zstaff_flex=False, pred=lambda c: c in nonplayers)
+
+
+def ooc_cmd_trial_unlead(client: ClientManager.Client, arg: str):
+    """
+    Removes your trial leader role.
+    Returns an error if you are not part of a trial or if you are already not leader of that trial.
+
+    SYNTAX
+    /trial_unlead
+
+    PARAMETERS
+    None
+
+    EXAMPLE
+    /trial_unlead         :: Removes your trial leader role.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    try:
+        trial = client.server.trial_manager.get_trial_of_user(client)
+    except TrialError.UserNotPlayerError:
+        raise ClientError('You are not part of a trial.')
+
+    try:
+        trial.remove_leader(client)
+    except TrialError.UserNotLeaderError:
+        raise ClientError('You are already not a leader of this trial.')
+
+    client.send_ooc('You are no longer a leader of your trial.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is no longer a leader of your '
+                           f'trial.', pred=lambda c: c in trial.get_leaders())
 
 
 def ooc_cmd_unban(client: ClientManager.Client, arg: str):
@@ -6019,6 +8287,38 @@ def ooc_cmd_unhandicap(client: ClientManager.Client, arg: str):
                                    is_zstaff_flex=True)
 
 
+def ooc_cmd_unignore(client: ClientManager.Client, arg: str):
+    """
+    Marks another user as unignored. You will now receive any IC messages sent from that user.
+    The target will not be notified of the unignore command being executed on them.
+    Requires /ignore to undo.
+    Returns an error if the given identifier does not correspond to a user, if the target is
+    yourself, or if you are already not ignoring the target.
+
+    SYNTAX
+    /unignore <user_id>
+
+    PARAMETERS
+    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
+               character, custom showname or OOC name of the intended recipient.
+
+    EXAMPLES
+    /unignore 1           :: Unignores client 1
+    """
+
+    Constants.assert_command(client, arg, parameters='>0')
+
+    target, _, _ = client.server.client_manager.get_target_public(client, arg)
+
+    if target == client:
+        raise ClientError('You are already not ignoring yourself.')
+    if target not in client.ignored_players:
+        raise ClientError(f'You are already not ignoring {target.displayname} [{target.id}].')
+
+    client.ignored_players.remove(target)
+    client.send_ooc(f'You are no longer ignoring {target.displayname} [{target.id}].')
+
+
 def ooc_cmd_unilock(client: ClientManager.Client, arg: str):
     """ (VARYING REQUIREMENTS)
     Changes the passage status from a given area to another by name or ID. Passages are
@@ -6062,6 +8362,51 @@ def ooc_cmd_unilock(client: ClientManager.Client, arg: str):
                                                                    change_passage_visibility=False)
 
     status = {True: 'unlocked', False: 'locked'}
+    now0 = status[now_reachable[0]]
+    name0, name1 = areas[0].name, areas[1].name
+
+    client.send_ooc('You have {} the passage from {} to {}.'
+                    .format(now0, name0, name1))
+    client.send_ooc_others('(X) {} [{}] has {} the passage from {} to {} ({}).'
+                           .format(client.displayname, client.id, now0, name0, name1,
+                                   client.area.id),
+                           is_zstaff_flex=True)
+    logger.log_server('[{}][{}]Has {} the passage from {} to {}.'
+                      .format(client.area.id, client.get_char_name(), now0, name0, name1))
+
+
+def ooc_cmd_unilockh(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Similar to /unilock. However, passages that are locked in this way are hidden from area lists
+    and /minimap; and passages that are unlocked are revealed in area lists and /minimap.
+
+    SYNTAX
+    /unilock <target_area>
+    /unilock <target_area_1>, <target_area_2>
+
+    PARAMETERS
+    <target_area>: Area whose passage status that starts in the current area will be changed.
+    <target_area_1>: Area whose passage status that ends in <target_area_2> will be changed.
+    <target_area_2>: Area whose passage status that starts in <target_area_1> will be changed.
+
+    EXAMPLES
+    Assuming the player is in area 0 when executing these commands and originally the only existing
+    passage lock is from area 1 'Class Trial Room' to area 2 'Class Trial Room, 2'...
+    /unilock Class Trial Room            :: Locks the passage from area 0 to Class Trial Room.
+    /unilock 1, 2                        :: Unlocks the passage from Class Trial Room to Class Trial
+                                            Room, 2 (keeps it unlocked the other way).
+    /unilock Class Trial Room,\ 2, 0     :: Locks the passage in from Class Trial Room, 2 to area 0
+                                            (note the ,\ in the command).
+    """
+
+    Constants.assert_command(client, arg, parameters='&1-2', is_staff=True, split_commas=True)
+
+    areas = Constants.parse_two_area_names(client, arg.split(', '), area_duplicate=False,
+                                           check_valid_range=False)
+    now_reachable = client.server.area_manager.change_passage_lock(client, areas, bilock=False,
+                                                                   change_passage_visibility=True)
+
+    status = {True: 'unlocked and revealed', False: 'locked and hid'}
     now0 = status[now_reachable[0]]
     name0, name1 = areas[0].name, areas[1].name
 
@@ -6700,6 +9045,202 @@ def ooc_cmd_zone_global(client: ClientManager.Client, arg: str):
                             pred=lambda c: not c.muted_global)
 
 
+def ooc_cmd_zone_handicap(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets a movement handicap on the zone you are watching so that they need to wait a set amount of
+    time between changing areas. This will override any previous handicaps the client(s) may have
+    had, including custom ones and server ones (such as through sneak). Server handicaps will
+    override custom handicaps if the server handicap is longer. However, as soon as the server
+    handicap is over, it will recover the old custom handicap.
+    Players in an area part of the zone you are watching when the command is run, or who later join
+    an area part of the zone will be made subject to the movement handicap. Players subject to this
+    handicap that then leave to an area not part of the zone will be made no longer subject to the
+    movement handicap.
+    Requires /zone_unhandicap to undo.
+    Returns an error if you are not watching a zone, or if given a non-positive length of time.
+
+    SYNTAX
+    /zone_handicap <length> {name} {announce_if_over}
+
+    PARAMETERS
+    <client_ipid>: IPID for the client (number in parentheses in /getarea)
+    <length>: Handicap length (in seconds)
+
+    OPTIONAL PARAMETERS
+    {name}: Name of the handicap (e.g. "Injured", "Sleepy", etc.). By default it is "ZoneHandicap".
+    {announce_if_over}: If the server will send a notification once the player may move areas after
+    waiting for their handicap timer. By default it is true. For the server not to send them, put
+    one of these keywords: False, false, 0, No, no
+
+    EXAMPLES
+    /zone_handicap 5                   :: Sets a 5 second movement handicap for your current zone.
+    /zone_handicap 10 Injured          :: Sets a 10 second movement handicap called "Injured" for
+                                          your current zone.
+    /zone_handicap 15 StabWound False  :: Sets a 15 second movement handicap called "StabWound" for
+                                          your current zone which will not send notifications once
+                                          the timer expires.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='&1-3', split_spaces=True)
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    # Obtain targets
+    targets = zone.get_players()
+
+    args = arg.split(' ')
+
+    # Check if valid length and convert to seconds
+    length = Constants.parse_time_length(args[0])  # Also internally validates
+
+    # Check name
+    if len(args) >= 2:
+        name = args[1]
+    else:
+        name = "ZoneHandicap"  # No spaces!
+
+    # Check announce_if_over status
+    if len(args) >= 3 and args[2] in ['False', 'false', '0', 'No', 'no']:
+        announce_if_over = False
+    else:
+        announce_if_over = True
+
+    client.send_ooc('You imposed a movement handicap "{}" of length {} seconds in your zone.'
+                    .format(name, length))
+    client.send_ooc_others('(X) {} [{}] imposed a movement handicap "{}" of length {} seconds '
+                            'in your zone. ({}).'
+                            .format(client.displayname, client.id, name, length, client.area.id),
+                            is_zstaff=True)
+
+    zone.set_property('Handicap', (length, name, announce_if_over))
+
+    for c in targets:
+        c.change_handicap(True, length=length, name=name, announce_if_over=announce_if_over)
+
+
+def ooc_cmd_zone_handicap_affect(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY+VARYING REQUIREMENTS)
+    Makes a client by client ID be subject to the movement handicap imposed in the zone you are
+    watching. This command is ideal to restore zone handicaps if handicaps were removed.
+    Returns an error if you are not watching a zone, if the zone you are watching does not have a
+    movement handicap set up, if the given identifier does not correspond to a client, or if the
+    client is not in an area part of the zone.
+
+    SYNTAX
+    /zone_handicap_add <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /zone_handicap_affect 0  :: Readds the zone's movement handicaps to the player whose client ID
+    is 0
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    if not zone.is_property('Handicap'):
+        raise ZoneError('Your zone currently does not have a handicap set up.')
+
+    current_zlength, current_zname, current_zannounce_if_over = zone.get_property('Handicap')
+
+    target = Constants.parse_id(client, arg)
+    if not zone.is_area(target.area):
+        raise ZoneError('Target client is not in an area part of your zone.')
+
+    client.send_ooc('You made the movement handicap "{}" of length {} seconds in your zone apply '
+                    'to {} [{}].'
+                    .format(current_zname, current_zlength, target.displayname, target.id))
+    client.send_ooc_others('(X) {} [{}] made the movement handicap "{}" of length {} seconds '
+                            'in your zone apply to {} [{}]. ({}).'
+                            .format(client.displayname, client.id, current_zname, current_zlength,
+                                    client.area.id, target.displayname, target.id),
+                            is_zstaff=True, not_to={target})
+
+    target.change_handicap(True, length=current_zlength, name=current_zname,
+                           announce_if_over=current_zannounce_if_over)
+
+
+def ooc_cmd_zone_iclock(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Toggles IC messages by non-staff or players without IC lock bypass in the current zone being
+    allowed/disallowed. If for a particular area it is the case the IC lock status already matches
+    the zone's new IC lock status, no action is taken in that area. Otherwise, the area's IC lock
+    status will now be the zone's new IC lock status and, if now disallowed, any player with an
+    active IC lock bypass will lose it.
+    Returns an error if you are not watching a zone, or if you are a GM and an area part of the zone
+    you are watching is such that locking IC in there is forbidden.
+
+    SYNTAX
+    /zone_iclock
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    Assuming some (if not all) areas in the zone have IC chat not locked...
+    /zone_iclock    :: Locks IC chat in all areas
+    /zone_iclock    :: Unlocks IC chat in all areas
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    if not client.is_officer() and client.is_gm:
+        for area in zone.get_areas():
+            if not area.gm_iclock_allowed:
+                raise ClientError(f'GMs are not authorized to change IC locks in area '
+                                  f'{area.name} part of your zone.')
+
+    try:
+        zone_ic_lock = zone.get_property('Ic_lock')
+    except ZoneError.PropertyNotFoundError:
+        zone_ic_lock = False
+
+    zone_ic_lock = not zone_ic_lock
+    zone.set_property('Ic_lock', zone_ic_lock)
+
+    status = {True: 'locked', False: 'unlocked'}
+    client.send_ooc('You {} the IC chat in your zone.'.format(status[zone_ic_lock]))
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has '
+                           f'{status[zone_ic_lock]} the IC chat in your zone.'
+                           f'({client.area.id}).', is_zstaff_flex=True)
+
+    for area in zone.get_areas():
+        area.ic_lock = zone_ic_lock
+
+        client.send_ooc_others(f'The IC chat has been {status[area.ic_lock]} in this area.'
+                            .format(), is_zstaff_flex=False, in_area=area)
+
+        logger.log_server('[{}][{}]Changed IC lock in zone to {}'
+                          .format(area.id, client.get_char_name(), area.ic_lock), client)
+
+        if not area.ic_lock:
+            # Remove ic lock bypasses
+            affected_players = list()
+            for player in area.clients:
+                if player.can_bypass_iclock and not player.is_staff():
+                    affected_players.append(player)
+
+            if affected_players:
+                for player in affected_players:
+                    player.send_ooc('You have lost your IC lock bypass as the IC chat in '
+                                    'your area has been unlocked.')
+                    player.send_ooc_others(f'(X) {player.displayname} [{player.id}] has lost their '
+                                           f'IC lock bypass as the IC chat in their area has '
+                                           f'been unlocked ({area.id}).', is_zstaff_flex=area)
+                    player.can_bypass_iclock = False
+
+
 def ooc_cmd_zone_info(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Returns information about the zone you are watching. The information returned is:
@@ -6808,6 +9349,45 @@ def ooc_cmd_zone_list(client: ClientManager.Client, arg: str):
     client.send_ooc(info)
 
 
+def ooc_cmd_zone_mode(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets the mode of a zone the player is watching if given an argument, or clears it otherwise.
+    Players part of an area in the zone are ordered to switch to this gamemode. Players later
+    entering an area part of the zone from an area outside of it will be ordered to switch
+    to this gamemode.
+
+    SYNTAX
+    /zone_mode {gamemode}
+
+    OPTIONAL PARAMETERS
+    {gamemode}: New gamemode
+
+    EXAMPLES
+    Assuming the user is watching zone z0
+    /zone_mode daily      :: Sets the zone mode to daily
+    /zone_mode            :: Clears the zone mode
+    """
+
+    Constants.assert_command(client, arg, is_staff=True)
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    client.zone_watched.set_mode(arg)
+
+    if arg:
+        client.send_ooc('You have set the gamemode of your zone to be `{}`.'
+                        .format(arg))
+        client.send_ooc_others('(X) {} [{}] has set the gamemode of your zone to be `{}` ({}).'
+                               .format(client.displayname, client.id, arg, client.area.id),
+                               is_zstaff=True)
+    else:
+        client.send_ooc('You have cleared the gamemode of your zone.')
+        client.send_ooc_others('(X) {} [{}] has cleared the gamemode of your zone to be ({}).'
+                               .format(client.displayname, client.id, client.area.id),
+                               is_zstaff=True)
+
+
 def ooc_cmd_zone_play(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Plays a given track in all areas of the zone, even if not explicitly in the music list.
@@ -6907,6 +9487,138 @@ def ooc_cmd_zone_remove(client: ClientManager.Client, arg: str):
                            'notifications, stop watching it with /zone_unwatch')
             else:
                 c.send_ooc('Your area has been removed from your zone.')
+
+
+def ooc_cmd_zone_tick(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets the chat tick rate of the zone in milliseconds. All players in an area part of the zone
+    will use the imposed chat tick rate to render IC messages.
+    Requires /zone_tick_remove to undo.
+    Returns an error if you are not watching a zone, or if given a length of time that is either not
+    an integer or not a number between 0 and 1000 exclusive.
+
+    SYNTAX
+    /zone_tick <length>
+
+    PARAMETERS
+    <length>: Chat tick rate (in milliseconds)
+
+    EXAMPLES
+    /zone_tick 20   :: Sets the zone chat tick rate to 20 ms.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+
+    try:
+        chat_tick_rate = int(arg)
+    except ValueError:
+        raise ClientError(f'Invalid chat tick rate {arg}')
+
+    if chat_tick_rate <= 0 or chat_tick_rate >= 1000:
+        raise ClientError(f'The chat tick rate must be a number between 0 and 1000 exclusive.')
+
+    targets = zone.get_players()
+    client.send_ooc('You have set the zone chat tick rate to {} ms.'.format(chat_tick_rate))
+    client.send_ooc_others('(X) {} [{}] have set the chat tick rate of your zone to {} ms. ({}).'
+                            .format(client.displayname, client.id, chat_tick_rate, client.area.id),
+                            is_zstaff=True)
+
+    zone.set_property('Chat_tick_rate', chat_tick_rate)
+
+    for c in targets:
+        c.send_chat_tick_rate(chat_tick_rate=chat_tick_rate)
+
+
+def ooc_cmd_zone_tick_remove(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Removes the zone chat tick rate. All players in an area part of a zone will now use their own
+    chat tick rate set by their clients to render IC messages.
+    Returns an error if you are not watching a zone, or if the zone already does not have a zone
+    chat tick rate.
+
+    SYNTAX
+    /zone_tick_remove
+
+    PARAMETERS
+    None
+
+    OPTIONAL PARAMETERS
+    None
+
+    EXAMPLES
+    /zone_tick_remove  :: Removes the zone chat tick rate.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+
+    if not zone.is_property('Chat_tick_rate'):
+        raise ClientError('Your zone already has no chat tick rate defined.')
+
+    zone.remove_property('Chat_tick_rate')
+
+    targets = zone.get_players()
+    client.send_ooc('You have removed the chat tick rate of your zone.')
+    client.send_ooc_others('(X) {} [{}] removed the chat tick rate of your zone. ({}).'
+                            .format(client.displayname, client.id, client.area.id),
+                            is_zstaff=True)
+
+    for c in targets:
+        c.send_chat_tick_rate(chat_tick_rate=None)
+
+
+def ooc_cmd_zone_unhandicap(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Removes movement handicaps in the zone you are watching so that players in an area part of the
+    zone no longer need to wait a set amount of time between changing areas. This will also remove
+    server handicaps, if any (such as automatic sneak handicaps).
+    Requires /zone_handicap to undo.
+    Search by IPID can only be performed by CMs and mods.
+    Returns an error if you are not watching a zone, or if the zone does not have a movement
+    handicap set up.
+
+    SYNTAX
+    /zone_unhandicap
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /zone_unhandicap  :: Removes the current zone's zone handicap and all handicaps players in an
+                         area part of the zone may have had.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    if not zone.is_property('Handicap'):
+        raise ZoneError('Your zone currently does not have a handicap set up.')
+
+    zone.remove_property('Handicap')
+    targets = zone.get_players()
+
+    client.send_ooc('You removed the movement handicap in your zone.')
+    client.send_ooc_others('(X) {} [{}] removed the movement handicap in your zone ({}).'
+                            .format(client.displayname, client.id, client.area.id),
+                            is_zstaff=True)
+
+    for c in targets:
+        try:
+            c.change_handicap(False)
+        except ClientError:
+            continue
 
 
 def ooc_cmd_zone_unwatch(client: ClientManager.Client, arg: str):
@@ -7086,2718 +9798,6 @@ def ooc_cmd_mod_narrate(client: ClientManager.Client, arg: str):
 
     for c in client.area.clients:
         c.send_ic(msg=arg, color=5, bypass_replace=True)
-
-
-def ooc_cmd_toggle_allpasses(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Toggles receiving autopass notifications from players who do not have autopass on. Note this
-    does not toggle autopass for everyone.
-    Receiving such notifications is turned off by default.
-
-    SYNTAX
-    /toggle_allpasses
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /toggle_allpasses
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    client.get_nonautopass_autopass = not client.get_nonautopass_autopass
-    status = {False: 'no longer', True: 'now'}
-
-    client.send_ooc('You are {} receiving autopass notifications from players without autopass.'
-                    .format(status[client.get_nonautopass_autopass]))
-
-
-def ooc_cmd_cid(client: ClientManager.Client, arg: str):
-    """
-    Returns the client ID of the given target (number in brackets in /getarea), or the player's if
-    not given a target.
-    Returns an error if, given a target identifier, it does not match any identifiers visible to
-    the player among players in the same area.
-
-    SYNTAX
-    /cid <user_ID>
-
-    PARAMETERS
-    <user_id>: Either the client ID, character name, edited-to character, custom showname or OOC
-    name of the intended recipient.
-
-    EXAMPLES
-    If Phantom_HD is in the same area as the player, iniswapped to Spam_HD, has client ID 3, has
-    showname Phantom and OOC Name ThePhantom
-    /cid Phantom_HD     :: Returns 'The client ID of Phantom_HD is 3.'
-    /cid Spam_HD        :: Returns 'The client ID of Spam_HD is 3.'
-    /cid 3              :: Returns 'The client ID of 3 is 3.'
-    /cid Phantom        :: Returns 'The client ID of Phantom is 3.'
-    /cid ThePhantom     :: Returns 'The client ID of ThePhantom is 3.'
-    /cid                :: Returns 'Your client ID is 0.' (assuming your client ID is actually 0)
-    """
-
-    if not arg:
-        client.send_ooc('Your client ID is {}.'.format(client.id))
-    else:
-        cm = client.server.client_manager
-        target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
-        client.send_ooc('The client ID of {} is {}.'.format(arg, target.id))
-
-
-def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
-    """
-    Sends an IC personal message to everyone in the sender's party. The messages have the showname
-    of the sender and their message, but does not include their sprite.
-    Elevated notifications are sent to zone watchers/staff members on whispers to other people,
-    which include the message content, so this is not meant to act as a private means of
-    communication between players, for which /pm is recommended.
-    Whispers sent by sneaked players include an empty showname so as to not reveal their identity,
-    except if some members of the party are sneaking as well, in which case they will receive the
-    message with showname.
-    Deafened recipients will receive a nerfed message if whispered to.
-    Non-zone watchers/non-staff players in the same area as the whisperer will be notified that
-    they whispered to their target (but will not receive the content of the message), provided they
-    are not blind (in which case no notification is sent) and that this was not a self-whisper.
-    Returns an error if the player is not part of a party, if the message is empty or if the
-    sender is gagged or IC-muted.
-
-    SYNTAX
-    /party_whisper <user_ID> <message>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
-               character, custom showname or OOC name of the intended recipient.
-    <message>: Message to be sent.
-
-    EXAMPLES
-    /party_whisper Hey, all!   :: Sends that message to all players of the party.
-    """
-
-    try:
-        Constants.assert_command(client, arg, parameters='>0')
-    except ArgumentError:
-        raise ArgumentError('Not enough arguments. Use /party_whisper <message>. Target should '
-                            'be ID, char-name, edited-to character, custom showname or OOC-name.')
-
-    party = client.get_party(tc=True)
-    if client.is_muted:
-        raise ClientError('You have been muted by a moderator.')
-    if client.is_gagged:
-        raise ClientError('Your attempt at whispering failed because you are gagged.')
-
-    msg = arg[:256]  # Cap
-    public_area = not client.area.private_area
-
-    client.send_ooc('You whispered `{}` to your party members.'.format(msg))
-    client.send_ic(msg=msg, pos=client.pos, folder=client.char_folder, char_id=client.char_id,
-                   showname=client.showname,
-                   bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
-
-    members = party.get_members()-{client}
-    pid = party.get_id()
-
-    if client.is_visible:
-        for target in members:
-            target.send_ooc('{} whispered something to your party.'
-                            .format(client.displayname), to_deaf=False)
-            target.send_ooc('{} seemed to whisper something to your party, but you could not make '
-                            'it out.'
-                            .format(client.displayname), to_deaf=True, to_blind=False)
-            target.send_ooc('Someone seemed to whisper something to your party, but you could '
-                            'not make it out.',
-                            to_deaf=True, to_blind=True)
-
-            target.send_ic(msg=msg, pos=client.pos, char_id=client.char_id,
-                           folder=client.char_folder, showname=client.showname,
-                           pred=lambda _: not (target.is_deaf and target.is_blind),
-                           bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
-            target.send_ic(msg=msg, pos=client.pos, char_id=client.char_id,
-                           folder=None, showname='???',
-                           pred=lambda _: (target.is_deaf and target.is_blind),
-                           bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
-        if public_area:
-            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party {} ({}).'
-                                   .format(client.displayname, client.id, msg, pid, client.area.id),
-                                   is_zstaff_flex=True, not_to=members)
-            client.send_ooc_others('You see a group of people huddling together.',
-                                   in_area=True, to_blind=False, is_zstaff_flex=False,
-                                   not_to=members)
-        else:
-            # For private areas, zone watchers and staff get normal whisper reports if in the same
-            # area.
-            client.send_ooc_others('(X) You see a group of people huddling together.',
-                                   in_area=True, is_zstaff_flex=True, not_to=members)
-    else:
-        sneaked = {member for member in members if not member.is_visible}
-        not_sneaked = members-sneaked
-        for target in sneaked:
-            target.send_ooc('{} whispered something to your party while sneaking.'
-                            .format(client.displayname), to_deaf=False)
-            target.send_ooc('{} seemed to whisper something to your party while sneaking, but you '
-                            'could not make it out.'
-                            .format(client.displayname), to_deaf=True, to_blind=False)
-            # No different notification
-            target.send_ooc('Someone seemed to whisper something to your party, but you could '
-                            'not make it out.',
-                            to_deaf=True, to_blind=True)
-            target.send_ic(msg=msg, pos=client.pos, char_id=client.char_id,
-                           folder=client.char_folder, showname=client.showname,
-                           pred=lambda _: not (target.is_deaf and target.is_blind),
-                           bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
-            target.send_ic(msg=msg, pos=client.pos, char_id=client.char_id,
-                           folder=None, showname='???',
-                           pred=lambda _: (target.is_deaf and target.is_blind),
-                           bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
-
-        for target in not_sneaked:
-            target.send_ooc('You heard a whisper, but you could not seem to tell where it came '
-                            'from.', to_deaf=False)
-            target.send_ooc('Your ears seemed to pick up something.', to_deaf=True)
-            target.send_ic(msg=msg, pos='jud', showname='???', bypass_deafened_starters=True)
-
-        if public_area:
-            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party {} while sneaking '
-                                   '({}).'
-                                   .format(client.displayname, client.id, msg, pid, client.area.id),
-                                   is_zstaff_flex=True, not_to=members)
-            client.send_ooc_others('You heard a whisper, but you could not seem to tell where it '
-                                   'came from.',
-                                   in_area=True, to_deaf=False, is_zstaff_flex=False,
-                                   not_to=members)
-            client.send_ooc_others('Your ears seemed to pick up something.',
-                                   in_area=True, to_deaf=True, is_zstaff_flex=True,
-                                   not_to=members)
-        else:
-            # For private areas, zone watchers and staff get normal whisper reports if in the same
-            # area.
-            client.send_ooc_others('(X) You see a group of people huddling together',
-                                   in_area=True, is_zstaff_flex=True, not_to=members)
-
-
-def ooc_cmd_lurk(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Initiates an area lurk callout timer in the area so that non-spectator regular players who do
-    not speak IC after a set amount of seconds are called out in OOC to other players in the area
-    (but not themselves).
-    Actions that reset a player's personal callout timer are: speaking IC (even if gagged), using
-    /whisper or /guide, changing character, changing area and switching to spectator.
-    Actions that start a player's personal callout timer are: moving to an area with an active lurk
-    callout timer, switching from spectator to a character, or logging out from a ranked position.
-    Deaf and blind players in the area do not receive callout notifications from other players.
-    If a called out player is gagged, a special message is sent instead.
-    If an area had an active lurk callout timer and all players leave the area, the lurk callout
-    timer is deactivated and no players will be subject to one when moving to the area until a new
-    area lurk callout timer is started.
-    If an active area lurk callout timer is present when running the command, it will overwrite
-    the existing area lurk callout timer and reset all valid targets' callout timers.
-    Returns an error if the lurk callout length is non-positive or exceeds the server limit (6
-    hours).
-
-    SYNTAX
-    /lurk <length>
-
-    PARAMETERS
-    <length>: Area lurk callout time length (in seconds)
-
-    EXAMPLES
-    /lurk 60    :: Sets a 60-second area lurk callout timer, players who remain silent for a
-                   minute will be called out
-    /lurk 2     :: Sets a 2-second area lurk callout timer, players who remain silent for 2
-                   seconds will be called out
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
-
-    # Check if valid length and convert to seconds
-    lurk_length = Constants.parse_time_length(arg)  # Also internally validates
-    client.area.lurk_length = lurk_length
-
-    for c in client.area.clients:
-        c.check_lurk()
-
-    client.send_ooc('(X) You have enabled a lurk callout timer of length {} seconds in this area.'
-                    .format(lurk_length))
-    client.send_ooc_others('(X) {} has enabled a lurk callout timer of length {} seconds in your '
-                           'area.'.format(client.name, lurk_length),
-                           is_zstaff_flex=True, in_area=True)
-    client.send_ooc_others('(X) {} has enabled a lurk callout timer of length {} seconds in area '
-                           '{} ({}).'
-                           .format(client.name, lurk_length, client.area.name, client.area.id),
-                           is_zstaff_flex=True, in_area=False)
-
-
-def ooc_cmd_lurk_end(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Cancels an existing area lurk callout timer in the area, and all non-spectator regular players'
-    personal lurk callout timers in the area.
-    Returns an error if no area lurk callout timer is active in the area.
-
-    SYNTAX
-    /lurk_end
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    For current area with an active 10-second area lurk callout timer
-    /lurk_end    :: Cancels the area lurk callout timer, players may now remain silent for
-                       10 seconds and not be called out.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    if client.area.lurk_length == 0:
-        raise ClientError('This area has no active lurk callout timer.')
-
-    client.area.lurk_length = 0
-    # End the lurk timer of all clients who have active lurk callout timers in the area
-    for c in client.area.clients:
-        c.check_lurk()
-
-    client.send_ooc('(X) You have ended the lurk callout timer in this area.')
-    client.send_ooc_others('(X) {} has ended the lurk callout timer in your area.'
-                           .format(client.name), is_zstaff_flex=True, in_area=True)
-    client.send_ooc_others('(X) {} has ended the lurk callout timer in area {} ({}).'
-                           .format(client.name, client.area.name, client.area.id),
-                           is_zstaff_flex=True, in_area=False)
-
-
-def ooc_cmd_trial(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Starts a trial with all players in the area. Players that are already part of a trial or that
-    lack a character are not added to a trial. The trial creator is automatically added as a
-    trial leader.
-    Players added to a trial are ordered to switch to the 'trial' theme gamemode.
-    Returns an error if the server has reached its trial limit, or if the player is part of another
-    trial or has no character.
-
-    SYNTAX
-    /trial
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    Assuming the player is in area 4
-    /trial  :: Starts a trial and adds everyone in the area to the trial
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.new_trial(creator=client, add_players=False,
-                                                      require_character=True,
-                                                      autoadd_on_client_enter=False,
-                                                      autoadd_minigame_on_player_added=False)
-    except TrialError.AreaDisallowsBulletsError:
-        raise ClientError('This area disallows bullets.')
-    except TrialError.AreaHitGameConcurrentLimitError:
-        raise ClientError('This area already hosts another trial.')
-    except TrialError.ManagerTooManyGamesError:
-        raise ClientError('The server has reached its trial limit.')
-    except TrialError.UserHitGameConcurrentLimitError:
-        raise ClientError('You are already part of another trial.')
-    except TrialError.UserHasNoCharacterError:
-        raise ClientError('You must have a character to create a trial.')
-
-    client.send_ooc(f'You have created trial `{trial.get_id()}` in area {client.area.name}.')
-    trial.add_leader(client)
-
-    for user in client.area.clients:
-        if user == client:
-            continue
-        try:
-            trial.add_player(user)
-        except TrialError.UserHitGameConcurrentLimitError:
-            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
-                            f'they are already part of another trial.')
-        except TrialError.UserHasNoCharacterError:
-            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
-                            f'they must have a character to join this trial.')
-
-    players = sorted(trial.get_players(), key=lambda c: c.displayname)
-    player_list = '\n'.join([
-        f'[{player.id}] {player.displayname}' for player in players
-        ])
-
-    client.send_ooc(f'These players were automatically added to your trial: \n{player_list}')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] created trial '
-                           f'`{trial.get_id()}` in area {client.area.name} ({client.area.id}).',
-                           is_zstaff_flex=True)
-    client.send_ooc_others(f'You were added to trial `{trial.get_id()}`.',
-                           pred=lambda c: c in trial.get_players())
-    client.send_ooc_others(f'Trial `{trial.get_id()}` started in your area.',
-                           pred=lambda c: c in trial.get_nonplayer_users_in_areas())
-
-
-def ooc_cmd_trial_add(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Adds another player to the trial of the player.
-    Returns an error if the player is not a part of a trial or is not a leader, if the trial
-    reached its player limit, or if the target cannot be found, does not have a character or is
-    part of this or another trial.
-
-    SYNTAX
-    /trial_add <user_ID> <message>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
-               character, custom showname or OOC name of the intended recipient.
-    <message>: Message to be sent.
-
-    EXAMPLES
-    /trial_add 1  :: Adds the player with client ID 1 to the trial.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    if not trial.is_leader(client):
-        raise ClientError('You are not a leader of your trial.')
-
-    cm = client.server.client_manager
-    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
-
-    try:
-        trial.add_player(target)
-    except TrialError.UserNotInAreaError:
-        raise ClientError('This player is not part of an area part of this trial.')
-    except TrialError.UserHasNoCharacterError:
-        raise ClientError('This player must have a character to join this trial.')
-    except TrialError.UserHitGameConcurrentLimitError:
-        raise ClientError('This player is already part of another trial.')
-    except TrialError.UserAlreadyPlayerError:
-        raise ClientError('This player is already part of this trial.')
-
-    client.send_ooc(f'You added {target.displayname} [{target.id}] to your trial.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] added {target.displayname} '
-                           f'[{target.id}] to your trial.',
-                           pred=lambda c: c in trial.get_leaders())
-    target.send_ooc(f'You were added to trial `{trial.get_id()}`.')
-
-
-def ooc_cmd_trial_autoadd(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Toggles the trial of the player automatically attempting to add users who join an area part of
-    the trial on/off.
-    Returns an error if the player is not part of a trial or is not a leader of it.
-
-    SYNTAX
-    /trial_autoadd
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /trial_autoadd
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    if not trial.is_leader(client):
-        raise ClientError('You are not a leader of your trial.')
-
-    status = {True: 'now', False: 'no longer'}
-    new_autoadd = not trial.get_autoadd_on_client_enter()
-    trial.set_autoadd_on_client_enter(new_autoadd)
-
-    client.send_ooc(f'Your trial will {status[new_autoadd]} attempt to automatically add future '
-                    f'users who enter an area part of your trial.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has set your trial so that it '
-                           f'will {status[new_autoadd]} attempt to automatically add future '
-                           f'users who enter an area part of your trial.',
-                           pred=lambda c: c in trial.get_leaders())
-
-
-def ooc_cmd_trial_end(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Ends the trial of the player. Every player of the trial is ordered to switch back to the
-    'default' gamemode.
-    Returns an error if the player is not a part of a trial or is not a leader of it.
-
-    SYNTAX
-    /trial_end
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /trial_end      :: Ends the current trial.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    if not trial.is_leader(client):
-        raise ClientError('You are not a leader of your trial.')
-
-    # Save leaders and regulars before destruction
-    leaders = trial.get_leaders()
-    regulars = trial.get_regulars()
-    nonplayers = trial.get_nonplayer_users_in_areas()
-    trial.end()
-
-    client.send_ooc('You ended your trial.')
-    client.send_ooc_others('The trial you were watching was ended.',
-                           pred=lambda c: c in nonplayers)
-    client.send_ooc_others('Your trial was ended.',
-                           pred=lambda c: c in regulars)
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] ended your trial.',
-                           pred=lambda c: c in leaders)
-
-
-def ooc_cmd_trial_focus(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Sets the focus level of a player in your trial by ID.
-    Returns an error if you are not part of a trial or leader of it, if the target is not found or
-    not part of your trial, or if the focus value is not a number from 0 to 10.
-
-    SYNTAX
-    /trial_focus <user_id>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
-               character, custom showname or OOC name of the intended recipient.
-    <message>: Message to be sent.
-
-    EXAMPLES
-    /trial_focus 1 5                :: Sets the focus level of client ID 1 to 5.
-    /trial_focus Phantom_HD 0       :: Sets the focus level of Phantom_HD to 0.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='>1')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    if not trial.is_leader(client):
-        raise ClientError('You are not a leader of your trial.')
-
-    cm = client.server.client_manager
-    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
-    try:
-        new_focus = float(arg.split(' ')[-1])
-    except ValueError:
-        raise ClientError('New focus value must be a number.')
-
-    try:
-        trial.set_focus(target, new_focus)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('This player is not part of your trial.')
-    except TrialError.FocusIsInvalidError:
-        raise ClientError(f'This new focus value {new_focus} is outside the valid range.')
-
-    client.send_ooc(f'You have set the focus level of {target.displayname} [{target.id}] to '
-                    f'{new_focus}.')
-    if client != target:
-        target.send_ooc(f'Your focus level was set to {new_focus}.')
-    client.send_ooc_others(f'(X) {client.name} [{client.id}] has set the focus level of '
-                           f'{target.displayname} [{target.id}] to {new_focus}.',
-                           pred=lambda c: c != target and c in trial.get_leaders())
-
-
-def ooc_cmd_trial_influence(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Sets the influence level of a player in your trial by ID.
-    Returns an error if you are not part of a trial or leader of it, if the target is not found or
-    not part of your trial, or if the influence value is not a number from 0 to 10.
-
-    SYNTAX
-    /trial_influence <user_id>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
-               character, custom showname or OOC name of the intended recipient.
-    <message>: Message to be sent.
-
-    EXAMPLES
-    /trial_influence 1 5                :: Sets the influence level of client ID 1 to 5.
-    /trial_influence Phantom_HD 0       :: Sets the influence level of Phantom_HD to 0.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='>1')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    if not trial.is_leader(client):
-        raise ClientError('You are not a leader of your trial.')
-
-    cm = client.server.client_manager
-    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
-    try:
-        new_influence = float(arg.split(' ')[-1])
-    except ValueError:
-        raise ClientError('New influence value must be a number.')
-
-    try:
-        trial.set_influence(target, new_influence)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('This player is not part of your trial.')
-    except TrialError.InfluenceIsInvalidError:
-        raise ClientError(f'This new influence value {new_influence} is outside the valid range.')
-
-    client.send_ooc(f'You have set the influence level of {target.displayname} [{target.id}] to '
-                    f'{new_influence}.')
-    if client != target:
-        target.send_ooc(f'Your influence level was set to {new_influence}.')
-    client.send_ooc_others(f'(X) {client.name} [{client.id}] has set the influence level of '
-                           f'{target.displayname} [{target.id}] to {new_influence}.',
-                           pred=lambda c: c != target and c in trial.get_leaders())
-
-
-def ooc_cmd_trial_info(client: ClientManager.Client, arg: str):
-    """ (VARYING REQUIREMENTS)
-    Returns information about your current trial. Trial leaders also obtain influence and focus
-    values of the players.
-    Returns an error if you are not part of a trial.
-
-    SYNTAX
-    /trial_info
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /trial_info         :: Returns trial info.
-    """
-
-    Constants.assert_command(client, arg, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-
-    info = trial.get_info(include_health=trial.is_leader(client))
-    client.send_ooc(info)
-
-
-def ooc_cmd_trial_join(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Enrolls you into a trial by trial ID.
-    Returns an error if the trial ID is invalid, if you are not part of an area part of the trial,
-    if you do not have a character when trying to join the trial, or if you are already part of
-    this or another trial.
-
-    SYNTAX
-    /trial_join <trial_id>
-
-    PARAMETERS
-    <trial_id>: Trial ID
-
-    EXAMPLES
-    /trial_join trial0      :: You will join trial trial0.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
-
-    try:
-        trial = client.server.trial_manager.get_game_by_id(arg)
-    except TrialError.ManagerInvalidGameIDError:
-        raise ClientError(f'Unrecognized trial ID `{arg}`.')
-
-    try:
-        trial.add_player(client)
-    except TrialError.UserNotInAreaError:
-        raise ClientError('You are not part of an area part of this trial.')
-    except TrialError.UserHasNoCharacterError:
-        raise ClientError('You must have a character to join this trial.')
-    except TrialError.UserHitGameConcurrentLimitError:
-        raise ClientError('You are already part of another trial.')
-    except TrialError.UserAlreadyPlayerError:
-        raise ClientError('You are already part of this trial.')
-
-    client.send_ooc(f'You joined trial `{arg}`.')
-    client.send_ooc('Become a leader of your trial with /trial_lead')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] joined your trial.',
-                           pred=lambda c: c in trial.get_leaders())
-
-
-def ooc_cmd_trial_kick(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Kicks a player by ID off your trial.
-    Returns an error if you are not part of a trial or leader of it, if the target is not found
-    or already not a part of your trial, or if the target is the player.
-
-    SYNTAX
-    /trial_kick <user_id>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
-               character, custom showname or OOC name of the intended recipient.
-
-    EXAMPLES
-    /trial_kick 1 5                :: Kicks client ID 1 off your trial.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    if not trial.is_leader(client):
-        raise ClientError('You are not a leader of your trial.')
-
-    cm = client.server.client_manager
-    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
-    if client == target:
-        raise TrialError('You cannot kick yourself off your trial (consider using /trial_leave).')
-
-    try:
-        trial.remove_player(target)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('This player is not part of your trial.')
-
-    client.send_ooc(f'You have kicked {target.displayname} [{target.id}] off your trial.')
-    target.send_ooc('You were kicked off your trial.')
-    client.send_ooc_others(f'(X) {client.name} [{client.id}] has kicked {target.displayname} '
-                           f'[{target.id}] off your trial.',
-                           pred=lambda c: c != target and c in trial.get_leaders())
-
-
-def ooc_cmd_trial_lead(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Makes you a leader of your trial.
-    Returns an error if you are not part of a trial or if you are already leader of that trial.
-
-    SYNTAX
-    /trial_lead
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /trial_lead         :: Makes you leader of the trial.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-
-    try:
-        trial.add_leader(client)
-    except TrialError.UserAlreadyLeaderError:
-        raise ClientError('You are already a leader of this trial.')
-
-    client.send_ooc('You are now a leader of your trial.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
-                           f'trial.', pred=lambda c: c in trial.get_leaders())
-
-
-def ooc_cmd_trial_leave(client: ClientManager.Client, arg: str):
-    """
-    Makes you leave your current trial and any minigames you may have been a part of. It will
-    also notify all other remaining trial leaders of your departure.
-    If you were the only member of the trial, the trial will be destroyed.
-    Returns an error if you are not part of a trial.
-
-    SYNTAX
-    /trial_leave
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /trial_leave        :: Makes you leave your current trial.
-    """
-
-    Constants.assert_command(client, arg, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-
-    tid = trial.get_id()  # Get ID now because trial may be deleted
-    nonplayers = trial.get_nonplayer_users_in_areas()
-
-    client.send_ooc(f'You have left trial `{tid}`.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your trial.',
-                           pred=lambda c: c in trial.get_leaders())
-    trial.remove_player(client)
-
-    if trial.is_unmanaged():
-        client.send_ooc(f'Your trial `{tid}` was automatically '
-                        f'ended as it lost all its players.')
-        client.send_ooc_others(f'(X) Trial `{tid}` was automatically '
-                               f'ended as it lost all its players.',
-                               is_zstaff_flex=True, not_to=nonplayers)
-        client.send_ooc_others('The trial you were watching was automatically ended '
-                               'as it lost all its players.',
-                               is_zstaff_flex=False, pred=lambda c: c in nonplayers)
-
-
-def ooc_cmd_trial_unlead(client: ClientManager.Client, arg: str):
-    """
-    Removes your trial leader role.
-    Returns an error if you are not part of a trial or if you are already not leader of that trial.
-
-    SYNTAX
-    /trial_unlead
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /trial_unlead         :: Removes your trial leader role.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-
-    try:
-        trial.remove_leader(client)
-    except TrialError.UserNotLeaderError:
-        raise ClientError('You are already not a leader of this trial.')
-
-    client.send_ooc('You are no longer a leader of your trial.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is no longer a leader of your '
-                           f'trial.', pred=lambda c: c in trial.get_leaders())
-
-
-def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Starts an NSD with the players of your trial in your area with time limit if given, defaulting
-    to no time limit if not given. The NSD creator is automatically added as a NSD leader.
-    Players in the area not part of the trial, already part of a minigame or that do not have a
-    character are not added to the NSD. Players added to the NSD are ordered to switch to the
-    'nsd' gamemode.
-    Returns an error if the player is not part of a trial or leader of one, if the trial reached its
-    NSD limit, if the player is already part of a minigame or does not have a character, or if the
-    time is negative or above the server time limit.
-
-    SYNTAX
-    /nsd {length}
-
-    OPTIONAL PARAMETERS
-    {length}: time in seconds, or in mm:ss, or in h:mm:ss; limited to TIMER_LIMIT in function
-              Constants.parse_time_length. If given, it must be a positive integer.
-
-    EXAMPLE
-    /nsd 3:00       :: Starts an NSD with 3 minutes of time.
-    /nsd 120        :: Starts an NSD with 120 seconds of time.
-    """
-
-    try:
-        Constants.assert_command(client, arg, is_staff=True, parameters='<2')
-    except ArgumentError:
-        seconds = 300
-    else:
-        if not arg or arg == "0":
-            seconds = 0
-        else:
-            seconds = Constants.parse_time_length(arg)  # Also internally validates
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial. You must start a trial with /trial before '
-                          'starting a nonstop debate.')
-    if not trial.is_leader(client):
-        raise ClientError('You are not a leader of your trial.')
-
-    try:
-        nsd = trial.new_nsd(creator=client, add_players=False, timer_start_value=seconds,
-                            require_character=True,
-                            autoadd_on_trial_player_add=trial.get_autoadd_on_client_enter())
-    except TrialError.ManagerTooManyGamesError:
-        raise ClientError('The trial already has an active nonstop debate. End the previous one '
-                          'with /nsd_end.')
-    except NonStopDebateError.AreaHitGameConcurrentLimitError:
-        raise ClientError('This area already hosts another nonstop debate.')
-    except NonStopDebateError.UserHitGameConcurrentLimitError:
-        raise ClientError('You are already part of another minigame in your trial.')
-    except NonStopDebateError.UserHasNoCharacterError:
-        raise ClientError('You must have a character to create a nonstop debate.')
-
-    if seconds > 0:
-        client.send_ooc(f'You have created nonstop debate `{nsd.get_id()}` in area '
-                        f'{client.area.name} with time limit {seconds} seconds.')
-    else:
-        client.send_ooc(f'You have created nonstop debate `{nsd.get_id()}` in area '
-                        f'{client.area.name} with no time limit.')
-
-    nsd.add_leader(client)
-
-    for user in client.area.clients:
-        if user == client:
-            continue
-        try:
-            nsd.add_player(user)
-        except NonStopDebateError.UserNotPlayerError:
-            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
-                            f'they are not part of your trial.')
-        except NonStopDebateError.UserHitGameConcurrentLimitError:
-            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
-                            f'they are already part of another minigame.')
-        except NonStopDebateError.UserHasNoCharacterError:
-            client.send_ooc(f'Unable to add player {user.displayname} [{user.id}]: '
-                            f'they must have a character to join this minigame.')
-
-    players = sorted(nsd.get_players(), key=lambda c: c.displayname)
-    player_list = '\n'.join([
-        f'[{player.id}] {player.displayname}' for player in players
-        ])
-
-    client.send_ooc(f'These players were automatically added to your nonstop debate: '
-                    f'\n{player_list}')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] created a nonstop debate '
-                           f'`{nsd.get_id()}` in area {client.area.name} ({client.area.id}).',
-                           is_zstaff_flex=True)
-    client.send_ooc_others(f'You were added to nonstop debate `{nsd.get_id()}`.',
-                           pred=lambda c: c in trial.get_players())
-    client.send_ooc_others(f'Nonstop debate `{nsd.get_id()}` started in your area.',
-                           pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
-
-
-def ooc_cmd_nsd_add(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Adds another player to the NSD of the player.
-    Returns an error if the player is not a part of a trial or an NSD or is not a leader, if the
-    NSD reached its player limit, or if the target cannot be found, is not part of the trial, does
-    not have a character or is part of this or another NSD.
-
-    SYNTAX
-    /nsd_add <user_ID> <message>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
-               character, custom showname or OOC name of the intended recipient.
-    <message>: Message to be sent.
-
-    EXAMPLES
-    /nsd_add 1  :: Adds the player with client ID 1 to the trial.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-    if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your nonstop debate.')
-
-    cm = client.server.client_manager
-    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
-
-    try:
-        nsd.add_player(target)
-    except NonStopDebateError.UserNotPlayerError:
-        raise ClientError('This player is not part of your trial.')
-    except NonStopDebateError.UserNotInAreaError:
-        raise ClientError('This player is not part of an area part of this nonstop debate.')
-    except NonStopDebateError.UserHasNoCharacterError:
-        raise ClientError('This player must have a character to join this nonstop debate.')
-    except NonStopDebateError.UserHitGameConcurrentLimitError:
-        raise ClientError('This player is already part of another nonstop debate.')
-    except NonStopDebateError.UserAlreadyPlayerError:
-        raise ClientError('This player is already part of this nonstop debate.')
-
-    client.send_ooc(f'You added {target.displayname} [{target.id}] to your nonstop debate.')
-    client.send_ooc_others(f'(X) {client.displayname} added {target.displayname} [{target.id}] '
-                           'to your nonstop '
-                           f'debate.', pred=lambda c: c in trial.get_leaders())
-    target.send_ooc(f'You were added to the nonstop debate `{nsd.get_id()}`.')
-
-
-def ooc_cmd_nsd_autoadd(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Toggles the nonstop debate of the player automatically attempting to add users as players who
-    themselves are added as players of the parent trial on/off.
-    Returns an error if the player is not part of a trial or a nonstop debate, or is not a leader
-    of their nonstop debate.
-
-    SYNTAX
-    /nsd_autoadd
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /nsd_autoadd
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-    if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your nonstop debate.')
-
-    status = {True: 'now', False: 'no longer'}
-    new_autoadd = not nsd.get_autoadd_on_trial_player_add()
-    nsd.set_autoadd_on_trial_player_add(new_autoadd)
-
-    client.send_ooc(f'Your nonstop debate will {status[new_autoadd]} attempt to automatically add '
-                    f'future users who are added as players of your trial.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has set your nonstop debate so '
-                           f'that it will {status[new_autoadd]} attempt to automatically add '
-                           f'future users who are added as players of your trial.',
-                           pred=lambda c: c in nsd.get_leaders())
-
-
-def ooc_cmd_nsd_end(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Ends the NSD of the player. Every player of the NSD is ordered to switch back to the
-    'trial' gamemode.
-    Returns an error if the player is not a part of a trial or NSD, or is not a leader of it.
-
-    SYNTAX
-    /nsd_end
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /nsd_end      :: Ends the current NSD.
-    """
-
-    Constants.assert_command(client, arg, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-    if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your nonstop debate.')
-
-    leaders = nsd.get_leaders()
-    regulars = nsd.get_regulars()
-    nonplayers = nsd.get_nonplayer_users_in_areas()
-
-    nsd.destroy()
-
-    client.send_ooc('You ended your nonstop debate.')
-    client.send_ooc_others('The nonstop debate you were watching was ended.',
-                           pred=lambda c: c in nonplayers)
-    client.send_ooc_others('Your nonstop debate was ended.',
-                           pred=lambda c: c in regulars)
-    client.send_ooc_others(f'(X) {client.displayname} ended your nonstop debate.',
-                           pred=lambda c: c in leaders)
-
-
-def ooc_cmd_nsd_info(client: ClientManager.Client, arg: str):
-    """
-    Returns information about your current NSD.
-    Returns an error if you are not part of a trial or an NSD.
-
-    SYNTAX
-    /nsd_info
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /nsd_info         :: Returns NSD info.
-    """
-
-    Constants.assert_command(client, arg, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-
-    nid = nsd.get_id()
-    area = next(iter(nsd.get_areas()))
-    leaders = nsd.get_leaders()
-    regulars = nsd.get_regulars()
-
-    num_members = len(leaders.union(regulars))
-    leaders = ', '.join([f'{c.displayname} [{c.id}]' for c in leaders]) if leaders else 'None'
-    regulars = ', '.join([f'{c.displayname} [{c.id}]' for c in regulars]) if regulars else 'None'
-    info = (f'Nonstop debate {nid} [{num_members}/-] ({area.id}). '
-            f'Leaders: {leaders}. Regular members: {regulars}.')
-    client.send_ooc(info)
-
-
-def ooc_cmd_nsd_join(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Enrolls you into a nonstop debate by nonstop debate ID.
-    Returns an error if you are not part of a trial, if the NSD ID is invalid, if you are not part
-    of an area part of the NSD, if you do not have a character when trying to join the NSD, or if
-    you are already part of this or another NSD.
-
-    SYNTAX
-    /nsd_join <nsd_id>
-
-    PARAMETERS
-    <nsd_id>: NSD ID
-
-    EXAMPLES
-    /nsd_join trial0g0      :: You will join NSD trial0g0.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-
-    try:
-        nsd = trial.get_minigame_by_id(arg)
-    except TrialError.ManagerInvalidGameIDError:
-        raise ClientError(f'Unrecognized nonstop debate ID `{arg}`.')
-
-    try:
-        nsd.add_player(client)
-    except NonStopDebateError.UserNotInAreaError:
-        raise ClientError('You are not part of an area part of this nonstop debate.')
-    except NonStopDebateError.UserHasNoCharacterError:
-        raise ClientError('You must have a character to join this nonstop debate.')
-    except NonStopDebateError.UserHitGameConcurrentLimitError:
-        raise ClientError('You are already part of another nonstop debate.')
-    except NonStopDebateError.UserAlreadyPlayerError:
-        raise ClientError('You are already part of this nonstop debate.')
-
-    client.send_ooc(f'You joined nonstop debate `{arg}`.')
-    client.send_ooc('Become a leader of your nonstop debate with /nsd_lead')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] joined your nonstop debate.',
-                           pred=lambda c: c in nsd.get_leaders())
-
-
-def ooc_cmd_nsd_kick(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Kicks a player by ID off your NSD.
-    Returns an error if you are not part of a trial or NSD or leader of it, if the target is not
-    found or already not a part of your NSD, or if the target is the player.
-
-    SYNTAX
-    /nsd_kick <user_id>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
-               character, custom showname or OOC name of the intended recipient.
-
-    EXAMPLES
-    /nsd_kick 1 5                :: Kicks client ID 1 off your trial.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-    if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your nonstop debate.')
-
-    cm = client.server.client_manager
-    target, _, _ = cm.get_target_public(client, arg, only_in_area=True)
-    if client == target:
-        raise ClientError('You cannot kick yourself off your nonstop debate.')
-
-    try:
-        nsd.remove_player(target)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('This player is not part of your nonstop debate.')
-
-    client.send_ooc(f'You have kicked {target.displayname} [{target.id}] off your nonstop debate.')
-    target.send_ooc('You were kicked off your nonstop debate.')
-    client.send_ooc_others(f'(X) {client.name} [{client.id}] has kicked {target.displayname} '
-                           f'[{target.id}] off your nonstop debate.',
-                           pred=lambda c: c != target and c in trial.get_leaders())
-
-
-def ooc_cmd_nsd_lead(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Makes you a leader of your NSD.
-    Returns an error if you are not part of a trial or an NSD, or if you are already leader of
-    the NSD.
-
-    SYNTAX
-    /nsd_lead
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /nsd_lead         :: Makes you leader of the NSD.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-
-    try:
-        nsd.add_leader(client)
-    except NonStopDebateError.UserAlreadyLeaderError:
-        raise ClientError('You are already a leader of this nonstop debate.')
-
-    client.send_ooc('You are now a leader of your nonstop debate.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is now a leader of your '
-                           f'nonstop debate.', pred=lambda c: c in nsd.get_leaders())
-
-
-def ooc_cmd_nsd_leave(client: ClientManager.Client, arg: str):
-    """
-    Makes you leave your current NSD. It will also notify all other remaining trial leaders of
-    your departure.
-    If you were the only member of the NSD, the NSD will be destroyed.
-    Returns an error if you are not part of a trial or an NSD.
-
-    SYNTAX
-    /nsd_leave
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /nsd_leave        :: Makes you leave your current nonstop debate.
-    """
-
-    Constants.assert_command(client, arg, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-    nid = nsd.get_id()  # Get ID now because NSD may be deleted
-    nonplayers = nsd.get_nonplayer_users_in_areas()  # Get nonplayers now because NSD may be deleted
-    client.send_ooc(f'You have left nonstop debate `{nid}`.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has left your nonstop debate.',
-                           pred=lambda c: c in nsd.get_leaders())
-    nsd.remove_player(client)
-
-    if nsd.is_unmanaged():
-        client.send_ooc(f'Your nonstop debate `{nid}` was automatically '
-                        f'ended as it lost all its players.')
-        client.send_ooc_others(f'(X) Nonstop debate `{nid}` was automatically '
-                               f'ended as it lost all its players.',
-                               is_zstaff_flex=True, not_to=nonplayers)
-        client.send_ooc_others('The nonstop debate you were watching was automatically ended '
-                               'as it lost all its players.',
-                               is_zstaff_flex=False, pred=lambda c: c in nonplayers)
-
-
-def ooc_cmd_nsd_pause(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Pauses your current NSD and puts it in intermission mode. Players part of the NSD are put in
-    the 'trial' gamemode.
-    Returns an error if you are not part of a trial or NSD or leader for it, or if the NSD is not
-    in recording or looping mode.
-
-    SYNTAX
-    /nsd_pause
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /nsd_pause      :: Pauses your NSD
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-    if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your nonstop debate.')
-
-    try:
-        nsd.set_intermission()
-    except NonStopDebateError.NSDAlreadyInModeError:
-        raise ClientError('The nonstop debate is already in this mode.')
-    except NonStopDebateError.NSDNotInModeError:
-        raise ClientError('You may not pause a nonstop debate at this moment.')
-    else:
-        client.send_ooc('You have paused your nonstop debate.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has paused your nonstop '
-                               f'debate.', pred=lambda c: c in nsd.get_leaders())
-        client.send_ooc_others('Your nonstop debate was paused.',
-                               pred=lambda c: c in nsd.get_regulars())
-        client.send_ooc_others('The nonstop debate you were watching was paused.',
-                               pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
-
-
-def ooc_cmd_nsd_loop(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Sets your current NSD to be in looping mode. While in looping mode, messages recorded during
-    recording mode will be played one after another, and no IC messages that do not have
-    counter, consent or perjury bullets are allowed. Such bulleted messages if sent while in
-    looping mode will put the NSD in intermission mode; and so will playing all of the recorded
-    messages.
-    Returns an error if you are not part of a trial or NSD or leader for it, or if the NSD is not
-    in intermission or post-break intermission mode.
-
-    SYNTAX
-    /nsd_loop
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /nsd_loop      :: Loops your NSD
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-    if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your nonstop debate.')
-
-    try:
-        nsd.set_looping()
-    except NonStopDebateError.NSDAlreadyInModeError:
-        raise ClientError('The nonstop debate is already in this mode.')
-    except NonStopDebateError.NSDNotInModeError:
-        raise ClientError('You may not loop a nonstop debate at this moment.')
-    else:
-        client.send_ooc('You have set your nonstop debate to start looping.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has set your nonstop '
-                               f'debate to start looping.', pred=lambda c: c in nsd.get_leaders())
-        client.send_ooc_others('Your nonstop debate is now looping.',
-                               pred=lambda c: c in nsd.get_regulars())
-        client.send_ooc_others('The nonstop debate you are watching is now looping.',
-                               pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
-
-
-def ooc_cmd_nsd_resume(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Resumes the mode the NSD was in before it was put in intermission mode.
-    Returns an error if you are not part of a trial or an NSD or leader of it, or if the NSD is in
-    not in intermission or post-break intermission mode.
-
-    SYNTAX
-    /nsd_loop
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /nsd_loop      :: Loops your NSD
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-    if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your nonstop debate.')
-
-    try:
-        resumed_mode = nsd.resume()
-    except NonStopDebateError.NSDNotInModeError:
-        raise ClientError('You may not resume a nonstop debate at this moment.')
-    else:
-        mode = resumed_mode.name.lower()
-        if mode == 'prerecording':
-            mode = 'recording'
-        client.send_ooc(f'You have put your nonstop debate back in {mode} mode.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has put your nonstop '
-                               f'debate back in {mode} mode.',
-                               pred=lambda c: c in nsd.get_leaders())
-        client.send_ooc_others(f'Your nonstop debate is now in {mode} mode again.',
-                               pred=lambda c: c in nsd.get_regulars())
-        client.send_ooc_others(f'The nonstop debate you are watching is now in {mode} mode again.',
-                               pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
-
-
-def ooc_cmd_nsd_accept(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Accepts a break response given by a player of your NSD and ends it. That player's influence is
-    restored by 0.5 points.
-    Returns an error if you are not part of a trial or an NSD or leader of it, or if the NSD is in
-    not in post-break intermission mode.
-
-    SYNTAX
-    /nsd_accept
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /nsd_accept      :: Accepts a break response from the NSD and automatically ends the NSD.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-    if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your nonstop debate.')
-
-    # Save because NSD is destroyed!
-    leaders, regulars = nsd.get_leaders(), nsd.get_regulars()
-    nonplayers = nsd.get_nonplayer_users_in_areas()
-
-    try:
-        existing = nsd.accept_break()
-    except NonStopDebateError.NSDNotInModeError:
-        raise ClientError('You may not accept a break for your nonstop debate at this moment.')
-
-    if existing:
-        client.send_ooc('You accepted the break and ended the nonstop debate. The breaker '
-                        'recovered 0.5 influence.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] accepted the break and '
-                               f'ended the nonstop debate. The breaker recovered 0.5 influence.',
-                               pred=lambda c: c in leaders)
-    else:
-        client.send_ooc('You accepted the break and ended the nonstop debate. Since the breaker '
-                        'had since disconnected or left the nonstop debate, their influence '
-                        'remained unchanged.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] accepted the break and '
-                               f'ended the nonstop debate. Since the breaker had since '
-                               f'disconnected or left the nonstop debate, their influence '
-                               f'remained unchanged.',
-                               pred=lambda c: c in leaders)
-    client.send_ooc_others('Your nonstop debate was ended by an accepted break.',
-                           pred=lambda c: c in regulars)
-    client.send_ooc_others('The nonstop debate you were watching was ended by an accepted break.',
-                           pred=lambda c: c in nonplayers)
-
-
-def ooc_cmd_nsd_reject(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Rejects a break response given by a player of your NSD. That player's influence is decreased
-    by 1 point. The NSD will remain in post-break intermission mode, but NSD leaders will be
-    prompted to end or resume the NSD.
-    Returns an error if you are not part of a trial or an NSD or leader of it, or if the NSD is in
-    not in post-break intermission mode.
-
-    SYNTAX
-    /nsd_reject
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /nsd_reject      :: Rejects a break response from the NSD
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-    if not nsd.is_leader(client):
-        raise ClientError('You are not a leader of your nonstop debate.')
-
-    try:
-        existing = nsd.reject_break()
-    except NonStopDebateError.NSDNotInModeError:
-        raise ClientError('You may not reject a break for your nonstop debate at this moment.')
-
-    if existing:
-        client.send_ooc('You rejected the break. The breaker lost 1 influence.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] rejected the break. The '
-                               f'breaker lost 1 influence.',
-                               pred=lambda c: c in nsd.get_leaders())
-    else:
-        client.send_ooc('You rejected the break. Since the breaker had since disconnected or left '
-                        'the nonstop debate, their influence remained unchanged.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] rejected the break. Since '
-                               f'the breaker had since disconnected or left the nonstop debate, '
-                               f'their influence remained unchanged.',
-                               pred=lambda c: c in nsd.get_leaders())
-
-    client.send_ooc('Send /nsd_resume to resume the debate, /nsd_end to end the debate.')
-    client.send_ooc_others('The break was rejected, so the debate continues!',
-                           pred=lambda c: c in nsd.get_regulars())
-    client.send_ooc_others('The break was rejected, so the debate continues!',
-                           pred=lambda c: c in nsd.get_nonplayer_users_in_areas())
-
-
-def ooc_cmd_nsd_unlead(client: ClientManager.Client, arg: str):
-    """
-    Removes your NSD leader role.
-    Returns an error if you are not part of a trial or an NSD, or if you are already not leader
-    of that NSD.
-
-    SYNTAX
-    /nsd_unlead
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /nsd_unlead         :: Removes your trial leader role.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        trial = client.server.trial_manager.get_trial_of_user(client)
-    except TrialError.UserNotPlayerError:
-        raise ClientError('You are not part of a trial.')
-    try:
-        nsd = trial.get_nsd_of_user(client)
-    except TrialError.UserNotInMinigameError:
-        raise ClientError('You are not part of a nonstop debate.')
-
-    try:
-        nsd.remove_leader(client)
-    except TrialError.UserNotLeaderError:
-        raise ClientError('You are already not a leader of this NSD.')
-
-    client.send_ooc('You are no longer a leader of your NSD.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] is no longer a leader of your '
-                           f'NSD.', pred=lambda c: c in nsd.get_leaders())
-
-
-def ooc_cmd_status(client: ClientManager.Client, arg: str):
-    """ (VARYING REQUIREMENTS)
-    Obtains the status of a player by ther ID. If given no identifier, it will return your status.
-    Returns an error if the given identifier does not correspond to a user, if the target has not
-    set their status or if the sender is not a staff and would not be able to see the target in
-    /getarea (regardless of whether /getarea is allowed in the area or not).
-
-    SYNTAX
-    /status
-    /status <user_id>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
-               character, custom showname or OOC name of the intended recipient.
-
-    EXAMPLES
-    Assuming client 1 on character Phantom_HD has a custom description
-    /status 1           :: May return something like this:
-        $HOST: You note the following about Phantom_HD: 'Phantom is carrying a bag.'
-    """
-
-    msg = ''
-    if client.is_blind:
-        if not client.is_staff():
-            raise ClientError('You are blind, so you cannot see anything.')
-        msg = '(X) '
-    if not client.area.lights:
-        if not client.is_staff():
-            raise ClientError('The lights are off, so you cannot see anything.')
-        msg = '(X) '
-
-    if arg:
-        cm = client.server.client_manager
-        target, _, _ = cm.get_target_public(client, arg, only_in_area=not client.is_staff())
-
-        if target.status:
-            msg += (f'You note the following about {target.displayname}: {target.status}')
-        else:
-            msg += (f'You do not note anything unusual about {target.displayname}.')
-    else:
-        if client.status:
-            msg += (f'You note the following about yourself: {client.status}')
-        else:
-            msg += ('You do not note anything unusual about yourself.')
-
-    client.send_ooc(msg)
-
-
-def ooc_cmd_status_set(client: ClientManager.Client, arg: str):
-    """
-    Sets your player status as the given argument; otherwise, clears it.
-    Returns an error if the player attempts to clear an already empty player status.
-
-    SYNTAX
-    /status_set
-    /status_set <status>
-
-    PARAMETERS
-    <status>: New status
-
-    EXAMPLES
-    If client 1 is on character Phantom_HD and iniswapped to Spam_HD
-    /status_set Phantom is carrying a bag  :: Sets the status to `Phantom is carrying a bag.`
-    """
-
-    if not arg and not client.status:
-        raise ClientError('You already have no player status.')
-
-    if arg:
-        client.status = arg
-        client.send_ooc(f'You have set your player status to {arg}')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set their player status '
-                               f'to `{client.status}` ({client.area.id}).',
-                               is_zstaff_flex=True)
-
-        refreshed_clients = client.refresh_remembered_status()
-        for c in refreshed_clients:
-            c.send_ooc(f'You note something different about {client.displayname}.',
-                       is_zstaff_flex=False)
-
-        client.area.broadcast_ic_attention(cond=lambda c: c in refreshed_clients)
-
-    else:
-        client.status = ''
-        client.send_ooc('You have removed your player status.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] removed their player '
-                               f'status ({client.area.id}).', is_zstaff_flex=True)
-
-        refreshed_clients = client.refresh_remembered_status()
-        for c in refreshed_clients:
-            c.send_ooc(f'You no longer note something different about {client.displayname}.',
-                       is_zstaff_flex=False)
-
-
-def ooc_cmd_status_set_other(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Sets another player status by ID as the given argument; otherwise, clears it.
-    Returns an error if the target is not found, the target is the player or the player attempts to
-    clear an already empty player status.
-
-    SYNTAX
-    /status_set_other <user_id>
-    /status_set_other <user_id> <status>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
-               character, custom showname or OOC name of the intended recipient.
-    <status>: New status
-
-    EXAMPLES
-    If client 1 is on character Phantom_HD and iniswapped to Spam_HD
-    /status_set_other Phantom_HD Phantom is carrying a bag  :: Sets the status of Phantom to
-                                                               `Phantom is carrying a bag.`
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='>0')
-
-    cm = client.server.client_manager
-    target, _, new_status = cm.get_target_public(client, arg)
-    new_status = new_status[:1024]  # Cap
-
-    if client == target:
-        raise ClientError('You cannot set your own status with this command.')
-    if not new_status and not target.status:
-        raise ClientError(f'{target.displayname} already does not have a player status.')
-
-    client.send_ooc(f'You set the player status of {target.displayname} to `{new_status}`.')
-    if not (target.is_blind and target.is_deaf):
-        target.send_ooc('Your status was updated. Do /status to check it out.')
-
-    if new_status:
-        target.status = new_status
-        client.send_ooc_others(f'(X) {client.displayname} [{target.id}] set the player status '
-                               f'of {target.displayname} to `{new_status}` ({client.area.id}).',
-                               is_zstaff_flex=True, not_to={target})
-
-        refreshed_clients = target.refresh_remembered_status()
-        for c in refreshed_clients:
-            if c == client:
-                continue
-
-            c.send_ooc(f'You now note something about {target.displayname}.',
-                       is_zstaff_flex=False)
-        target.area.broadcast_ic_attention()
-
-    else:
-        # By previous if, player must have had a status before
-        target.status = ''
-        client.send_ooc_others(f'(X) {client.displayname} [{target.id}] cleared the player '
-                               f'status of {target.displayname} ({client.area.id}).',
-                               is_zstaff_flex=True, not_to={target})
-
-        refreshed_clients = target.refresh_remembered_status()
-        for c in refreshed_clients:
-            if c == client:
-                continue
-            c.send_ooc(f'You no longer note something different about {target.displayname}.',
-                       is_zstaff_flex=False)
-
-
-def ooc_cmd_noteworthy(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Toggles the area being noteworthy or not. If made noteworthy, all players in the area will
-    be notified in OOC and IC (as well as all watchers of a zone having the area but only in OOC),
-    except those simultaneously blind and deaf, who receive no notifications.
-
-    SYNTAX
-    /noteworthy
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /noteworthy
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    client.area.noteworthy = not client.area.noteworthy
-    status = '' if client.area.noteworthy else 'no longer '
-    client.send_ooc(f'You have marked your area as {status}noteworthy.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has marked your area as '
-                           f'{status}noteworthy.',
-                           is_zstaff_flex=True, in_area=True)
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has marked their area as '
-                           f'{status}noteworthy ({client.area.id}).',
-                           is_zstaff_flex=True, in_area=False)
-    if client.area.noteworthy:
-        client.send_ooc_others('Something catches your attention.', is_zstaff_flex=False,
-                               in_area=True, pred=lambda c: not (c.is_deaf and c.is_blind))
-        client.area.broadcast_ic_attention()
-
-    logger.log_server('[{}][{}]Set noteworthy status to {}'
-                      .format(client.area.id, client.get_char_name(), client.area.noteworthy),
-                      client)
-
-
-def ooc_cmd_bilockh(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Similar to /bilock. However, passages that are locked in this way are hidden from area lists
-    and /minimap; and passages that are unlocked are revealed in area lists and /minimap.
-
-    SYNTAX
-    /bilockh <target_area>
-    /bilockh <target_area_1>, <target_area_2>
-
-    PARAMETERS
-    <target_area>: Area whose passage status with the current area will be changed.
-    <target_area_1>: Area whose passage status with <target_area_2> will be changed.
-    <target_area_2>: Area whose passage status with <target_area_1> will be changed.
-
-    EXAMPLES
-    Assuming the player is in area 0 when executing these commands and originally the only existing
-    passage lock is from area 1 'Class Trial Room' to area 2 'Class Trial Room, 2'...
-    /bilockh Class Trial Room            :: Locks the passage between area 0 and Class Trial Room.
-    /bilockh 1, 2                        :: Unlocks the passage from Class Trial Room to Class Trial
-                                            Room, 2; and locks it from Class Trial Room, 2 to Class
-                                            Trial Room.
-    /bilockh Class Trial Room,\ 2, 0     :: Locks the passage in both directions between areas 0
-                                            and Class Trial Room, 2 (note the ,\ in the command.
-    """
-
-    Constants.assert_command(client, arg, parameters='&1-2', is_staff=True, split_commas=True)
-
-    areas = Constants.parse_two_area_names(client, arg.split(', '), area_duplicate=False,
-                                           check_valid_range=False)
-    now_reachable = client.server.area_manager.change_passage_lock(client, areas, bilock=True,
-                                                                   change_passage_visibility=True)
-
-    status = {True: 'unlocked and revealed', False: 'locked and hid'}
-    now0, now1 = status[now_reachable[0]], status[now_reachable[1]]
-    name0, name1 = areas[0].name, areas[1].name
-
-    if now_reachable[0] == now_reachable[1]:
-        client.send_ooc('You have {} the passage between {} and {}.'.format(now0, name0, name1))
-        client.send_ooc_others('(X) {} [{}] has {} the passage between {} and {} ({}).'
-                               .format(client.displayname, client.id, now0,
-                                       name0, name1, client.area.id),
-                               is_zstaff_flex=True)
-        logger.log_server('[{}][{}]Has {} the passage between {} and {}.'
-                          .format(client.area.id, client.get_char_name(), now0, name0, name1))
-
-    else:
-        client.send_ooc('You have {} the passage from {} to {} and {} it the other way around.'
-                        .format(now0, name0, name1, now1))
-        client.send_ooc_others('(X) {} [{}] has {} the passage from {} and {} and {} it the other '
-                               'way around ({}).'
-                               .format(client.displayname, client.id, now0,
-                                       name0, name1, now1, client.area.id),
-                               is_zstaff_flex=True)
-        logger.log_server('[{}][{}]Has {} the passage from {} to {} and {} it the other way around.'
-                          .format(client.area.id, client.get_char_name(), now0, name0, name1, now1))
-
-
-def ooc_cmd_unilockh(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Similar to /unilock. However, passages that are locked in this way are hidden from area lists
-    and /minimap; and passages that are unlocked are revealed in area lists and /minimap.
-
-    SYNTAX
-    /unilock <target_area>
-    /unilock <target_area_1>, <target_area_2>
-
-    PARAMETERS
-    <target_area>: Area whose passage status that starts in the current area will be changed.
-    <target_area_1>: Area whose passage status that ends in <target_area_2> will be changed.
-    <target_area_2>: Area whose passage status that starts in <target_area_1> will be changed.
-
-    EXAMPLES
-    Assuming the player is in area 0 when executing these commands and originally the only existing
-    passage lock is from area 1 'Class Trial Room' to area 2 'Class Trial Room, 2'...
-    /unilock Class Trial Room            :: Locks the passage from area 0 to Class Trial Room.
-    /unilock 1, 2                        :: Unlocks the passage from Class Trial Room to Class Trial
-                                            Room, 2 (keeps it unlocked the other way).
-    /unilock Class Trial Room,\ 2, 0     :: Locks the passage in from Class Trial Room, 2 to area 0
-                                            (note the ,\ in the command).
-    """
-
-    Constants.assert_command(client, arg, parameters='&1-2', is_staff=True, split_commas=True)
-
-    areas = Constants.parse_two_area_names(client, arg.split(', '), area_duplicate=False,
-                                           check_valid_range=False)
-    now_reachable = client.server.area_manager.change_passage_lock(client, areas, bilock=False,
-                                                                   change_passage_visibility=True)
-
-    status = {True: 'unlocked and revealed', False: 'locked and hid'}
-    now0 = status[now_reachable[0]]
-    name0, name1 = areas[0].name, areas[1].name
-
-    client.send_ooc('You have {} the passage from {} to {}.'
-                    .format(now0, name0, name1))
-    client.send_ooc_others('(X) {} [{}] has {} the passage from {} to {} ({}).'
-                           .format(client.displayname, client.id, now0, name0, name1,
-                                   client.area.id),
-                           is_zstaff_flex=True)
-    logger.log_server('[{}][{}]Has {} the passage from {} to {}.'
-                      .format(client.area.id, client.get_char_name(), now0, name0, name1))
-
-
-def ooc_cmd_toggle_fs(client: ClientManager.Client, arg: str):
-    """
-    Toggles forward sprites mode on or off. If off, no matter what message the player sends, their
-    sprite will not be forwarded to target players, but instead they will see whatever the last
-    sprite used was onscreen appear with the message.
-
-    SYNTAX
-    /toggle_fs
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    Assuming you start in normal mode...
-    /toggle_fs          :: Toggles first person mode on.
-    /toggle_fs          :: Toggles first person mode off.
-    """
-
-    Constants.assert_command(client, arg, parameters='=0')
-
-    client.forward_sprites = not client.forward_sprites
-    status = {True: 'now', False: 'no longer'}
-
-    client.send_ooc('You are {} in forward sprites mode.'.format(status[client.forward_sprites]))
-
-
-def ooc_cmd_clock_period(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Adds a period to the day cycle established by the player. Whenever the day cycle clock ticks
-    into a time part of the period, all clients in the affected areas will be ordered to change
-    to that time of day's version of their theme. Time of day periods go from their given hour
-    start all the way until the next period.
-    If the period name already exists, its hour start will be overwritten.
-    If some period already starts at the given hour start, its name will be overwritten.
-    Returns an error if the client has not started a day cycle, or if the hour start is not an
-    integer from 0 to 23.
-
-    SYNTAX
-    /clock_period <name> <hour_start>
-
-    PARAMETERS
-    <name>: Name of the period.
-    <hour_start>: Start time of the period (integer from 0 to 23).
-
-    EXAMPLE
-    Assuming the commands are run in order.
-    /clock_period day 8     :: Sets up a period that goes from 8 AM to 8 AM.
-    /clock_period night 22  :: Sets up a night period that goes from 10 PM to 8 AM. Day period
-                               now goes from 8 AM to 10 PM.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='&1-2')
-
-    try:
-        task = client.server.tasker.get_task(client, ['as_day_cycle'])
-    except KeyError:
-        raise ClientError('You have not initiated any day cycles.')
-
-    try:
-        args = arg.split()
-        if len(args) == 1:
-            name, pre_start, start = args[0].lower(), "-1", -1
-        else:
-            name, pre_start = args[0].lower(), args[1]
-            start = int(pre_start)  # Do it separately so ValueError exception may read args[1]
-            if not 0 <= start <= 23:
-                start = args[1]
-                raise ValueError
-    except ValueError:
-        raise ArgumentError('Invalid period start hour {}.'.format(pre_start))
-
-    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'new_period_start', (start, name))
-    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'period')
-    client.server.tasker.cancel_task(task)
-
-
-def ooc_cmd_clock_set(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Updates the hour length and current hour of the client's day cycle without restarting it,
-    changing its area range or notifying normal players. If the day cycle time was unknown, the
-    time is updated in the same manner (effectively taking it out of unknown mode).
-    Returns an error if the client has not started a day cycle, or if the hour is not an
-    integer from 0 to 23.
-
-    SYNTAX
-    /clock_set <hour_length> <hour>
-
-    PARAMETERS
-    <hour_length>: Length of each ingame hour (in seconds)
-    <hour>: New hour (integer from 0 to 23)
-
-    EXAMPLES
-    /clock_set 900 8  :: Update the day cycle to be a 900-second hour clock with current time 8 a.m.
-    /clock_set 10 19  :: Update the day cycle to be a 10-second hour clock with current time 7 p.m.
-
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=2')
-
-    try:
-        task = client.server.tasker.get_task(client, ['as_day_cycle'])
-    except KeyError:
-        raise ClientError('You have not initiated any day cycles.')
-
-    pre_hour_length, pre_hour_start = arg.split(' ')
-    try:
-        hour_length = int(pre_hour_length)
-        if hour_length <= 0:
-            raise ValueError
-    except ValueError:
-        raise ArgumentError('Invalid hour length {}.'.format(pre_hour_length))
-
-    try:
-        hour_start = int(pre_hour_start)
-        if hour_start < 0 or hour_start >= 24:
-            raise ValueError
-    except ValueError:
-        raise ArgumentError('Invalid hour start {}.'.format(pre_hour_start))
-
-    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'new_day_cycle_args',
-                                       (hour_length, hour_start))
-    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'set')
-    client.server.tasker.cancel_task(task)
-
-
-def ooc_cmd_clock_unknown(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Sets the client's day cycle time to unknown. Time does not flow in this mode, and clients in
-    the area range will be ordered to switch to their unknown time of day version of their theme.
-    Requires /clock_set to undo.
-    Returns an error if the client has not started a day cycle, or if the time is already unknown.
-
-    SYNTAX
-    /clock_unknown
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /clock_unknown :: Set the time to be unknown
-
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    try:
-        task = client.server.tasker.get_task(client, ['as_day_cycle'])
-    except KeyError:
-        raise ClientError('You have not initiated any day cycles.')
-
-    if client.server.tasker.get_task_attr(client, ['as_day_cycle'], 'is_unknown'):
-        raise ClientError('Your day cycle already has unknown time.')
-
-    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'unknown')
-    client.server.tasker.cancel_task(task)
-
-
-def ooc_cmd_zone_mode(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Sets the mode of a zone the player is watching if given an argument, or clears it otherwise.
-    Players part of an area in the zone are ordered to switch to this gamemode. Players later
-    entering an area part of the zone from an area outside of it will be ordered to switch
-    to this gamemode.
-
-    SYNTAX
-    /zone_mode {gamemode}
-
-    OPTIONAL PARAMETERS
-    {gamemode}: New gamemode
-
-    EXAMPLES
-    Assuming the user is watching zone z0
-    /zone_mode daily      :: Sets the zone mode to daily
-    /zone_mode            :: Clears the zone mode
-    """
-
-    Constants.assert_command(client, arg, is_staff=True)
-
-    if not client.zone_watched:
-        raise ZoneError('You are not watching a zone.')
-
-    client.zone_watched.set_mode(arg)
-
-    if arg:
-        client.send_ooc('You have set the gamemode of your zone to be `{}`.'
-                        .format(arg))
-        client.send_ooc_others('(X) {} [{}] has set the gamemode of your zone to be `{}` ({}).'
-                               .format(client.displayname, client.id, arg, client.area.id),
-                               is_zstaff=True)
-    else:
-        client.send_ooc('You have cleared the gamemode of your zone.')
-        client.send_ooc_others('(X) {} [{}] has cleared the gamemode of your zone to be ({}).'
-                               .format(client.displayname, client.id, client.area.id),
-                               is_zstaff=True)
-
-
-def ooc_cmd_dump(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Prepares a server dump containing debugging information about the server and saves it in the
-    server log files.
-
-    SYNTAX
-    /dump
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /dump           :: May return something like this:
-    $HOST: Generated server dump file logs/[2020-12-23T200220]D.log.
-    """
-
-    Constants.assert_command(client, arg, is_mod=True, parameters='=0')
-
-    dump_message = f'Client {client.id} requested a server dump.'
-    file = logger.log_error(dump_message, client.server, errortype='D')
-    client.send_ooc(f'Generated server dump file {file}.')
-
-
-def ooc_cmd_iclock_bypass(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Provides a non-staff player permission to talk in their current area if the area is IC locked.
-    Returns an error if the given identifier does not correspond to a user, if the target is
-    already staff or if the IC chat in the area of the target is not locked.
-
-    SYNTAX
-    /iclock_bypass <client_id>
-
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-
-    EXAMPLES
-    Assuming client 1 starts without a bypass...
-    /iclock_bypass 1            :: Grants client 1 an IC lock bypass
-    /iclock_bypass 1            :: Revokes client 1 of their IC lock bypass
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
-    target = Constants.parse_id(client, arg)
-
-    if target.is_staff():
-        raise ClientError('Target is already staff and thus does not require an IC lock bypass.')
-    # As we require staff to run the command, but the target cannot be staff, we are guaranteed
-    # that target != client.
-    if not target.area.ic_lock:
-        raise ClientError('The IC chat in the area of the target is not locked.')
-
-    target.can_bypass_iclock = not target.can_bypass_iclock
-
-    if target.can_bypass_iclock:
-        client.send_ooc(f'You have granted {target.displayname} [{target.id}] an IC lock bypass.')
-        target.send_ooc('You have been granted an IC lock bypass.')
-        target.send_ooc_others(f'(X) {client.displayname} [{client.id}] has granted '
-                               f'{target.displayname} [{target.id}] an IC lock bypass '
-                               f'({target.area.id}).', is_zstaff_flex=True, not_to={client})
-    else:
-        client.send_ooc(f'You have revoked {target.displayname} [{target.id}] of their IC lock '
-                        'bypass.')
-        target.send_ooc('You have been revoked of your IC lock bypass.')
-        target.send_ooc_others(f'(X) {client.displayname} [{client.id}] has revoked '
-                               f'{target.displayname} [{target.id}] of their IC lock bypass '
-                               f'({target.area.id}).', is_zstaff_flex=True, not_to={client})
-
-
-def ooc_cmd_randommusic(client: ClientManager.Client, arg: str):
-    """
-    Plays a randomly chosen track from the player's current music list.
-    Returns an error if the player is IC-muted, if the player does not have DJ privileges, or
-    if the player triggers the server music flood guard.
-
-    SYNTAX
-    /randommusic
-
-    PARAMETERS:
-    None
-
-    EXAMPLES:
-    /randommusic       :: May play 'Ikoroshia.mp3', 'Despair Searching.mp3', etc.
-    """
-
-    Constants.assert_command(client, arg, parameters='=0')
-
-    if client.is_muted:  # Checks to see if the client has been muted by a mod
-        raise ClientError("You have been muted by a moderator.")
-    if not client.is_dj:
-        raise ClientError('You were blockdj\'d by a moderator.')
-
-    delay = client.change_music_cd()
-    if delay:
-        raise ClientError(f'You changed song too many times recently. Please try again after '
-                          f'{Constants.time_format(delay)}.')
-
-    # Find all music tracks
-    music_names = list()
-    music_list = client.music_list
-    if music_list is None:
-        music_list = client.server.music_list
-
-    for item in music_list:
-        songs = item['songs']
-        for song in songs:
-            name = song['name']
-            music_names.append(name)
-
-    if not music_names:
-        raise ClientError('No music tracks found in the current music list.')
-
-    random_music = random.choice(music_names)
-    client.area.play_track(random_music, client, raise_if_not_found=False, reveal_sneaked=False)
-
-    client.send_ooc('You have played the randomly chosen track `{}` in your area.'
-                    .format(random_music))
-    client.send_ooc_others('(X) {} [{}] has played the randomly chosen track `{}` in your area.'
-                           .format(client.displayname, client.id, random_music),
-                           is_zstaff_flex=True, in_area=True)
-
-
-def ooc_cmd_exit(client: ClientManager.Client, arg: str):
-    """
-    Makes you exit the server.
-
-    SYNTAX
-    /exit
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    /exit      :: Makes you exit the server.
-    """
-
-    Constants.assert_command(client, arg, parameters='=0')
-
-    client.send_ooc('You have exited the server.')
-    client.disconnect()
-
-
-def ooc_cmd_zone_handicap(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Sets a movement handicap on the zone you are watching so that they need to wait a set amount of
-    time between changing areas. This will override any previous handicaps the client(s) may have
-    had, including custom ones and server ones (such as through sneak). Server handicaps will
-    override custom handicaps if the server handicap is longer. However, as soon as the server
-    handicap is over, it will recover the old custom handicap.
-    Players in an area part of the zone you are watching when the command is run, or who later join
-    an area part of the zone will be made subject to the movement handicap. Players subject to this
-    handicap that then leave to an area not part of the zone will be made no longer subject to the
-    movement handicap.
-    Requires /zone_unhandicap to undo.
-    Returns an error if you are not watching a zone, or if given a non-positive length of time.
-
-    SYNTAX
-    /zone_handicap <length> {name} {announce_if_over}
-
-    PARAMETERS
-    <client_ipid>: IPID for the client (number in parentheses in /getarea)
-    <length>: Handicap length (in seconds)
-
-    OPTIONAL PARAMETERS
-    {name}: Name of the handicap (e.g. "Injured", "Sleepy", etc.). By default it is "ZoneHandicap".
-    {announce_if_over}: If the server will send a notification once the player may move areas after
-    waiting for their handicap timer. By default it is true. For the server not to send them, put
-    one of these keywords: False, false, 0, No, no
-
-    EXAMPLES
-    /zone_handicap 5                   :: Sets a 5 second movement handicap for your current zone.
-    /zone_handicap 10 Injured          :: Sets a 10 second movement handicap called "Injured" for
-                                          your current zone.
-    /zone_handicap 15 StabWound False  :: Sets a 15 second movement handicap called "StabWound" for
-                                          your current zone which will not send notifications once
-                                          the timer expires.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='&1-3', split_spaces=True)
-
-    if not client.zone_watched:
-        raise ZoneError('You are not watching a zone.')
-
-    zone = client.zone_watched
-    # Obtain targets
-    targets = zone.get_players()
-
-    args = arg.split(' ')
-
-    # Check if valid length and convert to seconds
-    length = Constants.parse_time_length(args[0])  # Also internally validates
-
-    # Check name
-    if len(args) >= 2:
-        name = args[1]
-    else:
-        name = "ZoneHandicap"  # No spaces!
-
-    # Check announce_if_over status
-    if len(args) >= 3 and args[2] in ['False', 'false', '0', 'No', 'no']:
-        announce_if_over = False
-    else:
-        announce_if_over = True
-
-    client.send_ooc('You imposed a movement handicap "{}" of length {} seconds in your zone.'
-                    .format(name, length))
-    client.send_ooc_others('(X) {} [{}] imposed a movement handicap "{}" of length {} seconds '
-                            'in your zone. ({}).'
-                            .format(client.displayname, client.id, name, length, client.area.id),
-                            is_zstaff=True)
-
-    zone.set_property('Handicap', (length, name, announce_if_over))
-
-    for c in targets:
-        c.change_handicap(True, length=length, name=name, announce_if_over=announce_if_over)
-
-
-def ooc_cmd_zone_handicap_affect(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY+VARYING REQUIREMENTS)
-    Makes a client by client ID be subject to the movement handicap imposed in the zone you are
-    watching. This command is ideal to restore zone handicaps if handicaps were removed.
-    Returns an error if you are not watching a zone, if the zone you are watching does not have a
-    movement handicap set up, if the given identifier does not correspond to a client, or if the
-    client is not in an area part of the zone.
-
-    SYNTAX
-    /zone_handicap_add <client_id>
-
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-
-    EXAMPLES
-    /zone_handicap_affect 0  :: Readds the zone's movement handicaps to the player whose client ID
-    is 0
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
-
-    if not client.zone_watched:
-        raise ZoneError('You are not watching a zone.')
-
-    zone = client.zone_watched
-    if not zone.is_property('Handicap'):
-        raise ZoneError('Your zone currently does not have a handicap set up.')
-
-    current_zlength, current_zname, current_zannounce_if_over = zone.get_property('Handicap')
-
-    target = Constants.parse_id(client, arg)
-    if not zone.is_area(target.area):
-        raise ZoneError('Target client is not in an area part of your zone.')
-
-    client.send_ooc('You made the movement handicap "{}" of length {} seconds in your zone apply '
-                    'to {} [{}].'
-                    .format(current_zname, current_zlength, target.displayname, target.id))
-    client.send_ooc_others('(X) {} [{}] made the movement handicap "{}" of length {} seconds '
-                            'in your zone apply to {} [{}]. ({}).'
-                            .format(client.displayname, client.id, current_zname, current_zlength,
-                                    client.area.id, target.displayname, target.id),
-                            is_zstaff=True, not_to={target})
-
-    target.change_handicap(True, length=current_zlength, name=current_zname,
-                           announce_if_over=current_zannounce_if_over)
-
-
-def ooc_cmd_zone_unhandicap(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Removes movement handicaps in the zone you are watching so that players in an area part of the
-    zone no longer need to wait a set amount of time between changing areas. This will also remove
-    server handicaps, if any (such as automatic sneak handicaps).
-    Requires /zone_handicap to undo.
-    Search by IPID can only be performed by CMs and mods.
-    Returns an error if you are not watching a zone, or if the zone does not have a movement
-    handicap set up.
-
-    SYNTAX
-    /zone_unhandicap
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /zone_unhandicap  :: Removes the current zone's zone handicap and all handicaps players in an
-                         area part of the zone may have had.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    if not client.zone_watched:
-        raise ZoneError('You are not watching a zone.')
-
-    zone = client.zone_watched
-    if not zone.is_property('Handicap'):
-        raise ZoneError('Your zone currently does not have a handicap set up.')
-
-    zone.remove_property('Handicap')
-    targets = zone.get_players()
-
-    client.send_ooc('You removed the movement handicap in your zone.')
-    client.send_ooc_others('(X) {} [{}] removed the movement handicap in your zone ({}).'
-                            .format(client.displayname, client.id, client.area.id),
-                            is_zstaff=True)
-
-    for c in targets:
-        try:
-            c.change_handicap(False)
-        except ClientError:
-            continue
-
-
-def ooc_cmd_charlog(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    List all character details a client by ID or IPID has had during the session.
-
-    If given IPID, it will obtain the character details log of all the clients opened by the user.
-    Otherwise, it will just obtain the log of the given client.
-    Returns an error if the given identifier does not correspond to a user.
-
-    SYNTAX
-    /charlog <client_id>
-    /charlog <client_ipid>
-
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <client_ipid>: IPID for the client (number in parentheses in /getarea)
-
-    EXAMPLE
-    /charlog 1         :: For the client whose ID is 1, you may get something like this
-
-    == Character details log of client 1 ==
-    *Sat Jun 1 18:52:32 2021 | Changed character to Phantom_HD
-    *Sat Jun 1 18:52:32 2021 | Changed character ini to Phantom_HD/Phantom
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
-
-    # Obtain matching targets's character details log
-    for c in Constants.parse_id_or_ipid(client, arg):
-        info = c.get_charlog()
-        client.send_ooc(info)
-
-
-def ooc_cmd_zone_tick(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Sets the chat tick rate of the zone in milliseconds. All players in an area part of the zone
-    will use the imposed chat tick rate to render IC messages.
-    Requires /zone_tick_remove to undo.
-    Returns an error if you are not watching a zone, or if given a length of time that is either not
-    an integer or not a number between 0 and 1000 exclusive.
-
-    SYNTAX
-    /zone_tick <length>
-
-    PARAMETERS
-    <length>: Chat tick rate (in milliseconds)
-
-    EXAMPLES
-    /zone_tick 20   :: Sets the zone chat tick rate to 20 ms.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
-
-    if not client.zone_watched:
-        raise ZoneError('You are not watching a zone.')
-
-    zone = client.zone_watched
-
-    try:
-        chat_tick_rate = int(arg)
-    except ValueError:
-        raise ClientError(f'Invalid chat tick rate {arg}')
-
-    if chat_tick_rate <= 0 or chat_tick_rate >= 1000:
-        raise ClientError(f'The chat tick rate must be a number between 0 and 1000 exclusive.')
-
-    targets = zone.get_players()
-    client.send_ooc('You have set the zone chat tick rate to {} ms.'.format(chat_tick_rate))
-    client.send_ooc_others('(X) {} [{}] have set the chat tick rate of your zone to {} ms. ({}).'
-                            .format(client.displayname, client.id, chat_tick_rate, client.area.id),
-                            is_zstaff=True)
-
-    zone.set_property('Chat_tick_rate', chat_tick_rate)
-
-    for c in targets:
-        c.send_chat_tick_rate(chat_tick_rate=chat_tick_rate)
-
-
-def ooc_cmd_zone_tick_remove(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Removes the zone chat tick rate. All players in an area part of a zone will now use their own
-    chat tick rate set by their clients to render IC messages.
-    Returns an error if you are not watching a zone, or if the zone already does not have a zone
-    chat tick rate.
-
-    SYNTAX
-    /zone_tick_remove
-
-    PARAMETERS
-    None
-
-    OPTIONAL PARAMETERS
-    None
-
-    EXAMPLES
-    /zone_tick_remove  :: Removes the zone chat tick rate.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
-
-    if not client.zone_watched:
-        raise ZoneError('You are not watching a zone.')
-
-    zone = client.zone_watched
-
-    if not zone.is_property('Chat_tick_rate'):
-        raise ClientError('Your zone already has no chat tick rate defined.')
-
-    zone.remove_property('Chat_tick_rate')
-
-    targets = zone.get_players()
-    client.send_ooc('You have removed the chat tick rate of your zone.')
-    client.send_ooc_others('(X) {} [{}] removed the chat tick rate of your zone. ({}).'
-                            .format(client.displayname, client.id, client.area.id),
-                            is_zstaff=True)
-
-    for c in targets:
-        c.send_chat_tick_rate(chat_tick_rate=None)
-
-
-def ooc_cmd_ignore(client: ClientManager.Client, arg: str):
-    """
-    Marks another user as ignored. You will no longer receive any IC messages from that user,
-    even those that come as a result of OOC commands. The target will not be notified of the
-    ignore command being executed on them.
-    Requires /unignore to undo.
-    Returns an error if the given identifier does not correspond to a user, if the target is
-    yourself, or if you are already ignoring the target.
-
-    SYNTAX
-    /ignore <user_id>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
-               character, custom showname or OOC name of the intended recipient.
-
-    EXAMPLES
-    /ignore 1           :: Ignores client 1
-    """
-
-    Constants.assert_command(client, arg, parameters='>0')
-
-    target, _, _ = client.server.client_manager.get_target_public(client, arg)
-
-    if target == client:
-        raise ClientError('You may not ignore yourself.')
-    if target in client.ignored_players:
-        raise ClientError(f'You are already ignoring {target.displayname} [{target.id}].')
-
-    client.ignored_players.add(target)
-    client.send_ooc(f'You are now ignoring {target.displayname} [{target.id}].')
-
-
-def ooc_cmd_unignore(client: ClientManager.Client, arg: str):
-    """
-    Marks another user as unignored. You will now receive any IC messages sent from that user.
-    The target will not be notified of the unignore command being executed on them.
-    Requires /ignore to undo.
-    Returns an error if the given identifier does not correspond to a user, if the target is
-    yourself, or if you are already not ignoring the target.
-
-    SYNTAX
-    /unignore <user_id>
-
-    PARAMETERS
-    <user_id>: Either the client ID (number in brackets in /getarea), character name, edited-to
-               character, custom showname or OOC name of the intended recipient.
-
-    EXAMPLES
-    /unignore 1           :: Unignores client 1
-    """
-
-    Constants.assert_command(client, arg, parameters='>0')
-
-    target, _, _ = client.server.client_manager.get_target_public(client, arg)
-
-    if target == client:
-        raise ClientError('You are already not ignoring yourself.')
-    if target not in client.ignored_players:
-        raise ClientError(f'You are already not ignoring {target.displayname} [{target.id}].')
-
-    client.ignored_players.remove(target)
-    client.send_ooc(f'You are no longer ignoring {target.displayname} [{target.id}].')
-
-
-def ooc_cmd_glock(client: ClientManager.Client, arg: str):
-    """ (OFFICER ONLY)
-    Toggles players that are not CM or mod being able to use /g and /zg or not.
-
-    SYNTAX
-    /glock
-
-    PARAMETERS
-    None
-
-    EXAMPLE
-    Assuming global chat was not locked originally...
-    /glock        :: Locks the global chat.
-    /glock        :: Unlocks the global chat.
-    """
-
-    Constants.assert_command(client, arg, is_officer=True, parameters='=0')
-
-    client.server.global_allowed = not client.server.global_allowed
-    status = {False: 'locked', True: 'unlocked'}
-
-    client.send_ooc('You have {} the global chat.'.format(status[client.server.global_allowed]))
-    client.send_ooc_others('A mod has {} the global chat.'
-                           .format(status[client.server.global_allowed]), is_officer=False)
-    client.send_ooc_others('{} [{}] has {} the global chat.'
-                           .format(client.name, client.id, status[client.server.global_allowed]),
-                           is_officer=True)
-    logger.log_server('{} has {} the global chat.'
-                      .format(client.name, status[client.server.global_allowed]), client)
-
-
-def ooc_cmd_files_area(client: ClientManager.Client, arg: str):
-    """ (VARYING REQUIREMENTS)
-    Obtains the download link of the files of all other players visible to the player in the area
-    who have set them.
-    If the visible name of the player is not the same as the folder of their actual character,
-    both are displayed.
-    A warning is also given in either case reminding the user to be careful of clicking external
-    links, as the server provides no guarantee on the safety of the link.
-    Returns an error if the player is not staff and is either blind or their area's lights are off,
-    or if no visible players in the area set their files.
-
-    SYNTAX
-    /files_area
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /files_area 1           :: May return something like this:
-    $H: (X) === Players in area Basement who have set their files ===
-    [1] Phantom (Spam_HD): hhh
-    [0] Eggs_HD: Hi
-    """
-
-    Constants.assert_command(client, arg, parameters='=0')
-
-    msg = ''
-    if client.is_blind:
-        if not client.is_staff():
-            raise ClientError('You are blind, so you cannot see anything.')
-        msg = '(X) '
-    if not client.area.lights:
-        if not client.is_staff():
-            raise ClientError('The lights are off, so you cannot see anything.')
-        msg = '(X) '
-
-    players = [player for player in client.get_visible_clients(client.area) if player.files]
-
-    if not players:
-        raise ClientError(msg + 'No players in the area have set their files.')
-
-    player_list = list()
-    player_description = ''
-    for player in players:
-        if player.showname:
-            name = player.showname
-        elif player.char_showname:
-            name = player.char_showname
-        elif player.char_folder != player.get_char_name():
-            name = player.char_folder
-        else:
-            name = player.get_char_name()
-
-        priority = 0
-        if player.status:
-            priority -= 2**2
-        if player.party and player.party == client.party:
-            priority -= 2**1
-
-        player_list.append([priority, name, player.id, player])
-        # We add player.id as a tiebreaker if both priority and name are the same
-        # This can be the case if, say, two SPECTATOR are in the same area.
-        # player.id is unique, so it helps break ties
-        # player instances do not have order, so they are a bad way to sort ties.
-
-    player_list.sort()
-    for (_, name, _, player) in player_list:
-        if player.files[0] == name:
-            player_description += (
-                '\r\n[{}] {}: {}'.format(player.id, name, player.files[1])
-            )
-        else:
-            player_description += (
-                '\r\n[{}] {} ({}): {}'.format(player.id, name, player.files[0], player.files[1])
-            )
-
-    msg += (
-        f"=== Players in area {client.area.name} who have set their files ==={player_description}"
-        )
-    client.send_ooc(msg)
-    client.send_ooc('Links are spoopy. Exercise caution when opening external links.')
-
-
-def ooc_cmd_zone_iclock(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Toggles IC messages by non-staff or players without IC lock bypass in the current zone being
-    allowed/disallowed. If for a particular area it is the case the IC lock status already matches
-    the zone's new IC lock status, no action is taken in that area. Otherwise, the area's IC lock
-    status will now be the zone's new IC lock status and, if now disallowed, any player with an
-    active IC lock bypass will lose it.
-    Returns an error if you are not watching a zone, or if you are a GM and an area part of the zone
-    you are watching is such that locking IC in there is forbidden.
-
-    SYNTAX
-    /zone_iclock
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    Assuming some (if not all) areas in the zone have IC chat not locked...
-    /zone_iclock    :: Locks IC chat in all areas
-    /zone_iclock    :: Unlocks IC chat in all areas
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    if not client.zone_watched:
-        raise ZoneError('You are not watching a zone.')
-
-    zone = client.zone_watched
-    if not client.is_officer() and client.is_gm:
-        for area in zone.get_areas():
-            if not area.gm_iclock_allowed:
-                raise ClientError(f'GMs are not authorized to change IC locks in area '
-                                  f'{area.name} part of your zone.')
-
-    try:
-        zone_ic_lock = zone.get_property('Ic_lock')
-    except ZoneError.PropertyNotFoundError:
-        zone_ic_lock = False
-
-    zone_ic_lock = not zone_ic_lock
-    zone.set_property('Ic_lock', zone_ic_lock)
-
-    status = {True: 'locked', False: 'unlocked'}
-    client.send_ooc('You {} the IC chat in your zone.'.format(status[zone_ic_lock]))
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has '
-                           f'{status[zone_ic_lock]} the IC chat in your zone.'
-                           f'({client.area.id}).', is_zstaff_flex=True)
-
-    for area in zone.get_areas():
-        area.ic_lock = zone_ic_lock
-
-        client.send_ooc_others(f'The IC chat has been {status[area.ic_lock]} in this area.'
-                            .format(), is_zstaff_flex=False, in_area=area)
-
-        logger.log_server('[{}][{}]Changed IC lock in zone to {}'
-                          .format(area.id, client.get_char_name(), area.ic_lock), client)
-
-        if not area.ic_lock:
-            # Remove ic lock bypasses
-            affected_players = list()
-            for player in area.clients:
-                if player.can_bypass_iclock and not player.is_staff():
-                    affected_players.append(player)
-
-            if affected_players:
-                for player in affected_players:
-                    player.send_ooc('You have lost your IC lock bypass as the IC chat in '
-                                    'your area has been unlocked.')
-                    player.send_ooc_others(f'(X) {player.displayname} [{player.id}] has lost their '
-                                           f'IC lock bypass as the IC chat in their area has '
-                                           f'been unlocked ({area.id}).', is_zstaff_flex=area)
-                    player.can_bypass_iclock = False
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
