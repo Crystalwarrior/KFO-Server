@@ -31,6 +31,29 @@ from server import logger
 from server.tsuserver import TsuserverDR
 
 
+def _mandatory_python_version_check():
+    current_python_tuple = sys.version_info
+    current_python_simple = 'Python {}.{}.{}'.format(*current_python_tuple[:3])
+    if current_python_tuple < (3, 7):
+        # This deliberately uses .format() because f-strings were not available prior to
+        # Python 3.7
+        msg = ('This version of TsuserverDR requires at least Python 3.7. You currently have '
+                '{}. Please refer to README.md for instructions on updating.'
+                .format(current_python_simple))
+        raise RuntimeError(msg)
+
+
+def _upcoming_python_version_check(server):
+    current_python_tuple = sys.version_info
+    current_python_simple = 'Python {}.{}.{}'.format(*current_python_tuple[:3])
+    if current_python_tuple < (3, 9):
+        msg = (f'WARNING: The upcoming major release of TsuserverDR (4.4.0) will be requiring '
+                f'at least Python 3.9. You currently have {current_python_simple}. '
+                f'Please consider upgrading to at least Python 3.9 soon. You may find '
+                f'additional instructions on updating in README.md')
+        logger.log_print(msg)
+
+
 def main():
     def handle_exception(loop, context):
         exception = context.get('exception')
@@ -90,15 +113,8 @@ def main():
                    'is named correctly and try again.')
             raise RuntimeError(msg)
 
-        current_python_tuple = sys.version_info
-        current_python_simple = 'Python {}.{}.{}'.format(*current_python_tuple[:3])
-        if current_python_tuple < (3, 7):
-            # This deliberately uses .format() because f-strings were not available prior to
-            # Python 3.6
-            msg = ('This version of TsuserverDR requires at least Python 3.7. You currently have '
-                   '{}. Please refer to README.md for instructions on updating.'
-                   .format(current_python_simple))
-            raise RuntimeError(msg)
+        _mandatory_python_version_check()
+        _upcoming_python_version_check(server)
 
         server = TsuserverDR()
         loop.run_until_complete(server.start())
