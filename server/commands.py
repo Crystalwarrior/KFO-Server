@@ -7915,7 +7915,7 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
         trial = client.server.trial_manager.get_trial_of_user(client)
     except TrialError.UserNotPlayerError:
         raise ClientError('You are not part of a trial. You must start a trial with /trial before '
-                          'starting an NSD.')
+                          'starting a nonstop debate.')
     if not trial.is_leader(client):
         raise ClientError('You are not a leader of your trial.')
 
@@ -7924,13 +7924,14 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
                             require_character=True,
                             autoadd_on_trial_player_add=trial.get_autoadd_on_client_enter())
     except TrialError.ManagerTooManyGamesError:
-        raise ClientError('The trial has reached its NSD limit.')
+        raise ClientError('The trial already has an active nonstop debate. End the previous one '
+                          'with /nsd_end.')
     except NonStopDebateError.AreaHitGameConcurrentLimitError:
-        raise ClientError('This area already hosts another NSD.')
+        raise ClientError('This area already hosts another nonstop debate.')
     except NonStopDebateError.UserHitGameConcurrentLimitError:
-        raise ClientError('You are already part of another minigame of your NSD.')
+        raise ClientError('You are already part of another minigame in your trial.')
     except NonStopDebateError.UserHasNoCharacterError:
-        raise ClientError('You must have a character to create a NSD.')
+        raise ClientError('You must have a character to create a nonstop debate.')
 
     if seconds > 0:
         client.send_ooc(f'You have created nonstop debate `{nsd.get_id()}` in area '
