@@ -82,23 +82,29 @@ def ooc_cmd_area(client: ClientManager.Client, arg: str):
     /area 1     :: Moves you to area 1
     """
 
+    try:
+        Constants.assert_command(client, arg, parameters='<2')
+    except ArgumentError:
+        raise ArgumentError('Too many arguments. Use /area <id>.')
+
     args = arg.split()
     # List all areas
-    if len(args) == 0:
+    if not args:
+        if not client.server.config['announce_areas'] and not client.is_staff():
+            raise ClientError('You must be authorized to use the no-parameter version of this '
+                              'command.')
         if client.in_rp:
             client.send_limited_area_list()
         else:
             client.send_area_list()
 
     # Switch to new area
-    elif len(args) == 1:
+    else:
         try:
             area = client.server.area_manager.get_area_by_id(int(args[0]))
-            client.change_area(area, from_party=(client.party is not None))
         except ValueError:
             raise ArgumentError('Area ID must be a number.')
-    else:
-        raise ArgumentError('Too many arguments. Use /area <id>.')
+        client.change_area(area, from_party=(client.party is not None))
 
 
 def ooc_cmd_area_kick(client: ClientManager.Client, arg: str):

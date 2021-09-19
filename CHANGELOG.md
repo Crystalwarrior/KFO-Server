@@ -510,7 +510,7 @@
 
 ### 210626a (4.2.6-post1)
 * Fixed various commands not loading server YAML files with UTF-8 encoding
-  
+
 ## (4.3.0)
 * Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
 * Explicitly allowed Python 3.9 support for server owners
@@ -641,6 +641,7 @@
 * Added the command name that was used whenever an "Invalid command" error message is triggered
 * Made /sneak and /reveal (/unsneak) with no arguments affect the player using it rather than raising an error
 * Added `source` optional parameter to music list files, which would indicate the source of the currently played music via /currentmusic
+* Made /area with no parameters return an area list for non-staff players only if `announce_areas` was set to true in the server configuration
 * Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
 * Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
 * Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
@@ -677,4 +678,4 @@
 * Fixed the default config.yaml listing 'announce_areas' as an unused parameter (it is actively used)
 * Fixed /showname_set being listed as a moderator only command in the README (it was always staff only)
 * Removed deprecated AO commands, and deprecated packets opKICK and opBAN
-* Dropped Python 3.6 support
+* Dropped Python 3.6 support, and added indication of future Python 3.8 support drop
