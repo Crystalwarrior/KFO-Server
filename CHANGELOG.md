@@ -511,7 +511,7 @@
 ### 210626a (4.2.6-post1)
 * Fixed various commands not loading server YAML files with UTF-8 encoding
 
-## (4.3.0)
+## 210929a (4.3.0)
 * Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
 * Explicitly allowed Python 3.9 support for server owners
 * Added basic DR-style trials (confront readme for command instructions):
