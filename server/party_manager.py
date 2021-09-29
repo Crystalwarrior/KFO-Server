@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-19 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ import random
 from server.exceptions import AreaError, ClientError, PartyError
 
 class PartyManager:
+    # This class and related functions will be rewritten for 4.4.
     class Party:
         #tc=True means the target called the party function to do something on themselves
         def __init__(self, server, pid, area, player_limit, leaders):
@@ -66,9 +67,9 @@ class PartyManager:
             self.leaders.discard(member)
             member.party = None
 
-            # Check if empty party and if so, disband it
+            # Check if empty party and if so, end it
             if not self.members:
-                self.server.party_manager.disband_party(self)
+                self.server.party_manager.end_party(self)
             # Otherwise, check if there are no more leaders left, and if so, choose a new one
             elif not self.leaders:
                 new_leader = self.get_random_member()
@@ -162,15 +163,15 @@ class PartyManager:
         def check_lights_timeout(self):
             if not self.area.lights:
                 for member in self.members:
-                    member.send_ooc('Your party has been disbanded for being in a dark room for '
+                    member.send_ooc('Your party has been ended for being in a dark room for '
                                     'too long.')
 
                 rando = self.get_random_member() # Just need a client for this next part
-                rando.send_ooc_others('(X) Party {} was disbanded for being in a dark room for too '
+                rando.send_ooc_others('(X) Party {} was ended for being in a dark room for too '
                                       'long ({}).'.format(self.get_id(), self.area.id),
                                       is_zstaff_flex=True)
 
-                self.server.party_manager.disband_party(self)
+                self.server.party_manager.end_party(self)
 
         @staticmethod
         def _f(text, tc=False):
@@ -209,7 +210,7 @@ class PartyManager:
 
         return party
 
-    def disband_party(self, party):
+    def end_party(self, party):
         pid = self.get_party_id(party)
         party = self.parties.pop(pid)
         for member in party.members:
@@ -410,10 +411,10 @@ class PartyManager:
         LIGHTS
         1. No one moves
         2. Should be no
-        3. Party disbands
+        3. Party ends
         4. No one moves
         5. Affected user switches
-        6. Party disbands
+        6. Party ends
         """
         new_chars = set()
         movers = {True: dict(), False: dict()}
@@ -438,13 +439,14 @@ class PartyManager:
                         error = AreaError('', code='ChArRestrictedChar')
                         raise error
 
-                    new_cid, _ = member.check_change_area(new_area, more_unavail_chars=new_chars)
-                    new_chars.add(new_cid)
+                    new_char_id, _ = member.check_change_area(new_area,
+                                                              more_unavail_chars=new_chars)
+                    new_chars.add(new_char_id)
                 except (ClientError, AreaError) as ex:
                     error = ex
-                    new_cid = member.char_id
+                    new_char_id = member.char_id
             else:
-                new_cid = member.char_id
+                new_char_id = member.char_id
 
             if error:
                 if error.code in ['ChArHandicap', 'ChArSneakLobby', 'ChArSneakPrivate',
@@ -455,13 +457,13 @@ class PartyManager:
 
                 if error.code in ['ChArLocked', 'ChArGMLocked', 'ChArModLocked',
                                   'ChArRestrictedChar', 'ChArInArea']:
-                    movers[False][member] = new_cid
+                    movers[False][member] = new_char_id
                 elif error.code is not None:
                     raise error
                 else:
-                    movers[True][member] = new_cid
+                    movers[True][member] = new_char_id
             else:
-                movers[attempt_move][member] = new_cid
+                movers[attempt_move][member] = new_char_id
 
         return movers
 
@@ -512,7 +514,7 @@ class PartyManager:
         if not members1 or not members2:
             raise PartyError('Invalid party split: One of the new parties would be empty.')
 
-        self.disband_party(party)
+        self.end_party(party)
         creator1 = random.choice(tuple(members1))
         creator2 = random.choice(tuple(members2))
 

@@ -1,6 +1,7 @@
 # A sample area list document
 # Each item in an area list is an area. Areas have parameters you may tweak, and will be used when loading the area list.
 # Start each area item with a - (and only the area item, for every other parameter use spaces)
+# List each key: value pair in a new line. If you wish to use a default value for a key, do not include the key in the area item.
 # Yes, this has a lot of introductory text. This is because areas have lots of parameters that can be tweaked.
 # If you want to go to the actual areas part, scroll beyond all the text that starts with #.
 
@@ -11,6 +12,7 @@
 # *background: Default background of the area.
 # *afk_delay: If a positive number, the number of seconds that must pass to mark an inactive player as AFK and kick them to `afk_sendto`. If 0, no such AFK kicks take place.
 # *afk_sendto: The ID of the area to kick an AFK player to.
+# *background_tod: Backgrounds per time of day.
 # *bglock: If false, only moderators can lock the area background; if true, no one can lock it.
 # *bullet: If false, only GM+ can send IC messages with bullets/shouts. If true, no such restriction is imposed.
 # *cbg_allowed: If false, only GM+ can set the area's background to one not in the server's list. If true, no such restriction is imposed.
@@ -19,6 +21,7 @@
 # *evidence_mod: Unused (do not include)
 # *gm_iclock_allowed: If false, only CM+ may /iclock the area. If true, GMs may also /iclock.
 # *iniswap_allowed: If false, everyone can send IC messages while iniswapped/iniedited; if true, no one can send IC messages while iniswapped/iniedited.
+# *global_allowed: If false, only CM+ may use /g in the area. If true, anyone can use it.
 # *has_lights: If false, the area cannot have its lights turned off via /light or similar. If true, no such restriction is imposed.
 # *lobby_area: If true, the area is marked as lobby (which disallows non-GMs+ from sneaking or /knock'ing from or to the area). If false, no such restriction is placed.
 # *locking_allowed: If false, everyone can lock the area; if true, no one can lock it.
@@ -28,7 +31,7 @@
 # *rollp_allowed: If false, only GM+ may /rollp. If true, everyone can /rollp.
 # *rp_getarea_allowed: If false, if the server is in RP mode, only GM+ can /getarea and similar. If true, no such restriction is imposed.
 # *rp_getareas_allowed: If false, if the server is in RP mode, only GM+ can /getareas and similar. If true, no such restriction is imposed.
-# *scream_range: If <ALL>, all areas can receive a /scream message sent from this area. If it is a comma-separated list of areas (by name), only said areas can receive /scream messages.
+# *scream_range: If <ALL>, all areas can receive a /scream message sent from this area. If <REACHABLE_AREAS>, all areas defined in reachable_areas can receive a /scream message sent from this area. If it is a comma-separated list of areas (by name), only said areas can receive /scream messages.
 # *song_switch_allowed: If false, only GM+ can do /play. If true, no such restriction is imposed.
 
 # --------
@@ -43,6 +46,7 @@
 #
 # afk_delay: 0
 # afk_sendto: 0
+# background_tod: NONE
 # bglock: false
 # bullet: true
 # cbg_allowed: false
@@ -50,6 +54,7 @@
 # default_description: `default_area_description` in config.yaml
 # evidence_mod: FFA
 # gm_iclock_allowed: true
+# global_allowed: true
 # has_lights: true
 # iniswap_allowed: false
 # lobby_area: false
@@ -62,7 +67,7 @@
 # rp_getareas_allowed: true
 # scream_range: NO AREAS OTHER THAN THIS ONE
 # song_switch_allowed: false
-            
+
 - area: Basement
   background: Class Trial Debate Room V3-1_HD
   bglock: true
@@ -79,6 +84,7 @@
   evidence_mod: CM
   locking_allowed: true
   iniswap_allowed: true
+  global_allowed: false
   reachable_areas: Class Trial Room,\ 2, Basement
   rp_getarea_allowed: false
   gm_iclock_allowed: false
@@ -102,7 +108,8 @@
   afk_sendto: 3
   lobby_area: false
   private_area: false
-  scream_range: Class Trial Room 3
+  scream_range: <ALL>
+  global_allowed: true
   restricted_chars: Kaede Akamatsu_HD, Monokuma_HD
   has_lights: true
   default_description: A class trial room that does not like bullets.
@@ -111,6 +118,9 @@
   bullet: false
 - area: Class Trial Room 3
   background: Class Trial Debate Room V3-1_HD
+  background_tod:
+    day: Class Trial Debate Room DR1-1_HD
+    night: Class Trial Debate Room DR1-2_HD
   bglock: false
   evidence_mod: HiddenCM
   locking_allowed: true

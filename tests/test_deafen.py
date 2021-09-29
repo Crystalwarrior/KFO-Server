@@ -1,4 +1,5 @@
-from .test_senseblock import _TestSenseBlock, _UnittestSenseBlock
+from .test_senseblock import _TestSenseBlock, _TestSenseBlockCommon
+
 
 class _TestDeafen(_TestSenseBlock):
     @classmethod
@@ -22,7 +23,7 @@ class _TestDeafen(_TestSenseBlock):
                 c.assert_no_ic()
 
         self.c0.sic('Cant hear you.', anim='sad')
-        self.c0.assert_ic('(Your ears are ringing) ', folder=self.c0_cname, anim='sad', over=True)
+        self.c0.assert_ic('(Your ears are ringing)', folder=self.c0_cname, anim='sad', over=True)
         self.c2.assert_ic('Cant hear you.', folder=self.c0_cname, anim='sad', over=True)
 
         for c in others:
@@ -31,13 +32,15 @@ class _TestDeafen(_TestSenseBlock):
             else:
                 c.assert_no_ic()
 
-class TestDeafen_01_Common(_UnittestSenseBlock):
+
+class TestDeafen_01_Common(_TestSenseBlockCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.sense = 'deafen'
         cls.sense_pp = 'deafened'
         cls.sense_attribute = lambda x, c: c.is_deaf
+
 
 class TestDeafen_02_Effect(_TestSenseBlock):
     @classmethod
@@ -51,10 +54,10 @@ class TestDeafen_02_Effect(_TestSenseBlock):
         """
 
         self.c1.ooc('/deafen {}'.format(0))
-        self.c1.assert_ooc('You have deafened {}.'.format(self.c0_dname), over=True)
+        self.c1.assert_ooc('You have deafened {} [{}].'.format(self.c0_dname, 0), over=True)
         self.c0.assert_ooc('You have been deafened.', ooc_over=True)
-        self.c2.assert_ooc('(X) {} [{}] has deafened {} ({}).'
-                           .format(self.c1.displayname, 1, self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] has deafened {} [{}] ({}).'
+                           .format(self.c1.displayname, 1, self.c0_dname, 0, 0), over=True)
         self.c3.assert_no_ooc()
 
         assert self.c0.is_deaf
@@ -66,8 +69,6 @@ class TestDeafen_02_Effect(_TestSenseBlock):
         """
         Situation: C0 and C1 talk to one another. C1 hears normally, C0 doesn't.
         """
-        # Note that some messages have extra spaces
-        # That is because AO filters out messages with repetitions
 
         self.c0.sic('Hello?')
         self.c0.assert_ic('(Your ears are ringing)', folder=self.c0_cname, anim='happy', over=True)
@@ -76,7 +77,7 @@ class TestDeafen_02_Effect(_TestSenseBlock):
         self.c3.assert_no_ic()
 
         self.c1.sic('Yes I can hear you.')
-        self.c0.assert_ic('(Your ears are ringing) ', folder=self.c1_cname, anim='happy', over=True)
+        self.c0.assert_ic('(Your ears are ringing)', folder=self.c1_cname, anim='happy', over=True)
         self.c1.assert_ic('Yes I can hear you.', folder=self.c1_cname, anim='happy', over=True)
         self.c2.assert_no_ic()
         self.c3.assert_no_ic()
@@ -101,7 +102,7 @@ class TestDeafen_02_Effect(_TestSenseBlock):
         self.c0.move_area(4)
 
         self.c2.sic('Oi m8.')
-        self.c0.assert_ic('(Your ears are ringing) ', folder=self.c2_cname, anim='happy', over=True)
+        self.c0.assert_ic('(Your ears are ringing)', folder=self.c2_cname, anim='happy', over=True)
         self.c2.assert_ic('Oi m8.', folder=self.c2_cname, anim='happy', over=True)
         self.c1.assert_no_ic()
         self.c3.assert_no_ic()
@@ -128,6 +129,7 @@ class TestDeafen_02_Effect(_TestSenseBlock):
         self.c0.sic('[y r u liek dis')
         self.c0.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
         self.c2.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
+
 
 class TestDeafen_03_ChangeArea(_TestDeafen):
     @classmethod
@@ -198,10 +200,10 @@ class TestDeafen_03_ChangeArea(_TestDeafen):
 
         self.c3.ooc('/autopass')
         self.c3.move_area(5)
-        self.c0.assert_ooc('{} has left to the {}'.format(self.c3_dname, self.a5_name), over=True)
+        self.c0.assert_ooc('{} has left to the {}.'.format(self.c3_dname, self.a5_name), over=True)
 
         self.c3.move_area(4)
-        self.c0.assert_ooc('{} has entered from the {}'
+        self.c0.assert_ooc('{} has entered from the {}.'
                            .format(self.c3_dname, self.a5_name), over=True)
 
         self.c1.discard_all()
@@ -230,6 +232,7 @@ class TestDeafen_03_ChangeArea(_TestDeafen):
         self.c3.discard_all()
         self.c4.discard_all()
 
+
 class TestDeafen_04_Miscellaneous(_TestDeafen):
     @classmethod
     def setUpClass(cls):
@@ -255,7 +258,7 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
         self.c1.assert_ic('Hi', over=True)
         self.c2.assert_ooc('(X) {} [{}] screamed "Hi" ({}).'
                            .format(self.c3_dname, 3, 5), over=True)
-        self.c2.assert_no_ic() # C2 is not in scream range
+        self.c2.assert_no_ic()  # C2 is not in scream range
         self.c3.assert_ooc('You screamed "Hi".', ooc_over=True)
         self.c3.assert_ic('Hi', over=True)
 
@@ -270,7 +273,7 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
         self.c2.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
 
         self.c2.sic('Hi')
-        self.c0.assert_ic('(Your ears are ringing) ', folder=self.c2_cname, over=True)
+        self.c0.assert_ic('(Your ears are ringing)', folder=self.c2_cname, over=True)
         self.c1.assert_ic('Hi', folder=self.c2_cname, over=True)
         self.c2.assert_ooc('Sent global IC message "Hi" to area {}.'
                            .format(self.a0_name), over=True)
@@ -281,7 +284,7 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
         self.c2.assert_ooc('Set up a global IC prefix with /globalic_pre', over=True)
 
         self.c2.sic('Hi.')
-        self.c0.assert_ic('(Your ears are ringing)', folder=self.c2_cname, over=True) # client wk
+        self.c0.assert_ic('(Your ears are ringing)', folder=self.c2_cname, over=True)  # client wk
         self.c1.assert_ic('Hi.', folder=self.c2_cname, over=True)
         self.c2.assert_ooc('Sent global IC message "Hi." to areas {} through {}.'
                            .format(self.a0_name, self.a1_name), over=True)

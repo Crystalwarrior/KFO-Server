@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-19 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from __future__ import annotations
+from typing import Awaitable, Any, Callable, Iterable, List, Optional, Set, Tuple
+import typing
+if typing.TYPE_CHECKING:
+    # Avoid circular referencing
+    from server.area_manager import AreaManager
+    from server.client_manager import ClientManager
+    from server.tsuserver import TsuserverDR
+
+import asyncio
+import functools
 import errno
 import os
 import pathlib
@@ -27,17 +38,20 @@ import time
 import warnings
 import yaml
 
-from typing import List
 from enum import Enum
+
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
+from server.exceptions import TsuserverException
+
 
 class ArgType(Enum):
     STR = 1
     STR_OR_EMPTY = 2
     INT = 3
 
+
 class TargetType(Enum):
-    #possible keys: ip, OOC, id, cname, ipid, hdid, showname, charfolder (for iniediting)
+    # possible keys: ip, OOC, id, cname, ipid, hdid, showname, charfolder (for iniediting)
     IP = 0
     OOC_NAME = 1
     ID = 2
@@ -46,7 +60,9 @@ class TargetType(Enum):
     HDID = 5
     SHOWNAME = 6
     CHAR_FOLDER = 7
-    ALL = 8
+    CHAR_SHOWNAME = 8
+    ALL = 9
+
 
 class Effects(Enum):
     B = ('Blindness', 'blinded', lambda client, value: client.change_blindness(value))
@@ -69,339 +85,22 @@ class Effects(Enum):
     def async_name(self):
         return 'as_effect_{}'.format(self.name.lower())
 
-class Clients():
-    class ClientDRO1d0d0(Enum):
-        MS_INBOUND = [
-            ('msg_type', ArgType.STR),  # 0
-            ('pre', ArgType.STR_OR_EMPTY),  # 1
-            ('folder', ArgType.STR),  # 2
-            ('anim', ArgType.STR),  # 3
-            ('text', ArgType.STR),  # 4
-            ('pos', ArgType.STR),  # 5
-            ('sfx', ArgType.STR),  # 6
-            ('anim_type', ArgType.INT),  # 7
-            ('cid', ArgType.INT),  # 8
-            ('sfx_delay', ArgType.INT),  # 9
-            ('button', ArgType.INT),  # 10
-            ('evidence', ArgType.INT),  # 11
-            ('flip', ArgType.INT),  # 12
-            ('ding', ArgType.INT),  # 13
-            ('color', ArgType.INT),  # 14
-            ]
 
-        MS_OUTBOUND = [
-            ('msg_type', 0),  # 0
-            ('pre', '-'),  # 1
-            ('folder', '<NOCHAR>'),  # 2
-            ('anim', '../../misc/blank'),  # 3
-            ('msg', ''),  # 4
-            ('pos', 'jud'),  # 5
-            ('sfx', 0),  # 6
-            ('anim_type', 0),  # 7
-            ('cid', -1),  # 8
-            ('sfx_delay', 0),  # 9
-            ('button', 0),  # 10
-            ('evidence', 0),  # 11
-            ('flip', 0),  # 12
-            ('ding', -1),  # 13
-            ('color', 0),  # 14
-            ('showname', ' '),  # 15
-            ]
-
-        MC_INBOUND = [
-            ('name', ArgType.STR),  # 0
-            ('cid', ArgType.INT),  # 1
-            ]
-
-        MC_OUTBOUND = [
-            ('name', ''),  # 0
-            ('cid', -1),  # 1
-            ('showname', ''),  # 2
-            ]
-
-        BN_OUTBOUND = [
-            ('name', ''),  # 0
-            ]
-
-    class ClientDROLegacy(Enum):
-        MS_INBOUND = [
-            ('msg_type', ArgType.STR), #0
-            ('pre', ArgType.STR_OR_EMPTY), #1
-            ('folder', ArgType.STR), #2
-            ('anim', ArgType.STR), #3
-            ('text', ArgType.STR), #4
-            ('pos', ArgType.STR), #5
-            ('sfx', ArgType.STR), #6
-            ('anim_type', ArgType.INT), #7
-            ('cid', ArgType.INT), #8
-            ('sfx_delay', ArgType.INT), #9
-            ('button', ArgType.INT), #10
-            ('evidence', ArgType.INT), #11
-            ('flip', ArgType.INT), #12
-            ('ding', ArgType.INT), #13
-            ('color', ArgType.INT), #14
-            ]
-
-        MS_OUTBOUND = [
-            ('msg_type', 0), #0
-            ('pre', '-'), #1
-            ('folder', '<NOCHAR>'), #2
-            ('anim', '../../misc/blank'), #3
-            ('msg', ''), #4
-            ('pos', 'jud'), #5
-            ('sfx', 0), #6
-            ('anim_type', 0), #7
-            ('cid', 0), #8
-            ('sfx_delay', 0), #9
-            ('button', 0), #10
-            ('evidence', 0), #11
-            ('flip', 0), #12
-            ('ding', -1), #13
-            ('color', 0), #14
-            ('showname', ' '), #15
-            ]
-
-        MC_INBOUND = [
-            ('name', ArgType.STR), #0
-            ('cid', ArgType.INT), #1
-            ]
-
-        MC_OUTBOUND = [
-            ('name', ''), #0
-            ('cid', -1), #1
-            ]
-
-        BN_OUTBOUND = [
-            ('name', ''), #0
-            ]
-
-    class ClientAO2d6(Enum):
-        MS_INBOUND = [
-            ('msg_type', ArgType.STR), #0
-            ('pre', ArgType.STR_OR_EMPTY), #1
-            ('folder', ArgType.STR), #2
-            ('anim', ArgType.STR), #3
-            ('text', ArgType.STR), #4
-            ('pos', ArgType.STR), #5
-            ('sfx', ArgType.STR), #6
-            ('anim_type', ArgType.INT), #7
-            ('cid', ArgType.INT), #8
-            ('sfx_delay', ArgType.INT), #9
-            ('button', ArgType.INT), #10
-            ('evidence', ArgType.INT), #11
-            ('flip', ArgType.INT), #12
-            ('ding', ArgType.INT), #13
-            ('color', ArgType.INT), #14
-            ('showname', ArgType.STR_OR_EMPTY), #15
-            ('charid_pair', ArgType.INT), #16
-            ('offset_pair', ArgType.INT), #17
-            ('nonint_pre', ArgType.INT), #18
-            ]
-
-        MS_OUTBOUND = [
-            ('msg_type', 0), #0
-            ('pre', '-'), #1
-            ('folder', '<NOCHAR>'), #2
-            ('anim', '../../misc/blank'), #3
-            ('msg', ''), #4
-            ('pos', 'jud'), #5
-            ('sfx', 0), #6
-            ('anim_type', 0), #7
-            ('cid', 0), #8
-            ('sfx_delay', 0), #9
-            ('button', 0), #10
-            ('evidence', 0), #11
-            ('flip', 0), #12
-            ('ding', -1), #13
-            ('color', 0), #14
-            ('showname', ' '), #15
-            ('charid_pair', -1), #16
-            ('other_folder', ''), #17
-            ('other_emote', ''), #18
-            ('offset_pair', 0), #19
-            ('other_offset', 0), #20
-            ('other_flip', 0), #21
-            ('nonint_pre', 0), #22
-            ]
-
-        MC_INBOUND = [
-            ('name', ArgType.STR), #0
-            ('cid', ArgType.INT), #1
-            ('showname', ArgType.STR_OR_EMPTY), #2
-            ]
-
-        MC_OUTBOUND = [
-            ('name', ''), #0
-            ('cid', -1), #1
-            ('showname', ''), #2
-            ]
-
-        BN_OUTBOUND = [
-            ('name', ''), #0
-            ]
-
-    class ClientAO2d7(Enum):
-        MS_INBOUND = [
-            ('msg_type', ArgType.STR), #0
-            ('pre', ArgType.STR_OR_EMPTY), #1
-            ('folder', ArgType.STR), #2
-            ('anim', ArgType.STR), #3
-            ('text', ArgType.STR), #4
-            ('pos', ArgType.STR), #5
-            ('sfx', ArgType.STR), #6
-            ('anim_type', ArgType.INT), #7
-            ('cid', ArgType.INT), #8
-            ('sfx_delay', ArgType.INT), #9
-            ('button', ArgType.INT), #10
-            ('evidence', ArgType.INT), #11
-            ('flip', ArgType.INT), #12
-            ('ding', ArgType.INT), #13
-            ('color', ArgType.INT), #14
-            ('showname', ArgType.STR_OR_EMPTY), #15
-            ('charid_pair', ArgType.INT), #16
-            ('offset_pair', ArgType.INT), #17
-            ('nonint_pre', ArgType.INT), #18
-            ('looping_sfx', ArgType.INT), #19
-            ('screenshake', ArgType.INT), #20
-            ('frame_screenshake', ArgType.STR_OR_EMPTY), #21
-            ('frame_realization', ArgType.STR_OR_EMPTY), #22
-            ('frame_sfx', ArgType.STR_OR_EMPTY), #23
-            ]
-
-        MS_OUTBOUND = [
-            ('msg_type', 0), #0
-            ('pre', '-'), #1
-            ('folder', '<NOCHAR>'), #2
-            ('anim', '../../misc/blank'), #3
-            ('msg', ''), #4
-            ('pos', 'jud'), #5
-            ('sfx', 0), #6
-            ('anim_type', 0), #7
-            ('cid', 0), #8
-            ('sfx_delay', 0), #9
-            ('button', 0), #10
-            ('evidence', 0), #11
-            ('flip', 0), #12
-            ('ding', -1), #13
-            ('color', 0), #14
-            ('showname', ' '), #15
-            ('charid_pair', -1), #16
-            ('other_folder', ''), #17
-            ('other_emote', ''), #18
-            ('offset_pair', 0), #19
-            ('other_offset', 0), #20
-            ('other_flip', 0), #21
-            ('nonint_pre', 0), #22
-            ('looping_sfx', 0), #23
-            ('screenshake', 0), #24
-            ('frame_screenshake', ''), #25
-            ('frame_realization', ''), #26
-            ('frame_sfx', ''), #27
-            ]
-
-        MC_INBOUND = [
-            ('name', ArgType.STR), #0
-            ('cid', ArgType.INT), #1
-            ('showname', ArgType.STR_OR_EMPTY), #2
-            ]
-
-        MC_OUTBOUND = [
-            ('name', ''), #0
-            ('cid', -1), #1
-            ('showname', ''), #2
-            ]
-
-        BN_OUTBOUND = [
-            ('name', ''), #0
-            ]
-
-    class ClientAO2d8d4(Enum):
-        MS_INBOUND = [
-            ('msg_type', ArgType.STR), #0
-            ('pre', ArgType.STR_OR_EMPTY), #1
-            ('folder', ArgType.STR), #2
-            ('anim', ArgType.STR), #3
-            ('text', ArgType.STR), #4
-            ('pos', ArgType.STR), #5
-            ('sfx', ArgType.STR), #6
-            ('anim_type', ArgType.INT), #7
-            ('cid', ArgType.INT), #8
-            ('sfx_delay', ArgType.INT), #9
-            ('button', ArgType.INT), #10
-            ('evidence', ArgType.INT), #11
-            ('flip', ArgType.INT), #12
-            ('ding', ArgType.INT), #13
-            ('color', ArgType.INT), #14
-            ('showname', ArgType.STR_OR_EMPTY), #15
-            ('charid_pair_pair_order', ArgType.STR), #16
-            ('offset_pair', ArgType.INT), #17
-            ('nonint_pre', ArgType.INT), #18
-            ('looping_sfx', ArgType.INT), #19
-            ('screenshake', ArgType.INT), #20
-            ('frame_screenshake', ArgType.STR_OR_EMPTY), #21
-            ('frame_realization', ArgType.STR_OR_EMPTY), #22
-            ('frame_sfx', ArgType.STR_OR_EMPTY), #23
-            ('additive', ArgType.INT), #24
-            ('effect', ArgType.STR), #25
-            ]
-
-        MS_OUTBOUND = [
-            ('msg_type', 0), #0
-            ('pre', '-'), #1
-            ('folder', '<NOCHAR>'), #2
-            ('anim', '../../misc/blank'), #3
-            ('msg', ''), #4
-            ('pos', 'jud'), #5
-            ('sfx', 0), #6
-            ('anim_type', 0), #7
-            ('cid', 0), #8
-            ('sfx_delay', 0), #9
-            ('button', 0), #10
-            ('evidence', 0), #11
-            ('flip', 0), #12
-            ('ding', -1), #13
-            ('color', 0), #14
-            ('showname', ' '), #15
-            ('charid_pair_pair_order', -1), #16
-            ('other_folder', ''), #17
-            ('other_emote', ''), #18
-            ('offset_pair', 0), #19
-            ('other_offset', 0), #20
-            ('other_flip', 0), #21
-            ('nonint_pre', 0), #22
-            ('looping_sfx', 0), #23
-            ('screenshake', 0), #24
-            ('frame_screenshake', ''), #25
-            ('frame_realization', ''), #26
-            ('frame_sfx', ''), #27
-            ('additive', 0), #28
-            ('effect', ''), #29
-            ]
-
-        MC_INBOUND = [
-            ('name', ArgType.STR), #0
-            ('cid', ArgType.INT), #1
-            ('showname', ArgType.STR_OR_EMPTY), #2
-            ('effects', ArgType.INT), #3
-            ]
-
-        MC_OUTBOUND = [
-            ('name', ''), #0
-            ('cid', -1), #1
-            ('showname', ''), #2
-            ('loop', -1), #3
-            ('channel', 0), #4
-            ('effects', 0), #5
-            ]
-
-        BN_OUTBOUND = [
-            ('name', ''), #0
-            ('pos', ''), #1
-            ]
-
-    ClientKFO2d8 = Enum('ClientKFO2d8', [(m.name, m.value) for m in ClientAO2d7])
-    ClientCC22 = Enum('ClientCC22', [(m.name, m.value) for m in ClientAO2d6])
-    ClientCC24 = Enum('ClientCC24', [(m.name, m.value) for m in ClientAO2d8d4])
+class _UniqueKeySafeLoader(yaml.SafeLoader):
+    # Adapted from ErichBSchulz at https://stackoverflow.com/a/63215043
+    def construct_mapping(self, node, deep=False):
+        mapping = dict()
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in mapping:
+                msg = (f'while scanning a mapping\n'
+                       f'{node.start_mark}\n'
+                       f'duplicate key found in mapping: {key}\n'
+                       f'{mapping[key]}\n'
+                       f'{key_node.start_mark}')
+                raise yaml.YAMLError(msg)
+            mapping[key] = key_node.start_mark
+        return super().construct_mapping(node, deep)
 
 
 class FileValidity:
@@ -413,6 +112,7 @@ class FileValidity:
     ERROR_INVALID_NAME = 123
     '''
     Windows-specific error code indicating an invalid pathname.
+
     See Also
     ----------
     https://docs.microsoft.com/en-us/windows/win32/debug/system-error-codes--0-499-
@@ -519,6 +219,7 @@ class FileValidity:
         `True` if the passed pathname is a valid pathname on the current OS _and_
         either currently exists or is hypothetically creatable in a cross-platform
         manner optimized for POSIX-unfriendly filesystems; `False` otherwise.
+
         This function is guaranteed to _never_ raise exceptions.
         '''
         try:
@@ -538,13 +239,11 @@ class FileValidity:
         if not FileValidity.is_path_exists_or_creatable(pathname):
             return False
 
-        # We use pathlib because 3.7 compatibility
         try:
             if pathlib.Path(pathname).is_file():
                 return True
         except OSError:
             # 3.7 in Windows raises an OSError for stuff like `con.yaml` here
-            # In 3.8+ it does not and returns False
             return False
 
         # If execution makes it here, we are in one of two situations
@@ -574,30 +273,31 @@ class Constants():
         return new_params
 
     @staticmethod
-    def fopen(file_name, *args, disallow_parent_folder: bool = True, **kwargs):
+    def fopen(file_name: str, *args, disallow_parent_folder: bool = True, **kwargs):
         if disallow_parent_folder and Constants.includes_relative_directories(file_name):
             info = f'File names may not reference parent or current directories: {file_name}'
-            raise ServerError(info, code='FileInvalidName')
+            raise ServerError.FileInvalidNameError(info)
 
         # # We do this manually to prevent accepting filenames like
         # *`con.yaml`, which are reserved in Windows and cause a loop if a naive load is attempted.
         # *`e/f.yaml` if folder 'e' does not exist
         if not FileValidity.file_exists_or_creatable(file_name):
             info = 'File not found: {}'.format(file_name)
-            raise ServerError(info, code="FileNotFound")
+            raise ServerError.FileNotFoundError(info, code="FileNotFound")
 
         try:
             file = open(file_name, *args, **kwargs)
             return file
         except FileNotFoundError:
+            # This one handles when file_name does not exist but is creatable
+            # This should only be raised if the mode is 'r'
             info = 'File not found: {}'.format(file_name)
-            raise ServerError(info, code="FileNotFound")
+            raise ServerError.FileNotFoundError(info, code="FileNotFound")
         except OSError as ex:
-            raise ServerError(str(ex), code="OSError")
+            raise ServerError.FileOSError(str(ex), code="OSError")
 
     @staticmethod
-    def includes_relative_directories(path):
-        path = str(path)
+    def includes_relative_directories(path: str) -> bool:
         folders = []
         while True:
             # Based from https://stackoverflow.com/a/3167684
@@ -612,54 +312,85 @@ class Constants():
         return ('.' in folders or '..' in folders)
 
     @staticmethod
-    def yaml_load(file):
+    def yaml_load(file: str) -> Any:
+        # Extract the name of the yaml in case of errors
+        separator = max(file.name.rfind('\\'), file.name.rfind('/'))
+        file_name = file.name[separator+1:]
+
         try:
-            return yaml.safe_load(file)
+            contents = yaml.load(file, Loader=_UniqueKeySafeLoader)
+            if not contents:
+                msg = f'File {file_name} was empty. Populate it properly and try again.'
+                raise ServerError.YAMLInvalidError(msg)
+            return contents
         except yaml.YAMLError as exc:
-            # Extract the name of the yaml
-            separator = max(file.name.rfind('\\'), file.name.rfind('/'))
-            file_name = file.name[separator+1:]
-            # Then raise the exception
-            msg = ('File {} returned the following YAML error when loading: `{}`.'
+            msg = ('File {} returned the following YAML error when loading: `{}`. Fix the syntax '
+                   'error and try again.'
+                   .format(file_name, exc))
+            raise ServerError.YAMLInvalidError(msg)
+        except UnicodeDecodeError as exc:
+            msg = ('File {} returned the following UnicodeDecode error when loading: `{}`. Make '
+                   'sure this is an actual YAML file and that it does not contain any unusual '
+                   'characters and try again.'
                    .format(file_name, exc))
             raise ServerError.YAMLInvalidError(msg)
 
     @staticmethod
-    def get_time():
+    def yaml_dump(data: Any, file: str):
+        if not FileValidity.file_exists_or_creatable(file.name):
+            msg = f'Unable to create file {file.name}.'
+            raise ServerError.FileNotCreatedError(msg)
+
+        dumped = yaml.dump(data, file)
+        if dumped is not None:
+            msg = f'Unable to save to {file.name}.'
+            raise ServerError.FileNotCreatedError(msg)
+
+    @staticmethod
+    def get_time() -> str:
         return time.asctime(time.localtime(time.time()))
 
     @staticmethod
-    def get_time_iso():
+    def get_time_iso() -> str:
         return time.strftime('[%Y-%m-%dT%H:%M:%S]')
 
     @staticmethod
-    def time_remaining(start, length):
+    def time_remaining(start: float, length: float) -> Tuple[float, str]:
         current = time.time()
         remaining = start+length-current
         return remaining, Constants.time_format(remaining)
 
     @staticmethod
-    def time_elapsed(start):
+    def time_elapsed(start: float) -> str:
         current = time.time()
         return Constants.time_format(current-start)
 
     @staticmethod
-    def time_format(length):
+    def time_format(length: float) -> str:
         if length < 10:
             text = "{} seconds".format('{0:.1f}'.format(length))
         elif length < 60:
             text = "{} seconds".format(int(length))
         elif length < 3600:
             text = "{}:{}".format(int(length//60),
-                                  '{0:02d}'.format(int(length%60)))
+                                  '{0:02d}'.format(int(length % 60)))
         else:
             text = "{}:{}:{}".format(int(length//3600),
-                                     '{0:02d}'.format(int((length%3600)//60)),
-                                     '{0:02d}'.format(int(length%60)))
+                                     '{0:02d}'.format(int((length % 3600) // 60)),
+                                     '{0:02d}'.format(int(length % 60)))
         return text
 
     @staticmethod
-    def assert_command(client, arg, is_staff=None, is_officer=None, is_mod=None, parameters=None,
+    def trim_extra_whitespace(text: str) -> str:
+        # Trim out any leading whitespace characters up to a chain of spaces
+        text = re.sub(r'^[\r\n\t\f\v ]*[\r\n\t\f\v]', '', text)
+        # And same thing for trailing
+        text = re.sub(r'[\r\n\t\f\v][\r\n\t\f\v ]*$', '', text)
+        return text
+
+    @staticmethod
+    def assert_command(client: ClientManager.Client, arg: str, is_staff=None, is_officer=None,
+                       is_mod=None, parameters=None,
                        split_spaces=None, split_commas=False):
         if is_staff is not None:
             if is_staff is True and not client.is_staff():
@@ -668,9 +399,9 @@ class Constants():
                 raise ClientError.UnauthorizedError('You have too high a rank to do that.')
 
         if is_officer is not None:
-            if is_officer is True and not (client.is_mod or client.is_cm):
+            if is_officer is True and not client.is_officer():
                 raise ClientError.UnauthorizedError('You must be authorized to do that.')
-            if is_officer is False and (client.is_mod or client.is_cm):
+            if is_officer is False and client.is_officer():
                 raise ClientError.UnauthorizedError('You have too high a rank to do that.')
 
         if is_mod is not None:
@@ -720,71 +451,9 @@ class Constants():
                 raise ArgumentError(error[0].format(error[1], 's' if error[1] != 1 else ''))
 
     @staticmethod
-    def command_assert(client, arg, is_staff=None, is_mod=None, parameters=None,
-                       split_spaces=None, split_commas=False):
-        """
-        Kept for backwards compatibility. Use assert_command.
-        """
-        message = ('Code is using old command_assert syntax. Please change it (or ask your server '
-                   'developer) so that it uses Constants.assert_command instead.')
-        warnings.warn(message, category=UserWarning, stacklevel=2)
-
-        if is_staff is not None:
-            if is_staff is True and not client.is_staff():
-                raise ClientError.UnauthorizedError('You must be authorized to do that.')
-            if is_staff is False and client.is_staff():
-                raise ClientError.UnauthorizedError('You have too high a rank to do that.')
-
-        if is_mod is not None:
-            if is_mod is True and not client.is_mod:
-                raise ClientError.UnauthorizedError('You must be authorized to do that.')
-            if is_mod is False and client.is_mod():
-                raise ClientError.UnauthorizedError('You have too high a rank to do that.')
-
-        if parameters is not None:
-            symbol, num = parameters[0], [int(i) for i in parameters[1:].split('-')]
-            # Set up default values
-            if (num[0] > 0 or symbol == '&') and split_spaces is None and split_commas is False:
-                split_spaces = True
-            elif split_spaces is None:
-                split_spaces = False
-
-            if split_spaces:
-                arg = arg.split(' ')
-            elif split_commas:
-                arg = arg.split(', ')
-
-            if arg == ['']:
-                arg = list()
-
-            error = None
-            if symbol == '=':
-                expect = num[0]
-                if len(arg) != expect:
-                    if expect == 0:
-                        expect = 'no'
-                    error = ('This command has {} argument{}.', expect)
-            elif symbol == '<':
-                expect = num[0] - 1
-                if len(arg) > expect:
-                    error = ('This command has at most {} argument{}.', expect)
-            elif symbol == '>':
-                expect = num[0] + 1
-                if len(arg) < expect:
-                    error = ('This command has at least {} argument{}.', expect)
-            elif symbol == '&':
-                expect = num
-                if not expect[0] <= len(arg) <= expect[1]:
-                    expect = '{} to {}'.format(expect[0], expect[1])
-                    error = ('This command has from {} argument{}.', expect)
-
-            if error:
-                raise ArgumentError(error[0].format(error[1], 's' if error[1] != 1 else ''))
-
-    @staticmethod
-    def build_cond(sender, is_staff=None, is_officer=None, is_mod=None, in_area=None, pred=None,
-                   part_of=None, not_to=None, to_blind=None, to_deaf=None, is_zstaff=None,
-                   is_zstaff_flex=None):
+    def build_cond(sender: ClientManager.Client, is_staff=None, is_officer=None, is_mod=None,
+                   in_area=None, pred=None, part_of=None, not_to=None, to_blind=None, to_deaf=None,
+                   is_zstaff=None, is_zstaff_flex=None) -> Callable[[ClientManager.Client], bool]:
         """
         Acceptable conditions:
             is_staff: If target is GM, CM or Mod
@@ -815,9 +484,9 @@ class Constants():
             raise KeyError('Invalid argument for build_cond is_staff: {}'.format(is_staff))
 
         if is_officer is True:
-            conditions.append(lambda c: c.is_cm or c.is_mod)
+            conditions.append(lambda c: c.is_officer())
         elif is_officer is False:
-            conditions.append(lambda c: not (c.is_cm or c.is_mod))
+            conditions.append(lambda c: not c.is_officer())
         elif is_officer is None:
             pass
         else:
@@ -836,7 +505,7 @@ class Constants():
             conditions.append(lambda c: c.area == sender.area)
         elif in_area is False:
             conditions.append(lambda c: c.area != sender.area)
-        elif isinstance(in_area, type(sender.area)): # Lazy way of finding if in_area is an area obj
+        elif isinstance(in_area, type(sender.area)):  # Lazy way of finding if in_area is area obj
             conditions.append(lambda c: c.area == in_area)
         elif isinstance(in_area, set):
             conditions.append(lambda c: c.area in in_area)
@@ -946,7 +615,7 @@ class Constants():
         return cond
 
     @staticmethod
-    def dice_roll(arg, command_type, server):
+    def dice_roll(arg: str, command_type: str, server: TsuserverDR) -> Tuple[str, int]:
         """
         Calculate roll results.
         Confront /roll documentation for more details.
@@ -963,7 +632,7 @@ class Constants():
         ACCEPTABLE_IN_MODIFIER = '1234567890+-*/().r'
         MAXDIVZERO_ATTEMPTS = 10
 
-        special_calculation = False # Is it given a modifier? False until proven otherwise
+        special_calculation = False  # Is it given a modifier? False until proven otherwise
         args = arg.split(' ')
         arg_length = len(args)
 
@@ -1004,7 +673,7 @@ class Constants():
                                         'mathematical operations in the modifier.')
                 if char == 'r':
                     special_calculation = True
-            if '**' in modifiers: #Exponentiation manually disabled, it can be pretty dangerous
+            if '**' in modifiers:  # Exponentiation manually disabled, it can be pretty dangerous
                 raise ArgumentError('The modifier must only include numbers and standard '
                                     'mathematical operations in the modifier.')
         else:
@@ -1015,7 +684,7 @@ class Constants():
 
         for _ in range(num_dice):
             divzero_attempts = 0
-            while True: # Roll until no division by zeroes happen (or it gives up)
+            while True:  # Roll until no division by zeroes happen (or it gives up)
                 # raw_roll: original roll
                 # mid_roll: result after modifiers (if any) have been applied to original roll
                 # final_roll: result after previous result was capped between 1 and max_numfaces
@@ -1025,11 +694,11 @@ class Constants():
                     aux_modifier = ''
                     mid_roll = int(raw_roll)
                 else:
-                    if special_calculation: # Ex: /roll 20 3*r+1
+                    if special_calculation:  # Ex: /roll 20 3*r+1
                         aux_modifier = modifiers.replace('r', raw_roll) + '='
-                    elif modifiers[0].isdigit(): # Ex /roll 20 3
+                    elif modifiers[0].isdigit():  # Ex /roll 20 3
                         aux_modifier = raw_roll + "+" + modifiers + '='
-                    else: # Ex /roll 20 -3
+                    else:  # Ex /roll 20 -3
                         aux_modifier = raw_roll + modifiers + '='
 
                     # Prevent any terms from reaching past max_acceptable_term in order to prevent
@@ -1081,37 +750,41 @@ class Constants():
                 roll += str(raw_roll + ':')
             roll += str(aux_modifier + final_roll) + ', '
 
-        roll = roll[:-2] # Remove last ', '
+        roll = roll[:-2]  # Remove last ', '
         if num_dice > 1:
             roll = '(' + roll + ')'
 
         return roll, num_faces
 
     @staticmethod
-    def disemvowel_message(message):
+    def disemvowel_message(message: str) -> str:
         return Constants.remove_letters(message, 'aeiou')
 
     @staticmethod
-    def disemconsonant_message(message):
+    def disemconsonant_message(message: str) -> str:
         return Constants.remove_letters(message, 'bcdfghjklmnpqrstvwxyz')
 
     @staticmethod
-    def fix_and_setify(csv_values):
+    def fix_and_setify(csv_values: str) -> Set[str]:
         """
         For the area parameters that include lists of comma-separated values, parse them
         appropiately before turning them into sets.
         """
 
-        l = csv_values.split(', ')
-        for i in range(len(l)): #Ah, escape characters... again...
-            l[i] = l[i].replace(',\\', ',')
+        split_values = csv_values.split(', ')
+        for (i, split_value) in enumerate(split_values):  # Ah, escape characters... again...
+            split_values[i] = split_value.replace(',\\', ',')
 
-        if l in [list(), ['']]:
+        if split_values in [list(), ['']]:
             return set()
-        return set(l)
+        return set(split_values)
 
     @staticmethod
     def gimp_message():
+        message = ('Code is using old gimp_message syntax. Please change it (or ask your '
+                   'server developer) so that it uses server.gimp_list instead. '
+                   'This old syntax will be removed in 4.4.')
+        warnings.warn(message, category=UserWarning, stacklevel=2)
         message = ['ERP IS BAN',
                    'I\'m fucking gimped because I\'m both autistic and a retard!',
                    'HELP ME',
@@ -1142,7 +815,7 @@ class Constants():
         return random.choice(message)
 
     @staticmethod
-    def gagged_message():
+    def gagged_message() -> str:
         length = random.randint(5, 9)
         letters = ['g', 'h', 'm', 'r']
         starters = ['G', 'M']
@@ -1150,7 +823,10 @@ class Constants():
         return message
 
     @staticmethod
-    def cjoin(structure, the=False, sort=True):
+    def cjoin(structure: Iterable, the: str = False, sort: bool = True) -> str:
+        if not structure:
+            return ''
+
         connector = 'the ' if the else ''
         new_structure = sorted(structure) if sort else list(structure)
 
@@ -1162,7 +838,8 @@ class Constants():
         return info
 
     @staticmethod
-    def parse_area_names(client, areas):
+    def parse_area_names(client: ClientManager.Client,
+                         areas: AreaManager.Area) -> List[AreaManager.Area]:
         """
         Convert a list of area names or IDs into area objects.
         """
@@ -1188,7 +865,7 @@ class Constants():
         return area_list
 
     @staticmethod
-    def parse_effects(client, effects):
+    def parse_effects(client: ClientManager.Client, effects: List[str]) -> Set[str]:
         """
         Convert a sequence of characters to their associated effect names.
         """
@@ -1208,7 +885,7 @@ class Constants():
         return parsed_effects
 
     @staticmethod
-    def parse_id(client, identifier):
+    def parse_id(client: ClientManager.Client, identifier: str) -> ClientManager.Client:
         """
         Given a client ID, returns the client that matches this identifier.
         """
@@ -1227,7 +904,8 @@ class Constants():
         return targets[0]
 
     @staticmethod
-    def parse_id_or_ipid(client, identifier):
+    def parse_id_or_ipid(client: ClientManager.Client,
+                         identifier: str) -> List[ClientManager.Client]:
         """
         Given either a client ID or IPID, returns all clients that match this identifier.
 
@@ -1249,7 +927,7 @@ class Constants():
 
         # Otherwise, try and match by IPID
         # PROVIDED the client is CM or mod
-        if client.is_cm or client.is_mod:
+        if client.is_officer():
             targets = client.server.client_manager.get_targets(client, TargetType.IPID, idnt, False)
             if targets:
                 return targets
@@ -1258,53 +936,18 @@ class Constants():
 
     @staticmethod
     def parse_passage_lock(client, areas, bilock=False):
-        now_reachable = []
-        num_areas = 2 if bilock else 1
-
-        # First check if it is the case a non-authorized use is trying to change passages to areas
-        # that do not allow their passages to be modified
-        for i in range(num_areas):
-            if not areas[i].change_reachability_allowed and not client.is_staff():
-                raise ClientError('You must be authorized to change passages in area {}.'
-                                  .format(areas[i].name))
-
-        # Just in case something goes wrong, have a backup to revert back
-        formerly_reachable = [areas[i].reachable_areas for i in range(num_areas)]
-
-        for i in range(num_areas):
-            reachable = areas[i].reachable_areas
-            now_reachable.append(False)
-
-            if reachable == {'<ALL>'}: # Case removing a passage from an area connected to all areas
-                reachable = client.server.area_manager.area_names - {areas[1-i].name}
-            elif areas[1-i].name in reachable: # Case removing a passage
-                reachable = reachable - {areas[1-i].name}
-            else: # Case creating a passage
-                # Make sure that non-authorized users cannot create passages did not exist before
-                if not (client.is_staff() or areas[1-i].name in areas[i].staffset_reachable_areas or
-                        areas[i].staffset_reachable_areas == {'<ALL>'}):
-                    # And if they try and do, undo changes and restore formerly reachable areas
-                    for j in range(num_areas):
-                        areas[j].reachable_areas = formerly_reachable[j]
-                    raise ClientError('You must be authorized to create a new passage from {} to '
-                                      '{}.'.format(areas[i].name, areas[1-i].name))
-
-                # Otherise, create new passages
-                reachable.add(areas[1-i].name)
-                now_reachable[i] = True
-
-            areas[i].reachable_areas = reachable
-            if client.is_staff():
-                areas[i].staffset_reachable_areas = reachable
-
-        return now_reachable
+        message = ('Code is using old change_passage_lock syntax. Please change it (or ask your '
+                   'server developer) so that it uses Constants.change_passage_lock instead.'
+                   'This old syntax will be removed in 4.4.')
+        warnings.warn(message, category=UserWarning, stacklevel=2)
+        client.server.area_manager.change_passage_lock(client, areas, bilock=bilock)
 
     @staticmethod
-    def parse_time_length(time_length):
+    def parse_time_length(time_length: str) -> float:
         """
         Convert seconds into a formatted string representing timelength.
         """
-        TIMER_LIMIT = 21600 # 6 hours in seconds
+        TIMER_LIMIT = 21600  # 6 hours in seconds
         # Check if valid length and convert to seconds
         raw_length = time_length.split(':')
         try:
@@ -1328,7 +971,10 @@ class Constants():
         return length
 
     @staticmethod
-    def parse_two_area_names(client, raw_areas, area_duplicate=True, check_valid_range=True):
+    def parse_two_area_names(client: ClientManager.Client,
+                             raw_areas: List[AreaManager.Area],
+                             area_duplicate: bool = True,
+                             check_valid_range: bool = True) -> List[AreaManager.Area]:
         """
         Convert the area passage commands inputs into inputs for parse_area_names.
         and check for the different cases it needs to possibly handle
@@ -1357,16 +1003,16 @@ class Constants():
         return areas
 
     @staticmethod
-    def remove_h_message(message):
+    def remove_h_message(message: str) -> str:
         return Constants.remove_letters(message, 'h')
 
     @staticmethod
-    def remove_letters(message, target):
+    def remove_letters(message: str, target: str) -> str:
         message = re.sub("[{}]".format(target), "", message, flags=re.IGNORECASE)
         return re.sub(r"\s+", " ", message)
 
     @staticmethod
-    def format_area_ranges(areas) -> str:
+    def format_area_ranges(areas: Iterable[AreaManager.Area]) -> str:
         # Obtain area ranges from an iterable containing area objects
         # Ex. If areas contains area 1, 2, 3, 5, 6 and 8, this will return "1-3, 5-6 and 8"
         # If areas is None or empty, returns None
@@ -1396,9 +1042,150 @@ class Constants():
         return Constants.cjoin(area_ranges)
 
     @staticmethod
-    def contains_illegal_characters(text) -> bool:
+    def create_fragile_task(coro_or_future: Awaitable, client: ClientManager.Client = None,
+                            exception_cleanup: Callable[[], None] = None):
+        """
+        Schedule the execution of a coroutine object in a spawned task with a done callback that
+        checks if an exception was raised after the coroutine finished.
+        If there was no exception, do no further actions.
+        If there was an exception other than asyncio.CancelledError, reraise the exception in
+        the callback accordingly.
+        If there was an asyncio.CancelledError or KeyboardInterrupt, do no further actions.
+
+        Parameters
+        ----------
+        coro : coroutine
+            Coroutine to schedule.
+        client : ClientManager.Client, optional
+            Client to notify in the callback if a caught exception during the coroutine was of type
+            server.exceptions.TsuserverException. If such notification happens, the exception is
+            not further propagated. Defaults to None.
+        exception_cleanup : typing.types.FunctionType, optional
+            Function to execute an exception is retrieved, but before it is propagated.
+            Defaults to None.
+
+        Raises
+        ------
+        exception
+            The exception raised by `coro_or_future`, if any was raised.
+
+        Returns
+        -------
+        task : Task.
+            Task where the coroutine object is scheduled to be executed.
+
+        """
+
+        def check_exception(_client, _future):
+            try:
+                exception = _future.exception()
+            except asyncio.CancelledError:
+                return
+
+            if not exception:
+                return
+            if isinstance(exception, (KeyboardInterrupt, asyncio.CancelledError)):
+                # exception may only be asyncio.CancelledError in Python 3.7 or lower
+                # In Python 3.8 it would be raised as an exception and caught in the
+                # earlier try except.
+                return
+            try:
+                if not (_client and isinstance(exception, TsuserverException)):
+                    raise exception
+
+                _client.send_ooc(exception)
+            finally:
+                if exception_cleanup:
+                    exception_cleanup()
+
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(coro_or_future)
+        task.add_done_callback(functools.partial(check_exception, client))
+        return task
+
+    @staticmethod
+    def cancel_and_await_task(task: asyncio.Task):
+        """
+        Function that schedules the cancellation of `task` and awaiting it until it is able to
+        properly retrieve the cancellation exception from `task`. This function assumes the task
+        has not been cancelled yet.
+
+        Parameters
+        ----------
+        task : asyncio.Task
+            Task to cancel
+
+        Returns
+        -------
+        None.
+        """
+
+        async def _do():
+            try:
+                task.cancel()
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        Constants.create_fragile_task(_do())
+
+    @staticmethod
+    def complete_partial_arguments(original_partial, *overwriting_args, **overwriting_keywords):
+        if isinstance(original_partial, functools.partial):
+            new_func = original_partial.func
+            new_args = overwriting_args  # original_partial.args
+            new_keywords = overwriting_keywords.copy()  # original_partial.keywords.copy()
+        else:
+            new_func = original_partial
+            new_args = tuple()
+            new_keywords = dict()
+        if original_partial.args:
+            new_args = original_partial.args
+        new_keywords.update(original_partial.keywords)
+        return functools.partial(new_func, *new_args, **new_keywords)
+
+    @staticmethod
+    def make_partial_from(current_type, default_type: type, *args, **kwargs) -> Callable:
+        """
+        Make a merged functools.partial function based on current_type if it is also a partial
+        function by returning self.complete_partial_arguments(current_type, *args, **kwargs).
+        If current_type is None or the default type, create a partial function with a default type
+        by returning self.complete_partial_arguments(default_type, *args, **kwargs).
+
+        Parameters
+        ----------
+        current_type : functools.partial, type(default_type) or None
+            Function or class to base the merged functions upon.
+        default_type : type
+            Default type to build a partial function upon.
+        *args : iterable of Any
+            Positional arguments to pass to self.complete_partial_arguments.
+        **kwargs : TYPE
+            Keywords arguments to pass to self.complete_partial_arguments.
+
+        Raises
+        ------
+        ValueError
+            If current_type is not a partial function, default_type or None.
+
+        Returns
+        -------
+        functools.partial
+            Merged partial function.
+
+        """
+
+        if isinstance(current_type, functools.partial):
+            return Constants.complete_partial_arguments(current_type, *args, **kwargs)
+        if current_type in [None, default_type]:
+            return functools.partial(default_type, *args, **kwargs)
+        raise ValueError(current_type, type(current_type))
+
+    @staticmethod
+    def contains_illegal_characters(text: str) -> bool:
         """
         Returns True if `text` contains a zero-width character, False otherwise.
+
         Parameters
         ----------
         text : str

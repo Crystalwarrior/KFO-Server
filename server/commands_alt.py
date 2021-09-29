@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-19 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ This module holds all the commands that are either deprecated or are meant to
 act as aliases for existing commands in commands.py
 """
 
+
 def do_command(command, client, arg):
     """
     Wrapper function for calling commands.
@@ -30,13 +31,70 @@ def do_command(command, client, arg):
     function = getattr(source, adapted_command)
     function(client, arg)
 
+
 def do_command_deprecated(command, client, arg):
     """
     Wrapper function for commands that are deprecated and pending removal.
     """
-    client.send_ooc('This command is deprecated and pending removal in 4.3. '
+    client.send_ooc('This command is deprecated and pending removal in 4.4. '
                     'Please use /{} next time.'.format(command))
     do_command(command, client, arg)
+
+
+def ooc_cmd_slit(client, arg):
+    """
+    Alias for /bloodtrail.
+
+    """
+
+    do_command('bloodtrail', client, arg)
+
+
+def ooc_cmd_clock_cancel(client, arg):
+    """
+    Old name for /clock_end.
+
+    """
+
+    do_command_deprecated('clock_end', client, arg)
+
+
+def ooc_cmd_lurk_cancel(client, arg):
+    """
+    Old name for /lurk_end.
+
+    """
+
+    do_command_deprecated('lurk_end', client, arg)
+
+
+def ooc_cmd_party_disband(client, arg):
+    """
+    Old name for /party_end.
+
+    """
+
+    do_command_deprecated('party_end', client, arg)
+
+
+def ooc_cmd_timer_cancel(client, arg):
+    """
+    Old name for /timer_end.
+
+    """
+
+    do_command_deprecated('timer_end', client, arg)
+
+
+def ooc_cmd_zone_delete(client, arg):
+    """
+    Old name for /zone_end.
+
+    """
+
+    do_command('zone_end', client, arg)
+
+
 
 def ooc_cmd_pw(client, arg):
     """
@@ -45,12 +103,14 @@ def ooc_cmd_pw(client, arg):
 
     do_command('party_whisper', client, arg)
 
+
 def ooc_cmd_huddle(client, arg):
     """
     Alias for /party_whisper.
     """
 
     do_command('party_whisper', client, arg)
+
 
 def ooc_cmd_logingm(client, arg):
     """
@@ -59,12 +119,14 @@ def ooc_cmd_logingm(client, arg):
 
     do_command('loginrp', client, arg)
 
+
 def ooc_cmd_sa(client, arg):
     """
     Alias for /showname_area.
     """
 
     do_command('showname_area', client, arg)
+
 
 def ooc_cmd_sas(client, arg):
     """
@@ -73,12 +135,14 @@ def ooc_cmd_sas(client, arg):
 
     do_command('showname_areas', client, arg)
 
+
 def ooc_cmd_shout(client, arg):
     """
     Alias for /scream.
     """
 
     do_command('scream', client, arg)
+
 
 def ooc_cmd_unsneak(client, arg):
     """
@@ -87,6 +151,7 @@ def ooc_cmd_unsneak(client, arg):
 
     do_command('reveal', client, arg)
 
+
 def ooc_cmd_yell(client, arg):
     """
     Alias for /scream.
@@ -94,12 +159,6 @@ def ooc_cmd_yell(client, arg):
 
     do_command('scream', client, arg)
 
-def ooc_cmd_zg(client, arg):
-    """
-    Alias for /zone_global.
-    """
-
-    do_command('zone_global', client, arg)
 
 def ooc_cmd_zi(client, arg):
     """
@@ -108,33 +167,14 @@ def ooc_cmd_zi(client, arg):
 
     do_command('zone_info', client, arg)
 
-def ooc_cmd_allow_iniswap(client, arg):
+
+def ooc_cmd_zg(client, arg):
     """
-    Deprecated for /can_iniswap.
+    Alias for /zone_global.
     """
 
-    do_command_deprecated('can_iniswap', client, arg)
+    do_command('zone_global', client, arg)
 
-def ooc_cmd_delete_areareachlock(client, arg):
-    """
-    Deprecated for /passage_clear.
-    """
-
-    do_command_deprecated('passage_clear', client, arg)
-
-def ooc_cmd_mutepm(client, arg):
-    """
-    Deprecated for /toggle_pm.
-    """
-
-    do_command_deprecated('toggle_pm', client, arg)
-
-def ooc_cmd_restore_areareachlock(client, arg):
-    """
-    Deprecated for /passage_restore.
-    """
-
-    do_command_deprecated('passage_restore', client, arg)
 
 def ooc_cmd_showname_list(client, arg):
     """
@@ -143,37 +183,18 @@ def ooc_cmd_showname_list(client, arg):
 
     do_command('showname_areas', client, arg)
 
-def ooc_cmd_toggle_areareachlock(client, arg):
+
+def ooc_cmd_fa(client, arg):
     """
-    Deprecated for /can_passagelock.
+    Alias for /files_area.
     """
 
-    do_command_deprecated('can_passagelock', client, arg)
+    do_command('files_area', client, arg)
 
-def ooc_cmd_toggleglobal(client, arg):
-    """
-    Deprecated for /toggle_global.
-    """
 
-    do_command_deprecated('toggle_global', client, arg)
-
-def ooc_cmd_toggle_rollp(client, arg):
+def ooc_cmd_l(client, arg):
     """
-    Deprecated for /can_rollp.
+    Alias for /look.
     """
 
-    do_command_deprecated('can_rollp', client, arg)
-
-def ooc_cmd_toggle_rpgetarea(client, arg):
-    """
-    Deprecated for /can_rpgetarea.
-    """
-
-    do_command_deprecated('can_rpgetarea', client, arg)
-
-def ooc_cmd_toggle_rpgetareas(client, arg):
-    """
-    Deprecated for /can_rpgetareas.
-    """
-
-    do_command_deprecated('can_rpgetareas', client, arg)
+    do_command('look', client, arg)

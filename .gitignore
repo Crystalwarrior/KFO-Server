@@ -1,7 +1,6 @@
 /config/*
 /storage/*.json
 /logs/*.log
-/server/__pycache__/*.pyc
 /.spyproject/
 /__pycache__/
 /tests/__pycache__/
@@ -10,5 +9,6 @@
 /.coverage
 /.pylint.d/
 /server/.pylint.d/
-/.vscode/*
-/server/validate/__pycache__/*.pyc
+/server/__pycache__/
+/server/validate/__pycache__
+/.vscode/

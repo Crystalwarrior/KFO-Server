@@ -54,7 +54,7 @@ gmpass7: Sunday
 # motd: message sent to OOC on connection
 # hostname: 'username' of the server (precedes all OOC messages sent by the server)
 # discord_link: Discord invite link for the server, accessible through /discord
-# utc_offset: To print /time or /time12, use either local time (put local) or UTC offset to use (put +0, +2.5, -3, etc.) 
+# utc_offset: To print /time or /time12, use either local time (put local) or UTC offset to use (put +0, +2.5, -3, etc.)
 
 motd: Welcome to my server!
 hostname: <dollar>H
@@ -70,16 +70,18 @@ max_acceptable_term: 22074
 def_numdice: 1
 def_numfaces: 6
 def_modifier: ''
-        
+
 # RP configurations
+# announce_areas: list all areas of the server in OOC when the player joins
 # rp_mode_enabled: if RP mode should be enabled (restricts certain commands)
 # blackout_background: background to display if lights are turned off/player is blinded
 # default_area_description: description to show with /look if no description is set
-# party_lights_timeout: time a party needs to be in an area with no lights to automatically disband
+# party_lights_timeout: time a party needs to be in an area with no lights to automatically be ended
 # showname_max_length: maximum length of a custom showname
 # sneak_handicap: automatic handicap to impose players who start sneaking
 # spectator_name: name spectators get in /getarea(s)
 
+announce_areas: true
 rp_mode_enabled: true
 blackout_background: Blackout_HD
 default_area_description: No description.
@@ -104,7 +106,6 @@ use_district: false
 district_ip: 127.0.0.1
 district_port: 11037
 district_password: enter_password
-announce_areas: true
 debug: false
 guardpass: Guard
 help_msg: TODO

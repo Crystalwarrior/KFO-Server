@@ -1,6 +1,6 @@
 # A sample music list document
 # Each item in a music list is a music category, under which you may list songs.
-# Each song has (and requires) a name field, and an optional length in seconds field. If given length, the track will automatically loop after length seconds.
+# Each song has (and requires) a name field, and optional fields: length in seconds, and source. If given length, the track will automatically loop after length seconds. If given source, source information will be included with /currentmusic
 # To make a track not loop, do not include the length field.
 # Start each music category with a -
 
@@ -8,6 +8,7 @@
   songs: 
     - name: "BOX 15.mp3"
       length: 244
+      source: Danganronpa 1
     - name: "BOX 16.mp3"
       length: 331
     - name: "Ikoroshia.mp3"
@@ -18,6 +19,7 @@
       length: 263
     - name: "Hope Searching.mp3"
       length: 501
+      source: Danganronpa V3
 - category: --Class Trial--
   songs: 
     - name: "Trial Underground.mp3"

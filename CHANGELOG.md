@@ -510,3 +510,172 @@
 
 ### 210626a (4.2.6-post1)
 * Fixed various commands not loading server YAML files with UTF-8 encoding
+
+## 210929a (4.3.0)
+* Tied in to Danganronpa Online v1.0.0, although support for the previous Danganronpa Online version will be kept for 4.3.0
+* Explicitly allowed Python 3.9 support for server owners
+* Added basic DR-style trials (confront readme for command instructions):
+  - /trial
+  - /trial_add <identifier>
+  - /trial_end
+  - /trial_focus <identifier> <value>
+  - /trial_influence <identifier> <value>
+  - /trial_info
+  - /trial_join <trialname>
+  - /trial_lead
+  - /trial_leave
+  - /trial_kick <identifier>
+  - /trial_unlead
+* Added basic DR-style nonstop debates that run within trials and can loop automatically until a player shoots an appropriate bullet (confront readme for command instructions):
+  - /nsd <time>
+  - /nsd_add <identifier>
+  - /nsd_end
+  - /nsd_join <nsdname>
+  - /nsd_lead
+  - /nsd_leave
+  - /nsd_kick <identifier>
+  - /nsd_unlead
+  - /nsd_pause
+  - /nsd_loop
+  - /nsd_accept
+  - /nsd_reject
+  - /nsd_resume
+* Added perjury bullet support: only the person using the perjury bullet and the NSD leaders (or GMs if not part of an NSD) receive the perjury animation, everyone else receives a counter animation.
+* Added area lurk callouts to name players who have been idle some amount of time in an area via
+  - /lurk <length>
+  - /lurk_cancel (to cancel a lurk callout in an area)
+* Players may now set and see custom status, which will send an IC notification to every player that subsequently sees them:
+  - /status <id>
+  - /status_set <new_status>
+  - /status_set_other <id> <new_status> (GM+ command)
+* Areas may now be marked as noteworthy, which will also trigger a similar IC notification on arrival or visibility change.
+  - /noteworthy
+* /look now shows a list of players in the area like /getarea, with the following additions
+  - Players are listed by showname, if unavailable edited to character, and if unavailable character folder
+  - Players in the same party now show a (P)
+  - Players with a custom status now show a (!)
+* Added /bilockh and /unilockh GM commands. They have the effect /bilock and /unilock formerly had of showing/hiding areas from the area list. /bilock and /unilock for all ranks now does not change passage visibility for all ranks.
+  - Passage visibility changes are immediately reported in the affected players' area lists
+* System blankposts are now sent on area change or when blinded to clear the last character on screen for compatible clients.
+* Added support for new colors available in DRO as well as the set position SP packet
+* Music playing notifications now show the server showname of the player in DRO if the player set a showname
+* Last sender sprites no longer show in first person mode if the player with first person mode talks and the last sender
+  - Disconnected
+  - Is in a different area
+  - Changed characters
+  - Has sneaked, and it is not the case the player is sneaking and they are both in a party
+* Added explicit 'forwards sprite mode' via /toggle_fs. When a player has forwards sprites disabled, all recipients of their IC message will not see the player's sprite, but the last one they saw (or blank if any of the conditions described for first person mode blanks applies). By default it is on.
+* Day cycle clocks are now more linked with DRO 1.0.0 by supporting time of day periods. Players in the clock range playing with compatible clients will automatically change to their time of day's version of their theme when entering a custom period or unknown time:
+  - /clock_period
+  - /clock_unknown
+* Day cycle clocks can now have their hour length and current hour be modified via /clock_set
+* Day cycle clock unpauses now take place as soon as processed rather than at most 1 second after being processed
+* Added /zone_mode to set up the gamemode of a zone. Players part of an area in that zone with compatible clients will automatically change to their gamemode's version of their theme.
+* Players in a party that are sneaking may now see each other via /getarea and similar. Players in the party not sneaking, or players sneaking not part of the party may not see these players
+* Non-GM players that are spectators may now follow players.
+  - Players that were GM and not spectators who then logged out, or non-GMs who were spectators and switched to a character stop following whoever they were following.
+* Changed wording of GM login notifications, /minimap, attempting to access a locked passage, talking in an area whose IC chat is locked, following and unfollowing
+* Notifications are now sent if a mod via /switch forces a target off their character (e.g. mod using /switch) to the mod, the target, and other officers in the server
+* Clients with compatible clients now no longer see auxiliary extra spaces in IC if deafened nor their own messages with global IC prefixes if they have them on
+* Improved README description of /switch to account for GMs being able to switch to restricted characters, and mods being able to force a player off their character
+* Added area parameter that allows only CMs and mods to send global messages in an area (by default false)
+* Improved type checking of areas, background, config, music and character lists (they now hopefully fail earlier and more clearly if they have subtle errors)
+* If a character list is changed via /refresh, all clients are switched to spectator and prompted to rejoin the server
+* /banhdid now reports, if a player was already banned, what IPID was banned
+* Judge buttons are now disallowed in lobby areas
+* Removed support for AO1 style packets. The server will now respond only to DRO and AO2-style packets
+* Server now logs 100 most recent sent and received packets in error logs
+* Players that successfully call mod now receive an OOC notification acknowledging that
+* Removed the limit on number of different judge buttons accepted
+* Running /showname with no arguments with no showname set, or attempting to set the same showname as the one previously had, now returns an error instead of running successfully
+* Added /dump to generate a server dump on request
+* Added /slit, alias to /bloodtrail
+* Clients sending syntactically correct but otherwise unidentifiable packets now silently log to console and server log rather than propagating an uncaught KeyError
+* Allowed /cleargm to take a client ID to log out a particular client from their GM rank
+* Improved output of /cleargm and /kickself for the user running the commands: they now see who they logged out or kicked respectively
+* Added config/gimp.yaml so server owners can customize the output of gimped players
+* Improved output of error messages if the port the server tries to use is already in use or that is beyond the range of available ports
+* IC and OOC messages, as well as arguments to OOC commands, now have leading and trailing whitespace characters removed (except a chain of only spaces)
+* The following server asset files may now be validated without launching a server by opening the appropriate file in server/validate, and dragging the file to check in there:
+  - Areas
+  - Backgrounds
+  - Characters
+  - Config
+  - Gimp
+  - Music
+* /scream_set_range now allows <ALL> as an argument to indicate all areas should be able to receive a scream coming from the area the person running the command
+* Added /iclock_bypass, allowing GM+ to let non-GMs in an area whose IC chat is locked to talk in IC. The effect disappears as soon as the target moves area or their area has their IC chat unlocked
+* Improved output of /blind, /deafen, /gag if no arguments are passed
+* Made /blind, /deafen, /gag, /bloodtrail echo the ID of the affected target as part of output message
+* GMs are no longer subject to the server music flood guard
+* Added /randommusic, which plays a randomly chosen track from the player's current music list
+* Added /exit, which lets you exit the server from OOC
+* Server initiated messages will now attempt to include desks wherever possible
+* Added /zone_handicap and /zone_unhandicap. Players who enter an area part of a zone with a handicap will be subject to the imposed movement handicap automatically
+    - Also added /zone_handicap_affect, which makes a player be subject to a zone handicap if their handicap was removed
+* Running /sneak on an already sneaked player will now fail. Similarly, running /reveal on an already not sneaked player will now fail
+* All commands that require a specific number of arguments now validate that the correct number of arguments was passed
+* Zones that lose all their watchers but still have players in areas part of the zone will no longer be automatically deleted
+* If an area is made part of a zone via /zone or /zone_add, all players are now notified about it. A similar behavior occurs now with /zone_remove
+* All /showname_set notifications now include the old showname of the affected user if applicable
+* Clients may now send empty sound effects
+* Made /showname_history be available to all staff members (previously it was for moderators only)
+* Added /charlog, which lists all character changes a player has gone through in a session (including character showname or iniswap changes)
+* Made /whois identifiers follow the same identifier type lookup logic as other commands
+* RP notifications that typically show player shownames will now try to use character shownames if available before defaulting to the character folder name
+* Added /zone_tick and /zone_tick_remove to set the chat tick rate of a zone, so all players in an area part of the zone see messages with the same chat tick rate, or their own chat tick rate
+* Made /switch indicate the target character, regardless of whether the switch was successful or not
+* Made /zone_watch return a more specific error if the player is already watching the target zone
+* Renamed certain commands that end certain features so they have a standard format:
+  - /clock_cancel -> /clock_end
+  - /party_disband -> /party_end
+  - /timer_cancel -> /timer_end
+  - /zone_delete -> /zone_end
+* Added `background_tod` as an area parameter. Subparameters defined within it will indicate compatible clients to switch to a given background according to the current time of day present in the client's area
+* Added /files_area (command alias /fa), which returns all visible players in the area who have set their files
+* Added command alias /l for /look
+* Made /whois also return the files the target player set for their character, if they set them
+* Added support for incoming client packet "CharsCheck", which if received forwards the sender the list of characters their client is meant to see, so they can update their available characters list
+* Added /zone_iclock, which applies the same lock/unlock status to all areas part of your zone
+* Removed the AttributeError warning from console when a player inputs a command that does not exist
+* Added the command name that was used whenever an "Invalid command" error message is triggered
+* Made /sneak and /reveal (/unsneak) with no arguments affect the player using it rather than raising an error
+* Added `source` optional parameter to music list files, which would indicate the source of the currently played music via /currentmusic
+* Made /area with no parameters return an area list for non-staff players only if `announce_areas` was set to true in the server configuration
+* Fixed scream_range in area list yaml files not supporting the keyword <ALL> to indicate all areas should be able to receive a scream coming from a particular area
+* Fixed scream_range in area list yaml files not checking if the areas a scream can reach to from a particular area exist
+* Fixed /scream, /whisper and /party_whisper raising errors if a message was sent to a deafened player with a bypass message starter. They now sent messages but filtered
+* Fixed /scream bypassing moderation mutes or client mutes
+* Fixed /scream bypassing IC chat locks, or being rendered in scream-reachable areas whose IC chats are locked
+* Fixed /charselect sending the proper area background to blind clients
+* Fixed blankposts or double empty spaces being filtered out for deafened players
+* Fixed wrongly formatted OOC notifications being sent if a player moves to an area where there are players bleeding and sneaking, and players bleeding but not sneaking
+* Fixed GMs blinding, deafening or gagging themselves receiving two notifications
+* Fixed area lists containing <ALL> as an area name loading without raising errors
+* Fixed /whisper, /blind, /deafen, /gag not showing client ID of target for GMs+
+* Fixed /party_whisper not showing party ID of target for GMs+
+* Fixed situation where if a player was in first person mode and was blinded, talked themselves but heard no one else talk, and after being unblinded started talking, they would see the sprite of the last person they last saw talked
+* Fixed attempting to load non-YAML files or files with unusual encoding raising an uncaught UnicodeDecode error
+* Fixed /refresh not undoing changes if either the background, character or music list raised errors when loading
+* Fixed /sneak and /reveal not showing the client ID of target players to zone watchers
+* Fixed /zone_add, /zone_lights, /zone_play, /zone_watch not showing the area ID of the command sender to zone watchers
+* Fixed filtering out global IC prefixes if a prefix was set and a message that started with that prefix was sent while global IC was turned off
+* Fixed players in first person mode not seeing the last sender' sprites if the last sender was a GM that was sneaking
+* Fixed /scream going to screamable areas if area is marked as private
+* Fixed the server not failing early if a server YAML file was empty
+* Fixed /charselect (either as mod or not) not running all spectator actions, like restarting AFK kick timers, updating character folder or notifying zone watchers
+* Fixed the server silently accepting a YAML mapping file (like an area list) with duplicate keys in an item. A helpful error message is now raised
+* Fixed the server indicating the wrong directory for the configuration file if the passwords were incorrect (previously showed server/config.yaml, now shows 'configuration file')
+* Fixed the server disallowing all IC messages if a daily password was deliberately left empty rather than removed from the configuration file
+* Fixed /party_leave not having short documentation for /help party_leave
+* Fixed the server attempting to send packets to clients without checking if the client is still online.
+* Fixed /poison, /cure and notifications for effects kicking in not showing the target's ID to the command runner and zone watchers
+* Fixed /charselect notifying of the wrong person running the command to officers
+* Fixed output of /scream_range being formatted different from /minimap. It now lists areas in order by ID with the format number-name
+* Fixed /scream, /whisper and /party_whisper not sending character folder information, which prevented rendering of showname images
+* Fixed /play bypassing IC mutes, blockdj and the server music flood guard
+* Fixed /showname_set stopping early if multiple targets needed to be updated but an early one failed
+* Fixed the default config.yaml listing 'announce_areas' as an unused parameter (it is actively used)
+* Fixed /showname_set being listed as a moderator only command in the README (it was always staff only)
+* Removed deprecated AO commands, and deprecated packets opKICK and opBAN
+* Dropped Python 3.6 support, and added indication of future Python 3.8 support drop

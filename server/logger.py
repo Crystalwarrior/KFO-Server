@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-19 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ import time
 import traceback
 
 from server.constants import Constants
+
 
 def setup_logger(debug):
     logging.Formatter.converter = time.gmtime
@@ -63,30 +64,42 @@ def setup_logger(debug):
 
     return (debug_log, debug_handler), (server_log, server_handler)
 
+
 def log_debug(msg, client=None):
     msg = parse_client_info(client) + msg
     logging.getLogger('debug').debug(msg)
 
-def log_error(msg, server, errortype='P'):
+
+def log_error(msg, server, errortype='P') -> str:
     # errortype "C" if server raised an error as a result of a client packet.
+    # errortype "D" if player manually requested an error dump
     # errortype "P" if server raised an error for any other reason
     error_log = logging.getLogger('error')
 
-    moment = 'logs/{}{}.log'.format(Constants.get_time_iso(), errortype)
-    moment = moment.replace(':', '')
-    error_handler = logging.FileHandler(moment, encoding='utf-8')
+    file = 'logs/{}{}.log'.format(Constants.get_time_iso(), errortype)
+    file = file.replace(':', '')
+    error_handler = logging.FileHandler(file, encoding='utf-8')
 
     error_handler.setLevel(logging.ERROR)
     error_handler.setFormatter(logging.Formatter('[%(asctime)s UTC]%(message)s'))
     error_log.addHandler(error_handler)
 
     if server:
+        # Add list of most recent packets
+        msg += f'\n\n\n= {server.logged_packet_limit} most recent packets dump ='
+        if not server.logged_packets:
+            msg += '\nNo logged packets.'
+        else:
+            for logged_packet in server.logged_packets:
+                str_logged_packet = ' '.join(logged_packet)
+                msg += f'\n{str_logged_packet}'
+
         # Add list of clients to error log
         try:
             msg += '\n\n\n= Client dump. ='
-            msg += '\n*Number of clients: {}'.format(len(server.client_manager.clients))
+            msg += '\n*Number of clients: {}'.format(len(server.get_clients()))
             msg += '\n*Current clients'
-            clients = sorted(server.client_manager.clients, key=lambda c: c.id)
+            clients = sorted(server.get_clients(), key=lambda c: c.id)
             for c in clients:
                 msg += '\n\n{}'.format(c.get_info(as_mod=True))
         except Exception:
@@ -111,40 +124,49 @@ def log_error(msg, server, errortype='P'):
             msg += '\n{}'.format("".join(traceback.format_exception(etype, evalue, etraceback)))
     else:
         # Case server was not initialized properly, so areas and clients are not set
-        msg += '\nServer was not initialized, so client and area dumps could not be generated.'
+        msg += ('\nServer was not initialized, so packet, client and area dumps could not be '
+                'generated.')
 
     # Write and log
     error_log.error(msg)
     error_log.removeHandler(error_handler)
 
-    log_pserver('Successfully created error log file {}'.format(moment))
+    log_pserver('Successfully created server dump file {}'.format(file))
+    return file
+
 
 def log_server(msg, client=None):
-    msg = parse_client_info(client) + msg
+    msg = f'{parse_client_info(client)}{msg}'
     logging.getLogger('server').info(msg)
+
 
 def log_server2(msg, client=None):
     pass
 
+
 def log_print(msg, client=None):
-    msg = parse_client_info(client) + msg
+    msg = f'{parse_client_info(client)}{msg}'
     current_time = Constants.get_time_iso()
     print('{}: {}'.format(current_time, msg))
 
+
 def log_print2(msg, client=None):
     pass
+
 
 def log_pdebug(msg, client=None):
     log_debug(msg, client=client)
     log_print(msg, client=client)
 
+
 def log_pserver(msg, client=None):
     log_server(msg, client=client)
     log_print(msg, client=client)
 
-#def log_rp(msg, client=None):
-#   msg = parse_client_info(client) + msg
+# def log_rp(msg, client=None):
+#    msg = parse_client_info(client) + msg
 #    logging.getLogger('rp').info(msg)
+
 
 def parse_client_info(client):
     if client is None:

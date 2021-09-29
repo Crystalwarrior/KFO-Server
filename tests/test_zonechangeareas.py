@@ -1,5 +1,6 @@
 from .test_zonebasic import _TestZone
 
+
 class TestZoneChangeArea_01_Add(_TestZone):
     def test_01_wrongarguments(self):
         """
@@ -38,18 +39,33 @@ class TestZoneChangeArea_01_Add(_TestZone):
         Situation: After creating a zone themselves, C1 adds another area.
         """
 
-        self.c1.ooc('/zone 4, 6')
+        self.c1.ooc('/zone 4, 5')
+        self.c0.discard_all()
         self.c1.discard_all()
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
+        self.c5.discard_all()
+        self.assert_zones({'z0': {4, 5}})
+
+        self.c1.ooc('/zone_add 6')
+        self.c0.discard_all()
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.assert_packet('GM', '')
+        self.c4.assert_ooc('Your area has been made part of zone `{}`.'
+                           .format('z0'), over=True)
+        self.c5.discard_all()
         self.assert_zones({'z0': {4, 5, 6}})
 
         self.c1.ooc('/zone_add 7')
         self.c0.assert_no_packets()
         self.c1.assert_ooc('You have added area {} to your zone.'.format(7), over=True)
-        self.c2.assert_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
-                           'its notifications, start watching it with /zone_watch {}'
-                           .format('z0', 'z0'), over=True)
+        self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
+        self.c5.assert_packet('GM', '')
         self.c5.assert_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
                            'its notifications, start watching it with /zone_watch {}'
                            .format('z0', 'z0'), over=True)
@@ -94,8 +110,8 @@ class TestZoneChangeArea_01_Add(_TestZone):
 
         self.c5.ooc('/zone_add 1')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} [{}] has added area {} to your zone.'
-                           .format(self.c5.displayname, 5, 1), over=True)
+        self.c1.assert_ooc('(X) {} [{}] has added area {} to your zone ({}).'
+                           .format(self.c5.displayname, 5, 1, 7), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -108,7 +124,7 @@ class TestZoneChangeArea_01_Add(_TestZone):
         """
 
         self.c2.ooc('/zone 2')
-        self.c1.discard_all() # Discard mod notification for zone creation
+        self.c1.discard_all()  # Discard mod notification for zone creation
         self.c2.discard_all()
         self.assert_zones({'z0': {0, 1, 4, 5, 6, 7}, 'z1': {2}})
 
@@ -134,6 +150,7 @@ class TestZoneChangeArea_01_Add(_TestZone):
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
         self.assert_zones({'z0': {0, 1, 4, 5, 6, 7}, 'z1': {2, 3}})
+
 
 class TestZoneChangeArea_02_Remove(_TestZone):
     def test_01_wrongarguments(self):
@@ -162,19 +179,26 @@ class TestZoneChangeArea_02_Remove(_TestZone):
     def test_02_removearea(self):
         """
         Situation: C1 creates a zone with areas 4-7. They, then remove area 5 from the zone.
+        C2 and C3 being in an area part of the zone are ordered to switch back to no gamemode,
+        and are notified.
         """
 
         self.c1.ooc('/zone 4, 7')
+        self.c0.discard_all()
         self.c1.discard_all()
-        self.c2.discard_all() # c2 receives being in zone at zone creation notif
-        self.c5.discard_all() # same as above
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
+        self.c5.discard_all()
         self.assert_zones({'z0': {4, 5, 6, 7}})
 
         self.c1.ooc('/zone_remove 5')
         self.c0.assert_no_packets()
         self.c1.assert_ooc('You have removed area {} from your zone.'.format(5), over=True)
-        self.c2.assert_no_packets()
-        self.c3.assert_no_packets()
+        self.c2.assert_packet('GM', '')
+        self.c2.assert_ooc('Your area has been removed from your zone.', over=True)
+        self.c3.assert_packet('GM', '')
+        self.c3.assert_ooc('Your area has been removed from your zone.', over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
         self.assert_zones({'z0': {4, 6, 7}})
@@ -183,7 +207,8 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         """
         Situation: C1 slowly removes all areas from their zone. After they remove the last one,
         the zone is automatically disposed of. This is notified to all watchers of the now defunct
-        zone (including C5, who tagged along).
+        zone (including C5, who tagged along). All people in the areas part of the zone are ordered
+        to switch back to no gamemode.
         """
 
         self.c5.ooc('/zone_watch z0')
@@ -191,7 +216,9 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         self.c5.discard_all()
 
         self.c1.ooc('/zone_remove 4')
-        self.c0.assert_no_packets()
+        self.c0.assert_packet('GM', '')
+        self.c0.assert_ooc('Your area has been removed from your zone.', over=True)
+        self.c1.assert_packet('GM', '')
         self.c1.assert_ooc('You have removed area {} from your zone.'.format(4), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
@@ -205,7 +232,8 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         self.c1.assert_ooc('You have removed area {} from your zone.'.format(6), over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
-        self.c4.assert_no_packets()
+        self.c4.assert_packet('GM', '')
+        self.c4.assert_ooc('Your area has been removed from your zone.', over=True)
         self.c5.assert_ooc('(X) {} [{}] has removed area {} from your zone.'
                            .format(self.c1.displayname, 1, 6), over=True)
         self.assert_zones({'z0': {7}})
@@ -218,6 +246,7 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
+        self.c5.assert_packet('GM', '')
         self.c5.assert_ooc('(X) {} [{}] has removed area {} from your zone.'
                            .format(self.c1.displayname, 1, 7))
         self.c5.assert_ooc('(X) As your zone no longer covers any areas, it has been deleted.',
@@ -231,9 +260,12 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         """
 
         self.c1.ooc('/zone 4, 7')
+        self.c0.discard_all()
         self.c1.discard_all()
-        self.c2.discard_all() # c2 receives being in zone at zone creation notif
-        self.c5.discard_all() # same as above
+        self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
+        self.c5.discard_all()
 
         self.c5.ooc('/zone_remove 6')
         self.c0.assert_no_packets()
@@ -259,6 +291,7 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
+        self.c5.assert_packet('GM', '')
         self.c5.assert_ooc('You have removed area {} from your zone.'.format(7), over=True)
         self.assert_zones({'z0': {4, 5, 6}})
 
@@ -268,7 +301,7 @@ class TestZoneChangeArea_02_Remove(_TestZone):
         """
 
         self.c2.ooc('/zone 2, 3')
-        self.c1.discard_all() # Discard mod notification for zone creation
+        self.c1.discard_all()  # Discard mod notification for zone creation
         self.c2.discard_all()
         self.assert_zones({'z0': {4, 5, 6}, 'z1': {2, 3}})
 

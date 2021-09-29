@@ -42,35 +42,6 @@ class TestGlobal_01_ToggleGlobal(_TestOOC):
         self.assertFalse(self.c2.muted_global)
         self.assertFalse(self.c3.muted_global)
 
-    def test_03_deprecatedname(self):
-        """
-        Situation: Client uses /toggleglobal (deprecated name). It works... for now.
-        """
-
-        self.c0.ooc('/toggleglobal')
-        self.c0.assert_ooc('This command is deprecated and pending removal in 4.3. Please use '
-                           '/toggle_global next time.')
-        self.c0.assert_ooc('You will no longer receive global messages.', over=True)
-        self.c1.assert_no_ooc()
-        self.c2.assert_no_ooc()
-        self.c3.assert_no_ooc()
-        self.assertTrue(self.c0.muted_global)
-        self.assertFalse(self.c1.muted_global)
-        self.assertFalse(self.c2.muted_global)
-        self.assertFalse(self.c3.muted_global)
-
-        self.c0.ooc('/toggleglobal')
-        self.c0.assert_ooc('This command is deprecated and pending removal in 4.3. Please use '
-                           '/toggle_global next time.')
-        self.c0.assert_ooc('You will now receive global messages.', over=True)
-        self.c1.assert_no_ooc()
-        self.c2.assert_no_ooc()
-        self.c3.assert_no_ooc()
-        self.assertFalse(self.c0.muted_global)
-        self.assertFalse(self.c1.muted_global)
-        self.assertFalse(self.c2.muted_global)
-        self.assertFalse(self.c3.muted_global)
-
 class TestGlobal_02_Announce(_TestOOC):
     def test_01_wrongarguments(self):
         """
@@ -166,8 +137,8 @@ class TestGlobal_03_Global(_TestOOC):
 
     def test_02_sendglobal(self):
         """
-        Situation: C0-3 send correct globals. They all
-        receive one another's globals, even if they are in different areas.
+        Situation: C0-3 send correct globals. They all receive one another's globals, even if they
+        are in different areas, as they are all in areas that allow for global messages.
         """
 
         for (i, c) in enumerate(self.clients[:4]):
@@ -184,7 +155,38 @@ class TestGlobal_03_Global(_TestOOC):
             self.c1.assert_ooc(
                 'Hello.', username='<dollar>G[{}][{}][{}]'.format(area, name, c.ipid), over=True)
 
-    def test_03_globalwhilemutedglobal(self):
+    def test_03_sendglobal_globalallowed(self):
+        """
+        Situation: C0 and C1 move to an area that disallows globals. They both attempt to send
+        global messages, but only C1 succeeds (they are a mod, and need at least CM rank).
+        """
+
+        self.c0.move_area(1)
+        self.c1.move_area(1)
+
+        self.c0.ooc('/g Hallo from C0')
+        self.c0.assert_ooc('You must be authorized to send global messages in this area.',
+                           over=True)
+        self.c1.assert_no_ooc()
+        self.c2.assert_no_ooc()
+        self.c3.assert_no_ooc()
+
+        self.c1.ooc('/g Hallo from C1.')
+        self.c0.assert_ooc('Hallo from C1.',
+                           username='<dollar>G[{}][{}]'.format(1, self.c1.name), over=True)
+        self.c1.assert_ooc(
+            'Hallo from C1.',
+            username='<dollar>G[{}][{}][{}]'.format(1, self.c1.name, self.c1.ipid), over=True)
+        self.c2.assert_ooc('Hallo from C1.',
+                           username='<dollar>G[{}][{}]'.format(1, self.c1.name), over=True)
+        self.c3.assert_ooc('Hallo from C1.',
+                           username='<dollar>G[{}][{}]'.format(1, self.c1.name), over=True)
+
+        # Undo move for next tests
+        self.c0.move_area(0)
+        self.c1.move_area(0)
+
+    def test_04_globalwhilemutedglobal(self):
         """
         Situation: C0 and C2 attempt to communicate through globals, but fail as C0 has muted them.
         """

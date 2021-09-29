@@ -1,5 +1,6 @@
 from .structures import _TestSituation5Mc1Gc2
-from .test_senseblock import _TestSenseBlock, _UnittestSenseBlock
+from .test_senseblock import _TestSenseBlock, _TestSenseBlockCommon
+
 
 class _TestGag(_TestSenseBlock):
     @classmethod
@@ -22,7 +23,7 @@ class _TestGag(_TestSenseBlock):
         # Assert client received a valid gagged message, then continue with assert_ic method
         assert(len(client.received_ic) > 0)
         params = client.received_ic[0]
-        param_id_msg = 4 # Change if later protocol changes this
+        param_id_msg = 4  # Change if later protocol changes this
         msg = params[param_id_msg]
 
         if not self._is_gagged_message(msg):
@@ -30,13 +31,15 @@ class _TestGag(_TestSenseBlock):
 
         client.assert_ic(msg, over=over, ic_over=ic_over, check_MS_packet=check_MS_packet, **kwargs)
 
-class TestGag_01_Common(_UnittestSenseBlock):
+
+class TestGag_01_Common(_TestSenseBlockCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.sense = 'gag'
         cls.sense_pp = 'gagged'
         cls.sense_attribute = lambda x, c: c.is_gagged
+
 
 class TestGag_02_Effect(_TestGag):
     @classmethod
@@ -50,10 +53,10 @@ class TestGag_02_Effect(_TestGag):
         """
 
         self.c1.ooc('/gag {}'.format(0))
-        self.c1.assert_ooc('You have gagged {}.'.format(self.c0_dname), over=True)
+        self.c1.assert_ooc('You have gagged {} [{}].'.format(self.c0_dname, 0), over=True)
         self.c0.assert_ooc('You have been gagged.', ooc_over=True)
-        self.c2.assert_ooc('(X) {} [{}] has gagged {} ({}).'
-                           .format(self.c1.displayname, 1, self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] has gagged {} [{}] ({}).'
+                           .format(self.c1.displayname, 1, self.c0_dname, 0, 0), over=True)
         self.c3.assert_no_ooc()
 
         assert self.c0.is_gagged
@@ -114,7 +117,7 @@ class TestGag_02_Effect(_TestGag):
         self.c2.assert_ooc('(X) {} [{}] tried to say `{}` but is currently gagged.'
                            .format(self.c0_dname, 0, 'Im gagged.'), ooc_over=True)
         self.assert_ic_gag(self.c2,  folder=self.c0_cname,
-                          anim='sad', over=True)
+                           anim='sad', over=True)
         self.assert_ic_gag(self.c3, folder=self.c0_cname, anim='sad', over=True)
 
     def test_04_gaggedsaysspecialmessages(self):
@@ -136,6 +139,7 @@ class TestGag_02_Effect(_TestGag):
         self.c0.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
         self.c2.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
         self.c3.assert_ic('[y r u liek dis', folder=self.c0_cname, over=True)
+
 
 class TestGag_03_Miscellaneous(_TestSituation5Mc1Gc2):
     @classmethod

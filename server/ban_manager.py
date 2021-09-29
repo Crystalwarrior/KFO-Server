@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-19 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,13 +34,10 @@ class BanManager:
         try:
             with Constants.fopen('storage/banlist.json', 'r', encoding='utf-8') as banlist_file:
                 self.bans = json.load(banlist_file)
-        except ServerError as ex:
-            if ex.code == 'FileNotFound':
-                message = 'WARNING: File not found: storage/banlist.json. Creating a new one...'
-                logger.log_pdebug(message)
-                self.write_banlist()
-            else:
-                raise ex
+        except ServerError.FileNotFoundError:
+            message = 'WARNING: File not found: storage/banlist.json. Creating a new one...'
+            logger.log_pdebug(message)
+            self.write_banlist()
         except Exception as ex:
             message = 'WARNING: Error loading storage/banlist.json. Will assume empty values.\n'
             message += '{}: {}'.format(type(ex).__name__, ex)

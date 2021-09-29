@@ -91,12 +91,12 @@ class TestPoisonCure_01_Poison(_TestPoisonCure):
         self.c1.ooc('/poison 0 b 80')
         self.c0.assert_ooc('You were poisoned. The following effects will apply shortly: '
                            '\r\n*Blindness: acts in 1:20.', over=True)
-        self.c1.assert_ooc('You poisoned {} with the following effects: '
+        self.c1.assert_ooc('You poisoned {} [{}] with the following effects: '
                            '\r\n*Blindness: acts in 1:20.'
-                           .format(self.c0_dname), over=True)
-        self.c2.assert_ooc('(X) {} [{}] poisoned {} with the following effects ({}): '
+                           .format(self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] poisoned {} [{}] with the following effects ({}): '
                            '\r\n*Blindness: acts in 1:20.'
-                           .format(self.c1_dname, 1, self.c0_dname, self.c1.area.id), over=True)
+                           .format(self.c1_dname, 1, self.c0_dname, 0, self.c1.area.id), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
 
@@ -109,14 +109,14 @@ class TestPoisonCure_01_Poison(_TestPoisonCure):
         self.c0.assert_ooc('You were poisoned. The following effects will apply shortly: '
                            '\r\n*Deafness: acts in 20 seconds.'
                            '\r\n*Gagged: acts in 20 seconds.', over=True)
-        self.c1.assert_ooc('You poisoned {} with the following effects: '
+        self.c1.assert_ooc('You poisoned {} [{}] with the following effects: '
                            '\r\n*Deafness: acts in 20 seconds.'
                            '\r\n*Gagged: acts in 20 seconds.'
-                           .format(self.c0_dname), over=True)
-        self.c2.assert_ooc('(X) {} [{}] poisoned {} with the following effects ({}): '
+                           .format(self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] poisoned {} [{}] with the following effects ({}): '
                            '\r\n*Deafness: acts in 20 seconds.'
                            '\r\n*Gagged: acts in 20 seconds.'
-                           .format(self.c1_dname, 1, self.c0_dname, self.c1.area.id), over=True)
+                           .format(self.c1_dname, 1, self.c0_dname, 0, self.c1.area.id), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
 
@@ -129,12 +129,12 @@ class TestPoisonCure_01_Poison(_TestPoisonCure):
         self.c1.ooc('/poison 0 D 10')
         self.c0.assert_ooc('You were poisoned. The following effects will apply shortly: '
                            '\r\n*Deafness: now acts in 10 seconds.', over=True)
-        self.c1.assert_ooc('You poisoned {} with the following effects: '
+        self.c1.assert_ooc('You poisoned {} [{}] with the following effects: '
                            '\r\n*Deafness: now acts in 10 seconds.'
-                           .format(self.c0_dname), over=True)
-        self.c2.assert_ooc('(X) {} [{}] poisoned {} with the following effects ({}): '
+                           .format(self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] poisoned {} [{}] with the following effects ({}): '
                            '\r\n*Deafness: now acts in 10 seconds.'
-                           .format(self.c1_dname, 1, self.c0_dname, self.c1.area.id), over=True)
+                           .format(self.c1_dname, 1, self.c0_dname, 0, self.c1.area.id), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
 
@@ -150,12 +150,12 @@ class TestPoisonCure_01_Poison(_TestPoisonCure):
         self.c1.ooc('/poison 0 d 20')
         self.c0.assert_ooc('You were poisoned. The following effects will apply shortly: '
                            '\r\n*Deafness: still acts in ', over=True, allow_partial_match=True)
-        self.c1.assert_ooc('You poisoned {} with the following effects: '
+        self.c1.assert_ooc('You poisoned {} [{}] with the following effects: '
                            '\r\n*Deafness: still acts in '
-                           .format(self.c0_dname), over=True, allow_partial_match=True)
-        self.c2.assert_ooc('(X) {} [{}] poisoned {} with the following effects ({}): '
+                           .format(self.c0_dname, 0), over=True, allow_partial_match=True)
+        self.c2.assert_ooc('(X) {} [{}] poisoned {} [{}] with the following effects ({}): '
                            '\r\n*Deafness: still acts in '
-                           .format(self.c1_dname, 1, self.c0_dname, self.c1.area.id),
+                           .format(self.c1_dname, 1, self.c0_dname, 0, self.c1.area.id),
                            over=True, allow_partial_match=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -170,14 +170,14 @@ class TestPoisonCure_01_Poison(_TestPoisonCure):
         self.c0.assert_ooc('You were poisoned. The following effects will apply shortly: '
                            '\r\n*Blindness: now acts in 50 seconds.'
                            '\r\n*Gagged: still acts in ', over=True, allow_partial_match=True)
-        self.c1.assert_ooc('You poisoned {} with the following effects: '
+        self.c1.assert_ooc('You poisoned {} [{}] with the following effects: '
                            '\r\n*Blindness: now acts in 50 seconds.'
                            '\r\n*Gagged: still acts in '
-                           .format(self.c0_dname), over=True, allow_partial_match=True)
-        self.c2.assert_ooc('(X) {} [{}] poisoned {} with the following effects ({}): '
+                           .format(self.c0_dname, 0), over=True, allow_partial_match=True)
+        self.c2.assert_ooc('(X) {} [{}] poisoned {} [{}] with the following effects ({}): '
                            '\r\n*Blindness: now acts in 50 seconds.'
                            '\r\n*Gagged: still acts in '
-                           .format(self.c1_dname, 1, self.c0_dname, self.c1.area.id),
+                           .format(self.c1_dname, 1, self.c0_dname, 0, self.c1.area.id),
                            over=True, allow_partial_match=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -198,6 +198,7 @@ class TestPoisonCure_01_Poison(_TestPoisonCure):
                            '\r\n*Gagged: acts in 30 seconds.', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
+
 
 class TestPoisonCure_02_Cure(_TestPoisonCure):
     def test_01_wrongarguments(self):
@@ -281,10 +282,10 @@ class TestPoisonCure_02_Cure(_TestPoisonCure):
         self.c0.assert_ooc('You were cured of the effect `Blindness`.', ooc_over=True)
         # Changing blindness sends you the background, even if not needed
         self.c0.assert_packet('BN', None, over=True)
-        self.c1.assert_ooc('You cured {} of the effect `Blindness`.'
-                           .format(self.c0_dname), over=True)
-        self.c2.assert_ooc('(X) {} [{}] cured {} of the effect `Blindness` ({}).'
-                           .format(self.c1_dname, 1, self.c0_dname, self.c1.area.id), over=True)
+        self.c1.assert_ooc('You cured {} [{}] of the effect `Blindness`.'
+                           .format(self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] cured {} [{}] of the effect `Blindness` ({}).'
+                           .format(self.c1_dname, 1, self.c0_dname, 0, self.c1.area.id), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
 
@@ -303,14 +304,14 @@ class TestPoisonCure_02_Cure(_TestPoisonCure):
         self.c1.ooc('/cure 0 Gd')
         self.c0.assert_ooc('You were cured of the effect `Deafness`.')
         self.c0.assert_ooc('You were cured of the effect `Gagged`.', over=True)
-        self.c1.assert_ooc('You cured {} of the effect `Deafness`.'
-                           .format(self.c0_dname))
-        self.c1.assert_ooc('You cured {} of the effect `Gagged`.'
-                           .format(self.c0_dname), over=True)
-        self.c2.assert_ooc('(X) {} [{}] cured {} of the effect `Deafness` ({}).'
-                           .format(self.c1_dname, 1, self.c0_dname, self.c1.area.id))
-        self.c2.assert_ooc('(X) {} [{}] cured {} of the effect `Gagged` ({}).'
-                           .format(self.c1_dname, 1, self.c0_dname, self.c1.area.id), over=True)
+        self.c1.assert_ooc('You cured {} [{}] of the effect `Deafness`.'
+                           .format(self.c0_dname, 0))
+        self.c1.assert_ooc('You cured {} [{}] of the effect `Gagged`.'
+                           .format(self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] cured {} [{}] of the effect `Deafness` ({}).'
+                           .format(self.c1_dname, 1, self.c0_dname, 0, self.c1.area.id))
+        self.c2.assert_ooc('(X) {} [{}] cured {} [{}] of the effect `Gagged` ({}).'
+                           .format(self.c1_dname, 1, self.c0_dname, 0, self.c1.area.id), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
 
@@ -331,14 +332,14 @@ class TestPoisonCure_02_Cure(_TestPoisonCure):
         self.c1.ooc('/cure 0 dg')
         self.c0.assert_ooc('You were cured of the effect `Deafness`.')
         self.c0.assert_ooc('You were cured of the effect `Gagged`.', over=True)
-        self.c1.assert_ooc('You cured {} of the effect `Deafness`.'
-                           .format(self.c0_dname))
-        self.c1.assert_ooc('You cured {} of the effect `Gagged`.'
-                           .format(self.c0_dname), over=True)
-        self.c2.assert_ooc('(X) {} [{}] cured {} of the effect `Deafness` ({}).'
-                           .format(self.c1_dname, 1, self.c0_dname, self.c1.area.id))
-        self.c2.assert_ooc('(X) {} [{}] cured {} of the effect `Gagged` ({}).'
-                           .format(self.c1_dname, 1, self.c0_dname, self.c1.area.id), over=True)
+        self.c1.assert_ooc('You cured {} [{}] of the effect `Deafness`.'
+                           .format(self.c0_dname, 0))
+        self.c1.assert_ooc('You cured {} [{}] of the effect `Gagged`.'
+                           .format(self.c0_dname, 0), over=True)
+        self.c2.assert_ooc('(X) {} [{}] cured {} [{}] of the effect `Deafness` ({}).'
+                           .format(self.c1_dname, 1, self.c0_dname, 0, self.c1.area.id))
+        self.c2.assert_ooc('(X) {} [{}] cured {} [{}] of the effect `Gagged` ({}).'
+                           .format(self.c1_dname, 1, self.c0_dname, 0, self.c1.area.id), over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
 

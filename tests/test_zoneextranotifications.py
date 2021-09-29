@@ -3,13 +3,15 @@ from .test_zonebasic import _TestZone
 class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
     def test_01_enterzone(self):
         """
-        Situation: C1 creates a zone involving areas 3 through 5. C5, who is outside the zone,
-        moves in. C1 gets a notification.
+        Situation: C1 creates a zone involving areas 3 through 5. C4, who is outside the zone,
+        moves in. C1 gets a notification. C4 is ordered to switch to the zone's gamemode (none)
         """
 
         self.c1.ooc('/zone 3, 5')
+        self.c0.discard_all()
         self.c1.discard_all()
         self.c2.discard_all()
+        self.c3.discard_all()
 
         self.c4.move_area(4, discard_trivial=True)
         self.c0.assert_no_packets()
@@ -17,7 +19,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
                            .format(self.c4_dname, 4, 6, 4), over=True)
         self.c2.assert_no_packets() # C2 is not watching zone
         self.c3.assert_no_packets()
-        self.c4.assert_ooc('You have entered zone `{}`.'.format('z0'), over=True)
+        self.c4.assert_ooc('You have entered zone `{}`.'.format('z0'), ooc_over=True)
+        self.c4.assert_packet('GM', '', over=True)
         self.c5.assert_no_packets()
 
     def test_02_newwatcherenterszone(self):
@@ -37,7 +40,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('You have entered zone `{}`.'.format('z0'), over=True)
+        self.c5.assert_ooc('You have entered zone `{}`.'.format('z0'), ooc_over=True)
+        self.c5.assert_packet('GM', '', over=True)
 
     def test_03_withinzonemovement(self):
         """
@@ -54,14 +58,16 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
 
     def test_04_leavezone(self):
         """
-        Situation: C2, in zone z0, moves to an area outside z0. C1 and C5 get notification.
+        Situation: C2, in zone z0, moves to an area outside z0. C1 and C5 get notification. C2 is
+        also ordered to switch to no gamemode.
         """
 
         self.c2.move_area(7, discard_trivial=True)
         self.c0.assert_no_packets()
         self.c1.assert_ooc('(X) {} [{}] has left your zone ({}->{}).'
                            .format(self.c2_dname, 2, 5, 7), over=True)
-        self.c2.assert_ooc('You have left zone `{}`.'.format('z0'), over=True)
+        self.c2.assert_ooc('You have left zone `{}`.'.format('z0'), ooc_over=True)
+        self.c2.assert_packet('GM', '', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_ooc('(X) {} [{}] has left your zone ({}->{}).'
@@ -81,7 +87,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_ooc('(X) You have left zone `{}`. To stop receiving its notifications, stop '
-                           'watching it with /zone_unwatch'.format('z0'), over=True)
+                           'watching it with /zone_unwatch'.format('z0'), ooc_over=True)
+        self.c5.assert_packet('GM', '', over=True)
 
     def test_06_leavezoneAenterzoneB(self):
         """
@@ -101,7 +108,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
                            .format(self.c2_dname, 2, 7, 5), over=True)
         self.c2.assert_ooc('You have left zone `z1`.')
         self.c2.assert_ooc('(X) You have entered zone `z0`. To be able to receive its '
-                           'notifications, start watching it with /zone_watch z0', over=True)
+                           'notifications, start watching it with /zone_watch z0', ooc_over=True)
+        self.c2.assert_packet('GM', '', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_ooc('(X) {} [{}] has left your zone ({}->{}).'
@@ -118,7 +126,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
 
         self.c0.move_area(7, discard_trivial=True)
         self.c0.assert_ooc('You have left zone `z0`.')
-        self.c0.assert_ooc('You have entered zone `z1`.', over=True)
+        self.c0.assert_ooc('You have entered zone `z1`.', ooc_over=True)
+        self.c0.assert_packet('GM', '', over=True)
         self.c1.assert_ooc('(X) {} [{}] has left your zone ({}->{}).'
                            .format(self.c0_dname, 0, 4, 7), over=True)
         self.c2.assert_no_packets()
@@ -133,7 +142,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
         self.c1.assert_ooc('(X) You have left zone `z0`. To stop receiving its notifications, stop '
                            'watching it with /zone_unwatch')
         self.c1.assert_ooc('(X) You have entered zone `z1`. To be able to receive its '
-                           'notifications, start watching it with /zone_watch z1', over=True)
+                           'notifications, start watching it with /zone_watch z1', ooc_over=True)
+        self.c1.assert_packet('GM', '', over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
@@ -149,7 +159,8 @@ class TestZoneExtraNotifications_01_EnterLeave(_TestZone):
                            .format(self.c2_dname, 2, 5, 7), over=True)
         self.c2.assert_ooc('You have left zone `z0`.')
         self.c2.assert_ooc('(X) You have entered zone `z1`. To be able to receive its '
-                           'notifications, start watching it with /zone_watch z1', over=True)
+                           'notifications, start watching it with /zone_watch z1', ooc_over=True)
+        self.c2.assert_packet('GM', '', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_ooc('(X) {} [{}] has entered your zone ({}->{}).'
@@ -167,8 +178,12 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
         """
 
         self.c2.ooc('/zone 4, 6')
+        self.c0.discard_all()
         self.c1.discard_all()
         self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
+        self.c5.discard_all()
 
         o_showname = self.c3.showname
         n_showname = 'newShowname'
@@ -179,6 +194,7 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
         self.c1.assert_no_packets()
         self.c2.assert_ooc('(X) Client {} changed their showname from `{}` to `{}` in your zone '
                            '({}).'.format(3, o_showname, n_showname, self.c3.area.id), over=True)
+        self.c3.assert_packet('SN', n_showname)
         self.c3.assert_ooc('You have set your showname to `{}`.'.format(n_showname), over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
@@ -189,6 +205,7 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
         self.c1.assert_no_packets()
         self.c2.assert_ooc('(X) Client {} removed their showname `{}` in your zone ({}).'
                            .format(3, n_showname, self.c3.area.id), over=True)
+        self.c3.assert_packet('SN', '')
         self.c3.assert_ooc('You have removed your showname.', over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
@@ -199,6 +216,7 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
         self.c1.assert_no_packets()
         self.c2.assert_ooc('(X) Client {} set their showname to `{}` in your zone ({}).'
                            .format(3, n_showname, self.c3.area.id), over=True)
+        self.c3.assert_packet('SN', n_showname)
         self.c3.assert_ooc('You have set your showname to `{}`.'.format(n_showname), over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
@@ -215,14 +233,15 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
         # Changing showname from an existing one to another one
         self.c1.ooc('/showname_set {} {}'.format(3, n_showname))
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('You have set the showname of client {} to `{}`.'
-                           .format(3, n_showname), over=True)
+        self.c1.assert_ooc('You have changed the showname of client {} from `{}` to `{}`.'
+                           .format(3, o_showname, n_showname), over=True)
         self.c2.assert_ooc('(X) {} [{}] changed the showname of client {} from `{}` to `{}` in '
                            'your zone ({}).'
                            .format(self.c1_dname, 1, 3, o_showname, n_showname, self.c3.area.id),
                            over=True)
-        self.c3.assert_ooc('Your showname was set to `{}` by a staff member.'
-                           .format(n_showname), over=True)
+        self.c3.assert_packet('SN', n_showname)
+        self.c3.assert_ooc('Your showname was changed from `{}` to `{}` by a staff member.'
+                           .format(o_showname, n_showname), over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
@@ -232,7 +251,9 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
         self.c1.assert_ooc('You have removed the showname of client {}.'.format(3), over=True)
         self.c2.assert_ooc('(X) {} [{}] removed the showname `{}` of client {} in your zone ({}).'
                            .format(self.c1_dname, 1, n_showname, 3, self.c3.area.id), over=True)
-        self.c3.assert_ooc('Your showname was removed by a staff member.', over=True)
+        self.c3.assert_packet('SN', '')
+        self.c3.assert_ooc('Your showname `{}` was removed by a staff member.'
+                           .format(n_showname), over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
@@ -243,6 +264,7 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
                            .format(3, n_showname), over=True)
         self.c2.assert_ooc('(X) {} [{}] set the showname of client {} to `{}` in your zone ({}).'
                            .format(self.c1_dname, 1, 3, n_showname, self.c3.area.id), over=True)
+        self.c3.assert_packet('SN', n_showname)
         self.c3.assert_ooc('Your showname was set to `{}` by a staff member.'
                            .format(n_showname), over=True)
         self.c4.assert_no_packets()
@@ -266,7 +288,8 @@ class TestZoneExtraNotifications_02_ChangeShowname(_TestZone):
                            'conflicting with the showname of another player in the same area ({}).'
                            .format(3, b_showname, self.c3.area.id), over=True)
         self.c3.assert_ooc('Your showname `{}` was already used in this area, so it has been '
-                           'removed.'.format(b_showname), over=True)
+                           'removed.'.format(b_showname), ooc_over=True)
+        self.c3.assert_packet('SN', '', over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
@@ -317,8 +340,12 @@ class TestZoneExtraNotifications_03_ChangeCharacter(_TestZone):
         """
 
         self.c2.ooc('/zone 4, 6')
+        self.c0.discard_all()
         self.c1.discard_all()
         self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
+        self.c5.discard_all()
 
         self.c0.send_command_cts("CC#0#3#FAKEHDID#%") # Attempt to pick char 3
         self.c0.assert_packet('PV', (0, 'CID', 3), over=True)
@@ -471,7 +498,7 @@ class TestZoneExtraNotifications_03_ChangeCharacter(_TestZone):
                            over=True)
         self.c3.assert_no_packets()
         self.c4.assert_packet('PV', (4, 'CID', 2))
-        self.c4.assert_ooc('Character changed.', over=True)
+        self.c4.assert_ooc('Changed character to {}.'.format(self.server.char_list[2]), over=True)
         self.c5.assert_no_packets()
 
 class TestZoneExtraNotifications_04_Disconnection(_TestZone):
@@ -483,8 +510,11 @@ class TestZoneExtraNotifications_04_Disconnection(_TestZone):
 
         self.c2.ooc('/zone 4, 6')
         self.c5.ooc('/zone_watch z0')
+        self.c0.discard_all()
         self.c1.discard_all()
         self.c2.discard_all()
+        self.c3.discard_all()
+        self.c4.discard_all()
         self.c5.discard_all()
 
         self.c4.disconnect()

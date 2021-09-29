@@ -37,10 +37,10 @@ class _TestZone(_TestSituation6Mc1Gc25):
             self.assertTrue(expected_zone_id in self.zm.get_zones().keys())
 
             actual_zone = self.zm.get_zone(expected_zone_id)
-            self.assertEquals(expected_zone_id, actual_zone.get_id())
+            self.assertEqual(expected_zone_id, actual_zone.get_id())
 
             actual_zone_areas = {area.id for area in actual_zone.get_areas()}
-            self.assertEquals(expected_zone_areas, actual_zone_areas)
+            self.assertEqual(expected_zone_areas, actual_zone_areas)
 
         self.zm._check_structure() # Remove later
 
@@ -145,10 +145,12 @@ class TestZoneBasic_01_Zone(_TestZone):
         """
 
         self.c1.ooc('/zone')
-        self.c0.assert_no_packets()
+        self.c0.assert_packet('GM', '')
+        self.c0.assert_ooc('Your area has been made part of zone `{}`.'.format('z0'), over=True)
+        self.c1.assert_packet('GM', '')
         self.c1.assert_ooc('You have created zone `{}` containing just area {}.'
                            .format('z0', 4), over=True)
-        self.c2.assert_no_packets() # GM does not receive zone creation notification
+        self.c2.assert_no_packets() # GM outside does not receive notification.
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
@@ -156,7 +158,7 @@ class TestZoneBasic_01_Zone(_TestZone):
 
     def test_03_oneargument(self):
         """
-        Situation: C2 creates a zone for another area. C1 as mod gets notification.
+        Situation: C2 creates a zone for another area no one is in. C1 as mod gets notification.
         """
 
         self.c2.ooc('/zone {}'.format(self.a3_name))
@@ -179,11 +181,17 @@ class TestZoneBasic_01_Zone(_TestZone):
         self.c0.assert_no_packets()
         self.c1.assert_ooc('(X) {} [{}] has created zone `{}` containing areas {} through {} ({}).'
                            .format(self.c5_dname, 5, 'z2', 5, 7, self.c5.area.id), over=True)
+        self.c2.assert_packet('GM', '')
         self.c2.assert_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
                            'its notifications, start watching it with /zone_watch {}'
                            .format('z2', 'z2'), over=True)
-        self.c3.assert_no_packets()
-        self.c4.assert_no_packets()
+        self.c3.assert_packet('GM', '')
+        self.c3.assert_ooc('Your area has been made part of zone `{}`.'
+                           .format('z2'), over=True)
+        self.c4.assert_packet('GM', '')
+        self.c4.assert_ooc('Your area has been made part of zone `{}`.'
+                           .format('z2'), over=True)
+        self.c5.assert_packet('GM', '')
         self.c5.assert_ooc('You have created zone `{}` containing areas {} through {}.'
                            .format('z2', 5, 7), over=True)
         self.assert_zones({'z0': {4}, 'z1': {3}, 'z2': {5, 6, 7}})
@@ -273,38 +281,105 @@ class TestZoneBasic_02_List(_TestZone):
         self.c1.ooc('/zone_list')
         self.c0.assert_no_packets()
         self.c1.assert_ooc('== Active zones =='
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
                            .format('z0', '1', '[{}] {} ({})'
-                                   .format(2, self.c2_dname, self.c2.area.id)),
+                                   .format(2, self.c2_dname, self.c2.area.id), '0'),
                            over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
 
-    def test_04_twozonesnontrivialrange(self):
+    def test_04_notonewatcher(self):
+        """
+        Situation: C5, then C1, then no one watches z0. C1, after each, does /zone_list
+        """
+
+        self.c5.ooc('/zone_watch z0')
+        self.c2.discard_all()
+        self.c5.discard_all()
+
+        self.c1.ooc('/zone_list')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('== Active zones =='
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
+                           .format('z0', '1', '[{}] {} ({}) and [{}] {} ({})'
+                                   .format(2, self.c2_dname, self.c2.area.id,
+                                           5, self.c5_dname, self.c5.area.id), '0'),
+                           over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+
+        self.c1.ooc('/zone_watch z0')
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c5.discard_all()
+
+        self.c1.ooc('/zone_list')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('== Active zones =='
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
+                           .format('z0', '1', '[{}] {} ({}), [{}] {} ({}) and [{}] {} ({})'
+                                   .format(1, self.c1_dname, self.c1.area.id,
+                                           2, self.c2_dname, self.c2.area.id,
+                                           5, self.c5_dname, self.c5.area.id), '0'),
+                           over=True)
+        self.c2.assert_no_packets()
+        self.c3.assert_no_packets()
+        self.c4.assert_no_packets()
+
+        self.c2.move_area(1, discard_trivial=True)  # Make a player be in the zone so is not ended
+        self.c1.ooc('/zone_unwatch')
+        self.c2.ooc('/zone_unwatch')
+        self.c5.ooc('/zone_unwatch')
+        self.c1.discard_all()
+        self.c2.discard_all()
+        self.c5.discard_all()
+
+        self.c1.ooc('/zone_list')
+        self.c0.assert_no_packets()
+        self.c1.assert_ooc('== Active zones =='
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
+                           .format('z0', '1', 'None', '1'),
+                           over=True)
+
+        self.c2.ooc('/zone_watch z0')
+        self.c2.discard_all()
+        self.c5.discard_all()
+        self.c2.move_area(5, discard_trivial=True)  # Undo move
+        self.c2.discard_all()
+
+    def test_05_twozonesnontrivialrange(self):
         """
         Situation: C5 creates a zone that has more than one area. C1 gets the zone list.
         """
 
         self.c5.ooc('/zone 2, 4')
+        self.c0.discard_all()
         self.c1.discard_all() # Discard mod notification
         self.c5.discard_all()
 
         self.c1.ooc('/zone_list')
         self.c0.assert_no_packets()
         self.c1.assert_ooc('== Active zones =='
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
                            .format('z0', '1',
-                                   '[{}] {} ({})'.format(2, self.c2_dname, self.c2.area.id),
+                                   '[{}] {} ({})'.format(2, self.c2_dname, self.c2.area.id), '0',
                                    'z1', '2-4',
-                                   '[{}] {} ({})'.format(5, self.c5_dname, self.c5.area.id)),
+                                   '[{}] {} ({})'.format(5, self.c5_dname, self.c5.area.id), '2'),
                            over=True)
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
 
-    def test_05_threezonesdisjointrange(self):
+    def test_06_threezonesdisjointrange(self):
         """
         Situation: C4 (who is made mod) creates a zone with a disjoint range. C1 gets the zone list.
         """
@@ -314,6 +389,7 @@ class TestZoneBasic_02_List(_TestZone):
         self.c4.ooc('/zone_add 5')
         self.c1.discard_all() # Discard mod notification
         self.c2.discard_all() # Discard logged in while area added to zone notif
+        self.c3.discard_all()
         self.c4.discard_all()
 
         self.c4.ooc('/zone_list')
@@ -322,19 +398,22 @@ class TestZoneBasic_02_List(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_ooc('== Active zones =='
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
                            .format('z0', '1',
-                                   '[{}] {} ({})'.format(2, self.c2_dname, self.c2.area.id),
+                                   '[{}] {} ({})'.format(2, self.c2_dname, self.c2.area.id), '0',
                                    'z1', '2-4',
-                                   '[{}] {} ({})'.format(5, self.c5_dname, self.c5.area.id),
+                                   '[{}] {} ({})'.format(5, self.c5_dname, self.c5.area.id), '2',
                                    'z2', '0 and 5',
-                                   '[{}] {} ({})'.format(4, self.c4_dname, self.c4.area.id)),
+                                   '[{}] {} ({})'.format(4, self.c4_dname, self.c4.area.id), '2'),
                            over=True)
         self.c5.assert_no_packets()
 
-    def test_06_moredisjointness(self):
+    def test_07_moredisjointness(self):
         """
         Situation: C4 adds another area disjoint to both areas in their previously disjoint zone.
         """
@@ -349,19 +428,22 @@ class TestZoneBasic_02_List(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_ooc('== Active zones =='
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
                            .format('z0', '1',
-                                   '[{}] {} ({})'.format(2, self.c2_dname, self.c2.area.id),
+                                   '[{}] {} ({})'.format(2, self.c2_dname, self.c2.area.id), '0',
                                    'z1', '2-4',
-                                   '[{}] {} ({})'.format(5, self.c5_dname, self.c5.area.id),
+                                   '[{}] {} ({})'.format(5, self.c5_dname, self.c5.area.id), '2',
                                    'z2', '0, 5 and 7',
-                                   '[{}] {} ({})'.format(4, self.c4_dname, self.c4.area.id)),
+                                   '[{}] {} ({})'.format(4, self.c4_dname, self.c4.area.id), '3'),
                            over=True)
         self.c5.assert_no_packets()
 
-    def test_07_disjointnessisunified(self):
+    def test_08_disjointnessisunified(self):
         """
         Situation: C4 adds an area that removes some of the previously existing disjointness.
         """
@@ -375,26 +457,29 @@ class TestZoneBasic_02_List(_TestZone):
         self.c2.assert_no_packets()
         self.c3.assert_no_packets()
         self.c4.assert_ooc('== Active zones =='
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
-                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
+                           '\r\n*Zone {}. Contains areas: {}. Is watched by: {}. '
+                           'Players in zone: {}.'
                            .format('z0', '1',
-                                   '[{}] {} ({})'.format(2, self.c2_dname, self.c2.area.id),
+                                   '[{}] {} ({})'.format(2, self.c2_dname, self.c2.area.id), '0',
                                    'z1', '2-4',
-                                   '[{}] {} ({})'.format(5, self.c5_dname, self.c5.area.id),
+                                   '[{}] {} ({})'.format(5, self.c5_dname, self.c5.area.id), '2',
                                    'z2', '0 and 5-7',
-                                   '[{}] {} ({})'.format(4, self.c4_dname, self.c4.area.id)),
+                                   '[{}] {} ({})'.format(4, self.c4_dname, self.c4.area.id), '4'),
                            over=True)
         self.c5.assert_no_packets()
 
-class TestZoneBasic_03_Delete(_TestZone):
+class TestZoneBasic_03_End(_TestZone):
     def test_01_wrongarguments(self):
         """
-        Situation: Clients attempt to use /zone_delete incorrectly.
+        Situation: Clients attempt to use /zone_end incorrectly.
         """
 
         # Non-staff
-        self.c0.ooc('/zone_delete')
+        self.c0.ooc('/zone_end')
         self.c0.assert_ooc('You must be authorized to do that.', over=True)
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
@@ -403,7 +488,7 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c5.assert_no_packets()
 
         # Passing parameters as not CM or Mod
-        self.c5.ooc('/zone_delete 10000')
+        self.c5.ooc('/zone_end 10000')
         self.c0.assert_no_packets()
         self.c1.assert_no_packets()
         self.c2.assert_no_packets()
@@ -414,7 +499,7 @@ class TestZoneBasic_03_Delete(_TestZone):
 
         # Zone that does not exist
         # This was a bug as late as 4.2.0-post2 (it raised an uncaught KeyError)
-        self.c1.ooc('/zone_delete zoneThatDoesNotExist')
+        self.c1.ooc('/zone_end zoneThatDoesNotExist')
         self.c0.assert_no_packets()
         self.c1.assert_ooc('`zoneThatDoesNotExist` is not a valid zone ID.', over=True)
         self.c2.assert_no_packets()
@@ -422,28 +507,32 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
-    def test_02_deletezone(self):
+    def test_02_endzone(self):
         """
-        Situation: C1 creates a zone, and then deletes it.
+        Situation: C1 creates a zone, and then ends it.
+        Everyone who was in an area part of a zone is ordered to switch back to no gamemode.
         """
 
         self.c1.ooc('/zone 0, 5')
+        self.c0.discard_all()
         self.c1.discard_all()
         self.c2.discard_all() # would receive being in zone notification
+        self.c3.discard_all()
 
-        self.c1.ooc('/zone_delete')
-        self.c0.assert_no_packets()
-        self.c1.assert_ooc('You have deleted your zone.', over=True)
-        self.c2.assert_no_packets()
-        self.c3.assert_no_packets()
+        self.c1.ooc('/zone_end')
+        self.c0.assert_packet('GM', '', over=True)
+        self.c1.assert_packet('GM', '')
+        self.c1.assert_ooc('You have ended your zone.', over=True)
+        self.c2.assert_packet('GM', '', over=True)
+        self.c3.assert_packet('GM', '', over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
         self.assert_zones(dict())
 
-    def test_03_anywatchercandelete(self):
+    def test_03_anywatchercanend(self):
         """
-        Situation: C1 creates a zone, C2 watches it, then deletes it.
+        Situation: C1 creates a zone, C2 watches it, then ends it.
         """
 
         self.c5.ooc('/zone')
@@ -453,28 +542,30 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c2.discard_all()
         self.c5.discard_all()
 
-        self.c2.ooc('/zone_delete')
+        self.c2.ooc('/zone_end')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} [{}] has deleted zone `{}`.'
+        self.c1.assert_ooc('(X) {} [{}] has ended zone `{}`.'
                            .format(self.c2_dname, 2, 'z0'), over=True)
-        self.c2.assert_ooc('You have deleted your zone.', over=True)
+        self.c2.assert_ooc('You have ended your zone.', over=True)
         self.c3.assert_no_packets()
         self.c4.assert_no_packets()
-        self.c5.assert_ooc('(X) {} [{}] has deleted your zone.'
+        self.c5.assert_packet('GM', '')
+        self.c5.assert_ooc('(X) {} [{}] has ended your zone.'
                            .format(self.c2_dname, 2), over=True)
 
         self.assert_zones(dict())
 
-    def test_04_nonwatcherscannotdelete(self):
+    def test_04_nonwatcherscannotend(self):
         """
-        Situation: C1 creates a zone, and C2 who is not watching it attempts to delete it. This
+        Situation: C1 creates a zone, and C2 who is not watching it attempts to end it. This
         fails.
         """
 
         self.c1.ooc('/zone 4')
+        self.c0.discard_all()
         self.c1.discard_all()
 
-        self.c2.ooc('/zone_delete')
+        self.c2.ooc('/zone_end')
         self.c0.assert_no_packets()
         self.c1.assert_no_packets()
         self.c2.assert_ooc('You are not watching a zone.', over=True)
@@ -486,45 +577,48 @@ class TestZoneBasic_03_Delete(_TestZone):
 
     def test_05_deletionheredoesnotaffectzonethere(self):
         """
-        Situation: C2 now creates another zone. C2 deletes their zone. C1's zone still stands.
+        Situation: C2 now creates another zone. C2 ends their zone. C1's zone still stands.
         """
 
         self.c2.ooc('/zone 5')
         self.c1.discard_all()
         self.c2.discard_all()
+        self.c3.discard_all()
 
-        self.c2.ooc('/zone_delete')
+        self.c2.ooc('/zone_end')
         self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} [{}] has deleted zone `{}`.'
+        self.c1.assert_ooc('(X) {} [{}] has ended zone `{}`.'
                            .format(self.c2_dname, 2, 'z1'), over=True)
-        self.c2.assert_ooc('You have deleted your zone.', over=True)
-        self.c3.assert_no_packets()
+        self.c2.assert_packet('GM', '')
+        self.c2.assert_ooc('You have ended your zone.', over=True)
+        self.c3.assert_packet('GM', '', over=True)
         self.c4.assert_no_packets()
 
         self.assert_zones({'z0': {4}})
 
-    def test_06_deletezonewitharg(self):
+    def test_06_endzonewitharg(self):
         """
-        Situation: C3 (who is made a mod) deletes C1's zone via using the zone name. C1, C3 and C4
+        Situation: C3 (who is made a mod) ends C1's zone via using the zone name. C1, C3 and C4
         (who is made CM) are notified.
         """
 
         self.c3.make_mod()
         self.c4.make_cm()
 
-        self.c3.ooc('/zone_delete {}'.format('z0'))
-        self.c0.assert_no_packets()
-        self.c1.assert_ooc('(X) {} [{}] has deleted your zone.'
+        self.c3.ooc('/zone_end {}'.format('z0'))
+        self.c0.assert_packet('GM', '', over=True)
+        self.c1.assert_packet('GM', '')
+        self.c1.assert_ooc('(X) {} [{}] has ended your zone.'
                            .format(self.c3_dname, 3), over=True)
         self.c2.assert_no_packets()
-        self.c3.assert_ooc('You have deleted zone `{}`.'.format('z0'), over=True)
-        self.c4.assert_ooc('(X) {} [{}] has deleted zone `{}`.'
+        self.c3.assert_ooc('You have ended zone `{}`.'.format('z0'), over=True)
+        self.c4.assert_ooc('(X) {} [{}] has ended zone `{}`.'
                            .format(self.c3_dname, 3, 'z0'), over=True)
         self.c5.assert_no_packets()
 
-    def test_07_twozonesdeletez0createzone(self):
+    def test_07_twozonesendz0createzone(self):
         """
-        Situation: C3 creates a zone z0, C4 creates a zone z1. C1 deletes z0. C3 attempts to create
+        Situation: C3 creates a zone z0, C4 creates a zone z1. C1 ends z0. C3 attempts to create
         a new zone again. This zone should have ID z0, despite there being another zone z1, because
         z0 is the earliest available ID.
         This was a bug in the release version of 4.2.0 (it raised an uncaught AssertionError)
@@ -540,49 +634,58 @@ class TestZoneBasic_03_Delete(_TestZone):
         self.c4.discard_all()
         self.c5.discard_all()
 
-        self.c1.ooc('/zone_delete {}'.format('z0'))
-        self.c0.assert_no_packets()
-        self.c1.assert_ooc('You have deleted zone `{}`.'.format('z0'), over=True)
-        self.c2.assert_no_packets()
-        self.c3.assert_ooc('(X) {} [{}] has deleted your zone.'
+        self.c1.ooc('/zone_end {}'.format('z0'))
+        self.c0.assert_packet('GM', '', over=True)
+        self.c1.assert_packet('GM', '')
+        self.c1.assert_ooc('You have ended zone `{}`.'.format('z0'), over=True)
+        self.c2.assert_packet('GM', '', over=True)
+        self.c3.assert_packet('GM', '')
+        self.c3.assert_ooc('(X) {} [{}] has ended your zone.'
                            .format(self.c1_dname, 1), over=True)
-        self.c4.assert_ooc('(X) {} [{}] has deleted zone `{}`.'
+        self.c4.assert_ooc('(X) {} [{}] has ended zone `{}`.'
                            .format(self.c1_dname, 1, 'z0'), over=True)
         self.c5.assert_no_packets()
 
         self.c3.ooc('/zone 0, 5')
-        self.c0.assert_no_packets()
+        self.c0.assert_packet('GM', '')
+        self.c0.assert_ooc('Your area has been made part of zone `{}`.'
+                           .format('z0'), over=True)
+        self.c1.assert_packet('GM', '')
         self.c1.assert_ooc('(X) {} [{}] has created zone `{}` containing areas {} through {} ({}).'
                            .format(self.c3_dname, 3, 'z0', 0, 5, self.c3.area.id))
         self.c1.assert_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
                            'its notifications, start watching it with /zone_watch {}'
                            .format('z0', 'z0'), over=True)
+        self.c2.assert_packet('GM', '')
         self.c2.assert_ooc('(X) Your area has been made part of zone `{}`. To be able to receive '
                            'its notifications, start watching it with /zone_watch {}'
                            .format('z0', 'z0'), over=True)
+        self.c3.assert_packet('GM', '')
         self.c3.assert_ooc('You have created zone `{}` containing areas {} through {}.'
                            .format('z0', 0, 5), over=True)
         self.c4.assert_ooc('(X) {} [{}] has created zone `{}` containing areas {} through {} ({}).'
                            .format(self.c3_dname, 3, 'z0', 0, 5, self.c3.area.id), over=True)
         self.c5.assert_no_packets()
 
-    def test_08_attemptdeleteinvalidzone(self):
+    def test_08_attemptendinvalidzone(self):
         """
-        Situation: C1 deletes zone z0. They then attempt to delete zone z0 again. This fails.
+        Situation: C1 ends zone z0. They then attempt to end zone z0 again. This fails.
         This was a bug as late as 4.2.0-post2 (it raised an uncaught KeyError)
         """
 
-        self.c1.ooc('/zone_delete {}'.format('z0'))
-        self.c0.assert_no_packets()
-        self.c1.assert_ooc('You have deleted zone `{}`.'.format('z0'), over=True)
-        self.c2.assert_no_packets()
-        self.c3.assert_ooc('(X) {} [{}] has deleted your zone.'
+        self.c1.ooc('/zone_end {}'.format('z0'))
+        self.c0.assert_packet('GM', '', over=True)
+        self.c1.assert_packet('GM', '')
+        self.c1.assert_ooc('You have ended zone `{}`.'.format('z0'), over=True)
+        self.c2.assert_packet('GM', '', over=True)
+        self.c3.assert_packet('GM', '')
+        self.c3.assert_ooc('(X) {} [{}] has ended your zone.'
                            .format(self.c1_dname, 1), over=True)
-        self.c4.assert_ooc('(X) {} [{}] has deleted zone `{}`.'
+        self.c4.assert_ooc('(X) {} [{}] has ended zone `{}`.'
                            .format(self.c1_dname, 1, 'z0'), over=True)
         self.c5.assert_no_packets()
 
-        self.c1.ooc('/zone_delete {}'.format('z0'))
+        self.c1.ooc('/zone_end {}'.format('z0'))
         self.c0.assert_no_packets()
         self.c1.assert_ooc('`{}` is not a valid zone ID.'.format('z0'), over=True)
         self.c2.assert_no_packets()
