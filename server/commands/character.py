@@ -598,6 +598,7 @@ def mod_keys(client, arg, mod=0):
                 key = int(key)
             if not (a in keys):
                 if mod == 2:
+                    keys = client.area.area_manager.get_character_data(target, 'keys', [])
                     keys.remove(a)
                 else:
                     keys.append(a)
