@@ -809,10 +809,6 @@ class ClientChangeArea:
         client.send_evidence_list()
         client.send_ic_blankpost()
 
-        if client.followedby and not ignore_followers and not override_all:
-            for c in client.followedby:
-                c.follow_area(area)
-
         if found_something:
             client.send_ic_attention()
 
@@ -854,3 +850,7 @@ class ClientChangeArea:
             'old_displayname': old_dname,
             'ignore_bleeding': ignore_bleeding,
             })
+
+        if client.followedby and not ignore_followers and not override_all:
+            for c in client.followedby:
+                c.follow_area(area)
