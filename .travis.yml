@@ -3,13 +3,14 @@ python:
     - "3.7"
     - "3.8"
     - "3.9"
+    - "3.10-dev"
 cache: pip
 before_install:
     - mv config_sample config
-install: 
+install:
     - pip install -r requirements.txt
     - pip install codecov
-script: 
+script:
     - coverage run test.py
 after_success:
     - codecov

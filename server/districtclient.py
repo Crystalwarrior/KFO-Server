@@ -32,7 +32,7 @@ class DistrictClient:
         while True:
             try:
                 self.reader, self.writer = await asyncio.open_connection(self.server.config['district_ip'],
-                                                                         self.server.config['district_port'], loop=loop)
+                                                                         self.server.config['district_port'])
                 await self.handle_connection()
             except (ConnectionRefusedError, TimeoutError):
                 pass
@@ -77,4 +77,4 @@ class DistrictClient:
         if not self.writer:
             return
         self.message_queue.append('{}\r\n'.format(msg).encode())
-        asyncio.ensure_future(self.write_queue(), loop=asyncio.get_event_loop())
+        asyncio.create_task(self.write_queue())
