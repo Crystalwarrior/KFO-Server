@@ -54,15 +54,6 @@ def _upcoming_python_version_check():
         logger.log_print(msg)
 
 
-def _handle_exception(server, loop, context):
-    exception = context.get('exception')
-    server.error_queue.put_nowait(exception)
-    server.error_queue.put_nowait(exception)
-    # An exception is put twice, because it is pulled twice: once by the server object itself
-    # (so that it leaves its main loop) and once by this main() function (so that it can
-    # print traceback)
-
-
 async def _normal_shutdown(server=None):
     if not server:
         logger.log_pserver('Server has successfully shut down.')
@@ -120,11 +111,21 @@ def main():
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.set_exception_handler(_handle_exception)
 
     try:
         _pre_launch_checks()
         server = TsuserverDR()
+
+        def _handle_exception(loop, context):
+            # The function signature MUST be of the above form
+            # https://docs.python.org/3/library/asyncio-eventloop.html
+            exception = context.get('exception')
+            server.error_queue.put_nowait(exception)
+            server.error_queue.put_nowait(exception)
+            # An exception is put twice, because it is pulled twice: once by the server object itself
+            # (so that it leaves its main loop) and once by this main() function (so that it can
+            # print traceback)
+        loop.set_exception_handler(_handle_exception)
         loop.run_until_complete(server.start())
         # If we are done with this coroutine, that means an error was raised
         raise server.error_queue.get_nowait()
