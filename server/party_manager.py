@@ -158,7 +158,7 @@ class PartyManager:
                     await asyncio.sleep(self.server.config['party_lights_timeout'])
                     self.check_lights_timeout()
 
-                self.lights_timeout = asyncio.ensure_future(_lights_timeout())
+                self.lights_timeout = asyncio.create_task(_lights_timeout())
 
         def check_lights_timeout(self):
             if not self.area.lights:

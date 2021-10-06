@@ -43,7 +43,7 @@ def _mandatory_python_version_check():
         raise RuntimeError(msg)
 
 
-def _upcoming_python_version_check(server):
+def _upcoming_python_version_check():
     current_python_tuple = sys.version_info
     current_python_simple = 'Python {}.{}.{}'.format(*current_python_tuple[:3])
     if current_python_tuple < (3, 9):
@@ -54,68 +54,76 @@ def _upcoming_python_version_check(server):
         logger.log_print(msg)
 
 
-def main():
-    def handle_exception(loop, context):
-        exception = context.get('exception')
-        server.error_queue.put_nowait(exception)
-        server.error_queue.put_nowait(exception)
-        # An exception is put twice, because it is pulled twice: once by the server object itself
-        # (so that it leaves its main loop) and once by this main() function (so that it can
-        # print traceback)
+def _handle_exception(server, loop, context):
+    exception = context.get('exception')
+    server.error_queue.put_nowait(exception)
+    server.error_queue.put_nowait(exception)
+    # An exception is put twice, because it is pulled twice: once by the server object itself
+    # (so that it leaves its main loop) and once by this main() function (so that it can
+    # print traceback)
 
-    async def normal_shutdown(server=None):
-        if not server:
-            logger.log_pserver('Server has successfully shut down.')
-            return
 
+async def _normal_shutdown(server=None):
+    if not server:
+        logger.log_pserver('Server has successfully shut down.')
+        return
+
+    await server.normal_shutdown()
+
+
+async def _abnormal_shutdown(exception, server=None):
+    # Print complete traceback to console
+    etype, evalue, etraceback = (type(exception), exception, exception.__traceback__)
+    info = 'TSUSERVERDR HAS ENCOUNTERED A FATAL PYTHON ERROR.'
+    info += "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
+    logger.log_print(info)
+    logger.log_error(info, server=server, errortype='P')
+
+    logger.log_server('Server is shutting down due to an unhandled exception.')
+    logger.log_print('Attempting a graceful shutdown.')
+
+    if not server:
+        logger.log_pserver('Server has successfully shut down.')
+        return
+
+    try:
         await server.normal_shutdown()
+    except Exception as exception2:
+        logger.log_print('Unable to gracefully shut down: Forcing a shutdown.')
+        etype, evalue, etraceback = (type(exception2), exception2, exception2.__traceback__)
+        info = "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
 
-    async def abnormal_shutdown(exception, server=None):
-        # Print complete traceback to console
-        etype, evalue, etraceback = (type(exception), exception, exception.__traceback__)
-        info = 'TSUSERVERDR HAS ENCOUNTERED A FATAL PYTHON ERROR.'
-        info += "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
         logger.log_print(info)
         logger.log_error(info, server=server, errortype='P')
 
-        logger.log_server('Server is shutting down due to an unhandled exception.')
-        logger.log_print('Attempting a graceful shutdown.')
 
-        if not server:
-            logger.log_pserver('Server has successfully shut down.')
-            return
+def _pre_launch_checks():
+    # Check that config folder exists
+    if not os.path.exists('config'):
+        # If not, check if config_sample folder exists (common setup mistake)
+        if os.path.exists('config_sample'):
+            msg = ('Unable to locate the `config` folder. However, a `config_sample` folder '
+                    'was found. Please rename `config_sample` to `config` as instructed in the '
+                    'README and try again.')
+            raise RuntimeError(msg)
+        # Otherwise, something went wrong.
+        msg = ('Unable to locate the `config` folder. Please make sure the folder exists and '
+                'is named correctly and try again.')
+        raise RuntimeError(msg)
 
-        try:
-            await server.normal_shutdown()
-        except Exception as exception2:
-            logger.log_print('Unable to gracefully shut down: Forcing a shutdown.')
-            etype, evalue, etraceback = (type(exception2), exception2, exception2.__traceback__)
-            info = "\r\n" + "".join(traceback.format_exception(etype, evalue, etraceback))
+    _mandatory_python_version_check()
+    _upcoming_python_version_check()
 
-            logger.log_print(info)
-            logger.log_error(info, server=server, errortype='P')
 
+def main():
     server = None
-    loop = asyncio.get_event_loop()
-    loop.set_exception_handler(handle_exception)
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.set_exception_handler(_handle_exception)
 
     try:
-        # Check that config folder exists
-        if not os.path.exists('config'):
-            # If not, check if config_sample folder exists (common setup mistake)
-            if os.path.exists('config_sample'):
-                msg = ('Unable to locate the `config` folder. However, a `config_sample` folder '
-                       'was found. Please rename `config_sample` to `config` as instructed in the '
-                       'README and try again.')
-                raise RuntimeError(msg)
-            # Otherwise, something went wrong.
-            msg = ('Unable to locate the `config` folder. Please make sure the folder exists and '
-                   'is named correctly and try again.')
-            raise RuntimeError(msg)
-
-        _mandatory_python_version_check()
-        _upcoming_python_version_check(server)
-
+        _pre_launch_checks()
         server = TsuserverDR()
         loop.run_until_complete(server.start())
         # If we are done with this coroutine, that means an error was raised
@@ -123,10 +131,10 @@ def main():
     except KeyboardInterrupt:
         print('')  # Lame
         logger.log_pdebug('You have initiated a server shut down.')
-        loop.run_until_complete(normal_shutdown(server=server))
+        loop.run_until_complete(_normal_shutdown(server=server))
         logger.log_pdebug('Server has successfully shut down.')
     except Exception as exception:
-        loop.run_until_complete(abnormal_shutdown(exception, server=server))
+        loop.run_until_complete(_abnormal_shutdown(exception, server=server))
     finally:
         try:
             input("Press Enter to exit. ")

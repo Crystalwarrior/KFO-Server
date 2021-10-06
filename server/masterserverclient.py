@@ -33,8 +33,7 @@ class MasterServerClient:
         while True:
             try:
                 self.reader, self.writer = await asyncio.open_connection(self.server.config['masterserver_ip'],
-                                                                         self.server.config['masterserver_port'],
-                                                                         loop=loop)
+                                                                         self.server.config['masterserver_port'])
                 await self.handle_connection()
             except (ConnectionRefusedError, TimeoutError, socket.gaierror):
                 pass

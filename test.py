@@ -22,6 +22,8 @@ It does not create any active accessible servers, but instead just merely
 simulates client connections and actions.
 """
 
+import asyncio
+
 import sys
 import unittest
 
@@ -42,6 +44,9 @@ if __name__ == '__main__':
         pattern = sys.argv[1]
     else:
         pattern = 'test*.py'
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     TEST_SUITE = unittest.TestLoader().discover('.', pattern=pattern)
     tester = NoSkipLogTextTestRunner(verbosity=1, failfast=True)

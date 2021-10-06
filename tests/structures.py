@@ -876,7 +876,7 @@ class _TestTsuserverDR(TsuserverDR):
         self.ao_protocol = _TestAOProtocol
         self.client_list = [None] * self.config['playerlimit']
 
-        self.tasker = Tasker(self, self.loop)
+        self.tasker = Tasker(self)
 
     def create_client(self):
         new_ao_protocol = self.ao_protocol(self)

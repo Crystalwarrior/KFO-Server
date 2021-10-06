@@ -27,18 +27,15 @@ from server.exceptions import ServerError
 
 
 class Tasker:
-    def __init__(self, server, loop):
+    def __init__(self, server):
         """
         Parameters
         ----------
         server: tsuserver.TsuserverDR
             Server of the tasker.
-        loop: asyncio.<OS_event>.ProactorEventLoop [DEPRECATED]
-            Loop of the server's asyncio call.
         """
 
         self.server = server
-        self.loop = loop
         self.client_tasks = dict()
         self.active_timers = dict()
 
@@ -77,6 +74,7 @@ class Tasker:
         """
 
         task.cancel()
+        # TODO: For some odd reason, it complains if I set it to create_task. Figure that out.
         asyncio.ensure_future(self.await_cancellation(task))
 
     def remove_task(self, client, args):

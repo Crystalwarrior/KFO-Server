@@ -68,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 0
-        self.segment_version = ''
-        self.internal_version = '210929a'
+        self.segment_version = 'post1'
+        self.internal_version = 'p211006a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -144,7 +144,7 @@ class TsuserverDR:
         self.loop = asyncio.get_event_loop()
         self.error_queue = asyncio.Queue()
 
-        self.tasker = Tasker(self, self.loop)
+        self.tasker = Tasker(self)
         bound_ip = '0.0.0.0'
         if self.config['local']:
             bound_ip = '127.0.0.1'
@@ -202,20 +202,18 @@ class TsuserverDR:
                               .format(self.config['port']))
 
         if self.config['local']:
-            self.local_connection = asyncio.ensure_future(self.tasker.do_nothing(), loop=self.loop)
+            self.local_connection = asyncio.create_task(self.tasker.do_nothing())
 
         if self.config['use_district']:
             self.district_client = DistrictClient(self)
-            self.district_connection = asyncio.ensure_future(self.district_client.connect(),
-                                                             loop=self.loop)
+            self.district_connection = asyncio.create_task(self.district_client.connect())
             print(' ')
             logger.log_print('Attempting to connect to district at {}:{}.'
                              .format(self.config['district_ip'], self.config['district_port']))
 
         if self.config['use_masterserver']:
             self.ms_client = MasterServerClient(self)
-            self.masterserver_connection = asyncio.ensure_future(self.ms_client.connect(),
-                                                                 loop=self.loop)
+            self.masterserver_connection = asyncio.create_task(self.ms_client.connect())
             print(' ')
             logger.log_print('Attempting to connect to the master server at {}:{} with the '
                              'following details:'.format(self.config['masterserver_ip'],
