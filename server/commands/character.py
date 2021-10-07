@@ -601,6 +601,7 @@ def mod_keys(client, arg, mod=0):
                     keys = client.area.area_manager.get_character_data(target, 'keys', [])
                     keys.remove(a)
                 else:
+                    keys = client.area.area_manager.get_character_data(target, 'keys', [])
                     keys.append(a)
         client.area.area_manager.set_character_data(target, 'keys', keys)
         client.send_ooc(f'Character folder {client.server.char_list[target]}\'s keys are updated: {keys}')
