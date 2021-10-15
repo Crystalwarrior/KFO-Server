@@ -3541,9 +3541,10 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
                 player_description += ' (S)'
 
         msg += (
-            f"""=== Look results for {client.area.name} ===
-            *About the people: you see {player_description}
-            *About the area: {area_description}""")
+            f'=== Look results for {client.area.name} ===\r\n'
+            f'*About the people: you see {player_description}\r\n'
+            f'*About the area: {area_description}'
+            )
 
     client.send_ooc(msg)
 
