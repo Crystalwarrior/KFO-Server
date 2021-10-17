@@ -20,7 +20,7 @@
 # *default_description: Output of /look in the area if no custom description is in place via /look_set
 # *evidence_mod: Unused (do not include)
 # *gm_iclock_allowed: If false, only CM+ may /iclock the area. If true, GMs may also /iclock.
-# *iniswap_allowed: If false, everyone can send IC messages while iniswapped/iniedited; if true, no one can send IC messages while iniswapped/iniedited.
+# *iniswap_allowed: If true, everyone can send IC messages while iniswapped/iniedited; if false, no one can send IC messages while iniswapped/iniedited.
 # *global_allowed: If false, only CM+ may use /g in the area. If true, anyone can use it.
 # *has_lights: If false, the area cannot have its lights turned off via /light or similar. If true, no such restriction is imposed.
 # *lobby_area: If true, the area is marked as lobby (which disallows non-GMs+ from sneaking or /knock'ing from or to the area). If false, no such restriction is placed.
