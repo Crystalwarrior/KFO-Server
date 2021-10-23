@@ -67,6 +67,8 @@ class ValidateConfig(Validate):
                 err = (f'Expected password "{password}" to be defined in the configuration file, '
                        f'found it was not. Please make sure it is set and try again.')
                 raise ServerError.FileSyntaxError(err)
+            else:
+                contents[password] = str(contents[password])
 
         # Daily passwords are handled differently. They may optionally be not available.
         # What this means is the server does not want a daily password for that day
@@ -75,6 +77,8 @@ class ValidateConfig(Validate):
         for password in optional_passwords:
             if password not in contents or not contents[password]:
                 contents[password] = None
+            else:
+                contents[password] = str(contents[password])
 
         # Check that all passwords were generated are unique
         passwords = [

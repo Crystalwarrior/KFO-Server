@@ -680,9 +680,13 @@
 * Removed deprecated AO commands, and deprecated packets opKICK and opBAN
 * Dropped Python 3.6 support, and added indication of future Python 3.8 support drop
 
-## 211006a (4.3.0-post1)
+### 211006a (4.3.0-post1)
 * Fixed issue preventing launching servers in Python 3.10
 * Fixed issue where if a player was following another player who was part of a trial and that player left to an area not part of the trial, an error would be raised
 
-## 211015a (4.3.0-post2)
+### 211015a (4.3.0-post2)
 * Fixed output of /look having extraneous spaces
+
+### 211023a (4.3.0-post3)
+* Removed leftover timer creation code
+* Fixed passwords in `config.yaml` being erroneously casted to wrong types when possible
