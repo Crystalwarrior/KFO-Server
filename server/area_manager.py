@@ -129,6 +129,7 @@ class AreaManager:
             self.cbg_allowed = parameters['cbg_allowed']
             self.song_switch_allowed = parameters['song_switch_allowed']
             self.bullet = parameters['bullet']
+            self.visible_areas = parameters['visible_areas']
 
             # Store the current description separately from the default description
             self.description = self.default_description
@@ -136,7 +137,6 @@ class AreaManager:
             self.background_backup = self.background
 
             self.default_reachable_areas = self.reachable_areas.copy()
-            self.visible_reachable_areas = self.reachable_areas.copy()
 
             self.reachable_areas.add(self.name) # Area can always reach itself
 
@@ -1245,7 +1245,7 @@ class AreaManager:
 
             # And make sure that non-authorized users cannot create passages they cannot see
             if ((not areas[1-i].name in areas[i].reachable_areas) and
-                not (client.is_staff() or areas[1-i].name in areas[i].visible_reachable_areas)):
+                not (client.is_staff() or areas[1-i].name in areas[i].visible_areas)):
                 raise AreaError('You must be authorized to create a new passage from {} to '
                                 '{}.'.format(areas[i].name, areas[1-i].name))
 
@@ -1255,12 +1255,12 @@ class AreaManager:
                 now_reachable.append(False)
                 areas[i].reachable_areas -= {areas[1-i].name}
                 if change_passage_visibility:
-                    areas[i].visible_reachable_areas -= {areas[1-i].name}
+                    areas[i].visible_areas -= {areas[1-i].name}
             else:  # Case creating a passage
                 now_reachable.append(True)
                 areas[i].reachable_areas.add(areas[1-i].name)
                 if change_passage_visibility:
-                    areas[i].visible_reachable_areas.add(areas[1-i].name)
+                    areas[i].visible_areas.add(areas[1-i].name)
 
             for client in areas[i].clients:
                 client.reload_music_list()

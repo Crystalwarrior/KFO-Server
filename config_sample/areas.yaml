@@ -86,6 +86,7 @@
   iniswap_allowed: true
   global_allowed: false
   reachable_areas: Class Trial Room,\ 2, Basement
+  visible_areas: Class Trial Room,\ 2, Test 3
   rp_getarea_allowed: false
   gm_iclock_allowed: false
   afk_delay: 5

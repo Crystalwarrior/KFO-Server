@@ -52,6 +52,7 @@ class ValidateAreas(Validate):
             'locking_allowed': False,
             'private_area': False,
             'reachable_areas': '<ALL>',
+            'visible_areas': '<REACHABLE_AREAS>',
             'restricted_chars': '',
             'rollp_allowed': True,
             'rp_getarea_allowed': True,
@@ -178,25 +179,38 @@ class ValidateAreas(Validate):
             name = area_item['area']
 
             reachable_areas = Constants.fix_and_setify(area_item['reachable_areas'])
+            visible_areas = Constants.fix_and_setify(area_item['visible_areas'])
             scream_range = Constants.fix_and_setify(area_item['scream_range'])
             restricted_chars = Constants.fix_and_setify(area_item['restricted_chars'])
 
             if reachable_areas == {'<ALL>'}:
                 reachable_areas = temp_area_names.copy()
+
+            if visible_areas == {'<REACHABLE_AREAS>'}:
+                visible_areas = reachable_areas.copy()
+
             if scream_range == {'<ALL>'}:
                 scream_range = temp_area_names.copy()
             elif scream_range == {'<REACHABLE_AREAS>'}:
                 scream_range = reachable_areas.copy()
 
             area_item['reachable_areas'] = reachable_areas
+            area_item['visible_areas'] = visible_areas
             area_item['scream_range'] = scream_range
             area_item['restricted_chars'] = restricted_chars
 
-            # Make sure no weird areas were set as reachable by players or by screams
+            # Make sure no weird areas were set as reachable or visible to players or by screams
             unrecognized_areas = reachable_areas-temp_area_names
             if unrecognized_areas:
                 info = (f'Area {name} has unrecognized areas {unrecognized_areas} defined as '
                         f'areas a player can reach to. Please rename the affected areas and try '
+                        f'again.')
+                raise AreaError(info)
+
+            unrecognized_areas = visible_areas-temp_area_names
+            if unrecognized_areas:
+                info = (f'Area {name} has unrecognized areas {unrecognized_areas} defined as '
+                        f'areas a player can view. Please rename the affected areas and try '
                         f'again.')
                 raise AreaError(info)
 

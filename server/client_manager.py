@@ -1454,8 +1454,9 @@ class ClientManager:
                     # 2. The area is the client's area
                     # 3. The area is reachable and visibly reachable from the current one
                     norm_check = (len([c for c in area.clients if c.is_visible or c == self]) > 0
-                                  and (self.is_transient or area == self.area
-                                       or (area.name in current_area.visible_reachable_areas
+                                  and (self.is_transient
+                                       or area == self.area
+                                       or (area.name in current_area.visible_areas
                                            and area.name in current_area.reachable_areas)))
                     # Check reachable and visibly reachable to prevent gaining information from
                     # areas that are visible from area list but are not reachable (e.g. normally

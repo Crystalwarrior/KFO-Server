@@ -68,8 +68,8 @@ class TsuserverDR:
         self.release = 4
         self.major_version = 3
         self.minor_version = 1
-        self.segment_version = 'a1'
-        self.internal_version = 'm220228a'
+        self.segment_version = 'a2'
+        self.internal_version = 'm220228b'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -659,7 +659,7 @@ class TsuserverDR:
         # Now add areas
         prepared_area_list = list()
         for area in self.area_manager.areas:
-            if need_to_check or area.name in from_area.visible_reachable_areas:
+            if need_to_check or area.name in from_area.visible_areas:
                 prepared_area_list.append("{}-{}".format(area.id, area.name))
 
         return prepared_area_list

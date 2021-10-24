@@ -3828,12 +3828,12 @@ def ooc_cmd_minimap(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, parameters='=0')
 
     info = '== Minimap for {} =='.format(client.area.name)
-    if client.area.visible_reachable_areas == client.server.area_manager.area_names:
+    if client.area.visible_areas == client.server.area_manager.area_names:
         # Useful abbreviation
         info += '\r\n<ALL>'
     else:
         # Get all reachable areas and sort them by area ID
-        sorted_areas = sorted(client.area.visible_reachable_areas,
+        sorted_areas = sorted(client.area.visible_areas,
                               key=lambda name: client.server.area_manager.get_area_by_name(name).id)
 
         # No areas found or just the current area found means there are no reachable areas.
@@ -6089,7 +6089,7 @@ def ooc_cmd_rplay(client: ClientManager.Client, arg: str):
         raise ArgumentError('You must specify a song.')
 
     areas = {client.server.area_manager.get_area_by_name(reachable_area_name)
-             for reachable_area_name in client.area.visible_reachable_areas}
+             for reachable_area_name in client.area.visible_areas}
 
     for area in areas:
         area.play_track(arg, client, raise_if_not_found=False, reveal_sneaked=False)
