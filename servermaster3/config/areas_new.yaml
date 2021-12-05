@@ -1,0 +1,337 @@
+- censor_ooc: true
+  music_ref: Dev
+  move_delay: 0
+  can_getareas: true
+  censor_ic: true
+  name: "\U0001F4AC Lobby\u2506\u25061 \U0001F4AC"
+  arup_enabled: true
+  can_gm: false
+  single_cm: true
+  abbreviation: "\U0001F4ACL\U0001F4AC"
+  info: ''
+  can_spectate: true
+  client_music: true
+  replace_music: false
+  hide_clients: false
+  max_areas: -1
+  areas:
+  - area: "\U0001F4AC Lobby\u2506\u25061 \U0001F4AC"
+    background: ddlobby
+    pos_lock: none
+    bg_lock: true
+    evidence_mod: Mods
+    can_cm: false
+    locking_allowed: false
+    iniswap_allowed: true
+    showname_changes_allowed: true
+    shouts_allowed: true
+    jukebox: false
+    abbreviation: "\U0001F4ACL\U0001F4AC"
+    non_int_pres_only: false
+    locked: false
+    muted: false
+    blankposting_allowed: true
+    hp_def: 10
+    hp_pro: 10
+    doc: No document.
+    status: IDLE
+    move_delay: 0
+    hide_clients: false
+    music_autoplay: false
+    max_players: -1
+    desc: ============================== Per vedere le sale fare /hub Per cambiare
+      sala fare /hub ID ==============================
+    client_music: true
+    ambience: ''
+    can_dj: true
+    hidden: false
+    can_whisper: true
+    can_wtce: true
+    can_change_status: false
+    use_backgrounds_yaml: false
+    can_spectate: true
+    can_getarea: true
+    can_cross_swords: false
+    can_scrum_debate: false
+    can_panic_talk_action: false
+    force_sneak: false
+    password: ''
+    dark: false
+    background_dark: fxdarkness
+    pos_dark: wit
+    desc_dark: It's pitch black in here, you can't see a thing!
+  - area: area
+    background: default
+    pos_lock: none
+    bg_lock: false
+    evidence_mod: HiddenCM
+    can_cm: false
+    locking_allowed: false
+    iniswap_allowed: true
+    showname_changes_allowed: true
+    shouts_allowed: true
+    jukebox: false
+    abbreviation: Aarea
+    non_int_pres_only: false
+    locked: false
+    muted: false
+    blankposting_allowed: true
+    hp_def: 10
+    hp_pro: 10
+    doc: No document.
+    status: IDLE
+    move_delay: 0
+    hide_clients: false
+    music_autoplay: false
+    max_players: -1
+    desc: ''
+    client_music: true
+    ambience: ''
+    can_dj: true
+    hidden: false
+    can_whisper: true
+    can_wtce: true
+    can_change_status: true
+    use_backgrounds_yaml: false
+    can_spectate: true
+    can_getarea: true
+    can_cross_swords: false
+    can_scrum_debate: false
+    can_panic_talk_action: false
+    force_sneak: false
+    password: ''
+    dark: false
+    background_dark: fxdarkness
+    pos_dark: wit
+    desc_dark: It's pitch black in here, you can't see a thing!
+- censor_ooc: true
+  music_ref: Dev
+  move_delay: 0
+  can_getareas: true
+  censor_ic: true
+  name: "\U0001F4AC Lobby\u2506\u25062 \U0001F4AC"
+  arup_enabled: true
+  can_gm: false
+  single_cm: true
+  abbreviation: "\U0001F4ACL\U0001F4AC"
+  info: ''
+  can_spectate: true
+  client_music: true
+  replace_music: false
+  hide_clients: false
+  max_areas: -1
+  areas:
+  - area: "\U0001F4AC Lobby\u2506\u25062 \U0001F4AC"
+    background: ddlobby
+    pos_lock: none
+    bg_lock: true
+    evidence_mod: Mods
+    can_cm: false
+    locking_allowed: false
+    iniswap_allowed: true
+    showname_changes_allowed: true
+    shouts_allowed: true
+    jukebox: false
+    abbreviation: "\U0001F4ACL\U0001F4AC"
+    non_int_pres_only: false
+    locked: false
+    muted: false
+    blankposting_allowed: true
+    hp_def: 10
+    hp_pro: 10
+    doc: No document.
+    status: IDLE
+    move_delay: 0
+    hide_clients: false
+    music_autoplay: false
+    max_players: -1
+    desc: ============================== Per vedere le sale fare /hub Per cambiare
+      sala fare /hub ID ==============================
+    client_music: true
+    ambience: ''
+    can_dj: true
+    hidden: false
+    can_whisper: true
+    can_wtce: true
+    can_change_status: false
+    use_backgrounds_yaml: false
+    can_spectate: true
+    can_getarea: true
+    can_cross_swords: false
+    can_scrum_debate: false
+    can_panic_talk_action: false
+    force_sneak: false
+    password: ''
+    dark: false
+    background_dark: fxdarkness
+    pos_dark: wit
+    desc_dark: It's pitch black in here, you can't see a thing!
+  - area: "\U0001F4AC Lobby\u2506\u2506 \U0001F4AC"
+    background: ddlobby
+    pos_lock: none
+    bg_lock: true
+    evidence_mod: Mods
+    can_cm: true
+    locking_allowed: false
+    iniswap_allowed: true
+    showname_changes_allowed: true
+    shouts_allowed: true
+    jukebox: false
+    abbreviation: "\U0001F4ACL\U0001F4AC"
+    non_int_pres_only: false
+    locked: false
+    muted: false
+    blankposting_allowed: true
+    hp_def: 10
+    hp_pro: 10
+    doc: No document.
+    status: IDLE
+    move_delay: 0
+    hide_clients: false
+    music_autoplay: false
+    max_players: -1
+    desc: ============================== Per vedere le sale fare /hub Per cambiare
+      sala fare /hub ID ==============================
+    client_music: true
+    ambience: ''
+    can_dj: true
+    hidden: false
+    can_whisper: true
+    can_wtce: true
+    can_change_status: false
+    use_backgrounds_yaml: false
+    can_spectate: true
+    can_getarea: true
+    can_cross_swords: false
+    can_scrum_debate: false
+    can_panic_talk_action: false
+    force_sneak: false
+    password: ''
+    dark: false
+    background_dark: fxdarkness
+    pos_dark: wit
+    desc_dark: It's pitch black in here, you can't see a thing!
+- censor_ooc: true
+  music_ref: Dev
+  move_delay: 0
+  can_getareas: true
+  censor_ic: true
+  name: "\U0001F4AC Lobby\u2506\u25063 \U0001F4AC"
+  arup_enabled: true
+  can_gm: false
+  single_cm: true
+  abbreviation: "\U0001F4ACL\U0001F4AC"
+  info: ''
+  can_spectate: true
+  client_music: true
+  replace_music: false
+  hide_clients: false
+  max_areas: -1
+  areas:
+  - area: "\U0001F4AC Lobby\u2506\u25063 \U0001F4AC"
+    background: ddlobby
+    pos_lock: none
+    bg_lock: true
+    evidence_mod: Mods
+    can_cm: false
+    locking_allowed: false
+    iniswap_allowed: true
+    showname_changes_allowed: true
+    shouts_allowed: true
+    jukebox: false
+    abbreviation: "\U0001F4ACL\U0001F4AC"
+    non_int_pres_only: false
+    locked: false
+    muted: false
+    blankposting_allowed: true
+    hp_def: 10
+    hp_pro: 10
+    doc: No document.
+    status: IDLE
+    move_delay: 0
+    hide_clients: false
+    music_autoplay: false
+    max_players: -1
+    desc: ============================== Per vedere le sale fare /hub Per cambiare
+      sala fare /hub ID ==============================
+    client_music: true
+    ambience: ''
+    can_dj: true
+    hidden: false
+    can_whisper: true
+    can_wtce: true
+    can_change_status: false
+    use_backgrounds_yaml: false
+    can_spectate: true
+    can_getarea: true
+    can_cross_swords: false
+    can_scrum_debate: false
+    can_panic_talk_action: false
+    force_sneak: false
+    password: ''
+    dark: false
+    background_dark: fxdarkness
+    pos_dark: wit
+    desc_dark: It's pitch black in here, you can't see a thing!
+- censor_ooc: true
+  music_ref: Dev
+  move_delay: 0
+  can_getareas: true
+  censor_ic: true
+  name: "\U0001F4AC Lobby\u2506\u25064 \U0001F4AC"
+  arup_enabled: true
+  can_gm: false
+  single_cm: true
+  abbreviation: "\U0001F4ACL\U0001F4AC"
+  info: ''
+  can_spectate: true
+  client_music: true
+  replace_music: false
+  hide_clients: false
+  max_areas: -1
+  areas:
+  - area: "\U0001F4AC Lobby\u2506\u25064 \U0001F4AC"
+    background: ddlobby
+    pos_lock: none
+    bg_lock: true
+    evidence_mod: Mods
+    can_cm: false
+    locking_allowed: false
+    iniswap_allowed: true
+    showname_changes_allowed: true
+    shouts_allowed: true
+    jukebox: false
+    abbreviation: "\U0001F4ACL\U0001F4AC"
+    non_int_pres_only: false
+    locked: false
+    muted: false
+    blankposting_allowed: true
+    hp_def: 10
+    hp_pro: 10
+    doc: No document.
+    status: IDLE
+    move_delay: 0
+    hide_clients: false
+    music_autoplay: false
+    max_players: -1
+    desc: ============================== Per vedere le sale fare /hub Per cambiare
+      sala fare /hub ID ==============================
+    client_music: true
+    ambience: ''
+    can_dj: true
+    hidden: false
+    can_whisper: true
+    can_wtce: true
+    can_change_status: false
+    use_backgrounds_yaml: false
+    can_spectate: true
+    can_getarea: true
+    can_cross_swords: false
+    can_scrum_debate: false
+    can_panic_talk_action: false
+    force_sneak: false
+    password: ''
+    dark: false
+    background_dark: fxdarkness
+    pos_dark: wit
+    desc_dark: It's pitch black in here, you can't see a thing!

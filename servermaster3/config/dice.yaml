@@ -1,0 +1,103 @@
+default:
+  max: 6
+  1: Stomach ulcer
+  2: Small loan of a million dollars
+  3: Nothing happens
+  4: Nothing happens
+  5: Nothing happens
+  6: Critical hit
+
+8ball:
+  max: 20
+  1: Certamente
+  2: Decisamente
+  3: Senza dubbio
+  4: Sì, definitivamente
+  5: Puoi contarci
+  6: Per come la vedo, sì
+  7: Probabile
+  8: Si prospetta bene
+  9: Sì
+  10: I segnali indicano di sì
+  11: Domanda confusa, prova ancora
+  12: Chiedimelo più tardi
+  13: Meglio non dirtelo ora
+  14: Ora non posso predirlo
+  15: Concentrati e chiedilo di nuovo
+  16: Non contarci
+  17: La mia è risposta è no
+  18: Le mie risorse dicono no
+  19: Si prospetta male
+  20: No
+
+killer:
+  max: 2
+  1: serial killer
+  2: cannibale
+
+autonomi:
+  max: 2
+  1: cacciatore di taglie
+  2: idiota
+
+cittadininormali:
+  max: 5
+  1: sindaco
+  2: carceriere
+  3: dottore
+  4: artigliere
+  5: veggente
+
+cittadinipotenti:
+  max: 5
+  1: medium
+  2: bodyguard
+  3: cittadino mannaro
+  4: donna in rosso
+  5: prete
+
+lupi:
+  max: 4
+  1: lupo
+  2: gattino mannaro
+  3: lupo veggente
+  4: lupo guardiano
+
+yttd:
+  max: 3
+  1: sage 📚
+  2: keymaster 🗝️
+  3: sacrifice 🤍
+
+animazione:
+  max: 30
+  1: Phoenix
+  2: Franziska
+  3: Apollo
+  4: Godot
+  5: Gumshoe
+  6: Manfred
+  7: Miles
+  8: Athena
+  9: Maya
+  10: Kay
+  11: Sorin
+  12: Crab
+  13: Larry
+  14: Mamemomi
+  15: Souseki
+  16: Yosuke
+  17: Barok
+  18: Ryuunosuke
+  19: Adachi
+  20: Betty
+  21: April
+  22: Ema
+  23: Lara
+  24: Layton
+  25: Monokuma
+  26: Diego
+  27: Raymond
+  28: Polly
+  29: Nikomina
+  30: Marshall
