@@ -31,6 +31,7 @@ logger = logging.getLogger('events')
 from server import database
 from server import commands
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
+from server.network.aoprotocol import AOProtocol
 
 from server.area import Area
 
@@ -542,6 +543,12 @@ class AreaManager:
                 if not self.hide_clients and not area.hide_clients:
                     playercount = len([c for c in area.clients if not c.hidden])
                 players_list.append(playercount)
+                playerhubcount = 0
+                for area in client.local_area_list:
+                  for utente in area.clients:
+                       if not self.hide_clients and not area.hide_clients and not utente.hidden:
+                          playerhubcount = playerhubcount + 1
+                players_list[1] = playerhubcount
             self.server.send_arup(client, players_list)
 
     def send_arup_status(self, clients=None):

@@ -1,14 +1,20 @@
 import re
+import os
+import shlex
 
 from server import database
 from server.constants import TargetType
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 from . import mod_only
+from server import evidence
+from server import area
+from .. import commands
 
 __all__ = [
     'ooc_cmd_doc',
     'ooc_cmd_cleardoc',
+    'ooc_cmd_case_list',
     'ooc_cmd_evidence_mod', # Not strictly casing - to be reorganized
     'ooc_cmd_evidence_swap', # Not strictly casing - to be reorganized
     'ooc_cmd_cm',
@@ -29,14 +35,87 @@ __all__ = [
     'ooc_cmd_cs',
     'ooc_cmd_pta',
     'ooc_cmd_concede',
-    'ooc_cmd_subtheme',
+    'ooc_cmd_sc',
+    'ooc_cmd_lc',
+    'ooc_cmd_cl',
+    'ooc_cmd_dc',
 ]
 
+@mod_only(area_owners=True)
+def ooc_cmd_dc(client, arg):
+    files = os.listdir('storage/cases')
+    args = shlex.split(arg)
+    if args[0].ini in files:
+     f = open(f'storage/cases/{arg}.ini', 'r')
+     lines = f.readlines()
+     line = lines[1].split(' ')[3].split('"\n')[0]
+     if args[1] == line:
+      os.remove(f'storage/cases/{arg}.ini')
+      client.send_ooc('Il caso è stato eliminato!')
+     else:
+      client.send_ooc('Hai sbagliato password!')
+    else:
+      client.send_ooc('Il nome del caso non è in lista')
+
+def ooc_cmd_cl(client, arg):
+    msg = '\nLista casi 📯:\n'
+    files = os.listdir('storage\cases')
+    for f in files:
+     file = f[:-5]
+     msg += f'\n- {file}'
+    client.send_ooc(msg)
+
+@mod_only(area_owners=True)
+def ooc_cmd_sc(client, arg):
+  if not arg == '':
+    f = open(f'storage/cases/{arg}.yaml', 'w')
+    f.write('[General]\n')
+    f.write(f'author = "{client.name}"\n')
+    f.write(f'doc = "{client.area.doc}"\n')
+    f.write('status = "casing"\n\n\n')
+    for evi in client.area.evi_list.evidences:
+       f.write(f'[{client.area.evi_list.evidences.index(evi)}]\n')
+       f.write(f'name={evi.name}\n')
+       f.write(f'pos={evi.pos}\n')
+       f.write(f'description={evi.desc}\n')
+       f.write(f'image={evi.image}\n\n')
+    client.send_ooc('Il caso è stato salvato!')
+  else:
+    client.send_ooc('Devi dare un nome al caso, per poterlo salvare')
+
+@mod_only(area_owners=True)
+def ooc_cmd_lc(client, arg):
+   files = os.listdir('storage\cases')
+   if f'{arg}.yaml' in files:
+    f = open(f'storage/cases/{arg}.yaml', 'r')
+    lines = f.readlines()
+    line = shlex.split(lines[1])
+    client.send_ooc(f'Questo caso è stato fatto da {line[2]}')
+    line = shlex.split(lines[2])
+    client.area.doc = line[2]
+    commands.areas.ooc_cmd_status(client, 'casing')
+    esci = -1
+    i = -1
+    while esci == -1:
+      i = 0
+      for line in lines:
+       esci = 0
+       if f'[{i}]' in line:
+        esci = -1
+        j = lines.index(line)
+        name = lines[j+1].split('=')[1]
+        desc = lines[j+3].split('=')[1]
+        image = lines[j+4].split('=')[1]
+        evidence.EvidenceList.add_evidence(client.area.evi_list, client, name, desc, image)
+        area.Area.broadcast_evidence_list(client.area)
+   else:
+      client.send_ooc("Non c'è nessun caso con questo nome")
+      
 
 def ooc_cmd_doc(client, arg):
     """
-    Show or change the link for the current case document.
-    Usage: /doc [url]
+    Mostra o cambia il link per il documento del caso.
+    Uso: /doc [url]
     """
     if len(arg) == 0:
         client.send_ooc(f'Document: {client.area.doc}')
@@ -53,8 +132,8 @@ def ooc_cmd_doc(client, arg):
 
 def ooc_cmd_cleardoc(client, arg):
     """
-    Clear the link for the current case document.
-    Usage: /cleardoc
+    Elimina il link per il documento del caso attuale.
+    Uso: /cleardoc
     """
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
@@ -71,9 +150,8 @@ def ooc_cmd_cleardoc(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_evidence_mod(client, arg):
     """
-    Change the evidence privilege mode. Refer to the documentation
-    for more information on the function of each mode.
-    Usage: /evidence_mod <FFA|Mods|CM|HiddenCM>
+    Cambia il privilegio delle prove.
+    Uso: /evidence_mod <FFA|Mods|CM|HiddenCM>
     """
     if not arg or arg == client.area.evidence_mod:
         client.send_ooc(
@@ -98,10 +176,9 @@ def ooc_cmd_evidence_mod(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_evidence_swap(client, arg):
     """
-    Swap the positions of two evidence items on the evidence list.
-    The ID of each evidence can be displayed by mousing over it in 2.8 client,
-    or simply its number starting from 1.
-    Usage: /evidence_swap <id> <id>
+    Scambia la posizione di due prove.
+    l'ID iniziale è 0.
+    Uso: /evidence_swap <id> <id>
     """
     args = list(arg.split(' '))
     if len(args) != 2:
@@ -115,13 +192,13 @@ def ooc_cmd_evidence_swap(client, arg):
 
 def ooc_cmd_cm(client, arg):
     """
-    Add a case manager for the current area.
-    Leave id blank to promote yourself if there are no CMs.
-    Usage: /cm <id>
+    Aggiunge un CM nell'area attuale.
+    Lascia l'id vuoto per rendere te stesso CM se non ce ne sono altri.
+    Uso: /cm <id>
     """
     if not client.area.can_cm:
         raise ClientError('You can\'t become a CM in this area')
-    if len(client.area.owners) == 0:
+    if len(client.area.owners) == 0 or client.is_mod:
         if len(arg) > 0:
             raise ArgumentError(
                 'You cannot \'nominate\' people to be CMs when you are not one.'
@@ -158,8 +235,8 @@ def ooc_cmd_cm(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_uncm(client, arg):
     """
-    Remove a case manager from the current area.
-    Usage: /uncm <id>
+    Rimuove un CM dall'area attuale	.
+    Uso: /uncm <id>
     """
     if len(arg) > 0:
         arg = arg.split()
@@ -187,8 +264,8 @@ def ooc_cmd_uncm(client, arg):
 # LEGACY
 def ooc_cmd_setcase(client, arg):
     """
-    Set the positions you are interested in taking for a case.
-    (This command is used internally by the 2.6 client.)
+    Seleziona la posizione di cui sei interessato prendere durante un caso.
+    Questo comando non è disponibile ma è possibile usarlo cliccando sul pulsante "casing" all'interno del client.
     """
     args = re.findall(r'(?:[^\s,"]|"(?:\\.|[^"])*")+', arg)
     if len(args) == 0:
@@ -206,9 +283,8 @@ def ooc_cmd_setcase(client, arg):
 # LEGACY
 def ooc_cmd_anncase(client, arg):
     """
-    Announce that a case is currently taking place in this area,
-    needing a certain list of positions to be filled up.
-    Usage: /anncase <message> <def> <pro> <jud> <jur> <steno>
+    Annuncia che un caso si sta svolgendo nell'area attuale, necessita un certo numero di persone per essere riempita.
+    Uso: /anncase <message> <def> <pro> <jud> <jur> <steno>
     """
     # XXX: Merge with aoprotocol.net_cmd_casea
     if client in client.area.owners:
@@ -253,9 +329,8 @@ def ooc_cmd_anncase(client, arg):
 @mod_only()
 def ooc_cmd_blockwtce(client, arg):
     """
-    Prevent a user from using Witness Testimony/Cross Examination buttons
-    as a judge.
-    Usage: /blockwtce <id>
+    Previene l'utilizzo di un utente dei pulsanti "Testimony" e "Cross Examination" in posizione di giudice.
+    Uso: /blockwtce <id>
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify a target. Use /blockwtce <id>.')
@@ -278,8 +353,8 @@ def ooc_cmd_blockwtce(client, arg):
 @mod_only()
 def ooc_cmd_unblockwtce(client, arg):
     """
-    Allow a user to use WT/CE again.
-    Usage: /unblockwtce <id>
+    Rimuove il blocco sull'utilizzo dei comandi "Testimony" e "Cross Examination" in posizione di giudice.
+    Uso: /unblockwtce <id>
     """
     if len(arg) == 0:
         raise ArgumentError(
@@ -303,8 +378,8 @@ def ooc_cmd_unblockwtce(client, arg):
 @mod_only()
 def ooc_cmd_judgelog(client, arg):
     """
-    List the last 10 uses of judge controls in the current area.
-    Usage: /judgelog
+    Mostra gli ultimi 10 utilizzi dei comandi del giudice nell'area attuale.
+    Uso: /judgelog
     """
     if len(arg) != 0:
         raise ArgumentError('This command does not take any arguments.')
@@ -327,9 +402,9 @@ def ooc_cmd_afk(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_remote_listen(client, arg):
     """
-    Change the remote listen logs to either NONE, IC, OOC or ALL.
-    It will send you those messages from the areas you are an owner of.
-    Leave blank to see your current option.
+    Cambia la lettura dei log a NONE, IC, OOC o ALL.
+    Manderà quel tipo di messaggi dalle aree in cui sei CM o GM.
+    Lascialo vuoto per vedere la tua corrente impostazione.
     Usage: /remote_listen [option]
     """
     options = {
@@ -350,9 +425,9 @@ def ooc_cmd_remote_listen(client, arg):
 
 def ooc_cmd_testimony(client, arg):
     """
-    Display the currently recorded testimony.
-    Optionally, id can be passed to move to that statement.
-    Usage: /testimony [id]
+    Mostra la testimonianza attualmente registrata.
+    Opzinalmente, l'id può essere usato per muoversi alla testimonianza corrisponente.
+    Uso: /testimony [id]
     """
     if len(client.area.testimony) <= 0:
         client.send_ooc('There is no testimony recorded!')
@@ -391,8 +466,8 @@ def ooc_cmd_testimony(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_testimony_start(client, arg):
     """
-    Manually start a testimony with the given title.
-    Usage: /testimony_start <title>
+    Fa partire una serie di testimonianze con un titolo dato.
+    Uso: /testimony_start <title>
     """
     if arg == '':
         raise ArgumentError('You must provite a title! /testimony_start <title>.')
@@ -407,8 +482,8 @@ def ooc_cmd_testimony_start(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_testimony_clear(client, arg):
     """
-    Clear the current testimony.
-    Usage: /testimony_clear
+    Cancella la/e testimonianza/e attualmente registrata/e.
+    Uso: /testimony_clear
     """
     if len(client.area.testimony) <= 0:
         client.send_ooc('There is no testimony recorded!')
@@ -423,8 +498,8 @@ def ooc_cmd_testimony_clear(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_testimony_remove(client, arg):
     """
-    Remove the statement at index.
-    Usage: /testimony_remove <id>
+    Cancella completamente la registrazione di una testimonianza.
+    Uso: /testimony_remove <id>
     """
     if len(client.area.testimony) <= 0:
         client.send_ooc('There is no testimony recorded!')
@@ -449,8 +524,8 @@ def ooc_cmd_testimony_remove(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_testimony_amend(client, arg):
     """
-    Edit the spoken message of the statement at id.
-    Usage: /testimony_amend <id> <msg>
+    Cambia la testimonianza durante una registrazione scrivendo l'ID del mandante.
+    Uso: /testimony_amend <id> <msg>
     """
     if len(client.area.testimony) <= 0:
         client.send_ooc('There is no testimony recorded!')
@@ -475,8 +550,8 @@ def ooc_cmd_testimony_amend(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_testimony_swap(client, arg):
     """
-    Swap the two statements by idx.
-    Usage: /testimony_swap <id> <id>
+    Scambia due testimonianze tramite ID.
+    Uso: /testimony_swap <id> <id>
     """
     if len(client.area.testimony) <= 0:
         client.send_ooc('There is no testimony recorded!')
@@ -496,14 +571,13 @@ def ooc_cmd_testimony_swap(client, arg):
     except ClientError:
         raise
 
-
+@mod_only(area_owners=True)
 def ooc_cmd_cs(client, arg):
     """
-    Start a one-on-one "Cross Swords" debate with targeted player!
-    Expires in 5 minutes. If there's an ongoing cross-swords already,
-    it will turn into a Scrum Debate (team vs team debate)
-    with you joining the side *against* the <id>.
-    Usage: /cs <id>
+    Inizia un dibattito uno contro uno con il giocatore selezionato (Cross Swords)!
+    Termina in 5 minuti. Se è presente già un altro dibattito, si trasformerà in uno Scrum Debate (dibattito tra team)
+    con te che entrerai dalla parte opposta all'id immesso.
+    Uso: /cs <id>
     """
     if arg == '':
         if client.area.minigame_schedule and not client.area.minigame_schedule.cancelled():
@@ -556,22 +630,21 @@ def ooc_cmd_cs(client, arg):
         except AreaError as ex:
             raise ex
 
-
+@mod_only(area_owners=True)
 def ooc_cmd_pta(client, arg):
     """
-    Start a one-on-one "Panic Talk Action" debate with targeted player!
-    Unlike /cs, a Panic Talk Action (PTA) cannot evolve into a Scrum Debate.
-    Expires in 5 minutes.
-    Usage: /pta <id>
+    Inizia un dibattito uno contro uno con il giocatore selezionato (Panic Talk action)!
+    Al contrario di /cs, una Panic Talk Action (PTA) non può evolversi in uno Scrum Debate.
+    Termina dopo 5 minuti.
+    Uso: /pta <id>
     """
     args = arg.split()
     ooc_cmd_cs(client, f'{args[0]} 1')
 
-
 def ooc_cmd_concede(client, arg):
     """
-    Concede a trial minigame and withdraw from either team you're part of.
-    Usage: /concede
+    Termina un minigioco e fa perdere la squadra di chi ha effettuato il comando.
+    Uso: /concede
     """
     if client.area.minigame != '':
         try:
@@ -590,10 +663,7 @@ def ooc_cmd_concede(client, arg):
         client.send_ooc('There is no minigame running right now.')
 
 
-@mod_only(area_owners=True)
-def ooc_cmd_subtheme(client, arg):
-    """
-    Change the subtheme for everyone in the area.
-    Usage: /subtheme <subtheme_name>
-    """
-    client.area.send_command('ST', arg, '1')
+def ooc_cmd_case_list(client, arg):
+    import inspect
+    msg = inspect.cleandoc('''https://docs.google.com/document/d/1bu4onPCE-U-NARLkuEyIXeFQOinqDFyM2495YO9-9LE/edit?usp=sharing''')
+    client.send_ooc(msg)

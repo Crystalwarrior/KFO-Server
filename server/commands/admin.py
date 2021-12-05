@@ -13,32 +13,23 @@ from . import mod_only, list_commands, list_submodules, help
 __all__ = [
     'ooc_cmd_motd',
     'ooc_cmd_help',
-    'ooc_cmd_kick',
-    'ooc_cmd_ban',
-    'ooc_cmd_banhdid',
     'ooc_cmd_unban',
+    'ooc_cmd_discord',
     'ooc_cmd_mute',
     'ooc_cmd_unmute',
-    'ooc_cmd_login',
     'ooc_cmd_refresh',
     'ooc_cmd_online',
     'ooc_cmd_mods',
     'ooc_cmd_unmod',
-    'ooc_cmd_ooc_mute',
-    'ooc_cmd_ooc_unmute',
-    'ooc_cmd_bans',
-    'ooc_cmd_baninfo',
     'ooc_cmd_time',
     'ooc_cmd_whois',
-    'ooc_cmd_restart',
-    'ooc_cmd_myid',
 ]
 
 
 def ooc_cmd_motd(client, arg):
     """
-    Show the message of the day.
-    Usage: /motd
+    Mostra il messaggio del giorno.
+    Uso: /motd
     """
     if len(arg) != 0:
         raise ArgumentError("This command doesn't take any arguments")
@@ -47,8 +38,8 @@ def ooc_cmd_motd(client, arg):
 
 def ooc_cmd_help(client, arg):
     """
-    Show help for a command, or show general help.
-    Usage: /help
+    Mostra la descrizione di un comando, o un aiuto generale.
+    Uso: /help
     """
     import inspect
     if arg == '':
@@ -85,11 +76,11 @@ def ooc_cmd_help(client, arg):
 @mod_only()
 def ooc_cmd_kick(client, arg):
     """
-    Kick a player.
-    Usage: /kick <ipid|*|**> [reason]
-    Special cases:
-     - "*" kicks everyone in the current area.
-     - "**" kicks everyone in the server.
+    Kicka un utente.
+    Uso: /kick <ipid|*|**> [reason]
+    Casi speciali:
+     - "*" kicka tutti nell'area corrente.
+     - "**" kicka tutti all'interno del server.
     """
     if len(arg) == 0:
         raise ArgumentError(
@@ -123,22 +114,21 @@ def ooc_cmd_kick(client, arg):
         client.send_ooc(
             f'No targets with the IPID {ipid} were found.')
 
-
+@mod_only()
 def ooc_cmd_ban(client, arg):
     """
-    Ban a user. If a ban ID is specified instead of a reason,
-    then the IPID is added to an existing ban record.
-    Ban durations are 6 hours by default.
-    Usage: /ban <ipid> "reason" ["<N> <minute|hour|day|week|month>(s)|perma"]
-    Usage 2: /ban <ipid> <ban_id>
+    Banna un utente. Se un ban ID è specificato al posto del motivo, allora l'IPID viene aggiunto ad una lista di ban esistente.
+    La durata di un ban, se non specificato, è pari a 6 ore.
+    Uso: /ban <ipid> "reason" ["<N> <minute|hour|day|week|month>(s)|perma"]
+    Uso 2: /ban <ipid> <ban_id>
     """
     kickban(client, arg, False)
 
-
+@mod_only()
 def ooc_cmd_banhdid(client, arg):
     """
-    Ban both a user's HDID and IPID.
-    Usage: See /ban.
+    Banna l'HDID e l'IPID di un utente.
+    Uso: Guarda /ban.
     """
     kickban(client, arg, True)
 
@@ -183,8 +173,9 @@ def kickban(client, arg, ban_hdid):
     char = None
     hdid = None
     if ipid != None:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.IPID, ipid, False)
+        targets = client.server.client_manager.get_hub_targets(client,
+                                                       TargetType.IPID,
+                                                       ipid, False)
         if targets:
             for c in targets:
                 if ban_hdid:
@@ -202,8 +193,8 @@ def kickban(client, arg, ban_hdid):
 @mod_only()
 def ooc_cmd_unban(client, arg):
     """
-    Unban a list of users.
-    Usage: /unban <ban_id...>
+    Sbanna un utente.
+    Uso: /unban <ban_id...>
     """
     if len(arg) == 0:
         raise ArgumentError(
@@ -222,8 +213,8 @@ def ooc_cmd_unban(client, arg):
 @mod_only()
 def ooc_cmd_mute(client, arg):
     """
-    Prevent a user from speaking in-character.
-    Usage: /mute <ipid>
+    Vieta di far parlare un utente nella IC.
+    Uso: /mute <ipid>
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify a target. Use /mute <ipid>.')
@@ -254,8 +245,8 @@ def ooc_cmd_mute(client, arg):
 @mod_only()
 def ooc_cmd_unmute(client, arg):
     """
-    Unmute a user.
-    Usage: /unmute <ipid>
+    Smuta un utente.
+    Uso: /unmute <ipid>
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify a target.')
@@ -284,10 +275,10 @@ def ooc_cmd_unmute(client, arg):
                 f'{raw_ipid} does not look like a valid IPID.')
 
 
-def ooc_cmd_login(client, arg):
+def ooc_cmd_login_mod(client, arg):
     """
-    Login as a moderator.
-    Usage: /login <password>
+    Accedi come moderatore.
+    Uso: /login <password>
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify the password.')
@@ -309,9 +300,8 @@ def ooc_cmd_login(client, arg):
 @mod_only()
 def ooc_cmd_refresh(client, arg):
     """
-    Reload all moderator credentials, server options, and commands without
-    restarting the server.
-    Usage: /refresh
+    Ricarica tutte le credenziali dei moderatori, le opzioni del server e i comandi senza riavviare il server.
+    Uso: /refresh
     """
     if len(arg) > 0:
         raise ClientError('This command does not take in any arguments!')
@@ -326,24 +316,24 @@ def ooc_cmd_refresh(client, arg):
 
 def ooc_cmd_online(client, _):
     """
-    Show the number of players online.
-    Usage: /online
+    Mostra il numero degli utenti online.
+    Uso: /online
     """
     client.send_player_count()
 
 
 def ooc_cmd_mods(client, arg):
     """
-    Show a list of moderators online.
-    Usage: /mods
+    Mostra una lista dei moderatori online.
+    Uso: /mods
     """
     client.send_area_info(-1, True)
 
 
 def ooc_cmd_unmod(client, arg):
     """
-    Log out as a moderator.
-    Usage: /unmod
+    Esci da moderatore.
+    Uso: /unmod
     """
     client.is_mod = False
     client.mod_profile_name = None
@@ -358,8 +348,8 @@ def ooc_cmd_unmod(client, arg):
 @mod_only()
 def ooc_cmd_ooc_mute(client, arg):
     """
-    Prevent a user from talking out-of-character.
-    Usage: /ooc_mute <ooc-name>
+    Impedisce un utente di parlare in OOC.
+    Uso: /ooc_mute <ooc-name>
     """
     if len(arg) == 0:
         raise ArgumentError(
@@ -379,8 +369,8 @@ def ooc_cmd_ooc_mute(client, arg):
 @mod_only()
 def ooc_cmd_ooc_unmute(client, arg):
     """
-    Allow an OOC-muted user to talk out-of-character.
-    Usage: /ooc_unmute <ooc-name>
+    Smuta un utente dalla OOC.
+    Uso: /ooc_unmute <ooc-name>
     """
     if len(arg) == 0:
         raise ArgumentError(
@@ -397,8 +387,8 @@ def ooc_cmd_ooc_unmute(client, arg):
 @mod_only()
 def ooc_cmd_bans(client, _arg):
     """
-    Get the 5 most recent bans.
-    Usage: /bans
+    Fornisce una lista dei 5 ban più recenti.
+    Uso: /bans
     """
     msg = 'Last 5 bans:\n'
     for ban in database.recent_bans():
@@ -410,9 +400,9 @@ def ooc_cmd_bans(client, _arg):
 @mod_only()
 def ooc_cmd_baninfo(client, arg):
     """
-    Get information about a ban.
-    Usage: /baninfo <id> ['ban_id'|'ipid'|'hdid']
-    By default, id identifies a ban_id.
+    Ottieni informazioni riguardo un ban.
+    Uso: /baninfo <id> ['ban_id'|'ipid'|'hdid']
+    Di base, l'id è identificato come ban_id.
     """
     args = arg.split(' ')
     if len(arg) == 0:
@@ -447,8 +437,8 @@ def ooc_cmd_baninfo(client, arg):
 
 def ooc_cmd_time(client, arg):
     """
-    Returns the current server time.
-    Usage:  /time
+    Fornisce l'orario del server.
+    Uso:  /time
     """
     if len(arg) > 0:
         raise ArgumentError('This command takes no arguments')
@@ -462,8 +452,8 @@ def ooc_cmd_time(client, arg):
 @mod_only()
 def ooc_cmd_whois(client, arg):
     """
-    Get information about an online user.
-    Usage: /whois <name|id|ipid|showname|character>
+    Fornisce informazioni riguardo un utente online.
+    Uso: /whois <name|id|ipid|showname|character>
     """
     found_clients = set()
     for c in client.server.client_manager.clients:
@@ -487,8 +477,8 @@ def ooc_cmd_whois(client, arg):
 @mod_only()
 def ooc_cmd_restart(client, arg):
     """
-    Restart the server (WARNING: The server will be *stopped* unless you set up a restart batch/bash file!)
-    Usage: /restart
+    Riavvia il server.
+    Uso: /restart
     """
     if arg != client.server.config['restartpass']:
         raise ArgumentError('no')
@@ -496,20 +486,7 @@ def ooc_cmd_restart(client, arg):
     client.server.send_all_cmd_pred('CT', 'WARNING', 'Restarting the server...')
     asyncio.get_event_loop().stop()
 
-def ooc_cmd_myid(client, arg):
-    """
-    Get information for your current client, such as client ID.
-    Usage: /myid
-    """
-    if len(arg) > 0:
-        raise ArgumentError('This command takes no arguments')
-    info = f'You are: [{client.id}] '
-    if client.showname != client.char_name:
-        info += f'"{client.showname}" ({client.char_name})'
-    else:
-        info += f'{client.showname}'
-    if client.is_mod:
-        info += f' ({client.ipid})'
-    if client.name != '':
-        info += f': {client.name}'
-    client.send_ooc(info)
+def ooc_cmd_discord(client, arg):
+    import inspect
+    msg = inspect.cleandoc('''https://discord.gg/GMxA7jt42M''')
+    client.send_ooc(msg)

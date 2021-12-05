@@ -21,6 +21,7 @@ __all__ = [
     'ooc_cmd_area_musiclist',
     'ooc_cmd_hub_musiclist',
     'ooc_cmd_random_music',
+    'ooc_cmd_add_music',
 ]
 
 
@@ -153,15 +154,14 @@ def ooc_cmd_jukebox(client, arg):
 
 @mod_only(area_owners=True)
 def ooc_cmd_play(client, arg):
-    """
-    Play a track and loop it. See /play_once for this command without looping.
-    Usage: /play <name>
-    """
-    if len(arg) == 0:
+   """
+   Play a track and loop it. See /play_once for this command without looping.
+   Usage: /play <name>
+   """
+   if len(arg) == 0:
         raise ArgumentError('You must specify a song.')
-    client.change_music(arg, client.char_id, '', 2, True) #looped change music
-    database.log_area('play', client, client.area, message=arg)
-
+   client.change_music(arg, client.char_id, '', 2, True) #looped change music
+   database.log_area('play', client, client.area, message=arg)
 
 @mod_only(area_owners=True)
 def ooc_cmd_play_once(client, arg):
@@ -316,3 +316,29 @@ def ooc_cmd_random_music(client, arg):
         raise ArgumentError('Could not find a single song that fit the criteria!')
     song_name = songs[random.randint(0, len(songs)-1)]['name']
     client.change_music(song_name, client.char_id, '', 2)
+
+
+@mod_only(hub_owners=True)   
+def ooc_cmd_add_music(client, arg):
+   import os
+   import shlex
+   args = shlex.split(arg)
+   files = os.listdir(f'storage/musiclists')
+   if f"{args[0]}.yaml" in files:
+     f = open(f'storage/musiclists/{args[0]}.yaml', 'r')
+     lines = f.readlines()
+     if f"- category: =={args[1]}==\n" in lines:
+       for line in lines:
+         if f"- category: =={args[1]}==\n" == line:
+            i = lines.index(line)
+            del lines[i+1]
+            lines[i] = f'- category: =={args[1]}==\n  songs:\n    - name: "{args[2]}"\n      length: -1\n'
+     else:
+        lines[1] = f'{lines[1]}- category: =={args[1]}==\n  songs:\n    - name: "{args[2]}"\n      length: -1\n'
+     f = open(f'storage/musiclists/{args[0]}.yaml', 'w')
+     for line in lines:
+            f.write(line)
+     f.close
+     client.send_ooc(f'Ost aggiunta nella playlist {args[0]}!')
+   else:
+     client.send_ooc('Musiclist non trovata!')

@@ -1,5 +1,10 @@
 from server.exceptions import ClientError, ArgumentError, AreaError
 from . import mod_only
+import asyncio
+from server.constants import TargetType
+from server import client_manager
+import shlex
+from .. import commands
 
 __all__ = [
     'ooc_cmd_area_lock',
@@ -24,9 +29,54 @@ __all__ = [
     'ooc_cmd_unlink_evidence',
     'ooc_cmd_pw',
     'ooc_cmd_setpw',
+    'ooc_cmd_area_locked',
+    'ooc_cmd_login',
+    'ooc_cmd_register',
 ]
 
+def ooc_cmd_login(client, arg):
+     f = open('storage/login/password.yaml', 'r')
+     lines = f.readlines()
+     read = False
+     for line in lines:
+      info = shlex.split(line)
+      i = lines.index(line)
+      if info[1] == arg:
+       read = True
+      if info[2] == 'MOD':
+       commands.admin.ooc_cmd_login_mod(client, 'Dev')
+      if info[2] == 'VIP':
+       client.vip()
+     if read:
+       client.loggin(info[0])
+       lines[i] = f'{info[0]} {info[1]} {info[2]} {client.hdid}'
+       client.send_ooc('Ti sei loggato!') 
+       f = open('storage/login/password.yaml', 'w')
+       for line in lines: 
+        f.write(line)
+     else:
+      client.send_ooc('Hai sbagliato Password')
 
+def ooc_cmd_register(client, arg):
+     f = open('storage/login/password.yaml', 'r')
+     lines = f.readlines()
+     read = True
+     for line in lines:
+      if client.hdid in line:
+        read = False
+     if read:
+       f = open('storage/login/password.yaml', 'w')  
+       args = shlex.split(arg)
+       lines.append(f'{args[0]} {args[1]} UTENTE {client.hdid}')
+       for line in lines:
+         f.write(line)
+       client.loggin(args[0])
+       client.send_ooc('Ti sei registrato!')
+     else:
+       client.send_ooc('Ti sei già registrato, non puoi farlo ancora!')
+     
+ 
+@mod_only(area_owners=True)
 def ooc_cmd_area_lock(client, arg):
     """
     Prevent users from joining the current area.
@@ -144,6 +194,7 @@ def ooc_cmd_area_unmute(client, arg):
         raise
 
 
+@mod_only(area_owners=True)
 def ooc_cmd_area_unlock(client, arg):
     """
     Allow anyone to freely join the current area.
@@ -771,3 +822,18 @@ def ooc_cmd_setpw(client, arg):
         raise ArgumentError('Area ID must be a number, or a link ID must start with ! e.g. 5 vs !5.')
     except (AreaError, ClientError):
         raise
+
+@mod_only()
+def ooc_cmd_area_locked(client, arg):
+     from server.client_manager import lista_unlocked
+     ipid = int(arg)
+     if ipid in lista_unlocked:
+      client_manager.rimuovi(ipid)
+      client.send_ooc('Utente liberato!')
+      targets = client.server.client_manager.get_targets(client, TargetType.IPID,
+                                                        ipid, False)
+      for target in targets:
+          target.send_ooc('Sei stato liberato!')
+
+     else:
+      client.send_ooc('Ipid non in lista!')

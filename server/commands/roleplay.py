@@ -1,4 +1,6 @@
 import random
+import shlex
+from threading import Timer
 
 import asyncio
 import arrow
@@ -29,6 +31,7 @@ __all__ = [
     'ooc_cmd_coinflip',
     'ooc_cmd_8ball',
     'ooc_cmd_timer',
+    'ooc_cmd_say',
     'ooc_cmd_demo',
 ]
 
@@ -142,11 +145,11 @@ def rtd(arg):
 
 def ooc_cmd_roll(client, arg):
     """
-    Roll a die. The result is shown publicly.
-    Example: /roll 2d6 +5 would roll two 6-sided die and add 5 to every result.
-    Rolls a 1d6 if blank
-    X is the number of dice, Y is the maximum value on the die.
-    Usage: /rollp [value/XdY] ["+5"/"-5"/"*5"/"/5"]
+    Tira un dado. Il risultato viene mostrato pubblicamente.
+    Esempio: /roll 2d6 +5 lancerebbe due dadi da 6 facce e aggiungerebbe 5 ad ogni risultato.
+    In caso venisse lasciato vuoto, lancerebbe un solo dado a 6 facce.
+    X è il numero del dado, Y è il massimo valore del dado.
+    Uso: /rollp [value/XdY] ["+5"/"-5"/"*5"/"/5"]
     """
     roll, num_dice, chosen_max, _modifiers, Sum = rtd(arg)
 
@@ -156,11 +159,11 @@ def ooc_cmd_roll(client, arg):
 
 def ooc_cmd_rollp(client, arg):
     """
-    Roll a die privately. Same as /roll but the result is only shown to you and the CMs.
-    Example: /roll 2d6 +5 would roll two 6-sided die and add 5 to every result.
-    Rolls a 1d6 if blank
-    X is the number of dice, Y is the maximum value on the die.
-    Usage: /rollp [value/XdY] ["+5"/"-5"/"*5"/"/5"]
+    Tira un dado in segreto. Uguale a /roll ma il risultato viene mostrato solo a te e ai CM.
+    Esempio: /roll 2d6 +5 lancerebbe due dadi da 6 facce e aggiungerebbe 5 ad ogni risultato.
+    In caso venisse lasciato vuoto, lancerebbe un solo dado a 6 facce.
+    X è il numero del dado, Y è il massimo valore del dado.
+    Uso: /rollp [value/XdY] ["+5"/"-5"/"*5"/"/5"]
     """
     roll, num_dice, chosen_max, _modifiers, Sum = rtd(arg)
 
@@ -173,8 +176,8 @@ def ooc_cmd_rollp(client, arg):
 
 def ooc_cmd_notecard(client, arg):
     """
-    Write a notecard that can only be revealed by a CM.
-    Usage: /notecard <message>
+    Permette di scrivere degli appunti che possono essere rivelati solo dal CM.
+    Uso: /notecard <message>
     """
     if len(arg) == 0:
         if client.char_name in client.area.cards:
@@ -191,8 +194,8 @@ def ooc_cmd_notecard(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_notecard_clear(client, arg):
     """
-    Clear all notecards as a CM.
-    Usage: /notecard_clear
+    Rimuove tutti gli appunti.
+    Uso: /notecard_clear
     """
     client.area.cards.clear()
     client.area.broadcast_ooc(f'[{client.id}] {client.showname} has cleared all the note cards in this area.')
@@ -202,8 +205,8 @@ def ooc_cmd_notecard_clear(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_notecard_reveal(client, arg):
     """
-    Reveal all notecards and their owners.
-    Usage: /notecard_reveal
+    Mostra tutti gli appunti.
+    Uso: /notecard_reveal
     """
     if len(client.area.cards) == 0:
         raise ClientError('There are no cards to reveal in this area.')
@@ -218,8 +221,8 @@ def ooc_cmd_notecard_reveal(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_notecard_check(client, arg):
     """
-    Check all notecards and their owners privately with a message telling others you've done so.
-    Usage: /notecard_check
+    Mostra tutti gli appunti e i loro proprietari con un messaggio privato, avvisando che hai eseguito il comando.
+    Uso: /notecard_check
     """
     if len(client.area.cards) == 0:
         raise ClientError('There are no cards to check in this area.')
@@ -234,8 +237,8 @@ def ooc_cmd_notecard_check(client, arg):
 
 def ooc_cmd_vote(client, arg):
     """
-    Cast a vote for a particular user that can only be revealed by a CM.
-    Usage: /vote <id>
+    Fa partire un voto ad uno specifico giocatore, può essere rivelato solo dal CM.
+    Uso: /vote <id>
     """
     args = arg.split()
     if len(args) == 0:
@@ -252,9 +255,9 @@ def ooc_cmd_vote(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_vote_clear(client, arg):
     """
-    Clear all votes as a CM.
-    Include [char_folder] (case-sensitive) to only clear a specific voter.
-    Usage: /vote_clear [char_folder]
+    Rimuove tutti i voti, eseguibile solo dal CM.
+    Includi [char_folder] per rimuovere un solo votante.
+    Uso: /vote_clear [char_folder]
     """
     if arg != "":
         for value in client.area.votes.values():
@@ -300,8 +303,8 @@ def get_vote_results(votes):
 @mod_only(area_owners=True)
 def ooc_cmd_vote_reveal(client, arg):
     """
-    Reveal the number of votes, the voters and those with the highest amount of votes.
-    Usage: /vote_reveal
+    Rivela i numeri dei voti, i votanti e coloro col maggior numero di voti.
+    Uso: /vote_reveal
     """
     if len(client.area.votes) == 0:
         raise ClientError('There are no votes to reveal in this area.')
@@ -315,8 +318,8 @@ def ooc_cmd_vote_reveal(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_vote_check(client, arg):
     """
-    Check the number of votes, the voters and those with the highest amount of votes privately with a message telling others you've done so.
-    Usage: /vote_check
+    Controlla il numero dei voti, i votanti e coloro col maggior numero di voti in un messaggio privato, avvisando che è stato eseguito.
+    Uso: /vote_check
     """
     if len(client.area.votes) == 0:
         raise ClientError('There are no votes to check in this area.')
@@ -331,8 +334,8 @@ def ooc_cmd_vote_check(client, arg):
 @mod_only()
 def ooc_cmd_rolla_reload(client, arg):
     """
-    Reload ability dice sets from a configuration file.
-    Usage: /rolla_reload
+    Ricarica la capacità dei dadi impostata da un file di configurazione.
+    Uso: /rolla_reload
     """
     rolla_reload(client.area)
     client.send_ooc('Reloaded ability dice configuration.')
@@ -352,8 +355,8 @@ def rolla_reload(area):
 
 def ooc_cmd_rolla_set(client, arg):
     """
-    Choose the set of ability dice to roll.
-    Usage: /rolla_set <name>
+    Seleziona una sezione della capacità del dado per tirare.
+    Uso: /rolla_set <name>
     """
     if not hasattr(client.area, 'ability_dice'):
         rolla_reload(client.area)
@@ -379,8 +382,8 @@ def rolla(ability_dice):
 
 def ooc_cmd_rolla(client, arg):
     """
-    Roll a specially labeled set of dice (ability dice).
-    Usage: /rolla
+    Lancia un set di dadi speciale etichettati (capacità del dado).
+    Uso: /rolla
     """
     if not hasattr(client.area, 'ability_dice'):
         rolla_reload(client.area)
@@ -397,8 +400,8 @@ def ooc_cmd_rolla(client, arg):
 
 def ooc_cmd_coinflip(client, arg):
     """
-    Flip a coin. The result is shown publicly.
-    Usage: /coinflip
+    Lancia una moneta. Il risultato viene mostrato pubblicamente.
+    Uso: /coinflip
     """
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
@@ -411,8 +414,8 @@ def ooc_cmd_coinflip(client, arg):
 
 def ooc_cmd_8ball(client, arg):
     """
-    Answers a question. The result is shown publicly.
-    Usage: /8ball <question>
+    Risponde ad una domanda. La risposta viene mostrata pubblicamente.
+    Uso: /8ball <question>
     """
     
     arg = arg.strip()
@@ -424,14 +427,15 @@ def ooc_cmd_8ball(client, arg):
 
 def ooc_cmd_timer(client, arg):
     """
-    Manage a countdown timer in the current area. Note that timer of ID `0` is hub-wide. All other timer ID's are local to area.
+    Gestisce un conto alla rovescia nell'area corrente. Se l'ID assegnato al timer è 0, il timer verrà inserito in tutte le aree.
     Anyone can check ongoing timers, their status and time left using `/timer <id>`, so `/timer 0`.
     `[time]` can be formated as `10m5s` for 10 minutes 5 seconds, `1h30m` for 1 hour 30 minutes, etc.
     You can optionally add or subtract time, like so: `/timer 0 +5s` to add `5` seconds to timer id `0`.
     `start` starts the previously set timer, so `/timer 0 start`.
     `pause` OR `stop` pauses the timer that's currently running, so `/timer 0 pause`.
     `unset` OR `hide` hides the timer for it to no longer show up, so `/timer 0 hide`.
-    Usage:
+ 
+    Uso:
     /timer <id> [+][time]
     /timer <id> start
     /timer <id> <pause|stop>
@@ -579,17 +583,34 @@ def ooc_cmd_timer(client, arg):
             timer.schedule = asyncio.get_event_loop().call_later(
                 int(timer.static.total_seconds()), timer.timer_expired)
 
-
+@mod_only(area_owners=True)
+def ooc_cmd_say(client, arg):
+    """
+    Permette di inviare un messaggio tramite un bot utilizzando qualunque personaggio.
+    Uso: /say "testo" "personaggio" "nome dell'animazione"
+    """
+    
+    args = shlex.split(arg)
+    if len(args) == 1:
+     if len(args[0]) == 0:
+            raise ArgumentError('''Prova con /help say''')
+     client.area.send_ic(None, '1', 0, "", "../misc/blank", args[0], "", "", 0, -1, 0, 2, [0], 0, 0, 0, "SMP-BOT", -1, "", "", 0, 0, 0, 0, "0", 0, "", "", "", 0, "")
+     client.area.broadcast_ooc(f'{client.char_name} ha richiamato il bot')
+    if len(args) == 2:
+            raise ArgumentError('''Prova con /help say''')
+    else:
+     msg = f'../characters/{args[1]}/{args[2]}'
+     client.area.send_ic(None, '1', 0, "", f'{msg}', args[0], "", "", 0, -1, 0, 2, [0], 0, 0, 0, "SMP-BOT", -1, "", "", 0, 0, 0, 0, "0", 0, "", "", "", 0, "")
+     client.area.broadcast_ooc(f'{client.char_name} ha richiamato il bot')
+         
 @mod_only(area_owners=True)
 def ooc_cmd_demo(client, arg):
     """
     Usage:
     /demo <evidence_id> or /demo <evidence_name>
-    Use /demo to stop demo
     """
     if arg == '':
         client.area.stop_demo()
-        client.send_ooc('Stopping demo playback...')
         return
 
     evidence = None
@@ -621,3 +642,7 @@ def ooc_cmd_demo(client, arg):
             c.send_ooc(f'Starting demo playback using evidence \'{evidence.name}\'...')
 
     client.area.play_demo(client)
+          
+          
+
+      
