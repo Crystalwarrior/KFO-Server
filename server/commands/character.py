@@ -19,6 +19,8 @@ __all__ = [
     'ooc_cmd_blind',
     'ooc_cmd_unblind',
     'ooc_cmd_player_move_delay',
+    'ooc_cmd_player_hide',
+    'ooc_cmd_player_unhide',
     'ooc_cmd_hide',
     'ooc_cmd_unhide',
     'ooc_cmd_sneak',
@@ -43,9 +45,10 @@ __all__ = [
 
 def ooc_cmd_switch(client, arg):
     """
-    Cambia il personaggio. Se un moderatore utilizza il comando e il personaggio è già preso,
-    all'utente che possiede quel personaggio ne verrà assegnato uno casualmente.
-    Uso: /switch <name>
+    Switch to another character. If moderator and the specified character is
+    currently being used, the current user of that character will be
+    automatically reassigned a character.
+    Usage: /switch <name>
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify a character name.')
@@ -66,10 +69,10 @@ def ooc_cmd_switch(client, arg):
     client.send_ooc('Character changed.')
 
 
-def ooc_cmd_pos(client, arg, BS = True):
+def ooc_cmd_pos(client, arg):
     """
-    Imposta la posizione del tuo personaggio nell'area corrente.
-    Uso: /pos <name>
+    Set the place your character resides in the area.
+    Usage: /pos <name>
     """
     if len(arg) == 0:
         client.send_ooc(f'Your current position is {client.pos}.')
@@ -79,15 +82,14 @@ def ooc_cmd_pos(client, arg, BS = True):
         except ClientError:
             raise
         client.area.broadcast_evidence_list()
-        if BS:
-         client.send_ooc('Position changed.')
+        client.send_ooc('Position changed.')
 
 
 @mod_only(area_owners=True)
 def ooc_cmd_forcepos(client, arg):
     """
-    Imposta la posizione di un utente nell'area corrente.
-    Uso: /forcepos <pos> <target>
+    Set the place another character resides in the area.
+    Usage: /forcepos <pos> <target>
     """
     args = arg.split()
 
@@ -130,9 +132,10 @@ def ooc_cmd_forcepos(client, arg):
 
 def ooc_cmd_charselect(client, arg):
     """
-    Permette di andare nella selezione personaggio, o forzare un utente a cambiare personaggio.
-    [char] forza l'utente ad usare uno specifico personaggio.
-    Uso: /charselect [id] [char]
+    Enter the character select screen, or force another user to select
+    another character.
+    Optional [char] forces them into a specific character.
+    Usage: /charselect [id] [char]
     """
     if not arg:
         client.char_select()
@@ -168,8 +171,8 @@ def force_charselect(client, char=''):
 
 def ooc_cmd_randomchar(client, arg):
     """
-    Seleziona un personaggio casuale.
-    Uso: /randomchar
+    Select a random character.
+    Usage: /randomchar
     """
     if len(arg) != 0:
         raise ArgumentError('This command has no arguments.')
@@ -191,8 +194,8 @@ def ooc_cmd_randomchar(client, arg):
 @mod_only()
 def ooc_cmd_charcurse(client, arg):
     """
-    Costringe un utente a scegliere in una lista limitata di personaggi.
-    Uso: /charcurse <id> [charids...]
+    Lock a user into being able to choose only from a list of characters.
+    Usage: /charcurse <id> [charids...]
     """
     if len(arg) == 0:
         raise ArgumentError(
@@ -235,8 +238,8 @@ def ooc_cmd_charcurse(client, arg):
 @mod_only()
 def ooc_cmd_uncharcurse(client, arg):
     """
-    Rimuove la restrizione dei personaggi limitati ad un utente.
-    Uso: /uncharcurse <id>
+    Remove the character choice restrictions from a user.
+    Usage: /uncharcurse <id>
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify a target (an ID).')
@@ -263,8 +266,8 @@ def ooc_cmd_uncharcurse(client, arg):
 @mod_only()
 def ooc_cmd_charids(client, arg):
     """
-    Mostra gli ID dei personaggi.
-    Uso: /charids
+    Show character IDs corresponding to each character name.
+    Usage: /charids
     """
     if len(arg) != 0:
         raise ArgumentError("This command doesn't take any arguments")
@@ -276,8 +279,8 @@ def ooc_cmd_charids(client, arg):
 
 def ooc_cmd_reload(client, arg):
     """
-    Ricarica un personaggio nella sua posizione e sprite iniziale.
-    Uso: /reload
+    Reload a character to its default position and state.
+    Usage: /reload
     """
     if len(arg) != 0:
         raise ArgumentError("This command doesn't take any arguments")
@@ -291,8 +294,8 @@ def ooc_cmd_reload(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_blind(client, arg):
     """
-    Impedisce ad un utente di vedere chi parla o di parlare nella IC.
-    Uso: /blind <id(s)>
+    Blind the targeted player(s) from being able to see or talk IC.
+    Usage: /blind <id(s)>
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify a target.')
@@ -320,8 +323,8 @@ def ooc_cmd_blind(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_unblind(client, arg):
     """
-    Rimuove gli effetti del comando /blind.
-    Uso: /unblind <id(s)>
+    Undo effects of the /blind command.
+    Usage: /unblind <id(s)>
     """
     if len(arg) == 0:
         raise ArgumentError('You must specify a target.')
@@ -345,16 +348,16 @@ def ooc_cmd_unblind(client, arg):
     else:
         raise ArgumentError('No targets found.')
 
-@mod_only()
+
 def ooc_cmd_player_move_delay(client, arg):
     """
-    Setta il ritardo di spostamento di un utente in secondi. Può essere negativo.
-    Il ritardo deve andare da -1800 a 1800 in secondi oppure si può lasciare vuoto per controllare.
-    Uso: /player_move_delay <id> [delay]
+    Set the player's move delay to a value in seconds. Can be negative.
+    Delay must be from -1800 to 1800 in seconds or empty to check.
+    Usage: /player_move_delay <id> [delay]
     """
     args = arg.split()
     try:
-        if len(args) > 0 and client in client.area.owners:
+        if len(args) > 0 and (client.is_mod or client in client.area.area_manager.owners):
             c = client.server.client_manager.get_targets(client, TargetType.ID,
                                                         int(args[0]), False)[0]
             if len(args) > 1:
@@ -373,10 +376,77 @@ def ooc_cmd_player_move_delay(client, arg):
         raise
 
 
+@mod_only(hub_owners=True)
+def ooc_cmd_player_hide(client, arg):
+    """
+    Hide player(s) from /getarea and playercounts.
+    If <id> is *, it will hide everyone in the area excluding yourself and CMs.
+    Usage: /player_hide <id(s)>
+    """
+    if len(arg) == 0:
+        raise ArgumentError('You must specify a target.')
+    args = arg.split()
+    if args[0] == '*':
+        targets = [c for c in client.area.clients if c != client and c != client.area.owners]
+    else:
+        try:
+            targets = []
+            ids = [int(s) for s in args]
+            for targ_id in ids:
+                c = client.server.client_manager.get_targets(client, TargetType.ID, targ_id, False)
+                if c:
+                    targets = targets + c
+        except:
+            raise ArgumentError('You must specify a target. Use /player_unhide <id> [id(s)].')
+    if targets:
+        for c in targets:
+            if c.hidden:
+                raise ClientError(
+                    f'Client [{c.id}] {c.showname} already hidden!')
+            c.hide(True)
+            client.send_ooc(
+                f'You have hidden [{c.id}] {c.showname} from /getarea and playercounts.')
+    else:
+        client.send_ooc('No targets found.')
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_player_unhide(client, arg):
+    """
+    Unhide player(s) from /getarea and playercounts.
+    If <id> is *, it will unhide everyone in the area excluding yourself and CMs.
+    Usage: /player_unhide <id(s)>
+    """
+    if len(arg) == 0:
+        raise ArgumentError('You must specify a target.')
+    args = arg.split()
+    if args[0] == '*':
+        targets = [c for c in client.area.clients if c != client and c != client.area.owners]
+    else:
+        try:
+            targets = []
+            ids = [int(s) for s in args]
+            for targ_id in ids:
+                c = client.server.client_manager.get_targets(client, TargetType.ID, targ_id, False)
+                if c:
+                    targets = targets + c
+        except:
+            raise ArgumentError('You must specify a target. Use /player_unhide <id> [id(s)].')
+    if targets:
+        for c in targets:
+            if not c.hidden:
+                raise ClientError(
+                    f'Client [{c.id}] {c.showname} already revealed!')
+            c.hide(False)
+            client.send_ooc(
+                f'You have revealed [{c.id}] {c.showname} for /getarea and playercounts.')
+    else:
+        client.send_ooc('No targets found.')
+
 def ooc_cmd_hide(client, arg):
     """
-    Nascondi una prova con il suo ID o nome.
-    Uso: /hide <evi_name/id>
+    Try to hide in the targeted evidence name or ID.
+    Usage: /hide <evi_name/id>
     """
     if arg == '':
         raise ArgumentError('Use /hide <evi_name/id> to hide in evidence, or /unhide to stop hiding.')
@@ -393,8 +463,8 @@ def ooc_cmd_hide(client, arg):
 
 def ooc_cmd_unhide(client, arg):
     """
-    Smette di nascondere una prova.
-    Uso: /unhide
+    Stop hiding.
+    Usage: /unhide
     """
     client.hide(False)
     client.area.broadcast_area_list(client)
@@ -402,8 +472,8 @@ def ooc_cmd_unhide(client, arg):
 
 def ooc_cmd_sneak(client, arg):
     """
-    Permette di cambiare area senza essere annunciato in OOC.
-    Uso: /sneak
+    Begin sneaking a.k.a. hide your area moving messages from the OOC.
+    Usage: /sneak
     """
     if arg != '':
         raise ArgumentError('This command takes no arguments!')
@@ -414,8 +484,8 @@ def ooc_cmd_sneak(client, arg):
 
 def ooc_cmd_unsneak(client, arg):
     """
-    Smette di cambiare area senza essere annunciato in OOC.
-    Uso: /sneak
+    Stop sneaking a.k.a. show your area moving messages in the OOC.
+    Usage: /sneak
     """
     if arg != '':
         raise ArgumentError('This command takes no arguments!')
@@ -426,9 +496,10 @@ def ooc_cmd_unsneak(client, arg):
 
 def ooc_cmd_listen_pos(client, arg):
     """
-    Leggi soltanto i messaggi della IC provenienti dalla stessa posizione in cui ti trovi o che vuoi visualizzare.
-    Tutti i messaggi provenienti da altre posizioni verranno visualizzate in OOC.
-    Uso: /listen_pos [pos(s)]
+    Start only listening to your currently occupied pos.
+    All messages outside of that pos will be reflected in the OOC.
+    Optional argument is a list of positions you want to listen to.
+    Usage: /listen_pos [pos(s)]
     """
     args = arg.split()
     value = 'self'
@@ -446,8 +517,8 @@ def ooc_cmd_listen_pos(client, arg):
 
 def ooc_cmd_unlisten_pos(client, arg):
     """
-    Rimuove gli effetti del comando /listen_pos.
-    Uso: /unlisten_pos
+    Undo the effects of /listen_pos command so you stop listening to the position(s).
+    Usage: /unlisten_pos
     """
     if client.listen_pos == None:
         raise ClientError('You are not listening to any pos at the moment!')
@@ -458,8 +529,8 @@ def ooc_cmd_unlisten_pos(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_save_character_data(client, arg):
     """
-    Salva il ritardo, e altre informazioni per un personaggio.
-    Uso: /save_character_data <path>
+    Save the move_delay, keys, etc. for characters into a file in the storage/character_data/ folder.
+    Usage: /save_character_data <path>
     """
     if len(arg) < 3:
         client.send_ooc("Filename must be at least 3 symbols long!")
@@ -477,8 +548,8 @@ def ooc_cmd_save_character_data(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_load_character_data(client, arg):
     """
-    Carica il ritardo e altre informazioni per un personaggio.
-    Uso: /load_character_data <path>
+    Load the move_delay, keys, etc. for characters from a file in the storage/character_data/ folder.
+    Usage: /load_character_data <path>
     """
     try:
         path = 'storage/character_data'
@@ -519,7 +590,7 @@ def mod_keys(client, arg, mod=0):
             args = []
         keys = []
 
-        if mod == 1:
+        if mod in (1, 2):
             keys = client.area.area_manager.get_character_data(target, 'keys', [])
         for a in args:
             for key in a.split('-'):
@@ -541,8 +612,8 @@ def mod_keys(client, arg, mod=0):
 @mod_only(hub_owners=True)
 def ooc_cmd_keys_set(client, arg):
     """
-    Imposta le chiavi di un client/cartella di un personaggio/ID di un personaggio. Le chiavi devono essere un numero come 5 o compreso come 1-5.
-    Uso: /keys_set <char> [key(s)]
+    Sets the keys of the target client/character folder/character id to the key(s). Keys must be a number like 5 or a link eg. 1-5.
+    Usage: /keys_set <char> [key(s)]
     """
     if not arg:
         raise ArgumentError("Usage: /keys_set <char> [key(s)].")
@@ -553,8 +624,8 @@ def ooc_cmd_keys_set(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_keys_add(client, arg):
     """
-    Aggiunge le chiavi di un client/cartella di un personaggio/ID di un personaggio. Le chiavi devono essere un numero come 5 o compreso come 1-5.
-    Uso: /keys_add <char> [key(s)]
+    Adds the keys of the target client/character folder/character id to the key(s). Keys must be a number like 5 or a link eg. 1-5.
+    Usage: /keys_add <char> [key(s)]
     """
     if not arg:
         raise ArgumentError("Usage: /keys_add <char> [key(s)].")
@@ -565,8 +636,8 @@ def ooc_cmd_keys_add(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_keys_remove(client, arg):
     """
-    Rimuove le chiavi di un client/cartella di un personaggio/ ID di un personaggio. Le chiavi devono essere un numero come 5 o compreso come 1-5.
-    Uso: /keys_remove <char> [key(s)]
+    Remvove the keys of the target client/character folder/character id from the key(s). Keys must be a number like 5 or a link eg. 1-5.
+    Usage: /keys_remove <char> [key(s)]
     """
     if not arg:
         raise ArgumentError("Usage: /keys_remove <char> [area id(s)]. Removes the selected 'keys' from the user.")
@@ -576,9 +647,10 @@ def ooc_cmd_keys_remove(client, arg):
 
 def ooc_cmd_keys(client, arg):
     """
-    Controlla le tue chiavi o di qualcun altro (se sei mod).
-    Le chiavi ti permettono di lockare (/lock) o unlockare (/unlock) specifiche o aree collegate se scritte come 1-5.
-    Uso: /keys [target_id]
+    Check your own keys, or someone else's (if admin).
+    Keys allow you to /lock or /unlock specific areas, OR
+    area links if it's formatted like 1-5
+    Usage: /keys [target_id]
     """
     args = arg.split()
     if len(args) < 1:
@@ -610,9 +682,9 @@ def ooc_cmd_keys(client, arg):
 
 def ooc_cmd_kms(client, arg):
     """
-    Sta per Kick MySelf - Kicka tutti gli altri client aperti da te.
-    Utile se sei stato disconnesso e il tuo vecchio client non è ancora scomparso.
-    Uso: /kms
+    Stands for Kick MySelf - Kick other instances of the client opened by you.
+    Useful if you lose connection and the old client is ghosting.
+    Usage: /kms
     """
     if arg != '':
         raise ArgumentError('This command takes no arguments!')
@@ -625,12 +697,12 @@ def ooc_cmd_kms(client, arg):
 
 def ooc_cmd_chardesc(client, arg):
     """
-    Mostra la descrizione del tuo personaggio se non richiedi personaggi specifici.
-    Guarda alle descrizioni del personaggio di una persona solo se l'ID viene specificato.
-    Inserisci la tua descrizione, se la descrizione è inserita al posto dell'ID.
-    *La prima frase della tua descrizione viene mostrata nel messaggio del trasferimento tra aree!
-    Per inserire la descrizione di qualcuno altro come moderatore/GM o semplicemente guardarle usa /chardesc_set o /chardesc_get.
-    Uso: /chardesc [desc/id]
+    Look at your own character description if no arugments are provided.
+    Look at another person's character description if only ID is provided.
+    Set your own character description* if description is provided instead of ID.
+    * Do note that the first sentence of your chardesc is displayed during area transfer messages!
+    To set someone else's char desc as an admin/GM, or look at their desc, use /chardesc_set or /chardesc_get.
+    Usage: /chardesc [desc/id]
     """
     if len(arg) == 0:
         client.send_ooc(f'{client.char_name} Description: {client.desc}')
@@ -665,8 +737,8 @@ def ooc_cmd_chardesc(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_chardesc_set(client, arg):
     """
-    Imposta la descrizione di un personaggio usato da un utente, o la elimina.
-    Uso: /chardesc_set <id> [desc]
+    Set someone else's character description to desc or clear it.
+    Usage: /chardesc_set <id> [desc]
     """
     args = arg.split(' ')
     if len(args) < 1:
@@ -698,8 +770,8 @@ def ooc_cmd_chardesc_set(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_chardesc_get(client, arg):
     """
-    Ottieni la descrizione del personaggio di qualcun altro.
-    Uso: /chardesc_get <id>
+    Get someone else's character description.
+    Usage: /chardesc_get <id>
     """
     try:
         if arg.isnumeric():
@@ -724,9 +796,10 @@ def ooc_cmd_chardesc_get(client, arg):
 
 def ooc_cmd_narrate(client, arg):
     """
-    Parla come un narratore nella tua prossima azione.
-    tog può essere `on`, `off` or empty (acceso, spento o vuoto).
-    Uso: /narrate [tog]
+    Speak as a Narrator for your next emote.
+    If using 2.9.1, when you speak IC only the chat box will be affected, making you "narrate" over the current visuals.
+    tog can be `on`, `off` or empty.
+    Usage: /narrate [tog]
     """
     if len(arg.split()) > 1:
         raise ArgumentError("This command can only take one argument ('on' or 'off') or no arguments at all!")
@@ -750,8 +823,8 @@ def ooc_cmd_narrate(client, arg):
 
 def ooc_cmd_blankpost(client, arg):
     """
-    Permette di blankpostare usando un immagine all'interno di base/misc/blank.png. (Comparirà MissingNo se non è presente.)
-    tog può essere `on`, `off` o empty (acceso, spento o vuoto).
+    Use a blank image for your next emote (base/misc/blank.png, will be a missingno if you don't have it)
+    tog can be `on`, `off` or empty.
     Usage: /blankpost [tog]
     """
     if len(arg.split()) > 1:
@@ -776,8 +849,9 @@ def ooc_cmd_blankpost(client, arg):
 
 def ooc_cmd_firstperson(client, arg):
     """
-    Parli come un narratore dalla tua prossima azione, ma solo per te stesso. Tutti gli altri vedranno la emote che hai usato.
-    tog può essere `on`, `off` or empty (acceso, spento, o vuoto).
+    Speak as a Narrator for your next emote, but only to yourself. Everyone else will see the emote you used.
+    If using 2.9.1, when you speak IC only the chat box will be affected.
+    tog can be `on`, `off` or empty.
     Usage: /firstperson [tog]
     """
     if len(arg.split()) > 1:

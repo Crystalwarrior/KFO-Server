@@ -1,7 +1,7 @@
 import os
-import shlex
+
 import oyaml as yaml #ordered yaml
-from server import area
+
 from server import database
 from server.constants import TargetType
 from server.exceptions import ClientError, ArgumentError, AreaError
@@ -19,7 +19,6 @@ __all__ = [
     'ooc_cmd_clear_hub',
     'ooc_cmd_rename_hub',
     # Area Creation system
-    'ooc_cmd_can_getarea',
     'ooc_cmd_area_create',
     'ooc_cmd_area_remove',
     'ooc_cmd_area_rename',
@@ -43,26 +42,13 @@ __all__ = [
     'ooc_cmd_ungm',
     'ooc_cmd_broadcast',
     'ooc_cmd_clear_broadcast',
-    'ooc_cmd_area_say',
 ]
 
 
-@mod_only(hub_owners=True)
-def ooc_cmd_area_say(client, arg):
-  args = shlex.split(arg)
-  if len(args) > 1:
-     say = True
-     client.area.sayallow(say, args[0], args[1])
-     client.send_ooc('Frase impostata')
-  else:
-     say = False
-     client.area.sayallow(say)
-     client.send_ooc('Frase disattivata')
-  
 def ooc_cmd_hub(client, arg):
     """
-    Fornisce una lista di hubs e permette di muoverti tra esse.
-    Uso: /hub [id/name]
+    List hubs, or go to another hub.
+    Usage: /hub [id/name]
     """
     if arg == '':
         client.send_hub_list()
@@ -96,30 +82,13 @@ def ooc_cmd_hub(client, arg):
     except (AreaError, ClientError):
         raise
 
-@mod_only(hub_owners=True)
-def ooc_cmd_can_getarea(client, arg):
-   if client.area.area_manager.can_getarea:
-     client.area.area_manager.can_getarea = False
-     client.send_ooc('Nessuno potrà usare il comando getarea')
-   else:
-     client.area.area_manager.can_getarea = True
-     client.send_ooc('Comando getarea ripristinato')
-
-@mod_only(hub_owners=True)
-def ooc_cmd_can_getareas(client, arg):
-   if client.area.area_manager.can_getareas:
-     client.area.area_manager.can_getareas = False
-     client.send_ooc('Nessuno potrà usare i comandi getareas e gethubs')
-   else:
-     client.area.area_manager.can_getareas = True
-     client.send_ooc('Comandi getareas e gethubs ripristinati')
 
 @mod_only(hub_owners=True)
 def ooc_cmd_save_hub(client, arg):
     """
-    Salva l'Hub corrente all'interno del server (storage/hubs/<name>.yaml).
-    Se viene lasciato vuoto e sei mod, verrà salvato nella configurazione (config/areas_new.yaml) in attesa che venga approvato dall'owner o dal co.
-    Uso: /save_hub <name>
+    Save the current Hub in the server's storage/hubs/<name>.yaml file.
+    If blank and you're a mod, it will save to server's config/areas_new.yaml for the server owner to approve.
+    Usage: /save_hub <name>
     """
     if not client.is_mod:
         if arg == '':
@@ -157,8 +126,8 @@ def ooc_cmd_save_hub(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_load_hub(client, arg):
     """
-    Carica le info di un Hub dai files all'interno del server (storage/hubs/<name>.yaml).
-    Uso: /load_hub <name>
+    Load Hub data from the server's storage/hubs/<name>.yaml file.
+    Usage: /load_hub <name>
     """
     if arg == '' and not client.is_mod:
         raise ArgumentError('You must be authorized to load the default hub!')
@@ -197,8 +166,8 @@ def ooc_cmd_load_hub(client, arg):
 @mod_only()
 def ooc_cmd_list_hubs(client, arg):
     """
-    Mostra tutte le hubs disponibili da caricare nei files del server (storage/hubs/folder).
-    Uso: /list_hubs
+    Show all the available hubs for loading in the storage/hubs/ folder.
+    Usage: /list_hubs
     """
     text = 'Available hubs:'
     for F in os.listdir('storage/hubs/'):
@@ -211,8 +180,8 @@ def ooc_cmd_list_hubs(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_clear_hub(client, arg):
     """
-    "Pulisce" l'hub attuale e lo riporta al suo stato di default.
-    Uso: /clear_hub
+    Clear the current hub and reset it to its default state.
+    Usage: /clear_hub
     """
     if arg != '':
         raise ArgumentError('This command takes no arguments!')
@@ -228,8 +197,8 @@ def ooc_cmd_clear_hub(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_rename_hub(client, arg):
     """
-    Rinomina l'hub in cui ti trovi attualmente.
-    Uso: /rename_hub <name>
+    Rename the hub you are currently in to <name>.
+    Usage: /rename_hub <name>
     """
     if arg != '':
         client.area.area_manager.name = dezalgo(arg)[:64]
@@ -241,9 +210,10 @@ def ooc_cmd_rename_hub(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_area_create(client, arg):
     """
-    Crea una nuova area.
-    Le aree appena create avranno le impostazioni delle prove su HiddenCM.
-    Uso: /area_create [name]
+    Create a new area.
+    Newly created area's evidence mod will be HiddenCM.
+    Optional name will rename it to that as soon as its created.
+    Usage: /area_create [name]
     """
     try:
         area = client.area.area_manager.create_area()
@@ -261,8 +231,8 @@ def ooc_cmd_area_create(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_area_remove(client, arg):
     """
-    Rimuove una specificata area tramite l'ID.
-    Uso: /area_remove <id>
+    Remove specified area by Area ID.
+    Usage: /area_remove <id>
     """
     args = arg.split()
 
@@ -284,8 +254,8 @@ def ooc_cmd_area_remove(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_area_rename(client, arg):
     """
-    Rinomina l'area in cui ti trovi attualmente.
-    Uso: /area_rename <name>
+    Rename area you are currently in to <name>.
+    Usage: /area_rename <name>
     """
     if arg != '':
         client.area.name = dezalgo(arg)[:64]
@@ -299,8 +269,8 @@ def ooc_cmd_area_rename(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_area_swap(client, arg):
     """
-    Permette di scambiare due aree tramite ID correggendo i collegamenti per fare riferimento all'area giusta.
-    Uso: /area_swap <id> <id>
+    Swap areas by Area IDs while correcting links to reference the right areas.
+    Usage: /area_swap <id> <id>
     """
     args = arg.split()
     if len(args) != 2:
@@ -320,8 +290,8 @@ def ooc_cmd_area_swap(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_area_switch(client, arg):
     """
-    Permette di scambiare due aree tramite ID senza correggere i collegamenti.
-    Uso: /area_switch <id> <id>
+    Switch areas by Area IDs without correcting links.
+    Usage: /area_switch <id> <id>
     """
     args = arg.split()
     if len(args) != 2:
@@ -340,10 +310,10 @@ def ooc_cmd_area_switch(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_area_pref(client, arg):
     """
-    Attiva o disattiva una preferenza per un'area.
-    Lascia pref vuoto per vedere le preferenze disponibili.
-    Lascia su on/true e off/false per cambiare preferenza.
-    Uso:  /area_pref [pref] [on/true/off/false]
+    Toggle a preference on/off for an area.
+    Leave pref out to see available prefs.
+    Leave on/true and off/false to toggle the pref.
+    Usage:  /area_pref [pref] [on/true/off/false]
     """
     cm_allowed = [
         'showname_changes_allowed',
@@ -410,9 +380,9 @@ def ooc_cmd_area_pref(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_area_move_delay(client, arg):
     """
-    Imposta il ritardo di spostamento dell'area. Can be negative.
-    Il ritardo deve essere impostato tra i -1800 e 1800 secondi oppure può essere lasciato vuoto per controllare tutti i ritardi applicati.
-    Uso: /area_move_delay [delay]
+    Set the area's move delay to a value in seconds. Can be negative.
+    Delay must be from -1800 to 1800 in seconds or empty to check.
+    Usage: /area_move_delay [delay]
     """
     args = arg.split()
     try:
@@ -431,9 +401,9 @@ def ooc_cmd_area_move_delay(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_hub_move_delay(client, arg):
     """
-    Imposta il ritardo di spostamento dell'hub. Can be negative.
-    Il ritardo deve essere impostato tra -1800 e 1800 secondi oppure può essere lasciato vuoto per controllare tutti i ritardi applicati.
-    Uso: /hub_move_delay [delay]
+    Set the hub's move delay to a value in seconds. Can be negative.
+    Delay must be from -1800 to 1800 in seconds or empty to check.
+    Usage: /hub_move_delay [delay]
     """
     args = arg.split()
     try:
@@ -452,8 +422,8 @@ def ooc_cmd_hub_move_delay(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_toggle_replace_music(client, arg):
     """
-    Permetti o meno alla lista delle ost dell'hub di sostituire quella della lista delle ost del server.
-    Uso: /toggle_replace_music
+    Toggle the hub music list to replace the server's music list.
+    Usage: /toggle_replace_music
     """
     client.area.area_manager.replace_music = not client.area.area_manager.replace_music
     toggle = 'now' if client.area.area_manager.replace_music else 'no longer'
@@ -464,9 +434,9 @@ def ooc_cmd_toggle_replace_music(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_arup_enable(client, arg):
     """
-    Attiva il sistema dell'Area Update per questo hub.
-    Il sistema dell'Area Update (ARUP) è l'informazione extra mostrata nella lista A/M ed è possibile visualizzarla fino a quando è possibile fare /status.
-    Uso: /arup_enable
+    Enable the ARea UPdate system for this hub.
+    ARUP system is the extra information displayed in the A/M area list, as well as being able to set /status.
+    Usage: /arup_enable
     """
     if client.area.area_manager.arup_enabled:
         raise ClientError('ARUP system is already enabled! Use /arup_disable to disable it.')
@@ -479,8 +449,8 @@ def ooc_cmd_arup_enable(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_arup_disable(client, arg):
     """
-    Disattiva il sistema dell'Area Update per questo hub.
-    Uso: /arup_disable
+    Disable the ARea UPdate system for this hub.
+    Usage: /arup_disable
     """
     if not client.area.area_manager.arup_enabled:
         raise ClientError('ARUP system is already disabled! Use /arup_enable to enable it.')
@@ -495,8 +465,8 @@ def ooc_cmd_arup_disable(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_toggle_getareas(client, arg):
     """
-    Attiva o disattiva l'utilizzo del /getareas per i normali utenti nell'hub.
-    Uso: /toggle_getareas
+    Toggle the permissions of /getareas for normal players in this hub.
+    Usage: /toggle_getareas
     """
     client.area.area_manager.can_getareas = not client.area.area_manager.can_getareas
     toggle = 'enabled' if client.area.area_manager.can_getareas else 'disabled'
@@ -506,8 +476,8 @@ def ooc_cmd_toggle_getareas(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_toggle_spectate(client, arg):
     """
-    Disattiva il sistema dell'Area Update per quest'hub.
-    Uso: /toggle_spectate
+    Disable the ARea UPdate system for this hub.
+    Usage: /toggle_spectate
     """
     client.area.area_manager.can_spectate = not client.area.area_manager.can_spectate
     toggle = 'enabled' if client.area.area_manager.can_spectate else 'disabled'
@@ -518,8 +488,8 @@ def ooc_cmd_toggle_spectate(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_hide_clients(client, arg):
     """
-    Nascondi il numero di utenti nelle aree di quest'Hub.
-    Uso: /hide_clients
+    Hide the playercounts for this Hub's areas.
+    Usage: /hide_clients
     """
     if client.area.area_manager.hide_clients:
         raise ClientError('Client playercounts already hidden! Use /unhide_clients to unhide.')
@@ -531,8 +501,8 @@ def ooc_cmd_hide_clients(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_unhide_clients(client, arg):
     """
-    Mostra il numero di utenti nelle aree di quest'Hub.
-    Uso: /unhide_clients
+    Unhide the playercounts for this Hub's areas.
+    Usage: /unhide_clients
     """
     if not client.area.area_manager.hide_clients:
         raise ClientError('Client playercounts already revealed! Use /hide_clients to hide.')
@@ -543,8 +513,8 @@ def ooc_cmd_unhide_clients(client, arg):
 
 def ooc_cmd_follow(client, arg):
     """
-    Segui il personaggio di un utente attraverso il suo ID.
-    Uso: /follow [id]
+    Follow targeted character ID.
+    Usage: /follow [id]
     """
     if len(arg) == 0:
         try:
@@ -578,8 +548,8 @@ def ooc_cmd_follow(client, arg):
 
 def ooc_cmd_unfollow(client, arg):
     """
-    Smetti di seguire chiunque stessi seguendo.
-    Uso: /unfollow
+    Stop following whoever you are following.
+    Usage: /unfollow
     """
     try:
         client.send_ooc(
@@ -592,7 +562,7 @@ def ooc_cmd_unfollow(client, arg):
 
 def ooc_cmd_info(client, arg):
     """
-    Controlla le informazioni dell'Hub corrente o impostale.
+    Check the information for the current Hub, or set it.
     Usage: /info [info]
     """
     if len(arg) == 0:
@@ -609,8 +579,8 @@ def ooc_cmd_info(client, arg):
 
 def ooc_cmd_gm(client, arg):
     """
-    Aggiungi un Game Master per l'hub corrente (Simile al CM ma per l'intera Hub e in generale).
-    Uso: /gm <id>
+    Add a game master for the current Hub.
+    Usage: /gm <id>
     """
     if not client.area.area_manager.can_gm:
         raise ClientError('You can\'t become a GM in this Hub!')
@@ -657,8 +627,8 @@ def ooc_cmd_gm(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_ungm(client, arg):
     """
-    Rimuovi un Game Master dalla Hub corrente.
-    Se l'id non viene specificato, il Game Master verrà rimosso a te stesso.
+    Remove a game master from the current Hub.
+    If blank, demote yourself from being a GM.
     Usage: /ungm <id>
     """
     if len(arg) > 0:
@@ -687,10 +657,10 @@ def ooc_cmd_ungm(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_broadcast(client, arg):
     """
-    Trasmetti la tua musica IC e i bottoni del giudice ad una specifica Area attraverso l'ID.
-    Per includere tutte le aree usa /broadcast all.
-    /clear_broadcast per smettere di trasmettere.
-    Uso: /broadcast <id(s)>
+    Start broadcasting your IC, Music and Judge buttons to specified area ID's.
+    To include all areas, use /broadcast all.
+    /clear_broadcast to stop broadcasting.
+    Usage: /broadcast <id(s)>
     """
     args = arg.split()
     if len(args) <= 0:
@@ -717,8 +687,8 @@ def ooc_cmd_broadcast(client, arg):
 
 def ooc_cmd_clear_broadcast(client, arg):
     """
-    Smetti di trasmettere la IC, musica e i bottoni del giudice.
-    Uso: /clear_broadcast
+    Stop broadcasting your IC, Music and Judge buttons.
+    Usage: /clear_broadcast
     """
     if len(client.broadcast_list) <= 0:
         client.send_ooc('Your broadcast list is already empty!')

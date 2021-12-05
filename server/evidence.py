@@ -17,7 +17,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from server.exceptions import ClientError, AreaError, ServerError
 
 class EvidenceList:
     """Contains a list of evidence items."""

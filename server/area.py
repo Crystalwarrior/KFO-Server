@@ -44,7 +44,6 @@ class Area:
             self.id = _id
             self.set = Set
             self.started = started
-            self.say = True
             self.static = static
             self.target = target
             self.area = area
@@ -128,15 +127,7 @@ class Area:
         self.blankposting_allowed = True
         self.hp_def = 10
         self.hp_pro = 10
-        self.pstart = False
         self.doc = 'No document.'
-        self.requiem = -1
-        self.ba = []
-        self.ba.append(-1)
-        self.ba[0] = -1
-        self.say = False
-        self.animazione = None
-        self.messaggio = None
         self.status = 'IDLE'
         self.move_delay = 0
         self.hide_clients = False
@@ -147,8 +138,6 @@ class Area:
         self.replace_music = False
         self.ambience = ''
         self.can_dj = True
-        self.Attaccante = []
-        self.Difensore = []
         self.hidden = False
         self.can_whisper = True
         self.can_wtce = True
@@ -203,12 +192,6 @@ class Area:
         self.next_message_time = 0
         self.judgelog = []
         self.music = ''
-        self.votazioni = False
-        self.partite = False
-        self.skippabile = False
-        self.showdown = []
-        self.showdownatk = []
-        self.skip_count = 0
         self.music_player = ''
         self.music_player_ipid = -1
         self.music_looping = 0
@@ -279,6 +262,7 @@ class Area:
             return self.name[:3].upper()
         else:
             return self.name.upper()
+
     def load(self, area):
         self._name = area['area']
         self.o_name = self._name
@@ -590,9 +574,6 @@ class Area:
         # Commented out due to potentially causing clientside lag...
         # self.send_command('CharsCheck',
         #                     *client.get_available_char_list())
-        if client in commands.yttd.yttd_list:
-              client.area.broadcast_ooc(f'{client.name} ha abbandonato la partita')
-              commands.yttd.toglilo_yttd(client)
 
     def unlock(self):
         """Mark the area as unlocked."""
@@ -609,30 +590,6 @@ class Area:
         self.muted = True
         self.invite_list.clear()
         self.area_manager.send_arup_lock()
-
-    def votazione(self):
-        self.votazioni = True
-
-    def unvotazione(self):
-        self.votazioni = False
-
-    def partita_yttd(self):
-        self.partite = True
-    
-    def unpartita_yttd(self):
-        self.partite = False
-
-    def vai_skippabile(self):
-        self.skippabile = True
-
-    def vai_unskippabile(self):
-        self.skippabile = False
-     
-    def count_skip(self):
-        self.skip_count = self.skip_count+1
-    
-    def count_unskip(self):
-        self.skip_count = 0
 
     def unmute(self):
         """Unmute the area."""
@@ -892,9 +849,7 @@ class Area:
             self.testimony_index = idx
             targets = self.clients
             for c in targets:
-                c.send_ooc(statement)
                 # Blinded clients don't receive IC messages
-                c.send_ooc(statement)
                 if c.blinded:
                     continue
                 # Ignore those losers with listenpos for testimony
@@ -1291,7 +1246,7 @@ class Area:
             msg = msg[:-2]
         return msg
 
-    def add_owner(self, client, BS = True):
+    def add_owner(self, client):
         """
         Add a CM to the area.
         """
@@ -1301,11 +1256,11 @@ class Area:
         self.broadcast_area_list(client)
         self.area_manager.send_arup_cms()
         self.broadcast_evidence_list()
-        if BS:
-         self.broadcast_ooc(
+
+        self.broadcast_ooc(
             f'{client.showname} [{client.id}] is CM in this area now.')
 
-    def remove_owner(self, client, dc=False, BS = True):
+    def remove_owner(self, client, dc=False):
         """
         Remove a CM from the area.
         """
@@ -1333,17 +1288,9 @@ class Area:
             self.broadcast_area_list(client)
             self.area_manager.send_arup_cms()
             self.broadcast_evidence_list()
-        if BS:
-         self.broadcast_ooc(
+
+        self.broadcast_ooc(
             f'{client.showname} [{client.id}] is no longer CM in this area.')
-    
-    def sayallow(self, say, anim = None, msg = None):
-        if say:
-           self.say = True
-           self.messaggio = msg
-           self.animazione = anim
-        else:
-           self.say = False
 
     def broadcast_area_list(self, client=None, refresh=False):
         """
@@ -1514,7 +1461,6 @@ class Area:
     def play_demo(self, client):
         if self.demo_schedule:
             self.demo_schedule.cancel()
-
         if len(self.demo) <= 0:
             self.stop_demo()
             return

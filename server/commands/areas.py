@@ -14,8 +14,6 @@ __all__ = [
     'ooc_cmd_area_visible',
     'ooc_cmd_getarea',
     'ooc_cmd_getareas',
-    'ooc_cmd_gethubs',
-    'ooc_cmd_gethubslist',
     'ooc_cmd_getafk',
     'ooc_cmd_invite',
     'ooc_cmd_uninvite',
@@ -31,11 +29,10 @@ __all__ = [
 ]
 
 
-def ooc_cmd_bg(client, arg, BS = True):
+def ooc_cmd_bg(client, arg):
     """
-    Imposta lo sfondo di un'area.
-    Se non viene selezionato nessun bg, verrà mostrato il bg attuale impostato nell'area.
-    Uso: /bg <background>
+    Set the background of an area.
+    Usage: /bg <background>
     """
     if len(arg) == 0:
         pos_lock = ''
@@ -56,46 +53,20 @@ def ooc_cmd_bg(client, arg, BS = True):
         client.area.change_background(arg)
     except AreaError:
         raise
-    if BS:
-     client.area.broadcast_ooc(
+    client.area.broadcast_ooc(
         f'{client.showname} changed the background to {arg}.')
     database.log_area('bg', client, client.area, message=arg)
 
 
 def ooc_cmd_bgs(client, arg):
     """
-    Mostra gli sfondi disponibili del server.
-    Uso: /bgs
+    Display the server's available backgrounds.
+    Usage: /bgs
     """
-    f = open('config/backgrounds.yaml', 'r')
-    lines = f.readlines()
-    if arg == "":
-     msg = '\n CATEGORIE BG:\n'
-     for line in lines:
-       if line.split('-')[0] == "":
-         msg += f'\n  {line.split(":")[0]}'
-     client.send_ooc(f'{msg}')
-    else:
-     index = -1
-     i = -1
-     for line in lines:
-       index = index+1
-       if line.split('- ')[1].split(':')[0].lower() == f'{arg}'.lower():
-        i = index+1
-     categoria = lines[i].split("- ")[1].split(":")[0].split("\n")[0]
-     msg = f'\n Categoria {categoria}: \n\n' 
-     if not i == -1:
-      f = 0
-      while f == 0:
-       msg += f' {lines[i]}'
-       i = i+1
-       if i == len(lines) or ':' in lines[i]:
-        f = -1
-      client.send_ooc(f'{msg}')
-     else:
-      client.send_ooc('Categoria non trovata')
-        
-       
+    msg = 'Available backgrounds:'
+    msg += '\n' + '; '.join(client.server.backgrounds)
+    client.send_ooc(msg)
+
 
 def ooc_cmd_status(client, arg):
     """
@@ -124,8 +95,8 @@ def ooc_cmd_status(client, arg):
 
 def ooc_cmd_area(client, arg):
     """
-    Mostra la lista delle aree, o ti fa muovere verso una a scelta.
-    Uso: /area [id] or /area [name]
+    List areas, or go to another area.
+    Usage: /area [id] or /area [name]
     """
     if arg == '':
         client.send_area_list(full=client.is_mod or client in client.area.owners)
@@ -147,8 +118,8 @@ def ooc_cmd_area(client, arg):
 
 def ooc_cmd_area_visible(client, arg):
     """
-    Mostra solo le aree non collegate e non nascoste. Utili per i GM.
-    Uso: /area_visible
+    Display only linked and non-hidden areas. Useful to GMs.
+    Usage: /area_visible
     """
     if arg != '':
         raise ArgumentError('This command takes no arguments!')
@@ -157,8 +128,8 @@ def ooc_cmd_area_visible(client, arg):
 
 def ooc_cmd_getarea(client, arg):
     """
-    Fornisce informazioni riguardo l'area in cui ti trovi.
-    Uso: /getarea
+    Show information about the current area.
+    Usage: /getarea
     """
     if not client.is_mod and not (client in client.area.owners):
         if client.blinded:
@@ -170,12 +141,10 @@ def ooc_cmd_getarea(client, arg):
     client.send_area_info(client.area.id, False)
 
 
-      
-  
 def ooc_cmd_getareas(client, arg):
     """
-    Fornisce informazioni riguardo tutte le aree dell'hub in cui ti trovi.
-    Uso: /getareas
+    Show information about all areas.
+    Usage: /getareas
     """
     if not client.is_mod and not (client in client.area.area_manager.owners) and client.char_id != -1:
         if client.blinded:
@@ -187,8 +156,8 @@ def ooc_cmd_getareas(client, arg):
 
 def ooc_cmd_getafk(client, arg):
     """
-    Mostra tutti i giocatori AFK nell'area in cui ti trovi o in tutte le aree.
-    Uso: /getafk [all]
+    Show currently AFK-ing players in the current area or in all areas.
+    Usage: /getafk [all]
     """
     if arg == 'all':
         arg = -1
@@ -202,9 +171,9 @@ def ooc_cmd_getafk(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_invite(client, arg):
     """
-    Permette di far accedere uno specifico utente in un'area lockata o di farlo parlare in un'area spectabile.
-    l'ID può essere * per invitare tutti nell'area corrente.
-    Uso: /invite <id>
+    Allow a particular user to join a locked or speak in spectator-only area.
+    ID can be * to invite everyone in the current area.
+    Usage: /invite <id>
     """
     if not arg:
         msg = 'Current invite list:\n'
@@ -238,9 +207,9 @@ def ooc_cmd_invite(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_uninvite(client, arg):
     """
-    Revoca i permessi dati ad un giocatore invitato.
-    l'ID può essere * per revocare tutti i permessi dati a tutti gli utenti nell'area corrente.
-    Uso: /uninvite <id>
+    Revoke an invitation for a particular user.
+    ID can be * to uninvite everyone in the area.
+    Usage: /uninvite <id>
     """
     if not arg:
         raise ClientError('You must specify a target. Use /uninvite <id>')
@@ -275,11 +244,11 @@ def ooc_cmd_uninvite(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_area_kick(client, arg):
     """
-    Rimuove un giocatore dall'area corrente e li sposta in un'area diversa.
-    Se l'id è * , rimuoverà tutti tranne l'utilizzatore e i CM presenti.
-    Se la destinazione non è specificata, la destinazio di base è l'area con id 0.
-    target_pos è la posizione opzionale dove tutti dovrebbero andare quando kickati.
-    Uso: /area_kick <id> [destination] [target_pos]]
+    Remove a user from the current area and move them to another area.
+    If id is a * char, it will kick everyone but you and CMs from current area to destination.
+    If the destination is not specified, the destination defaults to area 0.
+    target_pos is the optional position that everyone should end up in when kicked.
+    Usage: /area_kick <id> [destination] [target_pos]
     """
     if not arg:
         raise ClientError(
@@ -339,11 +308,11 @@ def ooc_cmd_area_kick(client, arg):
 
 def ooc_cmd_pos_lock(client, arg):
     """
-    Blocca le posizioni disponibili dell'area corrente con una lista di posizioni separate da uno spazio.
-    Usa /pos_lock_clear per rendere la lista vuota.
-    Se la tua pos contiene degli spazi, allora deve essere in un elenco separato da virgole come /pos_lock pos uno, pos due, pos X
-    Se sei bloccato in una singola pos contenente spazi, terminalo con una virgola come /pos_lock questa è una pos,
-    Uso:  /pos_lock <pos(s)>
+    Lock current area's available positions into a list of pos separated by space.
+    Use /pos_lock_clear to make the list empty.
+    If your pos have spaces in them, it must be a comma-separated list like /pos_lock pos one, pos two, pos X
+    If you're locking into a single pos with spaces in it, end it with a comma, like /pos_lock this is a pos,
+    Usage:  /pos_lock <pos(s)>
     """
     if client.area.dark:
         if not arg or arg.strip() == '':
@@ -390,8 +359,8 @@ def ooc_cmd_pos_lock(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_pos_lock_clear(client, arg):
     """
-    Elimina il blocco delle posizioni rendendole nuovamente tutte disponibili.
-    Uso:  /pos_lock_clear
+    Clear the current area's position lock and make all positions available.
+    Usage:  /pos_lock_clear
     """
     client.area.pos_lock.clear()
     client.area.broadcast_ooc('Position lock cleared.')
@@ -399,8 +368,8 @@ def ooc_cmd_pos_lock_clear(client, arg):
 
 def ooc_cmd_knock(client, arg):
     """
-    Bussa in un'area a tua scelta per richiamare l'attenzione nell'area.
-    Uso:  /knock <id>
+    Knock on the target area ID to call on their attention to your area.
+    Usage:  /knock <id>
     """
     if arg == '':
         raise ArgumentError('Failed to knock: you need to input an accessible area name or ID to knock!')
@@ -444,8 +413,8 @@ def ooc_cmd_knock(client, arg):
 
 def ooc_cmd_peek(client, arg):
     """
-    Sbircia in un'area per vedere se ci sono persone al suo interno.
-    Uso:  /peek <id>
+    Peek into an area to see if there's people in it.
+    Usage:  /peek <id>
     """
     if arg == '':
         raise ArgumentError('You need to input an accessible area name or ID to peek into it!')
@@ -510,8 +479,8 @@ def ooc_cmd_peek(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_max_players(client, arg):
     """
-    Imposta un limite massimo di utenti per l'area in cui ti trovi (può variare tra -1 e 99).
-    Uso: /max_players [num]
+    Set a max amount of players for current area between -1 and 99.
+    Usage: /max_players [num]
     """
     if arg == '':
         client.send_ooc(f'Max amount of players for the area is {client.area.max_players}.')
@@ -531,8 +500,8 @@ def ooc_cmd_max_players(client, arg):
 
 def ooc_cmd_desc(client, arg):
     """
-    Imposta una descrizione dell'area che appare agli utenti ogni volta che accedono in quell'area.
-    Uso: /desc [desc]
+    Set an area description that appears to the user any time they enter the area.
+    Usage: /desc [desc]
     """
     if client.blinded:
         raise ClientError('You are blinded!')
@@ -563,9 +532,9 @@ def ooc_cmd_desc(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_edit_ambience(client, arg):
     """
-    Attiva la modalità editor per le impostazioni dell'ambiente. Riprodurre una musica lo imposterà come ambiente dell'area.
-    tog può essere settato su `on`, `off` or empty (acceso, spento o vuoto).
-    Uso: /edit_ambience [tog]
+    Toggle edit mode for setting ambience. Playing music will set it as the area's ambience.
+    tog can be `on`, `off` or empty.
+    Usage: /edit_ambience [tog]
     """
     if len(arg.split()) > 1:
         raise ArgumentError("This command can only take one argument ('on' or 'off') or no arguments at all!")
@@ -587,10 +556,10 @@ def ooc_cmd_edit_ambience(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_lights(client, arg):
     """
-    Accende/spegne le luci per l'area in cui ti trovi. Se le luci sono spente, gli utenti non saranno in grado di usare /getarea o vedere le prove.
-    Gli utenti, inoltre, non saranno in grado di vedere gli spostamenti tra aree o usare /charesc.
-    Puoi cambiare /bg, /desc e /pos_lock dell'area quando è buia e verrannno reinseriti la prossima volta che l'area verrà resa nuovamente buia.
-    tog può essere settato su `on`, `off` o empty (acceso, spento o vuoto).
+    Toggle lights for this area. If lights are off, players will not be able to use /getarea or see evidence.
+    Players will also be unable to see area movement messages or use /chardesc.
+    You can change /bg, /desc and /pos_lock of the area when its dark and it will remember it next time you turn the lights off.
+    tog can be `on`, `off` or empty.
     Usage: /lights [tog]
     """
     if len(arg.split()) > 1:
@@ -615,22 +584,3 @@ def ooc_cmd_lights(client, arg):
             pos = client.area.pos_dark
         c.send_command('BN', bg, pos)
     client.send_ooc(f'This area is {stat} dark.')
-
-def ooc_cmd_gethubslist(client, arg):
-   """
-   Mostra una lista di tutte le hub.
-   Uso: /gethubslist
-   """
-   client.send_hub_area_list(False)
-
-def ooc_cmd_gethubs(client, arg):
-    """
-    Fornisce informazioni riguardo tutte le hub.
-    Uso: /gethubs
-    """
-    if not client.is_mod and not (client in client.area.area_manager.owners) and client.char_id != -1:
-        if client.blinded:
-            raise ClientError('You are blinded!')
-        if not client.area.area_manager.can_getareas:
-            raise ClientError('You cannot use /getareas in this hub!')
-    client.send_hub_area_info(-1, False)

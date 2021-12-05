@@ -30,8 +30,8 @@ def message_areas_cm(client, areas, message):
 
 def ooc_cmd_g(client, arg):
     """
-    Invia un messaggio a tutto il server.
-    Uso: /g <message>
+    Broadcast a server-wide message.
+    Usage: /g <message>
     """
     if client.muted_global:
         raise ClientError('Global chat toggled off.')
@@ -43,8 +43,8 @@ def ooc_cmd_g(client, arg):
 
 def ooc_cmd_h(client, arg):
     """
-    Invia un messaggio a tutta la hub.
-    Uso: /h <message>
+    Broadcast a hub-wide message.
+    Usage: /h <message>
     """
     if len(arg) == 0:
         raise ArgumentError("You can't send an empty message.")
@@ -63,8 +63,8 @@ def ooc_cmd_h(client, arg):
 @mod_only()
 def ooc_cmd_m(client, arg):
     """
-    Invia un messaggio a tutti i moderatori online.
-    Uso: /m <message>
+    Send a message to all online moderators.
+    Usage: /m <message>
     """
     if len(arg) == 0:
         raise ArgumentError("You can't send an empty message.")
@@ -75,8 +75,8 @@ def ooc_cmd_m(client, arg):
 @mod_only()
 def ooc_cmd_announce(client, arg):
     """
-    Trasmette un annuncio a tutto il server.
-    Uso: /announce <message>
+    Make a server-wide announcement.
+    Usage: /announce <message>
     """
     if len(arg) == 0:
         raise ArgumentError("Can't send an empty message.")
@@ -88,8 +88,8 @@ def ooc_cmd_announce(client, arg):
 
 def ooc_cmd_toggleglobal(client, arg):
     """
-    Muta la chat globale.
-    Uso: /toggleglobal
+    Mute global chat.
+    Usage: /toggleglobal
     """
     if len(arg) != 0:
         raise ArgumentError("This command doesn't take any arguments")
@@ -103,8 +103,8 @@ def ooc_cmd_toggleglobal(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_need(client, arg):
     """
-    Trasmette a tutto il server che hai bisogno di qualcuno per il tuo roleplay o caso.
-    Uso: /need <message>
+    Broadcast a server-wide advertisement for your role-play or case.
+    Usage: /need <message>
     """
     if client.muted_adverts:
         raise ClientError('You have advertisements muted.')
@@ -116,8 +116,8 @@ def ooc_cmd_need(client, arg):
 
 def ooc_cmd_toggleadverts(client, arg):
     """
-    Muta gli annunci.
-    Uso: /toggleadverts
+    Mute advertisements.
+    Usage: /toggleadverts
     """
     if len(arg) != 0:
         raise ArgumentError("This command doesn't take any arguments")
@@ -130,9 +130,9 @@ def ooc_cmd_toggleadverts(client, arg):
 
 def ooc_cmd_pm(client, arg):
     """
-    Invia un messaggio privato ad un altro utente online. 
-    Questi messaggi non possono essere letti dall'owner del server.
-    Uso: /pm <id|ooc-name|char-name> <message>
+    Send a private message to another online user. These messages are not
+    logged by the server owner.
+    Usage: /pm <id|ooc-name|char-name> <message>
     """
     args = arg.split()
     key = ''
@@ -141,16 +141,16 @@ def ooc_cmd_pm(client, arg):
         raise ArgumentError(
             'Not enough arguments. use /pm <target> <message>. Target should be ID, OOC-name or char-name. Use /getarea for getting info like "[ID] char-name".'
         )
-    targets = client.server.client_manager.get_hub_targets(client,
+    targets = client.server.client_manager.get_targets(client,
                                                        TargetType.CHAR_NAME,
                                                        arg, True)
     key = TargetType.CHAR_NAME
     if len(targets) == 0 and args[0].isdigit():
-        targets = client.server.client_manager.get_hub_targets(
+        targets = client.server.client_manager.get_targets(
             client, TargetType.ID, int(args[0]), False)
         key = TargetType.ID
     if len(targets) == 0:
-        targets = client.server.client_manager.get_hub_targets(
+        targets = client.server.client_manager.get_targets(
             client, TargetType.OOC_NAME, arg, True)
         key = TargetType.OOC_NAME
     if len(targets) == 0:
@@ -185,8 +185,8 @@ def ooc_cmd_pm(client, arg):
 
 def ooc_cmd_mutepm(client, arg):
     """
-    Muta i messaggi privati.
-    Uso: /mutepm
+    Mute private messages.
+    Usage: /mutepm
     """
     if len(arg) != 0:
         raise ArgumentError("This command doesn't take any arguments")

@@ -72,18 +72,19 @@ class AOProtocol(asyncio.Protocol):
 
         if not isinstance(buf, str):
             # try to decode as utf-8, ignore any erroneous characters
-            self.buffer += buf.decode('utf-8', 'ignore')
-        else:
-            self.buffer = buf
+            buf = self.buffer + buf.decode('utf-8', 'ignore')
 
-        self.buffer = self.buffer.translate({ord(c): None for c in '\0'})
+        buf = buf.translate({ord(c): None for c in '\0'})
 
         packet_size = 1024 # in bits
         if 'packet_size' in self.server.config:
             packet_size = self.server.config['packet_size']
 
-        if len(self.buffer) > packet_size*8: # convert bits to bytes
-            self.client.disconnect()
+        if len(buf) > packet_size*8: # convert bits to bytes
+            self.client.send_ooc('Your last action was dropped because it was too big! Contact the server administrator for more information.')
+            logger_debug.debug(f'Buffer overflow from {ipid} with {len(buf)}')
+            return
+        self.buffer = buf
         for msg in self.get_messages():
             if len(msg) < 2:
                 continue
@@ -878,18 +879,11 @@ class AOProtocol(asyncio.Protocol):
 
         # All validation checks passed, set the name
         if self.client.name != args[0] and self.client.fake_name != args[0]:
-         if self.client.login:
-             if self.client.is_valid_name(self.client.name):
-                self.client.name = self.client.name
-                self.client.fake_name = self.client.name
-             else:
-                self.client.fake_name = self.client.name
-         else:
-            if self.client.is_valid_name('NonLoggato'):
-                self.client.name = 'NonLoggato'
-                self.client.fake_name = 'NonLoggato'
+            if self.client.is_valid_name(args[0]):
+                self.client.name = args[0]
+                self.client.fake_name = args[0]
             else:
-                self.client.fake_name = 'NonLoggato'
+                self.client.fake_name = args[0]
 
         if args[1].lstrip() != args[1] and args[1].lstrip().startswith('/'):
             self.client.send_ooc(
@@ -957,7 +951,6 @@ class AOProtocol(asyncio.Protocol):
             return
 
         if args[0].split(':')[0] == "[HUB":
-          if self.client.login:
             # self.client.send_ooc('Switching to the list of Hubs...')
             self.client.viewing_hub_list = True
             preflist = self.client.server.supported_features.copy()
@@ -970,9 +963,7 @@ class AOProtocol(asyncio.Protocol):
                         if not tarea.hide_clients and not tclient.hidden:
                            c = c + 1
                 thub.count = c
-            self.client.send_command('FA', *['{ Hubs }\n Double-Click me to see Areas\n  _______', *[f'[{hub.id}] {hub.name} (utenti: {hub.count})' for hub in self.client.server.hub_manager.hubs]])
-            return
-          else:
+            self.client.send_command('FA', *['{ Hubs }\n Double-Click me to see Areas\n  _______', *[f'[{hub.id}] {hub.name} (users: {hub.count})' for hub in self.client.server.hub_manager.hubs]])
             return
         if args[0].split('\n')[0] == "{ Hubs }":
             # self.client.send_ooc('Switching to the list of Areas...')
