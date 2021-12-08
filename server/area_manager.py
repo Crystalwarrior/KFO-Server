@@ -31,7 +31,6 @@ logger = logging.getLogger('events')
 from server import database
 from server import commands
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.network.aoprotocol import AOProtocol
 
 from server.area import Area
 
