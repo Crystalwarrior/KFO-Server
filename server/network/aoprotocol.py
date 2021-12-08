@@ -956,13 +956,13 @@ class AOProtocol(asyncio.Protocol):
             preflist = self.client.server.supported_features.copy()
             preflist.remove('arup')
             self.client.send_command('FL', *preflist)
-            for thub in self.client.server.hub_manager.hubs:
-                c = 0
-                for tarea in thub.areas:
-                    for tclient in tarea.clients:
-                        if not tarea.hide_clients and not tclient.hidden:
-                           c = c + 1
-                thub.count = c
+            for hub in self.client.server.hub_manager.hubs:
+                count = 0
+                for area in hub.areas:
+                    for client in area.clients:
+                        if not area.hide_clients and not client.hidden:
+                           count = count + 1
+                hub.count = count
             self.client.send_command('FA', *['{ Hubs }\n Double-Click me to see Areas\n  _______', *[f'[{hub.id}] {hub.name} (users: {hub.count})' for hub in self.client.server.hub_manager.hubs]])
             return
         if args[0].split('\n')[0] == "{ Hubs }":
