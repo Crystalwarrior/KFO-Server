@@ -959,8 +959,8 @@ class AOProtocol(asyncio.Protocol):
             for hub in self.client.server.hub_manager.hubs:
                 count = 0
                 for area in hub.areas:
-                    for client in area.clients:
-                        if not area.hide_clients and not client.hidden:
+                    for c in area.clients:
+                        if not area.hide_clients and not c.hidden:
                            count = count + 1
                 hub.count = count
             self.client.send_command('FA', *['{ Hubs }\n Double-Click me to see Areas\n  _______', *[f'[{hub.id}] {hub.name} (users: {hub.count})' for hub in self.client.server.hub_manager.hubs]])
