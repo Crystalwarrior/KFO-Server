@@ -545,8 +545,8 @@ class AreaManager:
                 players_list.append(playercount)
                 playerhubcount = 0
                 for area in client.local_area_list:
-                  for utente in area.clients:
-                       if not self.hide_clients and not area.hide_clients and not utente.hidden:
+                  for c in area.clients:
+                       if not self.hide_clients and not area.hide_clients and not c.hidden:
                           playerhubcount = playerhubcount + 1
                 players_list[1] = playerhubcount
             self.server.send_arup(client, players_list)
