@@ -567,13 +567,13 @@ class ClientManager:
             self.area.area_manager.send_arup_players()
 
             if self.viewing_hub_list:
-              for thub in self.server.hub_manager.hubs:
-                c = 0
-                for tarea in thub.areas:
-                    for tclient in tarea.clients:
-                        if not tarea.hide_clients and not tclient.hidden:
-                           c = c + 1
-                thub.count = c
+              for hub in self.server.hub_manager.hubs:
+                count = 0
+                for a in hub.areas:
+                    for c in a.clients:
+                        if not a.hide_clients and not c.hidden:
+                           count = count + 1
+                hub.count = count
               self.send_command('FA', *['{ Hubs }\n Double-Click me to see Areas\n  _______', *[f'[{hub.id}] {hub.name} (users: {hub.count})' for hub in self.server.hub_manager.hubs]])
             
             # Update everyone's available characters list
