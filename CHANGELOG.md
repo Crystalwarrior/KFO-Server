@@ -690,3 +690,6 @@
 ### 211023a (4.3.0-post3)
 * Removed leftover timer creation code
 * Fixed passwords in `config.yaml` being erroneously casted to wrong types when possible
+
+### 211210a (4.3.0-post4)
+* Fixed /help message adding a trailing period to the URL

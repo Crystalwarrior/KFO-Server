@@ -2844,8 +2844,8 @@ def ooc_cmd_help(client: ClientManager.Client, arg: str):
     """
 
     if not arg:
-        url = 'https://github.com/Chrezm/TsuserverDR'
-        help_msg = ('Available commands, source code and issues can be found here: {}. If you are '
+        url = 'https://github.com/Chrezm/TsuserverDR#commands'
+        help_msg = ('Available commands, source code and issues can be found here: {} . If you are '
                     'looking for help with a specific command, do /help <command_name>'.format(url))
         client.send_ooc(help_msg)
         return
