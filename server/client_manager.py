@@ -859,17 +859,21 @@ class ClientManager:
                 msg += f'[{area.id}] {area.name} {users}{status}{owner}{hidden}{locked}{pathlocked}{passworded}{muted}'
             self.send_ooc(msg)
 
-        def get_area_info(self, area_id, mods, afk_check):
+        def get_area_info(self, area_id, mods, afk_check, hub_id = -1):
             """
             Get information about a specific area.
             :param area_id: area ID
             :param mods: limit player list to mods
             :param afk_check: Limit player list to afks
+            :param hub_id: hub ID
             :returns: information as a string
             """
             info = '\r\n'
             try:
+              if hub_id == -1:
                 area = self.area.area_manager.get_area_by_id(area_id)
+              else:
+                area = self.server.hub_manager.hubs[hub_id].areas[area_id]
             except AreaError:
                 raise
 
@@ -961,6 +965,29 @@ class ClientManager:
                 if afk_check:
                     info = f'Current AFK-ers: {cnt}{info}'
                 else:
+                    info = f'Current online: {cnt}{info}'
+            # if area_id is -2 then return all areas of all hubs. If mods is True then return only mods
+            elif area_id == -2:
+             info = '\n== Area List =='
+             cnt = 0   
+             for hub in self.server.hub_manager.hubs: 
+                for i in range(len(hub.areas)):
+                    area = hub.areas[i]
+                    if afk_check:
+                        client_list = area.afkers
+                    else:
+                        client_list = area.clients
+                    if not self.is_mod and not self in area.owners:
+                        # We exclude hidden players here because we don't want them to count for the user count
+                        client_list = [c for c in client_list if not c.hidden]
+                    area_info = self.get_area_info(i, mods, afk_check, hub.id)
+                    if len(client_list) > 0 or len(
+                               hub.areas[i].owners) > 0:
+                        cnt += len(client_list)
+                        info += f'{area_info}'
+             if afk_check:
+                    info = f'Current AFK-ers: {cnt}{info}'
+             else:
                     info = f'Current online: {cnt}{info}'
             else:
                 try:
