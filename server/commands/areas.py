@@ -15,6 +15,7 @@ __all__ = [
     'ooc_cmd_getarea',
     'ooc_cmd_getareas',
     'ooc_cmd_getafk',
+    'ooc_cmd_gethubs',
     'ooc_cmd_invite',
     'ooc_cmd_uninvite',
     'ooc_cmd_area_kick',
