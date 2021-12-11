@@ -15,6 +15,7 @@ __all__ = [
     'ooc_cmd_getarea',
     'ooc_cmd_getareas',
     'ooc_cmd_getafk',
+    'ooc_cmd_gethubs',
     'ooc_cmd_invite',
     'ooc_cmd_uninvite',
     'ooc_cmd_area_kick',
@@ -166,6 +167,19 @@ def ooc_cmd_getafk(client, arg):
     else:
         raise ArgumentError('There is only one optional argument [all].')
     client.send_area_info(arg, False, afk_check=True)
+
+
+def ooc_cmd_gethubs(client, arg):
+    """
+    Show information about all areas of all hubs.
+    Usage: /gethubs
+    """
+    if not client.is_mod and not (client in client.area.area_manager.owners) and client.char_id != -1:
+        if client.blinded:
+            raise ClientError('You are blinded!')
+        if not client.area.area_manager.can_getareas:
+            raise ClientError('You cannot use /gethubs in this hub!')
+    client.send_area_info(-2, False)
 
 
 @mod_only(area_owners=True)
