@@ -165,7 +165,7 @@ def ooc_cmd_gethubs(client, arg):
             raise ClientError('You are blinded!')
         if not client.area.area_manager.can_getareas:
             raise ClientError('You cannot use /gethubs in this hub!')
-    client.send_hub_area_info(-1, False)
+    client.send_area_info(-2, False)
 
 
 def ooc_cmd_getafk(client, arg):
