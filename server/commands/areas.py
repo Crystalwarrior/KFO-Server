@@ -154,6 +154,19 @@ def ooc_cmd_getareas(client, arg):
     client.send_area_info(-1, False)
 
 
+def ooc_cmd_gethubs(client, arg):
+    """
+    Show information about all areas of all hubs.
+    Usage: /gethubs
+    """
+    if not client.is_mod and not (client in client.area.area_manager.owners) and client.char_id != -1:
+        if client.blinded:
+            raise ClientError('You are blinded!')
+        if not client.area.area_manager.can_getareas:
+            raise ClientError('You cannot use /gethubs in this hub!')
+    client.send_hub_area_info(-1, False)
+
+
 def ooc_cmd_getafk(client, arg):
     """
     Show currently AFK-ing players in the current area or in all areas.
