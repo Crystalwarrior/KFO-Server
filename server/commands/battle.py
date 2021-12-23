@@ -956,7 +956,7 @@ def showdown_start(c):
    if 'Requiem' in AttEffect:
     if Attacker[0].area.requiem == -1:
       Attacker[0].area.requiem = 3
-      Attacker[0].area.send_ic(None, '1', 0, Attacker[0].char_name, Attacker[0].battle_char_default, f"~~ }} {Attaccker[0].battle_char} activated the requiem because of ~{Attacker[0].move}~", f"{Attacker[0].pos}", "", 0, -1, 0, 0, [0], Attacker[0].flip, 0, 8, " ", -1, "", "", 0, 0, 0, 0, "0", 0, "", "", "", 0, "")
+      Attacker[0].area.send_ic(None, '1', 0, Attacker[0].char_name, Attacker[0].battle_char_default, f"~~ }} {Attacker[0].battle_char} activated the requiem because of ~{Attacker[0].move}~", f"{Attacker[0].pos}", "", 0, -1, 0, 0, [0], Attacker[0].flip, 0, 8, " ", -1, "", "", 0, 0, 0, 0, "0", 0, "", "", "", 0, "")
  for client in Defender[0].area.showdown:
   Attacker[0] = client
   if Attacker[0].poison == "poison":
