@@ -1026,10 +1026,10 @@ def ooc_cmd_showdown_list(client, arg):
     client.send_ooc(msg)
 
 def ooc_cmd_showdownsurrend(client, arg):
-  """
-  When you are in a showdown, you can use this command to surrend
-  Usage: /showdownsurrend
-  """
+    """
+    When you are in a showdown, you can use this command to surrend
+    Usage: /showdownsurrend
+    """
     if client in client.area.showdown:
       client.area.showdown.remove(client)
       client.area.send_ic(None, '1', 0, client.char_name, client.battle_char_default, f"~~ }} {client.battle_char} gave up!", f"{client.pos}", "", 0, -1, 0, 0, [0], client.flip, 0, 8, " ", -1, "", "", 0, 0, 0, 0, "0", 0, "", "", "", 0, "") 
