@@ -781,10 +781,10 @@ def ooc_cmd_showdown(client, arg):
   client.send_ooc('You have already entered the Showdown!')
 
 def ooc_cmd_showdownatk(client, arg):
- """
- When a showdown starts, you can use this command to attack
- Usage: /showdownatk MoveName IDtarget
- """
+   """
+   When a showdown starts, you can use this command to attack
+   Usage: /showdownatk MoveName IDtarget
+   """
    if client in client.area.showdown:
       if not client in client.area.showdownatk:
          args = shlex.split(arg)
