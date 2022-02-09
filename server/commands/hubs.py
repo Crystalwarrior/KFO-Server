@@ -609,6 +609,8 @@ def ooc_cmd_follow(client, arg):
     Follow targeted character ID.
     Usage: /follow [id]
     """
+    if client.forced_to_follow and not client.is_mod and client not in client.area.area_manager.owners:
+        raise ClientError(f"You can't change follow targets while being forced to follow!")
     if len(arg) == 0:
         try:
             client.send_ooc(
