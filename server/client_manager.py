@@ -602,6 +602,10 @@ class ClientManager:
             :param area: area to switch to
             :param target_pos: which position to target in the new area
             """
+            # If they're forced to follow, no escape.
+            if self.forced_to_follow and self.following.area != area:
+                raise ClientError("You can't escape when you've been forced to follow someone!")
+                return
             # This person switched hubs just now.
             if self.area.area_manager != area.area_manager:
                 # Make sure a single person can't hoard all the hubs
