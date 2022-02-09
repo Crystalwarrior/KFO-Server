@@ -598,7 +598,7 @@ def ooc_cmd_follow_me(client, arg):
             c.forced_to_follow = True
             c.send_ooc(f"You've been forced to follow {client.showname}!")
             if c.area != client.area:
-                c.change_area(client.area)
+                c.set_area(client.area)
         client.send_ooc(f"Forced {len(targets)} existing client(s) to follow you.")
     else:
         client.send_ooc("No targets found.")
