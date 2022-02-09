@@ -854,11 +854,15 @@ class ClientManager:
                         )
                     # Something obstructed us.
                     except ClientError:
-                        c.send_ooc(
-                            f"Cannot follow [{self.id}] {self.showname} to [{area.id}] {area.name}!"
-                        )
-                        c.unfollow(silent=True)
-                        raise
+                        if c.forced_to_follow:
+                            c.set_area(area)
+                            f"Following [{self.id}] {self.showname} to [{area.id}] {area.name} by force!."
+                        else:
+                            c.send_ooc(
+                                f"Cannot follow [{self.id}] {self.showname} to [{area.id}] {area.name}!"
+                            )
+                            c.unfollow(silent=True)
+                            raise
 
             reason = ""
             if (
