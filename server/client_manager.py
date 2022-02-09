@@ -602,10 +602,6 @@ class ClientManager:
             :param area: area to switch to
             :param target_pos: which position to target in the new area
             """
-            # If they're forced to follow, no escape.
-            if self.forced_to_follow and self.following.area != area:
-                raise ClientError("You can't escape when you've been forced to follow someone!")
-                return
             # This person switched hubs just now.
             if self.area.area_manager != area.area_manager:
                 # Make sure a single person can't hoard all the hubs
@@ -769,6 +765,10 @@ class ClientManager:
                 or self.char_id == -1
                 or area == area.area_manager.default_area()
             )
+            # If they're forced to follow, no escape.
+            if self.forced_to_follow and self.following.area != area:
+                raise ClientError("You can't escape when you've been forced to follow someone!")
+                return
             if not allowed:
                 try:
                     self.try_access_area(area)
@@ -854,15 +854,12 @@ class ClientManager:
                         )
                     # Something obstructed us.
                     except ClientError:
-                        if c.forced_to_follow:
-                            c.set_area(area)
-                            f"Following [{self.id}] {self.showname} to [{area.id}] {area.name} by force!."
-                        else:
-                            c.send_ooc(
-                                f"Cannot follow [{self.id}] {self.showname} to [{area.id}] {area.name}!"
-                            )
+                        c.send_ooc(
+                            f"Cannot follow [{self.id}] {self.showname} to [{area.id}] {area.name}!"
+                        )
+                        if not c.forced_to_follow:
                             c.unfollow(silent=True)
-                            raise
+                        raise
 
             reason = ""
             if (

@@ -35,7 +35,7 @@ __all__ = [
     "ooc_cmd_hide_clients",
     "ooc_cmd_unhide_clients",
     # General
-    "ooc_cmd_follow_me",
+    "ooc_cmd_force_follow",
     "ooc_cmd_follow",
     "ooc_cmd_unfollow",
     "ooc_cmd_info",
@@ -60,15 +60,15 @@ def ooc_cmd_hub(client, arg):
             h = arg.split(" ")[0]
             hid = h.strip("[]")
             if (
-                (
-                    h.startswith("[")
-                    and h.endswith("]")
-                    and hid.isdigit()
-                    and hub.id == int(hid)
-                )
-                or hub.name.lower() == arg.lower()
-                or hub.abbreviation == arg
-                or (arg.isdigit() and hub.id == int(arg))
+                    (
+                            h.startswith("[")
+                            and h.endswith("]")
+                            and hid.isdigit()
+                            and hub.id == int(hid)
+                    )
+                    or hub.name.lower() == arg.lower()
+                    or hub.abbreviation == arg
+                    or (arg.isdigit() and hub.id == int(arg))
             ):
                 if hub == client.area.area_manager:
                     raise ClientError("User already in specified hub.")
@@ -386,9 +386,9 @@ def ooc_cmd_area_pref(client, arg):
         if not (type(attri) is bool):
             raise ArgumentError("Preference is not a boolean.")
         if (
-            not client.is_mod
-            and not client in client.area.area_manager.owners
-            and not (cmd in cm_allowed)
+                not client.is_mod
+                and not client in client.area.area_manager.owners
+                and not (cmd in cm_allowed)
         ):
             raise ClientError("You need to be a GM to modify this preference.")
         tog = not attri
@@ -577,19 +577,19 @@ def ooc_cmd_unhide_clients(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_follow_me(client, arg):
+def ooc_cmd_force_follow(client, arg):
     """
     Force someone to follow you. Follow me!
-    Usage: /follow_me <id>
+    Usage: /force_follow <id>
     """
     if len(arg) == 0:
-        raise ArgumentError("You must specify a target. Use /follow_me <id>.")
+        raise ArgumentError("You must specify a target. Use /force_follow <id>.")
     try:
         targets = client.server.client_manager.get_targets(
             client, TargetType.ID, int(arg), False
         )
     except:
-        raise ArgumentError("You must specify a target. Use /follow_me <id>.")
+        raise ArgumentError("You must specify a target. Use /force_follow <id>.")
     if targets:
         for c in targets:
             if client == c:
@@ -607,10 +607,8 @@ def ooc_cmd_follow_me(client, arg):
 def ooc_cmd_follow(client, arg):
     """
     Follow targeted character ID.
-    Usage: /follow [id]
+    Usage: /follow <id>
     """
-    if client.forced_to_follow and not client.is_mod and client not in client.area.area_manager.owners:
-        raise ClientError(f"You can't change follow targets while being forced to follow!")
     if len(arg) == 0:
         try:
             client.send_ooc(
@@ -619,6 +617,11 @@ def ooc_cmd_follow(client, arg):
         except:
             raise ArgumentError("Not following anybody. Use /follow <id>.")
         return
+    if (client.forced_to_follow
+            and not client.is_mod
+            and client not in client.area.area_manager.owners
+            and client.following is not None):
+        raise ClientError(f"You can't change follow targets while being forced to follow!")
     try:
         targets = client.server.client_manager.get_targets(
             client, TargetType.ID, int(arg), False
@@ -630,9 +633,9 @@ def ooc_cmd_follow(client, arg):
         if client == c:
             raise ClientError("Can't follow yourself!")
         if (
-            c not in client.area.clients
-            and not client.is_mod
-            and not client in client.area.area_manager.owners
+                c not in client.area.clients
+                and not client.is_mod
+                and not client in client.area.area_manager.owners
         ):
             raise ClientError(
                 "You are not a mod/GM - Target must be present in your area!"
@@ -642,6 +645,7 @@ def ooc_cmd_follow(client, arg):
         if client.area != c.area:
             client.change_area(c.area)
         client.following = c
+        client.forced_to_follow = False
         client.send_ooc(f"You are now following [{c.id}] {c.showname}.")
     else:
         client.send_ooc("No targets found.")
@@ -653,7 +657,10 @@ def ooc_cmd_unfollow(client, arg):
     Usage: /unfollow or /unfollow <id>
     """
     if len(arg) == 0:
-        if client.forced_to_follow and not client.is_mod and client not in client.area.area_manager.owners:
+        if (client.forced_to_follow
+                and not client.is_mod
+                and client not in client.area.area_manager.owners
+                and client.following is not None):
             raise ClientError(f"You can't escape being forced to follow!")
         else:
             try:
@@ -722,7 +729,7 @@ def ooc_cmd_gm(client, arg):
                 "You cannot 'nominate' people to be GMs when you are not one."
             )
         for c in client.server.client_manager.get_multiclients(
-            client.ipid, client.hdid
+                client.ipid, client.hdid
         ):
             if c in c.area.area_manager.owners:
                 raise ClientError("One of your clients is already a GM in another hub!")
@@ -748,8 +755,8 @@ def ooc_cmd_gm(client, arg):
                 else:
                     for mc in c.server.client_manager.get_multiclients(c.ipid, c.hdid):
                         if (
-                            mc in mc.area.area_manager.owners
-                            and mc.area.area_manager != c.area.area_manager
+                                mc in mc.area.area_manager.owners
+                                and mc.area.area_manager != c.area.area_manager
                         ):
                             raise ClientError(
                                 f"One of {c.showname} [{c.id}]'s clients is already a GM in another hub!"
