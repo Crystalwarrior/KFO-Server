@@ -592,6 +592,8 @@ def ooc_cmd_follow_me(client, arg):
         raise ArgumentError("You must specify a target. Use /follow_me <id>.")
     if targets:
         for c in targets:
+            if client == c:
+                raise ClientError("You are already forced to follow yourself because you are yourself!")
             c.following = client
             c.forced_to_follow = True
             c.send_ooc(f"You've been forced to follow {client.showname}!")
