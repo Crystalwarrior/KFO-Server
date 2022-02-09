@@ -119,6 +119,7 @@ class ClientManager:
             self.sneaking = False
             self.listen_pos = None
             self.following = None
+            self.forced_to_follow = False
             self.edit_ambience = False
 
             # 0 = listen to NONE
