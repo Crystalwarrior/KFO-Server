@@ -760,7 +760,7 @@ class ClientManager:
                     f"Failed to enter [{area.id}] {area.name}: User already in specified area."
                 )
             # If they're forced to follow, no escape.
-            if self.forced_to_follow and self.following.area != area:
+            if self.forced_to_follow and self.following is not None and self.following.area != area:
                 raise ClientError("You can't escape when you've been forced to follow someone!")
             allowed = (
                 self.is_mod
@@ -856,8 +856,7 @@ class ClientManager:
                         c.send_ooc(
                             f"Cannot follow [{self.id}] {self.showname} to [{area.id}] {area.name}!"
                         )
-                        if not c.forced_to_follow:
-                            c.unfollow(silent=True)
+                        c.unfollow(silent=True)
                         raise
 
             reason = ""
