@@ -638,7 +638,9 @@ class AOProtocol(asyncio.Protocol):
                                      .format(truncated_msg, start_area.name))
 
         pargs['msg'] = msg
-        pargs['showname'] = ''  # Dummy value, actual showname is computed later
+        # Try to change our showname if showname packet exists, and doesn't match our current showname
+        if 'showname' in pargs and self.client.showname != pargs['showname']:
+            self.net_cmd_sn([pargs['showname']])
 
         # Compute pairs
         # Based on tsuserver3.3 code
