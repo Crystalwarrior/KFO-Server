@@ -235,6 +235,15 @@ class Area:
             "join": "",  # User joins the area.
             "leave": "",  # User leaves the area.
         }
+        # Battle system stuff
+        self.showdown = []
+        self.showdown_list = []
+        self.showdownatk = []
+        self.Attacker = []
+        self.Defender = []
+        self.requiem = -1
+        self.ba = []
+        self.ba.append(-1)
 
     @property
     def name(self):

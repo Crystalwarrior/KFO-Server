@@ -1,0 +1,26 @@
+#Character: Battle Character Name
+#  Sprite: AO Character
+#  Default: Battle Character Default Emote
+#  HP: Health Points
+#  ATK: Attack
+#  DEF: Defense
+#  SPA: Special Attack
+#  SPD: Special Defense
+#  MovesName: Move's Name
+#  Sprite: Move's Emote
+#  MovesType: Move's Type
+#  Power: Power
+#  Paralysis: Paralysis Effect
+#  Poison: Poison Effect
+#  DefDown: Defense Down
+#  AtkDown: Attack Down
+#  SpaDown: Special Attack Down
+#  SpdDown: Special Defense Down
+#  AtkRaise: Attack Up
+#  DefRaise: Defense Up
+#  SpaRaise: Special Attack Up
+#  SpdRaise: Special Defense Up
+#  Heal: Heal Effect
+#  StealStat: Steal Stats Effect
+#  Requiem: Requiem Effect
+#  HAlly: Heal Ally Effect
