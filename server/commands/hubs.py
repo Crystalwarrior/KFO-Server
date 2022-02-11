@@ -481,12 +481,14 @@ def ooc_cmd_toggle_replace_music(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_toggle_passingmsg(client, arg):
     """
-    Toggle an IC area passing message for this hub.
+    Toggle an IC message when changing areas for this hub.
     Usage: /toggle_passingmsg
     """
     client.area.area_manager.passing_msg = not client.area.area_manager.passing_msg
     toggle = 'enabled' if client.area.area_manager.passing_msg else 'disabled'
-    client.area.area_manager.broadcast_ooc(f'IC area passing messages have been {toggle} for this hub.')
+    client.area.area_manager.broadcast_ooc(
+        f'IC area passing messages are now {toggle} for this hub.'
+    )
 
 @mod_only(hub_owners=True)
 def ooc_cmd_arup_enable(client, arg):
