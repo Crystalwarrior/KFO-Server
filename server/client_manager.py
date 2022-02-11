@@ -864,18 +864,14 @@ class ClientManager:
             ):
                 if not old_area.dark and not old_area.force_sneak:
                     if old_area.area_manager == self.area.area_manager:
+                        if self.area.area_manager.passing_msg == True:
+                            if showname == '':
+                                showname = self.char_name
+                            old_area.send_ic(
+                                None, '1', 1, "", "", f'~~[º{self.showname}º leaves to º{area.name}º.]', 
+                                "", "", 1, -1, 0, 0, [0], 0, 0, 0, "", -1, "", "", 0, 0, 0, 0, "0", 0, "", "", "", 0, ""
+                            )
                         for c in old_area.clients:
-                            if self.area.area_manager.passing_msg == True:
-                                # Prevents a duplicate message when someone leaves
-                                if count > 0:
-                                    break
-                                if showname == '':
-                                    showname = self.char_name
-                                old_area.send_ic(
-                                    None, '1', 1, "", "", f'~~[º{self.showname}º leaves to º{area.name}º.]', 
-                                    "", "", 1, -1, 0, 0, [0], 0, 0, 0, "", -1, "", "", 0, 0, 0, 0, "0", 0, "", "", "", 0, ""
-                                )
-                                count += 1
                             # Check if the GMs should really see this msg
                             if c in old_area.owners and c.remote_listen in [2, 3]:
                                 continue
@@ -920,7 +916,7 @@ class ClientManager:
                         if showname == '':
                             showname = self.char_name
                         self.area.send_ic(
-                            None, '1', 1, "", "", f'~~[º{self.showname}º arrives.]', 
+                            None, '1', 1, "", "", f'~~[º{self.showname}º enters from º{old_area.name}º.]', 
                             "", "", 1, -1, 0, 0, [0], 0, 0, 0, "", -1, "", "", 0, 0, 0, 0, "0", 0, "", "", "", 0, ""
                         )
                 else:
