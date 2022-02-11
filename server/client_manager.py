@@ -759,9 +759,6 @@ class ClientManager:
                 raise ClientError(
                     f"Failed to enter [{area.id}] {area.name}: User already in specified area."
                 )
-            # If they're forced to follow, no escape.
-            if self.forced_to_follow and self.following is not None and self.following.area != area:
-                raise ClientError("You can't escape when you've been forced to follow someone!")
             allowed = (
                 self.is_mod
                 or self in area.owners
@@ -769,6 +766,9 @@ class ClientManager:
                 or area == area.area_manager.default_area()
             )
             if not allowed:
+                # If they're forced to follow, no escape.
+                if self.forced_to_follow and self.following is not None and self.following.area != area:
+                    raise ClientError("You can't escape when you've been forced to follow someone!")
                 try:
                     self.try_access_area(area)
                 except ClientError as ex:
