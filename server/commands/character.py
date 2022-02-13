@@ -638,13 +638,13 @@ def mod_keys(client, arg, mod=0):
             args = []
         keys = []
 
-        if mod in (1, 2):
-            keys = client.area.area_manager.get_character_data(target, "keys", [])
         for a in args:
             for key in a.split("-"):
                 # make sure all the keys are integers
                 key = int(key)
             if not (a in keys):
+                if mod in (1, 2):
+                    keys = client.area.area_manager.get_character_data(target, "keys", [])
                 if mod == 2:
                     keys.remove(a)
                 else:
