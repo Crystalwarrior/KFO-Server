@@ -1350,7 +1350,7 @@ class AOProtocol(asyncio.Protocol):
                            c.send_command(
                                 "FA",
                                 *[
-                                    "{ Hubs }\n Double-Click me to see Areas\n  _______"\n  _______",
+                                    "{ Hubs }\n Double-Click me to see Areas\n  _______",
                                     *[
                                         f"[{hub.id}] {hub.name} (users: {hub.count})"
                                         for hub in self.client.server.hub_manager.hubs
