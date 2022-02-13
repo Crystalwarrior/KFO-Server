@@ -1336,8 +1336,6 @@ class AOProtocol(asyncio.Protocol):
             preflist = self.client.server.supported_features.copy()
             preflist.remove("arup")
             self.client.send_command("FL", *preflist)
-            server_count = 0
-            mod_count = 0
             for hub in self.client.server.hub_manager.hubs:
                 count = 0
                 for area in hub.areas:
@@ -1345,7 +1343,6 @@ class AOProtocol(asyncio.Protocol):
                         if not area.hide_clients and not c.hidden:
                             count = count + 1
                 hub.count = count
-                server_count = server_count + hub.count
             for hub in self.client.server.hub_manager.hubs:
                 for area in hub.areas:
                     for c in area.clients:
@@ -1353,7 +1350,7 @@ class AOProtocol(asyncio.Protocol):
                            c.send_command(
                                 "FA",
                                 *[
-                                    f"{self.client.server.config['masterserver_name']}\n Users Online: {server_count} ┆┆ Mods Online: {mod_count}\n Double-Click me to see Areas\n  _______",
+                                    "{ Hubs }\n Double-Click me to see Areas\n  _______"\n  _______",
                                     *[
                                         f"[{hub.id}] {hub.name} (users: {hub.count})"
                                         for hub in self.client.server.hub_manager.hubs
@@ -1361,7 +1358,7 @@ class AOProtocol(asyncio.Protocol):
                                 ],
                             )
             return
-        if args[0].split("\n")[0] == f"{self.client.server.config['masterserver_name']}":
+        if args[0].split("\n")[0] == "{ Hubs }":
             # self.client.send_ooc('Switching to the list of Areas...')
             self.client.viewing_hub_list = False
             preflist = self.client.server.supported_features.copy()
