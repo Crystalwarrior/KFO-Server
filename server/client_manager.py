@@ -629,24 +629,32 @@ class ClientManager:
 
             self.area.area_manager.send_arup_players()
 
-            if self.viewing_hub_list:
-                for hub in self.server.hub_manager.hubs:
-                    count = 0
-                    for a in hub.areas:
-                        for c in a.clients:
-                            if not a.hide_clients and not c.hidden:
-                                count = count + 1
-                    hub.count = count
-                self.send_command(
-                    "FA",
-                    *[
-                        "{ Hubs }\n Double-Click me to see Areas\n  _______",
-                        *[
-                            f"[{hub.id}] {hub.name} (users: {hub.count})"
-                            for hub in self.server.hub_manager.hubs
-                        ],
-                    ],
-                )
+            mod_count = 0
+            server_count = 0
+            for hub in self.server.hub_manager.hubs:
+                count = 0
+                for a in hub.areas:
+                    for c in a.clients:
+                        if not a.hide_clients and not c.hidden:
+                            count = count + 1
+                            if c.is_mod:
+                                mod_count = mod_count + 1
+                hub.count = count
+                server_count = hub.count + server_count
+            for hub in self.server.hub_manager.hubs:
+                for a in hub.areas:
+                    for c in a.clients:
+                        if c.viewing_hub_list:
+                            c.send_command(
+                                "FA",
+                                *[
+                                    f"{self.server.config['masterserver_name']}\n Users Online: {server_count} ┆┆ Mods Online: {mod_count}\n Double-Click me to see Areas\n _______",
+                                    *[
+                                        f"[{hub.id}] {hub.name} (users: {hub.count})"
+                                        for hub in self.server.hub_manager.hubs
+                                    ],
+                                ],
+                            )
 
             # Update everyone's available characters list
             # Commented out due to potentially causing clientside lag...
