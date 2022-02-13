@@ -68,11 +68,12 @@ class AreaManager:
             # the hub was destroyed at some point
             if self.hub == None or self == None:
                 return
-            self.hub.broadcast_ooc("Timer 0 has expired.")
-            self.call_commands()
-            self.commands.clear()
+
             self.static = datetime.timedelta(0)
             self.started = False
+
+            self.hub.broadcast_ooc("Timer 0 has expired.")
+            self.call_commands()
 
         def call_commands(self):
             if self.caller == None:
@@ -81,7 +82,6 @@ class AreaManager:
                 return
             if self.caller not in self.hub.owners:
                 return
-            server = self.caller.server
             for cmd in self.commands:
                 args = cmd.split(" ")
                 cmd = args.pop(0).lower()
@@ -89,13 +89,7 @@ class AreaManager:
                 if len(args) > 0:
                     arg = " ".join(args)[:1024]
                 try:
-                    # Remember the old area.
-                    old_area = self.caller.area
-                    self.caller.area = self.hub.default_area()
                     commands.call(self.caller, cmd, arg)
-                    if old_area and old_area in self.hub.areas:
-                        self.caller.area = old_area
-                    # There is no else clause, cause any function that removes the client's area would properly adjust them anyway.
                 except (ClientError, AreaError, ArgumentError, ServerError) as ex:
                     self.caller.send_ooc(f"[Timer 0] {ex}")
                 except Exception as ex:

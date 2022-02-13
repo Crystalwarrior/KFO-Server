@@ -216,7 +216,10 @@ class EvidenceList:
         """
         if not self.login(client):
             return
-
+        if id1 not in range(len(self.evidences)):
+            return
+        if id2 not in range(len(self.evidences)):
+            return
         self.evidences[id1], self.evidences[id2] = (
             self.evidences[id2],
             self.evidences[id1],
@@ -289,7 +292,21 @@ class EvidenceList:
             return
         if client.area.dark:
             return
-        evi = self.evidences[id]
+        if id not in range(len(self.evidences)):
+            return
+        if not client in client.area.owners and not client.is_mod:
+            id = client.evi_list[id + 1] - 1
+            evi = self.evidences[id]
+            if client.area.evidence_mod == "HiddenCM":
+                if evi.pos != "hidden":
+                    evi.name = f"🚮{evi.name}"
+                    evi.desc = f"(🚮Deleted by [{client.id}] {client.showname} ({client.name}))\n{evi.desc}"
+                    evi.pos = "hidden"
+            else:
+                self.evidences.pop(id)
+        else:
+            evi = self.evidences[id]
+            self.evidences.pop(id)
 
         # Inform the CMs of evidence manupulation
         client.area.send_owner_command(
@@ -308,18 +325,6 @@ class EvidenceList:
                     "1",
                 )
 
-        if not client in client.area.owners and not client.is_mod:
-            id = client.evi_list[id + 1] - 1
-            evi = self.evidences[id]
-            if client.area.evidence_mod == "HiddenCM":
-                if evi.pos != "hidden":
-                    evi.name = f"🚮{evi.name}"
-                    evi.desc = f"(🚮Deleted by [{client.id}] {client.showname} ({client.name}))\n{evi.desc}"
-                    evi.pos = "hidden"
-            else:
-                self.evidences.pop(id)
-        else:
-            self.evidences.pop(id)
         c = evi.hiding_client
         if c != None:
             c.hide(False)
@@ -340,6 +345,8 @@ class EvidenceList:
             return
 
         if client in client.area.owners or client.is_mod:
+            if id not in range(len(self.evidences)):
+                return
             old_name = self.evidences[id].name
             if client.area.evidence_mod == "HiddenCM":
                 if self.correct_format(client, arg[1]):
@@ -365,6 +372,8 @@ class EvidenceList:
             # Client sends evidence updates to server using an index starting from 0.
             # This needs a complete overhaul.
             id = client.evi_list[id + 1] - 1
+            if id not in range(len(self.evidences)):
+                return
             old_name = self.evidences[id].name
             # c = self.evidences[idx].hiding_client
             # if c != None:

@@ -107,6 +107,7 @@ class ClientManager:
             # security stuff
             self.clientscon = 0
             self.gm_save_time = 0
+            self.last_demo_call = 0
 
             # movement system stuff
             self.last_move_time = 0
@@ -119,6 +120,7 @@ class ClientManager:
             self.sneaking = False
             self.listen_pos = None
             self.following = None
+            self.forced_to_follow = False
             self.edit_ambience = False
 
             # 0 = listen to NONE
@@ -765,6 +767,9 @@ class ClientManager:
                 or area == area.area_manager.default_area()
             )
             if not allowed:
+                # If they're forced to follow, no escape.
+                if self.forced_to_follow and self.following is not None and self.following.area != area:
+                    raise ClientError("You can't escape when you've been forced to follow someone!")
                 try:
                     self.try_access_area(area)
                 except ClientError as ex:
