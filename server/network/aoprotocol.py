@@ -1343,20 +1343,16 @@ class AOProtocol(asyncio.Protocol):
                         if not area.hide_clients and not c.hidden:
                             count = count + 1
                 hub.count = count
-            for hub in self.client.server.hub_manager.hubs:
-                for area in hub.areas:
-                    for c in area.clients:
-                        if c.viewing_hub_list:
-                           c.send_command(
-                                "FA",
-                                *[
-                                    "{ Hubs }\n Double-Click me to see Areas\n  _______",
-                                    *[
-                                        f"[{hub.id}] {hub.name} (users: {hub.count})"
-                                        for hub in self.client.server.hub_manager.hubs
-                                    ],
-                                ],
-                            )
+            self.client.send_command(
+                "FA",
+                *[
+                    "{ Hubs }\n Double-Click me to see Areas\n  _______",
+                    *[
+                        f"[{hub.id}] {hub.name} (users: {hub.count})"
+                        for hub in self.client.server.hub_manager.hubs
+                    ],
+                ],
+            )
             return
         if args[0].split("\n")[0] == "{ Hubs }":
             # self.client.send_ooc('Switching to the list of Areas...')
