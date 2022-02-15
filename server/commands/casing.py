@@ -410,7 +410,7 @@ def ooc_cmd_testimony(client, arg):
         name = statement[15]
         if name == "" and statement[8] != -1:
             # [8] CID
-            name = client.server.char_list[statement[8]]
+            name = client.area.area_manager.char_list[statement[8]]
         txt = statement[4].replace("{", "").replace("}", "")
         here = "  "
         if i == client.area.testimony_index:
@@ -595,7 +595,7 @@ def ooc_cmd_cs(client, arg):
             msg = f"Current minigame is {client.area.minigame}!"
             red = []
             for cid in client.area.red_team:
-                name = client.server.char_list[cid]
+                name = client.area.area_manager.char_list[cid]
                 for c in client.area.clients:
                     if c.char_id == cid:
                         name = f"[{c.id}] {c.showname}"
@@ -604,7 +604,7 @@ def ooc_cmd_cs(client, arg):
             msg += "\n⚔VERSUS⚔\n"
             blue = []
             for cid in client.area.blue_team:
-                name = client.server.char_list[cid]
+                name = client.area.area_manager.char_list[cid]
                 for c in client.area.clients:
                     if c.char_id == cid:
                         name = f"[{c.id}] {c.showname}"

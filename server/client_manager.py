@@ -239,7 +239,7 @@ class ClientManager:
             """
             # If it's -1, we want to be the spectator character.
             if char_id != -1:
-                if not self.server.is_valid_char_id(char_id):
+                if not self.area.area_manager.is_valid_char_id(char_id):
                     raise ClientError("Invalid character ID.")
                 if not self.is_mod and self not in self.area.owners:
                     if len(self.charcurse) > 0:
@@ -612,6 +612,8 @@ class ClientManager:
                 for a in self.area.area_manager.areas:
                     if self in a.owners:
                         a.remove_owner(self)
+                # Send them that hub's char list
+                self.area.area_manager.send_characters(self)
             if self in self.area.clients:
                 self.area.remove_client(self)
             self.area = area
@@ -1229,14 +1231,14 @@ class ClientManager:
         def get_available_char_list(self):
             """Get a list of character IDs that the client can select."""
             if len(self.charcurse) > 0:
-                avail_char_ids = set(range(len(self.server.char_list))) and set(
+                avail_char_ids = set(range(len(self.area.area_manager.char_list))) and set(
                     self.charcurse
                 )
             else:
-                avail_char_ids = set(range(len(self.server.char_list))) - {
+                avail_char_ids = set(range(len(self.area.area_manager.char_list))) - {
                     x.char_id for x in self.area.clients
                 }
-            char_list = [-1] * len(self.server.char_list)
+            char_list = [-1] * len(self.area.area_manager.char_list)
             for x in avail_char_ids:
                 char_list[x] = 0
             return char_list
@@ -1276,7 +1278,7 @@ class ClientManager:
             """Get the name of the character that the client is using."""
             if self.char_id == -1:
                 return "Spectator"
-            return self.server.char_list[self.char_id]
+            return self.area.area_manager.char_list[self.char_id]
 
         @property
         def showname(self):
@@ -1284,7 +1286,7 @@ class ClientManager:
             if self._showname == "":
                 return self.char_name
             # No clue why this would ever hapepn but here we go
-            if self.char_id > len(self.server.char_list):
+            if self.char_id > len(self.area.area_manager.char_list):
                 return "Unknown"
             return self._showname
 

@@ -57,7 +57,7 @@ def ooc_cmd_switch(client, arg):
         if arg == "-1" or arg.lower() == "spectator":
             cid = -1
         elif not arg.isnumeric():
-            cid = client.server.get_char_id_by_name(arg)
+            cid = client.area.area_manager.get_char_id_by_name(arg)
         else:
             cid = int(arg)
     except ServerError:
@@ -164,7 +164,7 @@ def force_charselect(client, char=""):
             if char == "-1" or char.lower() == "spectator":
                 cid = -1
             elif not char.isnumeric():
-                cid = client.server.get_char_id_by_name(char)
+                cid = client.area.area_manager.get_char_id_by_name(char)
             else:
                 cid = int(char)
         except ServerError:
@@ -229,8 +229,8 @@ def ooc_cmd_charcurse(client, arg):
                 try:
                     cid = int(raw_cid)
                     c.charcurse.append(cid)
-                    part_msg += " " + str(client.server.char_list[cid]) + ","
-                    log_msg += " " + str(client.server.char_list[cid]) + ","
+                    part_msg += " " + str(client.area.area_manager.char_list[cid]) + ","
+                    log_msg += " " + str(client.area.area_manager.char_list[cid]) + ","
                 except:
                     ArgumentError(
                         "" + str(raw_cid) + " does not look like a valid character ID."
@@ -286,8 +286,8 @@ def ooc_cmd_charids(client, arg):
     if len(arg) != 0:
         raise ArgumentError("This command doesn't take any arguments")
     msg = "Here is a list of all available characters on the server:"
-    for c in range(0, len(client.server.char_list)):
-        msg += "\n[" + str(c) + "] " + client.server.char_list[c]
+    for c in range(0, len(client.area.area_manager.char_list)):
+        msg += "\n[" + str(c) + "] " + client.area.area_manager.char_list[c]
     client.send_ooc(msg)
 
 
@@ -624,11 +624,11 @@ def mod_keys(client, arg, mod=0):
             if target:
                 target = target[0].char_id
             else:
-                if args[0] != "-1" and (int(args[0]) in client.server.char_list):
+                if args[0] != "-1" and (int(args[0]) in client.area.area_manager.char_list):
                     target = int(args[0])
         else:
             try:
-                target = client.server.get_char_id_by_name(arg)
+                target = client.area.area_manager.get_char_id_by_name(arg)
             except (ServerError):
                 raise
 
@@ -651,7 +651,7 @@ def mod_keys(client, arg, mod=0):
                     keys.append(a)
         client.area.area_manager.set_character_data(target, "keys", keys)
         client.send_ooc(
-            f"Character folder {client.server.char_list[target]}'s keys are updated: {keys}"
+            f"Character folder {client.area.area_manager.char_list[target]}'s keys are updated: {keys}"
         )
     except ValueError:
         raise ArgumentError("Keys must be a number like 5 or a link eg. 1-5.")
@@ -719,16 +719,16 @@ def ooc_cmd_keys(client, arg):
                 if target:
                     target = target[0].char_id
                 else:
-                    if args[0] != "-1" and (int(args[0]) in client.server.char_list):
+                    if args[0] != "-1" and (int(args[0]) in client.area.area_manager.char_list):
                         target = int(args[0])
             else:
                 try:
-                    target = client.server.get_char_id_by_name(arg)
+                    target = client.area.area_manager.get_char_id_by_name(arg)
                 except (ServerError):
                     raise
             keys = client.area.area_manager.get_character_data(target, "keys", [])
             client.send_ooc(
-                f"{client.server.char_list[target]} current keys are {keys}"
+                f"{client.area.area_manager.char_list[target]} current keys are {keys}"
             )
         except:
             raise ArgumentError("Target not found.")
@@ -779,7 +779,7 @@ def ooc_cmd_chardesc(client, arg):
                 client, TargetType.ID, int(arg), True
             )[0].char_id
             desc = client.area.area_manager.get_character_data(target, "desc", "")
-            target = client.server.char_list[target]
+            target = client.area.area_manager.char_list[target]
             client.send_ooc(f"{target} Description: {desc}")
             database.log_area("chardesc.request", client, client.area, message=target)
         except:
@@ -813,18 +813,18 @@ def ooc_cmd_chardesc_set(client, arg):
             if target:
                 target = target[0].char_id
             else:
-                if args[0] != "-1" and (int(args[0]) in client.server.char_list):
+                if args[0] != "-1" and (int(args[0]) in client.area.area_manager.char_list):
                     target = int(args[0])
         else:
             try:
-                target = client.server.get_char_id_by_name(arg)
+                target = client.area.area_manager.get_char_id_by_name(arg)
             except (ServerError):
                 raise
         desc = ""
         if len(args) > 1:
             desc = " ".join(args[1:])
         client.area.area_manager.set_character_data(target, "desc", desc)
-        target = client.server.char_list[target]
+        target = client.area.area_manager.char_list[target]
         client.send_ooc(f"{target} Description: {desc}")
         database.log_area(
             "chardesc.set", client, client.area, message=f"{target}: {desc}"
@@ -847,15 +847,15 @@ def ooc_cmd_chardesc_get(client, arg):
             if target:
                 target = target[0].char_id
             else:
-                if arg != "-1" and (int(arg) in client.server.char_list):
+                if arg != "-1" and (int(arg) in client.area.area_manager.char_list):
                     target = int(arg)
         else:
             try:
-                target = client.server.get_char_id_by_name(arg)
+                target = client.area.area_manager.get_char_id_by_name(arg)
             except (ServerError):
                 raise
         desc = client.area.area_manager.get_character_data(target, "desc", "")
-        target = client.server.char_list[target]
+        target = client.area.area_manager.char_list[target]
         client.send_ooc(f"{target} Description: {desc}")
         database.log_area(
             "chardesc.get", client, client.area, message=f"{target}: {desc}"
