@@ -1360,7 +1360,7 @@ class AOProtocol(asyncio.Protocol):
                 ],
             )
             return
-        if args[0].split("\n")[0] == "{ Hubs }":
+        if args[0].split("\n")[0] == f"{self.client.server.config['masterserver_name']}":
             # self.client.send_ooc('Switching to the list of Areas...')
             self.client.viewing_hub_list = False
             preflist = self.client.server.supported_features.copy()
