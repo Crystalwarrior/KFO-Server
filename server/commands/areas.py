@@ -14,6 +14,7 @@ __all__ = [
     "ooc_cmd_area_visible",
     "ooc_cmd_getarea",
     "ooc_cmd_getareas",
+    "ooc_cmd_gethubs",
     "ooc_cmd_getafk",
     "ooc_cmd_invite",
     "ooc_cmd_uninvite",
@@ -708,3 +709,15 @@ def ooc_cmd_lights(client, arg):
             pos = client.area.pos_dark
         c.send_command("BN", bg, pos)
     client.send_ooc(f"This area is {stat} dark.")
+
+def ooc_cmd_gethubs(client, arg):
+    """
+    Show information about all areas of all hubs.
+    Usage: /getareas
+    """
+    if not client.is_mod and not (client in client.area.area_manager.owners) and client.char_id != -1:
+        if client.blinded:
+            raise ClientError('You are blinded!')
+        if not client.area.area_manager.can_getareas:
+            raise ClientError('You cannot use /gethubs in this hub!')
+    client.send_area_info(-2, False)
