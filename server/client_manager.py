@@ -631,18 +631,23 @@ class ClientManager:
 
             self.area.area_manager.send_arup_players()
 
+            server_count = 0
+            mod_count = 0
             for hub in self.server.hub_manager.hubs:
                 count = 0
                 for c in hub.clients:
                     if not c.area.hide_clients and not c.hidden:
                         count = count + 1
+                        if c.is_mod:
+                            mod_count = mod_count + 1
                 hub.count = count
+                server_count = server_count + hub.count
             for c in self.server.client_manager.clients:
                 if c.viewing_hub_list:
                     c.send_command(
                         "FA",
                         *[
-                            "{ Hubs }\n Double-Click me to see Areas\n  _______",
+                            f"{self.server.config['masterserver_name']}\n Users Online: {server_count} ┆┆ Mods Online: {mod_count}\n Double-Click me to see Areas\n _______",
                             *[
                                 f"[{hub.id}] {hub.name} (users: {hub.count})"
                                 for hub in self.server.hub_manager.hubs
@@ -1522,18 +1527,23 @@ class ClientManager:
             if c.following == client:
                 c.unfollow()
         self.clients.remove(client)
+        server_count = 0
+        mod_count = 0
         for hub in self.server.hub_manager.hubs:
             count = 0
             for c in hub.clients:
                 if not c.area.hide_clients and not c.hidden:
                     count = count + 1
+                    if c.is_mod:
+                        mod_count = mod_count + 1
             hub.count = count
+            server_count = server_count + hub.count
         for c in self.server.client_manager.clients:
             if c.viewing_hub_list:
                 c.send_command(
                     "FA",
                     *[
-                        "{ Hubs }\n Double-Click me to see Areas\n  _______",
+                        f"{self.server.config['masterserver_name']}\n Users Online: {server_count} ┆┆ Mods Online: {mod_count}\n Double-Click me to see Areas\n _______",
                         *[
                             f"[{hub.id}] {hub.name} (users: {hub.count})"
                             for hub in self.server.hub_manager.hubs
