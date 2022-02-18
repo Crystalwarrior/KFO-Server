@@ -713,7 +713,7 @@ def ooc_cmd_lights(client, arg):
 def ooc_cmd_gethubs(client, arg):
     """
     Show information about all areas of all hubs.
-    Usage: /getareas
+    Usage: /gethubs
     """
     if not client.is_mod and not (client in client.area.area_manager.owners) and client.char_id != -1:
         if client.blinded:
