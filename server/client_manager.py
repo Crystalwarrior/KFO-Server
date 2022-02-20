@@ -603,20 +603,25 @@ class ClientManager:
             :param area: area to switch to
             :param target_pos: which position to target in the new area
             """
-            # This person switched hubs just now.
-            if self.area.area_manager != area.area_manager:
+            old_area = self.area
+            # If this person switched hubs
+            if old_area.area_manager != area.area_manager:
                 # Make sure a single person can't hoard all the hubs
-                if self in self.area.area_manager.owners:
-                    self.area.area_manager.remove_owner(self)
+                if self in old_area.area_manager.owners:
+                    old_area.area_manager.remove_owner(self)
                 # Don't allow multi-hub CMing either
-                for a in self.area.area_manager.areas:
+                for a in old_area.area_manager.areas:
                     if self in a.owners:
                         a.remove_owner(self)
+            if self in old_area.clients:
+                old_area.remove_client(self)
+            self.area = area
+
+            if old_area.area_manager != area.area_manager and old_area.area_manager.char_list != area.area_manager.char_list:
                 # Send them that hub's char list
                 self.area.area_manager.send_characters(self)
-            if self in self.area.clients:
-                self.area.remove_client(self)
-            self.area = area
+                self.char_select()
+
             if len(self.area.pos_lock) > 0 and not (target_pos in self.area.pos_lock):
                 target_pos = self.area.pos_lock[0]
             if self.area.dark:
