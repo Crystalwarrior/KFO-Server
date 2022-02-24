@@ -362,7 +362,7 @@ class AOProtocol(asyncio.Protocol):
                             'noencryption', 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx',
                             'additive', 'effects', 'y_offset',
                             # DRO exclusive stuff
-                            'ackMS', 'showname', 'chrini', 'charscheck']
+                            'ackMS', 'showname', 'chrini', 'charscheck', 'playable_video',]
             })
 
     def net_cmd_ch(self, args: List[str]):

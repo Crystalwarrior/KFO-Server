@@ -641,7 +641,7 @@ class _TestClientManager(ClientManager):
 
         def sic(self, message, msg_type=0, pre='-', folder=None, anim=None, pos=None, sfx=0,
                 anim_type=0, char_id=None, sfx_delay=0, button=0, evi=None, flip=0, ding=0, color=0,
-                ignore_timelimit=True, check_ackMS_packet=True):
+                video="", ignore_timelimit=True, check_ackMS_packet=True):
             if folder is None:
                 folder = self.get_char_name()
             if anim is None:
@@ -668,10 +668,11 @@ class _TestClientManager(ClientManager):
             # 12 = flip
             # 13 = ding
             # 14 = color
+            # 15 = video
 
-            buffer = ('MS#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#%'
+            buffer = ('MS#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#%'
                       .format(msg_type, pre, folder, anim, message, pos, sfx, anim_type, char_id,
-                              sfx_delay, button, evi, flip, ding, color))
+                              sfx_delay, button, evi, flip, ding, color, video))
             if ignore_timelimit:  # Time wasted here = 4 hours 8/10/19
                 self.area.can_send_message = lambda: True
             self.send_command_cts(buffer)
@@ -704,7 +705,8 @@ class _TestClientManager(ClientManager):
                          'flip': 12,
                          'ding': 13,
                          'color': 14,
-                         'showname': 15}
+                         'video': 15,
+                         'showname': 16}
 
             if 'msg' not in kwargs:
                 kwargs['msg'] = message
@@ -764,7 +766,7 @@ class _TestClientManager(ClientManager):
             if command_type == 'decryptor':  # Hi
                 buffer = 'HI#FAKEHDID#%'
             elif command_type == 'ID':  # Server ID
-                buffer = "ID#DRO#1.0.0#%"
+                buffer = "ID#DRO#1.1.0#%"
                 err = ('Wrong client ID for {}.\nExpected {}\nGot {}'
                        .format(self, args[0], self.id))
                 assert args[0] == str(self.id), err
@@ -815,8 +817,9 @@ class _TestClientManager(ClientManager):
                 # 12 = flip
                 # 13 = ding
                 # 14 = color
-                # 15 = showname
-                if not (len(args) == 16):
+                # 15 = video
+                # 16 = showname
+                if not (len(args) == 17):
                     raise ValueError('Malformed MS packet for an IC message {}'.format(args))
                 self.received_ic.append(args)
             elif command_type == 'MC':  # Start playing track

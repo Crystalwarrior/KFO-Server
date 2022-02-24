@@ -160,6 +160,7 @@ class DefaultAO2Protocol(Enum):
         ('flip', ArgType.INT),  # 12
         ('ding', ArgType.INT),  # 13
         ('color', ArgType.INT),  # 14
+        ('video', ArgType.STR_OR_EMPTY),
         ]
 
     MS_OUTBOUND = [
@@ -178,6 +179,7 @@ class DefaultAO2Protocol(Enum):
         ('flip', 0),  # 12
         ('ding', -1),  # 13
         ('color', 0),  # 14
+        ('video', ''),
         ('showname', ' '),  # 15
         ]
 
