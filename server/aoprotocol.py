@@ -344,7 +344,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.send_command_dict('FL', {
             'fl_ao2_list': ['yellowtext', 'customobjections', 'flipping', 'fastloading',
                             'noencryption', 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx',
-                            'additive', 'effects',
+                            'additive', 'effects', 'y_offset',
                             # DRO exclusive stuff
                             'ackMS', 'showname', 'chrini', 'charscheck']
             })
