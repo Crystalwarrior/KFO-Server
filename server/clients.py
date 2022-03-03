@@ -624,7 +624,7 @@ class ClientAO2d9d0(Enum):
         ('color', ArgType.INT),  # 14
         ('showname', ArgType.STR_OR_EMPTY),  # 15
         ('charid_pair_pair_order', ArgType.STR),  # 16
-        ('offset_pair', ArgType.INT),  # 17
+        ('offset_pair', ArgType.STR),  # 17
         ('nonint_pre', ArgType.INT),  # 18
         ('looping_sfx', ArgType.INT),  # 19
         ('screenshake', ArgType.INT),  # 20

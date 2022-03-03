@@ -344,7 +344,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.send_command_dict('FL', {
             'fl_ao2_list': ['yellowtext', 'customobjections', 'flipping', 'fastloading',
                             'noencryption', 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx',
-                            'additive', 'effects',
+                            'additive', 'effects', 'y_offset',
                             # DRO exclusive stuff
                             'ackMS', 'showname', 'chrini', 'charscheck']
             })
@@ -638,7 +638,9 @@ class AOProtocol(asyncio.Protocol):
                                      .format(truncated_msg, start_area.name))
 
         pargs['msg'] = msg
-        pargs['showname'] = ''  # Dummy value, actual showname is computed later
+        # Try to change our showname if showname packet exists, and doesn't match our current showname
+        if 'showname' in pargs and self.client.showname != pargs['showname']:
+            self.net_cmd_sn([pargs['showname']])
 
         # Compute pairs
         # Based on tsuserver3.3 code
