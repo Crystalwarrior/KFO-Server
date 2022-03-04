@@ -2,13 +2,11 @@
 /storage/*.json
 /logs/*.log
 /.spyproject/
-/__pycache__/
-/tests/__pycache__/
+/**/__pycache__/
+/**/__pycache__/*.pyc
 /server/ideas.py
 /server/ideas.MD
 /.coverage
 /.pylint.d/
 /server/.pylint.d/
-/server/__pycache__/
-/server/validate/__pycache__
 /.vscode/

@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-22 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -268,7 +268,8 @@ class _TestClientManager(ClientManager):
             self.receive_command_stc(command_type, *args)
 
         def send_command_cts(self, buffer):
-            self.my_protocol.data_received(buffer.encode('utf-8'))
+            if not self.disconnected:
+                self.my_protocol.data_received(buffer.encode('utf-8'))
 
         def ooc(self, message, username=None):
             if username is None:
@@ -836,18 +837,18 @@ class _TestClientManager(ClientManager):
             if buffer:
                 self.send_command_cts(buffer)
 
+        def get_ipreal(self) -> str:
+            return "127.0.0.1"
+
     def __init__(self, server):
         """ Overwrites client_manager.ClientManager.__init__ """
 
         super().__init__(server, client_obj=self._TestClient)
 
-    def new_client(self, transport, ip=None, my_protocol=None):
+    def new_client(self, transport, my_protocol=None):
         """ Overwrites client_manager.ClientManager.new_client """
 
-        if ip is None:
-            ip = "127.0.0.1"
-        c = super().new_client(transport, client_obj=self._TestClient, ip=ip,
-                               my_protocol=my_protocol)
+        c = super().new_client(transport, client_obj=self._TestClient, my_protocol=my_protocol)
         return c
 
 
@@ -885,6 +886,8 @@ class _TestTsuserverDR(TsuserverDR):
 
     def make_client(self, char_id, hdid='FAKEHDID'):
         c = self.create_client()
+        if c.disconnected:
+            return c
         c.send_command_cts("askchaa#%")
         c.send_command_cts("RC#%")
         c.send_command_cts("RM#%")

@@ -693,3 +693,8 @@
 
 ### 211210a (4.3.0-post4)
 * Fixed /help message adding a trailing period to the URL
+
+### 220304a (4.3.0-post5)
+* Updated copyright notice for year to 2022
+* IPIDs are no longer generated and stored for clients that do not properly follow the AO protocol when logging in
+* Fixed issue that allowed some handshake commands to be accepted out of order

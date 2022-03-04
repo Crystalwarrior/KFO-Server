@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-22 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -171,8 +171,12 @@ def log_pserver(msg, client=None):
 def parse_client_info(client):
     if client is None:
         return ''
-    info = client.get_ip()
     hdid = client.get_hdid()
+    ipid = client.get_ip()
+    if ipid is None:
+        info = None
+    else:
+        info = '{:<15}'.format(ipid)
     if client.is_mod:
-        return '[{:<15}][{}][{}][MOD]'.format(info, hdid, client.id)
-    return '[{:<15}][{}][{}]'.format(info, hdid, client.id)
+        return '[{}][{}][{}][MOD]'.format(info, hdid, client.id)
+    return '[{}][{}][{}]'.format(info, hdid, client.id)
