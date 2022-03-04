@@ -934,6 +934,81 @@ class AreaManager:
                 period = self.server.tasker.get_task_attr(client, ['as_day_cycle'], 'period')
                 return period
 
+        def get_look_output_for(self, client: ClientManager.Client) -> Tuple[bool, str, str]:
+            """
+            Return information about the visual aspect of the current area in accordance to
+            a particular player's perspective.
+
+            Parameters
+            ----------
+            client : ClientManager.Client
+                Player whose perspective will be used.
+
+            Returns
+            -------
+            Tuple[bool, str, str]
+                - First argument is True if information that only GM+ could have obtained is
+                  included in the return, False otherwise.
+                - Second argument is a description of the current area (ignoring whether `client` is
+                  blind or lights are off)
+                - Third argument is a description of the players in the current area that `client`
+                  is entitled to see.
+            """
+
+            elevated = False
+
+            if self.description == self.server.config['default_area_description']:
+                area_description = 'Nothing particularly interesting.'
+            else:
+                area_description = self.description
+
+            players = client.get_visible_clients(self)
+            player_list = list()
+            player_description = ''
+            for player in players:
+                if player.showname:
+                    name = player.showname
+                elif player.char_showname:
+                    name = player.char_showname
+                elif player.char_folder != player.get_char_name():
+                    name = player.char_folder
+                else:
+                    name = player.get_char_name()
+
+                priority = 0
+                if player.status:
+                    priority -= 2**2
+                if player.party and player.party == client.party:
+                    priority -= 2**1
+
+                player_list.append([priority, name, player.id, player])
+                # We add player.id as a tiebreaker if both priority and name are the same
+                # This can be the case if, say, two SPECTATOR are in the same area.
+                # player.id is unique, so it helps break ties
+                # player instances do not have order, so they are a bad way to sort ties.
+
+            player_list.sort()
+            for (_, name, _, player) in player_list:
+                player_description += '\r\n[{}] {}'.format(player.id, name)
+                if player.status:
+                    player_description += ' (!)'
+                if player.party and player.party == client.party:
+                    player_description += ' (P)'
+                if client.is_staff() and len(client.get_multiclients()) > 1:
+                    # If client is multiclienting add (MC) for officers
+                    elevated = True
+                    player_description += ' (MC)'
+                if not player.is_visible:
+                    elevated = True
+                    player_description += ' (S)'
+
+            if not player_description:
+                # This could happen for example, when a player peeks into an area where they cannot
+                # see any player.
+                player_description = 'no one'
+            return elevated, area_description, player_description
+
+
         def unlock(self):
             """
             Unlock the area so that non-authorized players may now join.

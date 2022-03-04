@@ -3497,48 +3497,7 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
         else:
             msg += f'You look at {target.displayname} and note this: {target.status}'
     else:
-        if client.area.description == client.server.config['default_area_description']:
-            area_description = 'Nothing particularly interesting.'
-        else:
-            area_description = client.area.description
-
-        players = client.get_visible_clients(client.area)
-        player_list = list()
-        player_description = ''
-        for player in players:
-            if player.showname:
-                name = player.showname
-            elif player.char_showname:
-                name = player.char_showname
-            elif player.char_folder != player.get_char_name():
-                name = player.char_folder
-            else:
-                name = player.get_char_name()
-
-            priority = 0
-            if player.status:
-                priority -= 2**2
-            if player.party and player.party == client.party:
-                priority -= 2**1
-
-            player_list.append([priority, name, player.id, player])
-            # We add player.id as a tiebreaker if both priority and name are the same
-            # This can be the case if, say, two SPECTATOR are in the same area.
-            # player.id is unique, so it helps break ties
-            # player instances do not have order, so they are a bad way to sort ties.
-
-        player_list.sort()
-        for (_, name, _, player) in player_list:
-            player_description += '\r\n[{}] {}'.format(player.id, name)
-            if player.status:
-                player_description += ' (!)'
-            if player.party and player.party == client.party:
-                player_description += ' (P)'
-            if client.is_staff() and len(client.get_multiclients()) > 1:
-                # If client is multiclienting add (MC) for officers
-                player_description += ' (MC)'
-            if not player.is_visible:
-                player_description += ' (S)'
+        _, area_description, player_description = client.area.get_look_output_for(client)
 
         msg += (
             f'=== Look results for {client.area.name} ===\r\n'
@@ -9805,6 +9764,80 @@ def ooc_cmd_mod_narrate(client: ClientManager.Client, arg: str):
 
     for c in client.area.clients:
         c.send_ic(msg=arg, color=5, bypass_replace=True)
+
+
+def ooc_cmd_peek(client: ClientManager.Client, arg: str):
+    """
+    1. A peek attempt can succeed, fail, or be void.
+2. If you attempt to peek onto an area for which there exists an unlocked passage from the current area, the peek succeeds; if the passage exists but is locked, the peek fails; if the passage doesn't exist/you can't see it, the peek is void.
+3. GMs/Zone watchers get notified on every peek attempt that succeeds or fails, but not on void ones.
+4. If a peek succeeds, then
+4.a. The peeker gets the same information output they would have gotten had they been in the area and done /look
+4.b. If the peeker is not sneaking, the players in the peeked area get warned in IC/OOC that they are being peeked on; if they are sneaking, no such warning occurs.
+4.c. If the peeker is not sneaking, the players in the area of the peeker get warned in IC/OOC that the peeker is peeking on an area; if they are sneaking, no such warning occurs (?)
+5. If a peek fails, then
+5.a. The peeker only gets an IC/OOC warning that the passage is locked
+5.b. Players in the peeked area do not get warned in IC/OOC
+5.c. If the peeker is not sneaking, the players in the area of the peeker get warned in IC/OOC that the peeker is peeking on an area; if they are sneaking, no such warning occurs (?)
+    """
+
+    Constants.assert_command(client, arg, parameters='>0')
+
+    if client.is_blind:
+        raise ClientError('You are blind, so you cannot see anything.')
+
+    # Obtain target area, which also does validation
+    target_area = Constants.parse_area_names(client, [arg])[0]
+    if target_area == client.area:
+        raise ClientError('You cannot peek into your current area.')
+    if target_area.name not in client.area.visible_areas:
+        raise ClientError('You do not see a passage to that area.')
+
+    # Two cases, one if the passage exists; the other if it does not.
+    if target_area.name in client.area.reachable_areas:
+        if target_area.lights:
+            _, area_description, player_description = target_area.get_look_output_for(client)
+            client.send_ooc(
+                f'You peek into area {target_area.name} and note the following:\r\n'
+                f'*About the people in there: you see {player_description}\r\n'
+                f'*About the area: {area_description}'
+            )
+            if client.is_visible:
+                client.send_ooc_others(f'You see {client.displayname} is peeking into area '
+                                       f'{target_area.name}.', to_blind=False,
+                                       in_area=client.area, is_zstaff_flex=False)
+                client.send_ooc_others('You feel as though you are being peeked on.',
+                                       in_area=target_area, is_zstaff_flex=False)
+                client.send_ooc_others(f'(X) {client.displayname} [{client.id}] peeked into area '
+                                       f'{target_area.name} from area {client.area.name} '
+                                       f'({client.area.id}).', is_zstaff_flex=True)
+            else:
+                client.send_ooc_others(f'(X) {client.displayname} [{client.id}] peeked into area '
+                                       f'{target_area.name} from area {client.area.name} '
+                                       f'({client.area.id}) while sneaking.', is_zstaff_flex=True)
+        else:
+            client.send_ooc(f'You peek into area {target_area.name} but cannot see anything as its '
+                            f'lights are out.')
+            client.send_ooc_others(f'(X) {client.displayname} [{client.id}] tried to peek into '
+                                   f'area {target_area.name} from area {client.area.name}, but was '
+                                   f'unable to gather anything meaningful as its lights were out '
+                                   f'({client.area.id}).', is_zstaff_flex=True)
+            client.send_ooc_others(f'You see {client.displayname} is peeking into area '
+                                   f'{target_area.name}.', to_blind=False,
+                                   in_area=client.area, is_zstaff_flex=False,
+                                   pred=lambda c: client in c.get_visible_clients(client.area))
+    else:
+        client.send_ooc(f'You tried to peek into area {target_area.name}, but the passage to it '
+                        f'was locked.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] tried to peek into area '
+                               f'{target_area.name} from area {client.area.name}, but was unable '
+                               f'to as the passage to it was locked ({client.area.id}).',
+                               is_zstaff_flex=True)
+        client.send_ooc_others(f'You see {client.displayname} try to peek into area '
+                               f'{target_area.name}, but fail to do so as the passage to it is '
+                               f'locked.', to_blind=False,
+                               in_area=client.area, is_zstaff_flex=False,
+                               pred=lambda c: client in c.get_visible_clients(client.area))
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
