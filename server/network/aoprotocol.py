@@ -1339,20 +1339,17 @@ class AOProtocol(asyncio.Protocol):
             preflist.remove("arup")
             self.client.send_command("FL", *preflist)
             server_count = 0
-            mod_count = 0
             for hub in self.client.server.hub_manager.hubs:
                 count = 0
                 for c in hub.clients:
                     if not c.area.hide_clients and not c.hidden:
                         count = count + 1
-                        if c.is_mod:
-                            mod_count = mod_count + 1
                 hub.count = count
                 server_count = server_count + hub.count
             self.client.send_command(
                 "FA",
                 *[
-                    f"{self.client.server.config['masterserver_name']}\n Users Online: {server_count} ┆┆ Mods Online: {mod_count}\n Double-Click me to see Areas\n _______",
+                    f"{self.client.server.config['masterserver_name']}\n Users Online: {server_count}\n Double-Click me to see Areas\n _______",
                     *[
                         f"[{hub.id}] {hub.name} (users: {hub.count})"
                         for hub in self.client.server.hub_manager.hubs
