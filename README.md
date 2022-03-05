@@ -3,7 +3,7 @@
 
 A Python-based server for Danganronpa Online. It is a fork from [tsuserver3](https://github.com/AttorneyOnline/tsuserver3) which is targeted towards Attorney Online.
 
-Requires Python 3.7-3.9 and PyYAML (follow instructions below to install).
+Requires Python 3.7-3.10 and PyYAML (follow instructions below to install).
 
 ## How to use
 
