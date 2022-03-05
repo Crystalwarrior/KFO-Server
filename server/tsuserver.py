@@ -20,6 +20,7 @@
 # This class will suffer major reworkings for 4.3
 
 from __future__ import annotations
+from multiprocessing.connection import Client
 from typing import Any, Callable, Dict, List, Tuple
 
 import asyncio
@@ -45,8 +46,8 @@ from server.exceptions import ServerError
 from server.game_manager import GameManager
 from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
-from server.timer_manager import TimerManager
 from server.tasker import Tasker
+from server.timer_manager import TimerManager
 from server.trial_manager import TrialManager
 from server.zone_manager import ZoneManager
 
@@ -100,6 +101,7 @@ class TsuserverDR:
         self.server_select_name = 'SERVER_SELECT'
 
         self.load_config()
+        self.timer_manager = TimerManager(self)
         self.client_manager: ClientManager = client_manager(self)
         self.char_list = list()
         self.load_iniswaps()

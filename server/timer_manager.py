@@ -203,6 +203,8 @@ class Timer:
             If `timer_value > max_timer_value`
         TimerError.InvalidMinTimerValueError
             If `min_timer_value < 0`
+        TimerError.InvalidMaxTimerValueError
+            If `max_timer_value > self.DEF_MAX_TIMER_VALUE`
         TimerError.InvalidTickRateError
             If `tick_rate == 0`
 
@@ -227,6 +229,8 @@ class Timer:
             raise TimerError.TimerTooHighError
         if min_value < 0:
             raise TimerError.InvalidMinTimerValueError
+        if max_value > self.DEF_MAX_TIMER_VALUE:
+            raise TimerError.InvalidMaxTimerValueError
         if tick_rate == 0:
             raise TimerError.InvalidTickRateError
 
@@ -578,6 +582,44 @@ class Timer:
         new_time = self._set_time(self._get() + delta)
         self._check_structure()
         return new_time
+
+    def set_max_value(self, new_max_value: float):
+        """
+        Set the new maximum value of the timer. If the new max value is greater than the current
+        time of the timer, the current time will be set to the max value.
+
+        Parameters
+        ----------
+        new_max_value : float
+            New maximum value of the timer. It must be larger than self.get_min_value(), but not
+            larger than self.DEF_MAX_TIMER_VALUE.
+
+        Raises
+        ------
+        TimerError.InvalidMaxTimerValueError
+            If the new maximum value is less than the minimum value allowed for the timer, or larger
+            than self.DEF_MAX_TIMER_VALUE.
+        """
+
+        if new_max_value < self._min_value:
+            raise TimerError.InvalidMaxTimerValueError
+        if new_max_value > self.DEF_MAX_TIMER_VALUE:
+            raise TimerError.InvalidMaxTimerValueError
+
+        self._max_value = new_max_value
+        self._check_structure()
+
+    def get_max_value(self) -> float:
+        """
+        Return the maximum value of the timer.
+
+        Returns
+        -------
+        float
+            Maximum value of the timer.
+        """
+
+        return self._max_value
 
     def _on_refresh(self, new_time: float, elapsed: float):
         """

@@ -9807,7 +9807,8 @@ def ooc_cmd_peek(client: ClientManager.Client, arg: str):
                                        f'{target_area.name}.', to_blind=False,
                                        in_area=client.area, is_zstaff_flex=False)
                 client.send_ooc_others('You feel as though you are being peeked on.',
-                                       in_area=target_area, is_zstaff_flex=False)
+                                       in_area=target_area, is_zstaff_flex=False,
+                                       pred=lambda _: random.random() < 0.75)
                 client.send_ooc_others(f'(X) {client.displayname} [{client.id}] peeked into area '
                                        f'{target_area.name} from area {client.area.name} '
                                        f'({client.area.id}).', is_zstaff_flex=True)

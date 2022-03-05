@@ -164,6 +164,9 @@ class TimerError(TsuserverException):
     class InvalidMinTimerValueError(TsuserverException):
         pass
 
+    class InvalidMaxTimerValueError(TsuserverException):
+        pass
+
     class InvalidTickRateError(TsuserverException):
         pass
 
