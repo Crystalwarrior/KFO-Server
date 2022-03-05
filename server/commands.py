@@ -9792,9 +9792,19 @@ def ooc_cmd_peek(client: ClientManager.Client, arg: str):
         raise ClientError('You cannot peek into your current area.')
     if target_area.name not in client.area.visible_areas:
         raise ClientError('You do not see a passage to that area.')
+    if target_area.lobby_area:
+        raise ClientError('You cannot peek into lobby areas.')
+    if target_area.private_area:
+        raise ClientError('You cannot peek into private areas.')
 
-    # Two cases, one if the passage exists; the other if it does not.
-    if target_area.name in client.area.reachable_areas:
+    area_lock_ok = not (target_area.is_locked and not client.is_staff()
+                        and client.ipid not in target_area.invite_list)
+    reachable_ok = target_area.name in client.area.reachable_areas
+    # Two cases:
+    # 1. if passage exists and area not locked
+    # 2. Either is not true
+
+    if area_lock_ok and reachable_ok:
         if target_area.lights:
             _, area_description, player_description = target_area.get_look_output_for(client)
             client.send_ooc(
@@ -9835,7 +9845,7 @@ def ooc_cmd_peek(client: ClientManager.Client, arg: str):
                                f'to as the passage to it was locked ({client.area.id}).',
                                is_zstaff_flex=True)
         client.send_ooc_others(f'You see {client.displayname} try to peek into area '
-                               f'{target_area.name}, but fail to do so as the passage to it is '
+                               f'{target_area.name}, but fail to do so as the passage to it was '
                                f'locked.', to_blind=False,
                                in_area=client.area, is_zstaff_flex=False,
                                pred=lambda c: client in c.get_visible_clients(client.area))
