@@ -9851,6 +9851,38 @@ def ooc_cmd_peek(client: ClientManager.Client, arg: str):
                                pred=lambda c: client in c.get_visible_clients(client.area))
 
 
+def ooc_cmd_paranoia(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=2')
+
+    raw_id, raw_paranoia = arg.split(' ')
+    target = Constants.parse_id(client, raw_id)
+    try:
+        paranoia = float(raw_paranoia)
+    except ValueError:
+        raise ClientError('New paranoia value must be a number.')
+    if not (0 <= paranoia <= 100):
+        raise ClientError('New paranoia value must be a number from 0 to 100.')
+
+    target.paranoia = paranoia
+    client.send_ooc(f'You set the paranoia level of {target.displayname} [{target.id}] to '
+                    f'{paranoia}.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set the paranoia level of '
+                           f'{target.displayname} [{target.id}] to {paranoia} ({client.area.id}).',
+                           is_zstaff_flex=True)
+
+
+def ooc_cmd_paranoia_info(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    target = Constants.parse_id(client, arg)
+    if target.paranoia == 2:
+        client.send_ooc(f'The paranoia level of {target.displayname} [{target.id}] is the '
+                        f'default value of 2.')
+    else:
+        client.send_ooc(f'The paranoia level of {target.displayname} [{target.id}] is '
+                        f'{target.paranoia}.')
+
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

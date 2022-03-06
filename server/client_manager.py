@@ -125,6 +125,7 @@ class ClientManager:
             self.can_bypass_iclock = False
             self.char_log = list()
             self.ignored_players = set()
+            self.paranoia = 2
 
             # Pairing stuff
             self.charid_pair = -1
@@ -2011,17 +2012,17 @@ class ClientManager:
         self.client_obj = client_obj
 
         # Phantom peek timer stuff
-        self._phantom_peek_timer_min = 300 - 300/2
-        self._phantom_peek_timer_max = 300 + 300/2
-        self._phantom_peek_fuzz_per_client = 10
-        self._phantom_peek_probability = 0.02
+        base_time = 300
+        self._phantom_peek_timer_min = base_time - base_time/2
+        self._phantom_peek_timer_max = base_time + base_time/2
+        self._phantom_peek_fuzz_per_client = base_time/2
         self.phantom_peek_timer = self.server.timer_manager.new_timer(
             auto_restart=True,
             max_value=random.randint(self._phantom_peek_timer_min, self._phantom_peek_timer_max))
 
         def _phantom_peek():
             for client in self.clients:
-                if random.random() < self._phantom_peek_probability:
+                if random.random() < client.paranoia:
                     delay = random.randint(0, self._phantom_peek_fuzz_per_client)
                     self.server.tasker.create_task(client, ['as_phantom_peek', delay])
             self.phantom_peek_timer.set_max_value(

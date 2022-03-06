@@ -989,7 +989,7 @@ class AreaManager:
 
             player_list.sort()
             for (_, name, _, player) in player_list:
-                player_description += '\r\n[{}] {}'.format(player.id, name)
+                player_description += f'\r\n[{player.id}] {name}'
                 if player.status:
                     player_description += ' (!)'
                 if player.party and player.party == client.party:
