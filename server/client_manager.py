@@ -2011,10 +2011,10 @@ class ClientManager:
         self.client_obj = client_obj
 
         # Phantom peek timer stuff
-        self._phantom_peek_timer_min = 150
-        self._phantom_peek_timer_max = 150 + 150*2
+        self._phantom_peek_timer_min = 300 - 300/2
+        self._phantom_peek_timer_max = 300 + 300/2
         self._phantom_peek_fuzz_per_client = 10
-        self._phantom_peek_probability = 0.01
+        self._phantom_peek_probability = 0.02
         self.phantom_peek_timer = self.server.timer_manager.new_timer(
             auto_restart=True,
             max_value=random.randint(self._phantom_peek_timer_min, self._phantom_peek_timer_max))
