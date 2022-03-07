@@ -2012,21 +2012,31 @@ class ClientManager:
         self.client_obj = client_obj
 
         # Phantom peek timer stuff
-        base_time = 300
-        self._phantom_peek_timer_min = base_time - base_time/2
-        self._phantom_peek_timer_max = base_time + base_time/2
-        self._phantom_peek_fuzz_per_client = base_time/2
+        base_time = 3
+        _phantom_peek_timer_min = base_time - base_time/2
+        _phantom_peek_timer_max = base_time + base_time/2
+        _phantom_peek_fuzz_per_client = base_time/2
         self.phantom_peek_timer = self.server.timer_manager.new_timer(
             auto_restart=True,
-            max_value=random.randint(self._phantom_peek_timer_min, self._phantom_peek_timer_max))
+            max_value=random.randint(int(_phantom_peek_timer_min), int(_phantom_peek_timer_max))
+            )
 
         def _phantom_peek():
             for client in self.clients:
-                if random.random() < client.paranoia:
-                    delay = random.randint(0, self._phantom_peek_fuzz_per_client)
+                if client.char_id is None:
+                    # Only makes sense for proper players
+                    continue
+                zone = client.area.in_zone
+                if zone and zone.is_property('Paranoia'):
+                    zone_paranoia, = zone.get_property('Paranoia')
+                else:
+                    zone_paranoia = 0
+                threshold = (client.paranoia+zone_paranoia)/100
+                if random.random() < threshold:
+                    delay = random.randint(0, int(_phantom_peek_fuzz_per_client)-1)
                     self.server.tasker.create_task(client, ['as_phantom_peek', delay])
             self.phantom_peek_timer.set_max_value(
-                random.randint(self._phantom_peek_timer_min, self._phantom_peek_timer_max)
+                random.randint(int(_phantom_peek_timer_min), int(_phantom_peek_timer_max))
             )
 
         self.phantom_peek_timer._on_max_end = _phantom_peek

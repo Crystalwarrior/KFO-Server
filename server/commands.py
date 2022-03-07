@@ -9859,15 +9859,16 @@ def ooc_cmd_paranoia(client: ClientManager.Client, arg: str):
     try:
         paranoia = float(raw_paranoia)
     except ValueError:
-        raise ClientError('New paranoia value must be a number.')
-    if not (0 <= paranoia <= 100):
-        raise ClientError('New paranoia value must be a number from 0 to 100.')
+        raise ClientError('New player paranoia value must be a number.')
+    if not (-100 <= paranoia <= 100):
+        raise ClientError('New player paranoia value must be a number from 0 to 100.')
 
     target.paranoia = paranoia
-    client.send_ooc(f'You set the paranoia level of {target.displayname} [{target.id}] to '
+    client.send_ooc(f'You set the player paranoia level of {target.displayname} [{target.id}] to '
                     f'{paranoia}.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set the paranoia level of '
-                           f'{target.displayname} [{target.id}] to {paranoia} ({client.area.id}).',
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set the player paranoia level '
+                           f'of {target.displayname} [{target.id}] to {paranoia} '
+                           f'({client.area.id}).',
                            is_zstaff_flex=True)
 
 
@@ -9877,10 +9878,49 @@ def ooc_cmd_paranoia_info(client: ClientManager.Client, arg: str):
     target = Constants.parse_id(client, arg)
     if target.paranoia == 2:
         client.send_ooc(f'The paranoia level of {target.displayname} [{target.id}] is the '
-                        f'default value of 2.')
+                        f'default level of 2.')
     else:
         client.send_ooc(f'The paranoia level of {target.displayname} [{target.id}] is '
                         f'{target.paranoia}.')
+
+
+def ooc_cmd_zone_paranoia(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+
+    try:
+        paranoia = float(arg)
+    except ValueError:
+        raise ClientError('New zone paranoia level must be a number.')
+    if not (-100 <= paranoia <= 100):
+        raise ClientError('New zone paranoia level must be a number from -100 to 100.')
+
+    zone.set_property('Paranoia', (paranoia,))
+    client.send_ooc(f'You set the zone paranoia level of your zone to '
+                    f'{paranoia}.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set the zone paranoia level of '
+                           f'your zone to {paranoia} ({client.area.id}).',
+                           is_zstaff=True)
+
+
+def ooc_cmd_zone_paranoia_info(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+
+    try:
+        paranoia, = zone.get_property('Paranoia')
+    except ZoneError.PropertyNotFoundError:
+        raise ClientError('Your zone has not set a zone paranoia level.')
+    else:
+        client.send_ooc(f'The paranoia level of your zone is {paranoia}.')
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
