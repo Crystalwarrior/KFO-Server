@@ -462,6 +462,8 @@ GMs can:
     - Plays a song, even if not in the server music list.
 * **poison** "ID" "initials of effects" "length"
     - Applies a poison to the target that will inflict them in the given length of time in seconds the given effects.
+* **pos_force** "position" "ID"
+    - Changes the IC position of a target by ID to the given one, or the one of all players in an area if not given a target.
 * **reveal** "ID"
     - Reveals a target if they were previously sneaking.
     - Also restores their formerly assigned handicap if they had one that was shorter than the server's automatic sneaking handicap.
@@ -740,6 +742,7 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 * **timer_cancel**: Same as /timer_end. (D) (Deprecated July 5, 2021)
 * **fa**: Same as /files_area.
 * **l**: Same as /look.
+* **forcepos**: Same as /pos_force.
 
 #### GM+
 

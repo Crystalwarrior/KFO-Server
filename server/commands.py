@@ -9807,6 +9807,61 @@ def ooc_cmd_mod_narrate(client: ClientManager.Client, arg: str):
         c.send_ic(msg=arg, color=5, bypass_replace=True)
 
 
+def ooc_cmd_pos_force(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Changes the IC position of a particular player, or all players in your current area if not
+    specified, to the given one.
+    Returns an error if the position is not a valid position, or if the given identifier does not
+    correspond to a user.
+
+    SYNTAX
+    /pos_force <position> {client_id}
+
+    PARAMETERS
+    <position>: Either def, pro, hld, hlp, jud, wit
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /pos_force pro    :: Changes the position of all players in your current area to pro.
+    /pos_force wit 2  :: Changes the position of player with client ID 2 to wit.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='&1-2')
+
+    args = arg.split(' ')
+    pos = args[0]
+    if pos not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
+        raise ClientError('Invalid position. '
+                          'Possible values: def, pro, hld, hlp, jud, wit.')
+
+    if len(args) == 2:
+        targets = [Constants.parse_id(client, args[1])]
+        all_in_area = False
+    else:
+        targets = client.area.clients
+        all_in_area = True
+
+    for target in targets:
+        target.change_position(pos)
+        target.area.broadcast_evidence_list()
+
+    if all_in_area:
+        client.send_ooc(f'You forced all players in your area to be in position {pos}.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] forced the position of all '
+                               f'players in area {client.area.name} to {pos} ({client.area.id}).',
+                               is_zstaff_flex=True)
+    else:
+        client.send_ooc(f'You forced {client.displayname} [{client.id}] to be in position {pos}.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] forced the position of '
+                               f'{targets[0].displayname} [{targets[0].id}] to {pos} '
+                               f'({client.area.id}).',
+                               is_zstaff_flex=True)
+    client.send_ooc_others(f'Your position was changed to {pos}.',
+                           is_zstaff_flex=False, part_of=targets)
+
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.

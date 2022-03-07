@@ -198,3 +198,11 @@ def ooc_cmd_l(client, arg):
     """
 
     do_command('look', client, arg)
+
+
+def ooc_cmd_forcepos(client, arg):
+    """
+    Alias for /pos_force.
+    """
+
+    do_command('pos_force', client, arg)

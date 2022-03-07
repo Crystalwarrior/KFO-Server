@@ -701,3 +701,4 @@
 
 ### (4.3.1)
 * Added `visible_areas` support to `areas.yaml`. If included in an area, it will set the areas visible to a player in the area. By default it is the same as the reachable areas
+* Added /pos_force (alias /forcepos), which changes the IC position to a given position of a target player if given, or all players in the current area otherwise
