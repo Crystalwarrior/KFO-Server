@@ -629,6 +629,8 @@ class Tasker:
                 return
             if client.area.lobby_area:
                 return
+            if client.area.private_area:
+                return
             if client.is_staff():
                 return
             if client.char_id is None or client.char_id < 0:

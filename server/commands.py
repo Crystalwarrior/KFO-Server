@@ -9321,6 +9321,7 @@ def ooc_cmd_zone_mode(client: ClientManager.Client, arg: str):
     Players part of an area in the zone are ordered to switch to this gamemode. Players later
     entering an area part of the zone from an area outside of it will be ordered to switch
     to this gamemode.
+    Returns an error if the user is not watching a zone.
 
     SYNTAX
     /zone_mode {gamemode}
@@ -9358,6 +9359,7 @@ def ooc_cmd_zone_play(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Plays a given track in all areas of the zone, even if not explicitly in the music list.
     It is the way to play custom music in all areas of a zone simultaneously.
+    Returns an error if the user is not watching a zone.
 
     SYNTAX
     /zone_play <track_name>
@@ -9768,17 +9770,27 @@ def ooc_cmd_mod_narrate(client: ClientManager.Client, arg: str):
 
 def ooc_cmd_peek(client: ClientManager.Client, arg: str):
     """
-    1. A peek attempt can succeed, fail, or be void.
-2. If you attempt to peek onto an area for which there exists an unlocked passage from the current area, the peek succeeds; if the passage exists but is locked, the peek fails; if the passage doesn't exist/you can't see it, the peek is void.
-3. GMs/Zone watchers get notified on every peek attempt that succeeds or fails, but not on void ones.
-4. If a peek succeeds, then
-4.a. The peeker gets the same information output they would have gotten had they been in the area and done /look
-4.b. If the peeker is not sneaking, the players in the peeked area get warned in IC/OOC that they are being peeked on; if they are sneaking, no such warning occurs.
-4.c. If the peeker is not sneaking, the players in the area of the peeker get warned in IC/OOC that the peeker is peeking on an area; if they are sneaking, no such warning occurs (?)
-5. If a peek fails, then
-5.a. The peeker only gets an IC/OOC warning that the passage is locked
-5.b. Players in the peeked area do not get warned in IC/OOC
-5.c. If the peeker is not sneaking, the players in the area of the peeker get warned in IC/OOC that the peeker is peeking on an area; if they are sneaking, no such warning occurs (?)
+    Obtains information about an area visible from the current area equivalent to doing /look there.
+    If the area is not locked, there is an unlocked passage connecting it to the current area, and
+    the target area's lights are on, the peek succeeds, and players in the area are notified that
+    a peek occurred with a 75% chance each, provided the peeker is not sneaking, the player is not
+    blind and the area's lights are turned on; otherwise, no notification is sent.
+    Otherwise, the peek fails, and no notifications are sent to players in the area.
+    If the peek succeeds or fails (but is not void), zone watchers are notified of the attempt, and
+    so are players in the same area as the peeker, provided such players are able to see the peeker
+    via /look.
+    Returns an error if the player is blind, or tries to peek into their current area or into an
+    area that is a private area, a lobby area, or an area with no visible passage from the current
+    area.
+
+    SYNTAX
+    /peek <area_id>
+
+    PARAMETERS
+    <area_id>: ID of the area whose door you want to peek.
+
+    EXAMPLES
+    /peek 1                :: Peek into area 1
     """
 
     Constants.assert_command(client, arg, parameters='>0')
@@ -9852,6 +9864,33 @@ def ooc_cmd_peek(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_paranoia(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Changes the player paranoia level of a player by client ID, which affects the probability a
+    player receives a phantom peek message every phantom peek cycle. The player paranoia level
+    is a percentage from -100 to 100, by default 2.
+    A phantom peek message is a message that looks like one received from being an area that was
+    just peeked into.
+    A phantom peek cycle is a cycle of a length randomly chosen between 150 to 450 seconds, after
+    which the server, with probability "player paranoia + zone paranoia", starts a timer of length
+    a random number less than 150 seconds, after which it sends the player a phantom peek message
+    if they are not blind and not staff, in an area that is not a lobby or private area, and they
+    have a valid character selected. A new phantom peek cycle is restarted regardless of success
+    after the old one expires.
+    Returns an error if the given identifier does not correspond to a user, or if the new player
+    paranoia level is not a number from -100 to 100.
+
+    SYNTAX
+    /paranoia <client_id> <player_paranoia_level>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <player_paranoia_level>: New intended player paranoia level
+
+    EXAMPLES
+    /paranoia 2 5      :: Set the player paranoia level of player with ID 2 to 5%.
+    /paranoia 10 -10   :: Set the player paranoia level of player with ID 10 to -10%.
+    """
+
     Constants.assert_command(client, arg, is_staff=True, parameters='=2')
 
     raw_id, raw_paranoia = arg.split(' ')
@@ -9873,6 +9912,20 @@ def ooc_cmd_paranoia(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_paranoia_info(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Gets the current player paranoia level by client ID.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /paranoia_info <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /paranoia_info 7     :: Get the player paranoia level of player with client ID 7.
+    """
+
     Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     target = Constants.parse_id(client, arg)
@@ -9885,6 +9938,33 @@ def ooc_cmd_paranoia_info(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_zone_paranoia(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Changes the zone paranoia level of the zone you are watching, which affects the probability a
+    player receives a phantom peek message every phantom peek cycle. The zone paranoia level
+    is a percentage from -100 to 100, by default 0 (including if not set).
+    A phantom peek message is a message that looks like one received from being an area that was
+    just peeked into.
+    A phantom peek cycle is a cycle of a length randomly chosen between 150 to 450 seconds, after
+    which the server, with probability "player paranoia + zone paranoia", starts a timer of length
+    a random number less than 150 seconds, after which it sends the player a phantom peek message
+    if they are not blind and not staff, in an area that is not a lobby or private area, and they
+    have a valid character selected. A new phantom peek cycle is restarted regardless of success
+    after the old one expires.
+    Returns an error if you are not watching a zone, or if the new zone paranoia level is not a
+    number from -100 to 100.
+
+    SYNTAX
+    /zone_paranoia <zone_paranoia_level>
+
+    PARAMETERS
+    <zone_paranoia_level>: New intended player paranoia level
+
+    EXAMPLES
+    Assuming the player is watching zome z0...
+    /zone_paranoia_level 5      :: Set the zone paranoia level of zone z0 to 5%.
+    /pzone_paranoia_level -10   :: Set the zone paranoia level of zone z0 to -10%.
+    """
+
     Constants.assert_command(client, arg, is_staff=True, parameters='=1')
 
     if not client.zone_watched:
@@ -9908,6 +9988,21 @@ def ooc_cmd_zone_paranoia(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_zone_paranoia_info(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Gets the zone paranoia level of the zone you are watching.
+    Returns an error if you are not watching a zone.
+
+    SYNTAX
+    /zone_paranoia_info
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    Assuming you are watching zone z0...
+    /zone_paranoia_info     :: Get the zone paranoia level of zone z0
+    """
+
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     if not client.zone_watched:
