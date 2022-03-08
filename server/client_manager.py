@@ -2013,7 +2013,7 @@ class ClientManager:
         self.client_obj = client_obj
 
         # Phantom peek timer stuff
-        base_time = 3
+        base_time = 300
         _phantom_peek_timer_min = base_time - base_time/2
         _phantom_peek_timer_max = base_time + base_time/2
         _phantom_peek_fuzz_per_client = base_time/2

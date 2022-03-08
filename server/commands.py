@@ -10134,6 +10134,54 @@ def ooc_cmd_notecard_info(client: ClientManager.Client, arg: str):
                         f'`{target.notecard}`.')
 
 
+def ooc_cmd_notecard_check(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    with_notecards = [target for target in client.area.clients if target.notecard]
+    if not with_notecards:
+        raise ClientError('No players in the area have any notecards.')
+
+    output = ''
+    for target in sorted(with_notecards):
+        output += f'\r\n[{target.id}] {target.displayname}: {target.notecard}'
+
+    client.send_ooc(f'== Notecards in the current area =='
+                    f'{output}')
+
+
+def ooc_cmd_notecard_list(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    with_notecards = [target for target in client.server.get_clients() if target.notecard]
+    if not with_notecards:
+        raise ClientError('No players in the server have any notecards.')
+
+    output = ''
+    for target in sorted(with_notecards):
+        output += f'\r\n[{target.id}] {target.displayname} ({target.area.id}): {target.notecard}'
+
+    client.send_ooc(f'== Active notecards =='
+                    f'{output}')
+
+
+def ooc_cmd_notecard_reveal(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    with_notecards = [target for target in client.area.clients if target.notecard]
+    if not with_notecards:
+        raise ClientError('No players in the area have any notecards.')
+
+    output = ''
+    for target in sorted(with_notecards):
+        output += f'\r\n[{target.id}] {target.displayname}: {target.notecard}'
+
+    client.send_ooc('You revealed all notecards in the area.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] revealed all notecards in '
+                           f'area {client.area.name} ({client.area.id}).', is_zstaff_flex=True)
+    client.area.broadcast_ooc(f'Notecards in the area were revealed: '
+                              f'{output}')
+
+
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
     VERY DANGEROUS. SHOULD ONLY BE ENABLED FOR DEBUGGING.
