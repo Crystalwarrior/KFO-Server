@@ -213,6 +213,9 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Sends an IC private message to everyone in the party.
     - Other people in the area are warned that a whisper has taken place (but not the message content). However, staff members do get message contents, so this command should only be used in RP settings.
 	- Messages are limited to 256 characters.
+* **peek** "area ID"
+    - Peeks into an area visible to you, returning information that would have been available had you done /look there.
+    - Successful peeks have a 75% chance to notify of the peek having taken place for each player in the target area.
 * **ping**
     - Returns "Pong", used to check for server connection.
 * **play** "song.mp3"
@@ -448,6 +451,11 @@ GMs can:
     - Sets the NSD you lead to be in the mode prior to intermission mode: if it was recording mode, previously recorded messages will be saved and future messages will be saved on top of the older ones; if it was looping, messages will be played from the first one.
 * **nsd_unlead**
     - Removes your NSD leader role.
+* **paranoia** "player ID" "paranoia level"
+    - Sets the player paranoia level (by default 2) of a player to the new level.
+    - Paranoia level is a number from -100 to 100, and is internally added to the paranoia level of the player's current zone (if any) to determine the probability they occasionaly get phantom peek messages.
+* **paranoia_info** "player ID"
+    - Gets the player paranoia level of a player.
 * **party_end** "party ID"
     - Ends a party.
 * **party_join** "party ID"
@@ -578,6 +586,11 @@ GMs can:
     - Sets up the gamemode of your zone, or clears it if not given one.
     - Players in an area part of the zone will be ordered to switch to that gamemode's version of their theme.
     - Gamemodes are automatically made all lowercase.
+* **zone_paranoia** "paranoia level"
+    - Sets the zone paranoia level (by default 2) of the zone you are watching to the new level.
+    - Paranoia level is a number from -100 to 100, and is internally added to a player paranoia's level to determine the probability percentage they occasionaly get phantom peek messages.
+* **zone_paranoia_info**
+    - Gets the zone paranoia level of the zone you are watching.
 * **zone_play**
     - Plays a track in all areas in the zone you are watching.
 * **zone_remove** "area"

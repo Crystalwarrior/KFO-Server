@@ -17,6 +17,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import annotations
+
 import typing
 from typing import Any, Callable, List, Optional, Set, Tuple, Dict
 if typing.TYPE_CHECKING:
@@ -26,6 +27,7 @@ if typing.TYPE_CHECKING:
     from server.zone_manager import ZoneManager
 
 import datetime
+import random
 import time
 
 from server import clients
@@ -35,6 +37,7 @@ from server import logger
 from server.exceptions import AreaError, ClientError, GameError, PartyError, TrialError
 from server.constants import TargetType, Constants
 from server.subscriber import Publisher
+from server.timer_manager import TimerManager
 
 
 class ClientManager:
@@ -122,6 +125,7 @@ class ClientManager:
             self.can_bypass_iclock = False
             self.char_log = list()
             self.ignored_players = set()
+            self.paranoia = 2
 
             # Pairing stuff
             self.charid_pair = -1
@@ -2002,10 +2006,41 @@ class ClientManager:
         if client_obj is None:
             self.client_obj = self.Client
 
-        self.clients = set()
+        self.clients: Set[client_obj] = set()
         self.server = server
         self.cur_id = [False] * self.server.config['playerlimit']
         self.client_obj = client_obj
+
+        # Phantom peek timer stuff
+        base_time = 3
+        _phantom_peek_timer_min = base_time - base_time/2
+        _phantom_peek_timer_max = base_time + base_time/2
+        _phantom_peek_fuzz_per_client = base_time/2
+        self.phantom_peek_timer = self.server.timer_manager.new_timer(
+            auto_restart=True,
+            max_value=random.randint(int(_phantom_peek_timer_min), int(_phantom_peek_timer_max))
+            )
+
+        def _phantom_peek():
+            for client in self.clients:
+                if client.char_id is None:
+                    # Only makes sense for proper players
+                    continue
+                zone = client.area.in_zone
+                if zone and zone.is_property('Paranoia'):
+                    zone_paranoia, = zone.get_property('Paranoia')
+                else:
+                    zone_paranoia = 0
+                threshold = (client.paranoia+zone_paranoia)/100
+                if random.random() < threshold:
+                    delay = random.randint(0, int(_phantom_peek_fuzz_per_client)-1)
+                    self.server.tasker.create_task(client, ['as_phantom_peek', delay])
+            self.phantom_peek_timer.set_max_value(
+                random.randint(int(_phantom_peek_timer_min), int(_phantom_peek_timer_max))
+            )
+
+        self.phantom_peek_timer._on_max_end = _phantom_peek
+        self.phantom_peek_timer.start()
 
     def new_client(self, transport, client_obj: typing.Type[ClientManager.Client] = None,
                    my_protocol=None):

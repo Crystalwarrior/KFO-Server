@@ -701,4 +701,10 @@
 
 ### (4.3.1)
 * Added `visible_areas` support to `areas.yaml`. If included in an area, it will set the areas visible to a player in the area. By default it is the same as the reachable areas
+* Added /peek, which allows players to gather information about an area nearby, potentially warning users in the target area of the peek
+* Added the concept of player paranoia and zone paranoia, which sends fake indications of a player being peeked roughly every 300 seconds with probability equal to the sum of both paranoias (by default 2% and 0% respectively) via commands
+  - /paranoia
+  - /paranoia_info
+  - /zone_paranoia
+  - /zone_paranoia_info
 * Added /pos_force (alias /forcepos), which changes the IC position to a given position of a target player if given, or all players in the current area otherwise

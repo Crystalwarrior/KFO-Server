@@ -3497,48 +3497,7 @@ def ooc_cmd_look(client: ClientManager.Client, arg: str):
         else:
             msg += f'You look at {target.displayname} and note this: {target.status}'
     else:
-        if client.area.description == client.server.config['default_area_description']:
-            area_description = 'Nothing particularly interesting.'
-        else:
-            area_description = client.area.description
-
-        players = client.get_visible_clients(client.area)
-        player_list = list()
-        player_description = ''
-        for player in players:
-            if player.showname:
-                name = player.showname
-            elif player.char_showname:
-                name = player.char_showname
-            elif player.char_folder != player.get_char_name():
-                name = player.char_folder
-            else:
-                name = player.get_char_name()
-
-            priority = 0
-            if player.status:
-                priority -= 2**2
-            if player.party and player.party == client.party:
-                priority -= 2**1
-
-            player_list.append([priority, name, player.id, player])
-            # We add player.id as a tiebreaker if both priority and name are the same
-            # This can be the case if, say, two SPECTATOR are in the same area.
-            # player.id is unique, so it helps break ties
-            # player instances do not have order, so they are a bad way to sort ties.
-
-        player_list.sort()
-        for (_, name, _, player) in player_list:
-            player_description += '\r\n[{}] {}'.format(player.id, name)
-            if player.status:
-                player_description += ' (!)'
-            if player.party and player.party == client.party:
-                player_description += ' (P)'
-            if client.is_staff() and len(client.get_multiclients()) > 1:
-                # If client is multiclienting add (MC) for officers
-                player_description += ' (MC)'
-            if not player.is_visible:
-                player_description += ' (S)'
+        _, area_description, player_description = client.area.get_look_output_for(client)
 
         msg += (
             f'=== Look results for {client.area.name} ===\r\n'
@@ -9362,6 +9321,7 @@ def ooc_cmd_zone_mode(client: ClientManager.Client, arg: str):
     Players part of an area in the zone are ordered to switch to this gamemode. Players later
     entering an area part of the zone from an area outside of it will be ordered to switch
     to this gamemode.
+    Returns an error if the user is not watching a zone.
 
     SYNTAX
     /zone_mode {gamemode}
@@ -9399,6 +9359,7 @@ def ooc_cmd_zone_play(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Plays a given track in all areas of the zone, even if not explicitly in the music list.
     It is the way to play custom music in all areas of a zone simultaneously.
+    Returns an error if the user is not watching a zone.
 
     SYNTAX
     /zone_play <track_name>
@@ -9807,6 +9768,256 @@ def ooc_cmd_mod_narrate(client: ClientManager.Client, arg: str):
         c.send_ic(msg=arg, color=5, bypass_replace=True)
 
 
+def ooc_cmd_peek(client: ClientManager.Client, arg: str):
+    """
+    Obtains information about an area visible from the current area equivalent to doing /look there.
+    If the area is not locked, there is an unlocked passage connecting it to the current area, and
+    the target area's lights are on, the peek succeeds, and players in the area are notified that
+    a peek occurred with a 75% chance each, provided the peeker is not sneaking, the player is not
+    blind and the area's lights are turned on; otherwise, no notification is sent.
+    Otherwise, the peek fails, and no notifications are sent to players in the area.
+    If the peek succeeds or fails (but is not void), zone watchers are notified of the attempt, and
+    so are players in the same area as the peeker, provided such players are able to see the peeker
+    via /look.
+    Returns an error if the player is blind, or tries to peek into their current area or into an
+    area that is a private area, a lobby area, or an area with no visible passage from the current
+    area.
+
+    SYNTAX
+    /peek <area_id>
+
+    PARAMETERS
+    <area_id>: ID of the area whose door you want to peek.
+
+    EXAMPLES
+    /peek 1                :: Peek into area 1
+    """
+
+    Constants.assert_command(client, arg, parameters='>0')
+
+    if client.is_blind:
+        raise ClientError('You are blind, so you cannot see anything.')
+
+    # Obtain target area, which also does validation
+    target_area = Constants.parse_area_names(client, [arg])[0]
+    if target_area == client.area:
+        raise ClientError('You cannot peek into your current area.')
+    if target_area.name not in client.area.visible_areas:
+        raise ClientError('You do not see a passage to that area.')
+    if target_area.lobby_area:
+        raise ClientError('You cannot peek into lobby areas.')
+    if target_area.private_area:
+        raise ClientError('You cannot peek into private areas.')
+
+    area_lock_ok = not (target_area.is_locked and not client.is_staff()
+                        and client.ipid not in target_area.invite_list)
+    reachable_ok = target_area.name in client.area.reachable_areas
+    # Two cases:
+    # 1. if passage exists and area not locked
+    # 2. Either is not true
+
+    if area_lock_ok and reachable_ok:
+        if target_area.lights:
+            _, area_description, player_description = target_area.get_look_output_for(client)
+            client.send_ooc(
+                f'You peek into area {target_area.name} and note the following:\r\n'
+                f'*About the people in there: you see {player_description}\r\n'
+                f'*About the area: {area_description}'
+            )
+            if client.is_visible:
+                client.send_ooc_others(f'You see {client.displayname} is peeking into area '
+                                       f'{target_area.name}.', to_blind=False,
+                                       in_area=client.area, is_zstaff_flex=False)
+                client.send_ooc_others('You feel as though you are being peeked on.',
+                                       in_area=target_area, is_zstaff_flex=False,
+                                       pred=lambda _: random.random() < 0.75)
+                client.send_ooc_others(f'(X) {client.displayname} [{client.id}] peeked into area '
+                                       f'{target_area.name} from area {client.area.name} '
+                                       f'({client.area.id}).', is_zstaff_flex=True)
+            else:
+                client.send_ooc_others(f'(X) {client.displayname} [{client.id}] peeked into area '
+                                       f'{target_area.name} from area {client.area.name} '
+                                       f'({client.area.id}) while sneaking.', is_zstaff_flex=True)
+        else:
+            client.send_ooc(f'You peek into area {target_area.name} but cannot see anything as its '
+                            f'lights are out.')
+            client.send_ooc_others(f'(X) {client.displayname} [{client.id}] tried to peek into '
+                                   f'area {target_area.name} from area {client.area.name}, but was '
+                                   f'unable to gather anything meaningful as its lights were out '
+                                   f'({client.area.id}).', is_zstaff_flex=True)
+            client.send_ooc_others(f'You see {client.displayname} is peeking into area '
+                                   f'{target_area.name}.', to_blind=False,
+                                   in_area=client.area, is_zstaff_flex=False,
+                                   pred=lambda c: client in c.get_visible_clients(client.area))
+    else:
+        client.send_ooc(f'You tried to peek into area {target_area.name}, but the passage to it '
+                        f'was locked.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] tried to peek into area '
+                               f'{target_area.name} from area {client.area.name}, but was unable '
+                               f'to as the passage to it was locked ({client.area.id}).',
+                               is_zstaff_flex=True)
+        client.send_ooc_others(f'You see {client.displayname} try to peek into area '
+                               f'{target_area.name}, but fail to do so as the passage to it was '
+                               f'locked.', to_blind=False,
+                               in_area=client.area, is_zstaff_flex=False,
+                               pred=lambda c: client in c.get_visible_clients(client.area))
+
+
+def ooc_cmd_paranoia(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Changes the player paranoia level of a player by client ID, which affects the probability a
+    player receives a phantom peek message every phantom peek cycle. The player paranoia level
+    is a percentage from -100 to 100, by default 2.
+    A phantom peek message is a message that looks like one received from being an area that was
+    just peeked into.
+    A phantom peek cycle is a cycle of a length randomly chosen between 150 to 450 seconds, after
+    which the server, with probability "player paranoia + zone paranoia", starts a timer of length
+    a random number less than 150 seconds, after which it sends the player a phantom peek message
+    if they are not blind and not staff, in an area that is not a lobby or private area, and they
+    have a valid character selected. A new phantom peek cycle is restarted regardless of success
+    after the old one expires.
+    Returns an error if the given identifier does not correspond to a user, or if the new player
+    paranoia level is not a number from -100 to 100.
+
+    SYNTAX
+    /paranoia <client_id> <player_paranoia_level>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <player_paranoia_level>: New intended player paranoia level
+
+    EXAMPLES
+    /paranoia 2 5      :: Set the player paranoia level of player with ID 2 to 5%.
+    /paranoia 10 -10   :: Set the player paranoia level of player with ID 10 to -10%.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=2')
+
+    raw_id, raw_paranoia = arg.split(' ')
+    target = Constants.parse_id(client, raw_id)
+    try:
+        paranoia = float(raw_paranoia)
+    except ValueError:
+        raise ClientError('New player paranoia value must be a number.')
+    if not (-100 <= paranoia <= 100):
+        raise ClientError('New player paranoia value must be a number from 0 to 100.')
+
+    target.paranoia = paranoia
+    client.send_ooc(f'You set the player paranoia level of {target.displayname} [{target.id}] to '
+                    f'{paranoia}.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set the player paranoia level '
+                           f'of {target.displayname} [{target.id}] to {paranoia} '
+                           f'({client.area.id}).',
+                           is_zstaff_flex=True)
+
+
+def ooc_cmd_paranoia_info(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Gets the current player paranoia level by client ID.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /paranoia_info <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /paranoia_info 7     :: Get the player paranoia level of player with client ID 7.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    target = Constants.parse_id(client, arg)
+    if target.paranoia == 2:
+        client.send_ooc(f'The paranoia level of {target.displayname} [{target.id}] is the '
+                        f'default level of 2.')
+    else:
+        client.send_ooc(f'The paranoia level of {target.displayname} [{target.id}] is '
+                        f'{target.paranoia}.')
+
+
+def ooc_cmd_zone_paranoia(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Changes the zone paranoia level of the zone you are watching, which affects the probability a
+    player receives a phantom peek message every phantom peek cycle. The zone paranoia level
+    is a percentage from -100 to 100, by default 0 (including if not set).
+    A phantom peek message is a message that looks like one received from being an area that was
+    just peeked into.
+    A phantom peek cycle is a cycle of a length randomly chosen between 150 to 450 seconds, after
+    which the server, with probability "player paranoia + zone paranoia", starts a timer of length
+    a random number less than 150 seconds, after which it sends the player a phantom peek message
+    if they are not blind and not staff, in an area that is not a lobby or private area, and they
+    have a valid character selected. A new phantom peek cycle is restarted regardless of success
+    after the old one expires.
+    Returns an error if you are not watching a zone, or if the new zone paranoia level is not a
+    number from -100 to 100.
+
+    SYNTAX
+    /zone_paranoia <zone_paranoia_level>
+
+    PARAMETERS
+    <zone_paranoia_level>: New intended player paranoia level
+
+    EXAMPLES
+    Assuming the player is watching zome z0...
+    /zone_paranoia_level 5      :: Set the zone paranoia level of zone z0 to 5%.
+    /pzone_paranoia_level -10   :: Set the zone paranoia level of zone z0 to -10%.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+
+    try:
+        paranoia = float(arg)
+    except ValueError:
+        raise ClientError('New zone paranoia level must be a number.')
+    if not (-100 <= paranoia <= 100):
+        raise ClientError('New zone paranoia level must be a number from -100 to 100.')
+
+    zone.set_property('Paranoia', (paranoia,))
+    client.send_ooc(f'You set the zone paranoia level of your zone to '
+                    f'{paranoia}.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set the zone paranoia level of '
+                           f'your zone to {paranoia} ({client.area.id}).',
+                           is_zstaff=True)
+
+
+def ooc_cmd_zone_paranoia_info(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Gets the zone paranoia level of the zone you are watching.
+    Returns an error if you are not watching a zone.
+
+    SYNTAX
+    /zone_paranoia_info
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    Assuming you are watching zone z0...
+    /zone_paranoia_info     :: Get the zone paranoia level of zone z0
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+
+    try:
+        paranoia, = zone.get_property('Paranoia')
+    except ZoneError.PropertyNotFoundError:
+        raise ClientError('Your zone has not set a zone paranoia level.')
+    else:
+        client.send_ooc(f'The paranoia level of your zone is {paranoia}.')
+        
+        
 def ooc_cmd_pos_force(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Changes the IC position of a particular player, or all players in your current area if not

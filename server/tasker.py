@@ -19,11 +19,19 @@
 # WARNING!
 # This class will be reworked for 4.3
 
+from __future__ import annotations
+
 import asyncio
 import time
+import typing
+
+from typing import Any, List
 
 from server.constants import Constants
 from server.exceptions import ServerError
+
+if typing.TYPE_CHECKING:
+    from server.client_manager import ClientManager
 
 
 class Tasker:
@@ -39,7 +47,7 @@ class Tasker:
         self.client_tasks = dict()
         self.active_timers = dict()
 
-    def create_task(self, client, args):
+    def create_task(self, client: ClientManager.Client, args: List):
         """
         Create a new task for given client with given arguments.
 
@@ -63,7 +71,7 @@ class Tasker:
         async_future = Constants.create_fragile_task(async_function)
         self.client_tasks[client.id][args[0]] = (async_future, args[1:], dict())
 
-    def cancel_task(self, task):
+    def cancel_task(self, task: asyncio.Task):
         """
         Cancel current task and send order to await cancellation.
 
@@ -77,7 +85,7 @@ class Tasker:
         # TODO: For some odd reason, it complains if I set it to create_task. Figure that out.
         asyncio.ensure_future(self.await_cancellation(task))
 
-    def remove_task(self, client, args):
+    def remove_task(self, client: ClientManager.Client, args: List):
         """
         Given client and task name, remove task from server.Tasker.client_tasks and cancel it.
 
@@ -92,7 +100,7 @@ class Tasker:
         task = self.client_tasks[client.id].pop(args[0])
         self.cancel_task(task[0])
 
-    def get_task(self, client, args):
+    def get_task(self, client: ClientManager.Client, args: List) -> asyncio.Task:
         """
         Given client and task arguments, retrieve the associated task instance.
 
@@ -111,7 +119,7 @@ class Tasker:
 
         return self.client_tasks[client.id][args[0]][0]
 
-    def get_task_args(self, client, args):
+    def get_task_args(self, client: ClientManager.Client, args: List) -> List:
         """
         Given client and task arguments, retrieve the creation arguments of the task.
 
@@ -130,7 +138,7 @@ class Tasker:
 
         return self.client_tasks[client.id][args[0]][1]
 
-    def get_task_attr(self, client, args, attr):
+    def get_task_attr(self, client: ClientManager.Client, args: List, attr: str) -> Any:
         """
         Given client, task arguments, and an attribute name of a task, retrieve its associated
         attribute value.
@@ -146,12 +154,13 @@ class Tasker:
 
         Returns
         -------
-        Attribute value
+        Any:
+            Attribute value
         """
 
         return self.client_tasks[client.id][args[0]][2][attr]
 
-    def set_task_attr(self, client, args, attr, value):
+    def set_task_attr(self, client: ClientManager.Client, args: List, attr: str, value: Any):
         """
         Given client, task arguments, attribute name of task and a value, set the attribute to
         that value.
@@ -164,7 +173,7 @@ class Tasker:
             Arguments of the task.
         attr: str
             Attribute name.
-        value:
+        value: Any
             Attribute value.
         """
 
@@ -174,7 +183,7 @@ class Tasker:
     # CURRENTLY SUPPORTED TASKS
     ###
 
-    async def await_cancellation(self, old_task):
+    async def await_cancellation(self, old_task: asyncio.Task):
         # Wait until it is able to properly retrieve the cancellation exception
         try:
             await old_task
@@ -188,7 +197,7 @@ class Tasker:
             except KeyboardInterrupt:
                 raise
 
-    async def as_afk_kick(self, client, args):
+    async def as_afk_kick(self, client: ClientManager.Client, args: List):
         afk_delay, afk_sendto = args
         try:
             delay = int(afk_delay)*60  # afk_delay is in minutes, so convert to seconds
@@ -242,7 +251,7 @@ class Tasker:
                     for c in p.get_members():
                         c.send_ooc('{} was AFK kicked from your party.'.format(original_name))
 
-    async def as_day_cycle(self, client, args):
+    async def as_day_cycle(self, client: ClientManager.Client, args: List):
         _, area_1, area_2, hour_length, hour_start, send_first_hour = args
         hour = hour_start
         minute_at_interruption = 0
@@ -517,7 +526,7 @@ class Tasker:
                 else:
                     raise ValueError(f'Unknown refresh reason {refresh_reason} for day cycle.')
 
-    async def as_effect(self, client, args):
+    async def as_effect(self, client: ClientManager.Client, args: List):
         _, length, effect, new_value = args  # Length in seconds, already converted
 
         try:
@@ -539,16 +548,16 @@ class Tasker:
                 effect.function(client, False)
             self.remove_task(client, [effect.async_name])
 
-    async def as_effect_blindness(self, client, args):
+    async def as_effect_blindness(self, client: ClientManager.Client, args: List):
         await self.as_effect(client, args+[True])
 
-    async def as_effect_deafness(self, client, args):
+    async def as_effect_deafness(self, client: ClientManager.Client, args: List):
         await self.as_effect(client, args+[True])
 
-    async def as_effect_gagged(self, client, args):
+    async def as_effect_gagged(self, client: ClientManager.Client, args: List):
         await self.as_effect(client, args+[True])
 
-    async def as_handicap(self, client, args):
+    async def as_handicap(self, client: ClientManager.Client, args: List):
         _, length, _, announce_if_over = args
         client.is_movement_handicapped = True
 
@@ -562,7 +571,7 @@ class Tasker:
         finally:
             client.is_movement_handicapped = False
 
-    async def as_timer(self, client, args):
+    async def as_timer(self, client: ClientManager.Client, args: List):
         _, length, name, is_public = args  # Length in seconds, already converted
         client_name = client.name  # Failsafe in case disconnection before task is cancelled/expires
 
@@ -581,7 +590,7 @@ class Tasker:
         finally:
             del self.active_timers[name]
 
-    async def as_lurk(self, client, args):
+    async def as_lurk(self, client: ClientManager.Client, args: List):
         length, = args
         # The lurk callout timer once it finishes will restart itself except if cancelled
         while True:
@@ -606,3 +615,24 @@ class Tasker:
                     client.send_ooc_others('{} is being tightlipped.'.format(client.displayname),
                                            is_zstaff_flex=False, in_area=True,
                                            pred=lambda c: not (c.is_blind and c.is_deaf))
+
+    async def as_phantom_peek(self, client: ClientManager.Client, args: List):
+        length, = args
+        try:
+            await asyncio.sleep(length)
+        except asyncio.CancelledError:
+            return
+        else:
+            if client.is_blind:
+                return
+            if not client.area.lights:
+                return
+            if client.area.lobby_area:
+                return
+            if client.area.private_area:
+                return
+            if client.is_staff():
+                return
+            if client.char_id is None or client.char_id < 0:
+                return
+            client.send_ooc('You feel as though you are being peeked on.')
