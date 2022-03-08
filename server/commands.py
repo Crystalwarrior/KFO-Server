@@ -10074,15 +10074,48 @@ def ooc_cmd_pos_force(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_notecard(client: ClientManager.Client, arg: str):
+    """
+    Sets the content of your own notecard.
+    Content over 1024 characters will be discarded.
+
+    SYNTAX
+    /notecard <content>
+
+    PARAMETERS
+    <content>: Content of your notecard
+
+    EXAMPLE
+    /notecard Hello world    :: Sets the content of your notecard to `Hello world`.
+    """
+
     Constants.assert_command(client, arg, parameters='>0')
 
-    client.notecard = arg
-    client.send_ooc(f'You set your current notecard to `{client.notecard}`.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set their current notecard to '
+    client.notecard = arg[:1024]
+    client.send_ooc(f'You set your notecard to `{client.notecard}`.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set their notecard to '
                            f'`{client.notecard}`.', is_zstaff_flex=True)
 
 
 def ooc_cmd_notecard_clear(client: ClientManager.Client, arg: str):
+    """ (VARYING REQUIREMENTS)
+    Clears the content of your own notecard or, (STAFF ONLY) that of a given player by client ID.
+    Returns an error if the target's notecard was already cleared, or if the given identifier
+    does not correspond to a user.
+
+    SYNTAX
+    /notecard_clear {client_id}
+
+    PARAMETERS
+    None
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /notecard_clear   :: Clears your own notecard
+    /notecard_clear 2 :: Clears the notecard of player with client ID 2.
+    """
+
     Constants.assert_command(client, arg, parameters='<2')
 
     if arg and not client.is_staff():
@@ -10095,23 +10128,74 @@ def ooc_cmd_notecard_clear(client: ClientManager.Client, arg: str):
 
     if target == client:
         if not client.notecard:
-            raise ClientError('Your current notecard is already empty.')
+            raise ClientError('Your notecard is already empty.')
         client.notecard = ''
-        client.send_ooc('Your current notecard is now cleared.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared their current '
-                               f'notecard.', is_zstaff_flex=True)
+        client.send_ooc('Your notecard is now cleared.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared their notecard.',
+                               is_zstaff_flex=True)
     else:
         if not target.notecard:
-            raise ClientError(f'The current notecard of {target.displayname} [{target.id}] is '
+            raise ClientError(f'The notecard of {target.displayname} [{target.id}] is '
                               f'already empty.')
         target.notecard = ''
-        target.send_ooc('Your current notecard was cleared.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared the current '
+        target.send_ooc('Your notecard was cleared.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared the '
                                f'notecard of {target.displayname} [{target.id}] ({client.area.id})',
                                is_zstaff_flex=True, not_to={target})
 
 
+def ooc_cmd_notecard_clear_area(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Clears the content of the notecards of all players in your current area.
+    Returns an error if no player in the area has a notecard set.
+
+    SYNTAX
+    /notecard_clear_area
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /notecard_clear_area   :: Clears the notecards of all players in your current area.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    targets = [target for target in client.area.clients if target.notecard]
+    if not targets:
+        raise ClientError('No players in your current area have a notecard set.')
+
+    for target in targets:
+        target.notecard = ''
+
+    client.send_ooc('You cleared the notecards of all players in the area.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared the notecards of all '
+                           f'players in their area ({client.area.id}).', is_zstaff_flex=True)
+    client.send_ooc_others(f'The notecards of all players in your area were cleared.',
+                           is_zstaff_flex=False, in_area=client.area)
+
+
 def ooc_cmd_notecard_info(client: ClientManager.Client, arg: str):
+    """ (VARYING REQUIREMENTS)
+    Returns the content of your current notecard or, (STAFF ONLY) that of a given player by
+    client ID.
+    Returns an error if the target's notecard is not set, or if the given identifier
+    does not correspond to a user.
+
+    SYNTAX
+    /notecard_info {client_id}
+
+    PARAMETERS
+    None
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /notecard_info   :: Gets the content of your own notecard
+    /notecard_info 2 :: Gets the content of the notecard of player with client ID 2.
+    """
+
     Constants.assert_command(client, arg, parameters='<2')
 
     if arg and not client.is_staff():
@@ -10124,22 +10208,35 @@ def ooc_cmd_notecard_info(client: ClientManager.Client, arg: str):
 
     if target == client:
         if not client.notecard:
-            raise ClientError('Your current notecard is empty.')
-        client.send_ooc(f'Your current notecard says `{client.notecard}`.')
+            raise ClientError('Your notecard is empty.')
+        client.send_ooc(f'Your notecard says `{client.notecard}`.')
     else:
         if not target.notecard:
-            raise ClientError(f'The current notecard of {target.displayname} [{target.id}] '
-                              f'is empty.')
-        client.send_ooc(f'The current notecard of {target.displayname} [{target.id}] says '
+            raise ClientError(f'The notecard of {target.displayname} [{target.id}] is empty.')
+        client.send_ooc(f'The notecard of {target.displayname} [{target.id}] says '
                         f'`{target.notecard}`.')
 
 
 def ooc_cmd_notecard_check(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Returns the contents of all notecards set by players in the current area.
+    Returns an error if no player in the current area have any notecards set.
+
+    SYNTAX
+    /notecard_check
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /notecard_check  :: Returns the contents of all notecards set by players in the current area.
+    """
+
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     with_notecards = [target for target in client.area.clients if target.notecard]
     if not with_notecards:
-        raise ClientError('No players in the area have any notecards.')
+        raise ClientError('No players in your current have any notecards set.')
 
     output = ''
     for target in sorted(with_notecards):
@@ -10150,11 +10247,25 @@ def ooc_cmd_notecard_check(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_notecard_list(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Returns the contents of all notecards set by players in the server.
+    Returns an error if no player in the server have any notecards set.
+
+    SYNTAX
+    /notecard_list
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /notecard_list  :: Returns the contents of all notecards set by players in the server.
+    """
+
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     with_notecards = [target for target in client.server.get_clients() if target.notecard]
     if not with_notecards:
-        raise ClientError('No players in the server have any notecards.')
+        raise ClientError('No players in the server have any notecards set.')
 
     output = ''
     for target in sorted(with_notecards):
@@ -10165,15 +10276,31 @@ def ooc_cmd_notecard_list(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_notecard_reveal(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Reveals the contents of all notecards set by players in the area (possibly indicating that
+    no notecards were set) to all players in the area.
+
+    SYNTAX
+    /notecard_reveal
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /notecard_reveal  :: Reveals the contents of all notecards set by players in the area.
+    """
+
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     with_notecards = [target for target in client.area.clients if target.notecard]
     if not with_notecards:
-        raise ClientError('No players in the area have any notecards.')
+        raise ClientError('No players in your current area have any notecards set.')
 
     output = ''
     for target in sorted(with_notecards):
         output += f'\r\n[{target.id}] {target.displayname}: {target.notecard}'
+    if not output:
+        output = '\r\nNo player in the area has set a notecard.'
 
     client.send_ooc('You revealed all notecards in the area.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] revealed all notecards in '
