@@ -10016,8 +10016,8 @@ def ooc_cmd_zone_paranoia_info(client: ClientManager.Client, arg: str):
         raise ClientError('Your zone has not set a zone paranoia level.')
     else:
         client.send_ooc(f'The paranoia level of your zone is {paranoia}.')
-        
-        
+
+
 def ooc_cmd_pos_force(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Changes the IC position of a particular player, or all players in your current area if not
@@ -10071,6 +10071,67 @@ def ooc_cmd_pos_force(client: ClientManager.Client, arg: str):
                                is_zstaff_flex=True)
     client.send_ooc_others(f'Your position was changed to {pos}.',
                            is_zstaff_flex=False, part_of=targets)
+
+
+def ooc_cmd_notecard(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, parameters='>0')
+
+    client.notecard = arg
+    client.send_ooc(f'You set your current notecard to `{client.notecard}`.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set their current notecard to '
+                           f'`{client.notecard}`.', is_zstaff_flex=True)
+
+
+def ooc_cmd_notecard_clear(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, parameters='<2')
+
+    if arg and not client.is_staff():
+        raise ClientError.UnauthorizedError('You must be authorized to use the one-parameter '
+                                            'version of this command.')
+    if arg:
+        target = Constants.parse_id(client, arg)
+    else:
+        target = client
+
+    if target == client:
+        if not client.notecard:
+            raise ClientError('Your current notecard is already empty.')
+        client.notecard = ''
+        client.send_ooc('Your current notecard is now cleared.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared their current '
+                               f'notecard.', is_zstaff_flex=True)
+    else:
+        if not target.notecard:
+            raise ClientError(f'The current notecard of {target.displayname} [{target.id}] is '
+                              f'already empty.')
+        target.notecard = ''
+        target.send_ooc('Your current notecard was cleared.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared the current '
+                               f'notecard of {target.displayname} [{target.id}] ({client.area.id})',
+                               is_zstaff_flex=True, not_to={target})
+
+
+def ooc_cmd_notecard_info(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, parameters='<2')
+
+    if arg and not client.is_staff():
+        raise ClientError.UnauthorizedError('You must be authorized to use the one-parameter '
+                                            'version of this command.')
+    if arg:
+        target = Constants.parse_id(client, arg)
+    else:
+        target = client
+
+    if target == client:
+        if not client.notecard:
+            raise ClientError('Your current notecard is empty.')
+        client.send_ooc(f'Your current notecard says `{client.notecard}`.')
+    else:
+        if not target.notecard:
+            raise ClientError(f'The current notecard of {target.displayname} [{target.id}] '
+                              f'is empty.')
+        client.send_ooc(f'The current notecard of {target.displayname} [{target.id}] says '
+                        f'`{target.notecard}`.')
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):

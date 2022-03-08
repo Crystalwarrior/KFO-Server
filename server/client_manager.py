@@ -126,6 +126,7 @@ class ClientManager:
             self.char_log = list()
             self.ignored_players = set()
             self.paranoia = 2
+            self.notecard = ''
 
             # Pairing stuff
             self.charid_pair = -1
