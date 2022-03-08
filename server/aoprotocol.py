@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-22 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -174,11 +174,17 @@ class AOProtocol(asyncio.Protocol):
 
         :param args: actual arguments to the net command
         :param types: what kind of data types are expected
-        :param needs_auth: whether you need to have chosen a character
+        :param needs_auth: whether you need to have chosen a character and sent HI and ID
         :return: returns True if message was validated
         """
-        if needs_auth and self.client.char_id is None:
-            return False
+        if needs_auth:
+            if self.client.char_id is None:
+                return False
+            if 'HI' not in self.client.required_packets_received:
+                return False
+            if 'ID' not in self.client.required_packets_received:
+                return False
+
         if len(args) != len(types):
             return False
         for i, arg in enumerate(args):
@@ -220,10 +226,17 @@ class AOProtocol(asyncio.Protocol):
         pargs = self.process_arguments('HI', args, needs_auth=False)
         self.client.publish_inbound_command('HI', pargs)
 
+        if 'HI' in self.client.required_packets_received:
+            # Prevent duplicate 'HI' packets
+            self.client.disconnect()
+            return
+        self.client.required_packets_received.add('HI')  # One of two conditions to allow joining
+
         # Record new HDID and IPID if needed
         self.client.hdid = pargs['client_hdid']
         if self.client.hdid not in self.client.server.hdid_list:
             self.client.server.hdid_list[self.client.hdid] = []
+        self.client.ipid = self.server.get_ipid(self.client.get_ipreal())
         if self.client.ipid not in self.client.server.hdid_list[self.client.hdid]:
             self.client.server.hdid_list[self.client.hdid].append(self.client.ipid)
             self.client.server.dump_hdids()
@@ -250,7 +263,6 @@ class AOProtocol(asyncio.Protocol):
             'player_count': self.server.get_player_count(),
             'player_limit': self.server.config['playerlimit'],
             })
-        self.client.can_join += 1  # One of two conditions to allow joining
 
     def net_cmd_id(self, args: List[str]):
         """ Client version
@@ -262,7 +274,11 @@ class AOProtocol(asyncio.Protocol):
         pargs = self.process_arguments('ID', args, needs_auth=False)
         self.client.publish_inbound_command('ID', pargs)
 
-        self.client.can_join += 1  # One of two conditions to allow joining
+        if 'ID' in self.client.required_packets_received:
+            # Prevent duplicate 'ID' packets
+            self.client.disconnect()
+            return
+        self.client.required_packets_received.add('ID')  # One of two conditions to allow joining
 
         def check_client_version():
             if len(args) < 2:
@@ -374,7 +390,7 @@ class AOProtocol(asyncio.Protocol):
         pargs = self.process_arguments('askchaa', args, needs_auth=False)
         self.client.publish_inbound_command('askchaa', pargs)
         # Check if client is ready to actually join, and did not do weird packet shenanigans before
-        if self.client.can_join != 2:
+        if self.client.required_packets_received != {'HI', 'ID'}:
             return
         # Check if client asked for this before but did not finish processing it
         if not self.client.can_askchaa:
@@ -403,6 +419,9 @@ class AOProtocol(asyncio.Protocol):
 
         pargs = self.process_arguments('AE', args, needs_auth=False)
         self.client.publish_inbound_command('AE', pargs)
+        # Check if client is ready to actually join, and did not do weird packet shenanigans before
+        if self.client.required_packets_received != {'HI', 'ID'}:
+            return
         # TODO evidence maybe later
 
     def net_cmd_rc(self, args: List[str]):
@@ -414,6 +433,9 @@ class AOProtocol(asyncio.Protocol):
 
         pargs = self.process_arguments('RC', args, needs_auth=False)
         self.client.publish_inbound_command('RC', pargs)
+        # Check if client is ready to actually join, and did not do weird packet shenanigans before
+        if self.client.required_packets_received != {'HI', 'ID'}:
+            return
         self.client.send_command_dict('SC', {
             'chars_ao2_list': self.server.char_list,
             })
@@ -426,10 +448,13 @@ class AOProtocol(asyncio.Protocol):
         """
 
         pargs = self.process_arguments('RM', args, needs_auth=False)
+        self.client.publish_inbound_command('RM', pargs)
+        # Check if client is ready to actually join, and did not do weird packet shenanigans before
+        if self.client.required_packets_received != {'HI', 'ID'}:
+            return
+
         # Force the server to rebuild the music list, so that clients who just join get the correct
         # music list (as well as every time they request an updated music list directly).
-
-        self.client.publish_inbound_command('RM', pargs)
         full_music_list = self.server.build_music_list(include_areas=True,
                                                        include_music=True)
         self.client.send_command_dict('SM', {
@@ -445,6 +470,10 @@ class AOProtocol(asyncio.Protocol):
 
         pargs = self.process_arguments('RD', args, needs_auth=False)
         self.client.publish_inbound_command('RD', pargs)
+        # Check if client is ready to actually join, and did not do weird packet shenanigans before
+        if self.client.required_packets_received != {'HI', 'ID'}:
+            return
+
         self.client.send_done()
         if self.server.config['announce_areas']:
             if self.server.config['rp_mode_enabled']:
@@ -465,6 +494,10 @@ class AOProtocol(asyncio.Protocol):
 
         pargs = self.process_arguments('CC', args, needs_auth=False)
         self.client.publish_inbound_command('CC', pargs)
+        # Check if client is ready to actually join, and did not do weird packet shenanigans before
+        if self.client.required_packets_received != {'HI', 'ID'}:
+            return
+
         char_id = pargs['char_id']
 
         ever_chose_character = self.client.ever_chose_character  # Store for later

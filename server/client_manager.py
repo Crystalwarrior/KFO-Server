@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-22 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ class ClientManager:
             self.server = server
             self.transport = transport
             self.area_changer = client_changearea.ClientChangeArea(self)
-            self.can_join = 0  # Needs to be 2 to actually connect
+            self.required_packets_received = set()  # Needs to have length 2 to actually connect
             self.can_askchaa = True  # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined')  # AO version used established through ID pack
             self.packet_handler = clients.ClientDRO1d0d0
@@ -2043,10 +2043,8 @@ class ClientManager:
         self.phantom_peek_timer.start()
 
     def new_client(self, transport, client_obj: typing.Type[ClientManager.Client] = None,
-                   my_protocol=None, ip=None):
-        if ip is None:
-            ip = transport.get_extra_info('peername')[0]
-        ipid = self.server.get_ipid(ip)
+                   my_protocol=None):
+        ipid = None
 
         if client_obj is None:
             client_obj = self.Client

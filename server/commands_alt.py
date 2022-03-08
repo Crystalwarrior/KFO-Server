@@ -1,7 +1,7 @@
 # TsuserverDR, a Danganronpa Online server based on tsuserver3, an Attorney Online server
 #
 # Copyright (C) 2016 argoneus <argoneuscze@gmail.com> (original tsuserver3)
-# Current project leader: 2018-21 Chrezm/Iuvee <thechrezm@gmail.com>
+# Current project leader: 2018-22 Chrezm/Iuvee <thechrezm@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -198,3 +198,11 @@ def ooc_cmd_l(client, arg):
     """
 
     do_command('look', client, arg)
+
+
+def ooc_cmd_forcepos(client, arg):
+    """
+    Alias for /pos_force.
+    """
+
+    do_command('pos_force', client, arg)
