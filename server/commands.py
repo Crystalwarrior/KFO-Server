@@ -4045,11 +4045,14 @@ def ooc_cmd_nsd(client: ClientManager.Client, arg: str):
     SYNTAX
     /nsd {length}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {length}: time in seconds, or in mm:ss, or in h:mm:ss; limited to TIMER_LIMIT in function
               Constants.parse_time_length. If given, it must be a positive integer.
 
-    EXAMPLE
+    EXAMPLES
     /nsd 3:00       :: Starts an NSD with 3 minutes of time.
     /nsd 120        :: Starts an NSD with 120 seconds of time.
     """
@@ -4800,7 +4803,7 @@ def ooc_cmd_online(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_ooc_mute(client: ClientManager.Client, arg: str):
-    """ (MOD AND CM ONLY)
+    """ (OFFICER ONLY)
     Mutes a player from the OOC chat by their OOC username.
     Requires /ooc_unmute to undo.
     Returns an error if no player has the given OOC username.
@@ -4831,7 +4834,7 @@ def ooc_cmd_ooc_mute(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_ooc_unmute(client: ClientManager.Client, arg: str):
-    """ (MOD AND CM ONLY)
+    """ (OFFICER ONLY)
     Unmutes a player from the OOC chat by their OOC username.
     Requires /ooc_mute to undo.
     Returns an error if no player has the given OOC username.
@@ -10016,8 +10019,8 @@ def ooc_cmd_zone_paranoia_info(client: ClientManager.Client, arg: str):
         raise ClientError('Your zone has not set a zone paranoia level.')
     else:
         client.send_ooc(f'The paranoia level of your zone is {paranoia}.')
-        
-        
+
+
 def ooc_cmd_pos_force(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Changes the IC position of a particular player, or all players in your current area if not
@@ -10072,6 +10075,93 @@ def ooc_cmd_pos_force(client: ClientManager.Client, arg: str):
     client.send_ooc_others(f'Your position was changed to {pos}.',
                            is_zstaff_flex=False, part_of=targets)
 
+
+def ooc_cmd_help_more(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, parameters='=1')
+
+    try:
+        command = getattr(client.server.commands, f'ooc_cmd_{arg}')
+    except AttributeError:
+        raise ClientError(f'Could not find more help for command `{arg}`.')
+
+    raw_doc = command.__doc__
+    doc = raw_doc.strip().replace('\t', '').split('\n')
+    doc = [line.strip() for line in doc]
+    if not doc:
+        raise ClientError(f'Unable to generate more help for command `{arg}`.')
+    if raw_doc[0] == '\n':
+        doc.insert(0, '(NONE)')
+
+    parsed_doc = [[], [], [], [], [], []]
+    modes = {
+        'SYNTAX': 2,
+        'PARAMETERS': 3,
+        'OPTIONAL PARAMETERS': 4,
+        'EXAMPLE': 5,
+        'EXAMPLES': 5,
+    }
+
+    parsed_doc[0].append(doc[0])
+
+    mode = 1
+    for line in doc[1:]:
+        if not line:
+            continue
+        if line in modes:
+            mode = modes[line]
+        parsed_doc[mode].append(line)
+
+    if not parsed_doc[1] or not parsed_doc[2] or not parsed_doc[3] or not parsed_doc[5]:
+        raise ClientError(f'Unable to generate more help for command `{arg}`.')
+
+    client.send_ooc(f'Generating additional help for command {arg}...')
+
+    # Rank requirement
+    output = 'RANK REQUIREMENTS: '
+    output += parsed_doc[0][0].replace('(', '').replace(')', '').strip()
+    client.send_ooc(output)
+
+    # Description
+    output = 'DESCRIPTION\r\n '
+    for line in parsed_doc[1]:
+        output += line + ' '
+    client.send_ooc(output.strip())
+
+    # Syntax
+    output = 'SYNTAX\r\n'
+    for line in parsed_doc[2][1:]:
+        output += line + '\r\n'
+    client.send_ooc(output.strip())
+
+    # Parameters
+    output = 'PARAMETERS'
+    for line in parsed_doc[3][1:]:
+        if line.startswith('<') or line == 'None':
+            output += '\r\n'
+        output += line + ' '
+    client.send_ooc(output.strip())
+
+    # Optional parameters
+    if parsed_doc[4]:
+        output = 'OPTIONAL PARAMETERS'
+        for line in parsed_doc[4][1:]:
+            if line.startswith('{'):
+                output += '\r\n'
+            output += line + ' '
+        client.send_ooc(output.strip())
+
+    # Examples
+    output = 'EXAMPLES\r\n'
+    for line in parsed_doc[5][1:]:
+        if line.startswith('/'):
+            output += '\r\n>>>'
+        if '::' not in line:
+            output += line + ' '
+        else:
+            ex_command, ex_description = line.split('::')
+            output += ex_command.strip() + '\r\n'
+            output += ex_description.strip() + ' '
+    client.send_ooc(output.strip().replace('\r\n\r\n', '\r\n'))
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
