@@ -716,3 +716,4 @@
   - /notecard_info
   - /notecard_list
   - /notecard_reveal
+  - /notecard_reveal_count

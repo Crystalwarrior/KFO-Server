@@ -435,6 +435,9 @@ GMs can:
     - Returns the content of all notecards currently set by players in the server.
 * **notecard_reveal**
     - Reveals the contents to all players in the area of all notecards of all players in your current area.
+* **notecard_reveal_count**
+    - Tallies the contents of all notecards of players in the area and reveals the count to all players in your current area.
+    - This does not reveal the people who wrote particular notecards.
 * **noteworthy**
    - Changes the noteworthy status of the area.
 * **nsd** "time"

@@ -18,6 +18,7 @@
 
 # possible keys: ip, OOC, id, cname, ipid, hdid
 
+import collections
 import datetime
 import random
 import hashlib
@@ -10293,19 +10294,61 @@ def ooc_cmd_notecard_reveal(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
 
     with_notecards = [target for target in client.area.clients if target.notecard]
-    if not with_notecards:
-        raise ClientError('No players in your current area have any notecards set.')
 
     output = ''
     for target in sorted(with_notecards):
         output += f'\r\n[{target.id}] {target.displayname}: {target.notecard}'
     if not output:
-        output = '\r\nNo player in the area has set a notecard.'
+        output = '\r\n*No player in the area has set a notecard.'
 
     client.send_ooc('You revealed all notecards in the area.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] revealed all notecards in '
                            f'area {client.area.name} ({client.area.id}).', is_zstaff_flex=True)
-    client.area.broadcast_ooc(f'Notecards in the area were revealed: '
+    client.area.broadcast_ooc(f'The notecards in the area were revealed: '
+                              f'{output}')
+
+
+def ooc_cmd_notecard_reveal_count(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Tallies the number of times each notecard content of a player in the area was the content of
+    some player in the area (possibly indicating that no notecards were set) and reveals the tally
+    to all players in the area. This does not reveal who wrote which notecard.
+    Two notecard contents are said to be the same if they are the same ignoring leading or trailing
+    whitespace, as well as any capitalization or fullstops at the end.
+
+    SYNTAX
+    /notecard_reveal_count
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /notecard_reveal_count  :: Reveals the frequency of each notecard.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    raw_notecards = [target.notecard for target in client.area.clients if target.notecard]
+    if not raw_notecards:
+        output = '\r\n*No player in the area has set a notecard.'
+    else:
+        notecards = []
+        for raw_notecard in raw_notecards:
+            notecard = raw_notecard.strip().upper()
+            if notecard.endswith('.'):
+                notecard = notecard[:-1]
+            notecards.append(notecard)
+        notecards.sort()
+        tally = collections.Counter(notecards)
+        output = ''
+        for (value, count) in tally.most_common():
+            output += f'\r\n*{value}: {count} of {tally.total()}'
+
+    client.send_ooc('You revealed the tally of all notecards in the area.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] revealed the tally of all '
+                           f'notecards in area {client.area.name} ({client.area.id}).',
+                           is_zstaff_flex=True)
+    client.area.broadcast_ooc(f'The tally of all notecards in the area was revealed: '
                               f'{output}')
 
 
