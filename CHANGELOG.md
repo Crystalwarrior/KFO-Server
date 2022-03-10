@@ -717,3 +717,4 @@
   - /notecard_list
   - /notecard_reveal
   - /notecard_reveal_count
+* Added /help_more, which lists extended help for a command
