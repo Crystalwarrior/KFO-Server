@@ -179,6 +179,12 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Sets your music list to the given one, or restores the original one if not given any.
 * **music_lists**
     - Lists all available music lists as established in `config/music_lists.yaml`.
+* **notecard** "content"
+    - Sets the content of your notecard.
+* **notecard_clear**
+    - Clears the content of your notecard.
+* **notecard_info**
+    - Returns the content of your notecard.
 * **nsd_info**
     - Returns details about your NSD.
 * **nsd_leave**
@@ -421,6 +427,19 @@ GMs can:
     - Makes the target a GM, provided the target is a multiclient of the player.
 * **multiclients** "ID"
     - Lists all the clients opened by a target and the areas they are in.
+* **notecard_check**
+    - Returns the contents of all notecards set by players in your current area.
+* **notecard_clear** "ID"
+    - Clears the content of a player's notecard by ID, or your own notecard if not given one.
+* **notecard_clear_area**
+    - Clears the content of the notecards of all players in your current area.
+* **notecard_list**
+    - Returns the content of all notecards currently set by players in the server.
+* **notecard_reveal**
+    - Reveals the contents to all players in the area of all notecards of all players in your current area.
+* **notecard_reveal_count**
+    - Tallies the contents of all notecards of players in the area and reveals the count to all players in your current area.
+    - This does not reveal the people who wrote particular notecards.
 * **noteworthy**
    - Changes the noteworthy status of the area.
 * **nsd** "time"

@@ -708,4 +708,13 @@
   - /zone_paranoia
   - /zone_paranoia_info
 * Added /pos_force (alias /forcepos), which changes the IC position to a given position of a target player if given, or all players in the current area otherwise
+* Added notecards, which allows players to store private text and allows GMs+ to simultaneously reveal contents and authors for all players in a current area via commands
+  - /notecard
+  - /notecard_check
+  - /notecard_clear
+  - /notecard_clear_all
+  - /notecard_info
+  - /notecard_list
+  - /notecard_reveal
+  - /notecard_reveal_count
 * Added /help_more, which lists extended help for a command
