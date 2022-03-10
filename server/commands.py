@@ -75,6 +75,9 @@ def ooc_cmd_area(client: ClientManager.Client, arg: str):
     SYNTAX
     /area {new_area_id}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {new_area_id}: ID of the area
 
@@ -770,6 +773,9 @@ def ooc_cmd_bloodtrail_clean(client: ClientManager.Client, arg: str):
     SYNTAX
     /bloodtrail_clean {area_1}, {area_2}, ....
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {area_n}: Area ID or name
 
@@ -900,10 +906,10 @@ def ooc_cmd_bloodtrail_list(client: ClientManager.Client, arg: str):
     EXAMPLES
     >>> /bloodtrail_list
     May return something like this:
-     $H: == Blood trails in this server ==
-     *(0) Basement: Class Trial Room 1, Class Trial Room 3
-     *(1) Class Trial Room 1: Basement
-     *(3) Class Trial Room 3: Basement
+    | $H: == Blood trails in this server ==
+    | *(0) Basement: Class Trial Room 1, Class Trial Room 3
+    | *(1) Class Trial Room 1: Basement
+    | *(3) Class Trial Room 3: Basement
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
@@ -948,6 +954,9 @@ def ooc_cmd_bloodtrail_set(client: ClientManager.Client, arg: str):
     SYNTAX
     /bloodtrail_set {area_1}, {area_2}, ....
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {area_n}: Area ID or name
 
@@ -990,6 +999,9 @@ def ooc_cmd_bloodtrail_smear(client: ClientManager.Client, arg: str):
 
     SYNTAX
     /bloodtrail_smear {area_1}, {area_2}, ....
+
+    PARAMETERS
+    None
 
     OPTIONAL PARAMETERS
     {area_n}: Area ID or name
@@ -1228,9 +1240,9 @@ def ooc_cmd_charlog(client: ClientManager.Client, arg: str):
     EXAMPLES
     >>> /charlog 1
     For the user with client ID 1, it may return something like this
-     == Character details log of client 1 ==
-     *Sat Jun 1 18:52:32 2021 | Changed character to Phantom_HD
-     *Sat Jun 1 18:52:32 2021 | Changed character ini to Phantom_HD/Phantom
+    | $H: == Character details log of client 1 ==
+    | *Sat Jun 1 18:52:32 2021 | Changed character to Phantom_HD
+    | *Sat Jun 1 18:52:32 2021 | Changed character ini to Phantom_HD/Phantom
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=1')
@@ -1449,6 +1461,9 @@ def ooc_cmd_cleargm(client: ClientManager.Client, arg: str):
     SYNTAX
     /cleargm {client_id}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {client_id}: Client identifier (number in brackets in /getarea)
 
@@ -1567,6 +1582,9 @@ def ooc_cmd_clock_end(client: ClientManager.Client, arg: str):
     SYNTAX
     /clock_end {client_id}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {client_id}: Client identifier (number in brackets in /getarea)
 
@@ -1600,6 +1618,9 @@ def ooc_cmd_clock_pause(client: ClientManager.Client, arg: str):
 
     SYNTAX
     /clock_pause {client_id}
+
+    PARAMETERS
+    None
 
     OPTIONAL PARAMETERS
     {client_id}: Client identifier (number in brackets in /getarea)
@@ -1777,6 +1798,9 @@ def ooc_cmd_clock_unpause(client: ClientManager.Client, arg: str):
     SYNTAX
     /clock_unpause {client_id}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {client_id}: Client identifier (number in brackets in /getarea)
 
@@ -1816,6 +1840,9 @@ def ooc_cmd_coinflip(client: ClientManager.Client, arg: str):
     SYNTAX
     /coinflip {call}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {call}: A call to the coin flip
 
@@ -1824,8 +1851,7 @@ def ooc_cmd_coinflip(client: ClientManager.Client, arg: str):
     >>> /coinflip
     May return something like "Phantom flipped a coin and got tails."
     >>> /coinflip `heads`
-    May return something like "Phantom called `heads`, flipped a coin and
-                           got heads"
+    May return something like "Phantom called `heads`, flipped a coin and got heads"
     """
 
     coin = ['heads', 'tails']
@@ -2017,8 +2043,10 @@ def ooc_cmd_dicelog(client: ClientManager.Client, arg: str):
     Returns an error if the identifier does not correspond to a user.
 
     SYNTAX
-    /dicelog
     /dicelog {client_id}
+
+    PARAMETERS
+    None
 
     OPTIONAL PARAMETERS
     {client_id}: Client identifier (number in brackets in /getarea)
@@ -2047,8 +2075,10 @@ def ooc_cmd_dicelog_area(client: ClientManager.Client, arg: str):
     Returns an error if the identifier does not correspond to an area.
 
     SYNTAX
-    /dicelog_area
     /dicelog_area {target_area}
+
+    PARAMETERS
+    None
 
     OPTIONAL PARAMETERS
     {target_area}: Area whose rolls will be listed
@@ -2198,7 +2228,7 @@ def ooc_cmd_dump(client: ClientManager.Client, arg: str):
     EXAMPLES
     >>> /dump
     May return something like this:
-     $HOST: Generated server dump file logs/[2020-12-23T200220]D.log.
+    | $H: Generated server dump file logs/[2020-12-23T200220]D.log.
     """
 
     Constants.assert_command(client, arg, is_mod=True, parameters='=0')
@@ -2251,8 +2281,8 @@ def ooc_cmd_files(client: ClientManager.Client, arg: str):
     files' download link to https://example.com ...
     >>> /files 1
     May return something like this:
-     $HOST: Files set by client 1 for Spam_HD: https://example.com
-     $HOST: Links are spoopy. Exercise caution when opening external links.
+    | $H: Files set by client 1 for Spam_HD: https://example.com
+    | $H: Links are spoopy. Exercise caution when opening external links.
     """
 
     if arg:
@@ -2297,9 +2327,9 @@ def ooc_cmd_files_area(client: ClientManager.Client, arg: str):
     EXAMPLES
     >>> /files_area 1
     May return something like this:
-     $H: (X) === Players in area Basement who have set their files ===
-     [1] Phantom (Spam_HD): hhh
-     [0] Eggs_HD: Hi
+    | $H: (X) === Players in area Basement who have set their files ===
+    | [1] Phantom (Spam_HD): hhh
+    | [0] Eggs_HD: Hi
     """
 
     Constants.assert_command(client, arg, parameters='=0')
@@ -2659,6 +2689,9 @@ def ooc_cmd_globalic_pre(client: ClientManager.Client, arg: str):
 
     SYNTAX
     /globalic_pre {prefix}
+
+    PARAMETERS
+    None
 
     OPTIONAL PARAMETERS
     {prefix}: Message prefix
@@ -3211,6 +3244,9 @@ def ooc_cmd_judgelog(client: ClientManager.Client, arg: str):
     SYNTAX
     /judgelog {target_area}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {target_area}: area whose judgelog will be returned (either ID or name)
 
@@ -3220,16 +3256,16 @@ def ooc_cmd_judgelog(client: ClientManager.Client, arg: str):
     You may get something like the next example
     >>> /judgelog 0
     May return something like this:
-     == Judge log of Basement (0) ==
-     *Sat Jun 29 12:06:03 2019 | [1] Judge (1234567890) used judge button testimony1.
-     *Sat Jun 29 12:06:07 2019 | [1] Judge (1234567890) used judge button testimony4.
-     *Sat Jun 29 12:06:12 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
-     *Sat Jun 29 12:06:12 2019 | [1] Judge (1234567890) changed penalty bar 2 to 8.
-     *Sat Jun 29 12:06:14 2019 | [1] Judge (1234567890) changed penalty bar 1 to 9.
-     *Sat Jun 29 12:06:15 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
-     *Sat Jun 29 12:06:16 2019 | [1] Judge (1234567890) changed penalty bar 1 to 7.
-     *Sat Jun 29 12:06:17 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
-     *Sat Jun 29 12:06:19 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
+    | $H: == Judge log of Basement (0) ==
+    | *Sat Jun 29 12:06:03 2019 | [1] Judge (1234567890) used judge button testimony1.
+    | *Sat Jun 29 12:06:07 2019 | [1] Judge (1234567890) used judge button testimony4.
+    | *Sat Jun 29 12:06:12 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
+    | *Sat Jun 29 12:06:12 2019 | [1] Judge (1234567890) changed penalty bar 2 to 8.
+    | *Sat Jun 29 12:06:14 2019 | [1] Judge (1234567890) changed penalty bar 1 to 9.
+    | *Sat Jun 29 12:06:15 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
+    | *Sat Jun 29 12:06:16 2019 | [1] Judge (1234567890) changed penalty bar 1 to 7.
+    | *Sat Jun 29 12:06:17 2019 | [1] Judge (1234567890) changed penalty bar 1 to 8.
+    | *Sat Jun 29 12:06:19 2019 | [1] Judge (1234567890) changed penalty bar 2 to 9.
     """
 
     Constants.assert_command(client, arg, is_staff=True)
@@ -3387,20 +3423,20 @@ def ooc_cmd_lasterror(client: ClientManager.Client, arg: str):
     EXAMPLE
     >>> /lasterror
     May return something like this:
-     $HOST: The last uncaught error message was the following:
-     TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET
-     *Server time: Mon Jul 1 14:10:26 2019
-     *Packet details: CT ['Iuvee', '/lasterror']
-     *Client status: C::0:1639795399:Iuvee:Kaede Akamatsu_HD:True:0
-     *Area status: A::0:Basement:1
-     Traceback (most recent call last):
-     File ".../server/aoprotocol.py", line 88, in data_received
-     self.net_cmd_dispatcher[cmd](self, args)
-     File ".../server/aoprotocol.py", line 500, in net_cmd_ct
-     function(self.client, arg)
-     File ".../server/commands.py", line 4210, in ooc_cmd_lasterror
-     final_trace = "".join(traceback.format_exc(etype, evalue, etraceback))
-     TypeError: format_exc() takes from 0 to 2 positional arguments but 3 were given
+    | $H: The last uncaught error message was the following:
+    | TSUSERVER HAS ENCOUNTERED AN ERROR HANDLING A CLIENT PACKET
+    | *Server time: Mon Jul 1 14:10:26 2019
+    | *Packet details: CT ['Iuvee', '/lasterror']
+    | *Client status: C::0:1639795399:Iuvee:Kaede Akamatsu_HD:True:0
+    | *Area status: A::0:Basement:1
+    | Traceback (most recent call last):
+    | File ".../server/aoprotocol.py", line 88, in data_received
+    | self.net_cmd_dispatcher[cmd](self, args)
+    | File ".../server/aoprotocol.py", line 500, in net_cmd_ct
+    | function(self.client, arg)
+    | File ".../server/commands.py", line 4210, in ooc_cmd_lasterror
+    | final_trace = "".join(traceback.format_exc(etype, evalue, etraceback))
+    | TypeError: format_exc() takes from 0 to 2 positional arguments but 3 were given
     """
 
     Constants.assert_command(client, arg, is_mod=True, parameters='=0')
@@ -3655,6 +3691,9 @@ def ooc_cmd_look_clean(client: ClientManager.Client, arg: str):
     SYNTAX
     /look_clean {area_1}, {area_2}, ....
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {area_n}: Area ID or name
 
@@ -3716,8 +3755,8 @@ def ooc_cmd_look_list(client: ClientManager.Client, arg: str):
     happens to be "Not a courtroom"...
     >>> /look_list
     May return something like this:
-     == Areas in this server with custom descriptions ==
-     *(0) Basement: Not a courtroom
+    | $H: == Areas in this server with custom descriptions ==
+    | *(0) Basement: Not a courtroom
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
@@ -3746,6 +3785,9 @@ def ooc_cmd_look_set(client: ClientManager.Client, arg: str):
 
     SYNTAX
     /look_set {area_description}
+
+    PARAMETERS
+    None
 
     OPTIONAL PARAMETERS
     {area_description}: New area description
@@ -3928,13 +3970,13 @@ def ooc_cmd_minimap(client: ClientManager.Client, arg: str):
     EXAMPLE
     >>> /minimap
     May return something like this:
-     $H: == Minimap for Basement ==
-     1-Class Trial Room 1
-     3-Class Trial Room 3
-     4-Test 1
-     5-Test 2
-     6-Test 3
-     7-Test 4
+    | $H: == Minimap for Basement ==
+    | 1-Class Trial Room 1
+    | 3-Class Trial Room 3
+    | 4-Test 1
+    | 5-Test 2
+    | 6-Test 3
+    | 7-Test 4
     """
 
     Constants.assert_command(client, arg, parameters='=0')
@@ -4006,9 +4048,9 @@ def ooc_cmd_motd(client: ClientManager.Client, arg: str):
     EXAMPLES
     >>> /motd
     May return something like this:
-     $H: === MOTD ===
-     Welcome to my server!
-     =============
+    | $H: === MOTD ===
+    | Welcome to my server!
+    | =============
     """
 
     Constants.assert_command(client, arg, parameters='=0')
@@ -4034,14 +4076,14 @@ def ooc_cmd_multiclients(client: ClientManager.Client, arg: str):
     Assuming user with client ID 1 with IPID 1234567890 is in the Basement (area 0) and has
     another client open with client ID 4...
     >>> /multiclients 1
-    May return something like the example below, except with 1 instead of 1234567890).
+    May return something like the example below, except with 1 instead of 1234567890.
     >>> /multiclients 1234567890
     May return something like this:
-     $H: == Clients of 1234567890 ==
-     == Area 0: Basement ==
-     [1] Spam_HD (1234567890)
-     == Area 4: Test 1 ==
-     [4] Eggs_HD (1234567890)
+    | $H: == Clients of 1234567890 ==
+    | == Area 0: Basement ==
+    | [1] Spam_HD (1234567890)
+    | == Area 4: Test 1 ==
+    | [4] Eggs_HD (1234567890)
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=1')
@@ -5096,6 +5138,9 @@ def ooc_cmd_party_end(client: ClientManager.Client, arg: str):
     SYNTAX
     /party_end {party_id}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {party_id}: Party to end
 
@@ -5344,8 +5389,8 @@ def ooc_cmd_party_list(client: ClientManager.Client, arg: str):
     EXAMPLES
     >>> /party_list
     May return something like this:
-     == Active parties ==
-     *Party 11037 [2/7] (3). Leaders: Phantom_HD. Regular members: Spam_HD
+    | $H: == Active parties ==
+    | *Party 11037 [2/7] (3). Leaders: Phantom_HD. Regular members: Spam_HD
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
@@ -5376,9 +5421,9 @@ def ooc_cmd_party_members(client: ClientManager.Client, arg: str):
     EXAMPLES
     >>> /party_members
     May return something like this:
-     == Members of party 11037 ==
-     *Leaders: Phantom_HD, Spam_HD
-     *Members: Eggs_HD
+    | == Members of party 11037 ==
+    | *Leaders: Phantom_HD, Spam_HD
+    | *Members: Eggs_HD
     """
 
     Constants.assert_command(client, arg, parameters='=0')
@@ -5890,6 +5935,9 @@ def ooc_cmd_pos(client: ClientManager.Client, arg: str):
     SYNTAX
     /pos {new_position}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {new_position}: New character position (jud, def, pro, hlp, hld)
 
@@ -5944,7 +5992,7 @@ def ooc_cmd_randommusic(client: ClientManager.Client, arg: str):
     SYNTAX
     /randommusic
 
-    PARAMETERS:
+    PARAMETERS
     None
 
     EXAMPLES:
@@ -6164,6 +6212,9 @@ def ooc_cmd_roll(client: ClientManager.Client, arg: str):
     /roll {num_faces} {modifier}
     /roll {num_dice}d<num_faces> {modifier}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {num_faces}: Number of faces the dice will have (capped at NUMFACES_MAX).
     {num_dice}: Number of dice to roll (capped at NUMDICE_MAX).
@@ -6213,6 +6264,9 @@ def ooc_cmd_rollp(client: ClientManager.Client, arg: str):
     SYNTAX
     /rollp {num_faces} {modifier}
     /rollp {num_dice}d<num_faces> {modifier}
+
+    PARAMETERS
+    None
 
     OPTIONAL PARAMETERS
     {num_faces}: Number of faces the dice will have (capped at NUMFACES_MAX).
@@ -6619,6 +6673,9 @@ def ooc_cmd_shoutlog(client: ClientManager.Client, arg: str):
     SYNTAX
     /shoutlog {target_area}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {target_area}: Area whose shoutlog will be returned (either ID or name).
 
@@ -6628,9 +6685,9 @@ def ooc_cmd_shoutlog(client: ClientManager.Client, arg: str):
     You may get something like the next example
     >>> /shoutlog 0
     May return something like this:
-     == Shout log of Basement (0) ==
-     *Sat Jun 29 13:15:56 2019 | [1] Phantom (1234567890) used shout 1 with the message: I consent
-     *Sat Jun 29 13:16:41 2019 | [1] Phantom (1234567890) used shout 3 with the message: u wrong m9
+    | $H: == Shout log of Basement (0) ==
+    | *Sat Jun 29 13:15:56 2019 | [1] Phantom (1234567890) used shout 1 with the message: I consent
+    | *Sat Jun 29 13:16:41 2019 | [1] Phantom (1234567890) used shout 3 with the message: u wrong m9
     """
 
     Constants.assert_command(client, arg, is_staff=True)
@@ -6684,6 +6741,9 @@ def ooc_cmd_showname_area(client: ClientManager.Client, arg: str):
     /showname_area
     /showname_area <target_area>
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {target_area}: The area whose characters will be listed.
 
@@ -6691,14 +6751,14 @@ def ooc_cmd_showname_area(client: ClientManager.Client, arg: str):
     Assuming Phantom is in area 0...
     >>> /showname_area
     May return something like this:
-     == Area 0: Basement ==
-     [0] Phantom_HD
-     [1] Spam_HD (Spam, Spam, Spam...)
+    | $H: == Area 0: Basement ==
+    | [0] Phantom_HD
+    | [1] Spam_HD (Spam, Spam, Spam...)
     >>> /showname_area Courtroom
     May return something like this:
-     == Area 8: Courtroom ==
-     [2] Eggs_HD (Eggy Egg)
-     [3] Judge_HD (Gavel Guy)
+    | $H: == Area 8: Courtroom ==
+    | [2] Eggs_HD (Eggy Egg)
+    | [3] Judge_HD (Gavel Guy)
     """
 
     if arg:
@@ -6731,12 +6791,12 @@ def ooc_cmd_showname_areas(client: ClientManager.Client, arg: str):
     EXAMPLE
     >>> /showname_areas
     May return something like this:
-     == Area List ==
-     == Area 0: Basement ==
-     [0] Phantom_HD
-     [1] Spam_HD (Spam, Spam, Spam...)
-     == Area 1: Class Trial Room 1 ==
-     [2] Eggs_HD (Not Spam?)
+    | $H: == Area List ==
+    | == Area 0: Basement ==
+    | [0] Phantom_HD
+    | [1] Spam_HD (Spam, Spam, Spam...)
+    | == Area 1: Class Trial Room 1 ==
+    | [2] Eggs_HD (Not Spam?)
     """
 
     Constants.assert_command(client, arg, parameters='=0')
@@ -6803,13 +6863,13 @@ def ooc_cmd_showname_history(client: ClientManager.Client, arg: str):
     EXAMPLE
     >>> /showname_history 1
     May return something like this:
-     == Showname history of client 1 ==
-     *Sat Jun 1 18:52:32 2019 | Self set to Cas
-     *Sat Jun 1 18:52:56 2019 | Was set to NotCas
-     *Sat Jun 1 18:53:47 2019 | Was set to Ces
-     *Sat Jun 1 18:53:54 2019 | Self cleared
-     *Sat Jun 1 18:54:36 2019 | Self set to Cos
-     *Sat Jun 1 18:54:46 2019 | Was cleared
+    | $H: == Showname history of client 1 ==
+    | *Sat Jun 1 18:52:32 2019 | Self set to Cas
+    | *Sat Jun 1 18:52:56 2019 | Was set to NotCas
+    | *Sat Jun 1 18:53:47 2019 | Was set to Ces
+    | *Sat Jun 1 18:53:54 2019 | Self cleared
+    | *Sat Jun 1 18:54:36 2019 | Self set to Cos
+    | *Sat Jun 1 18:54:46 2019 | Was cleared
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=1')
@@ -7073,7 +7133,7 @@ def ooc_cmd_status(client: ClientManager.Client, arg: str):
     Assuming client 1 on character Phantom_HD has a custom description...
     >>> /status 1
     May return something like this:
-     $HOST: You note the following about Phantom_HD: 'Phantom is carrying a bag.'
+    | $H: You note the following about Phantom_HD: 'Phantom is carrying a bag.'
     """
 
     msg = ''
@@ -7411,6 +7471,9 @@ def ooc_cmd_timer_get(client: ClientManager.Client, arg: str):
 
     SYNTAX
     /timer_get {timername}
+
+    PARAMETERS
+    None
 
     OPTIONAL PARAMETERS
     {timername}: Check time remaining in given timer; defaults to all timers if not given one.
@@ -8876,7 +8939,7 @@ def ooc_cmd_version(client: ClientManager.Client, arg: str):
     EXAMPLES
     >>> /version
     May return something like:
-     $HOST: This server is running TsuserverDR 4.0.0 (190801a)
+    | $H: This server is running TsuserverDR 4.0.0 (190801a)
     """
 
     Constants.assert_command(client, arg, parameters='=0')
@@ -9058,8 +9121,10 @@ def ooc_cmd_whois(client: ClientManager.Client, arg: str):
     Returns an error if the given identifier does not correspond to a user.
 
     SYNTAX
-    /whois
     /whois {target_id}
+
+    PARAMETERS
+    None
 
     OPTIONAL PARAMETERS
     {target_id}: Either client ID, IPID, character name, iniedited-to character name, showname,
@@ -9251,6 +9316,9 @@ def ooc_cmd_zone_end(client: ClientManager.Client, arg: str):
 
     SYNTAX
     /zone_end
+
+    PARAMETERS
+    None
 
     OPTIONAL PARAMETERS
     {zone_id}: ID of zone.
@@ -9569,13 +9637,13 @@ def ooc_cmd_zone_info(client: ClientManager.Client, arg: str):
     EXAMPLES
     >>> /zone_info
     May return something like this:
-     $H: == Zone z0 ==
-     Zone z0. Contains areas: 4-7. Is watched by: [0] Phantom (4) and [1] Spam (5).
-     $H: == Zone Area List ==
-     == Area 4: Test 1 ==
-     [0] Phantom_HD (123456789)
-     == Area 5: Test 2 ==
-     [1] Spam_HD (987654321)
+    | $H: == Zone z0 ==
+    | Zone z0. Contains areas: 4-7. Is watched by: [0] Phantom (4) and [1] Spam (5).
+    | $H: == Zone Area List ==
+    | == Area 4: Test 1 ==
+    | [0] Phantom_HD (123456789)
+    | == Area 5: Test 2 ==
+    | [1] Spam_HD (987654321)
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
@@ -9652,8 +9720,8 @@ def ooc_cmd_zone_list(client: ClientManager.Client, arg: str):
     EXAMPLES
     >>> /zone_list
     May return something like this:
-     $H: == Active zones ==
-     *Zone 1000 [15] (2, 16-116). Watchers: Phantom (16)
+    | $H: == Active zones ==
+    | *Zone 1000 [15] (2, 16-116). Watchers: Phantom (16)
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
@@ -9672,6 +9740,9 @@ def ooc_cmd_zone_mode(client: ClientManager.Client, arg: str):
 
     SYNTAX
     /zone_mode {gamemode}
+
+    PARAMETERS
+    None
 
     OPTIONAL PARAMETERS
     {gamemode}: New gamemode
@@ -10031,17 +10102,20 @@ def ooc_cmd_8ball(client: ClientManager.Client, arg: str):
     SYNTAX
     /8ball {question}
 
+    PARAMETERS
+    None
+
     OPTIONAL PARAMETERS
     {question}: Question to ask the magic 8 ball.
 
     EXAMPLES
-    If Phantom is using the magic 8 ball.
+    Assuming Phantom is using the magic 8 ball...
     >>> /8ball
     May return something like
-     $H: In response to Phantom, the magic 8 ball says `It is certain`.
+    | $H: In response to Phantom, the magic 8 ball says `It is certain`.
     >>> /8ball Am I bae?
     May return something like
-     $H: In response to Phantom's question `Am I bae?`, the magic 8 ball says `My sources say no`.
+    | $H: In response to Phantom's question `Am I bae?`, the magic 8 ball says `My sources say no`.
     """
 
     responses = ['It is certain',
@@ -10457,7 +10531,7 @@ def ooc_cmd_help_more(client: ClientManager.Client, arg: str):
     PARAMETERS
     <command_name>: Name of command.
 
-    EXAMPLES.
+    EXAMPLES
     >>> /help_more help_more
     Returns additional information about the command `help_more` (namely, the text you are reading
     now).
@@ -10510,6 +10584,8 @@ def ooc_cmd_help_more(client: ClientManager.Client, arg: str):
     # Description
     output = 'DESCRIPTION\r\n '
     for line in parsed_doc[1]:
+        if line.startswith('Returns an error'):
+            output += '\r\n'
         output += line + ' '
     client.send_ooc(output.strip())
 
@@ -10539,15 +10615,14 @@ def ooc_cmd_help_more(client: ClientManager.Client, arg: str):
     # Examples
     output = 'EXAMPLES\r\n'
     for line in parsed_doc[5][1:]:
-        if line.startswith('/'):
-            output += '\r\n>>>'
-        if '::' not in line:
-            output += line + ' '
+        if line.startswith('>>> '):
+            output += '\r\n' + line + '\r\n'
+        elif line.startswith('| '):
+            output += '\r\n' + line + '\r\n'
         else:
-            ex_command, ex_description = line.split('::')
-            output += ex_command.strip() + '\r\n'
-            output += ex_description.strip() + ' '
-    client.send_ooc(output.strip().replace('\r\n\r\n', '\r\n'))
+            output += line + ' '
+    client.send_ooc(output.replace('\r\n\r\n', '\r\n').strip())
+
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
     """
@@ -10592,7 +10667,7 @@ def ooc_cmd_exec(client: ClientManager.Client, arg: str):
         client.send_ooc(arg, username='>>>')
         result = eval(arg)
         if result is not None:
-            client.send_ooc(result, username='')
+            client.send_ooc(str(result), username='')
     except Exception:
         try:
             # Temporarily add "client" as a global variable, to allow using
