@@ -718,3 +718,4 @@
   - /notecard_reveal
   - /notecard_reveal_count
 * Added /help_more, which lists extended help for a command
+* Fixed some compatibility issues with AO 2.9
