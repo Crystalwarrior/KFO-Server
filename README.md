@@ -98,6 +98,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
 
 * **help** "command name"
     - Displays help for a command, or links to the server repository if not given an argument.
+* **help_more** "command name"
+    - Displays extended help for a command, usually significantly longer than what /help does.
 * **area** "area number"
     - Moves you to an area by its numerical ID if it is reachable from your own, or displays all areas if not given a number.
 * **autopass**

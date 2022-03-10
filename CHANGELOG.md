@@ -708,3 +708,4 @@
   - /zone_paranoia
   - /zone_paranoia_info
 * Added /pos_force (alias /forcepos), which changes the IC position to a given position of a target player if given, or all players in the current area otherwise
+* Added /help_more, which lists extended help for a command
