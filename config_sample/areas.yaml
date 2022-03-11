@@ -33,6 +33,7 @@
 # *rp_getareas_allowed: If false, if the server is in RP mode, only GM+ can /getareas and similar. If true, no such restriction is imposed.
 # *scream_range: If <ALL>, all areas can receive a /scream message sent from this area. If <REACHABLE_AREAS>, all areas defined in reachable_areas can receive a /scream message sent from this area. If it is a comma-separated list of areas (by name), only said areas can receive /scream messages.
 # *song_switch_allowed: If false, only GM+ can do /play. If true, no such restriction is imposed.
+# *visible_areas: If <ALL>, a passage will be set as visible (but not necessarily reachable) from this area to every other area. If <REACHABLE_AREAS>, the procedure will be done to exactly all areas described in the areas' `reachable_areas` key. If it is a comma-separated list of areas (by name), the procedure will be done to the listed areas.
 
 # --------
 # Mandatory parameters (the area list will not load if a section does not contain the following)
@@ -67,6 +68,7 @@
 # rp_getareas_allowed: true
 # scream_range: NO AREAS OTHER THAN THIS ONE
 # song_switch_allowed: false
+# visible_areas: <REACHABLE_AREAS>
 
 - area: Basement
   background: Class Trial Debate Room V3-1_HD
