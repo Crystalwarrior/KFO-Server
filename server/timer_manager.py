@@ -725,7 +725,7 @@ class Timer:
                     self._on_min_end()
                     break
 
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.01)
             new_time = self._get()
             elapsed = new_time - current_time
             if elapsed:

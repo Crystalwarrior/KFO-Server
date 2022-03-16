@@ -712,7 +712,7 @@
   - /notecard
   - /notecard_check
   - /notecard_clear
-  - /notecard_clear_all
+  - /notecard_clear_area
   - /notecard_info
   - /notecard_list
   - /notecard_reveal
