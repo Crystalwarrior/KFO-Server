@@ -1175,7 +1175,7 @@ class ClientManager:
                 info = "\n== Area List =="
                 cnt = 0
                 for hub in self.server.hub_manager.hubs:
-                    if hub.can_getareas:
+                    if hub.can_getareas or self.is_mod:
                         for i in range(len(hub.areas)):
                             area = hub.areas[i]
                             if afk_check:
