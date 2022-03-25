@@ -712,10 +712,11 @@
   - /notecard
   - /notecard_check
   - /notecard_clear
-  - /notecard_clear_all
+  - /notecard_clear_area
   - /notecard_info
   - /notecard_list
   - /notecard_reveal
   - /notecard_reveal_count
 * Added /help_more, which lists extended help for a command
 * Added support for the `video` field in Danganronpa Online 1.1.0
+* Fixed some compatibility issues with AO 2.9
