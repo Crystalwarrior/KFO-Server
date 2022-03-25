@@ -50,7 +50,7 @@ class ClientManager:
             self.required_packets_received = set()  # Needs to have length 2 to actually connect
             self.can_askchaa = True  # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined')  # AO version used established through ID pack
-            self.packet_handler = clients.ClientDRO1d0d0
+            self.packet_handler = clients.ClientDRO1d1d0
             self.bad_version = False
             self.publisher = Publisher(self)
 
@@ -212,7 +212,7 @@ class ClientManager:
                 outbound_args = self.packet_handler[idn].value
             except KeyError:
                 try:
-                    outbound_args = clients.DefaultAO2Protocol[idn].value
+                    outbound_args = clients.DefaultDROProtocol[idn].value
                 except KeyError:
                     err = f'No matching protocol found for {idn}.'
                     raise KeyError(err)
@@ -480,7 +480,9 @@ class ClientManager:
                          not pargs['msg'] in allowed_messages) or
                         (sender and sender.is_gagged and gag_replaced)):
                         pargs['msg'] = '(Your ears are ringing)'
-                        if self.send_deaf_space and self.packet_handler != clients.ClientDRO1d0d0:
+                        if (self.send_deaf_space
+                            and self.packet_handler not in
+                            [clients.ClientDRO1d0d0, clients.ClientDRO1d1d0]):
                             pargs['msg'] = pargs['msg'] + ' '
                         self.send_deaf_space = not self.send_deaf_space
 
@@ -489,7 +491,8 @@ class ClientManager:
                 # around old client bug
                 if sender and sender.multi_ic and sender.multi_ic_pre:
                     if pargs['msg'].startswith(sender.multi_ic_pre):
-                        if self != sender or sender.packet_handler == clients.ClientDRO1d0d0:
+                        if (self != sender or self.packet_handler in
+                            [clients.ClientDRO1d0d0, clients.ClientDRO1d1d0]):
                             pargs['msg'] = pargs['msg'].replace(sender.multi_ic_pre, '', 1)
 
                 # Modify shownames as needed
@@ -571,7 +574,7 @@ class ClientManager:
             self.send_ic(msg='(Something catches your attention)', ding=1)
 
         def send_ic_blankpost(self):
-            if self.packet_handler == clients.ClientDRO1d0d0:
+            if self.packet_handler in [clients.ClientDRO1d0d0, clients.ClientDRO1d1d0]:
                 self.send_ic(msg='', bypass_replace=True)
 
         def send_background(self, name: str = None, pos: str = None,
