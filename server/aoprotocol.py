@@ -202,7 +202,7 @@ class AOProtocol(asyncio.Protocol):
             fallback_protocols = list()
 
         packet_type = '{}_INBOUND'.format(identifier.upper())
-        protocols = [self.client.packet_handler]+fallback_protocols+[clients.DefaultAO2Protocol]
+        protocols = [self.client.packet_handler]+fallback_protocols+[clients.DefaultDROProtocol]
         for protocol in protocols:
             try:
                 expected_pairs = protocol[packet_type].value
@@ -282,7 +282,7 @@ class AOProtocol(asyncio.Protocol):
 
         def check_client_version():
             if len(args) < 2:
-                self.client.version = ('DRO', '1.0.0')
+                self.client.version = ('DRO', '1.1.0')
                 return False
 
             raw_software, raw_version = pargs['client_software'], pargs['client_software_version']
@@ -323,7 +323,10 @@ class AOProtocol(asyncio.Protocol):
                 pass
 
             if software == 'DRO':
-                self.client.packet_handler = clients.ClientDRO1d0d0
+                if major >= 1:
+                    self.client.packet_handler = clients.ClientDRO1d1d0
+                else:
+                    self.client.packet_handler = clients.ClientDRO1d0d0
             else:  # AO2 protocol
                 if release == 2:
                     if major >= 9:
@@ -354,7 +357,7 @@ class AOProtocol(asyncio.Protocol):
         if not check_client_version():
             # Warn player they are using an unknown client.
             # Assume a DRO client instruction set.
-            self.client.packet_handler = clients.ClientDRO1d0d0
+            self.client.packet_handler = clients.ClientDRO1d1d0
             self.client.bad_version = True
 
         self.client.send_command_dict('FL', {

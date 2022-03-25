@@ -22,7 +22,7 @@ from enum import Enum
 from server.constants import ArgType
 
 
-class DefaultAO2Protocol(Enum):
+class DefaultDROProtocol(Enum):
     DECRYPTOR_OUTBOUND = [
         ('key', 34),  # 0
         ]
@@ -296,7 +296,45 @@ class DefaultAO2Protocol(Enum):
     CHARSCHECK_INBOUND = [
         ]
 
-ClientDRO1d0d0 = Enum('ClientDRO1d0d0', [(m.name, m.value) for m in DefaultAO2Protocol])
+ClientDRO1d1d0 = Enum('ClientDRO1d1d0', [(m.name, m.value) for m in DefaultDROProtocol])
+
+class ClientDRO1d0d0(Enum):
+    MS_INBOUND = [
+    ('msg_type', ArgType.STR),  # 0
+    ('pre', ArgType.STR_OR_EMPTY),  # 1
+    ('folder', ArgType.STR),  # 2
+    ('anim', ArgType.STR),  # 3
+    ('text', ArgType.STR),  # 4
+    ('pos', ArgType.STR),  # 5
+    ('sfx', ArgType.STR_OR_EMPTY),  # 6
+    ('anim_type', ArgType.INT),  # 7
+    ('char_id', ArgType.INT),  # 8
+    ('sfx_delay', ArgType.INT),  # 9
+    ('button', ArgType.INT),  # 10
+    ('evidence', ArgType.INT),  # 11
+    ('flip', ArgType.INT),  # 12
+    ('ding', ArgType.INT),  # 13
+    ('color', ArgType.INT),  # 14
+    ]
+
+MS_OUTBOUND = [
+    ('msg_type', 1),  # 0
+    ('pre', '-'),  # 1
+    ('folder', '<NOCHAR>'),  # 2
+    ('anim', '../../misc/blank'),  # 3
+    ('msg', ''),  # 4
+    ('pos', 'jud'),  # 5
+    ('sfx', 0),  # 6
+    ('anim_type', 0),  # 7
+    ('char_id', -1),  # 8
+    ('sfx_delay', 0),  # 9
+    ('button', 0),  # 10
+    ('evidence', 0),  # 11
+    ('flip', 0),  # 12
+    ('ding', -1),  # 13
+    ('color', 0),  # 14
+    ('showname', ' '),  # 15
+    ]
 
 
 class ClientDROLegacy(Enum):
