@@ -718,3 +718,4 @@
   - /notecard_reveal
   - /notecard_reveal_count
 * Added /help_more, which lists extended help for a command
+* Added support for the `video` field in Danganronpa Online 1.1.0
