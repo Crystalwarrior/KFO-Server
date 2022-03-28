@@ -98,6 +98,13 @@ class ValidateAreas(Validate):
                         f'again.')
                 raise AreaError(info)
 
+            # Prevent conflicts with AO Protocol
+            if Constants.includes_omniwhy_exploit(item['area']):
+                info = (f'Area {item["area"]} contains characters that could cause issues with '
+                        f'certain AO clients, so it is invalid. Please rename the area and try '
+                        f'again.')
+                raise AreaError(info)
+
             # Check unset optional parameters
             for param in default_area_parameters:
                 if param not in item:

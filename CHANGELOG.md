@@ -699,6 +699,9 @@
 * IPIDs are no longer generated and stored for clients that do not properly follow the AO protocol when logging in
 * Fixed issue that allowed some handshake commands to be accepted out of order
 
+### 220327a (4.3.0-post6)
+* Fixed issue that allowed area or music lists that allowed some clients to send improper requests
+
 ### (4.3.1)
 * Added `visible_areas` support to `areas.yaml`. If included in an area, it will set the areas visible to a player in the area. By default it is the same as the reachable areas
 * Added /peek, which allows players to gather information about an area nearby, potentially warning users in the target area of the peek
