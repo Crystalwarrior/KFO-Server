@@ -698,3 +698,6 @@
 * Updated copyright notice for year to 2022
 * IPIDs are no longer generated and stored for clients that do not properly follow the AO protocol when logging in
 * Fixed issue that allowed some handshake commands to be accepted out of order
+
+### 220327a (4.3.0-post6)
+* Fixed issue that allowed area or music lists that allowed some clients to send improper requests

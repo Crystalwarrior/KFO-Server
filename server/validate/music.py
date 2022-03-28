@@ -70,7 +70,14 @@ class ValidateMusic(Validate):
 
         # Check each song description dictionary is ok
         for (i, item) in enumerate(contents.copy()):
-            category = item['category']
+            category = str(item['category'])
+            # Prevent conflicts with AO Protocol
+            if Constants.includes_omniwhy_exploit(category):
+                info = (f'Category {category} contains characters that could cause issues with '
+                        f'certain AO clients, so it is invalid. Please rename the category and try '
+                        f'again.')
+                raise ServerError.FileSyntaxError(info)
+            
             songs = item['songs']
             for (j, song) in enumerate(songs):
                 if song is None:
@@ -110,7 +117,18 @@ class ValidateMusic(Validate):
                     msg = (f'Expected all music list song sources to be strings or numbers, but '
                            f'song {j}: {name} in category {i}: {category} was not a string or '
                            f'number.')
-
+                    raise ServerError.FileSyntaxError(msg)
+                
+                name = str(name)
+                length = float(length)
+                source = str(source)
+                # Prevent conflicts with AO Protocol
+                if Constants.includes_omniwhy_exploit(name):
+                    info = (f'Song name {name} contains characters that could cause issues with '
+                            f'certain AO clients, so it is invalid. Please rename the song and try '
+                            f'again.')
+                    raise ServerError.FileSyntaxError(info)
+            
                 # Prevent names that may be interpreted as a directory with . or ..
                 # This prevents sending the client an entry to their music list which may be read as
                 # including a relative directory

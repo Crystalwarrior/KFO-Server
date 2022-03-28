@@ -312,6 +312,10 @@ class Constants():
         return ('.' in folders or '..' in folders)
 
     @staticmethod
+    def includes_omniwhy_exploit(name: str) -> bool:
+        return name.startswith('%') or '#' in name
+
+    @staticmethod
     def yaml_load(file: str) -> Any:
         # Extract the name of the yaml in case of errors
         separator = max(file.name.rfind('\\'), file.name.rfind('/'))
