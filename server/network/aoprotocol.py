@@ -871,6 +871,13 @@ class AOProtocol(asyncio.Protocol):
         if not confirmed:
             charid_pair = -1
 
+        ver = self.client.version.split('.')
+        if len(ver) >= 2:
+            # Client versions 2.9 or less need to get their SFX corrected due to 2.10 changes
+            if ver[0].isnumeric() and int(ver[0]) <= 2 and ver[1].isnumeric() and int(ver[1]) <= 9:
+                if emote_mod not in (1, 6):
+                    sfx = ''
+
         if whisper_clients is not None:
             whisper_clients.insert(0, self.client)
             for client in self.client.area.clients:
