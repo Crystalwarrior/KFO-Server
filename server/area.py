@@ -927,7 +927,7 @@ class Area:
                     elif shout == "1" and self.minigame != "":
                         commands.ooc_cmd_concede(client, "")
                     # Shouter provided target but no opponent was found
-                    elif target != "" or self.minigame == "Scrum Debate":
+                    elif target != "" or self.minigame in ["Cross Swords", "Scrum Debate"]:
                         raise AreaError(
                             "Interjection minigame - target not found!")
                 except Exception as ex:
@@ -1356,7 +1356,7 @@ class Area:
             and client not in self.owners
             and client.id not in self.invite_list
             # specific use case for joining in a Scrum Debate
-            and (self.minigame != "Scrum Debate" or button != "2")
+            and (self.minigame not in ["Cross Swords", "Scrum Debate"] or button != "2")
         )
 
     def change_hp(self, side, val):
