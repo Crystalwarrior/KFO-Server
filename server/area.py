@@ -1345,7 +1345,7 @@ class Area:
         """
         return (time.time() * 1000.0 - self.next_message_time) > 0
 
-    def cannot_ic_interact(self, client, button):
+    def cannot_ic_interact(self, client, button="0"):
         """
         Check if this area is muted to a client.
         :param client: sender
