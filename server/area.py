@@ -921,10 +921,10 @@ class Area:
                                 opponent = t
 
                     # Minigame with an opponent
-                    if opponent is not None and shout in ["1", "2"]:
-                        self.start_debate(client, opponent, shout == "1")
+                    if opponent is not None and shout in ["2", "3"]:
+                        self.start_debate(client, opponent, shout == "3")
                     # Concede
-                    elif shout == "3" and self.minigame != "":
+                    elif shout == "1" and self.minigame != "":
                         commands.ooc_cmd_concede(client, "")
                     # Shouter provided target but no opponent was found
                     elif target != "":
@@ -1666,6 +1666,8 @@ class Area:
 
         song = ""
         if self.minigame == "Scrum Debate":
+            if pta:
+                raise AreaError("You cannot PTA during a Scrum Debate!")
             if target.char_id in self.red_team:
                 self.red_team.discard(client.char_id)
                 self.blue_team.add(client.char_id)
