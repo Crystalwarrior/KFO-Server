@@ -515,7 +515,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_mod or self.client in self.client.area.owners:
             target_area = self.client.broadcast_list.copy()
 
-        if self.client.area.cannot_ic_interact(self.client):
+        if self.client.area.cannot_ic_interact(self.client, button):
             self.client.send_ooc(
                 "This is a muted area - ask the CM to be included in the invite list."
             )

@@ -927,7 +927,7 @@ class Area:
                     elif shout == "1" and self.minigame != "":
                         commands.ooc_cmd_concede(client, "")
                     # Shouter provided target but no opponent was found
-                    elif target != "":
+                    elif target != "" or self.minigame == "Scrum Debate":
                         raise AreaError(
                             "Interjection minigame - target not found!")
                 except Exception as ex:
@@ -1345,7 +1345,7 @@ class Area:
         """
         return (time.time() * 1000.0 - self.next_message_time) > 0
 
-    def cannot_ic_interact(self, client):
+    def cannot_ic_interact(self, client, button):
         """
         Check if this area is muted to a client.
         :param client: sender
@@ -1355,6 +1355,8 @@ class Area:
             and not client.is_mod
             and client not in self.owners
             and client.id not in self.invite_list
+            # specific use case for joining in a Scrum Debate
+            and (self.minigame != "Scrum Debate" or button != "2")
         )
 
     def change_hp(self, side, val):
