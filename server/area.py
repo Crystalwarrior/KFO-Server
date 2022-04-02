@@ -169,7 +169,7 @@ class Area:
 
         # DR minigames
 
-        ## CROSS SWORDS
+        # CROSS SWORDS
         # The name of the song to play when minigame starts
         self.cross_swords_song_start = ""
         # The name of the song to play when minigame ends
@@ -177,7 +177,7 @@ class Area:
         # in seconds, 300s = 5m
         self.cross_swords_timer = 300
 
-        ## SCRUM DEBATE
+        # SCRUM DEBATE
         # The name of the song to play when minigame starts
         self.scrum_debate_song_start = ""
         # The name of the song to play when minigame ends
@@ -185,7 +185,7 @@ class Area:
         # in seconds, 300s = 5m. How much time is added on top of cross swords.
         self.scrum_debate_added_time = 300
 
-        ## PANIC TALK ACTION
+        # PANIC TALK ACTION
         # The name of the song to play when minigame starts
         self.panic_talk_action_song_start = ""
         # The name of the song to play when minigame ends
@@ -265,7 +265,8 @@ class Area:
     def name(self, value):
         self._name = value.strip()
         while "<num>" in self._name or "<percent>" in self._name:
-            self._name = self._name.replace("<num>", "").replace("<percent>", "")
+            self._name = self._name.replace(
+                "<num>", "").replace("<percent>", "")
         self.abbreviation = self.abbreviate()
 
     @property
@@ -524,7 +525,8 @@ class Area:
                     evidence = value["evidence"]
                 if "password" in value:
                     password = value["password"]
-                self.link(key, locked, hidden, target_pos, can_peek, evidence, password)
+                self.link(key, locked, hidden, target_pos,
+                          can_peek, evidence, password)
 
         # Update the clients in that area
         if self.dark:
@@ -697,7 +699,8 @@ class Area:
             # Remove their owner status due to single_cm pref. remove_owner will unlock the area if they were the last CM.
             if client in self._owners:
                 self.remove_owner(client)
-                client.send_ooc("You can only be a CM of a single area in this hub.")
+                client.send_ooc(
+                    "You can only be a CM of a single area in this hub.")
         if self.locking_allowed:
             # Since anyone can lock/unlock, unlock if we were the last client in this area and it was locked.
             if len(self.clients) - 1 <= 0:
@@ -781,7 +784,8 @@ class Area:
         try:
             del self.links[str(target)]
         except KeyError:
-            raise AreaError(f"Link {target} does not exist in Area {self.name}!")
+            raise AreaError(
+                f"Link {target} does not exist in Area {self.name}!")
 
     def is_char_available(self, char_id):
         """
@@ -862,7 +866,8 @@ class Area:
                 lst = list(self.testimony[idx])
                 lst[4] = "}}}" + args[4][2:]
                 self.testimony[idx] = tuple(lst)
-                self.broadcast_ooc(f"{client.showname} has amended Statement {idx+1}.")
+                self.broadcast_ooc(
+                    f"{client.showname} has amended Statement {idx+1}.")
                 if not self.recording:
                     self.testimony_send(idx)
             except IndexError:
@@ -870,10 +875,12 @@ class Area:
                     f"Something went wrong, couldn't amend Statement {idx+1}!"
                 )
             return
-        adding = args[4].strip() != "" and self.recording and client is not None
+        adding = args[4].strip(
+        ) != "" and self.recording and client is not None
         if client and args[4].startswith("++") and len(self.testimony) > 0:
             if len(self.testimony) >= 30:
-                client.send_ooc("Maximum testimony statement amount reached! (30)")
+                client.send_ooc(
+                    "Maximum testimony statement amount reached! (30)")
                 return
             adding = True
         else:
@@ -892,7 +899,7 @@ class Area:
                 target = ""
                 # message contains an "at" sign aka we're referring to someone specific
                 if "@" in msg:
-                    target = msg[msg.find("@") + 1 :]
+                    target = msg[msg.find("@") + 1:]
                 try:
                     opponent = None
                     target = target.lower()
@@ -921,7 +928,8 @@ class Area:
                         commands.ooc_cmd_concede(client, "")
                     # Shouter provided target but no opponent was found
                     elif target != "":
-                        raise AreaError("Interjection minigame - target not found!")
+                        raise AreaError(
+                            "Interjection minigame - target not found!")
                 except Exception as ex:
                     client.send_ooc(ex)
                     return
@@ -948,7 +956,8 @@ class Area:
                         # Send the mesage as OOC.
                         # Woulda been nice if there was a packet to send messages to IC log
                         # without displaying it in the viewport.
-                        c.send_command("CT", f"[pos '{args[5]}'] {name}", args[4])
+                        c.send_command(
+                            "CT", f"[pos '{args[5]}'] {name}", args[4])
                         continue
                 complete = args
                 # First-person mode support, we see our own msgs as narration
@@ -965,7 +974,8 @@ class Area:
                     or args[8] != self.last_ic_message[8]
                     or self.last_ic_message[4].strip() != ""
                 ):
-                    database.log_area("chat.ic", client, client.area, message=args[4])
+                    database.log_area("chat.ic", client,
+                                      client.area, message=args[4])
                 if self.recording:
                     # See if the testimony is supposed to end here.
                     scrunched = "".join(e for e in args[4] if e.isalnum())
@@ -980,7 +990,8 @@ class Area:
 
         if adding:
             if len(self.testimony) >= 30:
-                client.send_ooc("Maximum testimony statement amount reached! (30)")
+                client.send_ooc(
+                    "Maximum testimony statement amount reached! (30)")
                 return
             lst = list(args)
             if lst[4].startswith("++"):
@@ -1049,7 +1060,8 @@ class Area:
                     escaped = True
                 elif symbol == "{":  # slow down
                     current_display_speed = min(
-                        len(message_display_speed) - 1, current_display_speed + 1
+                        len(message_display_speed) -
+                        1, current_display_speed + 1
                     )
                 elif symbol == "}":  # speed up
                     current_display_speed = max(0, current_display_speed - 1)
@@ -1235,7 +1247,8 @@ class Area:
 
         if vote_picked is None:
             self.music = ""
-            self.send_command("MC", self.music, -1, "", 1, 0, int(MusicEffect.FADE_OUT))
+            self.send_command("MC", self.music, -1, "", 1,
+                              0, int(MusicEffect.FADE_OUT))
             return
 
         if vote_picked.name == self.music:
@@ -1491,7 +1504,8 @@ class Area:
         # Update their judge buttons
         self.update_judge_buttons(client)
 
-        self.broadcast_ooc(f"{client.showname} [{client.id}] is CM in this area now.")
+        self.broadcast_ooc(
+            f"{client.showname} [{client.id}] is CM in this area now.")
 
     def remove_owner(self, client, dc=False):
         """
@@ -1563,7 +1577,8 @@ class Area:
         :return: time left until you can move again or 0.
         """
         secs = round(time.time() * 1000.0 - client.last_move_time)
-        total = sum([client.move_delay, self.move_delay, self.area_manager.move_delay])
+        total = sum([client.move_delay, self.move_delay,
+                    self.area_manager.move_delay])
         test = total * 1000.0 - secs
         if test > 0:
             return test
@@ -1685,7 +1700,8 @@ class Area:
             return
         elif self.minigame == "Cross Swords":
             if target == client:
-                self.broadcast_ooc(f"[{client.id}] {client.showname} conceded!")
+                self.broadcast_ooc(
+                    f"[{client.id}] {client.showname} conceded!")
                 self.end_minigame(f"[{client.id}] {client.showname} conceded!")
                 return
             if not self.can_scrum_debate:
@@ -1723,7 +1739,8 @@ class Area:
             if pta and not self.can_panic_talk_action:
                 raise AreaError("You may not PTA in this area!")
             if client == target:
-                raise AreaError("You cannot initiate a minigame against yourself!")
+                raise AreaError(
+                    "You cannot initiate a minigame against yourself!")
             self.old_invite_list = self.invite_list
             self.old_muted = self.muted
 
@@ -1760,10 +1777,12 @@ class Area:
                 song = self.cross_swords_song_start
         else:
             if target == client:
-                self.broadcast_ooc(f"[{client.id}] {client.showname} conceded!")
+                self.broadcast_ooc(
+                    f"[{client.id}] {client.showname} conceded!")
                 self.end_minigame(f"[{client.id}] {client.showname} conceded!")
                 return
-            raise AreaError(f"{self.minigame} is happening! You cannot interrupt it.")
+            raise AreaError(
+                f"{self.minigame} is happening! You cannot interrupt it.")
 
         timer = max(5, int(timer))
         # Timer ID 3 is reserved for minigames
