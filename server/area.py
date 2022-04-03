@@ -857,12 +857,12 @@ class Area:
         :param *args: arguments
         """
         # Anim is blank, we're narrating
-        if args[3] == "" and self.client.area.last_ic_message is not None:
+        if args[3] == "" and self.last_ic_message is not None:
             lst = list(args)
             # Keep the desk mod
-            lst[0] = self.client.area.last_ic_message[0]
+            lst[0] = self.last_ic_message[0]
             # Set the pos to last message's pos
-            lst[5] = self.client.area.last_ic_message[5]
+            lst[5] = self.last_ic_message[5]
             args = tuple(lst)
 
         if client in self.afkers:
