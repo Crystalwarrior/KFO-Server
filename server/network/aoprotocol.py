@@ -1044,18 +1044,32 @@ class AOProtocol(asyncio.Protocol):
                     )
             # Minigames
             opposing_team = None
-            if self.client.char_id in self.client.area.red_team:
-                color = 2
-                offset_pair = -25
-                other_offset = 25
-                pos = "debate"
-                opposing_team = self.client.area.blue_team
-            elif self.client.char_id in self.client.area.blue_team:
-                color = 7
-                offset_pair = 25
-                other_offset = -25
-                pos = "debate"
-                opposing_team = self.client.area.red_team
+            # If we're not using shouts, and we're in CS/Scrum/PTA
+            if button == "0":
+                # If we're on red team
+                if self.client.char_id in self.client.area.red_team:
+                    # Set our color to red
+                    color = 2
+                    # Offset us to the left
+                    offset_pair = -25
+                    # Offset them to the right
+                    other_offset = 25
+                    # Set our pos to "debate"
+                    pos = "debate"
+                    # Our opposing team is blue
+                    opposing_team = self.client.area.blue_team
+                # If we're on blue team
+                elif self.client.char_id in self.client.area.blue_team:
+                    # Set our color to cyan
+                    color = 7
+                    # Offset them to the right
+                    offset_pair = 25
+                    # Offset them to the left
+                    other_offset = -25
+                    # Set our pos to "debate"
+                    pos = "debate"
+                    # Our opposing team is red
+                    opposing_team = self.client.area.red_team
 
             # We're in a minigame w/ team setups
             if opposing_team is not None:
@@ -1068,10 +1082,13 @@ class AOProtocol(asyncio.Protocol):
                     and int(self.client.area.last_ic_message[16].split("^")[0])
                     in opposing_team
                 ):
+                    # Set the pair to the person who it was last msg
                     charid_pair = int(
                         self.client.area.last_ic_message[16].split("^")[0]
                     )
+                # The person we were trying to find is no longer on the opposing team
                 else:
+                    # Search through the opposing team's characters
                     for other_cid in opposing_team:
                         charid_pair = other_cid
                         # If last message's charid matches a member of this team, prioritize theirs
@@ -1080,10 +1097,13 @@ class AOProtocol(asyncio.Protocol):
                             and other_cid == self.client.area.last_ic_message[8]
                         ):
                             break
-
+                # If our pair opponent is found
                 if charid_pair != -1:
+                    # Search through clients in area
                     for target in self.client.area.clients:
+                        # If we find our target char ID
                         if target.char_id == charid_pair:
+                            # Set emote, flip and folder properly
                             other_emote = target.last_sprite
                             other_flip = target.flip
                             other_folder = target.claimed_folder
@@ -1102,12 +1122,6 @@ class AOProtocol(asyncio.Protocol):
         ):
             additive = 0
 
-        # Narrator chat, if we're narrating over someone let's use their msg's pos
-        if anim == "" and self.client.area.last_ic_message is not None:
-            # Set the pos to last message's pos
-            pos = self.client.area.last_ic_message[5]
-            # Keep the desk mod
-            msg_type = self.client.area.last_ic_message[0]
         self.client.area.send_ic(
             self.client,
             msg_type,
