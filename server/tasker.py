@@ -252,7 +252,7 @@ class Tasker:
                         c.send_ooc('{} was AFK kicked from your party.'.format(original_name))
 
     async def as_day_cycle(self, client: ClientManager.Client, args: List):
-        _, area_1, area_2, hour_length, hour_start, send_first_hour = args
+        _, area_1, area_2, hour_length, hour_start, hours_in_day, send_first_hour = args
         hour = hour_start
         minute_at_interruption = 0
         time_started_at = time.time()
@@ -321,7 +321,7 @@ class Tasker:
                 # interruptions
                 # In all cases now, update hour
                 # We can do that as code only runs here if the timer is not paused
-                hour = (hour + 1) % 24
+                hour = (hour + 1) % hours_in_day
                 targets = [c for c in self.server.get_clients() if c == client or
                            (notify_normies and area_1 <= c.area.id <= area_2)]
                 # Check if new period has started

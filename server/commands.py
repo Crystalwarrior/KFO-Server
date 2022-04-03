@@ -1512,9 +1512,12 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
     your client ID. Doing /clock while running an active clock will silently overwrite the old
     clock with the new one.
     Requires /clock_end to undo.
+    Raises an error if the given hour start is not a nonnegative number or beyond the indicated
+    number of hours in a day, if the number of hours in a day is not a positive integer, or if the
+    hour length is not a positive number.
 
     SYNTAX
-    /clock <area_range_start> <area_range_end> <hour_length> <hour_start>
+    /clock <area_range_start> <area_range_end> <hour_length> <hour_start> {hours_in_day}
 
     PARAMETERS
     <area_range_start>: Send notifications from this area onwards up to...
@@ -1522,17 +1525,25 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
     <hour_length>: Length of each ingame hour (in seconds)
     <hour_start>: Starting hour (integer from 0 to 23)
 
+    OPTIONAL PARAMETERS
+    {hours_in_day}: Number of hours in a day (by default 24).
+
     EXAMPLES
     >>> /clock 16 116 900 8
     Start a 900-second hour clock spanning areas 16 through 116, with starting hour 8 AM
-    >>> /clock 0 5 10 19
-    Start a 10-second hour clock spanning areas 0 through 5, with starting hour 7 PM
+    >>> /clock 0 5 10 19 15
+    Start a 10-second hour clock of 15 hours spanning areas 0 through 5, with starting hour 7 PM
     """
 
-    Constants.assert_command(client, arg, is_staff=True, parameters='=4', split_spaces=True)
+    Constants.assert_command(client, arg, is_staff=True, parameters='&4-5', split_spaces=True)
 
     # Inputs already validated, move on
-    pre_area_1, pre_area_2, pre_hour_length, pre_hour_start = arg.split(' ')
+    args = arg.split(' ')
+    if len(args) == 4:
+        pre_area_1, pre_area_2, pre_hour_length, pre_hour_start = args
+        hours_in_day = 24
+    else:
+        pre_area_1, pre_area_2, pre_hour_length, pre_hour_start, hours_in_day = args
 
     areas = Constants.parse_two_area_names(client, [pre_area_1, pre_area_2], check_valid_range=True)
     area_1, area_2 = areas[0].id, areas[1].id
@@ -1542,14 +1553,21 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
         if hour_length <= 0:
             raise ValueError
     except ValueError:
-        raise ArgumentError('Invalid hour length {}.'.format(pre_hour_length))
+        raise ArgumentError(f'Invalid hour length {pre_hour_length}.')
+
+    try:
+        hours_in_day = int(hours_in_day)
+        if hours_in_day <= 0:
+            raise ValueError
+    except ValueError:
+        raise ArgumentError(f'Invalid number of hours per day {hours_in_day}')
 
     try:
         hour_start = int(pre_hour_start)
-        if hour_start < 0 or hour_start >= 24:
+        if hour_start < 0 or hour_start >= hours_in_day:
             raise ValueError
     except ValueError:
-        raise ArgumentError('Invalid hour start {}.'.format(pre_hour_start))
+        raise ArgumentError(f'Invalid hour start {pre_hour_start}.')
 
     # Code after this assumes input is validated
     try:
@@ -1561,18 +1579,18 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
         # But first, make sure normies do not get a new notification.
         normie_notif = False
 
-    client.send_ooc('You initiated a day cycle of length {} seconds per hour in areas {} through '
-                    '{}. The cycle ID is {}.'.format(hour_length, area_1, area_2, client.id))
-    client.send_ooc_others('(X) {} [{}] initiated a day cycle of length {} seconds per hour in '
-                           'areas {} through {}. The cycle ID is {} ({}).'
-                           .format(client.displayname, client.id, hour_length, area_1, area_2,
-                                   client.id, client.area.id), is_zstaff_flex=True)
+    client.send_ooc(f'You initiated a day cycle of length {hour_length} seconds per hour in areas '
+                    f'{area_1} through {area_2}. The cycle ID is ({client.id}).')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] initiated a day cycle of '
+                           f'length {hour_length} of {hours_in_day} hours in areas {area_1} '
+                           f'through {area_2}. The cycle ID is {client.id} ({client.area.id}).',
+                           is_zstaff_flex=True)
     if normie_notif:
-        client.send_ooc_others('{} initiated a day cycle.'.format(client.displayname),
+        client.send_ooc_others(f'{client.displayname} initiated a day cycle.',
                                is_zstaff_flex=False, pred=lambda c: area_1 <= c.area.id <= area_2)
 
     client.server.tasker.create_task(client, ['as_day_cycle', time.time(), area_1, area_2,
-                                              hour_length, hour_start, normie_notif])
+                                              hour_length, hour_start, hours_in_day, normie_notif])
 
 
 def ooc_cmd_clock_end(client: ClientManager.Client, arg: str):
@@ -10793,8 +10811,8 @@ def ooc_cmd_notecard_reveal_count(client: ClientManager.Client, arg: str):
                            is_zstaff_flex=True)
     client.area.broadcast_ooc(f'The tally of all notecards in the area was revealed: '
                               f'{output}')
-    
-    
+
+
 def ooc_cmd_help_more(client: ClientManager.Client, arg: str):
     """
     Returns additional information about a command, obtained by reading the associated description
