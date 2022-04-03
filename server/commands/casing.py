@@ -708,11 +708,20 @@ def set_minigame_song(client, minigame="", song="", end=False):
     # Songname is provided
     if song != "":
         if minigame == "cs":
-            client.area.cross_swords_song_start = song
+            if end:
+                client.area.cross_swords_song_end = song
+            else:
+                client.area.cross_swords_song_start = song
         elif minigame == "sd":
-            client.area.scrum_debate_song_start = song
+            if end:
+                client.area.scrum_debate_song_end = song
+            else:
+                client.area.scrum_debate_song_start = song
         elif minigame == "pta":
-            client.area.panic_talk_action_song_start = song
+            if end:
+                client.area.panic_talk_action_song_end = song
+            else:
+                client.area.panic_talk_action_song_start = song
         client.send_ooc(
             f"Setting the {minigame} {start_or_end} song to {song}.")
         return
