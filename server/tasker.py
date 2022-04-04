@@ -486,7 +486,7 @@ class Tasker:
                     client.send_ooc('You have set the time to be unknown.')
                     client.send_ooc_others(f'(X) The day cycle initiated by {client.displayname} '
                                            f'[{client.id}] in areas {area_1} through {area_2} has '
-                                           f'been set to be at an unknown time', is_staff=True,
+                                           f'been set to be at an unknown time.', is_staff=True,
                                            pred=lambda c: area_1 <= c.area.id <= area_2)
                     client.send_ooc_others('You seem to have lost track of time.', is_staff=False,
                                            pred=lambda c: area_1 <= c.area.id <= area_2)

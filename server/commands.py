@@ -1582,9 +1582,9 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
     client.send_ooc(f'You initiated a day cycle of length {hour_length} seconds per hour in areas '
                     f'{area_1} through {area_2}. The cycle ID is {client.id}.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] initiated a day cycle of '
-                           f'length {hour_length} of {hours_in_day} hours in areas {area_1} '
-                           f'through {area_2}. The cycle ID is {client.id} ({client.area.id}).',
-                           is_zstaff_flex=True)
+                           f'length {hour_length} seconds of {hours_in_day} hours in areas '
+                           f'{area_1} through {area_2}. The cycle ID is {client.id} '
+                           f'({client.area.id}).', is_zstaff_flex=True)
     if normie_notif:
         client.send_ooc_others(f'{client.displayname} initiated a day cycle.',
                                is_zstaff_flex=False, pred=lambda c: area_1 <= c.area.id <= area_2)

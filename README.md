@@ -353,8 +353,9 @@ GMs can:
     - If a character is restricted, only GMs and above can use the character in the current area.
 * **charlog** "ID"
     - Lists all character changes (including iniswaps and character name changes) a target has gone through since connecting, including the time they were changed.
-* **clock** "area range start" "area range end" "hour length" "hour start"
+* **clock** "area range start" "area range end" "hour length" "hour start" "hours in a day"
     - Sets up a day cycle that, starting from the given hour, will tick one hour every given number of seconds and provide a time announcement to a given range of areas.
+    - Hours go from 0 inclusive to the number of hours in a day given exclusive, or 0 to 23 inclusive if not given a number of hours in a day.
 * **clock_end** "ID"
     - Ends the day cycle initiated by the target or yourself if not given a target.
 * **clock_pause** "ID"
