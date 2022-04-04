@@ -351,7 +351,7 @@ class ClientManager:
                 if song == "~stop.mp3" or self.server.get_song_is_category(
                     self.construct_music_list(), song
                 ):
-                    name, length = "~stop.mp3", 0
+                    name, length = "~stop.mp3", -1
                 else:
                     try:
                         name, length = self.server.get_song_data(
