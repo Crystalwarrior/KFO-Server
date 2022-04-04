@@ -1512,7 +1512,7 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
     your client ID. Doing /clock while running an active clock will silently overwrite the old
     clock with the new one.
     Requires /clock_end to undo.
-    Raises an error if the given hour start is not a nonnegative number or beyond the indicated
+    Returns an error if the given hour start is not a nonnegative number or beyond the indicated
     number of hours in a day, if the number of hours in a day is not a positive integer, or if the
     hour length is not a positive number.
 
@@ -1530,9 +1530,9 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
 
     EXAMPLES
     >>> /clock 16 116 900 8
-    Start a 900-second hour clock spanning areas 16 through 116, with starting hour 8 AM
+    Starts a 900-second hour clock spanning areas 16 through 116, with starting hour 8 AM.
     >>> /clock 0 5 10 19 15
-    Start a 10-second hour clock of 15 hours spanning areas 0 through 5, with starting hour 7 PM
+    Starts a 10-second hour clock of 15 hours spanning areas 0 through 5, with starting hour 7 PM.
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='&4-5', split_spaces=True)
@@ -1682,14 +1682,14 @@ def ooc_cmd_clock_period(client: ClientManager.Client, arg: str):
     If the period name already exists, its hour start will be overwritten.
     If some period already starts at the given hour start, its name will be overwritten.
     Returns an error if you have not started a day cycle, or if the hour start is not an integer
-    from 0 to 23.
+    from 0 inclusive to the number of hours in a day set up for the day cycle exclusive.
 
     SYNTAX
     /clock_period <name> <hour_start>
 
     PARAMETERS
     <name>: Name of the period.
-    <hour_start>: Start time of the period (integer from 0 to 23).
+    <hour_start>: Start time of the period.
 
     EXAMPLE
     Assuming the commands are run in order...
@@ -1732,21 +1732,20 @@ def ooc_cmd_clock_set(client: ClientManager.Client, arg: str):
     changing its area range or notifying normal players. If the day cycle time was unknown, the
     time is updated in the same manner (effectively taking it out of unknown mode).
     Returns an error if you have not started a day cycle, or if the hour is not an
-    integer from 0 to 23.
+    integer from 0 inclusive to the number of hours in a day set up for the day cycle exclusive.
 
     SYNTAX
     /clock_set <hour_length> <hour>
 
     PARAMETERS
     <hour_length>: Length of each ingame hour (in seconds)
-    <hour>: New hour (integer from 0 to 23)
+    <hour>: New hour
 
     EXAMPLES
     >>> /clock_set 900 8
-    Update the day cycle to be a 900-second hour clock with current time 8 AM.
+    Updates the day cycle to be a 900-second hour clock with current time 8 AM.
     >>> /clock_set 10 19
-    Update the day cycle to be a 10-second hour clock with current time 7 PM.
-
+    Updates the day cycle to be a 10-second hour clock with current time 7 PM.
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=2')
@@ -10924,36 +10923,27 @@ def ooc_cmd_help_more(client: ClientManager.Client, arg: str):
     client.send_ooc(output.replace('\r\n\r\n', '\r\n').strip())
 
 
-
-
 def ooc_cmd_clock_set_hours(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
-    Sets up a day cycle that will tick one hour every given number of seconds and provide a time
-    announcement to a given range of areas. Starting hour is also given. The clock ID is by default
-    your client ID. Doing /clock while running an active clock will silently overwrite the old
-    clock with the new one.
-    Requires /clock_end to undo.
-    Raises an error if the given hour start is not a nonnegative number or beyond the indicated
-    number of hours in a day, if the number of hours in a day is not a positive integer, or if the
-    hour length is not a positive number.
+    Sets up the number of hours a day cycle clock has per day.
+    If the new number of hours in a day exceeds the current hour, the hour will be set to 0.
+    If there were any periods set to start at an hour beyond the new number of hours in a day, they
+    will be removed, and users in the area will be set to an appropriate period if necessary.
+    Returns an error if you have not started a day cycle, or if the number is not a positive number.
 
     SYNTAX
-    /clock <area_range_start> <area_range_end> <hour_length> <hour_start> {hours_in_day}
+    /clock_set_hours <hours_in_day>
 
     PARAMETERS
-    <area_range_start>: Send notifications from this area onwards up to...
-    <area_range_end>: Send notifications up to (and including) this area.
-    <hour_length>: Length of each ingame hour (in seconds)
-    <hour_start>: Starting hour (integer from 0 to 23)
-
-    OPTIONAL PARAMETERS
-    {hours_in_day}: Number of hours in a day (by default 24).
+    <hours_in_day>: New number of hours in the day.
 
     EXAMPLES
-    >>> /clock 16 116 900 8
-    Start a 900-second hour clock spanning areas 16 through 116, with starting hour 8 AM
-    >>> /clock 0 5 10 19 15
-    Start a 10-second hour clock of 15 hours spanning areas 0 through 5, with starting hour 7 PM
+    >>> /clock_set_hours 24
+    Sets your day cycle to have 24 hours.
+    >>> /clock_set_hours 30
+    Sets your day cycle to have 30 hours.
+    >>> /clock_set_hours 2
+    Sets your day cycle to have 2 hours.
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=1')
