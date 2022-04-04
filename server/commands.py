@@ -1713,7 +1713,9 @@ def ooc_cmd_clock_period(client: ClientManager.Client, arg: str):
         else:
             name, pre_start = args[0].lower(), args[1]
             start = int(pre_start)  # Do it separately so ValueError exception may read args[1]
-            if not 0 <= start <= 23:
+            hours_in_day = client.server.tasker.get_task_attr(client, ['as_day_cycle'],
+                                                              'hours_in_day')
+            if not 0 <= start < hours_in_day:
                 start = args[1]
                 raise ValueError
     except ValueError:
@@ -1764,9 +1766,8 @@ def ooc_cmd_clock_set(client: ClientManager.Client, arg: str):
 
     try:
         hour_start = int(pre_hour_start)
-        _, _, _, _, _, hours_in_day, _ = client.server.tasker.get_task_attr(
-            client, ['as_day_cycle'], )
-        if hour_start < 0 or hour_start >= 24:
+        hours_in_day = client.server.tasker.get_task_attr(client, ['as_day_cycle'], 'hours_in_day')
+        if hour_start < 0 or hour_start >= hours_in_day:
             raise ValueError
     except ValueError:
         raise ArgumentError('Invalid hour start {}.'.format(pre_hour_start))
@@ -10969,8 +10970,7 @@ def ooc_cmd_clock_set_hours(client: ClientManager.Client, arg: str):
     except ValueError:
         raise ArgumentError(f'Invalid number of hours per day {hours_in_day}.')
 
-    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'new_day_cycle_args',
-                                       (hours_in_day, ))
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'hours_in_day', hours_in_day)
     client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'set_hours')
     client.server.tasker.cancel_task(task)
 

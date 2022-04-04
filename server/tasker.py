@@ -259,7 +259,7 @@ class Tasker:
         time_refreshed_at = time.time()  # Doesnt need init, but PyLint complains otherwise
         periods = list()
         force_period_refresh = False
-        current_period = (None, None)
+        current_period = (-1, '')
         notify_normies = False
 
         # Initialize task attributes
@@ -267,6 +267,7 @@ class Tasker:
         self.set_task_attr(client, ['as_day_cycle'], 'is_unknown', False)
         self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', '')
         self.set_task_attr(client, ['as_day_cycle'], 'period', '')
+        self.set_task_attr(client, ['as_day_cycle'], 'hours_in_day', hours_in_day)
 
         # Manually notify for the very first hour (if needed)
         targets = [c for c in self.server.get_clients() if c == client or
@@ -274,6 +275,18 @@ class Tasker:
         for c in targets:
             c.send_ooc('It is now {}:00.'.format('{0:02d}'.format(hour)))
             c.send_clock(client_id=client.id, hour=hour)
+
+        def find_period_of_hour(hour):
+            if not periods:
+                return (-1, '')
+            if hour < periods[0][0]:
+                return periods[-1]
+            output = None
+            for period_tuple in periods:
+                period_start, _ = period_tuple
+                if hour >= period_start:
+                    output = period_tuple
+            return output
 
         while True:
             try:
@@ -318,22 +331,25 @@ class Tasker:
                 hour = (hour + 1) % hours_in_day
                 targets = [c for c in self.server.get_clients() if c == client or
                            (notify_normies and area_1 <= c.area.id <= area_2)]
+
                 # Check if new period has started
-                if not periods and force_period_refresh:
-                    force_period_refresh = False
-                    for c in targets:
-                        self.set_task_attr(client, ['as_day_cycle'], 'period', '')
-                        c.send_time_of_day(name='')
-                        c.send_ooc(f'It is no longer some particular period of day.')
+                if not periods:
+                    if current_period[1] != '':
+                        for c in targets:
+                            self.set_task_attr(client, ['as_day_cycle'], 'period', '')
+                            c.send_time_of_day(name='')
+                            c.send_ooc(f'It is no longer some particular period of day.')
+                    current_period = find_period_of_hour(hour)
+                    new_period_start, new_period_name = current_period
                 else:
-                    for (period_start, period_name) in periods:
-                        if period_start == hour or force_period_refresh:
-                            force_period_refresh = False
-                            for c in targets:
-                                self.set_task_attr(client, ['as_day_cycle'], 'period', period_name)
-                                c.send_time_of_day(name=period_name)
-                                c.send_ooc(f'It is now {period_name}.')
-                            break
+                    current_period = find_period_of_hour(hour)
+                    new_period_start, new_period_name = current_period
+                    if new_period_start == hour or force_period_refresh:
+                        for c in targets:
+                            self.set_task_attr(client, ['as_day_cycle'], 'period', new_period_name)
+                            c.send_time_of_day(name=new_period_name)
+                            c.send_ooc(f'It is now {new_period_name}.')
+                force_period_refresh = False
 
                 # Regardless of new period, send other packets
                 for c in targets:
@@ -411,8 +427,7 @@ class Tasker:
                         minute_at_interruption += (time_refreshed_at-time_started_at)/hour_length*60
                         time_started_at = time.time()
 
-                    hours_in_day, = self.get_task_attr(client, ['as_day_cycle'],
-                                                       'new_day_cycle_args')
+                    hours_in_day = self.get_task_attr(client, ['as_day_cycle'], 'hours_in_day')
                     client.send_ooc(f'Your day cycle in areas {area_1} through {area_2} was '
                                     f'updated. New number of hours in the day: {hours_in_day} '
                                     f'hours.')
@@ -425,7 +440,7 @@ class Tasker:
                         hour = 0
                         minute_at_interruption = 0
                         self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason',
-                                        'set_hours_reset')
+                                           'set_hours_reset')
                         client.send_ooc(f'(X) The current hour {old_hour} was beyond the new '
                                         f'number of hours in the day you set, so your current hour '
                                         f'was set to 0.')
@@ -510,34 +525,25 @@ class Tasker:
 
                     # Also note this is only relevant if the time is not unknown. If it is,
                     # then no updates should be sent
+                    changed_current_period = False
                     if not self.get_task_attr(client, ['as_day_cycle'], 'is_unknown'):
-                        changed_current_period = False
-                        if not periods:
-                            # If all periods have been removed, put everyone back in the default
-                            # time of day, if needed
-                            new_period_name = ''
-                            changed_current_period = current_period[1] != new_period_name
-                        elif hour < periods[0][0]:
-                            new_period_start, new_period_name = periods[-1]
-                            changed_current_period = current_period[1] != new_period_name
-                            current_period = new_period_start, new_period_name
-                        else:
-                            # By construction, the if statement is true at least once,
-                            # so changed_current_period is defined and current_period updated
-                            for i in range(len(periods)):
-                                if (periods[i][0] <= hour and
-                                    (i == len(periods)-1 or hour < periods[i+1][0])):
-                                    new_period_start, new_period_name = periods[i]
-                                    changed_current_period = current_period[1] != new_period_name
-                                    current_period = new_period_start, new_period_name
-                                    break
-
-                        if changed_current_period:
-                            targets = [c for c in self.server.get_clients()
-                                       if c == client or area_1 <= c.area.id <= area_2]
-                            self.set_task_attr(client, ['as_day_cycle'], 'period', new_period_name)
+                        new_period_start, new_period_name = find_period_of_hour(hour)
+                        changed_current_period = (current_period[1] != new_period_name)
+                        current_period = new_period_start, new_period_name
+                        if periods and new_period_start == hour:
+                            changed_current_period = True
+                    if changed_current_period:
+                        targets = [c for c in self.server.get_clients()
+                                   if c == client or area_1 <= c.area.id <= area_2]
+                        self.set_task_attr(client, ['as_day_cycle'], 'period', new_period_name)
+                        if new_period_name:
                             for c in targets:
                                 c.send_time_of_day(name=new_period_name)
+                                c.send_ooc(f'It is now {new_period_name}.')
+                        else:
+                            for c in targets:
+                                c.send_time_of_day(name='')
+                                c.send_ooc(f'It is no longer some particular period of day.')
 
                     # Send notifications appropriately
                     if start >= 0:
