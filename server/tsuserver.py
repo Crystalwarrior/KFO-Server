@@ -396,7 +396,7 @@ class TsuServer3:
                     try:
                         return song["name"], song["length"]
                     except KeyError:
-                        return song["name"], 0
+                        return song["name"], -1
         raise ServerError("Music not found.")
 
     def get_song_is_category(self, music_list, music):
