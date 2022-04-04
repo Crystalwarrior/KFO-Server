@@ -1560,7 +1560,7 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
         if hours_in_day <= 0:
             raise ValueError
     except ValueError:
-        raise ArgumentError(f'Invalid number of hours per day {hours_in_day}')
+        raise ArgumentError(f'Invalid number of hours per day {hours_in_day}.')
 
     try:
         hour_start = int(pre_hour_start)
@@ -1580,7 +1580,7 @@ def ooc_cmd_clock(client: ClientManager.Client, arg: str):
         normie_notif = False
 
     client.send_ooc(f'You initiated a day cycle of length {hour_length} seconds per hour in areas '
-                    f'{area_1} through {area_2}. The cycle ID is ({client.id}).')
+                    f'{area_1} through {area_2}. The cycle ID is {client.id}.')
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] initiated a day cycle of '
                            f'length {hour_length} of {hours_in_day} hours in areas {area_1} '
                            f'through {area_2}. The cycle ID is {client.id} ({client.area.id}).',
@@ -1764,6 +1764,8 @@ def ooc_cmd_clock_set(client: ClientManager.Client, arg: str):
 
     try:
         hour_start = int(pre_hour_start)
+        _, _, _, _, _, hours_in_day, _ = client.server.tasker.get_task_attr(
+            client, ['as_day_cycle'], )
         if hour_start < 0 or hour_start >= 24:
             raise ValueError
     except ValueError:
@@ -10919,6 +10921,58 @@ def ooc_cmd_help_more(client: ClientManager.Client, arg: str):
         else:
             output += line + ' '
     client.send_ooc(output.replace('\r\n\r\n', '\r\n').strip())
+
+
+
+
+def ooc_cmd_clock_set_hours(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets up a day cycle that will tick one hour every given number of seconds and provide a time
+    announcement to a given range of areas. Starting hour is also given. The clock ID is by default
+    your client ID. Doing /clock while running an active clock will silently overwrite the old
+    clock with the new one.
+    Requires /clock_end to undo.
+    Raises an error if the given hour start is not a nonnegative number or beyond the indicated
+    number of hours in a day, if the number of hours in a day is not a positive integer, or if the
+    hour length is not a positive number.
+
+    SYNTAX
+    /clock <area_range_start> <area_range_end> <hour_length> <hour_start> {hours_in_day}
+
+    PARAMETERS
+    <area_range_start>: Send notifications from this area onwards up to...
+    <area_range_end>: Send notifications up to (and including) this area.
+    <hour_length>: Length of each ingame hour (in seconds)
+    <hour_start>: Starting hour (integer from 0 to 23)
+
+    OPTIONAL PARAMETERS
+    {hours_in_day}: Number of hours in a day (by default 24).
+
+    EXAMPLES
+    >>> /clock 16 116 900 8
+    Start a 900-second hour clock spanning areas 16 through 116, with starting hour 8 AM
+    >>> /clock 0 5 10 19 15
+    Start a 10-second hour clock of 15 hours spanning areas 0 through 5, with starting hour 7 PM
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    try:
+        task = client.server.tasker.get_task(client, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('You have not initiated any day cycles.')
+
+    try:
+        hours_in_day = int(arg)
+        if hours_in_day <= 0:
+            raise ValueError
+    except ValueError:
+        raise ArgumentError(f'Invalid number of hours per day {hours_in_day}.')
+
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'new_day_cycle_args',
+                                       (hours_in_day, ))
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'set_hours')
+    client.server.tasker.cancel_task(task)
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
