@@ -182,6 +182,12 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.validate_net_cmd(args, self.ArgType.STR, needs_auth=False):
             return
+        # We already got an assigned hdid by the server
+        if self.client.hdid != "":
+            self.client.send_command(
+                "KB", "Your HDID was sent a second time by your client.")
+            self.client.disconnect()
+            return
         hdid = self.client.hdid = args[0]
         ipid = self.client.ipid
 
@@ -217,6 +223,12 @@ class AOProtocol(asyncio.Protocol):
 
         ID#<pv:int>#<software:string>#<version:string>#%
         """
+        # We already got an assigned version by the server
+        if self.client.version != "":
+            self.client.send_command(
+                "KB", "Your client version was sent a second time by your client.")
+            self.client.disconnect()
+            return
         self.client.version = args[1]
         preflist = self.client.server.supported_features.copy()
         if not self.client.area.area_manager.arup_enabled and "arup" in preflist:
