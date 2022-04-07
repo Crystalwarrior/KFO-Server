@@ -1175,7 +1175,7 @@ class ClientManager:
                 info = "\n== Area List =="
                 cnt = 0
                 for hub in self.server.hub_manager.hubs:
-                    if hub.can_getareas or self.is_mod or self in hub.owners::
+                    if hub.can_getareas or self.is_mod or self in hub.owners:
                         for i in range(len(hub.areas)):
                             if hub.areas[i].can_getarea or self in hub.owners or self in area.owners or self.is_mod:
                                 area = hub.areas[i]
