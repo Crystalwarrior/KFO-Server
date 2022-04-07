@@ -1175,20 +1175,21 @@ class ClientManager:
                 info = "\n== Area List =="
                 cnt = 0
                 for hub in self.server.hub_manager.hubs:
-                    if hub.can_getareas or self.is_mod:
+                    if hub.can_getareas or self.is_mod or self in hub.owners::
                         for i in range(len(hub.areas)):
-                            area = hub.areas[i]
-                            if afk_check:
-                                client_list = area.afkers
-                            else:
-                                client_list = area.clients
-                            if not self.is_mod and not self in area.owners:
-                                # We exclude hidden players here because we don't want them to count for the user count
-                                client_list = [c for c in client_list if not c.hidden]
-                            area_info = self.get_area_info(i, mods, afk_check, hub.id)
-                            if len(client_list) > 0 or len(hub.areas[i].owners) > 0:
-                                cnt += len(client_list)
-                                info += f"{area_info}"
+                            if hub.areas[i].can_getarea or self in hub.owners or self in area.owners or self.is_mod:
+                                area = hub.areas[i]
+                                if afk_check:
+                                    client_list = area.afkers
+                                else:
+                                    client_list = area.clients
+                                if not self.is_mod and self not in area.owners:
+                                    # We exclude hidden players here because we don't want them to count for the user count
+                                    client_list = [c for c in client_list if not c.hidden]
+                                area_info = self.get_area_info(i, mods, afk_check, hub.id)
+                                if len(client_list) > 0 or len(hub.areas[i].owners) > 0:
+                                    cnt += len(client_list)
+                                    info += f"{area_info}"
                 if afk_check:
                     info = f"Current AFK-ers: {cnt}{info}"
                 else:
