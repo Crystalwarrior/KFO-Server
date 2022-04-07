@@ -1349,9 +1349,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_command(
                 "FA",
                 *[
-                    f"{self.client.server.config['masterserver_name']}\n Users Online: {server_count}\n Double-Click me to see Areas\n _______"
-                    if self.client.server.config['masterserver_name'] is not None
-                    else f"New Server\n Users Online: {server_count}\n Double-Click me to see Areas\n _______",
+                    f"{self.client.server.config['masterserver_name']}\n Users Online: {server_count}\n Double-Click me to see Areas\n _______" if self.client.server.config['masterserver_name'] is not None else f"New Server\n Users Online: {server_count}\n Double-Click me to see Areas\n _______",
                     *[
                         f"[{hub.id}] {hub.name} (users: {hub.count})"
                         for hub in self.client.server.hub_manager.hubs
