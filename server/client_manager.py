@@ -1177,7 +1177,7 @@ class ClientManager:
                 for hub in self.server.hub_manager.hubs:
                     if hub.can_getareas or self.is_mod or self in hub.owners:
                         for i in range(len(hub.areas)):
-                            if hub.areas[i].can_getarea or self in hub.owners or self in area.owners or self.is_mod:
+                            if hub.areas[i].can_getarea or self in hub.owners or self in hub.areas[i].owners or self.is_mod:
                                 area = hub.areas[i]
                                 if afk_check:
                                     client_list = area.afkers
