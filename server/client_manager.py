@@ -646,7 +646,7 @@ class ClientManager:
                         *[
                             f"{self.server.config['masterserver_name']}\n Users Online: {server_count}\n Double-Click me to see Areas\n _______" 
                             if self.server.config['masterserver_name'] is not None
-                            else "New Server\n Users Online: {server_count}\n Double-Click me to see Areas\n _______",
+                            else f"New Server\n Users Online: {server_count}\n Double-Click me to see Areas\n _______",
                             *[
                                 f"[{hub.id}] {hub.name} (users: {hub.count})"
                                 for hub in self.server.hub_manager.hubs
