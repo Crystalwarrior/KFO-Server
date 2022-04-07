@@ -82,6 +82,7 @@ class TsuServer3:
             "effects",
             "expanded_desk_mods",
             "y_offset",
+            "sfx_on_idle",
         ]
         self.command_aliases = {}
 
