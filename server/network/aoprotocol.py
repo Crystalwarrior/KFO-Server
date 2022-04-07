@@ -1350,6 +1350,8 @@ class AOProtocol(asyncio.Protocol):
                 "FA",
                 *[
                     f"{self.client.server.config['masterserver_name']}\n Users Online: {server_count}\n Double-Click me to see Areas\n _______",
+                    if self.client.server.config['masterserver_name'] is not None
+                    else f"New Server\n Users Online: {server_count}\n Double-Click me to see Areas\n _______",
                     *[
                         f"[{hub.id}] {hub.name} (users: {hub.count})"
                         for hub in self.client.server.hub_manager.hubs
@@ -1357,7 +1359,7 @@ class AOProtocol(asyncio.Protocol):
                 ],
             )
             return
-        if args[0].split("\n")[0] == f"{self.client.server.config['masterserver_name']}":
+        if (args[0].split("\n")[0] == self.client.server.config['masterserver_name'] and self.client.server.config['masterserver_name'] is not None) or (args[0].split("\n")[0] == "New Server" and self.client.server.config['masterserver_name'] is None):
             # self.client.send_ooc('Switching to the list of Areas...')
             self.client.viewing_hub_list = False
             preflist = self.client.server.supported_features.copy()
