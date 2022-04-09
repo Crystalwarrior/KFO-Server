@@ -160,11 +160,13 @@ class DefaultDROProtocol(Enum):
         ('flip', ArgType.INT),  # 12
         ('ding', ArgType.INT),  # 13
         ('color', ArgType.INT),  # 14
-        ('video', ArgType.STR_OR_EMPTY),
+        ('showname', ArgType.STR_OR_EMPTY),  # 15
+        ('video', ArgType.STR_OR_EMPTY),  # 16
+        ('hide_character', ArgType.INT),  # 17
         ]
 
     MS_OUTBOUND = [
-        ('msg_type', 1),  # 0
+        ('msg_type', 0),  # 0
         ('pre', '-'),  # 1
         ('folder', '<NOCHAR>'),  # 2
         ('anim', '../../misc/blank'),  # 3
@@ -179,8 +181,9 @@ class DefaultDROProtocol(Enum):
         ('flip', 0),  # 12
         ('ding', -1),  # 13
         ('color', 0),  # 14
-        ('video', ''),
-        ('showname', ' '),  # 15
+        ('showname', ''),  # 15
+        ('video', '0'),  # 16
+        ('hide_character', 0),  # 17
         ]
 
     MC_INBOUND = [
@@ -300,21 +303,21 @@ ClientDRO1d1d0 = Enum('ClientDRO1d1d0', [(m.name, m.value) for m in DefaultDROPr
 
 class ClientDRO1d0d0(Enum):
     MS_INBOUND = [
-    ('msg_type', ArgType.STR),  # 0
-    ('pre', ArgType.STR_OR_EMPTY),  # 1
-    ('folder', ArgType.STR),  # 2
-    ('anim', ArgType.STR),  # 3
-    ('text', ArgType.STR),  # 4
-    ('pos', ArgType.STR),  # 5
-    ('sfx', ArgType.STR_OR_EMPTY),  # 6
-    ('anim_type', ArgType.INT),  # 7
-    ('char_id', ArgType.INT),  # 8
-    ('sfx_delay', ArgType.INT),  # 9
-    ('button', ArgType.INT),  # 10
-    ('evidence', ArgType.INT),  # 11
-    ('flip', ArgType.INT),  # 12
-    ('ding', ArgType.INT),  # 13
-    ('color', ArgType.INT),  # 14
+        ('msg_type', ArgType.STR),  # 0
+        ('pre', ArgType.STR_OR_EMPTY),  # 1
+        ('folder', ArgType.STR),  # 2
+        ('anim', ArgType.STR),  # 3
+        ('text', ArgType.STR),  # 4
+        ('pos', ArgType.STR),  # 5
+        ('sfx', ArgType.STR_OR_EMPTY),  # 6
+        ('anim_type', ArgType.INT),  # 7
+        ('char_id', ArgType.INT),  # 8
+        ('sfx_delay', ArgType.INT),  # 9
+        ('button', ArgType.INT),  # 10
+        ('evidence', ArgType.INT),  # 11
+        ('flip', ArgType.INT),  # 12
+        ('ding', ArgType.INT),  # 13
+        ('color', ArgType.INT),  # 14
     ]
 
     MS_OUTBOUND = [

@@ -365,7 +365,7 @@ class AOProtocol(asyncio.Protocol):
                             'noencryption', 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx',
                             'additive', 'effects', 'y_offset',
                             # DRO exclusive stuff
-                            'ackMS', 'showname', 'chrini', 'charscheck', 'playable_video',]
+                            'ackMS', 'showname', 'chrini', 'charscheck', 'v110',]
             })
 
     def net_cmd_ch(self, args: List[str]):
@@ -586,6 +586,13 @@ class AOProtocol(asyncio.Protocol):
         else:
             if pargs['pos'] not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
+
+        try:
+            self.client.command_change_showname(pargs['showname'], False)
+        except ClientError as exc:
+            self.client.send_ooc(exc)
+            return
+
         # Make sure the areas are ok with this
         try:
             self.client.area.publisher.publish('area_client_inbound_ms_check', {

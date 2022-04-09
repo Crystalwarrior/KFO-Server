@@ -287,7 +287,7 @@ class ClientManager:
                     is_staff=None, in_area=None, to_blind=None, to_deaf=None,
                     bypass_replace=False, bypass_deafened_starters=False,
                     msg=None, folder=None, pos=None, char_id=None, ding=None, color=None,
-                    showname=None):
+                    showname=None, hide_character=0):
 
             # sender is the client who sent the IC message
             # self is who is receiving the IC message at this particular moment
@@ -313,6 +313,7 @@ class ClientManager:
                 pargs['ding'] = ding
                 pargs['color'] = color
                 pargs['showname'] = showname
+                pargs['hide_character'] = hide_character
             else:
                 for key in params:
                     pargs[key] = params[key]
@@ -555,7 +556,7 @@ class ClientManager:
                            pred: Callable[[ClientManager.Client], bool] = None, not_to=None,
                            gag_replaced=False, is_staff=None, in_area=None, to_blind=None,
                            to_deaf=None, msg=None, folder=None, pos=None, char_id=None, ding=None,
-                           color=None, showname=None):
+                           color=None, showname=None, hide_character=0):
 
             if not_to is None:
                 not_to = {self}
@@ -568,14 +569,14 @@ class ClientManager:
                           pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
                           msg=msg, folder=folder, pos=pos, char_id=char_id, ding=ding, color=color,
-                          showname=showname)
+                          showname=showname, hide_character=hide_character)
 
         def send_ic_attention(self):
-            self.send_ic(msg='(Something catches your attention)', ding=1)
+            self.send_ic(msg='(Something catches your attention)', ding=1, hide_character=1)
 
         def send_ic_blankpost(self):
             if self.packet_handler in [clients.ClientDRO1d0d0, clients.ClientDRO1d1d0]:
-                self.send_ic(msg='', bypass_replace=True)
+                self.send_ic(msg='', hide_character=1, bypass_replace=True)
 
         def send_background(self, name: str = None, pos: str = None,
                             tod_backgrounds: Dict[str, str] = None):
@@ -1023,16 +1024,18 @@ class ClientManager:
                 self.send_showname(showname=showname)
             self.showname = showname
 
-        def command_change_showname(self, showname: str, disallow_same_name: bool):
+        def command_change_showname(self, showname: str, warn_same_name: bool):
             try:
+                old_showname = self.showname
+                if old_showname == showname:
+                    if not warn_same_name:
+                        return
+                    if old_showname == '':
+                        raise ClientError('You already do not have a showname.')
+                    raise ClientError('You already have that showname.')
+
                 if self.server.showname_freeze and not self.is_staff():
                     raise ClientError('Shownames are frozen.')
-
-                old_showname = self.showname
-                if old_showname == showname == '':
-                    raise ClientError('You already do not have a showname.')
-                if old_showname == showname:
-                    raise ClientError('You already have that showname.')
 
                 try:
                     self.change_showname(showname, forced=False)

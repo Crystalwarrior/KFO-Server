@@ -2,7 +2,7 @@ from .structures import _Unittest
 
 _standard_FL = ('yellowtext', 'customobjections', 'flipping', 'fastloading', 'noencryption',
                 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx', 'additive', 'effects',
-                'y_offset', 'ackMS', 'showname', 'chrini', 'charscheck', 'playable_video')
+                'y_offset', 'ackMS', 'showname', 'chrini', 'charscheck', 'v110')
 
 
 class TestClientConnection(_Unittest):
