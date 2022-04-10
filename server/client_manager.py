@@ -1172,10 +1172,12 @@ class ClientManager:
                     info = f"Current online: {cnt}{info}"
             # if area_id is -2 then return all areas of all hubs.
             elif area_id == -2:
-                info = "\n== Area List =="
+                info = "\n== Hub List =="
                 cnt = 0
                 for hub in self.server.hub_manager.hubs:
                     if hub.can_getareas or self.is_mod or self in hub.owners:
+                        hub.client_list = 0
+                        hub_info = ""
                         for i in range(len(hub.areas)):
                             if hub.areas[i].can_getarea or self in hub.owners or self in hub.areas[i].owners or self.is_mod:
                                 area = hub.areas[i]
@@ -1189,7 +1191,10 @@ class ClientManager:
                                 area_info = self.get_area_info(i, mods, afk_check, hub.id)
                                 if len(client_list) > 0 or len(hub.areas[i].owners) > 0:
                                     cnt += len(client_list)
-                                    info += f"{area_info}"
+                                    hub_info += "\n===[Area: " + area_info[7:]
+                                    hub.client_list += len(client_list)
+                        if hub.client_list > 0:
+                            info += f"\n\n\n|HUB: {hub.id}| {hub.name} (users: {hub.client_list})\n------------Areas------------" + hub_info
                 if afk_check:
                     info = f"Current AFK-ers: {cnt}{info}"
                 else:
