@@ -462,14 +462,9 @@ def ooc_cmd_knock(client, arg):
                 break
         if area is None:
             raise ClientError("Target area not found.")
-        if area == client.area:
-            client.area.broadcast_ooc(
-                f"[{client.id}] {client.showname} knocks for attention."
-            )
-            return
 
         allowed = client.is_mod or client in area.owners or client in client.area.owners
-        if not allowed:
+        if not allowed and area != client.area:
             if len(client.area.links) > 0:
                 if not str(area.id) in client.area.links:
                     raise ClientError(
@@ -493,12 +488,52 @@ def ooc_cmd_knock(client, arg):
                     f"Failed to knock on [{area.id}] {area.name}: Current area is locked!"
                 )
 
-        client.area.broadcast_ooc(
-            f"[{client.id}] {client.showname} knocks on [{area.id}] {area.name}."
+        area.send_ic(
+            None,
+            "1",
+            1,
+            "",
+            "",
+            "}}}Knock, knock...",
+            area.last_ic_message[5]
+            if area.last_ic_message is not None
+            else "",
+            "",
+            1,
+            -1,
+            0,
+            0,
+            [0],
+            0,
+            0,
+            1,
+            "",
+            -1,
+            "",
+            "",
+            0,
+            0,
+            0,
+            0,
+            "0",
+            0,
+            "",
+            "",
+            "",
+            0,
+            "knock||knock",
         )
-        area.broadcast_ooc(
-            f"!! Someone is knocking from [{client.area.id}] {client.area.name} !!"
-        )
+        if area == client.area:
+            area.broadcast_ooc(
+                f"[{client.id}] {client.showname} knocks for attention."
+            )
+        else:
+            client.area.broadcast_ooc(
+                f"[{client.id}] {client.showname} knocks on [{area.id}] {area.name}."
+            )
+            area.broadcast_ooc(
+                f"!! Someone is knocking from [{client.area.id}] {client.area.name} !!"
+            )
     except ValueError:
         raise ArgumentError(
             "Failed to knock: you need to input an accessible area name or ID to knock!"
