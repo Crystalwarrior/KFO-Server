@@ -1426,7 +1426,7 @@ class AOProtocol(asyncio.Protocol):
         if (
             not self.client.area.can_wtce
             and not self.client.is_mod
-            and self not in self.client.area.owners
+            and self.client not in self.client.area.owners
         ):
             self.client.send_ooc(
                 "Only CMs and mods may use judge buttons in this area!"
