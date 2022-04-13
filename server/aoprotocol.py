@@ -587,11 +587,12 @@ class AOProtocol(asyncio.Protocol):
             if pargs['pos'] not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
 
-        try:
-            self.client.command_change_showname(pargs['showname'], False)
-        except ClientError as exc:
-            self.client.send_ooc(exc)
-            return
+        if 'showname' in pargs:
+            try:
+                self.client.command_change_showname(pargs['showname'], False)
+            except ClientError as exc:
+                self.client.send_ooc(exc)
+                return
 
         # Make sure the areas are ok with this
         try:
