@@ -304,15 +304,23 @@ def ooc_cmd_area_kick(client, arg):
 
     args = arg.split(" ")
     try:
+        # Kick everyone but AFKers
         if args[0] == "afk":
             targets = client.server.client_manager.get_targets(
                 client, TargetType.AFK, args[0], False
             )
+        # Kick everyone but owners
         elif args[0] == "*":
             targets = [
                 c
                 for c in client.area.clients
                 if c != client and c != client.area.owners
+            ]
+        # Kick everyone in area
+        elif args[0] == "**":
+            targets = [
+                c
+                for c in client.area.clients
             ]
         else:
             targets = client.server.client_manager.get_targets(
@@ -376,9 +384,20 @@ def ooc_cmd_area_kick(client, arg):
         client.send_ooc("No targets found.")
 
 
+@mod_only(area_owners=True)
+def ooc_cmd_shuffle_pos(client, arg):
+    """
+    Randomly shuffle the players into a list of pos separated by space or comma.
+    If your pos have spaces in them, it must be a comma-separated list like /shuffle_pos pos one, pos two, pos X
+    Usage:  /shuffle_pos <pos(s)>
+    """
+    client.area.pos_lock.clear()
+    client.area.broadcast_ooc("Position lock cleared.")
+
+
 def ooc_cmd_pos_lock(client, arg):
     """
-    Lock current area's available positions into a list of pos separated by space.
+    Lock current area's available positions into a list of pos separated by space or comma.
     Use /pos_lock_clear to make the list empty.
     If your pos have spaces in them, it must be a comma-separated list like /pos_lock pos one, pos two, pos X
     If you're locking into a single pos with spaces in it, end it with a comma, like /pos_lock this is a pos,

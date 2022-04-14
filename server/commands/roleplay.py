@@ -588,7 +588,8 @@ def ooc_cmd_timer(client, arg):
                 client.area.send_command("TI", timer_id, 2)
 
     if not timer.set:
-        raise ArgumentError(f"Timer {timer_id} is not set in this area.")
+        client.send_ooc(f"Timer {timer_id} is not set in this area.")
+        return
 
     if arg[1] == "start" and not timer.started:
         timer.target = timer.static + arrow.get()
