@@ -3,6 +3,7 @@ from .structures import _Unittest
 _standard_FL = ('yellowtext', 'customobjections', 'flipping', 'fastloading', 'noencryption',
                 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx', 'additive', 'effects',
                 'y_offset', 'ackMS', 'showname', 'chrini', 'charscheck', 'v110')
+_standard_client_version = ('1', '1', '0')
 
 
 class TestClientConnection(_Unittest):
@@ -16,6 +17,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (0, None, None))
         c.assert_packet('FL', _standard_FL)
+        c.assert_packet('client_version', _standard_client_version)
         c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -29,6 +31,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (1, None, None))
         c.assert_packet('FL', _standard_FL)
+        c.assert_packet('client_version', _standard_client_version)
         c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -73,6 +76,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (0, None, None))
         c.assert_packet('FL', _standard_FL)
+        c.assert_packet('client_version', _standard_client_version)
         c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -120,6 +124,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (1, None, None))
         c.assert_packet('FL', _standard_FL)
+        c.assert_packet('client_version', _standard_client_version)
         c.assert_packet('PN', (1, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -175,6 +180,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (2, None, None))
         c.assert_packet('FL', _standard_FL)
+        c.assert_packet('client_version', _standard_client_version)
         c.assert_packet('PN', (2, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 

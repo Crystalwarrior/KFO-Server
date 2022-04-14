@@ -54,6 +54,10 @@ class DefaultDROProtocol(Enum):
         ('fl_ao2_list', list()),  # 0
         ]
 
+    CLIENT_VERSION_OUTBOUND = [
+        ('dro_version_ao2_list', list()),  # 0
+    ]
+
     CH_INBOUND = [
         ('char_id', ArgType.INT),  # 0
         ]

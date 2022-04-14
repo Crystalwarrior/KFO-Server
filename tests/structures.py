@@ -779,6 +779,8 @@ class _TestClientManager(ClientManager):
                 assert args[0] == str(self.id), err
             elif command_type == 'FL':  # AO 2.2.5 configs
                 pass
+            elif command_type == 'client_version':  # DRO version client should behave as
+                pass
             elif command_type == 'PN':  # Player count
                 pass
             elif command_type == 'SI':  # Counts for char/evi/music

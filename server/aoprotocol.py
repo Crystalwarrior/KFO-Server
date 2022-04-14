@@ -356,8 +356,8 @@ class AOProtocol(asyncio.Protocol):
 
         if not check_client_version():
             # Warn player they are using an unknown client.
-            # Assume a DRO client instruction set.
-            self.client.packet_handler = clients.ClientDRO1d1d0
+            # Assume a legacy DRO client instruction set.
+            self.client.packet_handler = clients.ClientDRO1d0d0
             self.client.bad_version = True
 
         self.client.send_command_dict('FL', {
@@ -367,6 +367,14 @@ class AOProtocol(asyncio.Protocol):
                             # DRO exclusive stuff
                             'ackMS', 'showname', 'chrini', 'charscheck', 'v110',]
             })
+
+        version_to_send = [1, 0, 0]
+        if self.client.packet_handler == clients.ClientDRO1d1d0:
+            version_to_send = [1, 1, 0]
+
+        self.client.send_command_dict('client_version', {
+            'dro_version_ao2_list': version_to_send
+        })
 
     def net_cmd_ch(self, args: List[str]):
         """ Periodically checks the connection.
