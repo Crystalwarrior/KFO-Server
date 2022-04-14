@@ -1189,7 +1189,7 @@ class ClientManager:
                                     # We exclude hidden players here because we don't want them to count for the user count
                                     client_list = [c for c in client_list if not c.hidden]
                                 area_info = self.get_area_info(i, mods, afk_check, hub.id)
-                                if len(client_list) > 0 or len(hub.areas[i].owners) > 0:
+                                if len(client_list) > 0:
                                     cnt += len(client_list)
                                     hub_info += "\n===[Area: " + area_info[7:]
                                     hub.client_list += len(client_list)
