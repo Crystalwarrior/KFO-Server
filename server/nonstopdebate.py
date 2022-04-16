@@ -30,7 +30,7 @@ import typing
 from typing import Any, Dict, Set
 
 from server import logger
-from server.exceptions import ClientError, NonStopDebateError, GameError
+from server.exceptions import ClientError, NonStopDebateError, GameError, TimerError
 from server.trialminigame import TrialMinigame, TRIALMINIGAMES
 
 if typing.TYPE_CHECKING:
@@ -191,13 +191,15 @@ class NonStopDebate(TrialMinigame):
         self._timer = None
         self._message_timer = None
         self._player_refresh_timer = None
+        self._mode_switch_lockout_timer = None
 
         self._timer_start_value = timer_start_value
         self._message_refresh_rate = 7
+        self._mode_switch_timeout_length = 5
         self._client_timer_id = 0
         self._breaker = None
         self._timers_are_setup = False
-
+        self._mode_switch_lockout_lock = True
         self._intermission_messages = 0
 
     def get_name(self) -> str:
@@ -348,6 +350,12 @@ class NonStopDebate(TrialMinigame):
 
         self._mode = NSDMode.PRERECORDING
         self._preintermission_mode = NSDMode.PRERECORDING
+        self._mode_switch_lockout_lock = True
+        self._mode_switch_lockout_timer.set_time(0)
+        try:
+            self._mode_switch_lockout_timer.unpause()
+        except TimerError.NotPausedTimerError:
+            pass
 
         for user in self.get_users_in_areas():
             user.send_gamemode(name='nsd')
@@ -376,6 +384,7 @@ class NonStopDebate(TrialMinigame):
         if self._timer and not self._timer.terminated():
             self._timer.unpause()
         self._player_refresh_timer.unpause()
+
         for user in self.get_users_in_areas():
             user.send_gamemode(name='nsd')
             user.send_timer_resume(timer_id=self._client_timer_id)
@@ -426,6 +435,13 @@ class NonStopDebate(TrialMinigame):
             self._message_timer.pause()
         if self._player_refresh_timer and not self._player_refresh_timer.paused():
             self._player_refresh_timer.pause()
+
+        self._mode_switch_lockout_lock = True
+        self._mode_switch_lockout_timer.set_time(0)
+        try:
+            self._mode_switch_lockout_timer.unpause()
+        except TimerError.NotPausedTimerError:
+            pass
 
         for user in self.get_users_in_areas():
             user.send_timer_pause(timer_id=self._client_timer_id)
@@ -715,6 +731,16 @@ class NonStopDebate(TrialMinigame):
                                              auto_restart=True)
         self._message_timer._on_max_end = self._display_next_message
 
+        def _mode_switch_lockout_unlock():
+            self._mode_switch_lockout_lock = False
+            self._mode_switch_lockout_timer.pause()
+
+        self._mode_switch_lockout_timer = self.new_timer(start_value=0,
+                                                         max_value=self._mode_switch_timeout_length,
+                                                         auto_restart=True)
+        self._mode_switch_lockout_timer._on_max_end = _mode_switch_lockout_unlock
+        self._mode_switch_lockout_timer.unpause()
+
         if self._timer_start_value > 0:
             self._timer = self.new_timer(start_value=self._timer_start_value,
                                          tick_rate=-1, min_value=0)
@@ -771,11 +797,12 @@ class NonStopDebate(TrialMinigame):
     def _on_client_inbound_ms_check(self, player: ClientManager.Client,
                                     contents: Dict[str, Any] = None):
         """
-        Check if any of the following situations occur:
-        * If they want to send a message with some types of bullets ('MC', 'CUT') at any point.
-        * If they want to send a message with a bullet before any messages were recorded.
-        * If they want to send a message with a bullet during intermission mode.
-        * If they want to send a message without a bullet during looping mode.
+        Check if any of the following situations occur: They want to send a message...
+        * Within 5 seconds of the mode being set to recording or intermission and not leader.
+        * With some types of bullets ('MC', 'CUT') at any point.
+        * With a bullet before any messages were recorded.
+        * With a bullet during intermission mode.
+        * Without a bullet during looping mode.
 
         If none of the above is true, allow the IC message as is.
 
@@ -789,7 +816,7 @@ class NonStopDebate(TrialMinigame):
         Raises
         ------
         ClientError
-            If any of the above disquaLifying situations is true.
+            If any of the above disqualifying situations is true.
 
         Returns
         -------
@@ -797,6 +824,9 @@ class NonStopDebate(TrialMinigame):
 
         """
 
+        # Too soon
+        if self._mode_switch_lockout_lock and not self.is_leader(player):
+            raise ClientError('You may not send a message just after the current mode started.')
         # Trying to do an MC or CUT.
         if contents['button'] not in {0, 1, 2, 3, 5, 7, 8}:
             raise ClientError('You may not perform that action during a nonstop debate.')
