@@ -721,6 +721,7 @@
   - /notecard_reveal
   - /notecard_reveal_count
 * Added /help_more, which lists extended help for a command
-* Added support for the `video` field in Danganronpa Online 1.1.0
+* Added support for the `showname`, `video` and `hide_character` fields in Danganronpa Online 1.1.0
 * Added support for day cycles of arbitrary number of hours via a new optional argument to /clock (default 24 hours), and /clock_set_hours
+* Increased the numbers of messages that must occur during a nonstop debate intermission before reminding the leaders to advance stage if necessary from 5 to 20
 * Fixed some compatibility issues with AO 2.9

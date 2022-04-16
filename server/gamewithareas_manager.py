@@ -20,10 +20,19 @@
 Module that contains the base game with areas class.
 """
 
+from __future__ import annotations
+
 import functools
+import typing
+from typing import Dict, Set
 
 from server.exceptions import GameWithAreasError, GameError
 from server.game_manager import _Game, GameManager
+
+if typing.TYPE_CHECKING:
+    # Avoid circular referencing
+    from server.area_manager import AreaManager
+    from server.client_manager import ClientManager
 
 
 class GameWithAreas(_Game):
@@ -216,7 +225,7 @@ class GameWithAreas(_Game):
 
         self._autoadd_on_client_enter = new_value
 
-    def add_player(self, user):
+    def add_player(self, user: ClientManager.Client):
         """
         Make a user a player of the game. By default this player will not be a leader. It will
         also subscribe the game to the player so it can listen to its updates.
@@ -256,7 +265,7 @@ class GameWithAreas(_Game):
 
         super().add_player(user)  # Also calls _check_structure()
 
-    def add_area(self, area):
+    def add_area(self, area: AreaManager.Area):
         """
         Add an area to this game's set of areas.
 
@@ -299,7 +308,7 @@ class GameWithAreas(_Game):
 
         self._check_structure()
 
-    def remove_area(self, area):
+    def remove_area(self, area: AreaManager.Area):
         """
         Remove an area from this game's set of areas. If the area is already a part of the game, do
         nothing. If any player of the game is in this area, they are removed from the game. If the
@@ -347,7 +356,7 @@ class GameWithAreas(_Game):
 
         self._check_structure()
 
-    def has_area(self, area):
+    def has_area(self, area: AreaManager.Area):
         """
         If the area is part of this game's set of areas, return True; otherwise, return False.
 
@@ -365,7 +374,7 @@ class GameWithAreas(_Game):
 
         return area in self._areas
 
-    def get_areas(self):
+    def get_areas(self) -> Set[AreaManager.Area]:
         """
         Return (a shallow copy of) the set of areas of this game.
 
@@ -391,7 +400,7 @@ class GameWithAreas(_Game):
 
         return self._area_concurrent_limit
 
-    def get_users_in_areas(self):
+    def get_users_in_areas(self) -> Set[ClientManager.Client]:
         """
         Return all users in areas part of the game, even those that are not players of the game.
 
@@ -407,7 +416,7 @@ class GameWithAreas(_Game):
             clients.extend(area.clients)
         return set(clients)
 
-    def get_nonleader_users_in_areas(self):
+    def get_nonleader_users_in_areas(self) -> Set[ClientManager.Client]:
         """
         Return all users in areas part of the game, even those that are not players of the game,
         such that they are not leaders of the game.
@@ -422,7 +431,7 @@ class GameWithAreas(_Game):
         return {client for client in self.get_users_in_areas()
                 if not (self.is_player(client) and self.is_leader(client))}
 
-    def get_nonplayer_users_in_areas(self):
+    def get_nonplayer_users_in_areas(self) -> Set[ClientManager.Client]:
         """
         Return all users in areas part of the game that are not players of the game.
 
@@ -454,7 +463,7 @@ class GameWithAreas(_Game):
             self.remove_area(area)
         super().destroy()  # Also calls _check_structure()
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Return a string representation of this game.
 
@@ -471,7 +480,7 @@ class GameWithAreas(_Game):
                 f"{self.get_teams()}:"
                 f"{self.get_areas()}")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Return a representation of this game.
 
@@ -533,8 +542,11 @@ class GameWithAreas(_Game):
 
         self._check_structure()
 
-    def _on_area_client_entered_final(self, area, client=None, old_area=None, old_displayname=None,
-                                      ignore_bleeding=False):
+    def _on_area_client_entered_final(self, area: AreaManager.Area,
+                                      client: ClientManager.Client = None,
+                                      old_area: AreaManager.Area = None,
+                                      old_displayname: str = None,
+                                      ignore_bleeding: bool = False):
         """
         Default callback for game area signaling a client entered.
 
@@ -567,7 +579,9 @@ class GameWithAreas(_Game):
 
         self._check_structure()
 
-    def _on_area_client_inbound_ms_check(self, area, client=None, contents=None):
+    def _on_area_client_inbound_ms_check(self, area: AreaManager.Area,
+                                         client: ClientManager.Client = None,
+                                         contents: Dict[str, Any] = None):
         """
         Default callback for game area signaling a client in the area sent an IC message. Unlike
         the ClientManager.Client callback for send_ic_check, this one is triggered regardless of
@@ -595,7 +609,7 @@ class GameWithAreas(_Game):
 
         self._check_structure()
 
-    def _on_area_destroyed(self, area):
+    def _on_area_destroyed(self, area: AreaManager.Area):
         """
         Default callback for game area signaling it was destroyed.
 
@@ -617,7 +631,7 @@ class GameWithAreas(_Game):
 
         self._check_structure()
 
-    def _on_areas_loaded(self, area_manager):
+    def _on_areas_loaded(self, area_manager: AreaManager):
         """
         Default callback for server area manager signaling it loaded new areas.
 
@@ -705,7 +719,7 @@ class GameWithAreasManager(GameManager):
                  player_concurrent_limit=1, require_invitations=False, require_players=True,
                  require_leaders=True, require_character=False, team_limit=None, timer_limit=None,
                  areas=None, area_concurrent_limit=None,
-                 autoadd_on_client_enter=False):
+                 autoadd_on_client_enter=False) -> GameWithAreas:
         """
         Create a new game with areas managed by this manager.
 
@@ -810,7 +824,7 @@ class GameWithAreasManager(GameManager):
 
         return game
 
-    def get_games_in_area(self, area):
+    def get_games_in_area(self, area) -> Set[GameWithAreas]:
         """
         Return (a shallow copy of) the all games managed by this manager that contain the given
         area.
@@ -832,7 +846,7 @@ class GameWithAreasManager(GameManager):
         except KeyError:
             return set()
 
-    def _find_area_concurrent_limiting_game(self, area):
+    def _find_area_concurrent_limiting_game(self, area: AreaManager.Area):
         """
         For area `area`, find a game with areas `most_restrictive_game` managed by this manager
         such that, if `area` were to be added to another game managed by this manager, they would
@@ -873,14 +887,14 @@ class GameWithAreasManager(GameManager):
             return None
         return most_restrictive_game
 
-    def _add_area_to_mapping(self, area, game):
+    def _add_area_to_mapping(self, area: AreaManager.Area, game: GameWithAreas):
         """
         Update the area to game with areas mapping with the information that `area` was added to
         `game`.
 
         Parameters
         ----------
-        area : ClientManager.Client
+        area : AreaManager.Area
             Area that was added.
         game : GameWithAreas
             Game with areas that `area` was added to.
@@ -906,7 +920,7 @@ class GameWithAreasManager(GameManager):
         except KeyError:
             self._area_to_games[area] = {game}
 
-    def _remove_area_from_mapping(self, area, game):
+    def _remove_area_from_mapping(self, area: AreaManager.Area, game: GameWithAreas):
         """
         Update the area to game with areas mapping with the information that `area` was removed
         from `game`.
@@ -915,7 +929,7 @@ class GameWithAreasManager(GameManager):
 
         Parameters
         ----------
-        area : ClientManager.Client
+        area : AreaManager.Area
             Area that was removed.
         game : GameWithAreas
             Game with areas that `area` was removed from.
@@ -989,7 +1003,7 @@ class GameWithAreasManager(GameManager):
         # Last
         super()._check_structure()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Return a representation of this game with areas manager.
 
