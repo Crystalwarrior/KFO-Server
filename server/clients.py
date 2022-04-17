@@ -188,6 +188,7 @@ class DefaultDROProtocol(Enum):
         ('showname', ''),  # 15
         ('video', '0'),  # 16
         ('hide_character', 0),  # 17
+        ('client_id', -1),  # 18
         ]
 
     MC_INBOUND = [
