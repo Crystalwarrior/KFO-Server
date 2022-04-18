@@ -74,7 +74,10 @@ class AreaManager:
                 return
             if self.caller not in self.hub.owners:
                 return
-            for cmd in self.commands:
+            # We clear out the commands as we call them in order one by one
+            while len(self.commands) > 0:
+                # Take the first command in the list and run it
+                cmd = self.commands.pop(0)
                 args = cmd.split(" ")
                 cmd = args.pop(0).lower()
                 arg = ""
@@ -84,11 +87,19 @@ class AreaManager:
                     commands.call(self.caller, cmd, arg)
                 except (ClientError, AreaError, ArgumentError, ServerError) as ex:
                     self.caller.send_ooc(f"[Timer 0] {ex}")
+                    # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
+                    self.commands.clear()
+                    # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
+                    return
                 except Exception as ex:
                     self.caller.send_ooc(
                         f"[Timer 0] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
                     )
                     logger.exception("Exception while running a command")
+                    # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
+                    self.commands.clear()
+                    # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
+                    return
 
     def __init__(self, hub_manager, name):
         self.hub_manager = hub_manager

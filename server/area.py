@@ -82,8 +82,10 @@ class Area:
                 return
             if self.caller not in self.area.owners:
                 return
-            server = self.caller.server
-            for cmd in self.commands:
+            # We clear out the commands as we call them in order one by one
+            while len(self.commands) > 0:
+                # Take the first command in the list and run it
+                cmd = self.commands.pop(0)
                 args = cmd.split(" ")
                 cmd = args.pop(0).lower()
                 arg = ""
@@ -96,15 +98,21 @@ class Area:
                     commands.call(self.caller, cmd, arg)
                     if old_area and old_area in old_hub.areas:
                         self.caller.area = old_area
-                    # else:
-                    #     self.caller.set_area(old_hub.default_area())
                 except (ClientError, AreaError, ArgumentError, ServerError) as ex:
                     self.caller.send_ooc(f"[Timer {self.id}] {ex}")
+                    # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
+                    self.commands.clear()
+                    # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
+                    return
                 except Exception as ex:
                     self.caller.send_ooc(
                         f"[Timer {self.id}] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
                     )
                     logger.exception("Exception while running a command")
+                    # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
+                    self.commands.clear()
+                    # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
+                    return
 
     """Represents a single instance of an area."""
 
