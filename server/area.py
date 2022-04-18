@@ -1842,6 +1842,13 @@ class Area:
         packet = self.demo.pop(0)
         header = packet[0]
         args = packet[1:]
+        # It's a wait packet
+        if header == "wait":
+            secs = float(args[0]) / 1000
+            self.demo_schedule = asyncio.get_running_loop().call_later(
+                secs, lambda: self.play_demo(client)
+            )
+            return
         if header.startswith("/"):  # It's a command call
             # TODO: make this into a global function so commands can be called from anywhere in code...
             cmd = header[1:].lower()
@@ -1864,6 +1871,9 @@ class Area:
                     self.stop_demo()
                     return
                 getattr(commands, called_function)(client, arg)
+                # Switching to another demo (can't have multiple concurrent demos running)
+                if cmd == "demo":
+                    return
             except (ClientError, AreaError, ArgumentError, ServerError) as ex:
                 client.send_ooc(f"[Demo] {ex}")
                 self.stop_demo()
@@ -1875,17 +1885,12 @@ class Area:
                 logger.exception("Exception while running a command")
                 self.stop_demo()
                 return
-        elif header == "wait":
-            secs = float(args[0]) / 1000
-            self.demo_schedule = asyncio.get_running_loop().call_later(
-                secs, lambda: self.play_demo(client)
-            )
-            return
         elif len(client.broadcast_list) > 0:
             for area in client.broadcast_list:
                 area.send_command(header, *args)
         else:
             self.send_command(header, *args)
+        # Proceed to next demo line
         self.play_demo(client)
 
     def stop_demo(self):
