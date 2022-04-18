@@ -1218,12 +1218,13 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc("You are muted by a moderator.")
             return
         if not self.validate_net_cmd(
-            args, self.ArgType.STR, self.ArgType.STR, needs_auth=False
+            args, self.ArgType.STR_OR_EMPTY, self.ArgType.STR, needs_auth=False
         ):
             return
+        args[0] = args[0].strip()
         if args[0] == "":
             self.client.send_ooc(
-                "You must insert a name with at least one letter")
+                "You must insert your OOC Name into 'Name' before you can speak.")
             return
         if len(args[0]) > 30:
             self.client.send_ooc(
