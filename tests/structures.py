@@ -696,24 +696,27 @@ class _TestClientManager(ClientManager):
 
             params = self.received_ic.pop(0)
             message = self.convert_word_to_symbol(message)
-            param_ids = {'msg_type': 0,
-                         'pre': 1,
-                         'folder': 2,
-                         'anim': 3,
-                         'msg': 4,
-                         'pos': 5,
-                         'sfx': 6,
-                         'anim_type': 7,
-                         'char_id': 8,
-                         'sfx_delay': 9,
-                         'button': 10,
-                         'evi': 11,
-                         'flip': 12,
-                         'ding': 13,
-                         'color': 14,
-                         'showname': 15,
-                         'video': 16,
-                         'hide_character': 17}
+            param_ids = {
+                'msg_type': 0,
+                'pre': 1,
+                'folder': 2,
+                'anim': 3,
+                'msg': 4,
+                'pos': 5,
+                'sfx': 6,
+                'anim_type': 7,
+                'char_id': 8,
+                'sfx_delay': 9,
+                'button': 10,
+                'evi': 11,
+                'flip': 12,
+                'ding': 13,
+                'color': 14,
+                'showname': 15,
+                'video': 16,
+                'hide_character': 17,
+                'client_id': 18,
+                }
 
             if 'msg' not in kwargs:
                 kwargs['msg'] = message
@@ -829,8 +832,10 @@ class _TestClientManager(ClientManager):
                 # 15 = showname
                 # 16 = video
                 # 17 = hide_character
-                if not (len(args) == 18):
-                    raise ValueError('Malformed MS packet for an IC message {}'.format(args))
+                # 18 = client_id
+                if not (len(args) == 19):
+                    raise ValueError(f'Malformed MS packet for an IC message {args}: wrong length '
+                                     f'({len(args)}).')
                 self.received_ic.append(args)
             elif command_type == 'MC':  # Start playing track
                 pass
@@ -845,7 +850,7 @@ class _TestClientManager(ClientManager):
             elif command_type == 'SN':  # Showname change
                 pass
             else:
-                raise KeyError('Unrecognized STC argument `{}` {}'.format(command_type, args))
+                raise KeyError(f'Unrecognized STC argument `{command_type}` {args}')
 
             if buffer:
                 self.send_command_cts(buffer)
