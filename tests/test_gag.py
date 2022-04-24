@@ -162,9 +162,9 @@ class TestGag_03_Miscellaneous(_TestSituation5Mc1Gc2):
 
         self.c0.ooc('/scream Hi')
         self.c0.assert_ooc('You attempted to scream but you have no mouth.', over=True)
-        self.c1.assert_ooc('(X) {} [{}] attempted to scream "Hi" while gagged ({}).'
+        self.c1.assert_ooc('(X) {} [{}] attempted to scream `Hi` while gagged ({}).'
                            .format(self.c0_dname, 0, 0), over=True)
-        self.c2.assert_ooc('(X) {} [{}] attempted to scream "Hi" while gagged ({}).'
+        self.c2.assert_ooc('(X) {} [{}] attempted to scream `Hi` while gagged ({}).'
                            .format(self.c0_dname, 0, 0), over=True)
         self.c3.assert_no_ooc()
         self.c4.assert_ooc('You hear some grunting noises.', over=True)

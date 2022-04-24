@@ -5571,7 +5571,7 @@ def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
     msg = arg[:256]  # Cap
     public_area = not client.area.private_area
 
-    client.send_ooc('You whispered `{}` to your party members.'.format(msg))
+    client.send_ooc(f'You whispered `{msg}` to your party members.')
     client.send_ic(msg=msg, pos=client.pos, folder=client.char_folder, char_id=client.char_id,
                    showname='[PW] ' + client.showname, hide_character=1,
                    bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
@@ -5581,14 +5581,12 @@ def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
 
     if client.is_visible:
         for target in members:
-            target.send_ooc('{} whispered something to your party.'
-                            .format(client.displayname), to_deaf=False)
-            target.send_ooc('{} seemed to whisper something to your party, but you could not make '
-                            'it out.'
-                            .format(client.displayname), to_deaf=True, to_blind=False)
+            target.send_ooc(f'{client.displayname} whispered something to your party.',
+                            to_deaf=False)
+            target.send_ooc(f'{client.displayname} seemed to whisper something to your party, but '
+                            f'you could not make it out.', to_deaf=True, to_blind=False)
             target.send_ooc('Someone seemed to whisper something to your party, but you could '
-                            'not make it out.',
-                            to_deaf=True, to_blind=True)
+                            'not make it out.', to_deaf=True, to_blind=True)
 
             target.send_ic(msg=msg, pos=client.pos, char_id=client.char_id,
                            folder=client.char_folder, showname='[PW] ' + client.showname,
@@ -5600,8 +5598,8 @@ def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
                            pred=lambda _: (target.is_deaf and target.is_blind),
                            bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
         if public_area:
-            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party {} ({}).'
-                                   .format(client.displayname, client.id, msg, pid, client.area.id),
+            client.send_ooc_others(f'(X) {client.displayname} [{client.id}] whispered `{msg}` to '
+                                   f'their party {pid} ({client.area.id}).',
                                    is_zstaff_flex=True, not_to=members)
             client.send_ooc_others('You see a group of people huddling together.',
                                    in_area=True, to_blind=False, is_zstaff_flex=False,
@@ -5615,15 +5613,14 @@ def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
         sneaked = {member for member in members if not member.is_visible}
         not_sneaked = members-sneaked
         for target in sneaked:
-            target.send_ooc('{} whispered something to your party while sneaking.'
-                            .format(client.displayname), to_deaf=False)
-            target.send_ooc('{} seemed to whisper something to your party while sneaking, but you '
-                            'could not make it out.'
-                            .format(client.displayname), to_deaf=True, to_blind=False)
+            target.send_ooc(f'{client.displayname} whispered something to your party while '
+                            f'sneaking.', to_deaf=False)
+            target.send_ooc(f'{client.displayname} seemed to whisper something to your party while '
+                            f'sneaking, but you could not make it out.', to_deaf=True,
+                            to_blind=False)
             # No different notification
             target.send_ooc('Someone seemed to whisper something to your party, but you could '
-                            'not make it out.',
-                            to_deaf=True, to_blind=True)
+                            'not make it out.', to_deaf=True, to_blind=True)
             target.send_ic(msg=msg, pos=client.pos, char_id=client.char_id,
                            folder=client.char_folder, showname='[PW] ' + client.showname,
                            hide_character=1,
@@ -5642,9 +5639,8 @@ def ooc_cmd_party_whisper(client: ClientManager.Client, arg: str):
                            bypass_deafened_starters=True)
 
         if public_area:
-            client.send_ooc_others('(X) {} [{}] whispered `{}` to their party {} while sneaking '
-                                   '({}).'
-                                   .format(client.displayname, client.id, msg, pid, client.area.id),
+            client.send_ooc_others(f'(X) {client.displayname} [{client.id}] whispered `{msg}` to '
+                                   f'their party {pid} while sneaking ({client.area.id}).',
                                    is_zstaff_flex=True, not_to=members)
             client.send_ooc_others('You heard a whisper, but you could not seem to tell where it '
                                    'came from.',
@@ -6464,27 +6460,24 @@ def ooc_cmd_scream(client: ClientManager.Client, arg: str):
     arg = arg[:256]  # Cap
 
     if not client.is_gagged:
-        client.send_ooc('You screamed "{}".'.format(arg))
+        client.send_ooc(f'You screamed `{arg}`.')
 
         if not client.area.private_area:
-            client.send_ooc_others(msg="You heard {} scream nearby.".format(client.displayname),
+            client.send_ooc_others(msg=f"You heard {client.displayname} scream nearby.",
                                    is_zstaff_flex=False, to_deaf=False,
                                    pred=lambda c: (not c.muted_global and
                                                    (c.area == client.area or
                                                     ((client.is_staff() or not c.area.ic_lock) and
                                                      c.area.name in client.area.scream_range))))
-            client.send_ooc_others('(X) {} [{}] screamed "{}" ({}).'
-                                   .format(client.displayname, client.id, arg,
-                                           client.area.id),
-                                   is_zstaff_flex=True, pred=lambda c: not c.muted_global)
+            client.send_ooc_others(f'(X) {client.displayname} [{client.id}] screamed `{arg}` '
+                                   f'({client.area.id}).', is_zstaff_flex=True,
+                                   pred=lambda c: not c.muted_global)
         else:
-            client.send_ooc_others(msg="You heard {} scream nearby.".format(client.displayname),
+            client.send_ooc_others(msg=f"You heard {client.displayname} scream nearby.",
                                    is_zstaff_flex=False, to_deaf=False, in_area=True,
                                    pred=lambda c: not c.muted_global)
-            client.send_ooc_others('(X) {} [{}] screamed "{}" ({}).'
-                                   .format(client.displayname, client.id, arg,
-                                           client.area.id),
-                                   is_zstaff_flex=True, in_area=True,
+            client.send_ooc_others(f'(X) {client.displayname} [{client.id}] screamed `{arg}` '
+                                   f'({client.area.id}).', is_zstaff_flex=True, in_area=True,
                                    pred=lambda c: not c.muted_global)
 
         client.send_ic(msg=arg, pos=client.pos, folder=client.char_folder, char_id=client.char_id,
@@ -6517,13 +6510,12 @@ def ooc_cmd_scream(client: ClientManager.Client, arg: str):
         client.send_ooc_others('You hear some grunting noises.', is_zstaff_flex=False,
                                to_deaf=False, in_area=True, pred=lambda c: not c.muted_global)
         # Deaf players get no notification on a gagged player screaming
-        client.send_ooc_others('(X) {} [{}] attempted to scream "{}" while gagged ({}).'
-                               .format(client.displayname, client.id, arg, client.area.id),
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] attempted to scream '
+                               f'`{arg}` while gagged ({client.area.id}).',
                                is_zstaff_flex=True, pred=lambda c: not c.muted_global)
 
     client.check_lurk()
-    logger.log_server('[{}][{}][SCREAM]{}.'.format(client.area.id, client.get_char_name(), arg),
-                      client)
+    logger.log_server(f'[{client.area.id}][{client.get_char_name()}][SCREAM]{arg}.', client)
 
 
 def ooc_cmd_scream_range(client: ClientManager.Client, arg: str):
@@ -9060,7 +9052,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
 
     if client == target:
         # Player whispered to themselves. Why? Dunno, ask them, not me
-        client.send_ooc('You whispered `{}` to yourself.'.format(final_message))
+        client.send_ooc(f'You whispered `{final_message}` to yourself.')
         client.send_ic(msg=msg, pos=client.pos, folder=client.char_folder, char_id=client.char_id,
                        showname='[W] ' + client.showname, hide_character=1,
                        bypass_deafened_starters=True)
@@ -9068,15 +9060,15 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         # Either both client and target are visible
         # Or they are both not, where cm.get_target_public already handles removing sneaked targets
         # if they are not part of the same party as the client (or the client is not staff)
-        client.send_ooc('You whispered `{}` to {}.'.format(final_message, final_target))
+        client.send_ooc(f'You whispered `{final_message}` to {final_target}.')
         client.send_ic(msg=msg, pos=client.pos, folder=client.char_folder, char_id=client.char_id,
                        showname='[W] ' + client.showname, hide_character=1,
                        bypass_replace=False, bypass_deafened_starters=True)
         client.check_lurk()
 
-        target.send_ooc('{} whispered something to you.'.format(final_sender), to_deaf=False)
-        target.send_ooc('{} seemed to whisper something to you, but you could not make it out.'
-                        .format(final_rec_sender), to_deaf=True)
+        target.send_ooc(f'{final_sender} whispered something to you.', to_deaf=False)
+        target.send_ooc(f'{final_rec_sender} seemed to whisper something to you, but you could not '
+                        f'make it out.', to_deaf=True)
         target.send_ic(msg=msg, pos=client.pos, folder=client.char_folder, char_id=client.char_id,
                        showname='[W] ' + client.showname, hide_character=1,
                        bypass_deafened_starters=True)  # send_ic handles nerfing for deafened
@@ -9084,26 +9076,23 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         if not client.is_visible and public_area:
             # This code should run if client and target are sneaked and part of same party
             # and also if the area is public
-            client.send_ooc_others('(X) {} [{}] whispered `{}` to {} [{}] while both were sneaking '
-                                   'and part of the same party ({}).'
-                                   .format(final_st_sender, client.id, final_message,
-                                           final_target, target.id, client.area.id),
+            client.send_ooc_others(f'(X) {final_st_sender} [{client.id}] whispered '
+                                   f'`{final_message}` to {final_target} [{target.id}] while both '
+                                   f'were sneaking and part of the same party ({client.area.id}).',
                                    is_zstaff_flex=True, not_to={target})
         else:
             # Otherwise, announce it to everyone. If the area is private, zone watchers and staff
             # get normal whisper reports if in the same area.
             if public_area:
-                client.send_ooc_others('(X) {} [{}] whispered `{}` to {} [{}] ({}).'
-                                       .format(final_st_sender, client.id, final_message,
-                                               final_target, target.id, client.area.id),
-                                       is_zstaff_flex=True, not_to={target})
-            client.send_ooc_others('{} whispered something to {}.'
-                                   .format(final_sender, final_target),
+                client.send_ooc_others(f'(X) {final_st_sender} [{client.id}] whispered '
+                                       f'`{final_message}` to {final_target} [{target.id}] '
+                                       f'({client.area.id}).', is_zstaff_flex=True, not_to={target})
+            client.send_ooc_others(f'{final_sender} whispered something to {final_target}.',
                                    is_zstaff_flex=False if public_area else None, in_area=True,
                                    not_to={target}, to_blind=False)
     elif target.is_visible:
-        client.send_ooc('You spooked {} by whispering `{}` to them while sneaking.'
-                        .format(final_target, final_message))
+        client.send_ooc(f'You spooked {final_target} by whispering `{final_message}` to them while '
+                        f'sneaking.')
         client.send_ic(msg=msg, pos='jud', showname='[W] ' + client.showname, hide_character=1,
                        bypass_deafened_starters=True)
         client.check_lurk()
@@ -9119,14 +9108,14 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
                        bypass_deafened_starters=True)
 
         if not client.area.private_area:
-            client.send_ooc_others('(X) {} [{}] whispered `{}` to {} [{}] while sneaking ({}).'
-                                   .format(final_st_sender, client.id, final_message, final_target,
-                                           target.id, client.area.id),
-                                   is_zstaff_flex=True, not_to={target})
+            client.send_ooc_others(f'(X) {final_st_sender} [{client.id}] whispered '
+                                   f'`{final_message}` to {final_target} [{target.id}] while '
+                                   f'sneaking ({client.area.id}).', is_zstaff_flex=True,
+                                   not_to={target})
     else:  # Sender is not sneaked, target is
         if client.is_staff():
-            msg = ('Your target {} is sneaking and whispering to them would reveal them. Instead, '
-                   'use /guide'.format(target.displayname))
+            msg = (f'Your target {target.displayname} is sneaking and whispering to them would '
+                   f'reveal them. Instead, use /guide')
             raise ClientError(msg)
         # Normal clients should never get here except if get_target_public is wrong
         # which would be very sad.
