@@ -200,6 +200,7 @@ class DefaultDROProtocol(Enum):
         ('name', ''),  # 0
         ('char_id', -1),  # 1
         ('showname', ''),  # 2
+        ('force_same_restart', 1),  # 3
         ]
 
     RT_INBOUND = [
@@ -342,6 +343,12 @@ class ClientDRO1d0d0(Enum):
         ('ding', -1),  # 13
         ('color', 0),  # 14
         ('showname', ' '),  # 15
+        ]
+
+    MC_OUTBOUND = [
+        ('name', ''),  # 0
+        ('char_id', -1),  # 1
+        ('showname', ''),  # 2
         ]
 
 
