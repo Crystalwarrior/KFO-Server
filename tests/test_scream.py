@@ -38,7 +38,7 @@ class TestScream_01_Scream(_TestOOC):
         self.c3.assert_no_packets()  # C3 is not in scream range
 
         self.c3.ooc('/scream Hu')
-        self.c0.assert_ooc('You heard {} scream nearby.'.format(self.c3_dname), ooc_over=True)
+        self.c0.assert_ooc('You heard {} scream `Hu` nearby.'.format(self.c3_dname), ooc_over=True)
         self.c0.assert_ic('Hu', showname='[S] ' + self.c3.showname,
                           over=True)  # C0 IS in scream range (compare to previous situation)
         self.c1.assert_ooc('(X) {} [{}] screamed `Hu` ({}).'
@@ -59,7 +59,7 @@ class TestScream_01_Scream(_TestOOC):
 
         # C1 (staff) screams
         self.c1.ooc('/scream Ha')
-        self.c0.assert_ooc('You heard {} scream nearby.'.format(self.c1_dname), ooc_over=True)
+        self.c0.assert_ooc('You heard {} scream `Ha` nearby.'.format(self.c1_dname), ooc_over=True)
         self.c0.assert_ic('Ha', showname='[S] ' + self.c1.showname, over=True)
         self.c1.assert_ooc('You screamed `Ha`.', ooc_over=True)
         self.c1.assert_ic('Ha', char_id=1, pos=self.c1.pos, showname='[S] ' + self.c1.showname,

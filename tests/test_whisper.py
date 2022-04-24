@@ -171,7 +171,7 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
             for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-                recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
+                recipient_ooc = '{} whispered `{}` to you.'.format(sender.displayname, message)
                 staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
                                      recipient.id, sender.area.id))
@@ -202,7 +202,7 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
             for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-                recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
+                recipient_ooc = '{} whispered `{}` to you.'.format(sender.displayname, message)
                 staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
                                      recipient.id, sender.area.id))
@@ -235,7 +235,7 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
             for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-                recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
+                recipient_ooc = '{} whispered `{}` to you.'.format(sender.displayname, message)
                 staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
                                      recipient.id, sender.area.id))
@@ -274,8 +274,9 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = ('You spooked {} by whispering `{}` to them while sneaking.'
                             .format(recipient.displayname, message))
-                recipient_ooc = ('You heard a whisper and you think it was directed at you, but '
-                                 'you could not seem to tell where it came from.')
+                recipient_ooc = ('You heard someone whisper `{}` and you think it was directed at '
+                                 'you, but you could not seem to tell where it came from.'
+                                 .format(message))
                 staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] while sneaking ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
                                      recipient.id, sender.area.id))
@@ -354,7 +355,7 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
             for identifier in self.get_identifiers(recipient):
                 message = '{} with {} to {}'.format(sender, identifier, recipient)
                 sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-                recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
+                recipient_ooc = '{} whispered `{}` to you.'.format(sender.displayname, message)
                 staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] while both were sneaking and '
                              'part of the same party ({}).'
                              .format(sender.displayname, sender.id, message, recipient.displayname,
@@ -462,7 +463,7 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
         for identifier in self.get_identifiers(recipient):
             message = '{} with {} to {}'.format(sender, identifier, recipient)
             sent_ooc = 'You whispered `{}` to {}.'.format(message, recipient.displayname)
-            recipient_ooc = '{} whispered something to you.'.format(sender.displayname)
+            recipient_ooc = '{} whispered `{}` to you.'.format(sender.displayname, message)
             staff_ooc = ('(X) {} [{}] whispered `{}` to {} [{}] ({}).'
                          .format(sender.displayname, sender.id, message, recipient.displayname,
                                  recipient.id, sender.area.id))
