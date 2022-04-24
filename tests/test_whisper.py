@@ -178,10 +178,12 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic(message, folder=sender.char_folder, pos=sender.pos,
-                                 char_id=sender.char_id, showname=sender.showname, over=True)
+                                 char_id=sender.char_id, showname='[W] ' + sender.showname,
+                                 over=True)
                 recipient.assert_ooc(recipient_ooc, ooc_over=True)
                 recipient.assert_ic(message, folder=sender.char_folder, pos=sender.pos,
-                                    char_id=sender.char_id, showname=sender.showname, over=True)
+                                    char_id=sender.char_id, showname='[W] ' + sender.showname,
+                                    over=True)
                 self.c1.assert_ooc(staff_ooc, over=True)
                 self.c2.assert_ooc(staff_ooc, over=True)
                 self.c3.assert_no_packets()
@@ -209,10 +211,12 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic(message, folder=sender.char_folder, pos=sender.pos,
-                                 char_id=sender.char_id, showname=sender.showname, over=True)
+                                 char_id=sender.char_id, showname='[W] ' + sender.showname,
+                                 over=True)
                 recipient.assert_ooc(recipient_ooc, ooc_over=True)
                 recipient.assert_ic(message, folder=sender.char_folder, pos=sender.pos,
-                                    char_id=sender.char_id, showname=sender.showname, over=True)
+                                    char_id=sender.char_id, showname='[W] ' + sender.showname,
+                                    over=True)
                 self.c2.assert_ooc(staff_ooc, over=True)
                 self.c3.assert_no_packets()
                 self.c4.assert_ooc(nonstaff_ooc, over=True)
@@ -238,10 +242,12 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic(message, folder=sender.char_folder, pos=sender.pos,
-                                 char_id=sender.char_id, showname=sender.showname, over=True)
+                                 char_id=sender.char_id, showname='[W] ' + sender.showname,
+                                 over=True)
                 recipient.assert_ooc(recipient_ooc, ooc_over=True)
                 recipient.assert_ic(message, folder=sender.char_folder, pos=sender.pos,
-                                    char_id=sender.char_id, showname=sender.showname, over=True)
+                                    char_id=sender.char_id, showname='[W] ' + sender.showname,
+                                    over=True)
                 self.c1.assert_ooc(staff_ooc, over=True)
                 self.c3.assert_no_packets()
                 self.c4.assert_no_packets()
@@ -275,7 +281,8 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                                      recipient.id, sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
-                sender.assert_ic(message, folder='<NOCHAR>', pos='jud', showname='???', over=True)
+                sender.assert_ic(message, folder='<NOCHAR>', pos='jud',
+                                 showname='[W] ' + sender.showname, over=True)
                 recipient.assert_ooc(recipient_ooc, ooc_over=True)
                 recipient.assert_ic(message, folder='<NOCHAR>', pos='jud', showname='???',
                                     over=True)
@@ -304,7 +311,8 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                 client.ooc('/whisper {} {}'.format(identifier, message))
                 client.assert_ooc(ooc, ooc_over=True)
                 client.assert_ic(message, folder=client.char_folder, pos=client.pos,
-                                 showname=client.showname, char_id=client.char_id, over=True)
+                                 showname='[W] ' + client.showname, char_id=client.char_id,
+                                 over=True)
 
     def test_06_whispersneakedtosneakedparty(self):
         """
@@ -354,10 +362,12 @@ class TestWhisper_02_WhisperNormal(_TestWhisper):
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic(message, folder=sender.char_folder, pos=sender.pos,
-                                 char_id=sender.char_id, showname=sender.showname, over=True)
+                                 char_id=sender.char_id, showname='[W] ' + sender.showname,
+                                 over=True)
                 recipient.assert_ooc(recipient_ooc, ooc_over=True)
                 recipient.assert_ic(message, folder=sender.char_folder, pos=sender.pos,
-                                    char_id=sender.char_id, showname=sender.showname, over=True)
+                                    char_id=sender.char_id, showname='[W] ' + sender.showname,
+                                    over=True)
                 self.c1.assert_ooc(staff_ooc, over=True)
                 self.c2.assert_no_packets()
                 self.c3.assert_no_packets()
@@ -426,11 +436,13 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic('(Your ears are ringing)', folder=sender.char_folder,
-                                 pos=sender.pos, char_id=sender.char_id, showname=sender.showname,
+                                 pos=sender.pos, char_id=sender.char_id,
+                                 showname='[W] ' + sender.showname,
                                  allow_partial_match=True, over=True)
                 recipient.assert_ooc(recipient_ooc, ooc_over=True)
                 recipient.assert_ic('(Your ears are ringing)', folder=sender.char_folder,
-                                    pos=sender.pos, char_id=sender.char_id, showname=sender.showname,
+                                    pos=sender.pos, char_id=sender.char_id,
+                                    showname='[W] ' + sender.showname,
                                     allow_partial_match=True, over=True)
                 self.c1.assert_ooc(staff_ooc, over=True)
                 self.c2.assert_ooc(staff_ooc, over=True)
@@ -459,11 +471,12 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
             sender.ooc('/whisper {} {}'.format(identifier, message))
             sender.assert_ooc(sent_ooc, ooc_over=True)
             sender.assert_ic('(Your ears are ringing)', folder=sender.char_folder, pos=sender.pos,
-                             char_id=sender.char_id, showname=sender.showname,
+                             char_id=sender.char_id, showname='[W] ' + sender.showname,
                              allow_partial_match=True, over=True)
             recipient.assert_ooc(recipient_ooc, ooc_over=True)
             recipient.assert_ic(message, folder=sender.char_folder, pos=sender.pos,
-                                char_id=sender.char_id, showname=sender.showname, over=True)
+                                char_id=sender.char_id, showname='[W] ' + sender.showname,
+                                over=True)
             self.c2.assert_ooc(staff_ooc, over=True)
             self.c3.assert_no_packets()
             self.c4.assert_ooc(nonstaff_ooc, over=True)
@@ -496,7 +509,8 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
                                      recipient.id, sender.area.id))
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
-                sender.assert_ic(message, folder='<NOCHAR>', pos='jud', showname='???', over=True)
+                sender.assert_ic(message, folder='<NOCHAR>', pos='jud',
+                                 showname='[W] ' + sender.showname, over=True)
                 recipient.assert_ooc(recipient_ooc, ooc_over=True)
                 recipient.assert_ic('(Your ears are ringing)', folder='<NOCHAR>', pos='jud',
                                     allow_partial_match=True, showname='???', over=True)
@@ -526,7 +540,8 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
                 client.ooc('/whisper {} {}'.format(identifier, message))
                 client.assert_ooc(ooc, ooc_over=True)
                 client.assert_ic('(Your ears are ringing)', folder=client.char_folder,
-                                 pos=client.pos, showname=client.showname, char_id=client.char_id,
+                                 pos=client.pos, showname='[W] ' + client.showname,
+                                 char_id=client.char_id,
                                  allow_partial_match=True, over=True)
 
     def test_05_whispersneakedtosneakedparty(self):
@@ -578,12 +593,13 @@ class TestWhisper_03_WhisperToDeafened(_TestWhisper):
                 sender.ooc('/whisper {} {}'.format(identifier, message))
                 sender.assert_ooc(sent_ooc, ooc_over=True)
                 sender.assert_ic('(Your ears are ringing)', folder=sender.char_folder,
-                                 pos=sender.pos, char_id=sender.char_id, showname=sender.showname,
+                                 pos=sender.pos, char_id=sender.char_id,
+                                 showname='[W] ' + sender.showname,
                                  allow_partial_match=True, over=True)
                 recipient.assert_ooc(recipient_ooc, ooc_over=True)
                 recipient.assert_ic('(Your ears are ringing)', folder=sender.char_folder,
                                     pos=sender.pos, char_id=sender.char_id,
-                                    showname=sender.showname,
+                                    showname='[W] ' + sender.showname,
                                     allow_partial_match=True, over=True)
                 self.c1.assert_ooc(staff_ooc, over=True)
                 self.c2.assert_no_packets()

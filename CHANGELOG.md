@@ -724,5 +724,7 @@
 * Added support for the `showname`, `video` and `hide_character` fields in Danganronpa Online 1.1.0
 * Added support for day cycles of arbitrary number of hours via a new optional argument to /clock (default 24 hours), and /clock_set_hours
 * Added a lockout that prevents messages being sent the first 5 seconds of a nonstop debate in pre-recording or intermission mode
+* Added brief prefixes to shownames whenever an OOC command that generates an IC message with a showname to indicate the nature of the message (e.g. [W] for whispers)
 * Increased the numbers of messages that must occur during a nonstop debate intermission before reminding the leaders to advance stage if necessary from 5 to 20
+* Sending a whisper while sneaked to a nonsneaked player that is not a member of the same party now displays the player's showname to the sneaked player (but still only question marks to the recipient)
 * Fixed some compatibility issues with AO 2.9
