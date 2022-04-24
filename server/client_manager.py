@@ -524,6 +524,9 @@ class ClientManager:
                 # Otherwise convert to counter bullet
                 if not (keep1 or keep2):
                     pargs['button'] = 7
+
+            pargs['client_id'] = sender.id if sender else -1
+
             # Done modifying IC message
             # Now send it
 
