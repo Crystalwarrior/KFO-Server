@@ -9606,7 +9606,7 @@ def ooc_cmd_zone_iclock(client: ClientManager.Client, arg: str):
     status = {True: 'locked', False: 'unlocked'}
     client.send_ooc('You {} the IC chat in your zone.'.format(status[zone_ic_lock]))
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has '
-                           f'{status[zone_ic_lock]} the IC chat in your zone.'
+                           f'{status[zone_ic_lock]} the IC chat in your zone '
                            f'({client.area.id}).', is_zstaff_flex=True)
 
     for area in zone.get_areas():
@@ -10958,6 +10958,67 @@ def ooc_cmd_clock_set_hours(client: ClientManager.Client, arg: str):
     client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'hours_in_day', hours_in_day)
     client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'set_hours')
     client.server.tasker.cancel_task(task)
+
+
+def ooc_cmd_zone_autopass(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Changes the zone paranoia level of the zone you are watching, which affects the probability a
+    user receives a phantom peek message every phantom peek cycle. The zone paranoia level
+    is a percentage from -100 to 100, by default 0 (including if not set).
+    A phantom peek message is a message that looks like one received from being an area that was
+    just peeked into.
+    A phantom peek cycle is a cycle of a length randomly chosen between 150 to 450 seconds, after
+    which the server, with probability "player paranoia + zone paranoia", starts a timer of length
+    a random number less than 150 seconds, after which it sends the user a phantom peek message
+    if they are not blind and not staff, in an area that is not a lobby or private area, and they
+    have a valid character selected. A new phantom peek cycle is restarted regardless of success
+    after the old one expires.
+    Returns an error if you are not watching a zone, or if the new zone paranoia level is not a
+    number from -100 to 100.
+
+    SYNTAX
+    /zone_paranoia <zone_paranoia_level>
+
+    PARAMETERS
+    <zone_paranoia_level>: New intended player paranoia level
+
+    EXAMPLES
+    Assuming you are watching zome z0...
+    >>> /zone_paranoia_level 5
+    Set the zone paranoia level of zone z0 to 5%.
+    >>> /zone_paranoia_level -10
+    Set the zone paranoia level of zone z0 to -10%.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    status = {False: 'off', True: 'on'}
+
+    try:
+        zone_autopass = zone.get_property('Autopass')
+    except ZoneError.PropertyNotFoundError:
+        zone_autopass = False
+
+    zone_autopass = not zone_autopass
+    zone.set_property('Autopass', zone_autopass)
+
+    status = {True: 'on', False: 'off'}
+    client.send_ooc(f'You turned {status[zone_autopass]} autopass in your zone.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has turned '
+                           f'{status[zone_autopass]} autopass in your zone '
+                           f'({client.area.id}).', is_zstaff=True)
+    client.send_ooc_others(f'Autopass was automatically turned {status[zone_autopass]} in your '
+                           f'zone.', is_zstaff=False, pred=lambda c: c.area.in_zone == zone)
+
+    for player in zone.get_players():
+        player.autopass = zone_autopass
+
+    logger.log_server(f'[{client.area.id}][{client.get_char_name()}]Changed autopass in zone '
+                      f'{zone.get_id()} to {zone_autopass}.', client)
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
