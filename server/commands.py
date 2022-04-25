@@ -10416,9 +10416,9 @@ def ooc_cmd_zone_paranoia(client: ClientManager.Client, arg: str):
     EXAMPLES
     Assuming you are watching zome z0...
     >>> /zone_paranoia_level 5
-    Set the zone paranoia level of zone z0 to 5%.
+    Sets the zone paranoia level of zone z0 to 5%.
     >>> /zone_paranoia_level -10
-    Set the zone paranoia level of zone z0 to -10%.
+    Sets the zone paranoia level of zone z0 to -10%.
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=1')
@@ -10962,32 +10962,30 @@ def ooc_cmd_clock_set_hours(client: ClientManager.Client, arg: str):
 
 def ooc_cmd_zone_autopass(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
-    Changes the zone paranoia level of the zone you are watching, which affects the probability a
-    user receives a phantom peek message every phantom peek cycle. The zone paranoia level
-    is a percentage from -100 to 100, by default 0 (including if not set).
-    A phantom peek message is a message that looks like one received from being an area that was
-    just peeked into.
-    A phantom peek cycle is a cycle of a length randomly chosen between 150 to 450 seconds, after
-    which the server, with probability "player paranoia + zone paranoia", starts a timer of length
-    a random number less than 150 seconds, after which it sends the user a phantom peek message
-    if they are not blind and not staff, in an area that is not a lobby or private area, and they
-    have a valid character selected. A new phantom peek cycle is restarted regardless of success
-    after the old one expires.
-    Returns an error if you are not watching a zone, or if the new zone paranoia level is not a
-    number from -100 to 100.
+    Changes the zone autopass automatic setting of the zone you are watching from False to True,
+    or True to False, and warns all players in an area part of the zone (as well as zone watchers)
+    about the change in OOC. Newly created zones have such setting set to False.
+    If set to True, the autopass setting of all players in an area part of the zone will be turned
+    on, and so will the autopass setting of any player who later joins an area part of the zone.
+    If such player already had autopass on, there is no effect. Players are free to change their
+    autopass setting manually via /autopass. Players who go on to an area part of the zone will
+    not have the zone change their autopass setting on departure.
+    If set to False, the autopass setting of all players in an area part of the zone will be turned
+    off. If such player already had autopass off, there is no effect.
+    Returns an error if you are not watching a zone.
 
     SYNTAX
-    /zone_paranoia <zone_paranoia_level>
+    /zone_autopass
 
     PARAMETERS
-    <zone_paranoia_level>: New intended player paranoia level
+    None
 
     EXAMPLES
-    Assuming you are watching zome z0...
-    >>> /zone_paranoia_level 5
-    Set the zone paranoia level of zone z0 to 5%.
-    >>> /zone_paranoia_level -10
-    Set the zone paranoia level of zone z0 to -10%.
+    Assuming you are watching newly created zome z0...
+    >>> /zone_autopass
+    Sets the zone autopass automatic setting of the zone z0 to True.
+    >>> /zone_autopass
+    Sets the zone autopass automatic setting of the zone z0 to False.
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=0')
