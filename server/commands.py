@@ -9606,7 +9606,7 @@ def ooc_cmd_zone_iclock(client: ClientManager.Client, arg: str):
     status = {True: 'locked', False: 'unlocked'}
     client.send_ooc('You {} the IC chat in your zone.'.format(status[zone_ic_lock]))
     client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has '
-                           f'{status[zone_ic_lock]} the IC chat in your zone.'
+                           f'{status[zone_ic_lock]} the IC chat in your zone '
                            f'({client.area.id}).', is_zstaff_flex=True)
 
     for area in zone.get_areas():
@@ -10416,9 +10416,9 @@ def ooc_cmd_zone_paranoia(client: ClientManager.Client, arg: str):
     EXAMPLES
     Assuming you are watching zome z0...
     >>> /zone_paranoia_level 5
-    Set the zone paranoia level of zone z0 to 5%.
+    Sets the zone paranoia level of zone z0 to 5%.
     >>> /zone_paranoia_level -10
-    Set the zone paranoia level of zone z0 to -10%.
+    Sets the zone paranoia level of zone z0 to -10%.
     """
 
     Constants.assert_command(client, arg, is_staff=True, parameters='=1')
@@ -10958,6 +10958,65 @@ def ooc_cmd_clock_set_hours(client: ClientManager.Client, arg: str):
     client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'hours_in_day', hours_in_day)
     client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'set_hours')
     client.server.tasker.cancel_task(task)
+
+
+def ooc_cmd_zone_autopass(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Changes the zone autopass automatic setting of the zone you are watching from False to True,
+    or True to False, and warns all players in an area part of the zone (as well as zone watchers)
+    about the change in OOC. Newly created zones have such setting set to False.
+    If set to True, the autopass setting of all players in an area part of the zone will be turned
+    on, and so will the autopass setting of any player who later joins an area part of the zone.
+    If such player already had autopass on, there is no effect. Players are free to change their
+    autopass setting manually via /autopass. Players who go on to an area part of the zone will
+    not have the zone change their autopass setting on departure.
+    If set to False, the autopass setting of all players in an area part of the zone will be turned
+    off. If such player already had autopass off, there is no effect.
+    Returns an error if you are not watching a zone.
+
+    SYNTAX
+    /zone_autopass
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    Assuming you are watching newly created zome z0...
+    >>> /zone_autopass
+    Sets the zone autopass automatic setting of the zone z0 to True.
+    >>> /zone_autopass
+    Sets the zone autopass automatic setting of the zone z0 to False.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    status = {False: 'off', True: 'on'}
+
+    try:
+        zone_autopass = zone.get_property('Autopass')
+    except ZoneError.PropertyNotFoundError:
+        zone_autopass = False
+
+    zone_autopass = not zone_autopass
+    zone.set_property('Autopass', zone_autopass)
+
+    status = {True: 'on', False: 'off'}
+    client.send_ooc(f'You turned {status[zone_autopass]} autopass in your zone.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has turned '
+                           f'{status[zone_autopass]} autopass in your zone '
+                           f'({client.area.id}).', is_zstaff=True)
+    client.send_ooc_others(f'Autopass was automatically turned {status[zone_autopass]} in your '
+                           f'zone.', is_zstaff=False, pred=lambda c: c.area.in_zone == zone)
+
+    for player in zone.get_players():
+        player.autopass = zone_autopass
+
+    logger.log_server(f'[{client.area.id}][{client.get_char_name()}]Changed autopass in zone '
+                      f'{zone.get_id()} to {zone_autopass}.', client)
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):

@@ -587,6 +587,8 @@ GMs can:
     - You are automatically set to watch the zones you create like this.
 * **zone_add** "area"
     - Adds an area by name or ID to the zone you are watching.
+* **zone_autopass**
+    - Changes the autopass status of the zone you are watching. If turned on, turns autopass on for players in an area part of a zone and players that later join; otherwise, it turns it off for players in an area part of the zone
 * **zone_end**
     - Ends the zone you are watching.
 * **zone_handicap** "length" "name" "announce if over"
