@@ -321,6 +321,10 @@ GMs can:
 * **area_kick** "ID" "area number"
     - Kicks target from your area to the intended area and remove them from its invite-list.
     - If not given a target area, it will use the server's default area (usually area 0).
+* **autopass** "ID"
+    - Toggles enter/leave messages being sent automatically or not to users in the current area, including original/target areas, whenever the target moves.
+    - Messages will not be sent if sneaking. Altered messages will be sent if the area's lights are turned off.
+    - If no ID is given, target is yourself.
 * **bilock** "area 1", "area 2"
     - Changes the passage locked status (locked/unlocked) between two areas, or from the current area to area 1 if just given one area. Locking a passage in such a way does not change its current visibility to non-GMs.
 * **bilockh** "area 1", "area 2"

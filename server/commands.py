@@ -298,9 +298,10 @@ def ooc_cmd_area_lists(client: ClientManager.Client, arg: str):
 
 
 def ooc_cmd_autopass(client: ClientManager.Client, arg: str):
-    """
-    Toggles enter/leave messages being sent automatically or not to users in the current area.
-    It will not send those messages if you are a spectator or while sneaking. Altered messages
+    """ (VARYING REQUIREMENTS)
+    Toggles enter/leave messages being sent automatically or not to users in the current area
+    whenever you move, or (STAFF ONLY) when a target by client ID moves.
+    It will not send those messages if the target is a spectator or sneaking. Altered messages
     will be sent if the area's lights are turned off.
 
     SYNTAX
@@ -310,19 +311,39 @@ def ooc_cmd_autopass(client: ClientManager.Client, arg: str):
     None
 
     EXAMPLES
-    Assuming /autopass is off...
+    Assuming /autopass for you and for client 1is off...
     >>> /autopass
     Turns autopass on.
     >>> /autopass
     Turns autopass off.
+    >>> /autopass 1
+    Turns autopass for client 1 on.
+    >>> /autopass 1
+    Turns autopass for client 1 off.
     """
 
-    Constants.assert_command(client, arg, parameters='=0')
+    Constants.assert_command(client, arg, parameters='<2')
+    if arg and not client.is_staff():
+        raise ClientError.UnauthorizedError('You must be authorized to use the one-parameter '
+                                            'version of this command.')
+    if arg:
+        target = Constants.parse_id(client, arg)
+    else:
+        target = client
 
-    client.autopass = not client.autopass
+    target.autopass = not target.autopass
     status = {False: 'off', True: 'on'}
 
-    client.send_ooc('Autopass turned {}.'.format(status[client.autopass]))
+    if client == target:
+        client.send_ooc(f'You turned {status[client.autopass]} your autopass.')
+    else:
+        client.send_ooc(f'You turned {status[target.autopass]} the autopass for '
+                        f'{target.displayname} [{target.id}].')
+        target.send_ooc(f'Your autopass was turned {status[target.autopass]}.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] turned '
+                               f'{status[target.autopass]} the autopass for '
+                               f'{target.displayname} [{target.id}] ({client.area.id}).',
+                               is_zstaff_flex=True, not_to={target})
 
 
 def ooc_cmd_ban(client: ClientManager.Client, arg: str):
