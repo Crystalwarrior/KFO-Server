@@ -747,7 +747,7 @@ class AreaManager:
 
             def loop(zeroth_loop):
                 for player in self.clients:
-                    if zeroth_loop or player.packet_handler != clients.ClientDRO1d1d0:
+                    if zeroth_loop or not player.packet_handler.HAS_CLIENTSIDE_MUSIC_LOOPING.value:
                         player.send_music(**loop_pargs)
 
                 if self.music_looper:
@@ -793,7 +793,7 @@ class AreaManager:
                 pargs['force_same_restart'] = force_same_restart
 
             for player in only_for:
-                if player.packet_handler == clients.ClientDRO1d1d0:
+                if player.packet_handler.HAS_CLIENTSIDE_MUSIC_LOOPING.value:
                     player.send_music(**pargs)
 
         def add_to_shoutlog(self, client: ClientManager.Client, msg: str):

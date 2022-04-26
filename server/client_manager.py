@@ -632,7 +632,7 @@ class ClientManager:
 
         def send_music(self, name=None, char_id=None, showname=None, force_same_restart=None,
                        loop=None, channel=None, effects=None):
-            if self.packet_handler != clients.ClientDRO1d1d0:
+            if not self.packet_handler.HAS_CLIENTSIDE_MUSIC_LOOPING.value:
                 file_extension_location = name.rfind('.')
                 if file_extension_location >= 0:
                     name = name[:file_extension_location]
