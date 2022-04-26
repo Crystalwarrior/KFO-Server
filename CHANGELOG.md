@@ -726,6 +726,8 @@
 * Players with clients with clientside looping (including Danganronpa Online 1.1.0) will now hear music from the start when they enter an area playing a different music from their current one
 * Players with clients with clientside looping (including Danganronpa Online 1.1.0) will now hear music from the start from their current area when they first choose a character (most typically, this will be the music from the default area of the server)
 * Reworded the warning for /play, /rplay, /zone_play, indicating that "the server will not loop the music" as opposed to "[the music] will not loop"
+* Players with clients without clientside looping will now be ordered to play any music that matches the requested music name no matter the file extension, allowing a transition period to change file types of music
+* The `length` parameter in music files is no longer considered to provide server-sided looping to clients with clientside looping, but if provided, the server will use that information to provide server-sided looping to clients without clientside looping
 * Added a lockout that prevents messages being sent the first 5 seconds of a nonstop debate in pre-recording or intermission mode
 * Increased the numbers of messages that must occur during a nonstop debate intermission before reminding the leaders to advance stage if necessary from 5 to 20
 * Fixed some compatibility issues with AO 2.9
