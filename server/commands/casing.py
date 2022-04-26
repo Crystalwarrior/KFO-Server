@@ -9,6 +9,10 @@ from . import mod_only
 __all__ = [
     "ooc_cmd_doc",
     "ooc_cmd_cleardoc",
+    "ooc_cmd_evidence_add",
+    "ooc_cmd_evidence_remove",
+    "ooc_cmd_evidence_edit",
+    "ooc_cmd_evidence_present",
     "ooc_cmd_evidence_mod",  # Not strictly casing - to be reorganized
     "ooc_cmd_evidence_swap",  # Not strictly casing - to be reorganized
     "ooc_cmd_cm",
@@ -80,6 +84,30 @@ def ooc_cmd_cleardoc(client, arg):
     client.area.broadcast_ooc(
         "{} cleared the doc link.".format(client.showname))
     database.log_area("doc.clear", client, client.area)
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_evidence_add(client, arg):
+    """
+    Usage: /evidence_add
+    """
+    pass
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_evidence_remove(client, arg):
+    """
+    Usage: /evidence_remove
+    """
+    pass
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_evidence_edit(client, arg):
+    """
+    Usage: /evidence_edit
+    """
+    pass
 
 
 @mod_only(area_owners=True)
