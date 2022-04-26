@@ -864,15 +864,6 @@ class Area:
         :param client: speaker
         :param *args: arguments
         """
-        # Anim is blank, we're narrating
-        if args[3] == "" and self.last_ic_message is not None:
-            lst = list(args)
-            # Keep the desk mod
-            lst[0] = self.last_ic_message[0]
-            # Set the pos to last message's pos
-            lst[5] = self.last_ic_message[5]
-            args = tuple(lst)
-
         if client in self.afkers:
             client.server.client_manager.toggle_afk(client)
         if client and args[4].startswith("**") and len(self.testimony) > 0:
@@ -1844,6 +1835,11 @@ class Area:
         if self.demo_schedule:
             self.demo_schedule.cancel()
         if len(self.demo) <= 0:
+            self.stop_demo()
+            return
+        if not (client in self.owners):
+            client.send_ooc(
+                f"[Demo] Playback stopped due to you having insufficient permissions! (Not CM/GM anymore)")
             self.stop_demo()
             return
 

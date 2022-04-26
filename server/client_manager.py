@@ -172,6 +172,20 @@ class ClientManager:
             """
             if args:
                 if command == "MS":
+                    # Anim is blank, we're narrating.
+                    # Or the pos is blank, we're using last pos.
+                    if args[3] == "" or args[5] == "":
+                        lst = list(args)
+                        if self.area.last_ic_message is not None:
+                            if args[3] == "":
+                                # Keep the last desk mod, but only on narrating
+                                lst[0] = self.area.last_ic_message[0]
+                            # Set the pos to last message's pos
+                            lst[5] = self.area.last_ic_message[5]
+                        else:
+                            # Set the pos to the 0th pos-lock
+                            lst[5] = self.area.pos_lock[0]
+                        args = tuple(lst)
                     for evi_num in range(len(self.evi_list)):
                         if self.evi_list[evi_num] == args[11]:
                             lst = list(args)
