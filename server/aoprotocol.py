@@ -511,16 +511,21 @@ class AOProtocol(asyncio.Protocol):
 
         char_id = pargs['char_id']
 
-        ever_chose_character = self.client.ever_chose_character  # Store for later
+        ever_chose_character_before = self.client.ever_chose_character  # Store for later
         try:
             self.client.change_character(char_id)
         except ClientError:
             return
         self.client.last_active = Constants.get_time()
 
-        if not ever_chose_character:
+        if not ever_chose_character_before:
             self.client.send_command_dict('GM', {'name': ''})
             self.client.send_command_dict('TOD', {'name': ''})
+            try:
+                self.client.area.play_current_track(only_for={self.client}, force_same_restart=1)
+            except AreaError:
+                # Only if there is no current music in the area
+                pass
 
     def net_cmd_ms(self, args: List[str]):
         """ IC message.
