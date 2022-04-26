@@ -721,8 +721,11 @@
   - /notecard_reveal
   - /notecard_reveal_count
 * Added /help_more, which lists extended help for a command
-* Added support for the `showname`, `video` and `hide_character` fields in Danganronpa Online 1.1.0
+* Added support for the `showname`, `video`, `hide_character`, and `client_id` fields in IC messages from and for Danganronpa Online 1.1.0
 * Added support for day cycles of arbitrary number of hours via a new optional argument to /clock (default 24 hours), and /clock_set_hours
+* Players with clients with clientside looping (including Danganronpa Online 1.1.0) will now hear music from the start when they enter an area playing a different music from their current one
+* Players with clients with clientside looping (including Danganronpa Online 1.1.0) will now hear music from the start from their current area when they first choose a character (most typically, this will be the music from the default area of the server)
+* Reworded the warning for /play, /rplay, /zone_play, indicating that "the server will not loop the music" as opposed to "[the music] will not loop"
 * Added a lockout that prevents messages being sent the first 5 seconds of a nonstop debate in pre-recording or intermission mode
 * Increased the numbers of messages that must occur during a nonstop debate intermission before reminding the leaders to advance stage if necessary from 5 to 20
 * Fixed some compatibility issues with AO 2.9

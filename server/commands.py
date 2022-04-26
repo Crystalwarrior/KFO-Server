@@ -5808,8 +5808,8 @@ def ooc_cmd_play(client: ClientManager.Client, arg: str):
     try:
         client.server.get_song_data(arg, c=client)
     except ServerError.MusicNotFoundError:
-        client.send_ooc(f'Warning: `{arg}` is not a recognized track name, so it will not '
-                        'loop.')
+        client.send_ooc(f'Warning: `{arg}` is not a recognized track name, so the server will not '
+                        'loop it.')
 
 
 def ooc_cmd_pm(client: ClientManager.Client, arg: str):
@@ -6381,8 +6381,8 @@ def ooc_cmd_rplay(client: ClientManager.Client, arg: str):
     try:
         client.server.get_song_data(arg, c=client)
     except ServerError.MusicNotFoundError:
-        client.send_ooc(f'(X) Warning: `{arg}` is not a recognized track name, so it will not '
-                        'loop.')
+        client.send_ooc(f'(X) Warning: `{arg}` is not a recognized track name, so the server will '
+                        f'not loop it.')
 
 
 def ooc_cmd_rpmode(client: ClientManager.Client, arg: str):
@@ -9841,8 +9841,8 @@ def ooc_cmd_zone_play(client: ClientManager.Client, arg: str):
     try:
         client.server.get_song_data(arg, c=client)
     except ServerError.MusicNotFoundError:
-        client.send_ooc(f'(X) Warning: `{arg}` is not a recognized track name, so it will not '
-                        'loop.')
+        client.send_ooc(f'(X) Warning: `{arg}` is not a recognized track name, so the server will '
+                        f'not loop it.')
 
 
 def ooc_cmd_zone_remove(client: ClientManager.Client, arg: str):
