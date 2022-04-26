@@ -192,6 +192,13 @@ class ClientManager:
                             lst[11] = evi_num
                             args = tuple(lst)
                             break
+                    # If we have someone using the DRO 1.1.0 Client
+                    if self.version.startswith("1.1.0"):
+                        lst = list(args)
+                        lst[16] = ""  # No video support :(
+                        lst[17] = 0  # no hiding character
+                        lst[18] = self.id  # sender character id
+                        args = tuple(lst)
             command, *args = encode_ao_packet([command] + list(args))
             message = f"{command}#"
             for arg in args:

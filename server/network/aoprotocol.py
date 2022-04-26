@@ -408,6 +408,50 @@ class AOProtocol(asyncio.Protocol):
             ) = args
         elif self.validate_net_cmd(
             args,
+            self.ArgType.STR,  # msg_type
+            self.ArgType.STR_OR_EMPTY,
+            self.ArgType.STR,  # pre, folder
+            self.ArgType.STR_OR_EMPTY,
+            self.ArgType.STR_OR_EMPTY,  # anim, text
+            self.ArgType.STR,
+            self.ArgType.STR,  # pos, sfx
+            self.ArgType.INT,
+            self.ArgType.INT,  # emote_mod, cid
+            self.ArgType.INT,
+            self.ArgType.INT_OR_STR,  # sfx_delay, button
+            self.ArgType.INT,
+            self.ArgType.INT,  # evidence, flip
+            self.ArgType.INT,
+            self.ArgType.INT,  # ding, color
+            self.ArgType.STR_OR_EMPTY,  # DRO Showname
+            self.ArgType.STR_OR_EMPTY,  # DRO Video
+            self.ArgType.INT,  # 0 or 1, DRO hide_character
+        ):
+            # DRO1.1.0 validation monstrosity.
+            (
+                msg_type,
+                pre,
+                folder,
+                anim,
+                text,
+                pos,
+                sfx,
+                emote_mod,
+                cid,
+                sfx_delay,
+                button,
+                evidence,
+                flip,
+                ding,
+                color,
+                showname,
+                video,
+                blankpost,
+            ) = args
+            if ding != 1:
+                ding = 0
+        elif self.validate_net_cmd(
+            args,
             self.ArgType.STR,
             self.ArgType.STR_OR_EMPTY,  # msg_type, pre
             self.ArgType.STR,
