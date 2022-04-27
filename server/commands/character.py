@@ -41,6 +41,7 @@ __all__ = [
     "ooc_cmd_blankpost",
     "ooc_cmd_firstperson",
     "ooc_cmd_showname",
+    "ooc_cmd_set_pair",
 ]
 
 
@@ -993,3 +994,35 @@ def ooc_cmd_showname(client, arg):
     client.used_showname_command = True
     client.showname = arg
     client.send_ooc(f"You set your showname to '{client.showname}'.")
+
+    
+def ooc_cmd_set_pair(client, arg):
+    if not arg.isnumeric:
+        client.send_ooc("Invalid Target! Usage: /set_pair <id>.")
+        return
+    if arg == "":
+        client.set_pair = -1
+        client.send_ooc("Pair disabled!")
+    else:
+        target = None
+        for c in client.area.clients:
+            if c.id == int(arg):
+                if client.id == int(arg):
+                    client.send_ooc("You can't set pair with yourself!")
+                    return
+                else:
+                    target = c
+        if target is None:
+            client.send_ooc("The target is not in this area!")
+            return
+        if client.pos == target.pos:
+            client.set_pair = int(arg)
+            if target.id == client.set_pair and target.set_pair == client.id:
+                client.send_ooc(f"You are in pair with [{target.id}]{target.char_name}")
+                target.send_ooc(f"You are in pair with [{client.id}]{client.char_name}")
+            else:
+                client.send_ooc(
+                    f"You are trying to be in pair with [{target.id}]{target.char_name}"
+                )
+        else:
+            client.send_ooc("The target is not in your position!")
