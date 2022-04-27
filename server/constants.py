@@ -75,13 +75,14 @@ def censor(text, censor_list=[], replace="*", whole_words=True):
     :param replace: what to replace every letter of the word with
     :param whole_word: if true, we'll only match full words instead of partial matches
     """
-    if censor_list == None or len(censor_list) <= 0:
+    if censor_list is None or len(censor_list) <= 0:
         return text
     regex = r"%s"
     if whole_words:
         regex = r"\b%s\b"
     for word in censor_list:
-        text = re.sub(regex % word, len(word) * replace, text, flags=re.IGNORECASE)
+        text = re.sub(regex % word, len(word) * replace,
+                      text, flags=re.IGNORECASE)
     return text
 
 
@@ -92,4 +93,29 @@ def remove_URL(sample):
 
 def contains_URL(sample):
     """Determine if string contains a URL in sample string."""
-    return re.match(r"http\S+", sample) != None
+    return re.match(r"http\S+", sample) is not None
+
+
+def encode_ao_packet(params):
+    new_params = []
+    for arg in params:
+        if type(arg) is tuple:
+            encoded = []
+            for tup in arg:
+                encoded.append(
+                    str(tup)
+                    .replace("#", "<num>")
+                    .replace("%", "<percent>")
+                    .replace("$", "<dollar>")
+                    .replace("&", "<and>")
+                )
+            new_params.append(tuple(encoded))
+        else:
+            new_params.append(
+                str(arg)
+                .replace("#", "<num>")
+                .replace("%", "<percent>")
+                .replace("$", "<dollar>")
+                .replace("&", "<and>")
+            )
+    return new_params

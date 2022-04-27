@@ -17,6 +17,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from .. import commands
+from server.constants import dezalgo, censor, contains_URL
+from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
+from server import database
+import time
+import arrow
+from enum import Enum
 import asyncio
 import re
 import unicodedata
@@ -25,17 +32,6 @@ import logging
 
 logger_debug = logging.getLogger("debug")
 logger = logging.getLogger("events")
-
-from enum import Enum
-
-import arrow
-from time import gmtime, strftime
-
-from server import database
-from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.fantacrypt import fanta_decrypt
-from server.constants import dezalgo, censor, contains_URL
-from .. import commands
 
 
 class AOProtocol(asyncio.Protocol):
@@ -91,18 +87,13 @@ class AOProtocol(asyncio.Protocol):
         for msg in self.get_messages():
             if len(msg) < 2:
                 continue
-            # general netcode structure is not great
-            if msg[0] in ("#", "3", "4"):
-                if msg[0] == "#":
-                    msg = msg[1:]
-                spl = msg.split("#", 1)
-                msg = "#".join([fanta_decrypt(spl[0])] + spl[1:])
             try:
                 cmd, *args = msg.split("#")
                 self.net_cmd_dispatcher[cmd](self, args)
             except KeyError:
-                logger_debug.debug(f"Unknown incoming message from {ipid}: {msg}")
-            except:
+                logger_debug.debug(
+                    f"Unknown incoming message from {ipid}: {msg}")
+            except Exception:
                 self.client.disconnect()
                 raise
 
@@ -127,13 +118,12 @@ class AOProtocol(asyncio.Protocol):
 
         # Client needs to send CHECK#% within the timeout - otherwise,
         # it will be automatically dropped.
-        self.ping_timeout = asyncio.get_event_loop().call_later(
+        self.ping_timeout = asyncio.get_running_loop().call_later(
             self.server.config["timeout"], self.client.disconnect
         )
 
-        asyncio.get_event_loop().call_later(
-            0.25, self.client.send_command, "decryptor", 34
-        )  # just fantacrypt things)
+        # Idk why AO2 even expects a decryptor packet but here we are
+        self.client.send_command("decryptor", 34)
 
     def connection_lost(self, exc):
         """User disconnected
@@ -168,7 +158,7 @@ class AOProtocol(asyncio.Protocol):
         :returns: returns True if message was validated
 
         """
-        if needs_auth and self.client.char_id == -1:
+        if needs_auth and (self.client.char_id is None or self.client.char_id == -1):
             return False
         if len(args) != len(types):
             return False
@@ -191,6 +181,12 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if not self.validate_net_cmd(args, self.ArgType.STR, needs_auth=False):
+            return
+        # We already got an assigned hdid by the server
+        if self.client.hdid != "":
+            self.client.send_command(
+                "KB", "Your HDID was sent a second time by your client.")
+            self.client.disconnect()
             return
         hdid = self.client.hdid = args[0]
         ipid = self.client.ipid
@@ -227,11 +223,22 @@ class AOProtocol(asyncio.Protocol):
 
         ID#<pv:int>#<software:string>#<version:string>#%
         """
+        # We already got an assigned version by the server
+        if self.client.version != "":
+            self.client.send_command(
+                "KB", "Your client version was sent a second time by your client.")
+            self.client.disconnect()
+            return
         self.client.version = args[1]
         preflist = self.client.server.supported_features.copy()
         if not self.client.area.area_manager.arup_enabled and "arup" in preflist:
             preflist.remove("arup")
         self.client.send_command("FL", *preflist)
+        # If we have someone using the DRO 1.1.0 Client joining
+        # if self.client.version.startswith("1.1.0"):
+        # DRO Client partial support.
+        # For some reason, if DRO Client doesn't receive this back it just never clears the IC input box even if we send back the correct MS# packet.
+        #    self.client.send_command("client_version", 1, 1, 0)
         # Send Asset packet if asset_url is defined
         if self.server.config["asset_url"] != "":
             self.client.send_command("ASS", self.server.config["asset_url"])
@@ -243,7 +250,7 @@ class AOProtocol(asyncio.Protocol):
         """
         self.client.send_command("CHECK")
         self.ping_timeout.cancel()
-        self.ping_timeout = asyncio.get_event_loop().call_later(
+        self.ping_timeout = asyncio.get_running_loop().call_later(
             self.server.config["timeout"], self.client.disconnect
         )
 
@@ -255,55 +262,11 @@ class AOProtocol(asyncio.Protocol):
 
         askchaa#%
         """
+        # this is so dumb lol
         char_cnt = len(self.server.char_list)
         evi_cnt = 0
-        music_cnt = sum([len(x) for x in self.server.music_pages_ao1])
+        music_cnt = 0
         self.client.send_command("SI", char_cnt, evi_cnt, music_cnt)
-
-    def net_cmd_askchar2(self, _):
-        """Asks for the character list. (AO1)
-
-        askchar2#%
-        """
-        self.client.send_command("CI", *self.server.char_pages_ao1[0])
-
-    def net_cmd_an(self, args):
-        """Asks for specific pages of the character list.
-        (AO1 only; part of askchar2 sequence)
-
-        AN#<page:int>#%
-        """
-        if not self.validate_net_cmd(args, self.ArgType.INT, needs_auth=False):
-            return
-        if len(self.server.char_pages_ao1) > args[0] >= 0:
-            self.client.send_command("CI", *self.server.char_pages_ao1[args[0]])
-        else:
-            self.client.send_command("EM", *self.server.music_pages_ao1[0])
-
-    def net_cmd_ae(self, _):
-        """Asks for specific pages of the evidence list.
-        (AO1 only; part of askchar2 sequence)
-
-        AE#<page:int>#%
-
-        """
-        pass  # todo evidence maybe later
-
-    def net_cmd_am(self, args):
-        """Asks for specific pages of the music list.
-        (AO1 only; part of askchar2 sequence)
-
-        AM#<page:int>#%
-
-        """
-        if not self.validate_net_cmd(args, self.ArgType.INT, needs_auth=False):
-            return
-        if len(self.server.music_pages_ao1) > args[0] >= 0:
-            self.client.send_command("EM", *self.server.music_pages_ao1[args[0]])
-        else:
-            self.client.send_done()
-            self.client.send_motd()
-            self.client.send_hub_info()
 
     def net_cmd_rc(self, _):
         """Asks for the whole character list (AO2)
@@ -337,8 +300,13 @@ class AOProtocol(asyncio.Protocol):
             song_list += [f"[{a.id}] {a.name}" for a in area_list]
         else:
             song_list += [a.name for a in area_list]
-        self.client.local_music_list = self.server.music_list
-        song_list += self.server.music_list_ao2
+
+        self.client.local_music_list = self.client.construct_music_list()
+        if len(self.client.local_music_list) > 0:
+            songs = self.client.local_music_list
+        else:
+            songs = self.server.music_list
+        song_list += self.server.build_music_list(songs)
 
         self.client.send_command("SM", *song_list)
 
@@ -445,6 +413,50 @@ class AOProtocol(asyncio.Protocol):
             ) = args
         elif self.validate_net_cmd(
             args,
+            self.ArgType.STR,  # msg_type
+            self.ArgType.STR_OR_EMPTY,
+            self.ArgType.STR,  # pre, folder
+            self.ArgType.STR_OR_EMPTY,
+            self.ArgType.STR_OR_EMPTY,  # anim, text
+            self.ArgType.STR,
+            self.ArgType.STR,  # pos, sfx
+            self.ArgType.INT,
+            self.ArgType.INT,  # emote_mod, cid
+            self.ArgType.INT,
+            self.ArgType.INT_OR_STR,  # sfx_delay, button
+            self.ArgType.INT,
+            self.ArgType.INT,  # evidence, flip
+            self.ArgType.INT,
+            self.ArgType.INT,  # ding, color
+            self.ArgType.STR_OR_EMPTY,  # DRO Showname
+            self.ArgType.STR_OR_EMPTY,  # DRO Video
+            self.ArgType.INT,  # 0 or 1, DRO hide_character
+        ):
+            # DRO1.1.0 validation monstrosity.
+            (
+                msg_type,
+                pre,
+                folder,
+                anim,
+                text,
+                pos,
+                sfx,
+                emote_mod,
+                cid,
+                sfx_delay,
+                button,
+                evidence,
+                flip,
+                ding,
+                color,
+                showname,
+                video,
+                blankpost,
+            ) = args
+            if ding != 1:
+                ding = 0
+        elif self.validate_net_cmd(
+            args,
             self.ArgType.STR,
             self.ArgType.STR_OR_EMPTY,  # msg_type, pre
             self.ArgType.STR,
@@ -545,10 +557,15 @@ class AOProtocol(asyncio.Protocol):
                 additive,
                 effect,
             ) = args
-            pair_args = charid_pair.split("^")
-            charid_pair = int(pair_args[0])
-            if len(pair_args) > 1:
-                pair_order = pair_args[1]
+            try:
+                pair_args = charid_pair.split("^")
+                charid_pair = int(pair_args[0])
+                if len(pair_args) > 1:
+                    pair_order = pair_args[1]
+            except ValueError:
+                self.client.send_ooc(
+                    "Something went wrong! Please report the issue to the developers.")
+                return
         else:
             return
 
@@ -559,7 +576,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_mod or self.client in self.client.area.owners:
             target_area = self.client.broadcast_list.copy()
 
-        if self.client.area.cannot_ic_interact(self.client):
+        if self.client.area.cannot_ic_interact(self.client, button):
             self.client.send_ooc(
                 "This is a muted area - ask the CM to be included in the invite list."
             )
@@ -573,7 +590,8 @@ class AOProtocol(asyncio.Protocol):
             and not self.client.is_mod
             and not (self.client in self.client.area.owners)
         ):
-            self.client.send_ooc("Showname changes are forbidden in this area!")
+            self.client.send_ooc(
+                "Showname changes are forbidden in this area!")
             return
         if self.client.area.is_iniswap(self.client, pre, anim, folder, sfx):
             self.client.send_ooc(
@@ -581,7 +599,8 @@ class AOProtocol(asyncio.Protocol):
             )
             return
         if len(self.client.charcurse) > 0 and folder != self.client.char_name:
-            self.client.send_ooc("You may not iniswap while you are charcursed!")
+            self.client.send_ooc(
+                "You may not iniswap while you are charcursed!")
             return
         if (
             not self.client.area.blankposting_allowed
@@ -609,7 +628,7 @@ class AOProtocol(asyncio.Protocol):
         # Scrub text and showname for bad words
         if (
             self.client.area.area_manager.censor_ic
-            and self.server.censors != None
+            and self.server.censors is not None
             and len(self.server.censors) > 0
         ):
             text = censor(
@@ -661,12 +680,13 @@ class AOProtocol(asyncio.Protocol):
                     return
                 text = " ".join(part)
             except (ValueError, AreaError):
-                self.client.send_ooc("That does not look like a valid area ID!")
+                self.client.send_ooc(
+                    "That does not look like a valid area ID!")
                 return
         if len(self.client.area.testimony) > 0 and (
             text.lstrip().startswith(">") or text.lstrip().startswith("<")
         ):
-            if self.client.area.recording == True:
+            if self.client.area.recording is True:
                 self.client.send_ooc("It is not cross-examination yet!")
                 return
             cmd = text.strip()
@@ -690,7 +710,7 @@ class AOProtocol(asyncio.Protocol):
                 self.client.area.broadcast_ooc(
                     f"{self.client.showname} has moved to Statement {idx+1}."
                 )
-            except:
+            except Exception:
                 self.client.send_ooc("Invalid index!")
             return
         if msg_type not in ("chat", "0", "1", "2", "3", "4", "5"):
@@ -718,7 +738,7 @@ class AOProtocol(asyncio.Protocol):
             return
         if ding not in (0, 1):
             return
-        if color >= 12:
+        if color < 0 or color >= 12:
             return
         if len(showname) > 20:
             self.client.send_ooc("Your IC showname is way too long!")
@@ -756,7 +776,7 @@ class AOProtocol(asyncio.Protocol):
         max_char = 0
         try:
             max_char = int(self.server.config["max_chars_ic"])
-        except:
+        except Exception:
             max_char = 256
 
         if len(text) > max_char:
@@ -769,7 +789,7 @@ class AOProtocol(asyncio.Protocol):
             and not self.client.is_mod
             and not (self.client in self.client.area.owners)
             and text.strip() != ""
-            and self.client.area.last_ic_message != None
+            and self.client.area.last_ic_message is not None
             and cid == self.client.area.last_ic_message[8]
             and text == self.client.area.last_ic_message[4]
         ):
@@ -783,7 +803,7 @@ class AOProtocol(asyncio.Protocol):
             pre = "-"
             anim = "misc/blank"
         # We're narrating, or we're hidden in some evidence.
-        if self.client.narrator or self.client.hidden_in != None:
+        if self.client.narrator or self.client.hidden_in is not None:
             anim = ""
 
         if pos != "" and self.client.pos != pos:
@@ -800,7 +820,7 @@ class AOProtocol(asyncio.Protocol):
             if (
                 not self.client.area.can_whisper
                 and not self.client.is_mod
-                and not self.client in self.client.area.owners
+                and self.client in self.client.area.owners
             ):
                 self.client.send_ooc("You can't whisper in this area!")
                 return
@@ -821,7 +841,9 @@ class AOProtocol(asyncio.Protocol):
                 else:
                     part = part[1:]
                     whisper_clients = [
-                        c for c in self.client.area.clients if c.pos == self.client.pos and not c == self.client
+                        c
+                        for c in self.client.area.clients
+                        if c.pos == self.client.pos and not c == self.client
                     ]
                     clients = ""
                 text = " ".join(part)
@@ -853,17 +875,18 @@ class AOProtocol(asyncio.Protocol):
             area = self.client.area
             evi = area.evi_list.evidences[self.client.evi_list[evidence] - 1]
 
-            if evi.hiding_client != None:
+            if evi.hiding_client is not None:
                 c = evi.hiding_client
                 c.hide(False)
                 c.area.broadcast_area_list(c)
-                self.client.send_ooc(f"You discover {c.showname} in the {evi.name}!")
+                self.client.send_ooc(
+                    f"You discover {c.showname} in the {evi.name}!")
 
             if evi.pos != "all":
                 evi.desc = f"(👀Discovered in pos: {evi.pos})\n{evi.desc}"
                 evi.pos = "all"
                 area.broadcast_evidence_list()
-            asyncio.get_event_loop().call_soon(
+            asyncio.get_running_loop().call_soon(
                 evi.trigger, area, "present", self.client
             )
             # target_area.trigger('present')
@@ -909,7 +932,14 @@ class AOProtocol(asyncio.Protocol):
         if not confirmed:
             charid_pair = -1
 
-        if whisper_clients != None:
+        ver = self.client.version.split('.')
+        if len(ver) >= 2:
+            # Client versions 2.9 or less need to get their SFX corrected due to 2.10 changes
+            if ver[0].isnumeric() and int(ver[0]) <= 2 and ver[1].isnumeric() and int(ver[1]) <= 9:
+                if emote_mod not in (1, 6):
+                    sfx = ''
+
+        if whisper_clients is not None:
             whisper_clients.insert(0, self.client)
             for client in self.client.area.clients:
                 if client in whisper_clients:
@@ -924,9 +954,10 @@ class AOProtocol(asyncio.Protocol):
                 for a in target_area:
                     add = additive
                     tempos = pos
+                    tempdeskmod = msg_type
                     # Additive only works on same-char messages
                     if additive and (
-                        a.last_ic_message == None
+                        a.last_ic_message is None
                         or cid != a.last_ic_message[8]
                         or (
                             a.last_ic_message[4].strip() == ""
@@ -936,13 +967,17 @@ class AOProtocol(asyncio.Protocol):
                         additive = 0
                     if len(a.pos_lock) > 0:
                         tempos = a.pos_lock[0]
-                    if a.last_ic_message != None and (
-                        len(a.pos_lock) <= 0 or a.last_ic_message[5] in a.pos_lock
+                    if a.last_ic_message is not None and (
+                        anim == ""
+                        or len(a.pos_lock) <= 0
+                        or a.last_ic_message[5] in a.pos_lock
                     ):
                         tempos = a.last_ic_message[5]  # Use the same pos
+                        # Use the same desk mod
+                        tempdeskmod = a.last_ic_message[0]
                     a.send_command(
                         "MS",
-                        msg_type,
+                        tempdeskmod,
                         pre,
                         folder,
                         anim,
@@ -1018,10 +1053,14 @@ class AOProtocol(asyncio.Protocol):
             return
 
         # If we are not whispering...
-        if whisper_clients == None:
+        if whisper_clients is None:
+            # Enforce the area msg delay
+            delay = 200 + self.client.area.parse_msg_delay(msg)
+            self.client.area.next_message_time = round(
+                time.time() * 1000.0 + delay)
             if (
                 text.strip() != ""
-                or self.client.area.last_ic_message == None
+                or self.client.area.last_ic_message is None
                 or self.client.area.last_ic_message[4].strip() != ""
             ):
                 # Discord Bridgebot
@@ -1066,46 +1105,66 @@ class AOProtocol(asyncio.Protocol):
                     )
             # Minigames
             opposing_team = None
-            if self.client.char_id in self.client.area.red_team:
-                color = 2
-                offset_pair = -25
-                other_offset = 25
-                pos = "debate"
-                opposing_team = self.client.area.blue_team
-            elif self.client.char_id in self.client.area.blue_team:
-                color = 7
-                offset_pair = 25
-                other_offset = -25
-                pos = "debate"
-                opposing_team = self.client.area.red_team
+            # If we're not using shouts, and we're in CS/Scrum/PTA
+            if button == "0":
+                # If we're on red team
+                if self.client.char_id in self.client.area.red_team:
+                    # Set our color to red
+                    color = 2
+                    # Offset us to the left
+                    offset_pair = -25
+                    # Offset them to the right
+                    other_offset = 25
+                    # Set our pos to "debate"
+                    pos = "debate"
+                    # Our opposing team is blue
+                    opposing_team = self.client.area.blue_team
+                # If we're on blue team
+                elif self.client.char_id in self.client.area.blue_team:
+                    # Set our color to cyan
+                    color = 7
+                    # Offset them to the right
+                    offset_pair = 25
+                    # Offset them to the left
+                    other_offset = -25
+                    # Set our pos to "debate"
+                    pos = "debate"
+                    # Our opposing team is red
+                    opposing_team = self.client.area.red_team
 
             # We're in a minigame w/ team setups
-            if opposing_team != None:
+            if opposing_team is not None:
                 charid_pair = -1
                 # Last speaker is us and our message already paired us with someone, and that someone is on the opposing team
                 if (
-                    self.client.area.last_ic_message != None
+                    self.client.area.last_ic_message is not None
                     and self.client.area.last_ic_message[8] == self.client.char_id
                     and self.client.area.last_ic_message[16] != -1
                     and int(self.client.area.last_ic_message[16].split("^")[0])
                     in opposing_team
                 ):
+                    # Set the pair to the person who it was last msg
                     charid_pair = int(
                         self.client.area.last_ic_message[16].split("^")[0]
                     )
+                # The person we were trying to find is no longer on the opposing team
                 else:
+                    # Search through the opposing team's characters
                     for other_cid in opposing_team:
                         charid_pair = other_cid
                         # If last message's charid matches a member of this team, prioritize theirs
                         if (
-                            self.client.area.last_ic_message != None
+                            self.client.area.last_ic_message is not None
                             and other_cid == self.client.area.last_ic_message[8]
                         ):
                             break
-
+                # If our pair opponent is found
                 if charid_pair != -1:
+                    # Search through clients in area
                     for target in self.client.area.clients:
+                        # If we find our target char ID
                         if target.char_id == charid_pair:
+                            # Set emote, flip and folder properly
                             other_emote = target.last_sprite
                             other_flip = target.flip
                             other_folder = target.claimed_folder
@@ -1115,7 +1174,7 @@ class AOProtocol(asyncio.Protocol):
 
         # Additive only works on same-char messages
         if additive and (
-            self.client.area.last_ic_message == None
+            self.client.area.last_ic_message is None
             or cid != self.client.area.last_ic_message[8]
             or (
                 self.client.area.last_ic_message[4].strip() == ""
@@ -1123,6 +1182,7 @@ class AOProtocol(asyncio.Protocol):
             )
         ):
             additive = 0
+
         self.client.area.send_ic(
             self.client,
             msg_type,
@@ -1207,11 +1267,13 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc("You are muted by a moderator.")
             return
         if not self.validate_net_cmd(
-            args, self.ArgType.STR, self.ArgType.STR, needs_auth=False
+            args, self.ArgType.STR_OR_EMPTY, self.ArgType.STR, needs_auth=False
         ):
             return
+        args[0] = args[0].strip()
         if args[0] == "":
-            self.client.send_ooc("You must insert a name with at least one letter")
+            self.client.send_ooc(
+                "You must insert your OOC Name into 'Name' before you can speak.")
             return
         if len(args[0]) > 30:
             self.client.send_ooc(
@@ -1220,7 +1282,8 @@ class AOProtocol(asyncio.Protocol):
             return
         for c in args[0]:
             if unicodedata.category(c) == "Cf":
-                self.client.send_ooc("You cannot use format characters in your name!")
+                self.client.send_ooc(
+                    "You cannot use format characters in your name!")
                 return
         if (
             args[0].startswith(self.server.config["hostname"])
@@ -1233,7 +1296,7 @@ class AOProtocol(asyncio.Protocol):
         # Scrub text and OOC name for bad words, even if you're trying to pass bad words to a command as args.
         if (
             self.client.area.area_manager.censor_ooc
-            and self.server.censors != None
+            and self.server.censors is not None
             and len(self.server.censors) > 0
         ):
             # Censor the name
@@ -1297,7 +1360,7 @@ class AOProtocol(asyncio.Protocol):
         max_char = 0
         try:
             max_char = int(self.server.config["max_chars"])
-        except:
+        except Exception:
             max_char = 256
         if len(args[1]) > max_char:
             self.client.send_ooc("Your message is too long!")
@@ -1321,7 +1384,8 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.send_owner_command(
             "CT", f"[{self.client.area.id}]{name}", args[1]
         )
-        database.log_area("chat.ooc", self.client, self.client.area, message=args[1])
+        database.log_area("chat.ooc", self.client,
+                          self.client.area, message=args[1])
 
     def net_cmd_mc(self, args):
         """Play music.
@@ -1374,7 +1438,8 @@ class AOProtocol(asyncio.Protocol):
             if self.client.viewing_hub_list:
                 called_function = "ooc_cmd_hub"
             # We can get cheeky and spoof ARUP info with normal song names
-            getattr(commands, called_function)(self.client, args[0].split("\n")[0])
+            getattr(commands, called_function)(
+                self.client, args[0].split("\n")[0])
         except AreaError:
             if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.INT):
                 if not self.validate_net_cmd(
@@ -1411,7 +1476,7 @@ class AOProtocol(asyncio.Protocol):
         if (
             not self.client.area.can_wtce
             and not self.client.is_mod
-            and not self in self.client.area.owners
+            and self.client not in self.client.area.owners
         ):
             self.client.send_ooc(
                 "Only CMs and mods may use judge buttons in this area!"
@@ -1442,7 +1507,8 @@ class AOProtocol(asyncio.Protocol):
 
         if len(self.client.broadcast_list) > 0:
             try:
-                a_list = ", ".join([str(a.id) for a in self.client.broadcast_list])
+                a_list = ", ".join([str(a.id)
+                                   for a in self.client.broadcast_list])
                 self.client.send_ooc(f"Broadcasting to areas {a_list}")
                 if len(args) == 1:
                     self.client.area.area_manager.send_remote_command(
@@ -1466,7 +1532,7 @@ class AOProtocol(asyncio.Protocol):
         database.log_area("wtce", self.client, self.client.area, message=sign)
 
         if self.client in self.client.area.owners:
-            if self.client.area.last_ic_message != None and sign == "WT":
+            if self.client.area.last_ic_message is not None and sign == "WT":
                 # remove centering chars and strip space chars as well as any coloring
                 msg = (
                     self.client.area.last_ic_message[4]
@@ -1494,7 +1560,8 @@ class AOProtocol(asyncio.Protocol):
             if sign == "CE":
                 if self.client.area.recording:
                     self.client.area.recording = False
-                    self.client.area.broadcast_ooc("Testimony recording stopped!")
+                    self.client.area.broadcast_ooc(
+                        "Testimony recording stopped!")
                 # Display the testimony title
                 if len(self.client.area.testimony) > 0:
                     statement = self.client.area.testimony[0]
@@ -1502,7 +1569,8 @@ class AOProtocol(asyncio.Protocol):
                     # See if the testimony is supposed to end here.
 
                     # Center it and make it speedy
-                    lst[4] = "~~}}-- " + self.client.area.testimony_title + " --"
+                    lst[4] = "~~}}-- " + \
+                        self.client.area.testimony_title + " --"
 
                     # Make it orange
                     lst[14] = 3
@@ -1584,7 +1652,8 @@ class AOProtocol(asyncio.Protocol):
                 k: v
                 for k, v in zip(("message", "def", "pro", "jud", "jur", "steno"), args)
             }
-            database.log_area("case", self.client, self.client.area, message=log_data)
+            database.log_area("case", self.client,
+                              self.client.area, message=log_data)
         else:
             self.client.send_ooc(
                 "You cannot announce a case in an area where you are not a CM!"
@@ -1610,7 +1679,8 @@ class AOProtocol(asyncio.Protocol):
             return
         try:
             self.client.area.change_hp(args[0], args[1])
-            self.client.area.add_to_judgelog(self.client, "changed the penalties")
+            self.client.area.add_to_judgelog(
+                self.client, "changed the penalties")
             database.log_area("hp", self.client, self.client.area)
         except AreaError:
             return
@@ -1693,7 +1763,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc("You must wait 30 seconds between mod calls.")
             return
 
-        current_time = strftime("%H:%M", gmtime())
+        current_time = time.strftime("%H:%M", time.gmtime())
         if len(args) < 1:
             self.server.send_all_cmd_pred(
                 "ZZ",
@@ -1727,7 +1797,8 @@ class AOProtocol(asyncio.Protocol):
                 pred=lambda c: c.is_mod,
             )
             self.client.set_mod_call_delay()
-            database.log_area("modcall", self.client, self.client.area, message=args[0])
+            database.log_area("modcall", self.client,
+                              self.client.area, message=args[0])
             self.server.webhooks.modcall(
                 char=self.client.char_name,
                 ipid=self.client.ip,
@@ -1754,13 +1825,9 @@ class AOProtocol(asyncio.Protocol):
         "ID": net_cmd_id,  # client version
         "CH": net_cmd_ch,  # keepalive
         "askchaa": net_cmd_askchaa,  # ask for list lengths
-        "askchar2": net_cmd_askchar2,  # ask for list of characters
-        "AN": net_cmd_an,  # character list
-        "AE": net_cmd_ae,  # evidence list
-        "AM": net_cmd_am,  # music list
-        "RC": net_cmd_rc,  # AO2 character list
-        "RM": net_cmd_rm,  # AO2 music list
-        "RD": net_cmd_rd,  # AO2 done request, charscheck etc.
+        "RC": net_cmd_rc,  # character list
+        "RM": net_cmd_rm,  # music list
+        "RD": net_cmd_rd,  # done request, charscheck etc.
         "CC": net_cmd_cc,  # select character
         "MS": net_cmd_ms,  # IC message
         "CT": net_cmd_ct,  # OOC message
