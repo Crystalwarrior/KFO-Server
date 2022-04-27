@@ -234,6 +234,11 @@ class AOProtocol(asyncio.Protocol):
         if not self.client.area.area_manager.arup_enabled and "arup" in preflist:
             preflist.remove("arup")
         self.client.send_command("FL", *preflist)
+        # If we have someone using the DRO 1.1.0 Client joining
+        # if self.client.version.startswith("1.1.0"):
+        # DRO Client partial support.
+        # For some reason, if DRO Client doesn't receive this back it just never clears the IC input box even if we send back the correct MS# packet.
+        #    self.client.send_command("client_version", 1, 1, 0)
         # Send Asset packet if asset_url is defined
         if self.server.config["asset_url"] != "":
             self.client.send_command("ASS", self.server.config["asset_url"])
