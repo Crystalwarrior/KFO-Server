@@ -75,6 +75,7 @@ class ClientManager:
             self.last_sprite = ""
             self.flip = 0
             self.claimed_folder = ""
+            self.set_pair = -1
 
             # Casing stuff
             self.casing_cm = False
