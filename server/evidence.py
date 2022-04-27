@@ -349,6 +349,16 @@ class EvidenceList:
             if id not in range(len(self.evidences)):
                 return
             old_name = self.evidences[id].name
+            # Convert the single * to "keep it the same as before"
+            for i, a in enumerate(arg):
+                if a == "*":
+                    if i == 0:
+                        arg[i] = self.evidences[id].name
+                    elif i == 1:
+                        arg[i] = self.evidences[id].desc
+                    elif i == 2:
+                        arg[i] = self.evidences[id].image
+
             if client.area.evidence_mod == "HiddenCM":
                 if self.correct_format(client, arg[1]):
                     lines = arg[1].split("\n")
@@ -369,6 +379,7 @@ class EvidenceList:
             else:
                 self.evidences[id] = self.Evidence(
                     arg[0], arg[1], arg[2], arg[3])
+            new_name = self.evidences[id].name
         else:
             # Are you serious? This is absolutely fucking mental.
             # Server sends evidence to client in an indexed list starting from 1.
@@ -378,20 +389,26 @@ class EvidenceList:
             if id not in range(len(self.evidences)):
                 return
             old_name = self.evidences[id].name
-            # c = self.evidences[idx].hiding_client
-            # if c is not None:
-            #     c.hide(False)
-            #     c.area.broadcast_area_list(c)
-            #     client.send_ooc(f'You discover {c.showname} in the {self.evidences[idx].name}!')
+            # Convert the single * to "keep it the same as before"
+            for i, a in enumerate(arg):
+                if a == "*":
+                    if i == 0:
+                        arg[i] = self.evidences[id].name
+                    elif i == 1:
+                        arg[i] = self.evidences[id].desc
+                    elif i == 2:
+                        arg[i] = self.evidences[id].image
             self.evidences[id] = self.Evidence(
                 arg[0], arg[1], arg[2], self.evidences[id].pos
             )
+            new_name = self.evidences[id].name
 
+        namechange = f"'{old_name}' to '{new_name}'" if new_name != old_name else f"'{old_name}'"
         # Inform the CMs of evidence manupulation
         client.area.send_owner_command(
             "CT",
             client.server.config["hostname"],
-            f"[{client.id}] {client.showname} edited evidence {id+1}: {old_name} in area [{client.area.id}] {client.area.name}.",
+            f"[{client.id}] {client.showname} edited evidence {id+1}: {namechange} in area [{client.area.id}] {client.area.name}.",
             "1",
         )
         # send_owner_command does not tell CMs present in the area about evidence manipulation, so let's do that manually
@@ -400,6 +417,6 @@ class EvidenceList:
                 c.send_command(
                     "CT",
                     client.server.config["hostname"],
-                    f"[{client.id}] {client.showname} edited evidence {id+1}: {old_name} in this area.",
+                    f"[{client.id}] {client.showname} edited evidence {id+1}: {namechange} in this area.",
                     "1",
                 )
