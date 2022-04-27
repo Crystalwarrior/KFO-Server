@@ -1,3 +1,5 @@
+import shlex
+
 import re
 
 from server import database
@@ -9,10 +11,10 @@ from . import mod_only
 __all__ = [
     "ooc_cmd_doc",
     "ooc_cmd_cleardoc",
+    "ooc_cmd_evidence",
     "ooc_cmd_evidence_add",
     "ooc_cmd_evidence_remove",
     "ooc_cmd_evidence_edit",
-    "ooc_cmd_evidence_present",
     "ooc_cmd_evidence_mod",  # Not strictly casing - to be reorganized
     "ooc_cmd_evidence_swap",  # Not strictly casing - to be reorganized
     "ooc_cmd_cm",
@@ -86,20 +88,64 @@ def ooc_cmd_cleardoc(client, arg):
     database.log_area("doc.clear", client, client.area)
 
 
+def ooc_cmd_evidence(client, arg):
+    """
+    Usage: /evidence [evi_name/id]
+    """
+    pass
+
+
 @mod_only(area_owners=True)
 def ooc_cmd_evidence_add(client, arg):
     """
-    Usage: /evidence_add
+    Add a piece of evidence.
+    For sentences with spaces the arg should be surrounded in ""'s, for example /evidence_add Chair chair.png "It's a chair."
+    Usage: /evidence_add [name] [desc] [image]
     """
-    pass
+    max_args = 3
+    # Get the user input
+    args = shlex.split(arg)
+    # fill the rest of it with empty strings to fill to max_args
+    args = args + ([""] * (max_args - args.size()))
+    client.area.evi_list.add_evidence(
+        client, args[0], args[1], args[2], "all"
+    )
+    database.log_area("evidence.add", client, client.area)
+    client.area.broadcast_evidence_list()
 
 
 @mod_only(area_owners=True)
 def ooc_cmd_evidence_remove(client, arg):
     """
-    Usage: /evidence_remove
+    Usage: /evidence_remove <evi_name/id>
     """
-    pass
+    if arg == "":
+        raise ArgumentError(
+            "Use /evidence_remove <evi_name/id> to remove that piece of evidence."
+        )
+    try:
+        evidence = None
+        # Search for target evidence by name
+        if not arg.isnumeric():
+            for i, evi in enumerate(client.area.evi_list.evidences):
+                if not client.area.evi_list.can_see(evi, client.pos):
+                    continue
+                if arg.lower() == evi.name.lower():
+                    evidence = i
+                    break
+        else:
+            evidence = int(arg)
+        if evidence is None:
+            raise AreaError(
+                f"Target evidence not found! (/evidence_remove {arg})"
+            )
+        client.area.evi_list.del_evidence(client, evidence)
+        database.log_area("evidence.del", client, client.area)
+        client.area.broadcast_evidence_list()
+    except ValueError:
+        raise
+    except (AreaError, ClientError):
+        raise
 
 
 @mod_only(area_owners=True)
@@ -107,7 +153,41 @@ def ooc_cmd_evidence_edit(client, arg):
     """
     Usage: /evidence_edit
     """
-    pass
+    if arg == "":
+        raise ArgumentError(
+            "Use /evidence_edit <evi_name/id> [name] [desc] [image] to edit that piece of evidence."
+        )
+    max_args = 4
+    # Get the user input
+    args = shlex.split(arg)
+    # fill the rest of it with asterisk to fill to max_args
+    args = args + (["*"] * (max_args - args.size()))
+    try:
+        evidence = None
+        # Search for target evidence by name
+        if not arg.isnumeric():
+            for i, evi in enumerate(client.area.evi_list.evidences):
+                if not client.area.evi_list.can_see(evi, client.pos):
+                    continue
+                if arg.lower() == evi.name.lower():
+                    evidence = i
+                    break
+        else:
+            evidence = int(arg)
+
+        if evidence is None:
+            raise AreaError(
+                f"Target evidence not found! (/evidence_remove {arg})"
+            )
+        evi = (args[1], args[2], args[3], "all")
+
+        client.area.evi_list.edit_evidence(client, evidence, evi)
+        database.log_area("evidence.edit", client, client.area)
+        client.area.broadcast_evidence_list()
+    except ValueError:
+        raise
+    except (AreaError, ClientError):
+        raise
 
 
 @mod_only(area_owners=True)
