@@ -882,6 +882,8 @@ class Area:
                 client.send_ooc(
                     f"Something went wrong, couldn't amend Statement {idx+1}!"
                 )
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         adding = args[4].strip(
         ) != "" and self.recording and client is not None
@@ -889,6 +891,8 @@ class Area:
             if len(self.testimony) >= 30:
                 client.send_ooc(
                     "Maximum testimony statement amount reached! (30)")
+                # Deny the MS
+                self.client.send_command("xMS")
                 return
             adding = True
         else:
@@ -940,6 +944,8 @@ class Area:
                             "Interjection minigame - target not found!")
                 except Exception as ex:
                     client.send_ooc(ex)
+                    # Deny the MS
+                    self.client.send_command("xMS")
                     return
 
             # DRO 1.0.0 client compatibility, tell the client we acknowledged their MS packet

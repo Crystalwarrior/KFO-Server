@@ -358,9 +358,13 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if not self.client.is_checked:
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You are muted by a moderator.")
+            # Deny the MS
+            self.client.send_command("xMS")
             return
 
         showname = ""
@@ -565,8 +569,12 @@ class AOProtocol(asyncio.Protocol):
             except ValueError:
                 self.client.send_ooc(
                     "Something went wrong! Please report the issue to the developers.")
+                # Deny the MS
+                self.client.send_command("xMS")
                 return
         else:
+            # Deny the MS
+            self.client.send_command("xMS")
             return
 
         # Targets for whispering
@@ -580,8 +588,12 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc(
                 "This is a muted area - ask the CM to be included in the invite list."
             )
-            return False
+            # Deny the MS
+            self.client.send_command("xMS")
+            return
         if button == "0" and not self.client.area.can_send_message(self.client):
+            # Deny the MS
+            self.client.send_command("xMS")
             return
 
         if (
@@ -592,15 +604,21 @@ class AOProtocol(asyncio.Protocol):
         ):
             self.client.send_ooc(
                 "Showname changes are forbidden in this area!")
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if self.client.area.is_iniswap(self.client, pre, anim, folder, sfx):
             self.client.send_ooc(
                 f"Iniswap/custom emotes are blocked in this area for character {folder}, pre {pre} anim {anim}."
             )
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if len(self.client.charcurse) > 0 and folder != self.client.char_name:
             self.client.send_ooc(
                 "You may not iniswap while you are charcursed!")
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if (
             not self.client.area.blankposting_allowed
@@ -609,6 +627,8 @@ class AOProtocol(asyncio.Protocol):
         ):
             if text.strip() == "":
                 self.client.send_ooc("Blankposting is forbidden in this area!")
+                # Deny the MS
+                self.client.send_command("xMS")
                 return
             # Regex is slow as hell, need to change this to be more performant
             if (
@@ -619,11 +639,15 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_ooc(
                     "While that is not a blankpost, it is still pretty spammy. Try forming sentences."
                 )
+                # Deny the MS
+                self.client.send_command("xMS")
                 return
         if text.replace(" ", "").startswith("(("):
             self.client.send_ooc(
                 "Please, *please* use the OOC chat instead of polluting IC. Normal OOC is local to area. You can use /g to talk across the entire server."
             )
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         # Scrub text and showname for bad words
         if (
@@ -667,6 +691,8 @@ class AOProtocol(asyncio.Protocol):
                         target_area.append(area)
                     else:
                         self.client.send_ooc(f"You don't own {area.name}!")
+                        # Deny the MS
+                        self.client.send_command("xMS")
                         return
                 if len(target_area) <= 0:
                     for a in self.client.area.area_manager.areas:
@@ -677,11 +703,15 @@ class AOProtocol(asyncio.Protocol):
                     part = part[2:]
                 if len(target_area) <= 0:
                     self.client.send_ooc("No target areas found!")
+                    # Deny the MS
+                    self.client.send_command("xMS")
                     return
                 text = " ".join(part)
             except (ValueError, AreaError):
                 self.client.send_ooc(
                     "That does not look like a valid area ID!")
+                # Deny the MS
+                self.client.send_command("xMS")
                 return
         if len(self.client.area.testimony) > 0 and (
             text.lstrip().startswith(">") or text.lstrip().startswith("<")
@@ -712,8 +742,12 @@ class AOProtocol(asyncio.Protocol):
                 )
             except Exception:
                 self.client.send_ooc("Invalid index!")
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if msg_type not in ("chat", "0", "1", "2", "3", "4", "5"):
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         # Disable the meme functionality of desk_mod that makes you selectively hide
         # jud/hld/hlp foregrounds when showing every other foreground due to how many
@@ -726,27 +760,45 @@ class AOProtocol(asyncio.Protocol):
         if emote_mod == 4:
             emote_mod = 6
         if emote_mod not in (0, 1, 2, 5, 6):
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if cid != self.client.char_id:
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if sfx_delay < 0:
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if "4" in str(button) and "<and>" not in str(button):
             if not button.isdigit():
+                # Deny the MS
+                self.client.send_command("xMS")
                 return
         if evidence < 0:
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if ding not in (0, 1):
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if color < 0 or color >= 12:
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if len(showname) > 20:
             self.client.send_ooc("Your IC showname is way too long!")
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if not self.client.is_mod and showname.lstrip().lower().startswith("[m"):
             self.client.send_ooc(
                 "Nice try! You may not spoof [M] tag in your showname."
             )
+            # Deny the MS
+            self.client.send_command("xMS")
             return
         if (nonint_pre == 1 and button in range(1, 4)) or (
             self.client.area.non_int_pres_only
@@ -781,6 +833,8 @@ class AOProtocol(asyncio.Protocol):
 
         if len(text) > max_char:
             self.client.send_ooc("Your message is too long!")
+            # Deny the MS
+            self.client.send_command("xMS")
             return
 
         # Really simple spam protection that functions on the clientside pre-2.8.5, and really should've been serverside from the start
@@ -796,6 +850,8 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc(
                 "Your message is a repeat of the last one, don't spam!"
             )
+            # Deny the MS
+            self.client.send_command("xMS")
             return
 
         # We are blankposting.
@@ -823,6 +879,8 @@ class AOProtocol(asyncio.Protocol):
                 and self.client in self.client.area.owners
             ):
                 self.client.send_ooc("You can't whisper in this area!")
+                # Deny the MS
+                self.client.send_command("xMS")
                 return
             part = text.split(" ")
             try:
@@ -850,6 +908,8 @@ class AOProtocol(asyncio.Protocol):
                 text = "}}}[W" + clients + "] {{{" + text
             except (ValueError, AreaError):
                 self.client.send_ooc("Invalid targets!")
+                # Deny the MS
+                self.client.send_command("xMS")
                 return
         if contains_URL(
             text.replace("}", "")
@@ -864,6 +924,8 @@ class AOProtocol(asyncio.Protocol):
             .replace("\\f", "")
         ):
             self.client.send_ooc("You shouldn't send links in IC!")
+            # Deny the MS
+            self.client.send_command("xMS")
             return
 
         msg = dezalgo(text, self.server.zalgo_tolerance)
@@ -1007,6 +1069,7 @@ class AOProtocol(asyncio.Protocol):
                         frames_sfx,
                         add,
                         effect,
+                        self.client.id,
                     )
                 a_list = ", ".join([str(a.id) for a in target_area])
                 if not (self.client.area in target_area):
@@ -1045,11 +1108,15 @@ class AOProtocol(asyncio.Protocol):
                         add,
                         effect,
                     )
+                    # Make sure the client is not waiting on an MS packet back so no ghost MS remains
+                    self.client.send_command("xMS")
                 self.client.send_ooc(f"Broadcasting to areas {a_list}")
             except (AreaError, ValueError):
                 self.client.send_ooc(
                     "Your broadcast list is invalid! Do /clear_broadcast to reset it and /broadcast <id(s)> to set a new one."
                 )
+                # Deny the MS
+                self.client.send_command("xMS")
             return
 
         # If we are not whispering...
@@ -1215,6 +1282,7 @@ class AOProtocol(asyncio.Protocol):
             frames_sfx,
             additive,
             effect,
+            self.client.id,
             targets=whisper_clients,
         )
         self.client.area.send_owner_ic(
@@ -1250,6 +1318,7 @@ class AOProtocol(asyncio.Protocol):
             frames_sfx,
             additive,
             effect,
+            self.client.id,
         )
 
     def net_cmd_ct(self, args):
