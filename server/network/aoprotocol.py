@@ -559,7 +559,18 @@ class AOProtocol(asyncio.Protocol):
             ) = args
             try:
                 pair_args = charid_pair.split("^")
-                charid_pair = int(pair_args[0])
+                target_set_pair = None
+                for c in self.client.area.clients:
+                    if self.client.set_pair == c.id and c.pos == pos:
+                        target_set_pair = c
+                if (
+                    target_set_pair is not None
+                    and target_set_pair.set_pair == self.client.id
+                ):
+                    target_set_pair.charid_pair = self.client.char_id
+                    charid_pair = target_set_pair.char_id
+                else:
+                    charid_pair = int(pair_args[0])
                 if len(pair_args) > 1:
                     pair_order = pair_args[1]
             except ValueError:
