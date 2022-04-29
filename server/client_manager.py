@@ -286,6 +286,7 @@ class ClientManager:
                     not_to: ClientManager.Client = None, gag_replaced=False,
                     is_staff=None, in_area=None, to_blind=None, to_deaf=None,
                     bypass_replace=False, bypass_deafened_starters=False,
+                    use_last_received_sprites=False,
                     msg=None, folder=None, pos=None, char_id=None, ding=None, color=None,
                     showname=None, hide_character=0):
 
@@ -374,11 +375,13 @@ class ClientManager:
                 # Change "character" parts of IC port
                 if self.is_blind:
                     pargs['anim'] = '../../misc/blank'
+                    pargs['hide_character'] = 1
                     self.send_background(name=self.server.config['blackout_background'])
                 # If self just spoke while in first person mode, change the message they receive
                 # accordingly for them so they do not see themselves talking
                 # Also do this replacement if the sender is not in forward sprites mode
-                elif ((sender == self and self.first_person) or
+                elif (use_last_received_sprites or
+                      (sender == self and self.first_person) or
                       (sender and not sender.forward_sprites)):
                     # last_sender: Client who actually sent the new message
                     # last_apparent_sender: Client whose sprites were used for the last message
@@ -526,6 +529,9 @@ class ClientManager:
                     pargs['button'] = 7
 
             pargs['client_id'] = sender.id if sender else -1
+
+            if pargs['anim'] == '../../misc/blank':
+                pargs['hide_character'] = 1
 
             # Done modifying IC message
             # Now send it
