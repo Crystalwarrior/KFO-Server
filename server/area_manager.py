@@ -17,10 +17,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
-import random
-import time
-from enum import Enum
+from server import commands
+from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
+from server.area import Area
+from collections import OrderedDict
 
 import oyaml as yaml  # ordered yaml
 import os
@@ -28,14 +28,6 @@ import datetime
 import logging
 
 logger = logging.getLogger("events")
-
-from server import database
-from server import commands
-from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-
-from server.area import Area
-
-from collections import OrderedDict
 
 
 class AreaManager:
@@ -66,7 +58,7 @@ class AreaManager:
             if self.schedule:
                 self.schedule.cancel()
             # the hub was destroyed at some point
-            if self.hub == None or self == None:
+            if self.hub is None or self is None:
                 return
 
             self.static = datetime.timedelta(0)
@@ -76,13 +68,16 @@ class AreaManager:
             self.call_commands()
 
         def call_commands(self):
-            if self.caller == None:
+            if self.caller is None:
                 return
-            if self.hub == None or self == None:
+            if self.hub is None or self is None:
                 return
             if self.caller not in self.hub.owners:
                 return
-            for cmd in self.commands:
+            # We clear out the commands as we call them in order one by one
+            while len(self.commands) > 0:
+                # Take the first command in the list and run it
+                cmd = self.commands.pop(0)
                 args = cmd.split(" ")
                 cmd = args.pop(0).lower()
                 arg = ""
@@ -92,11 +87,19 @@ class AreaManager:
                     commands.call(self.caller, cmd, arg)
                 except (ClientError, AreaError, ArgumentError, ServerError) as ex:
                     self.caller.send_ooc(f"[Timer 0] {ex}")
+                    # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
+                    self.commands.clear()
+                    # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
+                    return
                 except Exception as ex:
                     self.caller.send_ooc(
                         f"[Timer 0] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
                     )
                     logger.exception("Exception while running a command")
+                    # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
+                    self.commands.clear()
+                    # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
+                    return
 
     def __init__(self, hub_manager, name):
         self.hub_manager = hub_manager
@@ -133,6 +136,10 @@ class AreaManager:
         # ex. {"1": {"keys": [1, 2, 3, 5], "fatigue": 100.0, "hunger": 34.0}, "2": {"keys": [4, 6, 8]}}
         self.character_data = {}
 
+        # List of characters available for this hub's disposal
+        self.char_list_ref = ""
+        self.char_list = self.server.char_list
+
         self.timer = self.Timer()
 
     @property
@@ -142,7 +149,10 @@ class AreaManager:
 
     @name.setter
     def name(self, value):
-        self._name = value
+        self._name = value.strip()
+        while "<num>" in self._name or "<percent>" in self._name:
+            self._name = self._name.replace(
+                "<num>", "").replace("<percent>", "")
         self.abbreviation = self.abbreviate()
 
     @property
@@ -202,6 +212,7 @@ class AreaManager:
             "can_spectate",
             "can_getareas",
             "passing_msg",
+            "char_list_ref",
         ]
         for entry in list(set(load_list) - set(ignore)):
             if entry in hub:
@@ -210,12 +221,18 @@ class AreaManager:
                     if hub[entry] == "":
                         self.clear_music()
                     else:
-                        self.load_music(f"storage/musiclists/{self.music_ref}.yaml")
+                        self.load_music(
+                            f"storage/musiclists/{hub[entry]}.yaml")
+                if entry == "char_list_ref":
+                    if hub[entry] == "":
+                        self.char_list = self.server.char_list
+                    else:
+                        self.load_characters(hub[entry])
 
         if not ("character_data" in ignore) and "character_data" in hub:
             try:
                 self.load_character_data(hub["character_data"])
-            except:
+            except Exception:
                 print("Character data reference path invalid!")
         if destructive:
             for area in self.areas.copy():
@@ -224,7 +241,6 @@ class AreaManager:
                 self.remove_area(area)
         if not ("areas" in ignore) and "areas" in hub:
             self.load_areas(hub["areas"])
-
         self.broadcast_area_list()
 
     def load_areas(self, areas):
@@ -236,6 +252,38 @@ class AreaManager:
             if "area" in area:
                 self.areas[i].load(area)
                 i += 1
+
+    def load_characters(self, charlist):
+        """Load the character list from a YAML file."""
+        with open(f"storage/charlists/{charlist}.yaml", "r", encoding="utf-8") as chars:
+            self.char_list = yaml.safe_load(chars)
+        # self.char_emotes = {char: Emotes(char) for char in self.char_list}
+        for client in self.clients:
+            self.send_characters(client)
+
+    def send_characters(self, client):
+        client.send_command("SC", *self.char_list)
+
+    def is_valid_char_id(self, char_id):
+        """
+        Check if a character ID is a valid one.
+        :param char_id: character ID
+        :returns: True if within length of character list; False otherwise
+
+        """
+        return len(self.char_list) > char_id >= 0
+
+    def get_char_id_by_name(self, name):
+        """
+        Get a character ID by the name of the character.
+        :param name: name of character
+        :returns: Character ID
+
+        """
+        for i, ch in enumerate(self.char_list):
+            if ch.lower() == name.lower():
+                return i
+        raise ServerError("Character not found.")
 
     def save(self, ignore=[]):
         hub = OrderedDict()
@@ -257,15 +305,17 @@ class AreaManager:
             "can_spectate",
             "can_getareas",
             "passing_msg",
+            "char_list_ref",
         ]
         for entry in list(set(save_list) - set(ignore)):
             hub[entry] = getattr(self, entry)
 
-        if not "areas" in ignore:
+        if "areas" not in ignore:
             areas = []
             for area in self.areas:
                 areas.append(area.save())
             hub["areas"] = areas
+
         return hub
 
     def clear_music(self):
@@ -284,8 +334,8 @@ class AreaManager:
             for item in music_list:
                 # deprecated, use 'replace_music' hub pref instead
                 # if 'replace' in item:
-                #    self.replace_music = item['replace'] == True
-                if "use_unique_folder" in item and item["use_unique_folder"] == True:
+                #    self.replace_music = item['replace'] is True
+                if "use_unique_folder" in item and item["use_unique_folder"] is True:
                     prepath = os.path.splitext(os.path.basename(path))[0] + "/"
 
                 if "category" not in item:
@@ -311,17 +361,18 @@ class AreaManager:
                 raise
             with open(path, "r") as chars:
                 data = yaml.safe_load(chars)
-        except:
+        except Exception:
             raise AreaError(f"File path {path} is invalid!")
 
         try:
             for char in data.copy():
                 # Convert the old numeric way to store character data into character folder based one
-                if isinstance(char, int) and self.server.is_valid_char_id(char):
-                    data[self.server.char_list[char]] = data.pop(char)
+                if isinstance(char, int) and self.is_valid_char_id(char):
+                    data[self.char_list[char]] = data.pop(char)
             self.character_data = data
-        except:
-            raise AreaError(f"Something went wrong while loading the character data!")
+        except Exception:
+            raise AreaError(
+                "Something went wrong while loading the character data!")
 
     def save_character_data(self, path="config/character_data.yaml"):
         """
@@ -331,8 +382,9 @@ class AreaManager:
         """
         try:
             with open(path, "w", encoding="utf-8") as stream:
-                yaml.dump(self.character_data, stream, default_flow_style=False)
-        except:
+                yaml.dump(self.character_data, stream,
+                          default_flow_style=False)
+        except Exception:
             raise AreaError(f"File path {path} is invalid!")
 
     def get_character_data(self, char, key, default_value=None):
@@ -343,8 +395,8 @@ class AreaManager:
         :param default_value: What value should be returned if the look-up failed
 
         """
-        if isinstance(char, int) and self.server.is_valid_char_id(char):
-            char = self.server.char_list[char]
+        if isinstance(char, int) and self.is_valid_char_id(char):
+            char = self.char_list[char]
         if char not in self.character_data:
             return default_value
         if key not in self.character_data[char]:
@@ -359,8 +411,8 @@ class AreaManager:
         :param value: The value to save
 
         """
-        if isinstance(char, int) and self.server.is_valid_char_id(char):
-            char = self.server.char_list[char]
+        if isinstance(char, int) and self.is_valid_char_id(char):
+            char = self.char_list[char]
         if char not in self.character_data:
             self.character_data[char] = {}
         self.character_data[char][key] = value
@@ -389,7 +441,7 @@ class AreaManager:
         else:
             try:
                 target_area = self.get_area_by_id(1)
-            except:
+            except Exception:
                 raise AreaError("May not remove last existing area!")
         clients = area.clients.copy()
         for client in clients:
@@ -416,20 +468,32 @@ class AreaManager:
             raise AreaError("First area not found.")
         if not (area2 in self.areas):
             raise AreaError("Second area not found.")
-        a, b = self.areas.index(area1), self.areas.index(area2)
+        # Grab the indexes
+        a = self.areas.index(area1)
+        b = self.areas.index(area2)
         # Swap 'em good
-        self.areas[b], self.areas[a] = self.areas[a], self.areas[b]
+        self.areas[b] = self.areas[a]
+        self.areas[a] = self.areas[b]
 
         if fix_links:
             # Update area links
-            a, b = str(a), str(b)
-            for ar in self.areas:
-                for link in ar.links.copy():
-                    # Swap 'em good
+            a = str(a)
+            b = str(b)
+            # Looping through all Hub's areas
+            for area in self.areas:
+                # For every link in that area's links
+                for link in area.links.copy():
+                    # If that link equals to a
                     if link == a:
-                        ar.links[b] = ar.links.pop(a)
-                    elif link == b:
-                        ar.links[a] = ar.links.pop(b)
+                        # Take out the link for 'a'
+                        area.links.pop(a)
+                        # Replace it with a link for 'b'
+                        area.links.push(b)
+                    if link == b:
+                        # Take out the link for 'b'
+                        area.links.pop(b)
+                        # Replace it with a link for 'a'
+                        area.links.push(a)
 
     def add_owner(self, client):
         """
@@ -540,13 +604,14 @@ class AreaManager:
         if not self.arup_enabled:
             return
         players_list = [0, -1]
-        if clients == None:
+        if clients is None:
             clients = self.clients
         for client in clients:
             for area in client.local_area_list:
                 playercount = -1
                 if not self.hide_clients and not area.hide_clients:
-                    playercount = len([c for c in area.clients if not c.hidden])
+                    playercount = len(
+                        [c for c in area.clients if not c.hidden])
                 players_list.append(playercount)
                 playerhubcount = 0
                 for area in client.local_area_list:
@@ -565,7 +630,7 @@ class AreaManager:
         if not self.arup_enabled:
             return
         status_list = [1, "GAMING"]
-        if clients == None:
+        if clients is None:
             clients = self.clients
         for client in clients:
             for area in client.local_area_list:
@@ -580,7 +645,7 @@ class AreaManager:
         if not self.arup_enabled:
             return
         cms_list = [2, "Double-Click for Hubs"]
-        if clients == None:
+        if clients is None:
             clients = self.clients
         for client in clients:
             for area in client.local_area_list:
@@ -595,7 +660,7 @@ class AreaManager:
         if not self.arup_enabled:
             return
         lock_list = [3, ""]
-        if clients == None:
+        if clients is None:
             clients = self.clients
         for client in clients:
             for area in client.local_area_list:

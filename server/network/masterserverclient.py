@@ -34,13 +34,12 @@ class MasterServerClient:
         self.writer = None
 
     async def connect(self):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         while True:
             try:
                 self.reader, self.writer = await asyncio.open_connection(
                     self.server.config["masterserver_ip"],
                     self.server.config["masterserver_port"],
-                    loop=loop,
                 )
                 await self.handle_connection()
             except (
@@ -48,6 +47,7 @@ class MasterServerClient:
                 TimeoutError,
                 ConnectionResetError,
                 asyncio.IncompleteReadError,
+                OSError,
             ):
                 logger.debug("Connection error occurred.")
                 self.writer = None
@@ -84,7 +84,8 @@ class MasterServerClient:
                     elif cmd == "PONG":
                         ping_timeout = False
                     elif cmd == "NOSERV":
-                        logger.debug("MS does not have our server. Readvertising.")
+                        logger.debug(
+                            "MS does not have our server. Readvertising.")
                         await self.send_server_info()
             if time.time() - last_ping > 10:
                 if ping_timeout:

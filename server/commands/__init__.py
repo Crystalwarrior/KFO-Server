@@ -17,7 +17,6 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 def call(client, cmd, arg):
     import sys
 
@@ -36,7 +35,8 @@ def call(client, cmd, arg):
 
 def submodules():
     """Get all command-related submodules."""
-    import sys, inspect
+    import sys
+    import inspect
 
     me = sys.modules[__name__]
     for _, v in inspect.getmembers(me):
@@ -46,7 +46,8 @@ def submodules():
 
 def reload():
     """Reload all submodules."""
-    import sys, importlib
+    import sys
+    import importlib
 
     me = sys.modules[__name__]
     for module in submodules():
@@ -56,7 +57,8 @@ def reload():
 
 
 def help(command):
-    import sys, inspect
+    import sys
+    import inspect
 
     try:
         doc = inspect.getdoc(getattr(sys.modules[__name__], command))
@@ -102,7 +104,7 @@ def list_commands(submodule=""):
                 doc = doc[: doc.find(".") + 1]
             prefix = "ooc_cmd_"
             if func.startswith(prefix):
-                func = func[len(prefix) :]
+                func = func[len(prefix):]
             cmds += f"{func} - {doc}\n"
     return cmds
 

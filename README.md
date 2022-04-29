@@ -14,19 +14,19 @@ The server will not work out of the box. **You must follow these instructions.**
 
 ### Install Python
 
-* Install the [latest version of Python](https://www.python.org/downloads/). **Python 2 will not work**, as tsuserver3 depends on async/await, which can only be found on Python 3.7 and newer.
+* Install the [latest version of Python](https://www.python.org/downloads/). **Python 2 will not work**, as KFO-Server depends on async/await, which can only be found on Python 3.7 and newer.
   - If you run Windows, make sure to check the "Add Python to PATH" and install pip checkboxes in the installer
   - If you run anything other than Windows, you should read "Advanced setup instructions" below.
   
 ### Download KFO-Server
 
-We recommend [Git](https://git-scm.com/downloads/guis) - it makes it very easy to update tsuserver. But we are power users and therefore inherently biased. You can instead download the latest zip of tsuserver with [this link](https://github.com/AttorneyOnline/tsuserver3/archive/master.zip). Extract it and put it wherever you want.
+We recommend [Git](https://git-scm.com/downloads/guis) - it makes it very easy to update tsuserver. But we are power users and therefore inherently biased. You can instead download the latest zip of KFO-Server with [this link](https://github.com/Crystalwarrior/KFO-Server/archive/refs/heads/master.zip). Extract it and put it wherever you want.
 
 ### Install dependencies
 
-* Open Command Prompt or your terminal, and change to the directory where you downloaded tsuserver3 to. You can do this in two ways:
-  - Go up one folder above the tsuserver3 folder, Shift + right click the tsuserver3 folder, and click `Open command window here`. This is the easiest method.
-  - Copy the path of the tsuserver3 folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackes, but including the quotation marks if the path contains spaces.
+* Open Command Prompt or your terminal, and change to the directory where you downloaded KFO-Server to. You can do this in two ways:
+  - Go up one folder above the KFO-Server folder, Shift + right click the KFO-Server folder, and click `Open command window here`. This is the easiest method.
+  - Copy the path of the KFO-Server folder, open the terminal, and type in `cd "[paste here]"`, excluding the brackes, but including the quotation marks if the path contains spaces.
 * To install PyYAML and dependencies, type in the following:
   ```bash
   python -m pip install --user -r requirements.txt

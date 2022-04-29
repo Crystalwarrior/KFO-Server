@@ -169,6 +169,18 @@
     - Show or change the link for the current case document.
 * **cleardoc**
     - Clear the link for the current case document.
+* **evidence** `[evi_name/id]`
+    - Use `/evidence` to read all evidence in the area.
+    - Use `/evidence` `[evi_name/id]` to read specific evidence.
+* **evidence_add** `[name]` `[desc]` `[image]`
+    - Add a piece of evidence.
+    - For sentences with spaces the arg should be surrounded in `""`'s, for example `/evidence_add Chair "It's a chair." chair.png`
+* **evidence_remove** `<evi_name/id>`
+    - Remove a piece of evidence.
+* **evidence_edit** `<evi_name/id>` `[name]` `[desc]` `[image]`
+    - Edit a piece of evidence.
+    - If you don't want to change something, put an `*` there.
+    - For sentences with spaces the arg should be surrounded in `""`'s, for example `/evidence_edit * "It's a chair." chair.png`
 * **evidence\_mod** `<FFA|Mods|CM|HiddenCM>`
     - Change the evidence privilege mode.
     * **FFA**
