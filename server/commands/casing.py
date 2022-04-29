@@ -15,6 +15,7 @@ __all__ = [
     "ooc_cmd_evidence_add",
     "ooc_cmd_evidence_remove",
     "ooc_cmd_evidence_edit",
+    "ooc_cmd_evidence_present",
     "ooc_cmd_evidence_mod",  # Not strictly casing - to be reorganized
     "ooc_cmd_evidence_swap",  # Not strictly casing - to be reorganized
     "ooc_cmd_cm",
@@ -114,7 +115,7 @@ def ooc_cmd_evidence(client, arg):
     try:
         evidence = None
         for i, evi in enumerate(evi_list):
-            if arg.lower() == evi[0].lower() or int(arg) - 1 == i:
+            if (arg.isnumeric() and int(arg) - 1 == i) or arg.lower() == evi[0].lower():
                 evidence = evi
                 break
         if evidence is None:
@@ -175,7 +176,7 @@ def ooc_cmd_evidence_remove(client, arg):
         evi_list = client.area.get_evidence_list(client)
         evidence = None
         for i, evi in enumerate(evi_list):
-            if arg.lower() == evi[0].lower() or int(arg) - 1 == i:
+            if (arg.isnumeric() and int(arg) - 1 == i) or arg.lower() == evi[0].lower():
                 evidence = evi
                 break
         if evidence is None:
@@ -219,7 +220,7 @@ def ooc_cmd_evidence_edit(client, arg):
         evi_list = client.area.get_evidence_list(client)
         evidence = None
         for i, evi in enumerate(evi_list):
-            if args[0].lower() == evi[0].lower() or int(args[0]) - 1 == i:
+            if (args[0].isnumeric() and int(args[0]) - 1 == i) or args[0].lower() == evi[0].lower():
                 evidence = evi
                 break
         if evidence is None:
@@ -227,11 +228,6 @@ def ooc_cmd_evidence_edit(client, arg):
                 f"Target evidence not found! (/evidence_remove {arg})"
             )
         evi_name = evidence[0]
-
-        if evidence is None:
-            raise AreaError(
-                f"Target evidence not found! (/evidence_remove {arg})"
-            )
         evi = (args[1], args[2], args[3], "all")
 
         client.area.evi_list.edit_evidence(client, i, evi)
@@ -242,6 +238,39 @@ def ooc_cmd_evidence_edit(client, arg):
                 f"You have edited evidence '{evi_name}' to '{evi[0]}'.")
         else:
             client.send_ooc(f"You have edited evidence '{evi_name}'.")
+    except ValueError:
+        raise
+    except (AreaError, ClientError):
+        raise
+
+
+def ooc_cmd_evidence_present(client, arg):
+    """
+    Present a piece of evidence on your next IC message.
+    Don't include [id] or make it 0 to stop presenting evidence.
+    Usage: /evidence_present [id]
+    """
+    if arg == "" or arg == "0":
+        client.send_ooc("No longer presenting evidence.")
+        client.presenting = 0
+        return
+
+    try:
+        evidence = None
+        evi_list = client.area.get_evidence_list(client)
+        # Check if evidence we're looking for exists
+        for i, evi in enumerate(evi_list):
+            print(arg.lower(), evi[0].lower())
+            if (arg.isnumeric() and int(arg) - 1 == i) or arg.lower() == evi[0].lower():
+                evidence = evi
+                break
+        if evidence is None:
+            raise AreaError(
+                f"Target evidence not found! (/evidence_present {arg})"
+            )
+        client.presenting = i + 1
+        client.send_ooc(
+            f"Will now present evidence [{client.presenting}] {evidence[0]} on next IC message.")
     except ValueError:
         raise
     except (AreaError, ClientError):

@@ -125,6 +125,8 @@ class ClientManager:
             # if we're currently trying to set a song for the minigame
             self.editing_minigame_song = ""
             self.editing_minigame_song_end = False
+            # If we are presenting evidence through a command (/evidence_present)
+            self.presenting = 0
 
             # 0 = listen to NONE
             # 1 = listen to IC
@@ -690,6 +692,9 @@ class ClientManager:
                 self.area.new_client(self)
             if target_pos != "":
                 self.pos = target_pos
+
+            # If we're using /evidence_present, reset it due to area change (evidence will be different most likely)
+            self.presenting = 0
 
             # Make sure the client's available areas are updated
             self.area.broadcast_area_list(self)
