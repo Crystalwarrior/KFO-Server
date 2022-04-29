@@ -729,5 +729,11 @@
 * Players with clients without clientside looping will now be ordered to play any music that matches the requested music name no matter the file extension, allowing a transition period to change file types of music
 * The `length` parameter in music files is no longer considered to provide server-sided looping to clients with clientside looping, but if provided, the server will use that information to provide server-sided looping to clients without clientside looping
 * Added a lockout that prevents messages being sent the first 5 seconds of a nonstop debate in pre-recording or intermission mode
+* Added brief prefixes to shownames whenever an OOC command that generates an IC message with a showname is run, such that it indicates the nature of the message (e.g. [W] for whispers)
+* Added a copy of the message to OOC whenever an OOC command that generates an IC message with a showname is run
+* Added /zone_autopass, which changes the zone autopass status. If turned on, turns autopass on for players in an area part of a zone and players that later join; otherwise, it turns it off for players in an area part of a zone
+* Added support for an extra argument for /autopass for GMs+. If given, and is a client ID, it will change the autopass status of the target client
+* Changed double quotation marks to backticks when forwarding a screamed message in OOC
 * Increased the numbers of messages that must occur during a nonstop debate intermission before reminding the leaders to advance stage if necessary from 5 to 20
+* Sending a whisper while sneaked to a nonsneaked player that is not a member of the same party now displays the player's showname to the sneaked player (but still only question marks to the recipient)
 * Fixed some compatibility issues with AO 2.9

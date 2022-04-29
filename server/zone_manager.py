@@ -371,6 +371,12 @@ class ZoneManager:
                 chat_tick_rate = self.get_property('Chat_tick_rate')
                 user.send_chat_tick_rate(chat_tick_rate=chat_tick_rate)
 
+            if self.is_property('Autopass'):
+                autopass = self.get_property('Autopass')
+                if autopass and not user.autopass:
+                    user.autopass = True
+                    user.send_ooc('Your autopass was automatically turned on.')
+
         def get_players(self) -> Set[ClientManager.Client]:
             """
             Return the set of players in an area part of the current zone.
