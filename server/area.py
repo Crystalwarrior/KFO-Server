@@ -907,7 +907,7 @@ class Area:
             # args[15] = showname
             name = ""
             if args[8] != -1:
-                name = self.area.area_manager.char_list[args[8]]
+                name = self.area_manager.char_list[args[8]]
             if args[15] != "":
                 name = args[15]
 
