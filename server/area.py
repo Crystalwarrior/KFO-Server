@@ -173,6 +173,10 @@ class Area:
         self.desc_dark = "It's pitch black in here, you can't see a thing!"
         # Sends a message to the IC when changing areas
         self.passing_msg = False
+        # Minimum time that has to pass before you can send another message
+        self.min_msg_delay = 200
+        # Maximum delay before you are allowed to send another message
+        self.max_msg_delay = 10000
         # /prefs end
 
         # DR minigames
@@ -502,8 +506,12 @@ class Area:
             self.pos_dark = area["pos_dark"]
         if "desc_dark" in area:
             self.desc_dark = area["desc_dark"]
-        if "passing_msg" in area:
-            self.passing_msg = area["passing_msg"]
+        if 'passing_msg' in area:
+            self.passing_msg = area['passing_msg']
+        if 'min_msg_delay' in area:
+            self.min_msg_delay = area['min_msg_delay']
+        if 'max_msg_delay' in area:
+            self.max_msg_delay = area['max_msg_delay']
 
         if "evidence" in area and len(area["evidence"]) > 0:
             self.evi_list.evidences.clear()
@@ -613,6 +621,8 @@ class Area:
         area["pos_dark"] = self.pos_dark
         area["desc_dark"] = self.desc_dark
         area["passing_msg"] = self.passing_msg
+        area["min_msg_delay"] = self.min_msg_delay
+        area["max_msg_delay"] = self.max_msg_delay
         if len(self.evi_list.evidences) > 0:
             area["evidence"] = [e.to_dict() for e in self.evi_list.evidences]
         if len(self.links) > 0:
@@ -651,6 +661,7 @@ class Area:
         if not self.can_wtce:
             # We can't use judge buttons, unless...
             jd = 0
+            
         if client in self.owners or client in self.area_manager.owners or client.is_mod:
             # We are a CM, Mod or a GM! Give us judge buttons at all times!
             jd = 1
@@ -1051,35 +1062,16 @@ class Area:
         :param msg: the string
         :return: delay integer in ms
         """
-        # Fastest - Default - Slowest. These are default values in ms for KFO Client.
-        message_display_speed = [0, 10, 25, 40, 50, 70, 90]
-
-        # Starts in the middle of the messageDisplaySpeed list
-        current_display_speed = 3
-
-        # The 'meh' part of this is we can't exactly calculate accurately if color chars are used (as they could change clientside).
-        formatting_chars = "@$`|_~%\\}{"
-
-        calculated_delay = 0
-
-        escaped = False
-
-        for symbol in msg:
-            if symbol in formatting_chars and not escaped:
-                if symbol == "\\":
-                    escaped = True
-                elif symbol == "{":  # slow down
-                    current_display_speed = min(
-                        len(message_display_speed) -
-                        1, current_display_speed + 1
-                    )
-                elif symbol == "}":  # speed up
-                    current_display_speed = max(0, current_display_speed - 1)
-                continue
-            elif escaped and symbol == "n":  # Newline monstrosity
-                continue
-            calculated_delay += message_display_speed[current_display_speed]
-        return calculated_delay
+        # Strip formatting chars
+        for char in "@$`|_~%\\}{":
+            msg = msg.replace(char, "")
+        # Very basic approximation of text length
+        delay = len(msg) * 40
+        # Minimum area msg delay
+        delay = max(self.min_msg_delay, delay)
+        # Maximum area msg delay
+        delay = min(self.max_msg_delay, delay)
+        return delay
 
     def is_iniswap(self, client, preanim, anim, char, sfx):
         """
