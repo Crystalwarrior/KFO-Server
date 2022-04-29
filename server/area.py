@@ -176,7 +176,7 @@ class Area:
         # Minimum time that has to pass before you can send another message
         self.min_msg_delay = 200
         # Maximum delay before you are allowed to send another message
-        self.max_msg_delay = 10000
+        self.max_msg_delay = 5000
         # /prefs end
 
         # DR minigames
@@ -661,7 +661,7 @@ class Area:
         if not self.can_wtce:
             # We can't use judge buttons, unless...
             jd = 0
-            
+
         if client in self.owners or client in self.area_manager.owners or client.is_mod:
             # We are a CM, Mod or a GM! Give us judge buttons at all times!
             jd = 1
