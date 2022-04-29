@@ -1,3 +1,10 @@
+from dataclasses import dataclass
+from datetime import datetime
+from functools import reduce
+from textwrap import dedent
+
+from .exceptions import ServerError
+
 import os
 
 import asyncio
@@ -10,13 +17,6 @@ import logging
 
 logger = logging.getLogger("debug")
 event_logger = logging.getLogger("events")
-
-from dataclasses import dataclass, field
-from datetime import datetime
-from functools import reduce
-from textwrap import dedent
-
-from .exceptions import ServerError
 
 
 DB_FILE = "storage/db.sqlite3"
@@ -111,7 +111,7 @@ class Database:
                         )
 
             if not os.path.exists("storage/banlist.json"):
-                logger.debug(f"banlist.json not found. Not migrating bans.")
+                logger.debug("banlist.json not found. Not migrating bans.")
                 return
             with open("storage/banlist.json", "r") as banlist_file:
                 bans = json.load(banlist_file)
@@ -153,7 +153,8 @@ class Database:
 
     def migrate_to_version(self, version):
         with self.db as conn:
-            cur_version = conn.execute("PRAGMA user_version").fetchone()["user_version"]
+            cur_version = conn.execute("PRAGMA user_version").fetchone()[
+                "user_version"]
             if cur_version >= version:
                 return
 
@@ -418,7 +419,7 @@ class Database:
                 self.unban(ban_id)
                 self.log_misc("auto_unban", data={"id": ban_id})
 
-            asyncio.get_event_loop().call_later(time_to_unban, auto_unban)
+            asyncio.get_running_loop().call_later(time_to_unban, auto_unban)
 
     def log_area(self, event_subtype, client, area, message=None, target=None):
         """
@@ -492,7 +493,8 @@ class Database:
         target_ipid = target.ipid if target is not None else None
         subtype_id = self._subtype_atom("misc", event_subtype)
         data_json = json.dumps(data)
-        event_logger.info(f"{event_subtype} ({client_ipid} onto {target_ipid}): {data}")
+        event_logger.info(
+            f"{event_subtype} ({client_ipid} onto {target_ipid}): {data}")
 
         with self.db as conn:
             conn.execute(

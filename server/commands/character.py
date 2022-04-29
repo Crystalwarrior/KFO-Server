@@ -40,6 +40,7 @@ __all__ = [
     "ooc_cmd_narrate",
     "ooc_cmd_blankpost",
     "ooc_cmd_firstperson",
+    "ooc_cmd_showname",
 ]
 
 
@@ -63,7 +64,8 @@ def ooc_cmd_switch(client, arg):
     except ServerError:
         raise
     try:
-        client.change_character(cid, client.is_mod or client in client.area.owners)
+        client.change_character(
+            cid, client.is_mod or client in client.area.owners)
     except ClientError:
         raise
     client.send_ooc("Character changed.")
@@ -124,7 +126,8 @@ def ooc_cmd_forcepos(client, arg):
             t.change_position(pos)
             t.area.broadcast_evidence_list()
             t.send_ooc(f"Forced into /pos {pos}.")
-            database.log_area("forcepos", client, client.area, target=t, message=pos)
+            database.log_area("forcepos", client, client.area,
+                              target=t, message=pos)
         except ClientError:
             raise
 
@@ -217,7 +220,7 @@ def ooc_cmd_charcurse(client, arg):
         targets = client.server.client_manager.get_targets(
             client, TargetType.ID, int(args[0]), False
         )
-    except:
+    except Exception:
         raise ArgumentError(
             "You must specify a valid target! Make sure it is a valid ID."
         )
@@ -229,11 +232,14 @@ def ooc_cmd_charcurse(client, arg):
                 try:
                     cid = int(raw_cid)
                     c.charcurse.append(cid)
-                    part_msg += " " + str(client.area.area_manager.char_list[cid]) + ","
-                    log_msg += " " + str(client.area.area_manager.char_list[cid]) + ","
+                    part_msg += " " + \
+                        str(client.area.area_manager.char_list[cid]) + ","
+                    log_msg += " " + \
+                        str(client.area.area_manager.char_list[cid]) + ","
                 except:
                     ArgumentError(
-                        "" + str(raw_cid) + " does not look like a valid character ID."
+                        "" + str(raw_cid) +
+                        " does not look like a valid character ID."
                     )
             part_msg = part_msg[:-1]
             part_msg += "."
@@ -260,7 +266,7 @@ def ooc_cmd_uncharcurse(client, arg):
         targets = client.server.client_manager.get_targets(
             client, TargetType.ID, int(args[0]), False
         )
-    except:
+    except Exception:
         raise ArgumentError(
             "You must specify a valid target! Make sure it is a valid ID."
         )
@@ -322,7 +328,7 @@ def ooc_cmd_blind(client, arg):
             )
             if c:
                 targets = targets + c
-    except:
+    except Exception:
         raise ArgumentError("You must specify a target. Use /blind <id>.")
 
     if targets:
@@ -355,7 +361,7 @@ def ooc_cmd_unblind(client, arg):
             )
             if c:
                 targets = targets + c
-    except:
+    except Exception:
         raise ArgumentError("You must specify a target. Use /unblind <id>.")
 
     if targets:
@@ -388,9 +394,11 @@ def ooc_cmd_player_move_delay(client, arg):
                     1800, max(-1800, int(args[1]))
                 )  # Move delay is limited between -1800 and 1800
                 c.move_delay = move_delay
-                client.send_ooc(f"Set move delay for {c.char_name} to {c.move_delay}.")
+                client.send_ooc(
+                    f"Set move delay for {c.char_name} to {c.move_delay}.")
             else:
-                client.send_ooc(f"Move delay for {c.char_name} is {c.move_delay}.")
+                client.send_ooc(
+                    f"Move delay for {c.char_name} is {c.move_delay}.")
         else:
             client.send_ooc(f"Your current move delay is {client.move_delay}.")
     except ValueError:
@@ -427,14 +435,15 @@ def ooc_cmd_player_hide(client, arg):
                 )
                 if c:
                     targets = targets + c
-        except:
+        except Exception:
             raise ArgumentError(
                 "You must specify a target. Use /player_unhide <id> [id(s)]."
             )
     if targets:
         for c in targets:
             if c.hidden:
-                raise ClientError(f"Client [{c.id}] {c.showname} already hidden!")
+                raise ClientError(
+                    f"Client [{c.id}] {c.showname} already hidden!")
             c.hide(True)
             client.send_ooc(
                 f"You have hidden [{c.id}] {c.showname} from /getarea and playercounts."
@@ -467,14 +476,15 @@ def ooc_cmd_player_unhide(client, arg):
                 )
                 if c:
                     targets = targets + c
-        except:
+        except Exception:
             raise ArgumentError(
                 "You must specify a target. Use /player_unhide <id> [id(s)]."
             )
     if targets:
         for c in targets:
             if not c.hidden:
-                raise ClientError(f"Client [{c.id}] {c.showname} already revealed!")
+                raise ClientError(
+                    f"Client [{c.id}] {c.showname} already revealed!")
             c.hide(False)
             client.send_ooc(
                 f"You have revealed [{c.id}] {c.showname} for /getarea and playercounts."
@@ -520,7 +530,8 @@ def ooc_cmd_sneak(client, arg):
     if arg != "":
         raise ArgumentError("This command takes no arguments!")
     if client.sneaking:
-        raise ClientError("You are already sneaking! Use /unsneak to stop sneaking.")
+        raise ClientError(
+            "You are already sneaking! Use /unsneak to stop sneaking.")
     client.sneak(True)
 
 
@@ -532,7 +543,8 @@ def ooc_cmd_unsneak(client, arg):
     if arg != "":
         raise ArgumentError("This command takes no arguments!")
     if not client.sneaking:
-        raise ClientError("You are not sneaking! Use /sneak to start sneaking.")
+        raise ClientError(
+            "You are not sneaking! Use /sneak to start sneaking.")
     client.sneak(False)
 
 
@@ -562,11 +574,11 @@ def ooc_cmd_unlisten_pos(client, arg):
     Undo the effects of /listen_pos command so you stop listening to the position(s).
     Usage: /unlisten_pos
     """
-    if client.listen_pos == None:
+    if client.listen_pos is None:
         raise ClientError("You are not listening to any pos at the moment!")
     client.listen_pos = None
     client.send_ooc(
-        f"You re no longer listening to any pos (All IC messages will appear as normal)."
+        "You re no longer listening to any pos (All IC messages will appear as normal)."
     )
 
 
@@ -638,17 +650,17 @@ def mod_keys(client, arg, mod=0):
             args = []
         keys = []
 
-        if mod in (1, 2):
-            keys = client.area.area_manager.get_character_data(target, "keys", [])
         for a in args:
             for key in a.split("-"):
                 # make sure all the keys are integers
                 key = int(key)
-            if not (a in keys):
-                if mod == 2:
-                    keys.remove(a)
-                else:
-                    keys.append(a)
+            if mod in (1, 2):
+                keys = client.area.area_manager.get_character_data(
+                    target, "keys", [])
+            if a in keys and mod == 2:
+                keys.remove(a)
+            elif not (a in keys):
+                keys.append(a)
         client.area.area_manager.set_character_data(target, "keys", keys)
         client.send_ooc(
             f"Character folder {client.area.area_manager.char_list[target]}'s keys are updated: {keys}"
@@ -726,11 +738,12 @@ def ooc_cmd_keys(client, arg):
                     target = client.area.area_manager.get_char_id_by_name(arg)
                 except (ServerError):
                     raise
-            keys = client.area.area_manager.get_character_data(target, "keys", [])
+            keys = client.area.area_manager.get_character_data(
+                target, "keys", [])
             client.send_ooc(
                 f"{client.area.area_manager.char_list[target]} current keys are {keys}"
             )
-        except:
+        except Exception:
             raise ArgumentError("Target not found.")
     else:
         raise ArgumentError("Usage: /keys [target_id].")
@@ -778,11 +791,13 @@ def ooc_cmd_chardesc(client, arg):
             target = client.server.client_manager.get_targets(
                 client, TargetType.ID, int(arg), True
             )[0].char_id
-            desc = client.area.area_manager.get_character_data(target, "desc", "")
+            desc = client.area.area_manager.get_character_data(
+                target, "desc", "")
             target = client.area.area_manager.char_list[target]
             client.send_ooc(f"{target} Description: {desc}")
-            database.log_area("chardesc.request", client, client.area, message=target)
-        except:
+            database.log_area("chardesc.request", client,
+                              client.area, message=target)
+        except Exception:
             raise ArgumentError("Target not found.")
     else:
         client.desc = arg
@@ -804,7 +819,8 @@ def ooc_cmd_chardesc_set(client, arg):
     """
     args = arg.split(" ")
     if len(args) < 1:
-        raise ArgumentError("Not enough arguments. Usage: /chardesc_set <id> [desc]")
+        raise ArgumentError(
+            "Not enough arguments. Usage: /chardesc_set <id> [desc]")
     try:
         if args[0].isnumeric():
             target = client.server.client_manager.get_targets(
@@ -829,7 +845,7 @@ def ooc_cmd_chardesc_set(client, arg):
         database.log_area(
             "chardesc.set", client, client.area, message=f"{target}: {desc}"
         )
-    except:
+    except Exception:
         raise ArgumentError("Target not found.")
 
 
@@ -860,7 +876,7 @@ def ooc_cmd_chardesc_get(client, arg):
         database.log_area(
             "chardesc.get", client, client.area, message=f"{target}: {desc}"
         )
-    except:
+    except Exception:
         raise ArgumentError("Target not found.")
 
 
@@ -884,10 +900,10 @@ def ooc_cmd_narrate(client, arg):
             raise ArgumentError("Invalid argument: {}".format(arg))
     else:
         client.narrator = not client.narrator
-    if client.blankpost == True:
+    if client.blankpost is True:
         client.blankpost = False
         client.send_ooc(
-            f"You cannot be a narrator and blankposting at the same time. Blankposting disabled!"
+            "You cannot be a narrator and blankposting at the same time. Blankposting disabled!"
         )
     stat = "no longer be narrating"
     if client.narrator:
@@ -914,10 +930,10 @@ def ooc_cmd_blankpost(client, arg):
             raise ArgumentError("Invalid argument: {}".format(arg))
     else:
         client.blankpost = not client.blankpost
-    if client.narrator == True:
+    if client.narrator is True:
         client.narrator = False
         client.send_ooc(
-            f"You cannot be a narrator and blankposting at the same time. Narrating disabled!"
+            "You cannot be a narrator and blankposting at the same time. Narrating disabled!"
         )
     stat = "no longer be blankposting"
     if client.blankpost:
@@ -945,12 +961,37 @@ def ooc_cmd_firstperson(client, arg):
             raise ArgumentError("Invalid argument: {}".format(arg))
     else:
         client.firstperson = not client.firstperson
-    if client.narrator == True:
+    if client.narrator is True:
         client.narrator = False
         client.send_ooc(
-            f"You cannot be a narrator and firstperson at the same time. Narrating disabled!"
+            "You cannot be a narrator and firstperson at the same time. Narrating disabled!"
         )
     stat = "no longer be firstperson"
     if client.firstperson:
         stat = "be firstperson now"
     client.send_ooc(f"You will {stat}.")
+
+
+def ooc_cmd_showname(client, arg):
+    """
+    Set your own showname similar to the showname box in the client.
+    Note that using this command will override the showname box.
+    Passing no [name] will reset your showname and start using the showname box again.
+    Usage: /showname [name]
+    """
+    if len(arg) == 0:
+        client.used_showname_command = False
+        client.showname = ""
+        client.send_ooc("Your showname is now reset.")
+        return
+    # having to copy-paste code from aoprotocol is kinda poopy, need to create a set_showname def
+    if len(arg) > 20:
+        client.send_ooc("Your IC showname is way too long!")
+        return
+    if not client.is_mod and arg.lstrip().lower().startswith("[m"):
+        client.send_ooc(
+            "Nice try! You may not spoof [M] tag in your showname.")
+        return
+    client.used_showname_command = True
+    client.showname = arg
+    client.send_ooc(f"You set your showname to '{client.showname}'.")
