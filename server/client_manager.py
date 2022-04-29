@@ -630,12 +630,18 @@ class ClientManager:
                 'health': health
                 })
 
-        def send_music(self, name=None, char_id=None, showname=None, loop=None, channel=None,
-                       effects=None):
+        def send_music(self, name=None, char_id=None, showname=None, force_same_restart=None,
+                       loop=None, channel=None, effects=None):
+            if not self.packet_handler.HAS_CLIENTSIDE_MUSIC_LOOPING.value:
+                file_extension_location = name.rfind('.')
+                if file_extension_location >= 0:
+                    name = name[:file_extension_location]
+
             self.send_command_dict('MC', {
                 'name': name,
                 'char_id': char_id,
                 'showname': showname,
+                'force_same_restart': force_same_restart,
                 'loop': loop,
                 'channel': channel,
                 'effects': effects,

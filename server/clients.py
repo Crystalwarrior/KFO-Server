@@ -23,6 +23,8 @@ from server.constants import ArgType
 
 
 class DefaultDROProtocol(Enum):
+    HAS_CLIENTSIDE_MUSIC_LOOPING = True
+
     DECRYPTOR_OUTBOUND = [
         ('key', 34),  # 0
         ]
@@ -200,6 +202,7 @@ class DefaultDROProtocol(Enum):
         ('name', ''),  # 0
         ('char_id', -1),  # 1
         ('showname', ''),  # 2
+        ('force_same_restart', 1),  # 3
         ]
 
     RT_INBOUND = [
@@ -307,6 +310,8 @@ class DefaultDROProtocol(Enum):
 ClientDRO1d1d0 = Enum('ClientDRO1d1d0', [(m.name, m.value) for m in DefaultDROProtocol])
 
 class ClientDRO1d0d0(Enum):
+    HAS_CLIENTSIDE_MUSIC_LOOPING = False
+
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
         ('pre', ArgType.STR_OR_EMPTY),  # 1
@@ -344,8 +349,16 @@ class ClientDRO1d0d0(Enum):
         ('showname', ' '),  # 15
         ]
 
+    MC_OUTBOUND = [
+        ('name', ''),  # 0
+        ('char_id', -1),  # 1
+        ('showname', ''),  # 2
+        ]
+
 
 class ClientDROLegacy(Enum):
+    HAS_CLIENTSIDE_MUSIC_LOOPING = False
+
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
         ('pre', ArgType.STR_OR_EMPTY),  # 1
@@ -399,6 +412,8 @@ class ClientDROLegacy(Enum):
 
 
 class ClientAO2d6(Enum):
+    HAS_CLIENTSIDE_MUSIC_LOOPING = False
+
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
         ('pre', ArgType.STR_OR_EMPTY),  # 1
@@ -465,6 +480,8 @@ class ClientAO2d6(Enum):
 
 
 class ClientAO2d7(Enum):
+    HAS_CLIENTSIDE_MUSIC_LOOPING = False
+
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
         ('pre', ArgType.STR_OR_EMPTY),  # 1
@@ -545,6 +562,8 @@ class ClientAO2d7(Enum):
 
 
 class ClientAO2d8d4(Enum):
+    HAS_CLIENTSIDE_MUSIC_LOOPING = True
+
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
         ('pre', ArgType.STR_OR_EMPTY),  # 1
@@ -618,7 +637,7 @@ class ClientAO2d8d4(Enum):
         ('name', ''),  # 0
         ('char_id', -1),  # 1
         ('showname', ''),  # 2
-        ('loop', -1),  # 3
+        ('loop', 1),  # 3
         ('channel', 0),  # 4
         ('effects', 0),  # 5
         ]
@@ -634,6 +653,8 @@ class ClientAO2d8d4(Enum):
 
 
 class ClientAO2d9d0(Enum):
+    HAS_CLIENTSIDE_MUSIC_LOOPING = True
+
     ASKCHAA_INBOUND = [
         ('ao290doesnotsupportpacketswithnoarguments', ArgType.STR_OR_EMPTY),  # 0
         ]
@@ -727,7 +748,7 @@ class ClientAO2d9d0(Enum):
         ('name', ''),  # 0
         ('char_id', -1),  # 1
         ('showname', ''),  # 2
-        ('loop', -1),  # 3
+        ('loop', 1),  # 3
         ('channel', 0),  # 4
         ('effects', 0),  # 5
         ]

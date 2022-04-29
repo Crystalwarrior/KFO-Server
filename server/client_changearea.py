@@ -792,6 +792,11 @@ class ClientChangeArea:
         client.area = area
         client.new_area = area  # Update again, as the above if may not have run
         area.new_client(client)
+        try:
+            area.play_current_track(only_for={client}, force_same_restart=0)
+        except AreaError:
+            # This should only happen if there's no music
+            pass
 
         client.send_health(side=1, health=client.area.hp_def)
         client.send_health(side=2, health=client.area.hp_pro)
