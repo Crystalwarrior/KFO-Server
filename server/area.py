@@ -804,7 +804,7 @@ class Area:
 
     def get_rand_avail_char_id(self):
         """Get a random available character ID."""
-        avail_set = set(range(len(self.server.char_list))) - {
+        avail_set = set(range(len(self.area_manager.char_list))) - {
             x.char_id for x in self.clients
         }
         if len(avail_set) == 0:
@@ -896,7 +896,7 @@ class Area:
             # args[15] = showname
             name = ""
             if args[8] != -1:
-                name = self.server.char_list[args[8]]
+                name = self.area.area_manager.char_list[args[8]]
             if args[15] != "":
                 name = args[15]
 
@@ -960,7 +960,7 @@ class Area:
                     ):
                         name = ""
                         if args[8] != -1:
-                            name = self.server.char_list[args[8]]
+                            name = self.area_manager.char_list[args[8]]
                         if args[15] != "":
                             name = args[15]
                         # Send the mesage as OOC.

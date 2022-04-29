@@ -262,8 +262,7 @@ class AOProtocol(asyncio.Protocol):
 
         askchaa#%
         """
-        # this is so dumb lol
-        char_cnt = len(self.server.char_list)
+        char_cnt = len(self.client.area.area_manager.char_list)
         evi_cnt = 0
         music_cnt = 0
         self.client.send_command("SI", char_cnt, evi_cnt, music_cnt)
@@ -274,8 +273,7 @@ class AOProtocol(asyncio.Protocol):
         AC#%
 
         """
-
-        self.client.send_command("SC", *self.server.char_list)
+        self.client.area.area_manager.send_characters(self.client)
 
     def net_cmd_rm(self, _):
         """Asks for the whole music list (AO2)
@@ -1080,7 +1078,7 @@ class AOProtocol(asyncio.Protocol):
                     and self.client.area.id == self.server.bridgebot.area_id
                 ):
                     webname = self.client.char_name
-                    if showname != "" and showname != self.server.char_list[cid]:
+                    if showname != "" and showname != self.area.area_manager.char_list[cid]:
                         webname = f"{showname} ({webname})"
                     # you'll hate me for this
                     text = (
