@@ -125,6 +125,8 @@ class ClientManager:
             # if we're currently trying to set a song for the minigame
             self.editing_minigame_song = ""
             self.editing_minigame_song_end = False
+            # If we are presenting evidence through a command (/evidence_present)
+            self.presenting = 0
 
             # 0 = listen to NONE
             # 1 = listen to IC
@@ -271,7 +273,7 @@ class ClientManager:
             """
             # If it's -1, we want to be the spectator character.
             if char_id != -1:
-                if not self.server.is_valid_char_id(char_id):
+                if not self.area.area_manager.is_valid_char_id(char_id):
                     raise ClientError("Invalid character ID.")
                 if not self.is_mod and self not in self.area.owners:
                     if len(self.charcurse) > 0:
@@ -670,18 +672,25 @@ class ClientManager:
             :param area: area to switch to
             :param target_pos: which position to target in the new area
             """
-            # This person switched hubs just now.
-            if self.area.area_manager != area.area_manager:
+            old_area = self.area
+            # If this person switched hubs
+            if old_area.area_manager != area.area_manager:
                 # Make sure a single person can't hoard all the hubs
-                if self in self.area.area_manager.owners:
-                    self.area.area_manager.remove_owner(self)
+                if self in old_area.area_manager.owners:
+                    old_area.area_manager.remove_owner(self)
                 # Don't allow multi-hub CMing either
-                for a in self.area.area_manager.areas:
+                for a in old_area.area_manager.areas:
                     if self in a.owners:
                         a.remove_owner(self)
-            if self in self.area.clients:
-                self.area.remove_client(self)
+            if self in old_area.clients:
+                old_area.remove_client(self)
             self.area = area
+
+            if old_area.area_manager != area.area_manager and old_area.area_manager.char_list != area.area_manager.char_list:
+                # Send them that hub's char list
+                self.area.area_manager.send_characters(self)
+                self.char_select()
+
             if len(self.area.pos_lock) > 0 and not (target_pos in self.area.pos_lock):
                 target_pos = self.area.pos_lock[0]
             if self.area.dark:
@@ -690,6 +699,9 @@ class ClientManager:
                 self.area.new_client(self)
             if target_pos != "":
                 self.pos = target_pos
+
+            # If we're using /evidence_present, reset it due to area change (evidence will be different most likely)
+            self.presenting = 0
 
             # Make sure the client's available areas are updated
             self.area.broadcast_area_list(self)
@@ -1355,14 +1367,14 @@ class ClientManager:
         def get_available_char_list(self):
             """Get a list of character IDs that the client can select."""
             if len(self.charcurse) > 0:
-                avail_char_ids = set(range(len(self.server.char_list))) and set(
+                avail_char_ids = set(range(len(self.area.area_manager.char_list))) and set(
                     self.charcurse
                 )
             else:
-                avail_char_ids = set(range(len(self.server.char_list))) - {
+                avail_char_ids = set(range(len(self.area.area_manager.char_list))) - {
                     x.char_id for x in self.area.clients
                 }
-            char_list = [-1] * len(self.server.char_list)
+            char_list = [-1] * len(self.area.area_manager.char_list)
             for x in avail_char_ids:
                 char_list[x] = 0
             return char_list
@@ -1405,7 +1417,7 @@ class ClientManager:
                 return "Connection"
             if self.char_id == -1:
                 return "Spectator"
-            return self.server.char_list[self.char_id]
+            return self.area.area_manager.char_list[self.char_id]
 
         @property
         def showname(self):
@@ -1413,7 +1425,7 @@ class ClientManager:
             if self._showname == "":
                 return self.char_name
             # No clue why this would ever hapepn but here we go
-            if self.char_id > len(self.server.char_list):
+            if self.char_id > len(self.area.area_manager.char_list):
                 return "Unknown"
             return self._showname
 

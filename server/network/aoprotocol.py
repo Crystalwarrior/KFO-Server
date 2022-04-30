@@ -262,8 +262,7 @@ class AOProtocol(asyncio.Protocol):
 
         askchaa#%
         """
-        # this is so dumb lol
-        char_cnt = len(self.server.char_list)
+        char_cnt = len(self.client.area.area_manager.char_list)
         evi_cnt = 0
         music_cnt = 0
         self.client.send_command("SI", char_cnt, evi_cnt, music_cnt)
@@ -274,8 +273,7 @@ class AOProtocol(asyncio.Protocol):
         AC#%
 
         """
-
-        self.client.send_command("SC", *self.server.char_list)
+        self.client.area.area_manager.send_characters(self.client)
 
     def net_cmd_rm(self, _):
         """Asks for the whole music list (AO2)
@@ -734,6 +732,9 @@ class AOProtocol(asyncio.Protocol):
         if "4" in str(button) and "<and>" not in str(button):
             if not button.isdigit():
                 return
+        if self.client.presenting > 0:
+            evidence = self.client.presenting
+            self.client.presenting = 0
         if evidence < 0:
             return
         if ding not in (0, 1):
@@ -873,23 +874,29 @@ class AOProtocol(asyncio.Protocol):
             msg = self.client.disemvowel_message(msg)
         if evidence:
             area = self.client.area
-            evi = area.evi_list.evidences[self.client.evi_list[evidence] - 1]
+            try:
+                evidence = self.client.evi_list[evidence]
+                evi = area.evi_list.evidences[evidence - 1]
+                self.client.area.broadcast_ooc(
+                    f"[{self.client.id}] {self.client.showname} has presented evidence: {evi.name}.")
 
-            if evi.hiding_client is not None:
-                c = evi.hiding_client
-                c.hide(False)
-                c.area.broadcast_area_list(c)
-                self.client.send_ooc(
-                    f"You discover {c.showname} in the {evi.name}!")
+                if evi.hiding_client is not None:
+                    c = evi.hiding_client
+                    c.hide(False)
+                    c.area.broadcast_area_list(c)
+                    self.client.send_ooc(
+                        f"You discover {c.showname} in the {evi.name}!")
 
-            if evi.pos != "all":
-                evi.desc = f"(👀Discovered in pos: {evi.pos})\n{evi.desc}"
-                evi.pos = "all"
-                area.broadcast_evidence_list()
-            asyncio.get_running_loop().call_soon(
-                evi.trigger, area, "present", self.client
-            )
-            # target_area.trigger('present')
+                if evi.pos != "all":
+                    evi.desc = f"(👀Discovered in pos: {evi.pos})\n{evi.desc}"
+                    evi.pos = "all"
+                    area.broadcast_evidence_list()
+                asyncio.get_running_loop().call_soon(
+                    evi.trigger, area, "present", self.client
+                )
+                # target_area.trigger('present')
+            except IndexError:
+                evidence = 0
         # Update the showname ref for the client
         if self.client.used_showname_command:
             showname = self.client.showname
@@ -1071,7 +1078,7 @@ class AOProtocol(asyncio.Protocol):
                     and self.client.area.id == self.server.bridgebot.area_id
                 ):
                     webname = self.client.char_name
-                    if showname != "" and showname != self.server.char_list[cid]:
+                    if showname != "" and showname != self.area.area_manager.char_list[cid]:
                         webname = f"{showname} ({webname})"
                     # you'll hate me for this
                     text = (
@@ -1196,7 +1203,7 @@ class AOProtocol(asyncio.Protocol):
             cid,
             sfx_delay,
             button,
-            self.client.evi_list[evidence],
+            evidence,
             flip,
             ding,
             color,
@@ -1231,7 +1238,7 @@ class AOProtocol(asyncio.Protocol):
             cid,
             sfx_delay,
             button,
-            self.client.evi_list[evidence],
+            evidence,
             flip,
             ding,
             color,

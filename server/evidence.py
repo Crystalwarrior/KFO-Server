@@ -345,31 +345,34 @@ class EvidenceList:
         if client.area.dark:
             return
 
+        name = arg[0]
+        desc = arg[1]
+        image = arg[2]
+        pos = arg[3]
         if client in client.area.owners or client.is_mod:
             if id not in range(len(self.evidences)):
                 return
-            old_name = self.evidences[id].name
-            # Convert the single * to "keep it the same as before"
-            for i, a in enumerate(arg):
-                if a == "*":
-                    if i == 0:
-                        arg[i] = self.evidences[id].name
-                    elif i == 1:
-                        arg[i] = self.evidences[id].desc
-                    elif i == 2:
-                        arg[i] = self.evidences[id].image
+            evi = self.evidences[id]
+            old_name = evi.name
+            # If any of the args are *, keep the old entry
+            if name == "*":
+                name = evi.name
+            if desc == "*":
+                desc = evi.desc
+            if image == "*":
+                image = evi.image
 
             if client.area.evidence_mod == "HiddenCM":
-                if self.correct_format(client, arg[1]):
-                    lines = arg[1].split("\n")
+                if self.correct_format(client, desc):
+                    lines = desc.split("\n")
                     cmd = lines[0].strip(
                         " "
                     )  # remove whitespace at beginning and end of string
                     poses = cmd[7:-1]
                     can_hide_in = lines[1].strip(" ")[13:-1] == "1"
                     self.evidences[id] = self.Evidence(
-                        arg[0], "\n".join(
-                            lines[2:]), arg[2], poses, can_hide_in
+                        name, "\n".join(
+                            lines[2:]), image, poses, can_hide_in
                     )
                 else:
                     client.send_ooc(
@@ -378,7 +381,7 @@ class EvidenceList:
                     return
             else:
                 self.evidences[id] = self.Evidence(
-                    arg[0], arg[1], arg[2], arg[3])
+                    name, desc, image, pos)
             new_name = self.evidences[id].name
         else:
             # Are you serious? This is absolutely fucking mental.
@@ -388,20 +391,19 @@ class EvidenceList:
             id = client.evi_list[id + 1] - 1
             if id not in range(len(self.evidences)):
                 return
-            old_name = self.evidences[id].name
-            # Convert the single * to "keep it the same as before"
-            for i, a in enumerate(arg):
-                if a == "*":
-                    if i == 0:
-                        arg[i] = self.evidences[id].name
-                    elif i == 1:
-                        arg[i] = self.evidences[id].desc
-                    elif i == 2:
-                        arg[i] = self.evidences[id].image
+            evi = self.evidences[id]
+            old_name = evi.name
+            # If any of the args are *, keep the old entry
+            if name == "*":
+                name = evi.name
+            if desc == "*":
+                desc = evi.desc
+            if image == "*":
+                image = evi.image
             self.evidences[id] = self.Evidence(
-                arg[0], arg[1], arg[2], self.evidences[id].pos
+                name, desc, image, evi.pos
             )
-            new_name = self.evidences[id].name
+            new_name = evi.name
 
         namechange = f"'{old_name}' to '{new_name}'" if new_name != old_name else f"'{old_name}'"
         # Inform the CMs of evidence manupulation

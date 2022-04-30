@@ -358,27 +358,6 @@ class TsuServer3:
                 song_list.append(song["name"])
         return song_list
 
-    def is_valid_char_id(self, char_id):
-        """
-        Check if a character ID is a valid one.
-        :param char_id: character ID
-        :returns: True if within length of character list; False otherwise
-
-        """
-        return len(self.char_list) > char_id >= 0
-
-    def get_char_id_by_name(self, name):
-        """
-        Get a character ID by the name of the character.
-        :param name: name of character
-        :returns: Character ID
-
-        """
-        for i, ch in enumerate(self.char_list):
-            if ch.lower() == name.lower():
-                return i
-        raise ServerError("Character not found.")
-
     def get_song_data(self, music_list, music):
         """
         Get information about a track, if exists.

@@ -136,6 +136,10 @@ class AreaManager:
         # ex. {"1": {"keys": [1, 2, 3, 5], "fatigue": 100.0, "hunger": 34.0}, "2": {"keys": [4, 6, 8]}}
         self.character_data = {}
 
+        # List of characters available for this hub's disposal
+        self.char_list_ref = ""
+        self.char_list = self.server.char_list
+
         self.timer = self.Timer()
 
     @property
@@ -208,6 +212,7 @@ class AreaManager:
             "can_spectate",
             "can_getareas",
             "passing_msg",
+            "char_list_ref",
         ]
         for entry in list(set(load_list) - set(ignore)):
             if entry in hub:
@@ -217,7 +222,12 @@ class AreaManager:
                         self.clear_music()
                     else:
                         self.load_music(
-                            f"storage/musiclists/{self.music_ref}.yaml")
+                            f"storage/musiclists/{hub[entry]}.yaml")
+                if entry == "char_list_ref":
+                    if hub[entry] == "":
+                        self.char_list = self.server.char_list
+                    else:
+                        self.load_characters(hub[entry])
 
         if not ("character_data" in ignore) and "character_data" in hub:
             try:
@@ -231,7 +241,6 @@ class AreaManager:
                 self.remove_area(area)
         if not ("areas" in ignore) and "areas" in hub:
             self.load_areas(hub["areas"])
-
         self.broadcast_area_list()
 
     def load_areas(self, areas):
@@ -243,6 +252,38 @@ class AreaManager:
             if "area" in area:
                 self.areas[i].load(area)
                 i += 1
+
+    def load_characters(self, charlist):
+        """Load the character list from a YAML file."""
+        with open(f"storage/charlists/{charlist}.yaml", "r", encoding="utf-8") as chars:
+            self.char_list = yaml.safe_load(chars)
+        # self.char_emotes = {char: Emotes(char) for char in self.char_list}
+        for client in self.clients:
+            self.send_characters(client)
+
+    def send_characters(self, client):
+        client.send_command("SC", *self.char_list)
+
+    def is_valid_char_id(self, char_id):
+        """
+        Check if a character ID is a valid one.
+        :param char_id: character ID
+        :returns: True if within length of character list; False otherwise
+
+        """
+        return len(self.char_list) > char_id >= 0
+
+    def get_char_id_by_name(self, name):
+        """
+        Get a character ID by the name of the character.
+        :param name: name of character
+        :returns: Character ID
+
+        """
+        for i, ch in enumerate(self.char_list):
+            if ch.lower() == name.lower():
+                return i
+        raise ServerError("Character not found.")
 
     def save(self, ignore=[]):
         hub = OrderedDict()
@@ -264,6 +305,7 @@ class AreaManager:
             "can_spectate",
             "can_getareas",
             "passing_msg",
+            "char_list_ref",
         ]
         for entry in list(set(save_list) - set(ignore)):
             hub[entry] = getattr(self, entry)
@@ -273,6 +315,7 @@ class AreaManager:
             for area in self.areas:
                 areas.append(area.save())
             hub["areas"] = areas
+
         return hub
 
     def clear_music(self):
@@ -324,8 +367,8 @@ class AreaManager:
         try:
             for char in data.copy():
                 # Convert the old numeric way to store character data into character folder based one
-                if isinstance(char, int) and self.server.is_valid_char_id(char):
-                    data[self.server.char_list[char]] = data.pop(char)
+                if isinstance(char, int) and self.is_valid_char_id(char):
+                    data[self.char_list[char]] = data.pop(char)
             self.character_data = data
         except Exception:
             raise AreaError(
@@ -352,8 +395,8 @@ class AreaManager:
         :param default_value: What value should be returned if the look-up failed
 
         """
-        if isinstance(char, int) and self.server.is_valid_char_id(char):
-            char = self.server.char_list[char]
+        if isinstance(char, int) and self.is_valid_char_id(char):
+            char = self.char_list[char]
         if char not in self.character_data:
             return default_value
         if key not in self.character_data[char]:
@@ -368,8 +411,8 @@ class AreaManager:
         :param value: The value to save
 
         """
-        if isinstance(char, int) and self.server.is_valid_char_id(char):
-            char = self.server.char_list[char]
+        if isinstance(char, int) and self.is_valid_char_id(char):
+            char = self.char_list[char]
         if char not in self.character_data:
             self.character_data[char] = {}
         self.character_data[char][key] = value
