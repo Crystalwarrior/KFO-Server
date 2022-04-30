@@ -296,6 +296,7 @@ class _TestClientManager(ClientManager):
             if self.is_mod:
                 return
             self.ooc('/login {}'.format(self.server.config['modpass']))
+            self.assert_packet('FA', None)
             self.assert_packet('FM', None)
             self.assert_ooc('Logged in as a moderator.', over=over)
             # Look for all officers and assert messages of this client's login
@@ -309,6 +310,7 @@ class _TestClientManager(ClientManager):
             if self.is_cm:
                 return
             self.ooc('/logincm {}'.format(self.server.config['cmpass']))
+            self.assert_packet('FA', None)
             self.assert_packet('FM', None)
             self.assert_ooc('Logged in as a community manager.', over=over)
             # Look for all officers and assert messages of this client's login
@@ -322,6 +324,7 @@ class _TestClientManager(ClientManager):
             if self.is_gm:
                 return
             self.ooc('/loginrp {}'.format(self.server.config['gmpass']))
+            self.assert_packet('FA', None)
             self.assert_packet('FM', None)
             self.assert_ooc('Logged in as a game master.', over=over)
             # Look for all officers and assert messages of this client's login
@@ -343,6 +346,7 @@ class _TestClientManager(ClientManager):
                 role = 'moderator'
             self.ooc('/logout')
             self.assert_ooc('You are no longer logged in.', ooc_over=over)
+            self.assert_packet('FA', None)
             self.assert_packet('FM', None, over=over)
             # Assert command for any officers of this client's logout
             for c in self.server.client_manager.clients:
@@ -371,6 +375,7 @@ class _TestClientManager(ClientManager):
                                     ['HP', None],
                                     ['BN', None],
                                     ['LE', None],
+                                    ['FA', None],
                                     ['FM', None],
                                     ['BN', None],
                                     )
@@ -809,7 +814,9 @@ class _TestClientManager(ClientManager):
                 pass
             elif command_type == 'CT':  # OOC message
                 self.received_ooc.append((args[0], args[1]))
-            elif command_type == 'FM':  # Updated music/area list
+            elif command_type == 'FM':  # Updated music list
+                pass
+            elif command_type == 'FA':  # Updated area list
                 pass
             elif command_type == 'PV':  # Current character
                 pass

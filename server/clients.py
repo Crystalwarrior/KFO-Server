@@ -16,14 +16,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-
-from enum import Enum
-
 from server.constants import ArgType
 
+class _Singleton():
+    def __new__(cls):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(_Singleton, cls).__new__(cls)
+        return cls.instance
 
-class DefaultDROProtocol(Enum):
+class DefaultDROProtocol(_Singleton):
+    def __eq__(self, other):
+        return type(self).__name__ == type(other).__name__
+
     HAS_CLIENTSIDE_MUSIC_LOOPING = True
+    HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS = True
 
     DECRYPTOR_OUTBOUND = [
         ('key', 34),  # 0
@@ -123,6 +129,10 @@ class DefaultDROProtocol(Enum):
 
     FM_OUTBOUND = [
         ('music_ao2_list', list()),  # 0
+        ]
+
+    FA_OUTBOUND = [
+        ('areas_ao2_list', list()),  # 0
         ]
 
     CC_INBOUND = [
@@ -307,10 +317,12 @@ class DefaultDROProtocol(Enum):
     CHARSCHECK_INBOUND = [
         ]
 
-ClientDRO1d1d0 = Enum('ClientDRO1d1d0', [(m.name, m.value) for m in DefaultDROProtocol])
+class ClientDRO1d1d0(DefaultDROProtocol):
+    pass
 
-class ClientDRO1d0d0(Enum):
+class ClientDRO1d0d0(DefaultDROProtocol):
     HAS_CLIENTSIDE_MUSIC_LOOPING = False
+    HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS = False
 
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
@@ -356,8 +368,9 @@ class ClientDRO1d0d0(Enum):
         ]
 
 
-class ClientDROLegacy(Enum):
+class ClientDROLegacy(DefaultDROProtocol):
     HAS_CLIENTSIDE_MUSIC_LOOPING = False
+    HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS = False
 
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
@@ -411,8 +424,9 @@ class ClientDROLegacy(Enum):
         ]
 
 
-class ClientAO2d6(Enum):
+class ClientAO2d6(DefaultDROProtocol):
     HAS_CLIENTSIDE_MUSIC_LOOPING = False
+    HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS = False
 
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
@@ -479,8 +493,9 @@ class ClientAO2d6(Enum):
         ]
 
 
-class ClientAO2d7(Enum):
+class ClientAO2d7(DefaultDROProtocol):
     HAS_CLIENTSIDE_MUSIC_LOOPING = False
+    HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS = False
 
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
@@ -561,9 +576,7 @@ class ClientAO2d7(Enum):
         ]
 
 
-class ClientAO2d8d4(Enum):
-    HAS_CLIENTSIDE_MUSIC_LOOPING = True
-
+class ClientAO2d8d4(DefaultDROProtocol):
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
         ('pre', ArgType.STR_OR_EMPTY),  # 1
@@ -647,14 +660,8 @@ class ClientAO2d8d4(Enum):
         ('pos', ''),  # 1
         ]
 
-    FA_OUTBOUND = [
-        ('areas_ao2_list', list()),  # 0
-        ]
 
-
-class ClientAO2d9d0(Enum):
-    HAS_CLIENTSIDE_MUSIC_LOOPING = True
-
+class ClientAO2d9d0(DefaultDROProtocol):
     ASKCHAA_INBOUND = [
         ('ao290doesnotsupportpacketswithnoarguments', ArgType.STR_OR_EMPTY),  # 0
         ]
@@ -758,10 +765,11 @@ class ClientAO2d9d0(Enum):
         ('pos', ''),  # 1
         ]
 
-    FA_OUTBOUND = [
-        ('areas_ao2_list', list()),  # 0
-        ]
+class ClientKFO2d8(ClientAO2d7):
+    pass
 
-ClientKFO2d8 = Enum('ClientKFO2d8', [(m.name, m.value) for m in ClientAO2d7])
-ClientCC22 = Enum('ClientCC22', [(m.name, m.value) for m in ClientAO2d6])
-ClientCC24 = Enum('ClientCC24', [(m.name, m.value) for m in ClientAO2d8d4])
+class ClientCC22(ClientAO2d6):
+    pass
+
+class ClientCC24(ClientAO2d8d4):
+    pass

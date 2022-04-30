@@ -701,7 +701,7 @@ class TestWhisper_04_Guide(_TestWhisper):
                 message = '{} with {} to {}'.format(sender, identifier, target)
                 sent_ooc = ('You gave the following guidance to {}: `{}`.'
                             .format(target.displayname, message))
-                target_ooc = 'You hear a guiding voice in your head.'
+                target_ooc = 'You hear a guiding voice in your head say `{}`.'.format(message)
                 staff_ooc = ('(X) {} [{}] gave the following guidance to {}: `{}` ({}).'
                              .format(sender.displayname, sender.id, target.displayname, message,
                                      sender.area.id))
@@ -719,7 +719,7 @@ class TestWhisper_04_Guide(_TestWhisper):
         message = '{} with {} to {}'.format(sender, identifier, target)
         sent_ooc = ('You gave the following guidance to {}: `{}`.'
                     .format(target.displayname, message))
-        target_ooc = 'You hear a guiding voice in your head.'
+        target_ooc = 'You hear a guiding voice in your head say `{}`.'.format(message)
         staff_ooc = ('(X) {} [{}] gave the following guidance to {}: `{}` ({}).'
                      .format(sender.displayname, sender.id, target.displayname, message,
                              sender.area.id))
@@ -744,7 +744,7 @@ class TestWhisper_04_Guide(_TestWhisper):
             message = '{} with {} to {}'.format(sender, identifier, target)
             sent_ooc = ('You gave the following guidance to {}: `{}`.'
                         .format(target.displayname, message))
-            target_ooc = 'You hear a guiding voice in your head.'
+            target_ooc = 'You hear a guiding voice in your head say `{}`.'.format(message)
             staff_ooc = ('(X) {} [{}] gave the following guidance to {}: `{}` ({}).'
                          .format(sender.displayname, sender.id, target.displayname, message,
                                  sender.area.id))

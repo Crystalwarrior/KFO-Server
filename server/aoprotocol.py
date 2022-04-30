@@ -202,10 +202,10 @@ class AOProtocol(asyncio.Protocol):
             fallback_protocols = list()
 
         packet_type = '{}_INBOUND'.format(identifier.upper())
-        protocols = [self.client.packet_handler]+fallback_protocols+[clients.DefaultDROProtocol]
+        protocols = [self.client.packet_handler]+fallback_protocols
         for protocol in protocols:
             try:
-                expected_pairs = protocol[packet_type].value
+                expected_pairs = getattr(protocol, packet_type)
             except KeyError:
                 continue
             expected_argument_names = [x[0] for x in expected_pairs]
@@ -324,30 +324,30 @@ class AOProtocol(asyncio.Protocol):
 
             if software == 'DRO':
                 if major >= 1:
-                    self.client.packet_handler = clients.ClientDRO1d1d0
+                    self.client.packet_handler = clients.ClientDRO1d1d0()
                 else:
-                    self.client.packet_handler = clients.ClientDRO1d0d0
+                    self.client.packet_handler = clients.ClientDRO1d0d0()
             else:  # AO2 protocol
                 if release == 2:
                     if major >= 9:
-                        self.client.packet_handler = clients.ClientAO2d9d0
+                        self.client.packet_handler = clients.ClientAO2d9d0()
                     elif major >= 8 and minor >= 4:
-                        self.client.packet_handler = clients.ClientAO2d8d4
+                        self.client.packet_handler = clients.ClientAO2d8d4()
                     elif major >= 8:  # KFO
-                        self.client.packet_handler = clients.ClientKFO2d8
+                        self.client.packet_handler = clients.ClientKFO2d8()
                     elif major == 7:  # AO 2.7
-                        self.client.packet_handler = clients.ClientAO2d7
+                        self.client.packet_handler = clients.ClientAO2d7()
                     elif major == 6:  # AO 2.6
-                        self.client.packet_handler = clients.ClientAO2d6
+                        self.client.packet_handler = clients.ClientAO2d6()
                     elif major == 4 and minor == 8:  # Older DRO
-                        self.client.packet_handler = clients.ClientDROLegacy
+                        self.client.packet_handler = clients.ClientDROLegacy()
                     else:
                         return False  # Unrecognized
                 elif release == 'CC':
                     if major >= 24:
-                        self.client.packet_handler = clients.ClientCC24
+                        self.client.packet_handler = clients.ClientCC24()
                     elif major >= 22:
-                        self.client.packet_handler = clients.ClientCC22
+                        self.client.packet_handler = clients.ClientCC22()
                     else:
                         return False  # Unrecognized
             # The only way to make it here is if we have not returned False
@@ -357,7 +357,7 @@ class AOProtocol(asyncio.Protocol):
         if not check_client_version():
             # Warn player they are using an unknown client.
             # Assume a legacy DRO client instruction set.
-            self.client.packet_handler = clients.ClientDRO1d0d0
+            self.client.packet_handler = clients.ClientDRO1d0d0()
             self.client.bad_version = True
 
         self.client.send_command_dict('FL', {
@@ -369,7 +369,7 @@ class AOProtocol(asyncio.Protocol):
             })
 
         version_to_send = [1, 0, 0]
-        if self.client.packet_handler == clients.ClientDRO1d1d0:
+        if self.client.packet_handler == clients.ClientDRO1d1d0():
             version_to_send = [1, 1, 0]
 
         self.client.send_command_dict('client_version', {
@@ -890,7 +890,7 @@ class AOProtocol(asyncio.Protocol):
         # We have to use fallback protocols for AO2d6 like clients, because if for whatever
         # reason if they don't set an in-client showname, they send less arguments. In
         # particular, they behave like Legacy DRO.
-        pargs = self.process_arguments('MC', args, fallback_protocols=[clients.ClientDROLegacy])
+        pargs = self.process_arguments('MC', args, fallback_protocols=[clients.ClientDROLegacy()])
         self.client.publish_inbound_command('MC', pargs)
 
         # First attempt to switch area,

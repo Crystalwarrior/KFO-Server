@@ -50,7 +50,7 @@ class ClientManager:
             self.required_packets_received = set()  # Needs to have length 2 to actually connect
             self.can_askchaa = True  # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined')  # AO version used established through ID pack
-            self.packet_handler = clients.ClientDRO1d1d0
+            self.packet_handler = clients.ClientDRO1d1d0()
             self.bad_version = False
             self.publisher = Publisher(self)
 
@@ -209,13 +209,10 @@ class ClientManager:
             to_send = list()
             idn = f'{identifier.upper()}_OUTBOUND'
             try:
-                outbound_args = self.packet_handler[idn].value
-            except KeyError:
-                try:
-                    outbound_args = clients.DefaultDROProtocol[idn].value
-                except KeyError:
-                    err = f'No matching protocol found for {idn}.'
-                    raise KeyError(err)
+                outbound_args = getattr(self.packet_handler, idn)
+            except AttributeError:
+                err = f'No matching protocol found for {idn}.'
+                raise KeyError(err)
 
             for (field, default_value) in outbound_args:
                 try:
@@ -305,7 +302,7 @@ class ClientManager:
             #  If params is not None, then the sent IC message will use the parameters given in
             #  params, and use the properties of sender to replace the parameters if needed.
 
-            pargs = {x: y for (x, y) in self.packet_handler.MS_OUTBOUND.value}
+            pargs = {x: y for (x, y) in self.packet_handler.MS_OUTBOUND}
             if params is None:
                 pargs['msg'] = msg
                 pargs['folder'] = folder
@@ -490,7 +487,7 @@ class ClientManager:
                         pargs['msg'] = '(Your ears are ringing)'
                         if (self.send_deaf_space
                             and self.packet_handler not in
-                            [clients.ClientDRO1d0d0, clients.ClientDRO1d1d0]):
+                            [clients.ClientDRO1d0d0(), clients.ClientDRO1d1d0()]):
                             pargs['msg'] = pargs['msg'] + ' '
                         self.send_deaf_space = not self.send_deaf_space
 
@@ -500,7 +497,7 @@ class ClientManager:
                 if sender and sender.multi_ic and sender.multi_ic_pre:
                     if pargs['msg'].startswith(sender.multi_ic_pre):
                         if (self != sender or self.packet_handler in
-                            [clients.ClientDRO1d0d0, clients.ClientDRO1d1d0]):
+                            [clients.ClientDRO1d0d0(), clients.ClientDRO1d1d0()]):
                             pargs['msg'] = pargs['msg'].replace(sender.multi_ic_pre, '', 1)
 
                 # Modify shownames as needed
@@ -585,7 +582,7 @@ class ClientManager:
             self.send_ic(msg='(Something catches your attention)', ding=1, hide_character=1)
 
         def send_ic_blankpost(self):
-            if self.packet_handler in [clients.ClientDRO1d0d0, clients.ClientDRO1d1d0]:
+            if self.packet_handler in [clients.ClientDRO1d0d0(), clients.ClientDRO1d1d0()]:
                 self.send_ic(msg='', hide_character=1, bypass_text_replace=True)
 
         def send_background(self, name: str = None, pos: str = None,
@@ -639,7 +636,7 @@ class ClientManager:
 
         def send_music(self, name=None, char_id=None, showname=None, force_same_restart=None,
                        loop=None, channel=None, effects=None):
-            if not self.packet_handler.HAS_CLIENTSIDE_MUSIC_LOOPING.value:
+            if not self.packet_handler.HAS_CLIENTSIDE_MUSIC_LOOPING:
                 file_extension_location = name.rfind('.')
                 if file_extension_location >= 0:
                     name = name[:file_extension_location]
@@ -878,21 +875,8 @@ class ClientManager:
             else:
                 raw_music_list = self.music_list
 
-            new_protocol = [
-                clients.ClientAO2d8d4,
-                clients.ClientAO2d9d0,
-                clients.ClientKFO2d8
-                ]
-
-            if self.packet_handler not in new_protocol:
-                # DRO and AO2.6< protocol
-                reloaded_music_list = self.server.build_music_list(from_area=self.area, c=self,
-                                                                   music_list=raw_music_list)
-                self.send_command_dict('FM', {
-                    'music_ao2_list': reloaded_music_list,
-                    })
-            else:
-                # KFO and AO2.8.4 deals with music lists differently than other clients
+            if self.packet_handler.HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS:
+                # DRO 1.1.0+, KFO and AO2.8.4+ deals with music lists differently than older clients
                 # They want the area lists and music lists separate, so they will have it like that
                 area_list = self.server.build_music_list(from_area=self.area, c=self,
                                                          include_areas=True,
@@ -904,6 +888,13 @@ class ClientManager:
                                                             specific_music_list=raw_music_list)
                 self.send_command_dict('FM', {
                     'music_ao2_list': music_list,
+                    })
+            else:
+                # DRO 1.0.0< and AO2.6< protocol
+                reloaded_music_list = self.server.build_music_list(from_area=self.area, c=self,
+                                                                   music_list=raw_music_list)
+                self.send_command_dict('FM', {
+                    'music_ao2_list': reloaded_music_list,
                     })
 
             # Update the new music list of the client once everything is done, if a new music list
@@ -955,7 +946,6 @@ class ClientManager:
             self.is_blind = blind
 
             if self.is_blind:
-                self.send_background(name=self.server.config['blackout_background'])
                 self.send_ic_blankpost()  # Clear screen
             else:
                 self.send_background(name=self.area.background,
