@@ -953,8 +953,10 @@ class Area:
                     client.send_ooc(ex)
                     return
 
-            # DRO 1.0.0 client compatibility, tell the client we acknowledged their MS packet
-            client.send_command("ackMS")
+            if client:
+                # DRO 1.0.0 client compatibility, tell the client we acknowledged their MS packet
+                client.send_command("ackMS")
+
             if targets is None:
                 targets = self.clients
             for c in targets:
