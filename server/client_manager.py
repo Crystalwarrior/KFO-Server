@@ -186,7 +186,8 @@ class ClientManager:
                             lst[5] = self.area.last_ic_message[5]
                         else:
                             # Set the pos to the 0th pos-lock
-                            lst[5] = self.area.pos_lock[0]
+                            if len(self.area.pos_lock) > 0:
+                                lst[5] = self.area.pos_lock[0]
                         args = tuple(lst)
                     for evi_num in range(len(self.evi_list)):
                         if self.evi_list[evi_num] == args[11]:
