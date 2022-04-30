@@ -2924,11 +2924,9 @@ def ooc_cmd_guide(client: ClientManager.Client, arg: str):
     if client == target:
         raise ClientError('You cannot guide yourself.')
 
-    client.send_ooc('You gave the following guidance to {}: `{}`.'
-                    .format(target.displayname, msg))
-
-    target.send_ooc('You hear a guiding voice in your head.')
-    target.send_ic(msg=msg, showname='[G] ???', hide_character=1, bypass_replace=True)
+    client.send_ooc(f'You gave the following guidance to {target.displayname}: `{msg}`.')
+    target.send_ooc(f'You hear a guiding voice in your head say `{msg}`.')
+    target.send_ic(msg=msg, showname='[G] ???', hide_character=1, bypass_text_replace=True)
 
     client.send_ooc_others('(X) {} [{}] gave the following guidance to {}: `{}` ({}).'
                            .format(client.displayname, client.id, target.displayname, msg,
@@ -9084,7 +9082,7 @@ def ooc_cmd_whisper(client: ClientManager.Client, arg: str):
         client.send_ooc(f'You whispered `{final_message}` to {final_target}.')
         client.send_ic(msg=msg, pos=client.pos, folder=client.char_folder, char_id=client.char_id,
                        showname='[W] ' + client.showname, hide_character=1,
-                       bypass_replace=False, bypass_deafened_starters=True)
+                       bypass_deafened_starters=True)
         client.check_lurk()
 
         target.send_ooc(f'{final_sender} whispered `{final_message}` to you.', to_deaf=False)
@@ -10214,7 +10212,7 @@ def ooc_cmd_narrate(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, is_staff=True)
 
     for c in client.area.clients:
-        c.send_ic(msg=arg, hide_character=1, bypass_replace=True)
+        c.send_ic(msg=arg, hide_character=1, bypass_text_replace=True)
 
 
 def ooc_cmd_mod_narrate(client: ClientManager.Client, arg: str):
@@ -10237,7 +10235,7 @@ def ooc_cmd_mod_narrate(client: ClientManager.Client, arg: str):
     Constants.assert_command(client, arg, is_staff=True)
 
     for c in client.area.clients:
-        c.send_ic(msg=arg, color=5, hide_character=1, bypass_replace=True)
+        c.send_ic(msg=arg, color=5, hide_character=1, bypass_text_replace=True)
 
 
 def ooc_cmd_peek(client: ClientManager.Client, arg: str):
@@ -11038,6 +11036,19 @@ def ooc_cmd_zone_autopass(client: ClientManager.Client, arg: str):
 
     logger.log_server(f'[{client.area.id}][{client.get_char_name()}]Changed autopass in zone '
                       f'{zone.get_id()} to {zone_autopass}.', client)
+
+
+def ooc_cmd_think(client: ClientManager.Client, arg: str):
+    Constants.assert_command(client, arg, parameters='>0')
+
+    msg = arg[:256]
+
+    client.send_ic(msg=msg, pos=client.pos, folder=client.char_folder, char_id=client.char_id,
+                   showname='[T] ' + client.showname, hide_character=1, bypass_text_replace=True,
+                   use_last_received_sprites=True)
+    client.send_ooc(f'You thought `{arg}`.')
+    client.send_ooc_others(f'{client.displayname} [{client.id}] thought `{arg}` '
+                           f'({client.area.id}).', is_zstaff_flex=True)
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):

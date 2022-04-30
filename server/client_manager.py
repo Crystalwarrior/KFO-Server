@@ -285,7 +285,7 @@ class ClientManager:
                     pred: Callable[[ClientManager.Client], bool] = None,
                     not_to: ClientManager.Client = None, gag_replaced=False,
                     is_staff=None, in_area=None, to_blind=None, to_deaf=None,
-                    bypass_replace=False, bypass_deafened_starters=False,
+                    bypass_text_replace=False, bypass_deafened_starters=False,
                     use_last_received_sprites=False,
                     msg=None, folder=None, pos=None, char_id=None, ding=None, color=None,
                     showname=None, hide_character=0):
@@ -370,107 +370,111 @@ class ClientManager:
                 if argument in dictionary:
                     dictionary.pop(argument)
 
-            # Change the message to account for receiver's properties
-            if not bypass_replace:
-                # Change "character" parts of IC port
-                if self.is_blind:
+            # Change "character" parts of IC port
+            if self.is_blind:
+                pargs['anim'] = '../../misc/blank'
+                pargs['hide_character'] = 1
+                self.send_background(name=self.server.config['blackout_background'])
+            # If self just spoke while in first person mode, change the message they receive
+            # accordingly for them so they do not see themselves talking
+            # Also do this replacement if the sender is not in forward sprites mode
+            elif (use_last_received_sprites or
+                    (sender == self and self.first_person) or
+                    (sender and not sender.forward_sprites)):
+                # last_sender: Client who actually sent the new message
+                # last_apparent_sender: Client whose sprites were used for the last message
+                # last_args: "MS" arguments to the last message
+                # Do note last_sender != last_apparent_sender if a person receives a message
+                # from someone in not forward sprites mode. In that case, last_sender is
+                # updated with this new client, but last apparent_sender is not.
+
+                # First check this is first person mode. By doing this check first we
+                # guarantee ourselves we do not pick the last message that could possibly
+                # be self
+                if sender == self and self.first_person:
+                    last_apparent_sender, last_args, last_apparent_args = self.last_received_ic_notme
+                else:
+                    last_apparent_sender, last_args, last_apparent_args = self.last_received_ic
+
+                # Make sure showing previous sender makes sense. If it does not make sense now,
+                # it will not make sense later.
+
+                # If last sender is no longer connected, do not show previous sender
+                if not last_apparent_sender or not self.server.is_client(last_apparent_sender):
                     pargs['anim'] = '../../misc/blank'
-                    pargs['hide_character'] = 1
-                    self.send_background(name=self.server.config['blackout_background'])
-                # If self just spoke while in first person mode, change the message they receive
-                # accordingly for them so they do not see themselves talking
-                # Also do this replacement if the sender is not in forward sprites mode
-                elif (use_last_received_sprites or
-                      (sender == self and self.first_person) or
-                      (sender and not sender.forward_sprites)):
-                    # last_sender: Client who actually sent the new message
-                    # last_apparent_sender: Client whose sprites were used for the last message
-                    # last_args: "MS" arguments to the last message
-                    # Do note last_sender != last_apparent_sender if a person receives a message
-                    # from someone in not forward sprites mode. In that case, last_sender is
-                    # updated with this new client, but last apparent_sender is not.
+                    self.last_received_ic_notme = [None, None, None]
+                    self.last_received_ic = [None, None, None]
+                # If last apparent sender and self are not in the same area, do not show
+                # previous sender
+                elif self.area != last_apparent_sender.area:
+                    pargs['anim'] = '../../misc/blank'
+                    self.last_received_ic_notme = [None, None, None]
+                    self.last_received_ic = [None, None, None]
+                # If last sender has changed character, do not show previous sender
+                elif ((last_apparent_sender.char_id != last_apparent_args['char_id'] or
+                        last_apparent_sender.char_folder != last_apparent_args['folder'])):
+                    # We need to check for iniswaps as well, to account for this possibility:
+                    # 1. A and B are in the same room. A as in first person mode
+                    # 2. B talks to A and moves to another room
+                    # 3. B iniswaps without changing character and talks in their new area
+                    # 4. B goes back to A's area and talks there
+                    # 5. If A had received no other message in the meantime, clear the last
+                    # character seen.
+                    pargs['anim'] = '../../misc/blank'
+                    self.last_received_ic_notme = [None, None, None]
+                    self.last_received_ic = [None, None, None]
+                # Do not show previous sender if
+                # 1. Previous sender is sneaked and is not GM, and
+                # 2. It is not the case self is in a party, the same one as previous sender,
+                # and self is sneaked
+                elif (not last_apparent_sender.is_visible and
+                        not last_apparent_sender.is_staff() and
+                        not (self.party and self.party == last_apparent_sender.party
+                            and not self.is_visible)):
+                    # It will still be the case self will reveal themselves by talking
+                    # They will however see last sender if needed
+                    pargs['anim'] = '../../misc/blank'
+                    self.last_received_ic_notme = [None, None, None]
+                    self.last_received_ic = [None, None, None]
+                # Otherwise, show message
+                else:
+                    pargs['folder'] = last_args['folder']
+                    pargs['anim'] = last_args['anim']
+                    pargs['pos'] = last_args['pos']
+                    pargs['anim_type'] = last_args['anim_type']
+                    pargs['flip'] = last_args['flip']
 
-                    # First check this is first person mode. By doing this check first we
-                    # guarantee ourselves we do not pick the last message that could possibly
-                    # be self
-                    if sender == self and self.first_person:
-                        last_apparent_sender, last_args, last_apparent_args = self.last_received_ic_notme
-                    else:
-                        last_apparent_sender, last_args, last_apparent_args = self.last_received_ic
+                # Regardless of anything, pairing is visually canceled while in first person
+                # so set them to default values
 
-                    # Make sure showing previous sender makes sense. If it does not make sense now,
-                    # it will not make sense later.
-
-                    # If last sender is no longer connected, do not show previous sender
-                    if not last_apparent_sender or not self.server.is_client(last_apparent_sender):
-                        pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None, None]
-                        self.last_received_ic = [None, None, None]
-                    # If last apparent sender and self are not in the same area, do not show
-                    # previous sender
-                    elif self.area != last_apparent_sender.area:
-                        pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None, None]
-                        self.last_received_ic = [None, None, None]
-                    # If last sender has changed character, do not show previous sender
-                    elif ((last_apparent_sender.char_id != last_apparent_args['char_id'] or
-                           last_apparent_sender.char_folder != last_apparent_args['folder'])):
-                        # We need to check for iniswaps as well, to account for this possibility:
-                        # 1. A and B are in the same room. A as in first person mode
-                        # 2. B talks to A and moves to another room
-                        # 3. B iniswaps without changing character and talks in their new area
-                        # 4. B goes back to A's area and talks there
-                        # 5. If A had received no other message in the meantime, clear the last
-                        # character seen.
-                        pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None, None]
-                        self.last_received_ic = [None, None, None]
-                    # Do not show previous sender if
-                    # 1. Previous sender is sneaked and is not GM, and
-                    # 2. It is not the case self is in a party, the same one as previous sender,
-                    # and self is sneaked
-                    elif (not last_apparent_sender.is_visible and
-                          not last_apparent_sender.is_staff() and
-                          not (self.party and self.party == last_apparent_sender.party
-                               and not self.is_visible)):
-                        # It will still be the case self will reveal themselves by talking
-                        # They will however see last sender if needed
-                        pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None, None]
-                        self.last_received_ic = [None, None, None]
-                    # Otherwise, show message
-                    else:
-                        pargs['folder'] = last_args['folder']
-                        pargs['anim'] = last_args['anim']
-                        pargs['pos'] = last_args['pos']
-                        pargs['anim_type'] = last_args['anim_type']
-                        pargs['flip'] = last_args['flip']
-
-                    # Regardless of anything, pairing is visually canceled while in first person
-                    # so set them to default values
-
+                pop_if_there(pargs, 'other_offset')
+                pop_if_there(pargs, 'other_emote')
+                pop_if_there(pargs, 'other_flip')
+                pop_if_there(pargs, 'other_folder')
+                pop_if_there(pargs, 'offset_pair')
+                pop_if_there(pargs, 'charid_pair')
+                # Note this does not affect the client object internal values, it just
+                # simulates the client is not part of their pair if they are in first person
+                # mode.
+            elif sender != self and self.first_person:
+                # Address the situation where this client is in first person mode, paired with
+                # someone else, and that someone else speaks in IC. This will 'visually' cancel
+                # pairing for this client, but not remove it completely. It is just so that
+                # the client's own sprites do not appear.
+                if pargs.get('charid_pair', -1) == self.char_id:
                     pop_if_there(pargs, 'other_offset')
                     pop_if_there(pargs, 'other_emote')
                     pop_if_there(pargs, 'other_flip')
                     pop_if_there(pargs, 'other_folder')
                     pop_if_there(pargs, 'offset_pair')
                     pop_if_there(pargs, 'charid_pair')
-                    # Note this does not affect the client object internal values, it just
-                    # simulates the client is not part of their pair if they are in first person
-                    # mode.
-                elif sender != self and self.first_person:
-                    # Address the situation where this client is in first person mode, paired with
-                    # someone else, and that someone else speaks in IC. This will 'visually' cancel
-                    # pairing for this client, but not remove it completely. It is just so that
-                    # the client's own sprites do not appear.
-                    if pargs.get('charid_pair', -1) == self.char_id:
-                        pop_if_there(pargs, 'other_offset')
-                        pop_if_there(pargs, 'other_emote')
-                        pop_if_there(pargs, 'other_flip')
-                        pop_if_there(pargs, 'other_folder')
-                        pop_if_there(pargs, 'offset_pair')
-                        pop_if_there(pargs, 'charid_pair')
 
+            # Modify folder as needed
+            if self.is_blind and self.is_deaf:
+                pargs['folder'] = None
+
+            # Change the message to account for receiver's properties
+            if not bypass_text_replace:
                 # Change "message" parts of IC port
                 allowed_starters = ('(', '*', '[')
                 allowed_messages = (' ', '  ')
@@ -504,10 +508,6 @@ class ClientManager:
                     pargs['showname'] = '???'
                 elif self.show_shownames and sender:
                     pargs['showname'] = sender.showname
-
-                # Modify folder as needed
-                if self.is_blind and self.is_deaf:
-                    pargs['folder'] = None
 
             # Apply any custom functions
             proper_attributes = {attribute for attribute in pargs
@@ -561,7 +561,8 @@ class ClientManager:
             self.send_command_dict('MS', final_pargs)
 
         def send_ic_others(self, params: List = None, sender: ClientManager.Client=None,
-                           bypass_replace: bool = False, bypass_deafened_starters: bool =False,
+                           bypass_text_replace: bool = False,
+                           bypass_deafened_starters: bool = False,
                            pred: Callable[[ClientManager.Client], bool] = None, not_to=None,
                            gag_replaced=False, is_staff=None, in_area=None, to_blind=None,
                            to_deaf=None, msg=None, folder=None, pos=None, char_id=None, ding=None,
@@ -573,7 +574,7 @@ class ClientManager:
                 not_to = not_to.union({self})
 
             for c in self.server.get_clients():
-                c.send_ic(params=None, sender=sender, bypass_replace=bypass_replace,
+                c.send_ic(params=None, sender=sender, bypass_text_replace=bypass_text_replace,
                           bypass_deafened_starters=bypass_deafened_starters,
                           pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
@@ -585,7 +586,7 @@ class ClientManager:
 
         def send_ic_blankpost(self):
             if self.packet_handler in [clients.ClientDRO1d0d0, clients.ClientDRO1d1d0]:
-                self.send_ic(msg='', hide_character=1, bypass_replace=True)
+                self.send_ic(msg='', hide_character=1, bypass_text_replace=True)
 
         def send_background(self, name: str = None, pos: str = None,
                             tod_backgrounds: Dict[str, str] = None):

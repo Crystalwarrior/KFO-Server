@@ -260,6 +260,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Switches you to a SPECTATOR character.
 * **switch** "character name"
     - Switches you to the given character, provided no other player is using it in the area and it is not restricted.
+* **think** "message"
+    - Sends an IC message that only you and zone watchers or GMs+ can see.
 * **time**
     - Displays the server's local time.
 * **time12**
