@@ -739,6 +739,12 @@ class ClientManager:
                 return self.char_showname
             return self.get_char_name()
 
+        @property
+        def showname_else_char_showname(self) -> str:
+            if self.showname:
+                return self.showname
+            return self.char_showname
+
         def change_character(self, char_id: int, force: bool = False,
                              target_area: AreaManager.Area = None,
                              announce_zwatch: bool = True):
