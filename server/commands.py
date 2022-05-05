@@ -1798,6 +1798,48 @@ def ooc_cmd_clock_set(client: ClientManager.Client, arg: str):
     client.server.tasker.cancel_task(task)
 
 
+def ooc_cmd_clock_set_hours(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Sets up the number of hours a day cycle clock has per day.
+    If the new number of hours in a day exceeds the current hour, the hour will be set to 0.
+    If there were any periods set to start at an hour beyond the new number of hours in a day, they
+    will be removed, and users in the area will be set to an appropriate period if necessary.
+    Returns an error if you have not started a day cycle, or if the number is not a positive number.
+
+    SYNTAX
+    /clock_set_hours <hours_in_day>
+
+    PARAMETERS
+    <hours_in_day>: New number of hours in the day.
+
+    EXAMPLES
+    >>> /clock_set_hours 24
+    Sets your day cycle to have 24 hours.
+    >>> /clock_set_hours 30
+    Sets your day cycle to have 30 hours.
+    >>> /clock_set_hours 2
+    Sets your day cycle to have 2 hours.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    try:
+        task = client.server.tasker.get_task(client, ['as_day_cycle'])
+    except KeyError:
+        raise ClientError('You have not initiated any day cycles.')
+
+    try:
+        hours_in_day = int(arg)
+        if hours_in_day <= 0:
+            raise ValueError
+    except ValueError:
+        raise ArgumentError(f'Invalid number of hours per day {hours_in_day}.')
+
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'hours_in_day', hours_in_day)
+    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'set_hours')
+    client.server.tasker.cancel_task(task)
+
+
 def ooc_cmd_clock_unknown(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Sets the client's day cycle time to unknown. Time does not flow in this mode, and clients in
@@ -3081,6 +3123,114 @@ def ooc_cmd_help(client: ClientManager.Client, arg: str):
     client.send_ooc(message)
 
 
+def ooc_cmd_help_more(client: ClientManager.Client, arg: str):
+    """
+    Returns additional information about a command, obtained by reading the associated description
+    in the commands.py server file. Such information is usually more descriptive than the one in
+    the README.md (which is brief by design), as well as including potential interactions and ways
+    the command can fail.
+    Returns an error if a given command name had no associated instructions in the file, or if its
+    description is otherwise unparseable.
+
+    SYNTAX
+    /help_more <command_name>
+
+    PARAMETERS
+    <command_name>: Name of command.
+
+    EXAMPLES
+    >>> /help_more help_more
+    Returns additional information about the command `help_more` (namely, the text you are reading
+    now).
+    """
+
+    Constants.assert_command(client, arg, parameters='=1')
+
+    try:
+        command = getattr(client.server.commands, f'ooc_cmd_{arg}')
+    except AttributeError:
+        raise ClientError(f'Could not find more help for command `{arg}`.')
+
+    raw_doc = command.__doc__
+    doc = raw_doc.strip().replace('\t', '').split('\n')
+    doc = [line.strip() for line in doc]
+    if not doc:
+        raise ClientError(f'Unable to generate more help for command `{arg}`.')
+    if raw_doc[0] == '\n':
+        doc.insert(0, '(NONE)')
+
+    parsed_doc = [[], [], [], [], [], []]
+    modes = {
+        'SYNTAX': 2,
+        'PARAMETERS': 3,
+        'OPTIONAL PARAMETERS': 4,
+        'EXAMPLE': 5,
+        'EXAMPLES': 5,
+    }
+
+    parsed_doc[0].append(doc[0])
+
+    mode = 1
+    for line in doc[1:]:
+        if not line:
+            continue
+        if line in modes:
+            mode = modes[line]
+        parsed_doc[mode].append(line)
+
+    if not parsed_doc[1] or not parsed_doc[2] or not parsed_doc[3] or not parsed_doc[5]:
+        raise ClientError(f'Unable to generate more help for command `{arg}`.')
+
+    client.send_ooc(f'Generating additional help for command {arg}...')
+
+    # Rank requirement
+    output = 'RANK REQUIREMENTS: '
+    output += parsed_doc[0][0].replace('(', '').replace(')', '').strip()
+    client.send_ooc(output)
+
+    # Description
+    output = 'DESCRIPTION\r\n '
+    for line in parsed_doc[1]:
+        if line.startswith('Returns an error'):
+            output += '\r\n'
+        output += line + ' '
+    client.send_ooc(output.strip())
+
+    # Syntax
+    output = 'SYNTAX\r\n'
+    for line in parsed_doc[2][1:]:
+        output += line + '\r\n'
+    client.send_ooc(output.strip())
+
+    # Parameters
+    output = 'PARAMETERS'
+    for line in parsed_doc[3][1:]:
+        if line.startswith('<') or line == 'None':
+            output += '\r\n'
+        output += line + ' '
+    client.send_ooc(output.strip())
+
+    # Optional parameters
+    if parsed_doc[4]:
+        output = 'OPTIONAL PARAMETERS'
+        for line in parsed_doc[4][1:]:
+            if line.startswith('{'):
+                output += '\r\n'
+            output += line + ' '
+        client.send_ooc(output.strip())
+
+    # Examples
+    output = 'EXAMPLES\r\n'
+    for line in parsed_doc[5][1:]:
+        if line.startswith('>>> '):
+            output += '\r\n' + line + '\r\n'
+        elif line.startswith('| '):
+            output += '\r\n' + line + '\r\n'
+        else:
+            output += line + ' '
+    client.send_ooc(output.replace('\r\n\r\n', '\r\n').strip())
+
+
 def ooc_cmd_iclock(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Toggles IC messages by non-staff or players without IC lock bypass in the current area being
@@ -4239,6 +4389,284 @@ def ooc_cmd_mute(client: ClientManager.Client, arg: str):
         c.is_muted = True
 
 
+def ooc_cmd_notecard(client: ClientManager.Client, arg: str):
+    """
+    Sets the content of your own notecard.
+    Content over 1024 characters will be discarded.
+
+    SYNTAX
+    /notecard <content>
+
+    PARAMETERS
+    <content>: Content of your notecard
+
+    EXAMPLE
+    /notecard Hello world    :: Sets the content of your notecard to `Hello world`.
+    """
+
+    Constants.assert_command(client, arg, parameters='>0')
+
+    client.notecard = arg[:1024]
+    client.send_ooc(f'You set your notecard to `{client.notecard}`.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set their notecard to '
+                           f'`{client.notecard}`.', is_zstaff_flex=True)
+
+
+def ooc_cmd_notecard_clear(client: ClientManager.Client, arg: str):
+    """ (VARYING REQUIREMENTS)
+    Clears the content of your own notecard or, (STAFF ONLY) that of a given player by client ID.
+    Returns an error if the target's notecard was already cleared, or if the given identifier
+    does not correspond to a user.
+
+    SYNTAX
+    /notecard_clear {client_id}
+
+    PARAMETERS
+    None
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /notecard_clear   :: Clears your own notecard
+    /notecard_clear 2 :: Clears the notecard of player with client ID 2.
+    """
+
+    Constants.assert_command(client, arg, parameters='<2')
+
+    if arg and not client.is_staff():
+        raise ClientError.UnauthorizedError('You must be authorized to use the one-parameter '
+                                            'version of this command.')
+    if arg:
+        target = Constants.parse_id(client, arg)
+    else:
+        target = client
+
+    if target == client:
+        if not client.notecard:
+            raise ClientError('Your notecard is already empty.')
+        client.notecard = ''
+        client.send_ooc('Your notecard is now cleared.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared their notecard.',
+                               is_zstaff_flex=True)
+    else:
+        if not target.notecard:
+            raise ClientError(f'The notecard of {target.displayname} [{target.id}] is '
+                              f'already empty.')
+        target.notecard = ''
+        target.send_ooc('Your notecard was cleared.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared the '
+                               f'notecard of {target.displayname} [{target.id}] ({client.area.id})',
+                               is_zstaff_flex=True, not_to={target})
+
+
+def ooc_cmd_notecard_clear_area(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Clears the content of the notecards of all players in your current area.
+    Returns an error if no player in the area has a notecard set.
+
+    SYNTAX
+    /notecard_clear_area
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /notecard_clear_area   :: Clears the notecards of all players in your current area.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    targets = [target for target in client.area.clients if target.notecard]
+    if not targets:
+        raise ClientError('No players in your current area have a notecard set.')
+
+    for target in targets:
+        target.notecard = ''
+
+    client.send_ooc('You cleared the notecards of all players in the area.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared the notecards of all '
+                           f'players in their area ({client.area.id}).', is_zstaff_flex=True)
+    client.send_ooc_others(f'The notecards of all players in your area were cleared.',
+                           is_zstaff_flex=False, in_area=client.area)
+
+
+def ooc_cmd_notecard_info(client: ClientManager.Client, arg: str):
+    """ (VARYING REQUIREMENTS)
+    Returns the content of your current notecard or, (STAFF ONLY) that of a given player by
+    client ID.
+    Returns an error if the target's notecard is not set, or if the given identifier
+    does not correspond to a user.
+
+    SYNTAX
+    /notecard_info {client_id}
+
+    PARAMETERS
+    None
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    /notecard_info   :: Gets the content of your own notecard
+    /notecard_info 2 :: Gets the content of the notecard of player with client ID 2.
+    """
+
+    Constants.assert_command(client, arg, parameters='<2')
+
+    if arg and not client.is_staff():
+        raise ClientError.UnauthorizedError('You must be authorized to use the one-parameter '
+                                            'version of this command.')
+    if arg:
+        target = Constants.parse_id(client, arg)
+    else:
+        target = client
+
+    if target == client:
+        if not client.notecard:
+            raise ClientError('Your notecard is empty.')
+        client.send_ooc(f'Your notecard says `{client.notecard}`.')
+    else:
+        if not target.notecard:
+            raise ClientError(f'The notecard of {target.displayname} [{target.id}] is empty.')
+        client.send_ooc(f'The notecard of {target.displayname} [{target.id}] says '
+                        f'`{target.notecard}`.')
+
+
+def ooc_cmd_notecard_check(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Returns the contents of all notecards set by players in the current area.
+    Returns an error if no player in the current area have any notecards set.
+
+    SYNTAX
+    /notecard_check
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /notecard_check  :: Returns the contents of all notecards set by players in the current area.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    with_notecards = [target for target in client.area.clients if target.notecard]
+    if not with_notecards:
+        raise ClientError('No players in your current have any notecards set.')
+
+    output = ''
+    for target in sorted(with_notecards):
+        output += f'\r\n[{target.id}] {target.displayname}: {target.notecard}'
+
+    client.send_ooc(f'== Notecards in the current area =='
+                    f'{output}')
+
+
+def ooc_cmd_notecard_list(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Returns the contents of all notecards set by players in the server.
+    Returns an error if no player in the server have any notecards set.
+
+    SYNTAX
+    /notecard_list
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /notecard_list  :: Returns the contents of all notecards set by players in the server.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    with_notecards = [target for target in client.server.get_clients() if target.notecard]
+    if not with_notecards:
+        raise ClientError('No players in the server have any notecards set.')
+
+    output = ''
+    for target in sorted(with_notecards):
+        output += f'\r\n[{target.id}] {target.displayname} ({target.area.id}): {target.notecard}'
+
+    client.send_ooc(f'== Active notecards =='
+                    f'{output}')
+
+
+def ooc_cmd_notecard_reveal(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Reveals the contents of all notecards set by players in the area (possibly indicating that
+    no notecards were set) to all players in the area.
+
+    SYNTAX
+    /notecard_reveal
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /notecard_reveal  :: Reveals the contents of all notecards set by players in the area.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    with_notecards = [target for target in client.area.clients if target.notecard]
+
+    output = ''
+    for target in sorted(with_notecards):
+        output += f'\r\n[{target.id}] {target.displayname}: {target.notecard}'
+    if not output:
+        output = '\r\n*No player in the area has set a notecard.'
+
+    client.send_ooc('You revealed all notecards in the area.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] revealed all notecards in '
+                           f'area {client.area.name} ({client.area.id}).', is_zstaff_flex=True)
+    client.area.broadcast_ooc(f'The notecards in the area were revealed: '
+                              f'{output}')
+
+
+def ooc_cmd_notecard_reveal_count(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Tallies the number of times each notecard content of a player in the area was the content of
+    some player in the area (possibly indicating that no notecards were set) and reveals the tally
+    to all players in the area. This does not reveal who wrote which notecard.
+    Two notecard contents are said to be the same if they are the same ignoring leading or trailing
+    whitespace, as well as any capitalization or fullstops at the end.
+
+    SYNTAX
+    /notecard_reveal_count
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    /notecard_reveal_count  :: Reveals the frequency of each notecard.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    raw_notecards = [target.notecard for target in client.area.clients if target.notecard]
+    if not raw_notecards:
+        output = '\r\n*No player in the area has set a notecard.'
+    else:
+        notecards = []
+        for raw_notecard in raw_notecards:
+            notecard = raw_notecard.strip().upper()
+            if notecard.endswith('.'):
+                notecard = notecard[:-1]
+            notecards.append(notecard)
+        notecards.sort()
+        tally = collections.Counter(notecards)
+        output = ''
+        for (value, count) in tally.most_common():
+            output += f'\r\n*{value}: {count} of {tally.total()}'
+
+    client.send_ooc('You revealed the tally of all notecards in the area.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] revealed the tally of all '
+                           f'notecards in area {client.area.name} ({client.area.id}).',
+                           is_zstaff_flex=True)
+    client.area.broadcast_ooc(f'The tally of all notecards in the area was revealed: '
+                              f'{output}')
+
+
 def ooc_cmd_noteworthy(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Toggles the area being noteworthy or not. If made noteworthy, all players in the area will
@@ -5133,6 +5561,83 @@ def ooc_cmd_ooc_unmute(client: ClientManager.Client, arg: str):
         client.area.broadcast_ooc("{} was OOC-unmuted.".format(c.name))
 
 
+def ooc_cmd_paranoia(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Changes the player paranoia level of a user by client ID, which affects the probability a
+    user receives a phantom peek message every phantom peek cycle. The player paranoia level
+    is a percentage from -100 to 100, by default 2.
+    A phantom peek message is a message that looks like one received from being an area that was
+    just peeked into.
+    A phantom peek cycle is a cycle of a length randomly chosen between 150 to 450 seconds, after
+    which the server, with probability "player paranoia + zone paranoia", starts a timer of length
+    a random number less than 150 seconds, after which it sends the user a phantom peek message
+    if they are not blind and not staff, in an area that is not a lobby or private area, and they
+    have a valid character selected. A new phantom peek cycle is restarted regardless of success
+    after the old one expires.
+    Returns an error if the given identifier does not correspond to a user, or if the new player
+    paranoia level is not a number from -100 to 100.
+
+    SYNTAX
+    /paranoia <client_id> <player_paranoia_level>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+    <player_paranoia_level>: New intended player paranoia level
+
+    EXAMPLES
+    >>> /paranoia 2 5
+    Sets the player paranoia level of user with client ID 2 to 5%.
+    >>> /paranoia 10 -10
+    Sets the player paranoia level of user with client ID 10 to -10%.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=2')
+
+    raw_id, raw_paranoia = arg.split(' ')
+    target = Constants.parse_id(client, raw_id)
+    try:
+        paranoia = float(raw_paranoia)
+    except ValueError:
+        raise ClientError('New player paranoia value must be a number.')
+    if not (-100 <= paranoia <= 100):
+        raise ClientError('New player paranoia value must be a number from 0 to 100.')
+
+    target.paranoia = paranoia
+    client.send_ooc(f'You set the player paranoia level of {target.displayname} [{target.id}] to '
+                    f'{paranoia}.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set the player paranoia level '
+                           f'of {target.displayname} [{target.id}] to {paranoia} '
+                           f'({client.area.id}).',
+                           is_zstaff_flex=True)
+
+
+def ooc_cmd_paranoia_info(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Gets the current player paranoia level by client ID.
+    Returns an error if the given identifier does not correspond to a user.
+
+    SYNTAX
+    /paranoia_info <client_id>
+
+    PARAMETERS
+    <client_id>: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    >>> /paranoia_info 7
+    Gets the player paranoia level of user with client ID 7.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    target = Constants.parse_id(client, arg)
+    if target.paranoia == 2:
+        client.send_ooc(f'The paranoia level of {target.displayname} [{target.id}] is the '
+                        f'default level of 2.')
+    else:
+        client.send_ooc(f'The paranoia level of {target.displayname} [{target.id}] is '
+                        f'{target.paranoia}.')
+
+
 def ooc_cmd_party(client: ClientManager.Client, arg: str):
     """
     Creates a party and makes you the leader of it. Party members will all move in groups
@@ -5753,6 +6258,101 @@ def ooc_cmd_passage_restore(client: ClientManager.Client, arg: str):
                         'state.'.format(areas[0].name, areas[1].name))
 
 
+def ooc_cmd_peek(client: ClientManager.Client, arg: str):
+    """
+    Obtains information about an area visible from the current area equivalent to doing /look there.
+    If the area is not locked, there is an unlocked passage connecting it to the current area, and
+    the target area's lights are on, the peek succeeds, and players in the area are notified that
+    a peek occurred with a 75% chance each, provided the peeker is not sneaking, you are not
+    blind and the area's lights are turned on; otherwise, no notification is sent.
+    Otherwise, the peek fails, and no notifications are sent to players in the area.
+    If the peek succeeds or fails (but is not void), zone watchers are notified of the attempt, and
+    so are players in the same area as the peeker, provided such players are able to see the peeker
+    via /look.
+    Returns an error if you are blind, or try to peek into their current area or into an area that
+    is a private area, a lobby area, or an area with no visible passage from the current area.
+
+    SYNTAX
+    /peek <area_id>
+
+    PARAMETERS
+    <area_id>: ID of the area whose door you want to peek.
+
+    EXAMPLES
+    >>> /peek 1
+    Peek into area 1.
+    """
+
+    Constants.assert_command(client, arg, parameters='>0')
+
+    if client.is_blind:
+        raise ClientError('You are blind, so you cannot see anything.')
+
+    # Obtain target area, which also does validation
+    target_area = Constants.parse_area_names(client, [arg])[0]
+    if target_area == client.area:
+        raise ClientError('You cannot peek into your current area.')
+    if target_area.name not in client.area.visible_areas:
+        raise ClientError('You do not see a passage to that area.')
+    if target_area.lobby_area:
+        raise ClientError('You cannot peek into lobby areas.')
+    if target_area.private_area:
+        raise ClientError('You cannot peek into private areas.')
+
+    area_lock_ok = not (target_area.is_locked and not client.is_staff()
+                        and client.ipid not in target_area.invite_list)
+    reachable_ok = target_area.name in client.area.reachable_areas
+    # Two cases:
+    # 1. if passage exists and area not locked
+    # 2. Either is not true
+
+    if area_lock_ok and reachable_ok:
+        if target_area.lights:
+            _, area_description, player_description = target_area.get_look_output_for(client)
+            client.send_ooc(
+                f'You peek into area {target_area.name} and note the following:\r\n'
+                f'*About the people in there: you see {player_description}\r\n'
+                f'*About the area: {area_description}'
+            )
+            if client.is_visible:
+                client.send_ooc_others(f'You see {client.displayname} is peeking into area '
+                                       f'{target_area.name}.', to_blind=False,
+                                       in_area=client.area, is_zstaff_flex=False)
+                client.send_ooc_others('You feel as though you are being peeked on.',
+                                       in_area=target_area, is_zstaff_flex=False,
+                                       pred=lambda _: random.random() < 0.75)
+                client.send_ooc_others(f'(X) {client.displayname} [{client.id}] peeked into area '
+                                       f'{target_area.name} from area {client.area.name} '
+                                       f'({client.area.id}).', is_zstaff_flex=True)
+            else:
+                client.send_ooc_others(f'(X) {client.displayname} [{client.id}] peeked into area '
+                                       f'{target_area.name} from area {client.area.name} '
+                                       f'({client.area.id}) while sneaking.', is_zstaff_flex=True)
+        else:
+            client.send_ooc(f'You peek into area {target_area.name} but cannot see anything as its '
+                            f'lights are out.')
+            client.send_ooc_others(f'(X) {client.displayname} [{client.id}] tried to peek into '
+                                   f'area {target_area.name} from area {client.area.name}, but was '
+                                   f'unable to gather anything meaningful as its lights were out '
+                                   f'({client.area.id}).', is_zstaff_flex=True)
+            client.send_ooc_others(f'You see {client.displayname} is peeking into area '
+                                   f'{target_area.name}.', to_blind=False,
+                                   in_area=client.area, is_zstaff_flex=False,
+                                   pred=lambda c: client in c.get_visible_clients(client.area))
+    else:
+        client.send_ooc(f'You tried to peek into area {target_area.name}, but the passage to it '
+                        f'was locked.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] tried to peek into area '
+                               f'{target_area.name} from area {client.area.name}, but was unable '
+                               f'to as the passage to it was locked ({client.area.id}).',
+                               is_zstaff_flex=True)
+        client.send_ooc_others(f'You see {client.displayname} try to peek into area '
+                               f'{target_area.name}, but fail to do so as the passage to it was '
+                               f'locked.', to_blind=False,
+                               in_area=client.area, is_zstaff_flex=False,
+                               pred=lambda c: client in c.get_visible_clients(client.area))
+
+
 def ooc_cmd_ping(client: ClientManager.Client, arg: str):
     """
     Returns "Pong" and nothing else. Useful to check if you have lost connection.
@@ -5997,6 +6597,63 @@ def ooc_cmd_pos(client: ClientManager.Client, arg: str):
         client.change_position(arg)
         client.area.broadcast_evidence_list()
         client.send_ooc('Position changed.')
+
+
+def ooc_cmd_pos_force(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Changes the IC position of a particular player, or all players in your current area if not
+    specified, to the given one.
+    Returns an error if the position is not a valid position, or if the given identifier does not
+    correspond to a user.
+
+    SYNTAX
+    /pos_force <position> {client_id}
+
+    PARAMETERS
+    <position>: Either def, pro, hld, hlp, jud, wit
+
+    OPTIONAL PARAMETERS
+    {client_id}: Client identifier (number in brackets in /getarea)
+
+    EXAMPLES
+    >>> /pos_force pro
+    Changes the position of all players in your current area to pro.
+    >>> /pos_force wit 2
+    Changes the position of user with client ID 2 to wit.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='&1-2')
+
+    args = arg.split(' ')
+    pos = args[0]
+    if pos not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
+        raise ClientError('Invalid position. '
+                          'Possible values: def, pro, hld, hlp, jud, wit.')
+
+    if len(args) == 2:
+        targets = [Constants.parse_id(client, args[1])]
+        all_in_area = False
+    else:
+        targets = client.area.clients
+        all_in_area = True
+
+    for target in targets:
+        target.change_position(pos)
+        target.area.broadcast_evidence_list()
+
+    if all_in_area:
+        client.send_ooc(f'You forced all players in your area to be in position {pos}.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] forced the position of all '
+                               f'players in area {client.area.name} to {pos} ({client.area.id}).',
+                               is_zstaff_flex=True)
+    else:
+        client.send_ooc(f'You forced {client.displayname} [{client.id}] to be in position {pos}.')
+        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] forced the position of '
+                               f'{targets[0].displayname} [{targets[0].id}] to {pos} '
+                               f'({client.area.id}).',
+                               is_zstaff_flex=True)
+    client.send_ooc_others(f'Your position was changed to {pos}.',
+                           is_zstaff_flex=False, part_of=targets)
 
 
 def ooc_cmd_randomchar(client: ClientManager.Client, arg: str):
@@ -7339,6 +7996,34 @@ def ooc_cmd_switch(client: ClientManager.Client, arg: str):
     char_id = client.server.get_char_id_by_name(arg)
     client.change_character(char_id, force=client.is_mod)
     client.send_ooc(f'Changed character to {arg}.')
+
+
+def ooc_cmd_think(client: ClientManager.Client, arg: str):
+    """
+    Sends an IC message that only you (and zone watchers or GMs+ in OOC) can see.
+    You get to see the IC message with the last sprite you saw.
+
+    SYNTAX
+    /think <message>
+
+    PARAMETERS
+    <message>: Thought
+
+    EXAMPLES
+    >>> /think Hi
+    You think `Hi`.
+    """
+
+    Constants.assert_command(client, arg, parameters='>0')
+
+    msg = arg[:256]
+
+    client.send_ic(msg=msg, pos=client.pos, folder=client.char_folder, char_id=client.char_id,
+                   showname='[T] ' + client.showname_else_char_showname, hide_character=1,
+                   bypass_text_replace=True, use_last_received_sprites=True)
+    client.send_ooc(f'You thought `{arg}`.')
+    client.send_ooc_others(f'{client.displayname} [{client.id}] thought `{arg}` '
+                           f'({client.area.id}).', is_zstaff_flex=True)
 
 
 def ooc_cmd_time(client: ClientManager.Client, arg: str):
@@ -9346,6 +10031,65 @@ def ooc_cmd_zone_add(client: ClientManager.Client, arg: str):
             c.send_ooc('Your area has been made part of zone `{}`.'.format(zone_id))
 
 
+def ooc_cmd_zone_autopass(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Changes the zone autopass automatic setting of the zone you are watching from False to True,
+    or True to False, and warns all players in an area part of the zone (as well as zone watchers)
+    about the change in OOC. Newly created zones have such setting set to False.
+    If set to True, the autopass setting of all players in an area part of the zone will be turned
+    on, and so will the autopass setting of any player who later joins an area part of the zone.
+    If such player already had autopass on, there is no effect. Players are free to change their
+    autopass setting manually via /autopass. Players who go on to an area part of the zone will
+    not have the zone change their autopass setting on departure.
+    If set to False, the autopass setting of all players in an area part of the zone will be turned
+    off. If such player already had autopass off, there is no effect.
+    Returns an error if you are not watching a zone.
+
+    SYNTAX
+    /zone_autopass
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    Assuming you are watching newly created zome z0...
+    >>> /zone_autopass
+    Sets the zone autopass automatic setting of the zone z0 to True.
+    >>> /zone_autopass
+    Sets the zone autopass automatic setting of the zone z0 to False.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+    status = {False: 'off', True: 'on'}
+
+    try:
+        zone_autopass = zone.get_property('Autopass')
+    except ZoneError.PropertyNotFoundError:
+        zone_autopass = False
+
+    zone_autopass = not zone_autopass
+    zone.set_property('Autopass', zone_autopass)
+
+    status = {True: 'on', False: 'off'}
+    client.send_ooc(f'You turned {status[zone_autopass]} autopass in your zone.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has turned '
+                           f'{status[zone_autopass]} autopass in your zone '
+                           f'({client.area.id}).', is_zstaff=True)
+    client.send_ooc_others(f'Autopass was automatically turned {status[zone_autopass]} in your '
+                           f'zone.', is_zstaff=False, pred=lambda c: c.area.in_zone == zone)
+
+    for player in zone.get_players():
+        player.autopass = zone_autopass
+
+    logger.log_server(f'[{client.area.id}][{client.get_char_name()}]Changed autopass in zone '
+                      f'{zone.get_id()} to {zone_autopass}.', client)
+
+
 def ooc_cmd_zone_end(client: ClientManager.Client, arg: str):
     """ (VARYING REQUIREMENTS)
     Deletes the zone you are watching, so that it is no longer part of the server's zone list,
@@ -9813,6 +10557,90 @@ def ooc_cmd_zone_mode(client: ClientManager.Client, arg: str):
                                is_zstaff=True)
 
 
+def ooc_cmd_zone_paranoia(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Changes the zone paranoia level of the zone you are watching, which affects the probability a
+    user receives a phantom peek message every phantom peek cycle. The zone paranoia level
+    is a percentage from -100 to 100, by default 0 (including if not set).
+    A phantom peek message is a message that looks like one received from being an area that was
+    just peeked into.
+    A phantom peek cycle is a cycle of a length randomly chosen between 150 to 450 seconds, after
+    which the server, with probability "player paranoia + zone paranoia", starts a timer of length
+    a random number less than 150 seconds, after which it sends the user a phantom peek message
+    if they are not blind and not staff, in an area that is not a lobby or private area, and they
+    have a valid character selected. A new phantom peek cycle is restarted regardless of success
+    after the old one expires.
+    Returns an error if you are not watching a zone, or if the new zone paranoia level is not a
+    number from -100 to 100.
+
+    SYNTAX
+    /zone_paranoia <zone_paranoia_level>
+
+    PARAMETERS
+    <zone_paranoia_level>: New intended player paranoia level
+
+    EXAMPLES
+    Assuming you are watching zome z0...
+    >>> /zone_paranoia_level 5
+    Sets the zone paranoia level of zone z0 to 5%.
+    >>> /zone_paranoia_level -10
+    Sets the zone paranoia level of zone z0 to -10%.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+
+    try:
+        paranoia = float(arg)
+    except ValueError:
+        raise ClientError('New zone paranoia level must be a number.')
+    if not (-100 <= paranoia <= 100):
+        raise ClientError('New zone paranoia level must be a number from -100 to 100.')
+
+    zone.set_property('Paranoia', (paranoia,))
+    client.send_ooc(f'You set the zone paranoia level of your zone to '
+                    f'{paranoia}.')
+    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set the zone paranoia level of '
+                           f'your zone to {paranoia} ({client.area.id}).',
+                           is_zstaff=True)
+
+
+def ooc_cmd_zone_paranoia_info(client: ClientManager.Client, arg: str):
+    """ (STAFF ONLY)
+    Gets the zone paranoia level of the zone you are watching.
+    Returns an error if you are not watching a zone.
+
+    SYNTAX
+    /zone_paranoia_info
+
+    PARAMETERS
+    None
+
+    EXAMPLES
+    Assuming you are watching zone z0...
+    >>> /zone_paranoia_info
+    Gets the zone paranoia level of zone z0.
+    """
+
+    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
+
+    if not client.zone_watched:
+        raise ZoneError('You are not watching a zone.')
+
+    zone = client.zone_watched
+
+    try:
+        paranoia, = zone.get_property('Paranoia')
+    except ZoneError.PropertyNotFoundError:
+        raise ClientError('Your zone has not set a zone paranoia level.')
+    else:
+        client.send_ooc(f'The paranoia level of your zone is {paranoia}.')
+
+
 def ooc_cmd_zone_play(client: ClientManager.Client, arg: str):
     """ (STAFF ONLY)
     Plays a given track in all areas of the zone, even if not explicitly in the music list.
@@ -10239,834 +11067,6 @@ def ooc_cmd_mod_narrate(client: ClientManager.Client, arg: str):
 
     for c in client.area.clients:
         c.send_ic(msg=arg, color=5, hide_character=1, bypass_text_replace=True)
-
-
-def ooc_cmd_peek(client: ClientManager.Client, arg: str):
-    """
-    Obtains information about an area visible from the current area equivalent to doing /look there.
-    If the area is not locked, there is an unlocked passage connecting it to the current area, and
-    the target area's lights are on, the peek succeeds, and players in the area are notified that
-    a peek occurred with a 75% chance each, provided the peeker is not sneaking, you are not
-    blind and the area's lights are turned on; otherwise, no notification is sent.
-    Otherwise, the peek fails, and no notifications are sent to players in the area.
-    If the peek succeeds or fails (but is not void), zone watchers are notified of the attempt, and
-    so are players in the same area as the peeker, provided such players are able to see the peeker
-    via /look.
-    Returns an error if you are blind, or try to peek into their current area or into an area that
-    is a private area, a lobby area, or an area with no visible passage from the current area.
-
-    SYNTAX
-    /peek <area_id>
-
-    PARAMETERS
-    <area_id>: ID of the area whose door you want to peek.
-
-    EXAMPLES
-    >>> /peek 1
-    Peek into area 1.
-    """
-
-    Constants.assert_command(client, arg, parameters='>0')
-
-    if client.is_blind:
-        raise ClientError('You are blind, so you cannot see anything.')
-
-    # Obtain target area, which also does validation
-    target_area = Constants.parse_area_names(client, [arg])[0]
-    if target_area == client.area:
-        raise ClientError('You cannot peek into your current area.')
-    if target_area.name not in client.area.visible_areas:
-        raise ClientError('You do not see a passage to that area.')
-    if target_area.lobby_area:
-        raise ClientError('You cannot peek into lobby areas.')
-    if target_area.private_area:
-        raise ClientError('You cannot peek into private areas.')
-
-    area_lock_ok = not (target_area.is_locked and not client.is_staff()
-                        and client.ipid not in target_area.invite_list)
-    reachable_ok = target_area.name in client.area.reachable_areas
-    # Two cases:
-    # 1. if passage exists and area not locked
-    # 2. Either is not true
-
-    if area_lock_ok and reachable_ok:
-        if target_area.lights:
-            _, area_description, player_description = target_area.get_look_output_for(client)
-            client.send_ooc(
-                f'You peek into area {target_area.name} and note the following:\r\n'
-                f'*About the people in there: you see {player_description}\r\n'
-                f'*About the area: {area_description}'
-            )
-            if client.is_visible:
-                client.send_ooc_others(f'You see {client.displayname} is peeking into area '
-                                       f'{target_area.name}.', to_blind=False,
-                                       in_area=client.area, is_zstaff_flex=False)
-                client.send_ooc_others('You feel as though you are being peeked on.',
-                                       in_area=target_area, is_zstaff_flex=False,
-                                       pred=lambda _: random.random() < 0.75)
-                client.send_ooc_others(f'(X) {client.displayname} [{client.id}] peeked into area '
-                                       f'{target_area.name} from area {client.area.name} '
-                                       f'({client.area.id}).', is_zstaff_flex=True)
-            else:
-                client.send_ooc_others(f'(X) {client.displayname} [{client.id}] peeked into area '
-                                       f'{target_area.name} from area {client.area.name} '
-                                       f'({client.area.id}) while sneaking.', is_zstaff_flex=True)
-        else:
-            client.send_ooc(f'You peek into area {target_area.name} but cannot see anything as its '
-                            f'lights are out.')
-            client.send_ooc_others(f'(X) {client.displayname} [{client.id}] tried to peek into '
-                                   f'area {target_area.name} from area {client.area.name}, but was '
-                                   f'unable to gather anything meaningful as its lights were out '
-                                   f'({client.area.id}).', is_zstaff_flex=True)
-            client.send_ooc_others(f'You see {client.displayname} is peeking into area '
-                                   f'{target_area.name}.', to_blind=False,
-                                   in_area=client.area, is_zstaff_flex=False,
-                                   pred=lambda c: client in c.get_visible_clients(client.area))
-    else:
-        client.send_ooc(f'You tried to peek into area {target_area.name}, but the passage to it '
-                        f'was locked.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] tried to peek into area '
-                               f'{target_area.name} from area {client.area.name}, but was unable '
-                               f'to as the passage to it was locked ({client.area.id}).',
-                               is_zstaff_flex=True)
-        client.send_ooc_others(f'You see {client.displayname} try to peek into area '
-                               f'{target_area.name}, but fail to do so as the passage to it was '
-                               f'locked.', to_blind=False,
-                               in_area=client.area, is_zstaff_flex=False,
-                               pred=lambda c: client in c.get_visible_clients(client.area))
-
-
-def ooc_cmd_paranoia(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Changes the player paranoia level of a user by client ID, which affects the probability a
-    user receives a phantom peek message every phantom peek cycle. The player paranoia level
-    is a percentage from -100 to 100, by default 2.
-    A phantom peek message is a message that looks like one received from being an area that was
-    just peeked into.
-    A phantom peek cycle is a cycle of a length randomly chosen between 150 to 450 seconds, after
-    which the server, with probability "player paranoia + zone paranoia", starts a timer of length
-    a random number less than 150 seconds, after which it sends the user a phantom peek message
-    if they are not blind and not staff, in an area that is not a lobby or private area, and they
-    have a valid character selected. A new phantom peek cycle is restarted regardless of success
-    after the old one expires.
-    Returns an error if the given identifier does not correspond to a user, or if the new player
-    paranoia level is not a number from -100 to 100.
-
-    SYNTAX
-    /paranoia <client_id> <player_paranoia_level>
-
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-    <player_paranoia_level>: New intended player paranoia level
-
-    EXAMPLES
-    >>> /paranoia 2 5
-    Sets the player paranoia level of user with client ID 2 to 5%.
-    >>> /paranoia 10 -10
-    Sets the player paranoia level of user with client ID 10 to -10%.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=2')
-
-    raw_id, raw_paranoia = arg.split(' ')
-    target = Constants.parse_id(client, raw_id)
-    try:
-        paranoia = float(raw_paranoia)
-    except ValueError:
-        raise ClientError('New player paranoia value must be a number.')
-    if not (-100 <= paranoia <= 100):
-        raise ClientError('New player paranoia value must be a number from 0 to 100.')
-
-    target.paranoia = paranoia
-    client.send_ooc(f'You set the player paranoia level of {target.displayname} [{target.id}] to '
-                    f'{paranoia}.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set the player paranoia level '
-                           f'of {target.displayname} [{target.id}] to {paranoia} '
-                           f'({client.area.id}).',
-                           is_zstaff_flex=True)
-
-
-def ooc_cmd_paranoia_info(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Gets the current player paranoia level by client ID.
-    Returns an error if the given identifier does not correspond to a user.
-
-    SYNTAX
-    /paranoia_info <client_id>
-
-    PARAMETERS
-    <client_id>: Client identifier (number in brackets in /getarea)
-
-    EXAMPLES
-    >>> /paranoia_info 7
-    Gets the player paranoia level of user with client ID 7.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
-
-    target = Constants.parse_id(client, arg)
-    if target.paranoia == 2:
-        client.send_ooc(f'The paranoia level of {target.displayname} [{target.id}] is the '
-                        f'default level of 2.')
-    else:
-        client.send_ooc(f'The paranoia level of {target.displayname} [{target.id}] is '
-                        f'{target.paranoia}.')
-
-
-def ooc_cmd_zone_paranoia(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Changes the zone paranoia level of the zone you are watching, which affects the probability a
-    user receives a phantom peek message every phantom peek cycle. The zone paranoia level
-    is a percentage from -100 to 100, by default 0 (including if not set).
-    A phantom peek message is a message that looks like one received from being an area that was
-    just peeked into.
-    A phantom peek cycle is a cycle of a length randomly chosen between 150 to 450 seconds, after
-    which the server, with probability "player paranoia + zone paranoia", starts a timer of length
-    a random number less than 150 seconds, after which it sends the user a phantom peek message
-    if they are not blind and not staff, in an area that is not a lobby or private area, and they
-    have a valid character selected. A new phantom peek cycle is restarted regardless of success
-    after the old one expires.
-    Returns an error if you are not watching a zone, or if the new zone paranoia level is not a
-    number from -100 to 100.
-
-    SYNTAX
-    /zone_paranoia <zone_paranoia_level>
-
-    PARAMETERS
-    <zone_paranoia_level>: New intended player paranoia level
-
-    EXAMPLES
-    Assuming you are watching zome z0...
-    >>> /zone_paranoia_level 5
-    Sets the zone paranoia level of zone z0 to 5%.
-    >>> /zone_paranoia_level -10
-    Sets the zone paranoia level of zone z0 to -10%.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
-
-    if not client.zone_watched:
-        raise ZoneError('You are not watching a zone.')
-
-    zone = client.zone_watched
-
-    try:
-        paranoia = float(arg)
-    except ValueError:
-        raise ClientError('New zone paranoia level must be a number.')
-    if not (-100 <= paranoia <= 100):
-        raise ClientError('New zone paranoia level must be a number from -100 to 100.')
-
-    zone.set_property('Paranoia', (paranoia,))
-    client.send_ooc(f'You set the zone paranoia level of your zone to '
-                    f'{paranoia}.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set the zone paranoia level of '
-                           f'your zone to {paranoia} ({client.area.id}).',
-                           is_zstaff=True)
-
-
-def ooc_cmd_zone_paranoia_info(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Gets the zone paranoia level of the zone you are watching.
-    Returns an error if you are not watching a zone.
-
-    SYNTAX
-    /zone_paranoia_info
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    Assuming you are watching zone z0...
-    >>> /zone_paranoia_info
-    Gets the zone paranoia level of zone z0.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    if not client.zone_watched:
-        raise ZoneError('You are not watching a zone.')
-
-    zone = client.zone_watched
-
-    try:
-        paranoia, = zone.get_property('Paranoia')
-    except ZoneError.PropertyNotFoundError:
-        raise ClientError('Your zone has not set a zone paranoia level.')
-    else:
-        client.send_ooc(f'The paranoia level of your zone is {paranoia}.')
-
-
-def ooc_cmd_pos_force(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Changes the IC position of a particular player, or all players in your current area if not
-    specified, to the given one.
-    Returns an error if the position is not a valid position, or if the given identifier does not
-    correspond to a user.
-
-    SYNTAX
-    /pos_force <position> {client_id}
-
-    PARAMETERS
-    <position>: Either def, pro, hld, hlp, jud, wit
-
-    OPTIONAL PARAMETERS
-    {client_id}: Client identifier (number in brackets in /getarea)
-
-    EXAMPLES
-    >>> /pos_force pro
-    Changes the position of all players in your current area to pro.
-    >>> /pos_force wit 2
-    Changes the position of user with client ID 2 to wit.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='&1-2')
-
-    args = arg.split(' ')
-    pos = args[0]
-    if pos not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
-        raise ClientError('Invalid position. '
-                          'Possible values: def, pro, hld, hlp, jud, wit.')
-
-    if len(args) == 2:
-        targets = [Constants.parse_id(client, args[1])]
-        all_in_area = False
-    else:
-        targets = client.area.clients
-        all_in_area = True
-
-    for target in targets:
-        target.change_position(pos)
-        target.area.broadcast_evidence_list()
-
-    if all_in_area:
-        client.send_ooc(f'You forced all players in your area to be in position {pos}.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] forced the position of all '
-                               f'players in area {client.area.name} to {pos} ({client.area.id}).',
-                               is_zstaff_flex=True)
-    else:
-        client.send_ooc(f'You forced {client.displayname} [{client.id}] to be in position {pos}.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] forced the position of '
-                               f'{targets[0].displayname} [{targets[0].id}] to {pos} '
-                               f'({client.area.id}).',
-                               is_zstaff_flex=True)
-    client.send_ooc_others(f'Your position was changed to {pos}.',
-                           is_zstaff_flex=False, part_of=targets)
-
-
-def ooc_cmd_notecard(client: ClientManager.Client, arg: str):
-    """
-    Sets the content of your own notecard.
-    Content over 1024 characters will be discarded.
-
-    SYNTAX
-    /notecard <content>
-
-    PARAMETERS
-    <content>: Content of your notecard
-
-    EXAMPLE
-    /notecard Hello world    :: Sets the content of your notecard to `Hello world`.
-    """
-
-    Constants.assert_command(client, arg, parameters='>0')
-
-    client.notecard = arg[:1024]
-    client.send_ooc(f'You set your notecard to `{client.notecard}`.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] set their notecard to '
-                           f'`{client.notecard}`.', is_zstaff_flex=True)
-
-
-def ooc_cmd_notecard_clear(client: ClientManager.Client, arg: str):
-    """ (VARYING REQUIREMENTS)
-    Clears the content of your own notecard or, (STAFF ONLY) that of a given player by client ID.
-    Returns an error if the target's notecard was already cleared, or if the given identifier
-    does not correspond to a user.
-
-    SYNTAX
-    /notecard_clear {client_id}
-
-    PARAMETERS
-    None
-
-    OPTIONAL PARAMETERS
-    {client_id}: Client identifier (number in brackets in /getarea)
-
-    EXAMPLES
-    /notecard_clear   :: Clears your own notecard
-    /notecard_clear 2 :: Clears the notecard of player with client ID 2.
-    """
-
-    Constants.assert_command(client, arg, parameters='<2')
-
-    if arg and not client.is_staff():
-        raise ClientError.UnauthorizedError('You must be authorized to use the one-parameter '
-                                            'version of this command.')
-    if arg:
-        target = Constants.parse_id(client, arg)
-    else:
-        target = client
-
-    if target == client:
-        if not client.notecard:
-            raise ClientError('Your notecard is already empty.')
-        client.notecard = ''
-        client.send_ooc('Your notecard is now cleared.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared their notecard.',
-                               is_zstaff_flex=True)
-    else:
-        if not target.notecard:
-            raise ClientError(f'The notecard of {target.displayname} [{target.id}] is '
-                              f'already empty.')
-        target.notecard = ''
-        target.send_ooc('Your notecard was cleared.')
-        client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared the '
-                               f'notecard of {target.displayname} [{target.id}] ({client.area.id})',
-                               is_zstaff_flex=True, not_to={target})
-
-
-def ooc_cmd_notecard_clear_area(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Clears the content of the notecards of all players in your current area.
-    Returns an error if no player in the area has a notecard set.
-
-    SYNTAX
-    /notecard_clear_area
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /notecard_clear_area   :: Clears the notecards of all players in your current area.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    targets = [target for target in client.area.clients if target.notecard]
-    if not targets:
-        raise ClientError('No players in your current area have a notecard set.')
-
-    for target in targets:
-        target.notecard = ''
-
-    client.send_ooc('You cleared the notecards of all players in the area.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] cleared the notecards of all '
-                           f'players in their area ({client.area.id}).', is_zstaff_flex=True)
-    client.send_ooc_others(f'The notecards of all players in your area were cleared.',
-                           is_zstaff_flex=False, in_area=client.area)
-
-
-def ooc_cmd_notecard_info(client: ClientManager.Client, arg: str):
-    """ (VARYING REQUIREMENTS)
-    Returns the content of your current notecard or, (STAFF ONLY) that of a given player by
-    client ID.
-    Returns an error if the target's notecard is not set, or if the given identifier
-    does not correspond to a user.
-
-    SYNTAX
-    /notecard_info {client_id}
-
-    PARAMETERS
-    None
-
-    OPTIONAL PARAMETERS
-    {client_id}: Client identifier (number in brackets in /getarea)
-
-    EXAMPLES
-    /notecard_info   :: Gets the content of your own notecard
-    /notecard_info 2 :: Gets the content of the notecard of player with client ID 2.
-    """
-
-    Constants.assert_command(client, arg, parameters='<2')
-
-    if arg and not client.is_staff():
-        raise ClientError.UnauthorizedError('You must be authorized to use the one-parameter '
-                                            'version of this command.')
-    if arg:
-        target = Constants.parse_id(client, arg)
-    else:
-        target = client
-
-    if target == client:
-        if not client.notecard:
-            raise ClientError('Your notecard is empty.')
-        client.send_ooc(f'Your notecard says `{client.notecard}`.')
-    else:
-        if not target.notecard:
-            raise ClientError(f'The notecard of {target.displayname} [{target.id}] is empty.')
-        client.send_ooc(f'The notecard of {target.displayname} [{target.id}] says '
-                        f'`{target.notecard}`.')
-
-
-def ooc_cmd_notecard_check(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Returns the contents of all notecards set by players in the current area.
-    Returns an error if no player in the current area have any notecards set.
-
-    SYNTAX
-    /notecard_check
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /notecard_check  :: Returns the contents of all notecards set by players in the current area.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    with_notecards = [target for target in client.area.clients if target.notecard]
-    if not with_notecards:
-        raise ClientError('No players in your current have any notecards set.')
-
-    output = ''
-    for target in sorted(with_notecards):
-        output += f'\r\n[{target.id}] {target.displayname}: {target.notecard}'
-
-    client.send_ooc(f'== Notecards in the current area =='
-                    f'{output}')
-
-
-def ooc_cmd_notecard_list(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Returns the contents of all notecards set by players in the server.
-    Returns an error if no player in the server have any notecards set.
-
-    SYNTAX
-    /notecard_list
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /notecard_list  :: Returns the contents of all notecards set by players in the server.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    with_notecards = [target for target in client.server.get_clients() if target.notecard]
-    if not with_notecards:
-        raise ClientError('No players in the server have any notecards set.')
-
-    output = ''
-    for target in sorted(with_notecards):
-        output += f'\r\n[{target.id}] {target.displayname} ({target.area.id}): {target.notecard}'
-
-    client.send_ooc(f'== Active notecards =='
-                    f'{output}')
-
-
-def ooc_cmd_notecard_reveal(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Reveals the contents of all notecards set by players in the area (possibly indicating that
-    no notecards were set) to all players in the area.
-
-    SYNTAX
-    /notecard_reveal
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /notecard_reveal  :: Reveals the contents of all notecards set by players in the area.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    with_notecards = [target for target in client.area.clients if target.notecard]
-
-    output = ''
-    for target in sorted(with_notecards):
-        output += f'\r\n[{target.id}] {target.displayname}: {target.notecard}'
-    if not output:
-        output = '\r\n*No player in the area has set a notecard.'
-
-    client.send_ooc('You revealed all notecards in the area.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] revealed all notecards in '
-                           f'area {client.area.name} ({client.area.id}).', is_zstaff_flex=True)
-    client.area.broadcast_ooc(f'The notecards in the area were revealed: '
-                              f'{output}')
-
-
-def ooc_cmd_notecard_reveal_count(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Tallies the number of times each notecard content of a player in the area was the content of
-    some player in the area (possibly indicating that no notecards were set) and reveals the tally
-    to all players in the area. This does not reveal who wrote which notecard.
-    Two notecard contents are said to be the same if they are the same ignoring leading or trailing
-    whitespace, as well as any capitalization or fullstops at the end.
-
-    SYNTAX
-    /notecard_reveal_count
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    /notecard_reveal_count  :: Reveals the frequency of each notecard.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    raw_notecards = [target.notecard for target in client.area.clients if target.notecard]
-    if not raw_notecards:
-        output = '\r\n*No player in the area has set a notecard.'
-    else:
-        notecards = []
-        for raw_notecard in raw_notecards:
-            notecard = raw_notecard.strip().upper()
-            if notecard.endswith('.'):
-                notecard = notecard[:-1]
-            notecards.append(notecard)
-        notecards.sort()
-        tally = collections.Counter(notecards)
-        output = ''
-        for (value, count) in tally.most_common():
-            output += f'\r\n*{value}: {count} of {tally.total()}'
-
-    client.send_ooc('You revealed the tally of all notecards in the area.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] revealed the tally of all '
-                           f'notecards in area {client.area.name} ({client.area.id}).',
-                           is_zstaff_flex=True)
-    client.area.broadcast_ooc(f'The tally of all notecards in the area was revealed: '
-                              f'{output}')
-
-
-def ooc_cmd_help_more(client: ClientManager.Client, arg: str):
-    """
-    Returns additional information about a command, obtained by reading the associated description
-    in the commands.py server file. Such information is usually more descriptive than the one in
-    the README.md (which is brief by design), as well as including potential interactions and ways
-    the command can fail.
-    Returns an error if a given command name had no associated instructions in the file, or if its
-    description is otherwise unparseable.
-
-    SYNTAX
-    /help_more <command_name>
-
-    PARAMETERS
-    <command_name>: Name of command.
-
-    EXAMPLES
-    >>> /help_more help_more
-    Returns additional information about the command `help_more` (namely, the text you are reading
-    now).
-    """
-
-    Constants.assert_command(client, arg, parameters='=1')
-
-    try:
-        command = getattr(client.server.commands, f'ooc_cmd_{arg}')
-    except AttributeError:
-        raise ClientError(f'Could not find more help for command `{arg}`.')
-
-    raw_doc = command.__doc__
-    doc = raw_doc.strip().replace('\t', '').split('\n')
-    doc = [line.strip() for line in doc]
-    if not doc:
-        raise ClientError(f'Unable to generate more help for command `{arg}`.')
-    if raw_doc[0] == '\n':
-        doc.insert(0, '(NONE)')
-
-    parsed_doc = [[], [], [], [], [], []]
-    modes = {
-        'SYNTAX': 2,
-        'PARAMETERS': 3,
-        'OPTIONAL PARAMETERS': 4,
-        'EXAMPLE': 5,
-        'EXAMPLES': 5,
-    }
-
-    parsed_doc[0].append(doc[0])
-
-    mode = 1
-    for line in doc[1:]:
-        if not line:
-            continue
-        if line in modes:
-            mode = modes[line]
-        parsed_doc[mode].append(line)
-
-    if not parsed_doc[1] or not parsed_doc[2] or not parsed_doc[3] or not parsed_doc[5]:
-        raise ClientError(f'Unable to generate more help for command `{arg}`.')
-
-    client.send_ooc(f'Generating additional help for command {arg}...')
-
-    # Rank requirement
-    output = 'RANK REQUIREMENTS: '
-    output += parsed_doc[0][0].replace('(', '').replace(')', '').strip()
-    client.send_ooc(output)
-
-    # Description
-    output = 'DESCRIPTION\r\n '
-    for line in parsed_doc[1]:
-        if line.startswith('Returns an error'):
-            output += '\r\n'
-        output += line + ' '
-    client.send_ooc(output.strip())
-
-    # Syntax
-    output = 'SYNTAX\r\n'
-    for line in parsed_doc[2][1:]:
-        output += line + '\r\n'
-    client.send_ooc(output.strip())
-
-    # Parameters
-    output = 'PARAMETERS'
-    for line in parsed_doc[3][1:]:
-        if line.startswith('<') or line == 'None':
-            output += '\r\n'
-        output += line + ' '
-    client.send_ooc(output.strip())
-
-    # Optional parameters
-    if parsed_doc[4]:
-        output = 'OPTIONAL PARAMETERS'
-        for line in parsed_doc[4][1:]:
-            if line.startswith('{'):
-                output += '\r\n'
-            output += line + ' '
-        client.send_ooc(output.strip())
-
-    # Examples
-    output = 'EXAMPLES\r\n'
-    for line in parsed_doc[5][1:]:
-        if line.startswith('>>> '):
-            output += '\r\n' + line + '\r\n'
-        elif line.startswith('| '):
-            output += '\r\n' + line + '\r\n'
-        else:
-            output += line + ' '
-    client.send_ooc(output.replace('\r\n\r\n', '\r\n').strip())
-
-
-def ooc_cmd_clock_set_hours(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Sets up the number of hours a day cycle clock has per day.
-    If the new number of hours in a day exceeds the current hour, the hour will be set to 0.
-    If there were any periods set to start at an hour beyond the new number of hours in a day, they
-    will be removed, and users in the area will be set to an appropriate period if necessary.
-    Returns an error if you have not started a day cycle, or if the number is not a positive number.
-
-    SYNTAX
-    /clock_set_hours <hours_in_day>
-
-    PARAMETERS
-    <hours_in_day>: New number of hours in the day.
-
-    EXAMPLES
-    >>> /clock_set_hours 24
-    Sets your day cycle to have 24 hours.
-    >>> /clock_set_hours 30
-    Sets your day cycle to have 30 hours.
-    >>> /clock_set_hours 2
-    Sets your day cycle to have 2 hours.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=1')
-
-    try:
-        task = client.server.tasker.get_task(client, ['as_day_cycle'])
-    except KeyError:
-        raise ClientError('You have not initiated any day cycles.')
-
-    try:
-        hours_in_day = int(arg)
-        if hours_in_day <= 0:
-            raise ValueError
-    except ValueError:
-        raise ArgumentError(f'Invalid number of hours per day {hours_in_day}.')
-
-    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'hours_in_day', hours_in_day)
-    client.server.tasker.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', 'set_hours')
-    client.server.tasker.cancel_task(task)
-
-
-def ooc_cmd_zone_autopass(client: ClientManager.Client, arg: str):
-    """ (STAFF ONLY)
-    Changes the zone autopass automatic setting of the zone you are watching from False to True,
-    or True to False, and warns all players in an area part of the zone (as well as zone watchers)
-    about the change in OOC. Newly created zones have such setting set to False.
-    If set to True, the autopass setting of all players in an area part of the zone will be turned
-    on, and so will the autopass setting of any player who later joins an area part of the zone.
-    If such player already had autopass on, there is no effect. Players are free to change their
-    autopass setting manually via /autopass. Players who go on to an area part of the zone will
-    not have the zone change their autopass setting on departure.
-    If set to False, the autopass setting of all players in an area part of the zone will be turned
-    off. If such player already had autopass off, there is no effect.
-    Returns an error if you are not watching a zone.
-
-    SYNTAX
-    /zone_autopass
-
-    PARAMETERS
-    None
-
-    EXAMPLES
-    Assuming you are watching newly created zome z0...
-    >>> /zone_autopass
-    Sets the zone autopass automatic setting of the zone z0 to True.
-    >>> /zone_autopass
-    Sets the zone autopass automatic setting of the zone z0 to False.
-    """
-
-    Constants.assert_command(client, arg, is_staff=True, parameters='=0')
-
-    if not client.zone_watched:
-        raise ZoneError('You are not watching a zone.')
-
-    zone = client.zone_watched
-    status = {False: 'off', True: 'on'}
-
-    try:
-        zone_autopass = zone.get_property('Autopass')
-    except ZoneError.PropertyNotFoundError:
-        zone_autopass = False
-
-    zone_autopass = not zone_autopass
-    zone.set_property('Autopass', zone_autopass)
-
-    status = {True: 'on', False: 'off'}
-    client.send_ooc(f'You turned {status[zone_autopass]} autopass in your zone.')
-    client.send_ooc_others(f'(X) {client.displayname} [{client.id}] has turned '
-                           f'{status[zone_autopass]} autopass in your zone '
-                           f'({client.area.id}).', is_zstaff=True)
-    client.send_ooc_others(f'Autopass was automatically turned {status[zone_autopass]} in your '
-                           f'zone.', is_zstaff=False, pred=lambda c: c.area.in_zone == zone)
-
-    for player in zone.get_players():
-        player.autopass = zone_autopass
-
-    logger.log_server(f'[{client.area.id}][{client.get_char_name()}]Changed autopass in zone '
-                      f'{zone.get_id()} to {zone_autopass}.', client)
-
-
-def ooc_cmd_think(client: ClientManager.Client, arg: str):
-    """
-    Sends an IC message that only you (and zone watchers or GMs+ in OOC) can see.
-    You get to see the IC message with the last sprite you saw.
-
-    SYNTAX
-    /think <message>
-
-    PARAMETERS
-    <message>: Thought
-
-    EXAMPLES
-    >>> /think Hi
-    You think `Hi`.
-    """
-
-    Constants.assert_command(client, arg, parameters='>0')
-
-    msg = arg[:256]
-
-    client.send_ic(msg=msg, pos=client.pos, folder=client.char_folder, char_id=client.char_id,
-                   showname='[T] ' + client.showname_else_char_showname, hide_character=1,
-                   bypass_text_replace=True, use_last_received_sprites=True)
-    client.send_ooc(f'You thought `{arg}`.')
-    client.send_ooc_others(f'{client.displayname} [{client.id}] thought `{arg}` '
-                           f'({client.area.id}).', is_zstaff_flex=True)
 
 
 def ooc_cmd_exec(client: ClientManager.Client, arg: str):
