@@ -16,13 +16,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-
-from enum import Enum
-
 from server.constants import ArgType
 
+class _Singleton():
+    def __new__(cls):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(_Singleton, cls).__new__(cls)
+        return cls.instance
 
-class DefaultAO2Protocol(Enum):
+class DefaultDROProtocol(_Singleton):
+    def __eq__(self, other):
+        return type(self).__name__ == type(other).__name__
+
+    HAS_CLIENTSIDE_MUSIC_LOOPING = True
+    HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS = True
+
     DECRYPTOR_OUTBOUND = [
         ('key', 34),  # 0
         ]
@@ -53,6 +61,10 @@ class DefaultAO2Protocol(Enum):
     FL_OUTBOUND = [
         ('fl_ao2_list', list()),  # 0
         ]
+
+    CLIENT_VERSION_OUTBOUND = [
+        ('dro_version_ao2_list', list()),  # 0
+    ]
 
     CH_INBOUND = [
         ('char_id', ArgType.INT),  # 0
@@ -119,6 +131,10 @@ class DefaultAO2Protocol(Enum):
         ('music_ao2_list', list()),  # 0
         ]
 
+    FA_OUTBOUND = [
+        ('areas_ao2_list', list()),  # 0
+        ]
+
     CC_INBOUND = [
         ('client_id', ArgType.INT),
         ('char_id', ArgType.INT),
@@ -160,10 +176,13 @@ class DefaultAO2Protocol(Enum):
         ('flip', ArgType.INT),  # 12
         ('ding', ArgType.INT),  # 13
         ('color', ArgType.INT),  # 14
+        ('showname', ArgType.STR_OR_EMPTY),  # 15
+        ('video', ArgType.STR_OR_EMPTY),  # 16
+        ('hide_character', ArgType.INT),  # 17
         ]
 
     MS_OUTBOUND = [
-        ('msg_type', 1),  # 0
+        ('msg_type', 0),  # 0
         ('pre', '-'),  # 1
         ('folder', '<NOCHAR>'),  # 2
         ('anim', '../../misc/blank'),  # 3
@@ -178,7 +197,10 @@ class DefaultAO2Protocol(Enum):
         ('flip', 0),  # 12
         ('ding', -1),  # 13
         ('color', 0),  # 14
-        ('showname', ' '),  # 15
+        ('showname', ''),  # 15
+        ('video', '0'),  # 16
+        ('hide_character', 0),  # 17
+        ('client_id', -1),  # 18
         ]
 
     MC_INBOUND = [
@@ -190,6 +212,7 @@ class DefaultAO2Protocol(Enum):
         ('name', ''),  # 0
         ('char_id', -1),  # 1
         ('showname', ''),  # 2
+        ('force_same_restart', 1),  # 3
         ]
 
     RT_INBOUND = [
@@ -294,10 +317,61 @@ class DefaultAO2Protocol(Enum):
     CHARSCHECK_INBOUND = [
         ]
 
-ClientDRO1d0d0 = Enum('ClientDRO1d0d0', [(m.name, m.value) for m in DefaultAO2Protocol])
+class ClientDRO1d1d0(DefaultDROProtocol):
+    pass
+
+class ClientDRO1d0d0(DefaultDROProtocol):
+    HAS_CLIENTSIDE_MUSIC_LOOPING = False
+    HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS = False
+
+    MS_INBOUND = [
+        ('msg_type', ArgType.STR),  # 0
+        ('pre', ArgType.STR_OR_EMPTY),  # 1
+        ('folder', ArgType.STR),  # 2
+        ('anim', ArgType.STR),  # 3
+        ('text', ArgType.STR),  # 4
+        ('pos', ArgType.STR),  # 5
+        ('sfx', ArgType.STR_OR_EMPTY),  # 6
+        ('anim_type', ArgType.INT),  # 7
+        ('char_id', ArgType.INT),  # 8
+        ('sfx_delay', ArgType.INT),  # 9
+        ('button', ArgType.INT),  # 10
+        ('evidence', ArgType.INT),  # 11
+        ('flip', ArgType.INT),  # 12
+        ('ding', ArgType.INT),  # 13
+        ('color', ArgType.INT),  # 14
+    ]
+
+    MS_OUTBOUND = [
+        ('msg_type', 1),  # 0
+        ('pre', '-'),  # 1
+        ('folder', '<NOCHAR>'),  # 2
+        ('anim', '../../misc/blank'),  # 3
+        ('msg', ''),  # 4
+        ('pos', 'jud'),  # 5
+        ('sfx', 0),  # 6
+        ('anim_type', 0),  # 7
+        ('char_id', -1),  # 8
+        ('sfx_delay', 0),  # 9
+        ('button', 0),  # 10
+        ('evidence', 0),  # 11
+        ('flip', 0),  # 12
+        ('ding', -1),  # 13
+        ('color', 0),  # 14
+        ('showname', ' '),  # 15
+        ]
+
+    MC_OUTBOUND = [
+        ('name', ''),  # 0
+        ('char_id', -1),  # 1
+        ('showname', ''),  # 2
+        ]
 
 
-class ClientDROLegacy(Enum):
+class ClientDROLegacy(DefaultDROProtocol):
+    HAS_CLIENTSIDE_MUSIC_LOOPING = False
+    HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS = False
+
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
         ('pre', ArgType.STR_OR_EMPTY),  # 1
@@ -350,7 +424,10 @@ class ClientDROLegacy(Enum):
         ]
 
 
-class ClientAO2d6(Enum):
+class ClientAO2d6(DefaultDROProtocol):
+    HAS_CLIENTSIDE_MUSIC_LOOPING = False
+    HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS = False
+
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
         ('pre', ArgType.STR_OR_EMPTY),  # 1
@@ -416,7 +493,10 @@ class ClientAO2d6(Enum):
         ]
 
 
-class ClientAO2d7(Enum):
+class ClientAO2d7(DefaultDROProtocol):
+    HAS_CLIENTSIDE_MUSIC_LOOPING = False
+    HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS = False
+
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
         ('pre', ArgType.STR_OR_EMPTY),  # 1
@@ -496,7 +576,7 @@ class ClientAO2d7(Enum):
         ]
 
 
-class ClientAO2d8d4(Enum):
+class ClientAO2d8d4(DefaultDROProtocol):
     MS_INBOUND = [
         ('msg_type', ArgType.STR),  # 0
         ('pre', ArgType.STR_OR_EMPTY),  # 1
@@ -570,7 +650,7 @@ class ClientAO2d8d4(Enum):
         ('name', ''),  # 0
         ('char_id', -1),  # 1
         ('showname', ''),  # 2
-        ('loop', -1),  # 3
+        ('loop', 1),  # 3
         ('channel', 0),  # 4
         ('effects', 0),  # 5
         ]
@@ -580,12 +660,8 @@ class ClientAO2d8d4(Enum):
         ('pos', ''),  # 1
         ]
 
-    FA_OUTBOUND = [
-        ('areas_ao2_list', list()),  # 0
-        ]
 
-
-class ClientAO2d9d0(Enum):
+class ClientAO2d9d0(DefaultDROProtocol):
     ASKCHAA_INBOUND = [
         ('ao290doesnotsupportpacketswithnoarguments', ArgType.STR_OR_EMPTY),  # 0
         ]
@@ -624,7 +700,7 @@ class ClientAO2d9d0(Enum):
         ('color', ArgType.INT),  # 14
         ('showname', ArgType.STR_OR_EMPTY),  # 15
         ('charid_pair_pair_order', ArgType.STR),  # 16
-        ('offset_pair', ArgType.INT),  # 17
+        ('offset_pair', ArgType.STR),  # 17
         ('nonint_pre', ArgType.INT),  # 18
         ('looping_sfx', ArgType.INT),  # 19
         ('screenshake', ArgType.INT),  # 20
@@ -679,7 +755,7 @@ class ClientAO2d9d0(Enum):
         ('name', ''),  # 0
         ('char_id', -1),  # 1
         ('showname', ''),  # 2
-        ('loop', -1),  # 3
+        ('loop', 1),  # 3
         ('channel', 0),  # 4
         ('effects', 0),  # 5
         ]
@@ -689,10 +765,11 @@ class ClientAO2d9d0(Enum):
         ('pos', ''),  # 1
         ]
 
-    FA_OUTBOUND = [
-        ('areas_ao2_list', list()),  # 0
-        ]
+class ClientKFO2d8(ClientAO2d7):
+    pass
 
-ClientKFO2d8 = Enum('ClientKFO2d8', [(m.name, m.value) for m in ClientAO2d7])
-ClientCC22 = Enum('ClientCC22', [(m.name, m.value) for m in ClientAO2d6])
-ClientCC24 = Enum('ClientCC24', [(m.name, m.value) for m in ClientAO2d8d4])
+class ClientCC22(ClientAO2d6):
+    pass
+
+class ClientCC24(ClientAO2d8d4):
+    pass

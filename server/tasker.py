@@ -19,11 +19,19 @@
 # WARNING!
 # This class will be reworked for 4.3
 
+from __future__ import annotations
+
 import asyncio
 import time
+import typing
+
+from typing import Any, List
 
 from server.constants import Constants
 from server.exceptions import ServerError
+
+if typing.TYPE_CHECKING:
+    from server.client_manager import ClientManager
 
 
 class Tasker:
@@ -39,7 +47,7 @@ class Tasker:
         self.client_tasks = dict()
         self.active_timers = dict()
 
-    def create_task(self, client, args):
+    def create_task(self, client: ClientManager.Client, args: List):
         """
         Create a new task for given client with given arguments.
 
@@ -63,7 +71,7 @@ class Tasker:
         async_future = Constants.create_fragile_task(async_function)
         self.client_tasks[client.id][args[0]] = (async_future, args[1:], dict())
 
-    def cancel_task(self, task):
+    def cancel_task(self, task: asyncio.Task):
         """
         Cancel current task and send order to await cancellation.
 
@@ -77,7 +85,7 @@ class Tasker:
         # TODO: For some odd reason, it complains if I set it to create_task. Figure that out.
         asyncio.ensure_future(self.await_cancellation(task))
 
-    def remove_task(self, client, args):
+    def remove_task(self, client: ClientManager.Client, args: List):
         """
         Given client and task name, remove task from server.Tasker.client_tasks and cancel it.
 
@@ -92,7 +100,7 @@ class Tasker:
         task = self.client_tasks[client.id].pop(args[0])
         self.cancel_task(task[0])
 
-    def get_task(self, client, args):
+    def get_task(self, client: ClientManager.Client, args: List) -> asyncio.Task:
         """
         Given client and task arguments, retrieve the associated task instance.
 
@@ -111,7 +119,7 @@ class Tasker:
 
         return self.client_tasks[client.id][args[0]][0]
 
-    def get_task_args(self, client, args):
+    def get_task_args(self, client: ClientManager.Client, args: List) -> List:
         """
         Given client and task arguments, retrieve the creation arguments of the task.
 
@@ -130,7 +138,7 @@ class Tasker:
 
         return self.client_tasks[client.id][args[0]][1]
 
-    def get_task_attr(self, client, args, attr):
+    def get_task_attr(self, client: ClientManager.Client, args: List, attr: str) -> Any:
         """
         Given client, task arguments, and an attribute name of a task, retrieve its associated
         attribute value.
@@ -146,12 +154,13 @@ class Tasker:
 
         Returns
         -------
-        Attribute value
+        Any:
+            Attribute value
         """
 
         return self.client_tasks[client.id][args[0]][2][attr]
 
-    def set_task_attr(self, client, args, attr, value):
+    def set_task_attr(self, client: ClientManager.Client, args: List, attr: str, value: Any):
         """
         Given client, task arguments, attribute name of task and a value, set the attribute to
         that value.
@@ -164,7 +173,7 @@ class Tasker:
             Arguments of the task.
         attr: str
             Attribute name.
-        value:
+        value: Any
             Attribute value.
         """
 
@@ -174,7 +183,7 @@ class Tasker:
     # CURRENTLY SUPPORTED TASKS
     ###
 
-    async def await_cancellation(self, old_task):
+    async def await_cancellation(self, old_task: asyncio.Task):
         # Wait until it is able to properly retrieve the cancellation exception
         try:
             await old_task
@@ -188,7 +197,7 @@ class Tasker:
             except KeyboardInterrupt:
                 raise
 
-    async def as_afk_kick(self, client, args):
+    async def as_afk_kick(self, client: ClientManager.Client, args: List):
         afk_delay, afk_sendto = args
         try:
             delay = int(afk_delay)*60  # afk_delay is in minutes, so convert to seconds
@@ -242,15 +251,15 @@ class Tasker:
                     for c in p.get_members():
                         c.send_ooc('{} was AFK kicked from your party.'.format(original_name))
 
-    async def as_day_cycle(self, client, args):
-        _, area_1, area_2, hour_length, hour_start, send_first_hour = args
+    async def as_day_cycle(self, client: ClientManager.Client, args: List):
+        _, area_1, area_2, hour_length, hour_start, hours_in_day, send_first_hour = args
         hour = hour_start
         minute_at_interruption = 0
         time_started_at = time.time()
         time_refreshed_at = time.time()  # Doesnt need init, but PyLint complains otherwise
         periods = list()
         force_period_refresh = False
-        current_period = (None, None)
+        current_period = (-1, '')
         notify_normies = False
 
         # Initialize task attributes
@@ -258,6 +267,7 @@ class Tasker:
         self.set_task_attr(client, ['as_day_cycle'], 'is_unknown', False)
         self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', '')
         self.set_task_attr(client, ['as_day_cycle'], 'period', '')
+        self.set_task_attr(client, ['as_day_cycle'], 'hours_in_day', hours_in_day)
 
         # Manually notify for the very first hour (if needed)
         targets = [c for c in self.server.get_clients() if c == client or
@@ -266,13 +276,27 @@ class Tasker:
             c.send_ooc('It is now {}:00.'.format('{0:02d}'.format(hour)))
             c.send_clock(client_id=client.id, hour=hour)
 
+        def find_period_of_hour(hour):
+            if not periods:
+                return (-1, '')
+            if hour < periods[0][0]:
+                return periods[-1]
+            output = None
+            for period_tuple in periods:
+                period_start, _ = period_tuple
+                if hour >= period_start:
+                    output = period_tuple
+            return output
+
         while True:
             try:
+                refresh_reason = self.get_task_attr(client, ['as_day_cycle'], 'refresh_reason')
+                self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', '')
+
                 # If timer is in unknown phase, there is no time progression
                 # Check again in one second.
                 if self.get_task_attr(client, ['as_day_cycle'], 'is_unknown'):
                     # Manually restart other flags because they are no longer relevant
-                    self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', '')
                     notify_normies = True
                     await asyncio.sleep(1)
                     continue
@@ -280,27 +304,19 @@ class Tasker:
                 # If timer is paused, check again in one second.
                 if self.get_task_attr(client, ['as_day_cycle'], 'is_paused'):
                     # Manually restart other flags because they are no longer relevant
-                    self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', '')
                     notify_normies = True
                     await asyncio.sleep(1)
                     continue
 
                 # Otherwise, timer is not paused, so either an hour just finished or the timer
                 # was refreshed for some reason (unpausing, new period, etc.)
-                refresh_reason = self.get_task_attr(client, ['as_day_cycle'], 'refresh_reason')
                 # If the clock was just set again, do not wait, execute actions immediately
-                if refresh_reason == 'set':
-                    self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', '')
+                if refresh_reason in ['set', 'set_hours_reset']:
+                    pass
 
-                # If the clock just had a new period added, restart the current hour
-                elif refresh_reason == 'period':
-                    self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', '')
-                    notify_normies = True
-                    await asyncio.sleep((60-minute_at_interruption)/60 * hour_length)
-
-                # If the clock was just unpaused, send out notif and restart the current hour
-                elif refresh_reason == 'unpause':
-                    self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason', '')
+                # If the clock just had a new period added, its number of hours changed, or was just
+                # unpaused, restart the current hour
+                elif refresh_reason in ['period', 'unpause', 'set_hours_proceed']:
                     notify_normies = True
                     await asyncio.sleep((60-minute_at_interruption)/60 * hour_length)
                 # Otherwise, just wait full hour
@@ -312,18 +328,28 @@ class Tasker:
                 # interruptions
                 # In all cases now, update hour
                 # We can do that as code only runs here if the timer is not paused
-                hour = (hour + 1) % 24
+                hour = (hour + 1) % hours_in_day
                 targets = [c for c in self.server.get_clients() if c == client or
                            (notify_normies and area_1 <= c.area.id <= area_2)]
+
                 # Check if new period has started
-                for (period_start, period_name) in periods:
-                    if period_start == hour or force_period_refresh:
-                        force_period_refresh = False
+                if not periods:
+                    if current_period[1] != '':
                         for c in targets:
-                            self.set_task_attr(client, ['as_day_cycle'], 'period', period_name)
-                            c.send_time_of_day(name=period_name)
-                            c.send_ooc(f'It is now {period_name}.')
-                        break
+                            self.set_task_attr(client, ['as_day_cycle'], 'period', '')
+                            c.send_time_of_day(name='')
+                            c.send_ooc(f'It is no longer some particular period of day.')
+                    current_period = find_period_of_hour(hour)
+                    new_period_start, new_period_name = current_period
+                else:
+                    current_period = find_period_of_hour(hour)
+                    new_period_start, new_period_name = current_period
+                    if new_period_start == hour or force_period_refresh:
+                        for c in targets:
+                            self.set_task_attr(client, ['as_day_cycle'], 'period', new_period_name)
+                            c.send_time_of_day(name=new_period_name)
+                            c.send_ooc(f'It is now {new_period_name}.')
+                force_period_refresh = False
 
                 # Regardless of new period, send other packets
                 for c in targets:
@@ -337,11 +363,12 @@ class Tasker:
             except (asyncio.CancelledError, KeyError):
                 # Code can run here for a few reasons
                 # 1. The timer was ended
-                # 2. The clock was manually set
-                # 3. The clock was set to be at an unknown time
-                # 4. A new period was added
-                # 5. The clock was just unpaused
-                # 6. The clock was just paused
+                # 2. The clock current hour and hourt length was manually set
+                # 3. The clock's number of hours was manually set
+                # 4. The clock was set to be at an unknown time
+                # 5. A new period was added
+                # 6. The clock was just unpaused
+                # 7. The clock was just paused
                 time_refreshed_at = time.time()
 
                 try:
@@ -391,6 +418,66 @@ class Tasker:
                     # So preemptively -1
                     if not self.get_task_attr(client, ['as_day_cycle'], 'is_paused'):
                         hour -= 1  # Take one hour away, because an hour would be added anyway
+                elif refresh_reason == 'set_hours':
+                    old_hour = hour
+                    self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason',
+                                       'set_hours_proceed')
+                    # Only update minute and time started at if timer is not paused
+                    if not self.get_task_attr(client, ['as_day_cycle'], 'is_paused'):
+                        minute_at_interruption += (time_refreshed_at-time_started_at)/hour_length*60
+                        time_started_at = time.time()
+
+                    hours_in_day = self.get_task_attr(client, ['as_day_cycle'], 'hours_in_day')
+                    client.send_ooc(f'Your day cycle in areas {area_1} through {area_2} was '
+                                    f'updated. New number of hours in the day: {hours_in_day} '
+                                    f'hours.')
+                    client.send_ooc_others(f'(X) The day cycle initiated by {client.displayname} '
+                                           f'[{client.id}] in areas {area_1} through {area_2} has '
+                                           f'been updated. New number of hours in the day: '
+                                           f'{hours_in_day} hours.', is_zstaff_flex=True)
+                    # Check if current hours exceed new number of hours in the day
+                    if hour >= hours_in_day:
+                        hour = 0
+                        minute_at_interruption = 0
+                        self.set_task_attr(client, ['as_day_cycle'], 'refresh_reason',
+                                           'set_hours_reset')
+                        client.send_ooc(f'(X) The current hour {old_hour} was beyond the new '
+                                        f'number of hours in the day you set, so your current hour '
+                                        f'was set to 0.')
+                        client.send_ooc_others(f'(X) The day cycle initiated by '
+                                               f'{client.displayname} [{client.id}] in areas '
+                                               f'{area_1} through {area_2} has had its current '
+                                               f'hour be set to 0 because it was beyond the number '
+                                               f'of hours it was set to now have.', is_staff=True,
+                                               pred=lambda c: area_1 <= c.area.id <= area_2)
+
+                        # Moreover, hour is +1'd automatically if the clock is unpaused
+                        # So preemptively -1
+                        if not self.get_task_attr(client, ['as_day_cycle'], 'is_paused'):
+                            hour -= 1  # Take one hour away, because an hour would be added anyway
+
+                    # Pop any periods that are beyond the new number of hours in the day
+                    popped_periods = list()
+                    for (period_start, period_name) in periods.copy():
+                        if period_start >= hours_in_day:
+                            periods.remove((period_start, period_name))
+                            popped_periods.append((period_start, period_name))
+                    if popped_periods:
+                        client.send_ooc(f'(X) The following periods were removed from the list of '
+                                        f'periods as they were beyond the new number of hours in '
+                                        f'the day: {popped_periods}.')
+                        client.send_ooc_others(f'(X) The day cycle initiated by '
+                                               f'{client.displayname} [{client.id}] in areas '
+                                               f'{area_1} through {area_2} has had the following '
+                                               f'periods be removed from the list of periods as '
+                                               f'they were beyond the number of hours it was set '
+                                               f'to now have: {popped_periods}.', is_staff=True,
+                                               pred=lambda c: area_1 <= c.area.id <= area_2)
+
+                    force_period_refresh = True  # Super conservative but always correct.
+                    # Setting time does not unpause the timer, warn clock master
+                    if self.get_task_attr(client, ['as_day_cycle'], 'is_paused'):
+                        client.send_ooc('(X) Warning: Your day cycle is still paused.')
 
                 elif refresh_reason == 'unknown':
                     hour = -1
@@ -399,7 +486,7 @@ class Tasker:
                     client.send_ooc('You have set the time to be unknown.')
                     client.send_ooc_others(f'(X) The day cycle initiated by {client.displayname} '
                                            f'[{client.id}] in areas {area_1} through {area_2} has '
-                                           f'been set to be at an unknown time', is_staff=True,
+                                           f'been set to be at an unknown time.', is_staff=True,
                                            pred=lambda c: area_1 <= c.area.id <= area_2)
                     client.send_ooc_others('You seem to have lost track of time.', is_staff=False,
                                            pred=lambda c: area_1 <= c.area.id <= area_2)
@@ -414,7 +501,7 @@ class Tasker:
                 elif refresh_reason == 'period':
                     # Only update minute and time started at if timer is not paused
                     if not self.get_task_attr(client, ['as_day_cycle'], 'is_paused'):
-                        minute_at_interruption += (time_refreshed_at - time_started_at)/hour_length*60
+                        minute_at_interruption += (time_refreshed_at-time_started_at)/hour_length*60
                         time_started_at = time.time()
                     start, name = self.get_task_attr(client, ['as_day_cycle'], 'new_period_start')
 
@@ -438,34 +525,25 @@ class Tasker:
 
                     # Also note this is only relevant if the time is not unknown. If it is,
                     # then no updates should be sent
+                    changed_current_period = False
                     if not self.get_task_attr(client, ['as_day_cycle'], 'is_unknown'):
-                        changed_current_period = False
-                        if not periods:
-                            # If all periods have been removed, put everyone back in the default
-                            # time of day, if needed
-                            new_period_name = ''
-                            changed_current_period = current_period[1] != new_period_name
-                        elif hour < periods[0][0]:
-                            new_period_start, new_period_name = periods[-1]
-                            changed_current_period = current_period[1] != new_period_name
-                            current_period = new_period_start, new_period_name
-                        else:
-                            # By construction, the if statement is true at least once,
-                            # so changed_current_period is defined and current_period updated
-                            for i in range(len(periods)):
-                                if (periods[i][0] <= hour and
-                                    (i == len(periods)-1 or hour < periods[i+1][0])):
-                                    new_period_start, new_period_name = periods[i]
-                                    changed_current_period = current_period[1] != new_period_name
-                                    current_period = new_period_start, new_period_name
-                                    break
-
-                        if changed_current_period:
-                            targets = [c for c in self.server.get_clients()
-                                       if c == client or area_1 <= c.area.id <= area_2]
-                            self.set_task_attr(client, ['as_day_cycle'], 'period', new_period_name)
+                        new_period_start, new_period_name = find_period_of_hour(hour)
+                        changed_current_period = (current_period[1] != new_period_name)
+                        current_period = new_period_start, new_period_name
+                        if periods and new_period_start == hour:
+                            changed_current_period = True
+                    if changed_current_period:
+                        targets = [c for c in self.server.get_clients()
+                                   if c == client or area_1 <= c.area.id <= area_2]
+                        self.set_task_attr(client, ['as_day_cycle'], 'period', new_period_name)
+                        if new_period_name:
                             for c in targets:
                                 c.send_time_of_day(name=new_period_name)
+                                c.send_ooc(f'It is now {new_period_name}.')
+                        else:
+                            for c in targets:
+                                c.send_time_of_day(name='')
+                                c.send_ooc(f'It is no longer some particular period of day.')
 
                     # Send notifications appropriately
                     if start >= 0:
@@ -517,7 +595,7 @@ class Tasker:
                 else:
                     raise ValueError(f'Unknown refresh reason {refresh_reason} for day cycle.')
 
-    async def as_effect(self, client, args):
+    async def as_effect(self, client: ClientManager.Client, args: List):
         _, length, effect, new_value = args  # Length in seconds, already converted
 
         try:
@@ -539,16 +617,16 @@ class Tasker:
                 effect.function(client, False)
             self.remove_task(client, [effect.async_name])
 
-    async def as_effect_blindness(self, client, args):
+    async def as_effect_blindness(self, client: ClientManager.Client, args: List):
         await self.as_effect(client, args+[True])
 
-    async def as_effect_deafness(self, client, args):
+    async def as_effect_deafness(self, client: ClientManager.Client, args: List):
         await self.as_effect(client, args+[True])
 
-    async def as_effect_gagged(self, client, args):
+    async def as_effect_gagged(self, client: ClientManager.Client, args: List):
         await self.as_effect(client, args+[True])
 
-    async def as_handicap(self, client, args):
+    async def as_handicap(self, client: ClientManager.Client, args: List):
         _, length, _, announce_if_over = args
         client.is_movement_handicapped = True
 
@@ -562,7 +640,7 @@ class Tasker:
         finally:
             client.is_movement_handicapped = False
 
-    async def as_timer(self, client, args):
+    async def as_timer(self, client: ClientManager.Client, args: List):
         _, length, name, is_public = args  # Length in seconds, already converted
         client_name = client.name  # Failsafe in case disconnection before task is cancelled/expires
 
@@ -581,7 +659,7 @@ class Tasker:
         finally:
             del self.active_timers[name]
 
-    async def as_lurk(self, client, args):
+    async def as_lurk(self, client: ClientManager.Client, args: List):
         length, = args
         # The lurk callout timer once it finishes will restart itself except if cancelled
         while True:
@@ -606,3 +684,24 @@ class Tasker:
                     client.send_ooc_others('{} is being tightlipped.'.format(client.displayname),
                                            is_zstaff_flex=False, in_area=True,
                                            pred=lambda c: not (c.is_blind and c.is_deaf))
+
+    async def as_phantom_peek(self, client: ClientManager.Client, args: List):
+        length, = args
+        try:
+            await asyncio.sleep(length)
+        except asyncio.CancelledError:
+            return
+        else:
+            if client.is_blind:
+                return
+            if not client.area.lights:
+                return
+            if client.area.lobby_area:
+                return
+            if client.area.private_area:
+                return
+            if client.is_staff():
+                return
+            if client.char_id is None or client.char_id < 0:
+                return
+            client.send_ooc('You feel as though you are being peeked on.')

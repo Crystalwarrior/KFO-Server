@@ -2,7 +2,8 @@ from .structures import _Unittest
 
 _standard_FL = ('yellowtext', 'customobjections', 'flipping', 'fastloading', 'noencryption',
                 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx', 'additive', 'effects',
-                'ackMS', 'showname', 'chrini', 'charscheck')
+                'y_offset', 'ackMS', 'showname', 'chrini', 'charscheck', 'v110')
+_standard_client_version = ('1', '1', '0')
 
 
 class TestClientConnection(_Unittest):
@@ -16,6 +17,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (0, None, None))
         c.assert_packet('FL', _standard_FL)
+        c.assert_packet('client_version', _standard_client_version)
         c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -29,6 +31,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (1, None, None))
         c.assert_packet('FL', _standard_FL)
+        c.assert_packet('client_version', _standard_client_version)
         c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -73,6 +76,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (0, None, None))
         c.assert_packet('FL', _standard_FL)
+        c.assert_packet('client_version', _standard_client_version)
         c.assert_packet('PN', (0, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -95,6 +99,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('DONE', tuple())
         c.assert_packet('CT', (None, None))  # Area list
         c.assert_packet('CT', (None, None))  # MOTD
+        c.assert_packet('FA', None)  # Area list
         c.assert_packet('FM', None, over=True)  # Music list, again
 
         c.assert_ooc(None, check_CT_packet=False)
@@ -120,6 +125,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (1, None, None))
         c.assert_packet('FL', _standard_FL)
+        c.assert_packet('client_version', _standard_client_version)
         c.assert_packet('PN', (1, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -142,6 +148,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('DONE', tuple())
         c.assert_packet('CT', (None, None))  # Area list
         c.assert_packet('CT', (None, None))  # MOTD
+        c.assert_packet('FA', None)  # Area list
         c.assert_packet('FM', None, over=True)  # Music list, again
 
         c.assert_ooc(None, check_CT_packet=False)
@@ -175,6 +182,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('decryptor', 34)
         c.assert_packet('ID', (2, None, None))
         c.assert_packet('FL', _standard_FL)
+        c.assert_packet('client_version', _standard_client_version)
         c.assert_packet('PN', (2, self.server.config['playerlimit']), over=True)
         c.assert_no_ooc()
 
@@ -197,6 +205,7 @@ class TestClientConnection(_Unittest):
         c.assert_packet('DONE', tuple())
         c.assert_packet('CT', (None, None))  # Area list
         c.assert_packet('CT', (None, None))  # MOTD
+        c.assert_packet('FA', None)  # Area list
         c.assert_packet('FM', None, over=True)  # Music list, again
 
         c.assert_ooc(None, check_CT_packet=False)

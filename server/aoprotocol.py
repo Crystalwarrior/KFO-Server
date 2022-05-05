@@ -202,10 +202,10 @@ class AOProtocol(asyncio.Protocol):
             fallback_protocols = list()
 
         packet_type = '{}_INBOUND'.format(identifier.upper())
-        protocols = [self.client.packet_handler]+fallback_protocols+[clients.DefaultAO2Protocol]
+        protocols = [self.client.packet_handler]+fallback_protocols
         for protocol in protocols:
             try:
-                expected_pairs = protocol[packet_type].value
+                expected_pairs = getattr(protocol, packet_type)
             except KeyError:
                 continue
             expected_argument_names = [x[0] for x in expected_pairs]
@@ -282,7 +282,7 @@ class AOProtocol(asyncio.Protocol):
 
         def check_client_version():
             if len(args) < 2:
-                self.client.version = ('DRO', '1.0.0')
+                self.client.version = ('DRO', '1.1.0')
                 return False
 
             raw_software, raw_version = pargs['client_software'], pargs['client_software_version']
@@ -323,28 +323,31 @@ class AOProtocol(asyncio.Protocol):
                 pass
 
             if software == 'DRO':
-                self.client.packet_handler = clients.ClientDRO1d0d0
+                if major >= 1:
+                    self.client.packet_handler = clients.ClientDRO1d1d0()
+                else:
+                    self.client.packet_handler = clients.ClientDRO1d0d0()
             else:  # AO2 protocol
                 if release == 2:
                     if major >= 9:
-                        self.client.packet_handler = clients.ClientAO2d9d0
+                        self.client.packet_handler = clients.ClientAO2d9d0()
                     elif major >= 8 and minor >= 4:
-                        self.client.packet_handler = clients.ClientAO2d8d4
+                        self.client.packet_handler = clients.ClientAO2d8d4()
                     elif major >= 8:  # KFO
-                        self.client.packet_handler = clients.ClientKFO2d8
+                        self.client.packet_handler = clients.ClientKFO2d8()
                     elif major == 7:  # AO 2.7
-                        self.client.packet_handler = clients.ClientAO2d7
+                        self.client.packet_handler = clients.ClientAO2d7()
                     elif major == 6:  # AO 2.6
-                        self.client.packet_handler = clients.ClientAO2d6
+                        self.client.packet_handler = clients.ClientAO2d6()
                     elif major == 4 and minor == 8:  # Older DRO
-                        self.client.packet_handler = clients.ClientDROLegacy
+                        self.client.packet_handler = clients.ClientDROLegacy()
                     else:
                         return False  # Unrecognized
                 elif release == 'CC':
                     if major >= 24:
-                        self.client.packet_handler = clients.ClientCC24
+                        self.client.packet_handler = clients.ClientCC24()
                     elif major >= 22:
-                        self.client.packet_handler = clients.ClientCC22
+                        self.client.packet_handler = clients.ClientCC22()
                     else:
                         return False  # Unrecognized
             # The only way to make it here is if we have not returned False
@@ -353,17 +356,25 @@ class AOProtocol(asyncio.Protocol):
 
         if not check_client_version():
             # Warn player they are using an unknown client.
-            # Assume a DRO client instruction set.
-            self.client.packet_handler = clients.ClientDRO1d0d0
+            # Assume a legacy DRO client instruction set.
+            self.client.packet_handler = clients.ClientDRO1d0d0()
             self.client.bad_version = True
 
         self.client.send_command_dict('FL', {
             'fl_ao2_list': ['yellowtext', 'customobjections', 'flipping', 'fastloading',
                             'noencryption', 'deskmod', 'evidence', 'cccc_ic_support', 'looping_sfx',
-                            'additive', 'effects',
+                            'additive', 'effects', 'y_offset',
                             # DRO exclusive stuff
-                            'ackMS', 'showname', 'chrini', 'charscheck']
+                            'ackMS', 'showname', 'chrini', 'charscheck', 'v110',]
             })
+
+        version_to_send = [1, 0, 0]
+        if self.client.packet_handler == clients.ClientDRO1d1d0():
+            version_to_send = [1, 1, 0]
+
+        self.client.send_command_dict('client_version', {
+            'dro_version_ao2_list': version_to_send
+        })
 
     def net_cmd_ch(self, args: List[str]):
         """ Periodically checks the connection.
@@ -500,16 +511,21 @@ class AOProtocol(asyncio.Protocol):
 
         char_id = pargs['char_id']
 
-        ever_chose_character = self.client.ever_chose_character  # Store for later
+        ever_chose_character_before = self.client.ever_chose_character  # Store for later
         try:
             self.client.change_character(char_id)
         except ClientError:
             return
         self.client.last_active = Constants.get_time()
 
-        if not ever_chose_character:
+        if not ever_chose_character_before:
             self.client.send_command_dict('GM', {'name': ''})
             self.client.send_command_dict('TOD', {'name': ''})
+            try:
+                self.client.area.play_current_track(only_for={self.client}, force_same_restart=1)
+            except AreaError:
+                # Only if there is no current music in the area
+                pass
 
     def net_cmd_ms(self, args: List[str]):
         """ IC message.
@@ -583,6 +599,14 @@ class AOProtocol(asyncio.Protocol):
         else:
             if pargs['pos'] not in ('def', 'pro', 'hld', 'hlp', 'jud', 'wit'):
                 return
+
+        if 'showname' in pargs:
+            try:
+                self.client.command_change_showname(pargs['showname'], False)
+            except ClientError as exc:
+                self.client.send_ooc(exc)
+                return
+
         # Make sure the areas are ok with this
         try:
             self.client.area.publisher.publish('area_client_inbound_ms_check', {
@@ -671,7 +695,9 @@ class AOProtocol(asyncio.Protocol):
                                      .format(truncated_msg, start_area.name))
 
         pargs['msg'] = msg
-        pargs['showname'] = ''  # Dummy value, actual showname is computed later
+        # Try to change our showname if showname packet exists, and doesn't match our current showname
+        if 'showname' in pargs and self.client.showname != pargs['showname']:
+            self.net_cmd_sn([pargs['showname']])
 
         # Compute pairs
         # Based on tsuserver3.3 code
@@ -864,7 +890,7 @@ class AOProtocol(asyncio.Protocol):
         # We have to use fallback protocols for AO2d6 like clients, because if for whatever
         # reason if they don't set an in-client showname, they send less arguments. In
         # particular, they behave like Legacy DRO.
-        pargs = self.process_arguments('MC', args, fallback_protocols=[clients.ClientDROLegacy])
+        pargs = self.process_arguments('MC', args, fallback_protocols=[clients.ClientDROLegacy()])
         self.client.publish_inbound_command('MC', pargs)
 
         # First attempt to switch area,

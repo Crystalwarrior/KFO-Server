@@ -253,13 +253,13 @@ class TestDeafen_04_Miscellaneous(_TestDeafen):
         self.c3.ooc('/scream Hi')
         self.c0.assert_no_ooc()
         self.c0.assert_ic('(Your ears are ringing)', over=True)
-        self.c1.assert_ooc('(X) {} [{}] screamed "Hi" ({}).'
+        self.c1.assert_ooc('(X) {} [{}] screamed `Hi` ({}).'
                            .format(self.c3_dname, 3, 5), ooc_over=True)
         self.c1.assert_ic('Hi', over=True)
-        self.c2.assert_ooc('(X) {} [{}] screamed "Hi" ({}).'
+        self.c2.assert_ooc('(X) {} [{}] screamed `Hi` ({}).'
                            .format(self.c3_dname, 3, 5), over=True)
         self.c2.assert_no_ic()  # C2 is not in scream range
-        self.c3.assert_ooc('You screamed "Hi".', ooc_over=True)
+        self.c3.assert_ooc('You screamed `Hi`.', ooc_over=True)
         self.c3.assert_ic('Hi', over=True)
 
     def test_02_globalicringssears(self):

@@ -20,6 +20,7 @@
 # This class will suffer major reworkings for 4.3
 
 from __future__ import annotations
+from multiprocessing.connection import Client
 from typing import Any, Callable, Dict, List, Tuple
 
 import asyncio
@@ -45,8 +46,8 @@ from server.exceptions import ServerError
 from server.game_manager import GameManager
 from server.masterserverclient import MasterServerClient
 from server.party_manager import PartyManager
-from server.timer_manager import TimerManager
 from server.tasker import Tasker
+from server.timer_manager import TimerManager
 from server.trial_manager import TrialManager
 from server.zone_manager import ZoneManager
 
@@ -67,9 +68,9 @@ class TsuserverDR:
 
         self.release = 4
         self.major_version = 3
-        self.minor_version = 0
-        self.segment_version = 'post6'
-        self.internal_version = '220327a'
+        self.minor_version = 1
+        self.segment_version = ''
+        self.internal_version = '220505a'
         version_string = self.get_version_string()
         self.software = 'TsuserverDR {}'.format(version_string)
         self.version = 'TsuserverDR {} ({})'.format(version_string, self.internal_version)
@@ -100,6 +101,7 @@ class TsuserverDR:
         self.server_select_name = 'SERVER_SELECT'
 
         self.load_config()
+        self.timer_manager = TimerManager(self)
         self.client_manager: ClientManager = client_manager(self)
         self.char_list = list()
         self.load_iniswaps()
@@ -659,7 +661,7 @@ class TsuserverDR:
         # Now add areas
         prepared_area_list = list()
         for area in self.area_manager.areas:
-            if need_to_check or area.name in from_area.visible_reachable_areas:
+            if need_to_check or area.name in from_area.visible_areas:
                 prepared_area_list.append("{}-{}".format(area.id, area.name))
 
         return prepared_area_list

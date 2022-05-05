@@ -296,6 +296,7 @@ class _TestClientManager(ClientManager):
             if self.is_mod:
                 return
             self.ooc('/login {}'.format(self.server.config['modpass']))
+            self.assert_packet('FA', None)
             self.assert_packet('FM', None)
             self.assert_ooc('Logged in as a moderator.', over=over)
             # Look for all officers and assert messages of this client's login
@@ -309,6 +310,7 @@ class _TestClientManager(ClientManager):
             if self.is_cm:
                 return
             self.ooc('/logincm {}'.format(self.server.config['cmpass']))
+            self.assert_packet('FA', None)
             self.assert_packet('FM', None)
             self.assert_ooc('Logged in as a community manager.', over=over)
             # Look for all officers and assert messages of this client's login
@@ -322,6 +324,7 @@ class _TestClientManager(ClientManager):
             if self.is_gm:
                 return
             self.ooc('/loginrp {}'.format(self.server.config['gmpass']))
+            self.assert_packet('FA', None)
             self.assert_packet('FM', None)
             self.assert_ooc('Logged in as a game master.', over=over)
             # Look for all officers and assert messages of this client's login
@@ -343,6 +346,7 @@ class _TestClientManager(ClientManager):
                 role = 'moderator'
             self.ooc('/logout')
             self.assert_ooc('You are no longer logged in.', ooc_over=over)
+            self.assert_packet('FA', None)
             self.assert_packet('FM', None, over=over)
             # Assert command for any officers of this client's logout
             for c in self.server.client_manager.clients:
@@ -371,6 +375,7 @@ class _TestClientManager(ClientManager):
                                     ['HP', None],
                                     ['BN', None],
                                     ['LE', None],
+                                    ['FA', None],
                                     ['FM', None],
                                     ['BN', None],
                                     )
@@ -641,7 +646,8 @@ class _TestClientManager(ClientManager):
 
         def sic(self, message, msg_type=0, pre='-', folder=None, anim=None, pos=None, sfx=0,
                 anim_type=0, char_id=None, sfx_delay=0, button=0, evi=None, flip=0, ding=0, color=0,
-                ignore_timelimit=True, check_ackMS_packet=True):
+                showname=None, video="0", hide_character=0, ignore_timelimit=True,
+                check_ackMS_packet=True):
             if folder is None:
                 folder = self.get_char_name()
             if anim is None:
@@ -652,6 +658,8 @@ class _TestClientManager(ClientManager):
                 char_id = self.char_id
             if evi is None:
                 evi = 0
+            if showname is None:
+                showname = self.showname
 
             # 0 = msg_type
             # 1 = pre
@@ -668,10 +676,14 @@ class _TestClientManager(ClientManager):
             # 12 = flip
             # 13 = ding
             # 14 = color
+            # 15 = showname
+            # 16 = video
+            # 17 = hide_character
 
-            buffer = ('MS#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#%'
+            buffer = ('MS#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#{}#%'
                       .format(msg_type, pre, folder, anim, message, pos, sfx, anim_type, char_id,
-                              sfx_delay, button, evi, flip, ding, color))
+                              sfx_delay, button, evi, flip, ding, color, showname, video,
+                              hide_character))
             if ignore_timelimit:  # Time wasted here = 4 hours 8/10/19
                 self.area.can_send_message = lambda: True
             self.send_command_cts(buffer)
@@ -689,22 +701,27 @@ class _TestClientManager(ClientManager):
 
             params = self.received_ic.pop(0)
             message = self.convert_word_to_symbol(message)
-            param_ids = {'msg_type': 0,
-                         'pre': 1,
-                         'folder': 2,
-                         'anim': 3,
-                         'msg': 4,
-                         'pos': 5,
-                         'sfx': 6,
-                         'anim_type': 7,
-                         'char_id': 8,
-                         'sfx_delay': 9,
-                         'button': 10,
-                         'evi': 11,
-                         'flip': 12,
-                         'ding': 13,
-                         'color': 14,
-                         'showname': 15}
+            param_ids = {
+                'msg_type': 0,
+                'pre': 1,
+                'folder': 2,
+                'anim': 3,
+                'msg': 4,
+                'pos': 5,
+                'sfx': 6,
+                'anim_type': 7,
+                'char_id': 8,
+                'sfx_delay': 9,
+                'button': 10,
+                'evi': 11,
+                'flip': 12,
+                'ding': 13,
+                'color': 14,
+                'showname': 15,
+                'video': 16,
+                'hide_character': 17,
+                'client_id': 18,
+                }
 
             if 'msg' not in kwargs:
                 kwargs['msg'] = message
@@ -764,11 +781,13 @@ class _TestClientManager(ClientManager):
             if command_type == 'decryptor':  # Hi
                 buffer = 'HI#FAKEHDID#%'
             elif command_type == 'ID':  # Server ID
-                buffer = "ID#DRO#1.0.0#%"
+                buffer = "ID#DRO#1.1.0#%"
                 err = ('Wrong client ID for {}.\nExpected {}\nGot {}'
                        .format(self, args[0], self.id))
                 assert args[0] == str(self.id), err
             elif command_type == 'FL':  # AO 2.2.5 configs
+                pass
+            elif command_type == 'client_version':  # DRO version client should behave as
                 pass
             elif command_type == 'PN':  # Player count
                 pass
@@ -795,7 +814,9 @@ class _TestClientManager(ClientManager):
                 pass
             elif command_type == 'CT':  # OOC message
                 self.received_ooc.append((args[0], args[1]))
-            elif command_type == 'FM':  # Updated music/area list
+            elif command_type == 'FM':  # Updated music list
+                pass
+            elif command_type == 'FA':  # Updated area list
                 pass
             elif command_type == 'PV':  # Current character
                 pass
@@ -816,8 +837,12 @@ class _TestClientManager(ClientManager):
                 # 13 = ding
                 # 14 = color
                 # 15 = showname
-                if not (len(args) == 16):
-                    raise ValueError('Malformed MS packet for an IC message {}'.format(args))
+                # 16 = video
+                # 17 = hide_character
+                # 18 = client_id
+                if not (len(args) == 19):
+                    raise ValueError(f'Malformed MS packet for an IC message {args}: wrong length '
+                                     f'({len(args)}).')
                 self.received_ic.append(args)
             elif command_type == 'MC':  # Start playing track
                 pass
@@ -832,7 +857,7 @@ class _TestClientManager(ClientManager):
             elif command_type == 'SN':  # Showname change
                 pass
             else:
-                raise KeyError('Unrecognized STC argument `{}` {}'.format(command_type, args))
+                raise KeyError(f'Unrecognized STC argument `{command_type}` {args}')
 
             if buffer:
                 self.send_command_cts(buffer)

@@ -279,11 +279,11 @@ class TestZoneEffect_02_Play(_TestZone):
         self.c5.discard_all()
 
         self.c1.ooc('/zone_play BOX 15.mp3')
-        self.c0.assert_packet('MC', ('BOX 15.mp3', 1, ''), over=True)
-        self.c1.assert_packet('MC', ('BOX 15.mp3', 1, ''))
+        self.c0.assert_packet('MC', ('BOX 15.mp3', 1, '', 1), over=True)
+        self.c1.assert_packet('MC', ('BOX 15.mp3', 1, '', 1))
         self.c1.assert_ooc('You have played track `BOX 15.mp3` in your zone.', over=True)
-        self.c2.assert_packet('MC', ('BOX 15.mp3', 1, ''), over=True)
-        self.c3.assert_packet('MC', ('BOX 15.mp3', 1, ''), over=True)
+        self.c2.assert_packet('MC', ('BOX 15.mp3', 1, '', 1), over=True)
+        self.c3.assert_packet('MC', ('BOX 15.mp3', 1, '', 1), over=True)
         self.c4.assert_no_packets()
         self.c5.assert_no_packets()
 
@@ -293,14 +293,14 @@ class TestZoneEffect_02_Play(_TestZone):
 
         # Check invalid music name warning
         self.c1.ooc('/zone_play Is it you.mp3')
-        self.c0.assert_packet('MC', ('Is it you.mp3', 1, ''), over=True)
-        self.c1.assert_packet('MC', ('Is it you.mp3', 1, ''))
+        self.c0.assert_packet('MC', ('Is it you.mp3', 1, '', 1), over=True)
+        self.c1.assert_packet('MC', ('Is it you.mp3', 1, '', 1))
         self.c1.assert_ooc('You have played track `Is it you.mp3` in your zone.')
-        self.c1.assert_ooc('(X) Warning: `Is it you.mp3` is not a recognized track name, so it '
-                           'will not loop.', over=True)
-        self.c2.assert_packet('MC', ('Is it you.mp3', 1, ''), over=True)
+        self.c1.assert_ooc('(X) Warning: `Is it you.mp3` is not a recognized track name, so the '
+                           'server will not loop it.', over=True)
+        self.c2.assert_packet('MC', ('Is it you.mp3', 1, '', 1), over=True)
         self.c3.assert_no_packets()
-        self.c5.assert_packet('MC', ('Is it you.mp3', 1, ''), over=True)
+        self.c5.assert_packet('MC', ('Is it you.mp3', 1, '', 1), over=True)
         self.c4.assert_no_packets()
 
 class TestZoneEffect_03_RPNotifications(_TestZone):

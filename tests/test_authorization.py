@@ -72,6 +72,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
         """
 
         self.c0.ooc('/{} {}'.format(self.ooc_command, self.correct_pass1))
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None)
         self.c0.assert_ooc(self.ooc_successful_login, over=True)
         self.assertTrue(self.good_rank(self.c0))
@@ -97,6 +98,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
 
         self.c0.ooc('/logout')
         self.c0.assert_ooc('You are no longer logged in.', ooc_over=True)
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None, over=True)
         self.assertFalse(self.good_rank(self.c0))
 
@@ -116,22 +118,26 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
         """
 
         self.c0.ooc('/{} {}'.format(self.ooc_command, self.correct_pass1))
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None)
         self.c0.assert_ooc(self.ooc_successful_login, over=True)
         self.assertTrue(self.good_rank(self.c0))
 
         self.c0.ooc('/logout')
         self.c0.assert_ooc('You are no longer logged in.', ooc_over=True)
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None, over=True)
         self.assertFalse(self.good_rank(self.c0))
 
         self.c0.ooc('/{} {}'.format(self.ooc_command, self.correct_pass2))
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None)
         self.c0.assert_ooc(self.ooc_successful_login, over=True)
         self.assertTrue(self.good_rank(self.c0))
 
         self.c0.ooc('/logout')
         self.c0.assert_ooc('You are no longer logged in.', ooc_over=True)
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None, over=True)
         self.assertFalse(self.good_rank(self.c0))
 
@@ -157,11 +163,13 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
         for [pass1, pass2] in pass_pos:
             for (a1, a2, b1, b2) in client_pos:
                 a1.ooc('/{} {}'.format(self.ooc_command, pass1))
+                a1.assert_packet('FA', None)
                 a1.assert_packet('FM', None)
                 a1.assert_ooc(self.ooc_successful_login, over=True)
                 self.assertTrue(self.good_rank(a1))
                 self.assertFalse(self.good_rank(a2))
                 a2.ooc('/{} {}'.format(self.ooc_command, pass2))
+                a2.assert_packet('FA', None)
                 a2.assert_packet('FM', None)
                 a2.assert_ooc(self.ooc_successful_login, over=True)
                 self.assertTrue(self.good_rank(a1))
@@ -184,6 +192,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
 
                 b1.ooc('/logout')
                 b1.assert_ooc('You are no longer logged in.', ooc_over=True)
+                b1.assert_packet('FA', None)
                 b1.assert_packet('FM', None, over=True)
                 self.assertFalse(self.good_rank(b1))
                 self.assertTrue(self.good_rank(b2))
@@ -195,6 +204,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
                                   .format(b1.name, b1.id), over=True)
                 b2.ooc('/logout')
                 b2.assert_ooc('You are no longer logged in.', ooc_over=True)
+                b2.assert_packet('FA', None)
                 b2.assert_packet('FM', None, over=True)
                 self.assertFalse(self.good_rank(b1))
                 self.assertFalse(self.good_rank(b2))
@@ -219,6 +229,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
         for [pass1, pass2] in pass_pos:
             for (a1, a2, b1, b2) in client_pos:
                 a1.ooc('/{} {}'.format(self.ooc_command, pass1))
+                a1.assert_packet('FA', None)
                 a1.assert_packet('FM', None)
                 a1.assert_ooc(self.ooc_successful_login, over=True)
                 self.assertTrue(self.good_rank(a1))
@@ -242,6 +253,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
                 if self.good_rank(b1):
                     b1.ooc('/logout')
                     b1.assert_ooc('You are no longer logged in.', ooc_over=True)
+                    b1.assert_packet('FA', None)
                     b1.assert_packet('FM', None, over=True)
                 else:
                     b1.ooc('/logout')
@@ -255,6 +267,7 @@ class _TestAuthorizationSingleRank(_TestAuthorization):
                 if self.good_rank(b2):
                     b2.ooc('/logout')
                     b2.assert_ooc('You are no longer logged in.', ooc_over=True)
+                    b2.assert_packet('FA', None)
                     b2.assert_packet('FM', None, over=True)
                 else:
                     b2.ooc('/logout')
@@ -366,11 +379,13 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         """
 
         self.c1.ooc('/logincm {}'.format(self.cmpass))
+        self.c1.assert_packet('FA', None)
         self.c1.assert_packet('FM', None)
         self.c1.assert_ooc('Logged in as a community manager.', over=True)
         self.assertTrue(self.c1.is_cm)
 
         self.c0.ooc('/loginrp {}'.format(self.gmpass))
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None)
         self.c0.assert_ooc('Logged in as a game master.', over=True)
         self.c1.assert_ooc('{} [{}] logged in as a game master with the global password.'
@@ -382,6 +397,7 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         self.assertTrue(self.c0.is_gm)
 
         self.c2.ooc('/login {}'.format(self.modpass))
+        self.c2.assert_packet('FA', None)
         self.c2.assert_packet('FM', None)
         self.c2.assert_ooc('Logged in as a moderator.', over=True)
         self.c1.assert_ooc('{} [{}] logged in as a moderator.'
@@ -407,6 +423,7 @@ class TestAuthorization_04_Integration(_TestAuthorization):
 
         self.c0.ooc('/logout')
         self.c0.assert_ooc('You are no longer logged in.', ooc_over=True)
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None, over=True)
         self.c1.assert_ooc('{} [{}] is no longer a game master.'
                            .format(self.c0.name, self.c0.id), over=True)
@@ -430,6 +447,7 @@ class TestAuthorization_04_Integration(_TestAuthorization):
 
         self.c1.ooc('/logout')
         self.c1.assert_ooc('You are no longer logged in.', ooc_over=True)
+        self.c1.assert_packet('FA', None)
         self.c1.assert_packet('FM', None, over=True)
         self.c2.assert_ooc('{} [{}] is no longer a community manager.'
                            .format(self.c1.name, self.c1.id), over=True)
@@ -439,6 +457,7 @@ class TestAuthorization_04_Integration(_TestAuthorization):
 
         self.c2.ooc('/logout')
         self.c2.assert_ooc('You are no longer logged in.', ooc_over=True)
+        self.c2.assert_packet('FA', None)
         self.c2.assert_packet('FM', None, over=True)
         self.assertFalse(self.c0.is_gm)
         self.assertFalse(self.c1.is_cm)
@@ -464,22 +483,26 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         """
         def login(c1, c2, ooc_rank1, ooc_rank2, pass1, pass2, rank1, rank2, success1, success2):
             c1.ooc('/{} {}'.format(ooc_rank1, pass1))
+            c1.assert_packet('FA', None)
             c1.assert_packet('FM', None)
             c1.assert_ooc(success1, over=True)
             self.assertTrue(rank1(c1))
 
             c1.ooc('/logout')
             c1.assert_ooc('You are no longer logged in.', ooc_over=True)
+            c1.assert_packet('FA', None)
             c1.assert_packet('FM', None, over=True)
             self.assertFalse(rank1(c1))
 
             c2.ooc('/{} {}'.format(ooc_rank2, pass2))
+            c2.assert_packet('FA', None)
             c2.assert_packet('FM', None)
             c2.assert_ooc(success2, over=True)
             self.assertTrue(rank2(c2))
 
             c2.ooc('/logout')
             c2.assert_ooc('You are no longer logged in.', ooc_over=True)
+            c2.assert_packet('FA', None)
             c2.assert_packet('FM', None, over=True)
             self.assertFalse(rank2(c2))
 
@@ -513,6 +536,7 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         """
 
         self.c0.ooc('/loginrp {}'.format(self.gmpass))
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None)
         self.c0.assert_ooc('Logged in as a game master.', over=True)
         self.assertFalse(self.c0.is_mod)
@@ -520,6 +544,7 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         self.assertTrue(self.c0.is_gm)
 
         self.c0.ooc('/logincm {}'.format(self.cmpass))
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None)
         self.c0.assert_ooc('Logged in as a community manager.', over=True)
         self.assertFalse(self.c0.is_mod)
@@ -527,6 +552,7 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         self.assertFalse(self.c0.is_gm)
 
         self.c0.ooc('/login {}'.format(self.modpass))
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None)
         self.c0.assert_ooc('Logged in as a moderator.', over=True)
         self.assertTrue(self.c0.is_mod)
@@ -534,6 +560,7 @@ class TestAuthorization_04_Integration(_TestAuthorization):
         self.assertFalse(self.c0.is_gm)
 
         self.c0.ooc('/loginrp {}'.format(self.daily_gmpass))
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None)
         self.c0.assert_ooc('Logged in as a game master.', over=True)
         self.assertFalse(self.c0.is_mod)
@@ -669,10 +696,12 @@ class TestAuthorization_06_GMSelf(_TestSituation4):
         """
 
         self.c2.ooc('/gmself')
+        self.c0.assert_packet('FA', None)
         self.c0.assert_packet('FM', None)
         self.c0.assert_ooc('Logged in as a game master.', over=True)
         self.c1.assert_no_packets()
         self.c2.assert_ooc('Logged in clients {} and {} as game master.'.format(0, 3), over=True)
+        self.c3.assert_packet('FA', None)
         self.c3.assert_packet('FM', None)
         self.c3.assert_ooc('Logged in as a game master.', over=True)
 
@@ -708,6 +737,7 @@ class TestAuthorization_06_GMSelf(_TestSituation4):
         self.c0.ooc('/gmself')
         self.c0.assert_ooc('Logged in client {} as game master.'.format(2), over=True)
         self.c1.assert_no_packets()
+        self.c2.assert_packet('FA', None)
         self.c2.assert_packet('FM', None)
         self.c2.assert_ooc('Logged in as a game master.', over=True)
         self.c3.assert_no_packets()

@@ -17,6 +17,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import annotations
+
 import typing
 from typing import Any, Callable, List, Optional, Set, Tuple, Dict
 if typing.TYPE_CHECKING:
@@ -26,6 +27,7 @@ if typing.TYPE_CHECKING:
     from server.zone_manager import ZoneManager
 
 import datetime
+import random
 import time
 
 from server import clients
@@ -35,6 +37,7 @@ from server import logger
 from server.exceptions import AreaError, ClientError, GameError, PartyError, TrialError
 from server.constants import TargetType, Constants
 from server.subscriber import Publisher
+from server.timer_manager import TimerManager
 
 
 class ClientManager:
@@ -47,7 +50,7 @@ class ClientManager:
             self.required_packets_received = set()  # Needs to have length 2 to actually connect
             self.can_askchaa = True  # Needs to be true to process an askchaa packet
             self.version = ('Undefined', 'Undefined')  # AO version used established through ID pack
-            self.packet_handler = clients.ClientDRO1d0d0
+            self.packet_handler = clients.ClientDRO1d1d0()
             self.bad_version = False
             self.publisher = Publisher(self)
 
@@ -122,6 +125,8 @@ class ClientManager:
             self.can_bypass_iclock = False
             self.char_log = list()
             self.ignored_players = set()
+            self.paranoia = 2
+            self.notecard = ''
 
             # Pairing stuff
             self.charid_pair = -1
@@ -204,13 +209,10 @@ class ClientManager:
             to_send = list()
             idn = f'{identifier.upper()}_OUTBOUND'
             try:
-                outbound_args = self.packet_handler[idn].value
-            except KeyError:
-                try:
-                    outbound_args = clients.DefaultAO2Protocol[idn].value
-                except KeyError:
-                    err = f'No matching protocol found for {idn}.'
-                    raise KeyError(err)
+                outbound_args = getattr(self.packet_handler, idn)
+            except AttributeError:
+                err = f'No matching protocol found for {idn}.'
+                raise KeyError(err)
 
             for (field, default_value) in outbound_args:
                 try:
@@ -280,9 +282,10 @@ class ClientManager:
                     pred: Callable[[ClientManager.Client], bool] = None,
                     not_to: ClientManager.Client = None, gag_replaced=False,
                     is_staff=None, in_area=None, to_blind=None, to_deaf=None,
-                    bypass_replace=False, bypass_deafened_starters=False,
+                    bypass_text_replace=False, bypass_deafened_starters=False,
+                    use_last_received_sprites=False,
                     msg=None, folder=None, pos=None, char_id=None, ding=None, color=None,
-                    showname=None):
+                    showname=None, hide_character=0):
 
             # sender is the client who sent the IC message
             # self is who is receiving the IC message at this particular moment
@@ -299,7 +302,7 @@ class ClientManager:
             #  If params is not None, then the sent IC message will use the parameters given in
             #  params, and use the properties of sender to replace the parameters if needed.
 
-            pargs = {x: y for (x, y) in self.packet_handler.MS_OUTBOUND.value}
+            pargs = {x: y for (x, y) in self.packet_handler.MS_OUTBOUND}
             if params is None:
                 pargs['msg'] = msg
                 pargs['folder'] = folder
@@ -308,6 +311,7 @@ class ClientManager:
                 pargs['ding'] = ding
                 pargs['color'] = color
                 pargs['showname'] = showname
+                pargs['hide_character'] = hide_character
             else:
                 for key in params:
                     pargs[key] = params[key]
@@ -363,105 +367,111 @@ class ClientManager:
                 if argument in dictionary:
                     dictionary.pop(argument)
 
-            # Change the message to account for receiver's properties
-            if not bypass_replace:
-                # Change "character" parts of IC port
-                if self.is_blind:
+            # Change "character" parts of IC port
+            if self.is_blind:
+                pargs['anim'] = '../../misc/blank'
+                pargs['hide_character'] = 1
+                self.send_background(name=self.server.config['blackout_background'])
+            # If self just spoke while in first person mode, change the message they receive
+            # accordingly for them so they do not see themselves talking
+            # Also do this replacement if the sender is not in forward sprites mode
+            elif (use_last_received_sprites or
+                    (sender == self and self.first_person) or
+                    (sender and not sender.forward_sprites)):
+                # last_sender: Client who actually sent the new message
+                # last_apparent_sender: Client whose sprites were used for the last message
+                # last_args: "MS" arguments to the last message
+                # Do note last_sender != last_apparent_sender if a person receives a message
+                # from someone in not forward sprites mode. In that case, last_sender is
+                # updated with this new client, but last apparent_sender is not.
+
+                # First check this is first person mode. By doing this check first we
+                # guarantee ourselves we do not pick the last message that could possibly
+                # be self
+                if sender == self and self.first_person:
+                    last_apparent_sender, last_args, last_apparent_args = self.last_received_ic_notme
+                else:
+                    last_apparent_sender, last_args, last_apparent_args = self.last_received_ic
+
+                # Make sure showing previous sender makes sense. If it does not make sense now,
+                # it will not make sense later.
+
+                # If last sender is no longer connected, do not show previous sender
+                if not last_apparent_sender or not self.server.is_client(last_apparent_sender):
                     pargs['anim'] = '../../misc/blank'
-                    self.send_background(name=self.server.config['blackout_background'])
-                # If self just spoke while in first person mode, change the message they receive
-                # accordingly for them so they do not see themselves talking
-                # Also do this replacement if the sender is not in forward sprites mode
-                elif ((sender == self and self.first_person) or
-                      (sender and not sender.forward_sprites)):
-                    # last_sender: Client who actually sent the new message
-                    # last_apparent_sender: Client whose sprites were used for the last message
-                    # last_args: "MS" arguments to the last message
-                    # Do note last_sender != last_apparent_sender if a person receives a message
-                    # from someone in not forward sprites mode. In that case, last_sender is
-                    # updated with this new client, but last apparent_sender is not.
+                    self.last_received_ic_notme = [None, None, None]
+                    self.last_received_ic = [None, None, None]
+                # If last apparent sender and self are not in the same area, do not show
+                # previous sender
+                elif self.area != last_apparent_sender.area:
+                    pargs['anim'] = '../../misc/blank'
+                    self.last_received_ic_notme = [None, None, None]
+                    self.last_received_ic = [None, None, None]
+                # If last sender has changed character, do not show previous sender
+                elif ((last_apparent_sender.char_id != last_apparent_args['char_id'] or
+                        last_apparent_sender.char_folder != last_apparent_args['folder'])):
+                    # We need to check for iniswaps as well, to account for this possibility:
+                    # 1. A and B are in the same room. A as in first person mode
+                    # 2. B talks to A and moves to another room
+                    # 3. B iniswaps without changing character and talks in their new area
+                    # 4. B goes back to A's area and talks there
+                    # 5. If A had received no other message in the meantime, clear the last
+                    # character seen.
+                    pargs['anim'] = '../../misc/blank'
+                    self.last_received_ic_notme = [None, None, None]
+                    self.last_received_ic = [None, None, None]
+                # Do not show previous sender if
+                # 1. Previous sender is sneaked and is not GM, and
+                # 2. It is not the case self is in a party, the same one as previous sender,
+                # and self is sneaked
+                elif (not last_apparent_sender.is_visible and
+                        not last_apparent_sender.is_staff() and
+                        not (self.party and self.party == last_apparent_sender.party
+                            and not self.is_visible)):
+                    # It will still be the case self will reveal themselves by talking
+                    # They will however see last sender if needed
+                    pargs['anim'] = '../../misc/blank'
+                    self.last_received_ic_notme = [None, None, None]
+                    self.last_received_ic = [None, None, None]
+                # Otherwise, show message
+                else:
+                    pargs['folder'] = last_args['folder']
+                    pargs['anim'] = last_args['anim']
+                    pargs['pos'] = last_args['pos']
+                    pargs['anim_type'] = last_args['anim_type']
+                    pargs['flip'] = last_args['flip']
 
-                    # First check this is first person mode. By doing this check first we
-                    # guarantee ourselves we do not pick the last message that could possibly
-                    # be self
-                    if sender == self and self.first_person:
-                        last_apparent_sender, last_args, last_apparent_args = self.last_received_ic_notme
-                    else:
-                        last_apparent_sender, last_args, last_apparent_args = self.last_received_ic
+                # Regardless of anything, pairing is visually canceled while in first person
+                # so set them to default values
 
-                    # Make sure showing previous sender makes sense. If it does not make sense now,
-                    # it will not make sense later.
-
-                    # If last sender is no longer connected, do not show previous sender
-                    if not last_apparent_sender or not self.server.is_client(last_apparent_sender):
-                        pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None, None]
-                        self.last_received_ic = [None, None, None]
-                    # If last apparent sender and self are not in the same area, do not show
-                    # previous sender
-                    elif self.area != last_apparent_sender.area:
-                        pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None, None]
-                        self.last_received_ic = [None, None, None]
-                    # If last sender has changed character, do not show previous sender
-                    elif ((last_apparent_sender.char_id != last_apparent_args['char_id'] or
-                           last_apparent_sender.char_folder != last_apparent_args['folder'])):
-                        # We need to check for iniswaps as well, to account for this possibility:
-                        # 1. A and B are in the same room. A as in first person mode
-                        # 2. B talks to A and moves to another room
-                        # 3. B iniswaps without changing character and talks in their new area
-                        # 4. B goes back to A's area and talks there
-                        # 5. If A had received no other message in the meantime, clear the last
-                        # character seen.
-                        pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None, None]
-                        self.last_received_ic = [None, None, None]
-                    # Do not show previous sender if
-                    # 1. Previous sender is sneaked and is not GM, and
-                    # 2. It is not the case self is in a party, the same one as previous sender,
-                    # and self is sneaked
-                    elif (not last_apparent_sender.is_visible and
-                          not last_apparent_sender.is_staff() and
-                          not (self.party and self.party == last_apparent_sender.party
-                               and not self.is_visible)):
-                        # It will still be the case self will reveal themselves by talking
-                        # They will however see last sender if needed
-                        pargs['anim'] = '../../misc/blank'
-                        self.last_received_ic_notme = [None, None, None]
-                        self.last_received_ic = [None, None, None]
-                    # Otherwise, show message
-                    else:
-                        pargs['folder'] = last_args['folder']
-                        pargs['anim'] = last_args['anim']
-                        pargs['pos'] = last_args['pos']
-                        pargs['anim_type'] = last_args['anim_type']
-                        pargs['flip'] = last_args['flip']
-
-                    # Regardless of anything, pairing is visually canceled while in first person
-                    # so set them to default values
-
+                pop_if_there(pargs, 'other_offset')
+                pop_if_there(pargs, 'other_emote')
+                pop_if_there(pargs, 'other_flip')
+                pop_if_there(pargs, 'other_folder')
+                pop_if_there(pargs, 'offset_pair')
+                pop_if_there(pargs, 'charid_pair')
+                # Note this does not affect the client object internal values, it just
+                # simulates the client is not part of their pair if they are in first person
+                # mode.
+            elif sender != self and self.first_person:
+                # Address the situation where this client is in first person mode, paired with
+                # someone else, and that someone else speaks in IC. This will 'visually' cancel
+                # pairing for this client, but not remove it completely. It is just so that
+                # the client's own sprites do not appear.
+                if pargs.get('charid_pair', -1) == self.char_id:
                     pop_if_there(pargs, 'other_offset')
                     pop_if_there(pargs, 'other_emote')
                     pop_if_there(pargs, 'other_flip')
                     pop_if_there(pargs, 'other_folder')
                     pop_if_there(pargs, 'offset_pair')
                     pop_if_there(pargs, 'charid_pair')
-                    # Note this does not affect the client object internal values, it just
-                    # simulates the client is not part of their pair if they are in first person
-                    # mode.
-                elif sender != self and self.first_person:
-                    # Address the situation where this client is in first person mode, paired with
-                    # someone else, and that someone else speaks in IC. This will 'visually' cancel
-                    # pairing for this client, but not remove it completely. It is just so that
-                    # the client's own sprites do not appear.
-                    if pargs.get('charid_pair', -1) == self.char_id:
-                        pop_if_there(pargs, 'other_offset')
-                        pop_if_there(pargs, 'other_emote')
-                        pop_if_there(pargs, 'other_flip')
-                        pop_if_there(pargs, 'other_folder')
-                        pop_if_there(pargs, 'offset_pair')
-                        pop_if_there(pargs, 'charid_pair')
 
+            # Modify folder as needed
+            if self.is_blind and self.is_deaf:
+                pargs['folder'] = None
+
+            # Change the message to account for receiver's properties
+            if not bypass_text_replace:
                 # Change "message" parts of IC port
                 allowed_starters = ('(', '*', '[')
                 allowed_messages = (' ', '  ')
@@ -475,7 +485,9 @@ class ClientManager:
                          not pargs['msg'] in allowed_messages) or
                         (sender and sender.is_gagged and gag_replaced)):
                         pargs['msg'] = '(Your ears are ringing)'
-                        if self.send_deaf_space and self.packet_handler != clients.ClientDRO1d0d0:
+                        if (self.send_deaf_space
+                            and self.packet_handler not in
+                            [clients.ClientDRO1d0d0(), clients.ClientDRO1d1d0()]):
                             pargs['msg'] = pargs['msg'] + ' '
                         self.send_deaf_space = not self.send_deaf_space
 
@@ -484,7 +496,8 @@ class ClientManager:
                 # around old client bug
                 if sender and sender.multi_ic and sender.multi_ic_pre:
                     if pargs['msg'].startswith(sender.multi_ic_pre):
-                        if self != sender or sender.packet_handler == clients.ClientDRO1d0d0:
+                        if (self != sender or self.packet_handler in
+                            [clients.ClientDRO1d0d0(), clients.ClientDRO1d1d0()]):
                             pargs['msg'] = pargs['msg'].replace(sender.multi_ic_pre, '', 1)
 
                 # Modify shownames as needed
@@ -492,10 +505,6 @@ class ClientManager:
                     pargs['showname'] = '???'
                 elif self.show_shownames and sender:
                     pargs['showname'] = sender.showname
-
-                # Modify folder as needed
-                if self.is_blind and self.is_deaf:
-                    pargs['folder'] = None
 
             # Apply any custom functions
             proper_attributes = {attribute for attribute in pargs
@@ -515,6 +524,12 @@ class ClientManager:
                 # Otherwise convert to counter bullet
                 if not (keep1 or keep2):
                     pargs['button'] = 7
+
+            pargs['client_id'] = sender.id if sender else -1
+
+            if pargs['anim'] == '../../misc/blank':
+                pargs['hide_character'] = 1
+
             # Done modifying IC message
             # Now send it
 
@@ -543,11 +558,12 @@ class ClientManager:
             self.send_command_dict('MS', final_pargs)
 
         def send_ic_others(self, params: List = None, sender: ClientManager.Client=None,
-                           bypass_replace: bool = False, bypass_deafened_starters: bool =False,
+                           bypass_text_replace: bool = False,
+                           bypass_deafened_starters: bool = False,
                            pred: Callable[[ClientManager.Client], bool] = None, not_to=None,
                            gag_replaced=False, is_staff=None, in_area=None, to_blind=None,
                            to_deaf=None, msg=None, folder=None, pos=None, char_id=None, ding=None,
-                           color=None, showname=None):
+                           color=None, showname=None, hide_character=0):
 
             if not_to is None:
                 not_to = {self}
@@ -555,19 +571,19 @@ class ClientManager:
                 not_to = not_to.union({self})
 
             for c in self.server.get_clients():
-                c.send_ic(params=None, sender=sender, bypass_replace=bypass_replace,
+                c.send_ic(params=None, sender=sender, bypass_text_replace=bypass_text_replace,
                           bypass_deafened_starters=bypass_deafened_starters,
                           pred=pred, not_to=not_to, gag_replaced=gag_replaced, is_staff=is_staff,
                           in_area=in_area, to_blind=to_blind, to_deaf=to_deaf,
                           msg=msg, folder=folder, pos=pos, char_id=char_id, ding=ding, color=color,
-                          showname=showname)
+                          showname=showname, hide_character=hide_character)
 
         def send_ic_attention(self):
-            self.send_ic(msg='(Something catches your attention)', ding=1)
+            self.send_ic(msg='(Something catches your attention)', ding=1, hide_character=1)
 
         def send_ic_blankpost(self):
-            if self.packet_handler == clients.ClientDRO1d0d0:
-                self.send_ic(msg='', bypass_replace=True)
+            if self.packet_handler in [clients.ClientDRO1d0d0(), clients.ClientDRO1d1d0()]:
+                self.send_ic(msg='', hide_character=1, bypass_text_replace=True)
 
         def send_background(self, name: str = None, pos: str = None,
                             tod_backgrounds: Dict[str, str] = None):
@@ -618,12 +634,18 @@ class ClientManager:
                 'health': health
                 })
 
-        def send_music(self, name=None, char_id=None, showname=None, loop=None, channel=None,
-                       effects=None):
+        def send_music(self, name=None, char_id=None, showname=None, force_same_restart=None,
+                       loop=None, channel=None, effects=None):
+            if not self.packet_handler.HAS_CLIENTSIDE_MUSIC_LOOPING:
+                file_extension_location = name.rfind('.')
+                if file_extension_location >= 0:
+                    name = name[:file_extension_location]
+
             self.send_command_dict('MC', {
                 'name': name,
                 'char_id': char_id,
                 'showname': showname,
+                'force_same_restart': force_same_restart,
                 'loop': loop,
                 'channel': channel,
                 'effects': effects,
@@ -716,6 +738,12 @@ class ClientManager:
             if self.char_showname:
                 return self.char_showname
             return self.get_char_name()
+
+        @property
+        def showname_else_char_showname(self) -> str:
+            if self.showname:
+                return self.showname
+            return self.char_showname
 
         def change_character(self, char_id: int, force: bool = False,
                              target_area: AreaManager.Area = None,
@@ -853,21 +881,8 @@ class ClientManager:
             else:
                 raw_music_list = self.music_list
 
-            new_protocol = [
-                clients.ClientAO2d8d4,
-                clients.ClientAO2d9d0,
-                clients.ClientKFO2d8
-                ]
-
-            if self.packet_handler not in new_protocol:
-                # DRO and AO2.6< protocol
-                reloaded_music_list = self.server.build_music_list(from_area=self.area, c=self,
-                                                                   music_list=raw_music_list)
-                self.send_command_dict('FM', {
-                    'music_ao2_list': reloaded_music_list,
-                    })
-            else:
-                # KFO and AO2.8.4 deals with music lists differently than other clients
+            if self.packet_handler.HAS_DISTINCT_AREA_AND_MUSIC_LIST_OUTGOING_PACKETS:
+                # DRO 1.1.0+, KFO and AO2.8.4+ deals with music lists differently than older clients
                 # They want the area lists and music lists separate, so they will have it like that
                 area_list = self.server.build_music_list(from_area=self.area, c=self,
                                                          include_areas=True,
@@ -879,6 +894,13 @@ class ClientManager:
                                                             specific_music_list=raw_music_list)
                 self.send_command_dict('FM', {
                     'music_ao2_list': music_list,
+                    })
+            else:
+                # DRO 1.0.0< and AO2.6< protocol
+                reloaded_music_list = self.server.build_music_list(from_area=self.area, c=self,
+                                                                   music_list=raw_music_list)
+                self.send_command_dict('FM', {
+                    'music_ao2_list': reloaded_music_list,
                     })
 
             # Update the new music list of the client once everything is done, if a new music list
@@ -930,7 +952,6 @@ class ClientManager:
             self.is_blind = blind
 
             if self.is_blind:
-                self.send_background(name=self.server.config['blackout_background'])
                 self.send_ic_blankpost()  # Clear screen
             else:
                 self.send_background(name=self.area.background,
@@ -1015,16 +1036,18 @@ class ClientManager:
                 self.send_showname(showname=showname)
             self.showname = showname
 
-        def command_change_showname(self, showname: str, disallow_same_name: bool):
+        def command_change_showname(self, showname: str, warn_same_name: bool):
             try:
+                old_showname = self.showname
+                if old_showname == showname:
+                    if not warn_same_name:
+                        return
+                    if old_showname == '':
+                        raise ClientError('You already do not have a showname.')
+                    raise ClientError('You already have that showname.')
+
                 if self.server.showname_freeze and not self.is_staff():
                     raise ClientError('Shownames are frozen.')
-
-                old_showname = self.showname
-                if old_showname == showname == '':
-                    raise ClientError('You already do not have a showname.')
-                if old_showname == showname:
-                    raise ClientError('You already have that showname.')
 
                 try:
                     self.change_showname(showname, forced=False)
@@ -1454,8 +1477,9 @@ class ClientManager:
                     # 2. The area is the client's area
                     # 3. The area is reachable and visibly reachable from the current one
                     norm_check = (len([c for c in area.clients if c.is_visible or c == self]) > 0
-                                  and (self.is_transient or area == self.area
-                                       or (area.name in current_area.visible_reachable_areas
+                                  and (self.is_transient
+                                       or area == self.area
+                                       or (area.name in current_area.visible_areas
                                            and area.name in current_area.reachable_areas)))
                     # Check reachable and visibly reachable to prevent gaining information from
                     # areas that are visible from area list but are not reachable (e.g. normally
@@ -2001,10 +2025,41 @@ class ClientManager:
         if client_obj is None:
             self.client_obj = self.Client
 
-        self.clients = set()
+        self.clients: Set[client_obj] = set()
         self.server = server
         self.cur_id = [False] * self.server.config['playerlimit']
         self.client_obj = client_obj
+
+        # Phantom peek timer stuff
+        base_time = 300
+        _phantom_peek_timer_min = base_time - base_time/2
+        _phantom_peek_timer_max = base_time + base_time/2
+        _phantom_peek_fuzz_per_client = base_time/2
+        self.phantom_peek_timer = self.server.timer_manager.new_timer(
+            auto_restart=True,
+            max_value=random.randint(int(_phantom_peek_timer_min), int(_phantom_peek_timer_max))
+            )
+
+        def _phantom_peek():
+            for client in self.clients:
+                if client.char_id is None:
+                    # Only makes sense for proper players
+                    continue
+                zone = client.area.in_zone
+                if zone and zone.is_property('Paranoia'):
+                    zone_paranoia, = zone.get_property('Paranoia')
+                else:
+                    zone_paranoia = 0
+                threshold = (client.paranoia+zone_paranoia)/100
+                if random.random() < threshold:
+                    delay = random.randint(0, int(_phantom_peek_fuzz_per_client)-1)
+                    self.server.tasker.create_task(client, ['as_phantom_peek', delay])
+            self.phantom_peek_timer.set_max_value(
+                random.randint(int(_phantom_peek_timer_min), int(_phantom_peek_timer_max))
+            )
+
+        self.phantom_peek_timer._on_max_end = _phantom_peek
+        self.phantom_peek_timer.start()
 
     def new_client(self, transport, client_obj: typing.Type[ClientManager.Client] = None,
                    my_protocol=None):

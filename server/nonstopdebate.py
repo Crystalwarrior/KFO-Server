@@ -21,14 +21,22 @@ Module that contains the nonstop debate game.
 
 """
 
+from __future__ import annotations
+
 import functools
-import time
 
 from enum import Enum, auto
+import typing
+from typing import Any, Dict, Set
 
-from server.exceptions import ClientError, NonStopDebateError, GameError
 from server import logger
+from server.exceptions import ClientError, NonStopDebateError, GameError, TimerError
 from server.trialminigame import TrialMinigame, TRIALMINIGAMES
+
+if typing.TYPE_CHECKING:
+    # Avoid circular referencing
+    from server.area_manager import AreaManager
+    from server.client_manager import ClientManager
 
 
 class NSDMode(Enum):
@@ -183,13 +191,15 @@ class NonStopDebate(TrialMinigame):
         self._timer = None
         self._message_timer = None
         self._player_refresh_timer = None
+        self._mode_switch_lockout_timer = None
 
         self._timer_start_value = timer_start_value
         self._message_refresh_rate = 7
+        self._mode_switch_timeout_length = 5
         self._client_timer_id = 0
         self._breaker = None
         self._timers_are_setup = False
-
+        self._mode_switch_lockout_lock = True
         self._intermission_messages = 0
 
     def get_name(self) -> str:
@@ -205,7 +215,7 @@ class NonStopDebate(TrialMinigame):
 
         return "nonstop debate"
 
-    def introduce_user(self, user):
+    def introduce_user(self, user: ClientManager.Client):
         """
         Broadcast information relevant for a user entering an area of the NSD, namely current
         gamemode and status of timers.
@@ -240,7 +250,7 @@ class NonStopDebate(TrialMinigame):
             user.send_timer_pause(timer_id=self._client_timer_id)
         self._update_player_timer(user)
 
-    def dismiss_user(self, user):
+    def dismiss_user(self, user: ClientManager.Client):
         """
         Broadcast information relevant for a user that has left the NSD, namely modify the
         gamemode and timers as follows:
@@ -301,7 +311,7 @@ class NonStopDebate(TrialMinigame):
 
         return TRIALMINIGAMES.NONSTOP_DEBATE
 
-    def get_mode(self):
+    def get_mode(self) -> NSDMode:
         """
         Return the current mode of the nonstop debate.
 
@@ -340,6 +350,12 @@ class NonStopDebate(TrialMinigame):
 
         self._mode = NSDMode.PRERECORDING
         self._preintermission_mode = NSDMode.PRERECORDING
+        self._mode_switch_lockout_lock = True
+        self._mode_switch_lockout_timer.set_time(0)
+        try:
+            self._mode_switch_lockout_timer.unpause()
+        except TimerError.NotPausedTimerError:
+            pass
 
         for user in self.get_users_in_areas():
             user.send_gamemode(name='nsd')
@@ -368,6 +384,7 @@ class NonStopDebate(TrialMinigame):
         if self._timer and not self._timer.terminated():
             self._timer.unpause()
         self._player_refresh_timer.unpause()
+
         for user in self.get_users_in_areas():
             user.send_gamemode(name='nsd')
             user.send_timer_resume(timer_id=self._client_timer_id)
@@ -378,7 +395,7 @@ class NonStopDebate(TrialMinigame):
                             'are satisfied with the debate messages, you may pause the debate with '
                             '/nsd_pause and then loop the debate with /nsd_loop.')
 
-    def set_intermission(self, blankpost=True):
+    def set_intermission(self, blankpost: bool = True):
         """
         Set the NSD to be in intermission mode. This will pause the NSD timer, terminate the
         current message timer and order all players to pause their timers and switch to a
@@ -419,6 +436,13 @@ class NonStopDebate(TrialMinigame):
         if self._player_refresh_timer and not self._player_refresh_timer.paused():
             self._player_refresh_timer.pause()
 
+        self._mode_switch_lockout_lock = True
+        self._mode_switch_lockout_timer.set_time(0)
+        try:
+            self._mode_switch_lockout_timer.unpause()
+        except TimerError.NotPausedTimerError:
+            pass
+
         for user in self.get_users_in_areas():
             user.send_timer_pause(timer_id=self._client_timer_id)
             self._update_player_timer(user)
@@ -438,12 +462,12 @@ class NonStopDebate(TrialMinigame):
 
         self._intermission_messages = 0
 
-    def _set_intermission_postbreak(self, breaker, blankpost=True):
+    def _set_intermission_postbreak(self, breaker: ClientManager.Client, blankpost: bool = True):
         self.set_intermission(blankpost=blankpost)
         self._mode = NSDMode.INTERMISSION_POSTBREAK
         self._breaker = breaker
 
-    def _set_intermission_timeranout(self, blankpost=True):
+    def _set_intermission_timeranout(self, blankpost: bool = True):
         self.set_intermission(blankpost=blankpost)
         self._mode = NSDMode.INTERMISSION_TIMERANOUT
 
@@ -519,7 +543,7 @@ class NonStopDebate(TrialMinigame):
         raise RuntimeError(f'Should not have made it here for NSD {self}: '
                            f'{self._preintermission_mode}')
 
-    def add_player(self, user):
+    def add_player(self, user: ClientManager.Client):
         """
         Make a user a player of the game. By default this player will not be a leader. It will
         also subscribe the game ot the player so it can listen to its updates.
@@ -559,7 +583,7 @@ class NonStopDebate(TrialMinigame):
 
         self.introduce_user(user)
 
-    def remove_player(self, user):
+    def remove_player(self, user: ClientManager.Client):
         """
         Make a user be no longer a player of this game. If they were part of a team managed by
         this game, they will also be removed from said team. It will also unsubscribe the game
@@ -707,13 +731,23 @@ class NonStopDebate(TrialMinigame):
                                              auto_restart=True)
         self._message_timer._on_max_end = self._display_next_message
 
+        def _mode_switch_lockout_unlock():
+            self._mode_switch_lockout_lock = False
+            self._mode_switch_lockout_timer.pause()
+
+        self._mode_switch_lockout_timer = self.new_timer(start_value=0,
+                                                         max_value=self._mode_switch_timeout_length,
+                                                         auto_restart=True)
+        self._mode_switch_lockout_timer._on_max_end = _mode_switch_lockout_unlock
+        self._mode_switch_lockout_timer.unpause()
+
         if self._timer_start_value > 0:
             self._timer = self.new_timer(start_value=self._timer_start_value,
                                          tick_rate=-1, min_value=0)
             self._timer._on_min_end = functools.partial(
                 self._set_intermission_timeranout, blankpost=True)
 
-    def _update_player_timer(self, player):
+    def _update_player_timer(self, player: ClientManager.Client):
         if not self._timer:
             player.send_timer_set_time(timer_id=self._client_timer_id, new_time=0)
             player.send_timer_set_step_length(timer_id=self._client_timer_id,
@@ -728,7 +762,9 @@ class NonStopDebate(TrialMinigame):
             player.send_timer_set_firing_interval(timer_id=self._client_timer_id,
                                                   new_firing_interval=round(0.016*1000))
 
-    def _on_area_client_inbound_ms_check(self, area, client=None, contents=None):
+    def _on_area_client_inbound_ms_check(self, area: AreaManager.Area,
+                                         client: ClientManager.Client = None,
+                                         contents: Dict[str, Any] = None):
         """
         Check if any of the following situations occur:
         * If the user is not part of the nonstop debate.
@@ -758,13 +794,15 @@ class NonStopDebate(TrialMinigame):
         if not self.is_player(client):
             raise ClientError('You are not a player of this nonstop debate.')
 
-    def _on_client_inbound_ms_check(self, player, contents=None):
+    def _on_client_inbound_ms_check(self, player: ClientManager.Client,
+                                    contents: Dict[str, Any] = None):
         """
-        Check if any of the following situations occur:
-        * If they want to send a message with some types of bullets ('MC', 'CUT') at any point.
-        * If they want to send a message with a bullet before any messages were recorded.
-        * If they want to send a message with a bullet during intermission mode.
-        * If they want to send a message without a bullet during looping mode.
+        Check if any of the following situations occur: They want to send a message...
+        * Within 5 seconds of the mode being set to recording or intermission and not leader.
+        * With some types of bullets ('MC', 'CUT') at any point.
+        * With a bullet before any messages were recorded.
+        * With a bullet during intermission mode.
+        * Without a bullet during looping mode.
 
         If none of the above is true, allow the IC message as is.
 
@@ -778,7 +816,7 @@ class NonStopDebate(TrialMinigame):
         Raises
         ------
         ClientError
-            If any of the above disquaLifying situations is true.
+            If any of the above disqualifying situations is true.
 
         Returns
         -------
@@ -786,6 +824,9 @@ class NonStopDebate(TrialMinigame):
 
         """
 
+        # Too soon
+        if self._mode_switch_lockout_lock and not self.is_leader(player):
+            raise ClientError('You may not send a message just after the current mode started.')
         # Trying to do an MC or CUT.
         if contents['button'] not in {0, 1, 2, 3, 5, 7, 8}:
             raise ClientError('You may not perform that action during a nonstop debate.')
@@ -800,7 +841,8 @@ class NonStopDebate(TrialMinigame):
             func = lambda c: 8 if c in {player}.union(self.get_leaders()) else 7
             contents['PER_CLIENT_button'] = func
 
-    def _on_client_inbound_ms_final(self, player, contents=None):
+    def _on_client_inbound_ms_final(self, player: ClientManager.Client,
+                                    contents: Dict[str, Any] = None):
         """
         Add message of player to record of messages.
 
@@ -832,7 +874,7 @@ class NonStopDebate(TrialMinigame):
             # Keep track of how many messages were sent during intermission. Every 5 messages,
             # prompt leaders to end debate
             self._intermission_messages += 1
-            if self._intermission_messages % 5 == 0 or contents['button'] > 0:
+            if self._intermission_messages % 20 == 0 or contents['button'] > 0:
                 if self._mode == NSDMode.INTERMISSION_POSTBREAK:
                     msg = ('(X) Your nonstop debate is still in intermission mode after a break. '
                            "Type /nsd_accept to accept the break and end the debate, "
@@ -857,8 +899,9 @@ class NonStopDebate(TrialMinigame):
         else:
             raise RuntimeError(f'Unrecognized mode {self._mode}')
 
-    def _on_area_client_left_final(self, area, client=None, old_displayname=None,
-                             ignore_bleeding=False):
+    def _on_area_client_left_final(self, area: AreaManager.Area,
+                                   client: ClientManager.Client = None,
+                                   old_displayname: str = None, ignore_bleeding: bool = False):
         """
         If a player left to an area not part of the NSD, remove the player and warn them and
         the leaders of the NSD.
@@ -921,8 +964,10 @@ class NonStopDebate(TrialMinigame):
             self.dismiss_user(client)
         self._check_structure()
 
-    def _on_area_client_entered_final(self, area, client=None, old_area=None, old_displayname=None,
-                                      ignore_bleeding=False):
+    def _on_area_client_entered_final(self, area: AreaManager.Area,
+                                      client: ClientManager.Client = None,
+                                      old_area: AreaManager.Area = None,
+                                      old_displayname: str = None, ignore_bleeding: bool = False):
         """
         If a non-player entered, warn them and the leaders of the NSD.
 
@@ -980,7 +1025,8 @@ class NonStopDebate(TrialMinigame):
                                        pred=lambda c: c in self.get_leaders())
             self.introduce_user(client)
 
-    def _on_client_change_character(self, player, old_char_id=None, new_char_id=None):
+    def _on_client_change_character(self, player: ClientManager.Client, old_char_id: int = None,
+                                    new_char_id: int = None):
         """
         It checks if the player is now no longer having a character. If that is
         the case and the NSD requires all players have characters, the player is automatically
@@ -1036,7 +1082,7 @@ class NonStopDebate(TrialMinigame):
 
         self._check_structure()
 
-    def _on_client_destroyed(self, player):
+    def _on_client_destroyed(self, player: ClientManager.Client):
         """
         Remove the player from the NSD. If the NSD is already unmanaged or
         the player is not in the game, this callback does nothing.
@@ -1083,7 +1129,7 @@ class NonStopDebate(TrialMinigame):
 
         self._check_structure()
 
-    def _on_areas_loaded(self, area_manager):
+    def _on_areas_loaded(self, area_manager: AreaManager):
         """
         Destroy the trial and warn players and nonplayers in areas.
 
@@ -1106,7 +1152,7 @@ class NonStopDebate(TrialMinigame):
 
         self.destroy()
 
-    def _add_message(self, player, contents=None):
+    def _add_message(self, player: ClientManager.Client, contents: Dict[str, Any] = None):
         """
         Add a message to the log of messages of the NSD. If the NSD timer is paused, it will also
         resume the timer.
@@ -1161,7 +1207,7 @@ class NonStopDebate(TrialMinigame):
                                 'the debate.')
             self.set_intermission()
 
-    def _break_loop(self, player, contents):
+    def _break_loop(self, player: ClientManager.Client, contents: Dict[str, Any]):
         """
         Handle 'break' logic. It will send OOC messages to the breaker and the leaders of the NSD
         indicating of this event, and set the NSD mode to intermission with a 3 second delay.

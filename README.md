@@ -45,22 +45,22 @@ It is highly recommended you read through all the installation steps first befor
 * If everything was set up correctly, you will see something like this appear:
 
 ```
-[2021-09-29T10:20:20]: Starting...
-[2021-09-29T10:20:20]: Launching TsuserverDR 4.3.0 (210929a)...
-[2021-09-29T10:20:20]: Loading server configurations...
-[2021-09-29T10:20:20]: Server configurations loaded successfully!
-[2021-09-29T10:20:20]: Starting a nonlocal server...
-[2021-09-29T10:20:20]: Server started successfully!
-[2021-09-29T10:20:21]: Server should be now accessible from 192.0.2.0:50000:My First DR Server
+[2022-05-05T10:20:20]: Starting...
+[2022-05-05T10:20:20]: Launching TsuserverDR 4.3.1 (220505a)...
+[2022-05-05T10:20:20]: Loading server configurations...
+[2022-05-05T10:20:20]: Server configurations loaded successfully!
+[2022-05-05T10:20:20]: Starting a nonlocal server...
+[2022-05-05T10:20:20]: Server started successfully!
+[2022-05-05T10:20:21]: Server should be now accessible from 192.0.2.0:50000:My First DR Server
 ```
 
 * If you are listing your server in the Attorney Online master server, make sure its details are set up correctly. In particular, make sure that your server name and description are correct, as that is how players will find your server. If everything was set up correctly, you will see something like this appear:
 
 ```
-[2021-09-29T10:20:21]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:
-[2021-09-29T10:20:21]: *Server name: My First DR Server
-[2021-09-29T10:20:21]: *Server description: This is my flashy new DR server
-[2021-09-29T10:20:22]: Connected to the master server.
+[2022-05-05T10:20:21]: Attempting to connect to the master server at master.aceattorneyonline.com:27016 with the following details:
+[2022-05-05T10:20:21]: *Server name: My First DR Server
+[2022-05-05T10:20:21]: *Server description: This is my flashy new DR server
+[2022-05-05T10:20:22]: Connected to the master server.
 ```
 
   - The server will make a single ping to [ipify](https://api.ipify.org) in order to obtain its public IP address. If it fails to do that, it will let you know that, as it means there is probably something wrong with your internet connection and that other players may not be able to connect to your server.
@@ -69,9 +69,9 @@ It is highly recommended you read through all the installation steps first befor
 * To stop the server, press Ctrl+C once from your terminal. This will initiate a shutdown sequence and notify you when it is done. If the shutdown finished successfully, you will see something like this appear:
 
 ```
-[2021-09-29T22:23:04]: You have initiated a server shut down.
-[2021-09-29T22:23:04]: Kicking 12 remaining clients.
-[2021-09-29T22:23:04]: Server has successfully shut down.
+[2022-05-05T22:23:04]: You have initiated a server shut down.
+[2022-05-05T22:23:04]: Kicking 12 remaining clients.
+[2022-05-05T22:23:04]: Server has successfully shut down.
 ```
 
 * If you do not see anything after a few seconds of starting a shutdown, you can try spamming Ctrl+C to try and force a shutdown or directly close out your terminal. This is not recommended due to the cleanup process not finishing correctly but it is doable.
@@ -98,6 +98,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
 
 * **help** "command name"
     - Displays help for a command, or links to the server repository if not given an argument.
+* **help_more** "command name"
+    - Displays extended help for a command, usually significantly longer than what /help does.
 * **area** "area number"
     - Moves you to an area by its numerical ID if it is reachable from your own, or displays all areas if not given a number.
 * **autopass**
@@ -177,6 +179,12 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Sets your music list to the given one, or restores the original one if not given any.
 * **music_lists**
     - Lists all available music lists as established in `config/music_lists.yaml`.
+* **notecard** "content"
+    - Sets the content of your notecard.
+* **notecard_clear**
+    - Clears the content of your notecard.
+* **notecard_info**
+    - Returns the content of your notecard.
 * **nsd_info**
     - Returns details about your NSD.
 * **nsd_leave**
@@ -213,6 +221,9 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Sends an IC private message to everyone in the party.
     - Other people in the area are warned that a whisper has taken place (but not the message content). However, staff members do get message contents, so this command should only be used in RP settings.
 	- Messages are limited to 256 characters.
+* **peek** "area ID"
+    - Peeks into an area visible to you, returning information that would have been available had you done /look there.
+    - Successful peeks have a 75% chance to notify of the peek having taken place for each player in the target area.
 * **ping**
     - Returns "Pong", used to check for server connection.
 * **play** "song.mp3"
@@ -249,6 +260,8 @@ Additional notes are listed at the end of the command list. Unless otherwise spe
     - Switches you to a SPECTATOR character.
 * **switch** "character name"
     - Switches you to the given character, provided no other player is using it in the area and it is not restricted.
+* **think** "message"
+    - Sends an IC message that only you and zone watchers or GMs+ can see.
 * **time**
     - Displays the server's local time.
 * **time12**
@@ -310,6 +323,10 @@ GMs can:
 * **area_kick** "ID" "area number"
     - Kicks target from your area to the intended area and remove them from its invite-list.
     - If not given a target area, it will use the server's default area (usually area 0).
+* **autopass** "ID"
+    - Toggles enter/leave messages being sent automatically or not to users in the current area, including original/target areas, whenever the target moves.
+    - Messages will not be sent if sneaking. Altered messages will be sent if the area's lights are turned off.
+    - If no ID is given, target is yourself.
 * **bilock** "area 1", "area 2"
     - Changes the passage locked status (locked/unlocked) between two areas, or from the current area to area 1 if just given one area. Locking a passage in such a way does not change its current visibility to non-GMs.
 * **bilockh** "area 1", "area 2"
@@ -342,8 +359,9 @@ GMs can:
     - If a character is restricted, only GMs and above can use the character in the current area.
 * **charlog** "ID"
     - Lists all character changes (including iniswaps and character name changes) a target has gone through since connecting, including the time they were changed.
-* **clock** "area range start" "area range end" "hour length" "hour start"
+* **clock** "area range start" "area range end" "hour length" "hour start" "hours in a day"
     - Sets up a day cycle that, starting from the given hour, will tick one hour every given number of seconds and provide a time announcement to a given range of areas.
+    - Hours go from 0 inclusive to the number of hours in a day given exclusive, or 0 to 23 inclusive if not given a number of hours in a day.
 * **clock_end** "ID"
     - Ends the day cycle initiated by the target or yourself if not given a target.
 * **clock_pause** "ID"
@@ -355,6 +373,8 @@ GMs can:
 * **clock_set** "hour length" "hour"
     - Modifies the hour length and current hour of your day cycle without restarting it. This is the way to move the day cycle out of unknown time if needed as well.
     - Acts just like doing /clock again, but does not erase already set periods.
+* **clock_set_hours** "hours in day"
+    - Modifies the number of hours in your day cycle.
 * **clock_unknown**
     - Sets the time of your day cycle to be unknown, a special time where hours do not tick.
     - Players in the clock range will be ordered to switch to the unknown time of day version of their theme.
@@ -416,6 +436,19 @@ GMs can:
     - Makes the target a GM, provided the target is a multiclient of the player.
 * **multiclients** "ID"
     - Lists all the clients opened by a target and the areas they are in.
+* **notecard_check**
+    - Returns the contents of all notecards set by players in your current area.
+* **notecard_clear** "ID"
+    - Clears the content of a player's notecard by ID, or your own notecard if not given one.
+* **notecard_clear_area**
+    - Clears the content of the notecards of all players in your current area.
+* **notecard_list**
+    - Returns the content of all notecards currently set by players in the server.
+* **notecard_reveal**
+    - Reveals the contents to all players in the area of all notecards of all players in your current area.
+* **notecard_reveal_count**
+    - Tallies the contents of all notecards of players in the area and reveals the count to all players in your current area.
+    - This does not reveal the people who wrote particular notecards.
 * **noteworthy**
    - Changes the noteworthy status of the area.
 * **nsd** "time"
@@ -448,6 +481,11 @@ GMs can:
     - Sets the NSD you lead to be in the mode prior to intermission mode: if it was recording mode, previously recorded messages will be saved and future messages will be saved on top of the older ones; if it was looping, messages will be played from the first one.
 * **nsd_unlead**
     - Removes your NSD leader role.
+* **paranoia** "player ID" "paranoia level"
+    - Sets the player paranoia level (by default 2) of a player to the new level.
+    - Paranoia level is a number from -100 to 100, and is internally added to the paranoia level of the player's current zone (if any) to determine the probability they occasionaly get phantom peek messages.
+* **paranoia_info** "player ID"
+    - Gets the player paranoia level of a player.
 * **party_end** "party ID"
     - Ends a party.
 * **party_join** "party ID"
@@ -462,6 +500,8 @@ GMs can:
     - Plays a song, even if not in the server music list.
 * **poison** "ID" "initials of effects" "length"
     - Applies a poison to the target that will inflict them in the given length of time in seconds the given effects.
+* **pos_force** "position" "ID"
+    - Changes the IC position of a target by ID to the given one, or the one of all players in an area if not given a target.
 * **reveal** "ID"
     - Reveals a target if they were previously sneaking.
     - Also restores their formerly assigned handicap if they had one that was shorter than the server's automatic sneaking handicap.
@@ -553,6 +593,8 @@ GMs can:
     - You are automatically set to watch the zones you create like this.
 * **zone_add** "area"
     - Adds an area by name or ID to the zone you are watching.
+* **zone_autopass**
+    - Changes the autopass status of the zone you are watching. If turned on, turns autopass on for players in an area part of a zone and players that later join; otherwise, it turns it off for players in an area part of the zone
 * **zone_end**
     - Ends the zone you are watching.
 * **zone_handicap** "length" "name" "announce if over"
@@ -576,6 +618,11 @@ GMs can:
     - Sets up the gamemode of your zone, or clears it if not given one.
     - Players in an area part of the zone will be ordered to switch to that gamemode's version of their theme.
     - Gamemodes are automatically made all lowercase.
+* **zone_paranoia** "paranoia level"
+    - Sets the zone paranoia level (by default 2) of the zone you are watching to the new level.
+    - Paranoia level is a number from -100 to 100, and is internally added to a player paranoia's level to determine the probability percentage they occasionaly get phantom peek messages.
+* **zone_paranoia_info**
+    - Gets the zone paranoia level of the zone you are watching.
 * **zone_play**
     - Plays a track in all areas in the zone you are watching.
 * **zone_remove** "area"
@@ -740,6 +787,7 @@ Commands without (D) are aliases to commands and can be freely used (subject to 
 * **timer_cancel**: Same as /timer_end. (D) (Deprecated July 5, 2021)
 * **fa**: Same as /files_area.
 * **l**: Same as /look.
+* **forcepos**: Same as /pos_force.
 
 #### GM+
 

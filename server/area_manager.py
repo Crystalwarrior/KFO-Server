@@ -36,7 +36,7 @@ if typing.TYPE_CHECKING:
 import asyncio
 import time
 
-from server import logger
+from server import clients, logger
 from server.constants import Constants
 from server.evidence import EvidenceList
 from server.exceptions import AreaError, ServerError
@@ -75,6 +75,7 @@ class AreaManager:
 
             self.invite_list = {}
             self.music_looper = None
+            self.music_looper_pargs = {}
             self.next_message_time = 0
             self.hp_def = 10
             self.hp_pro = 10
@@ -129,6 +130,7 @@ class AreaManager:
             self.cbg_allowed = parameters['cbg_allowed']
             self.song_switch_allowed = parameters['song_switch_allowed']
             self.bullet = parameters['bullet']
+            self.visible_areas = parameters['visible_areas']
 
             # Store the current description separately from the default description
             self.description = self.default_description
@@ -136,7 +138,6 @@ class AreaManager:
             self.background_backup = self.background
 
             self.default_reachable_areas = self.reachable_areas.copy()
-            self.visible_reachable_areas = self.reachable_areas.copy()
 
             self.reachable_areas.add(self.name) # Area can always reach itself
 
@@ -676,9 +677,10 @@ class AreaManager:
 
         def play_track(self, name: str, client: ClientManager.Client,
                        raise_if_not_found: bool = False, reveal_sneaked: bool = False,
+                       force_same_restart : int = 1,
                        pargs: Dict[str, Any] = None):
             """
-            Wrapper function to play a music track in an area.
+            Play a music track in an area.
 
             Parameters
             ----------
@@ -695,6 +697,10 @@ class AreaManager:
             reveal_sneaked : bool, optional
                 If True, it will change the visibility status of the sender client to True (reveal
                 them). If False, it will keep their visibility as it was. Defaults to False.
+            force_same_restart : int, optional
+                If 0, the server allows a player's client to not restart their music if it happens
+                to be the case the client is already playing it. If 1, no such permission is given
+                and a track must always be restarted from the beginning. Defaults to 1.
             pargs : dict of str to Any
                 If given, they are arguments to an MC packet that was given when the track was
                 requested, and will override any other arguments given. If not, this is ignored.
@@ -736,19 +742,25 @@ class AreaManager:
             if 'effects' not in pargs:
                 pargs['effects'] = 0
 
-            def loop(char_id):
-                for client in self.clients:
-                    loop_pargs = pargs.copy()
-                    # Overwrite in case char_id changed (e.g., server looping)
-                    loop_pargs['char_id'] = char_id
-                    client.send_music(**loop_pargs)
+            loop_pargs = pargs.copy()
+            loop_pargs['force_same_restart'] = force_same_restart
+
+            def loop(zeroth_loop):
+                for player in self.clients:
+                    if zeroth_loop or not player.packet_handler.HAS_CLIENTSIDE_MUSIC_LOOPING:
+                        player.send_music(**loop_pargs)
 
                 if self.music_looper:
                     self.music_looper.cancel()
                 if length > 0:
-                    f = lambda: loop(-1) # Server should loop now
+                    f = lambda: loop(False)
                     self.music_looper = asyncio.get_event_loop().call_later(length, f)
-            loop(pargs['char_id'])
+
+                # Overwrite in case char_id changed (e.g., server looping)
+                loop_pargs['char_id'] = -1
+                self.music_looper_pargs = loop_pargs
+
+            loop(True)
 
             # Record the character name and the track they played.
             self.current_music_player = client.displayname
@@ -765,32 +777,24 @@ class AreaManager:
                                        .format(client.displayname, client.id, client.area.id),
                                        is_zstaff=True)
 
-        def play_music(self, name: str, char_id: int, length: int = -1, showname: str = ''):
-            """
-            Start playing a music track in an area.
+        def play_current_track(self, only_for: Set[ClientManager.Client] = None,
+                               force_same_restart: int = -1):
+            if not self.current_music:
+                raise AreaError('No music is currently playing.')
+            if only_for is None:
+                only_for = self.clients
 
-            Parameters
-            ----------
-            name: str
-                Name of the track to play.
-            char_id: int
-                Character ID of the player who played the track, or -1 if the server initiated it.
-            length: int, optional
-                Length of the track in seconds to allow for seamless server-managed looping.
-                Defaults to -1 (no looping).
-            showname: str, optional
-                Showname to include with the notification of changed music. Defaults to '' (use
-                default showname of character).
-            """
+            for player in only_for:
+                if player not in self.clients:
+                    raise AreaError(f'{player.displayname} [{player.id}] is not part of the area.')
 
-            for client in self.clients:
-                client.send_music(name=name, char_id=char_id, showname=showname)
+            pargs = self.music_looper_pargs.copy()
+            if force_same_restart >= 0:
+                pargs['force_same_restart'] = force_same_restart
 
-            if self.music_looper:
-                self.music_looper.cancel()
-            if length > 0:
-                f = lambda: self.play_music(name, -1, length)
-                self.music_looper = asyncio.get_event_loop().call_later(length, f)
+            for player in only_for:
+                if player.packet_handler.HAS_CLIENTSIDE_MUSIC_LOOPING:
+                    player.send_music(**pargs)
 
         def add_to_shoutlog(self, client: ClientManager.Client, msg: str):
             """
@@ -933,6 +937,81 @@ class AreaManager:
             else:
                 period = self.server.tasker.get_task_attr(client, ['as_day_cycle'], 'period')
                 return period
+
+        def get_look_output_for(self, client: ClientManager.Client) -> Tuple[bool, str, str]:
+            """
+            Return information about the visual aspect of the current area in accordance to
+            a particular player's perspective.
+
+            Parameters
+            ----------
+            client : ClientManager.Client
+                Player whose perspective will be used.
+
+            Returns
+            -------
+            Tuple[bool, str, str]
+                - First argument is True if information that only GM+ could have obtained is
+                  included in the return, False otherwise.
+                - Second argument is a description of the current area (ignoring whether `client` is
+                  blind or lights are off)
+                - Third argument is a description of the players in the current area that `client`
+                  is entitled to see.
+            """
+
+            elevated = False
+
+            if self.description == self.server.config['default_area_description']:
+                area_description = 'Nothing particularly interesting.'
+            else:
+                area_description = self.description
+
+            players = client.get_visible_clients(self)
+            player_list = list()
+            player_description = ''
+            for player in players:
+                if player.showname:
+                    name = player.showname
+                elif player.char_showname:
+                    name = player.char_showname
+                elif player.char_folder != player.get_char_name():
+                    name = player.char_folder
+                else:
+                    name = player.get_char_name()
+
+                priority = 0
+                if player.status:
+                    priority -= 2**2
+                if player.party and player.party == client.party:
+                    priority -= 2**1
+
+                player_list.append([priority, name, player.id, player])
+                # We add player.id as a tiebreaker if both priority and name are the same
+                # This can be the case if, say, two SPECTATOR are in the same area.
+                # player.id is unique, so it helps break ties
+                # player instances do not have order, so they are a bad way to sort ties.
+
+            player_list.sort()
+            for (_, name, _, player) in player_list:
+                player_description += f'\r\n[{player.id}] {name}'
+                if player.status:
+                    player_description += ' (!)'
+                if player.party and player.party == client.party:
+                    player_description += ' (P)'
+                if client.is_staff() and len(client.get_multiclients()) > 1:
+                    # If client is multiclienting add (MC) for officers
+                    elevated = True
+                    player_description += ' (MC)'
+                if not player.is_visible:
+                    elevated = True
+                    player_description += ' (S)'
+
+            if not player_description:
+                # This could happen for example, when a player peeks into an area where they cannot
+                # see any player.
+                player_description = 'no one'
+            return elevated, area_description, player_description
+
 
         def unlock(self):
             """
@@ -1245,7 +1324,7 @@ class AreaManager:
 
             # And make sure that non-authorized users cannot create passages they cannot see
             if ((not areas[1-i].name in areas[i].reachable_areas) and
-                not (client.is_staff() or areas[1-i].name in areas[i].visible_reachable_areas)):
+                not (client.is_staff() or areas[1-i].name in areas[i].visible_areas)):
                 raise AreaError('You must be authorized to create a new passage from {} to '
                                 '{}.'.format(areas[i].name, areas[1-i].name))
 
@@ -1255,12 +1334,12 @@ class AreaManager:
                 now_reachable.append(False)
                 areas[i].reachable_areas -= {areas[1-i].name}
                 if change_passage_visibility:
-                    areas[i].visible_reachable_areas -= {areas[1-i].name}
+                    areas[i].visible_areas -= {areas[1-i].name}
             else:  # Case creating a passage
                 now_reachable.append(True)
                 areas[i].reachable_areas.add(areas[1-i].name)
                 if change_passage_visibility:
-                    areas[i].visible_reachable_areas.add(areas[1-i].name)
+                    areas[i].visible_areas.add(areas[1-i].name)
 
             for client in areas[i].clients:
                 client.reload_music_list()
