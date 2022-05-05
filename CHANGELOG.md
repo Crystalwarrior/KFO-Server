@@ -702,7 +702,7 @@
 ### 220327a (4.3.0-post6)
 * Fixed issue that allowed area or music lists that allowed some clients to send improper requests
 
-### (4.3.1)
+### 220505a (4.3.1)
 * Added `visible_areas` support to `areas.yaml`. If included in an area, it will set the areas visible to a player in the area. By default it is the same as the reachable areas
 * Added /peek, which allows players to gather information about an area nearby, potentially warning users in the target area of the peek
 * Added the concept of player paranoia and zone paranoia, which sends fake indications of a player being peeked roughly every 300 seconds with probability equal to the sum of both paranoias (by default 2% and 0% respectively) via commands
