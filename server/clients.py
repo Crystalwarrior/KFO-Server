@@ -211,8 +211,8 @@ class DefaultDROProtocol(_Singleton):
     MC_OUTBOUND = [
         ('name', ''),  # 0
         ('char_id', -1),  # 1
+        ('showname', ''),  # 2
         ('force_same_restart', 1),  # 3
-        ('showname', ''),  # 3
         ]
 
     RT_INBOUND = [
