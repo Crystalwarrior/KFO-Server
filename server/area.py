@@ -283,8 +283,8 @@ class Area:
 
     @property
     def id(self):
-        """Get area's index in the AreaManager's 'areas' list."""
-        return self.area_manager.areas.index(self)
+        """Get area's index in the AreaManager's 'areas' list if present in its areas. Otherwise, return -1."""
+        return self.area_manager.areas.index(self) if self in self.area_manager.areas else -1
 
     @property
     def server(self):
