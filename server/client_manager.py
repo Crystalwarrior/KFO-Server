@@ -158,6 +158,10 @@ class ClientManager:
             # Whether or not the client used the /showname command
             self.used_showname_command = False
 
+            # Compatibility stuff
+            # Determine if this client can support multi-layered audio (such as ambience)
+            self.has_multilayer_audio = False
+
         def send_raw_message(self, msg):
             """
             Send a raw packet over TCP.
@@ -173,6 +177,13 @@ class ClientManager:
             :param *args: list of arguments
             """
             if args:
+                # Music packet
+                if command == "MC":
+                    # If this MC packet is using multilayer audio and the client doesn't support it
+                    if args[4] != "" and int(args[4]) > 0 and not self.has_multilayer_audio:
+                        # Ignore the packet, don't send the music
+                        return
+                # IC Message packet
                 if command == "MS":
                     # Anim is blank, we're narrating.
                     # Or the pos is blank, we're using last pos.
