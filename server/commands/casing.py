@@ -143,6 +143,9 @@ def ooc_cmd_evidence_add(client, arg):
         max_args = 3
         # Get the user input
         args = shlex.split(arg)
+        if len(args) > 3:
+            raise ArgumentError(
+                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/evidence_add {arg})")
         # fill the rest of it with asterisk to fill to max_args
         args = args + ([""] * (max_args - len(args)))
         if args[0] == "":
@@ -210,6 +213,9 @@ def ooc_cmd_evidence_edit(client, arg):
         max_args = 4
         # Get the user input
         args = shlex.split(arg)
+        if len(args) > 4:
+            raise ArgumentError(
+                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/evidence_add {arg})")
         # fill the rest of it with asterisk to fill to max_args
         args = args + (["*"] * (max_args - len(args)))
     except ValueError as ex:
