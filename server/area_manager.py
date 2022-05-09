@@ -471,6 +471,10 @@ class AreaManager:
         # Grab the indexes
         a = self.areas.index(area1)
         b = self.areas.index(area2)
+
+        # Swap 'em good
+        self.areas[a], self.areas[b] = self.areas[b], self.areas[a]
+
         if fix_links:
             # Turn indexes to string
             a = str(a)
@@ -492,9 +496,6 @@ class AreaManager:
                 elif b in links:
                     # take link out of b and put it into a
                     area.links[a] = area.links.pop(b)
-
-        # Swap 'em good
-        self.areas[a], self.areas[b] = self.areas[b], self.areas[a]
 
     def add_owner(self, client):
         """
