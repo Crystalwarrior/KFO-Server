@@ -471,29 +471,30 @@ class AreaManager:
         # Grab the indexes
         a = self.areas.index(area1)
         b = self.areas.index(area2)
-        # Swap 'em good
-        self.areas[b] = self.areas[a]
-        self.areas[a] = self.areas[b]
-
         if fix_links:
-            # Update area links
+            # Turn indexes to string
             a = str(a)
             b = str(b)
             # Looping through all Hub's areas
             for area in self.areas:
-                # For every link in that area's links
-                for link in area.links.copy():
-                    # If that link equals to a
-                    if link == a:
-                        # Take out the link for 'a'
-                        area.links.pop(a)
-                        # Replace it with a link for 'b'
-                        area.links.push(b)
-                    if link == b:
-                        # Take out the link for 'b'
-                        area.links.pop(b)
-                        # Replace it with a link for 'a'
-                        area.links.push(a)
+                # Grab all link indexes
+                links = area.links.keys()
+
+                # If we found reference for both links
+                if a in links and b in links:
+                    # swap a to b and b to a
+                    area.links[a], area.links[b] = area.links[b], area.links[a]
+                # If we found only link a reference
+                elif a in links:
+                    # take link out of a and put it into b
+                    area.links[b] = area.links.pop(a)
+                # If we found only link b reference
+                elif b in links:
+                    # take link out of b and put it into a
+                    area.links[a] = area.links.pop(b)
+
+        # Swap 'em good
+        self.areas[a], self.areas[b] = self.areas[b], self.areas[a]
 
     def add_owner(self, client):
         """
