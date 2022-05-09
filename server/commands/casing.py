@@ -337,20 +337,27 @@ def ooc_cmd_cm(client, arg):
     Leave id blank to promote yourself if there are no CMs.
     Usage: /cm <id>
     """
-    if not client.area.can_cm:
-        raise ClientError("You can't become a CM in this area")
-    if len(client.area.owners) == 0:
-        if len(arg) > 0:
-            raise ArgumentError(
-                "You cannot 'nominate' people to be CMs when you are not one."
-            )
-        client.area.add_owner(client)
-        database.log_area(
-            "cm.add", client, client.area, target=client, message="self-added"
-        )
-    elif client in client.area.owners:
-        if len(arg) > 0:
-            arg = arg.split(" ")
+    if not client.is_mod and client not in client.area.area_manager.owners and not client.area.can_cm:
+        raise ClientError("You can't become a CM in this Area!")
+    if len(client.area._owners) == 0 or client.is_mod or client in client.area.owners:
+        # Client is trying to make someone else a CM
+        if arg != "":
+            # Nominate all self clients (Those not present in area will not be counted later)
+            if arg == "*":
+                arg = [c.id for c in client.server.client_manager.get_multiclients(
+                    client.ipid, client.hdid)]
+            # CM the provided targets
+            else:
+                arg = arg.split(" ")
+                # Client is not a mod, not a CM and not a GM, meaning they're trying to nominate someone without being /cm first
+                if not client.is_mod and client not in client.area.owners:
+                    raise ArgumentError(
+                        "You cannot 'nominate' people to be CMs when you are not one."
+                    )
+        else:
+            # Self CM
+            arg = [client.id]
+        # Loop through the ID's provided
         for id in arg:
             try:
                 id = int(id)
@@ -361,7 +368,7 @@ def ooc_cmd_cm(client, arg):
                     raise ArgumentError(
                         "You can only 'nominate' people to be CMs when they are in the area."
                     )
-                elif c in client.area.owners:
+                elif c in client.area._owners:
                     client.send_ooc(
                         f"{c.showname} [{c.id}] is already a CM here.")
                 else:
@@ -375,6 +382,7 @@ def ooc_cmd_cm(client, arg):
         raise ClientError("You must be authorized to do that.")
 
 
+# TODO: allow running this command from outside the area you're a CM of in hubs that allow multiple CMed areas
 @mod_only(area_owners=True)
 def ooc_cmd_uncm(client, arg):
     """
@@ -391,7 +399,7 @@ def ooc_cmd_uncm(client, arg):
             c = client.server.client_manager.get_targets(
                 client, TargetType.ID, _id, False
             )[0]
-            if c in client.area.owners:
+            if c in client.area._owners:
                 client.area.remove_owner(c)
                 database.log_area("cm.remove", client, client.area, target=c)
             else:
