@@ -327,6 +327,8 @@ def ooc_cmd_area_swap(client, arg):
     Swap areas by Area IDs while correcting links to reference the right areas.
     Usage: /area_swap <id> <id>
     """
+    raise ClientError(
+        "This command is temporarily disabled due to nasty bugs. Sorry!")
     args = arg.split()
     if len(args) != 2:
         raise ClientError("You must specify 2 numbers.")
