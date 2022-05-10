@@ -507,41 +507,7 @@ def ooc_cmd_knock(client, arg):
                     f"Failed to knock on [{area.id}] {area.name}: Current area is locked!"
                 )
 
-        area.send_ic(
-            None,
-            "1",
-            1,
-            "",
-            "",
-            "}}}Knock, knock...",
-            area.last_ic_message[5]
-            if area.last_ic_message is not None
-            else "",
-            "",
-            1,
-            -1,
-            0,
-            0,
-            [0],
-            0,
-            0,
-            1,
-            "",
-            -1,
-            "",
-            "",
-            0,
-            0,
-            0,
-            0,
-            "0",
-            0,
-            "",
-            "",
-            "",
-            0,
-            "knock||knock",
-        )
+        area.send_command("RT", "knock")
         if area == client.area:
             area.broadcast_ooc(
                 f"[{client.id}] {client.showname} knocks for attention."
