@@ -765,6 +765,19 @@ class ClientAO2d9d0(DefaultDROProtocol):
         ('pos', ''),  # 1
         ]
 
+
+class ClientAO2d10(ClientAO2d9d0):
+    ASKCHAA_INBOUND = []
+
+    RC_INBOUND = []
+
+    RM_INBOUND = []
+
+    RD_INBOUND = []
+
+    ZZ_INBOUND = []
+
+
 class ClientKFO2d8(ClientAO2d7):
     pass
 
