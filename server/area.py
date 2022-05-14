@@ -894,6 +894,7 @@ class Area:
                     f"Something went wrong, couldn't amend Statement {idx+1}!"
                 )
             return
+        noshout = False
         adding = args[4].strip(
         ) != "" and self.recording and client is not None
         if client and args[4].startswith("++") and len(self.testimony) > 0:
@@ -933,10 +934,10 @@ class Area:
                                     opponent = t
                                     break
                             # Loop through the charnames if it's @text
-                            if target in t.char_name.lower():
+                            if target in t.char_name.lower() or target.split()[0] in t.char_name.lower():
                                 opponent = t
                             # Loop through the shownames next, shownames take priority over charnames
-                            if target in t.showname.lower():
+                            if target in t.showname.lower() or target.split()[0] in t.showname.lower():
                                 opponent = t
 
                     # Minigame with an opponent
@@ -944,7 +945,13 @@ class Area:
                         self.start_debate(client, opponent, shout == "3")
                     # Concede
                     elif shout == "1" and self.minigame != "":
+                        test = False
+                        if self.minigame == "Scrum Debate":
+                            test = True
                         commands.ooc_cmd_concede(client, "")
+                        # Minigame didn't end as a result of this concede
+                        if test and self.minigame == "Scrum Debate":
+                            noshout = True
                     # Shouter provided target but no opponent was found
                     elif target != "" or self.minigame in ["Cross Swords", "Scrum Debate"]:
                         raise AreaError(
@@ -983,6 +990,11 @@ class Area:
                             "CT", f"[pos '{args[5]}'] {name}", args[4])
                         continue
                 complete = args
+                if noshout:
+                    lst = list(args)
+                    # Remove our shout
+                    lst[10] = 0
+                    complete = tuple(lst)
                 # First-person mode support, we see our own msgs as narration
                 if c == client and client.firstperson:
                     lst = list(args)
