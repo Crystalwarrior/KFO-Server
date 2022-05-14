@@ -1135,10 +1135,16 @@ class AOProtocol(asyncio.Protocol):
                     offset_pair = -25
                     # Offset them to the right
                     other_offset = 25
-                    # Set our pos to "debate"
-                    pos = "debate"
                     # Our opposing team is blue
                     opposing_team = self.client.area.blue_team
+                    # Set our pos to "debate"
+                    pos = "debate"
+                    if self.client.area.minigame == "Cross Swords":
+                        pos = "cs"
+                    elif self.client.area.minigame == "Scrum Debate":
+                        pos = "sd"
+                    elif self.client.area.minigame == "Panic Talk Action":
+                        pos = "pta"
                 # If we're on blue team
                 elif self.client.char_id in self.client.area.blue_team:
                     # Set our color to cyan
@@ -1147,10 +1153,16 @@ class AOProtocol(asyncio.Protocol):
                     offset_pair = 25
                     # Offset them to the left
                     other_offset = -25
-                    # Set our pos to "debate"
-                    pos = "debate"
                     # Our opposing team is red
                     opposing_team = self.client.area.red_team
+                    # Set our pos to "debate"
+                    pos = "debate"
+                    if self.client.area.minigame == "Cross Swords":
+                        pos = "cs"
+                    elif self.client.area.minigame == "Scrum Debate":
+                        pos = "sd"
+                    elif self.client.area.minigame == "Panic Talk Action":
+                        pos = "pta"
 
             # We're in a minigame w/ team setups
             if opposing_team is not None:
