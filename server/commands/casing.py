@@ -810,7 +810,7 @@ def ooc_cmd_cs(client, arg):
             client.area.minigame_schedule
             and not client.area.minigame_schedule.cancelled()
         ):
-            msg = f"Current minigame is {client.area.minigame}!"
+            msg = f"Current minigame is {client.area.minigame}!\n"
             red = []
             for cid in client.area.red_team:
                 name = client.area.area_manager.char_list[cid]
