@@ -1429,7 +1429,7 @@ class ClientManager:
                 return "Connection"
             if self.char_id == -1:
                 return "Spectator"
-            if self.char_id > len(self.area.area_manager.char_list):
+            if self.char_id >= len(self.area.area_manager.char_list):
                 return "Unknown"
             return self.area.area_manager.char_list[self.char_id]
 
@@ -1439,7 +1439,7 @@ class ClientManager:
             if self._showname == "":
                 return self.char_name
             # No clue why this would ever hapepn but here we go
-            if self.char_id > len(self.area.area_manager.char_list):
+            if self.char_id >= len(self.area.area_manager.char_list):
                 return "Unknown"
             return self._showname
 
