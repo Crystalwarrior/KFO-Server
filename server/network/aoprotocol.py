@@ -816,9 +816,6 @@ class AOProtocol(asyncio.Protocol):
         if self.client.blankpost:
             pre = "-"
             anim = "misc/blank"
-        # We're narrating, or we're hidden in some evidence.
-        if self.client.narrator or self.client.hidden_in is not None:
-            anim = ""
 
         if pos != "" and self.client.pos != pos:
             try:
@@ -829,6 +826,13 @@ class AOProtocol(asyncio.Protocol):
             pos = self.client.area.pos_lock[0]
         if self.client.area.dark:
             pos = self.client.area.pos_dark
+
+        # We're narrating, or we're hidden in some evidence.
+        if self.client.narrator or self.client.hidden_in is not None:
+            # Reuse same pos
+            pos = ""
+            # Set anim to narration
+            anim = ""
 
         if text.lower().startswith("/w ") or text.lower().startswith("[w] "):
             if (
@@ -988,9 +992,8 @@ class AOProtocol(asyncio.Protocol):
                     if len(a.pos_lock) > 0:
                         tempos = a.pos_lock[0]
                     if a.last_ic_message is not None and (
-                        anim == ""
-                        or len(a.pos_lock) <= 0
-                        or a.last_ic_message[5] in a.pos_lock
+                        len(a.pos_lock) <= 0
+                        or a.last_ic_message[5] not in a.pos_lock
                     ):
                         tempos = a.last_ic_message[5]  # Use the same pos
                         # Use the same desk mod
