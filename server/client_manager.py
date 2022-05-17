@@ -190,9 +190,6 @@ class ClientManager:
                     if args[3] == "" or args[5] == "":
                         lst = list(args)
                         if self.area.last_ic_message is not None:
-                            if args[3] == "":
-                                # Keep the last desk mod, but only on narrating
-                                lst[0] = self.area.last_ic_message[0]
                             # Set the pos to last message's pos
                             lst[5] = self.area.last_ic_message[5]
                         else:
