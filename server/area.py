@@ -1617,9 +1617,9 @@ class Area:
         self.invite_list = self.old_invite_list
         self.red_team.clear()
         self.blue_team.clear()
-        # Timer ID 3 is reserved for minigames
+        # Timer ID 2 is used for minigames
         # 3 stands for unset and hide
-        self.send_command("TI", 3, 3)
+        self.send_command("TI", 2, 3)
         self.send_ic(
             None,
             "1",
@@ -1805,10 +1805,9 @@ class Area:
                 f"{self.minigame} is happening! You cannot interrupt it.")
 
         timer = max(5, int(timer))
-        # Timer ID 3 is reserved for minigames
-        # 1 afterwards is to start timer
-        self.send_command("TI", 3, 2)
-        self.send_command("TI", 3, 0, timer * 1000)
+        # Timer ID 2 is used
+        self.send_command("TI", 2, 2)
+        self.send_command("TI", 2, 0, timer * 1000)
         self.minigame_schedule = asyncio.get_running_loop().call_later(
             timer, lambda: self.end_minigame("Timer expired!")
         )
