@@ -157,6 +157,9 @@ class ClientManager:
             self.viewing_hub_list = False
             # Whether or not the client used the /showname command
             self.used_showname_command = False
+            
+            # Currently requested subtheme of this client
+            self.subtheme = ""
 
             # Compatibility stuff
             # Determine if this client can support multi-layered audio (such as ambience)
@@ -1361,7 +1364,9 @@ class ClientManager:
                 self.send_command("BN", self.area.background, self.pos)
             self.send_command("LE", *self.area.get_evidence_list(self))
             self.send_command("MM", 1)
-
+            
+            if self.area.area_manager.subtheme != "":
+                self.send_command("ST", self.area.area_manager.subtheme, "1")
             self.area.area_manager.send_arup_players([self])
             self.area.area_manager.send_arup_status([self])
             self.area.area_manager.send_arup_cms([self])

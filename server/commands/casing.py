@@ -997,7 +997,14 @@ def ooc_cmd_concede(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_subtheme(client, arg):
     """
-    Change the subtheme for everyone in the area.
+    Change the subtheme for the hub.
     Usage: /subtheme <subtheme_name>
     """
-    client.area.send_command("ST", arg, "1")
+    client.area.area_manager.subtheme = arg
+    # Set everyone's subthemes
+    for c in client.area.area_manager.clients:
+        c.subtheme = arg
+        c.send_command("ST", arg, "1")
+    client.send_ooc(
+        f"Setting hub subtheme to {arg}."
+    )

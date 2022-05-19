@@ -654,6 +654,9 @@ class Area:
             int(MusicEffect.FADE_OUT | MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
         )
 
+        if client.subtheme != self.area_manager.subtheme:
+            client.send_command("ST", self.area_manager.subtheme, "1")
+
     def update_judge_buttons(self, client):
         # Judge buttons are client-sided by default.
         jd = -1

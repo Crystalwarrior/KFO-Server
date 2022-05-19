@@ -140,6 +140,9 @@ class AreaManager:
         self.char_list_ref = ""
         self.char_list = self.server.char_list
 
+        # Subtheme for this hub
+        self.subtheme = ""
+
         self.timer = self.Timer()
 
     @property
