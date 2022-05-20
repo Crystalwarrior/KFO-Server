@@ -992,10 +992,12 @@ class AOProtocol(asyncio.Protocol):
                     if len(a.pos_lock) > 0:
                         tempos = a.pos_lock[0]
                     if a.last_ic_message is not None and (
+                        anim == "" or
                         len(a.pos_lock) <= 0
                         or a.last_ic_message[5] not in a.pos_lock
                     ):
-                        tempos = a.last_ic_message[5]  # Use the same pos
+                        # Use the same pos
+                        tempos = a.last_ic_message[5]
                         # Use the same desk mod
                         tempdeskmod = a.last_ic_message[0]
                     a.send_command(
