@@ -234,6 +234,19 @@ class AOProtocol(asyncio.Protocol):
         if not self.client.area.area_manager.arup_enabled and "arup" in preflist:
             preflist.remove("arup")
         self.client.send_command("FL", *preflist)
+
+        # Get the list of version vars, making sure the size of the least is at least 3 args
+        verlist = self.client.version.split('.')
+        verlist = verlist + ([""] * min(0, 3 - len(verlist)))
+
+        # Get the version string
+        release, major, minor = verlist
+
+        # If we have someone joining with clients 2.8 and above
+        if int(release) >= 2 and int(major) >= 8:
+            # Let them hear ambience
+            self.client.has_multilayer_audio = True
+
         # If we have someone using the DRO 1.1.0 Client joining
         # if self.client.version.startswith("1.1.0"):
         # DRO Client partial support.
@@ -803,9 +816,6 @@ class AOProtocol(asyncio.Protocol):
         if self.client.blankpost:
             pre = "-"
             anim = "misc/blank"
-        # We're narrating, or we're hidden in some evidence.
-        if self.client.narrator or self.client.hidden_in is not None:
-            anim = ""
 
         if pos != "" and self.client.pos != pos:
             try:
@@ -816,6 +826,13 @@ class AOProtocol(asyncio.Protocol):
             pos = self.client.area.pos_lock[0]
         if self.client.area.dark:
             pos = self.client.area.pos_dark
+
+        # We're narrating, or we're hidden in some evidence.
+        if self.client.narrator or self.client.hidden_in is not None:
+            # Reuse same pos
+            pos = ""
+            # Set anim to narration
+            anim = ""
 
         if text.lower().startswith("/w ") or text.lower().startswith("[w] "):
             if (
@@ -975,11 +992,12 @@ class AOProtocol(asyncio.Protocol):
                     if len(a.pos_lock) > 0:
                         tempos = a.pos_lock[0]
                     if a.last_ic_message is not None and (
-                        anim == ""
-                        or len(a.pos_lock) <= 0
-                        or a.last_ic_message[5] in a.pos_lock
+                        anim == "" or
+                        len(a.pos_lock) <= 0
+                        or a.last_ic_message[5] not in a.pos_lock
                     ):
-                        tempos = a.last_ic_message[5]  # Use the same pos
+                        # Use the same pos
+                        tempos = a.last_ic_message[5]
                         # Use the same desk mod
                         tempdeskmod = a.last_ic_message[0]
                     a.send_command(
@@ -1122,10 +1140,16 @@ class AOProtocol(asyncio.Protocol):
                     offset_pair = -25
                     # Offset them to the right
                     other_offset = 25
-                    # Set our pos to "debate"
-                    pos = "debate"
                     # Our opposing team is blue
                     opposing_team = self.client.area.blue_team
+                    # Set our pos to "debate"
+                    pos = "debate"
+                    if self.client.area.minigame == "Cross Swords":
+                        pos = "cs"
+                    elif self.client.area.minigame == "Scrum Debate":
+                        pos = "sd"
+                    elif self.client.area.minigame == "Panic Talk Action":
+                        pos = "pta"
                 # If we're on blue team
                 elif self.client.char_id in self.client.area.blue_team:
                     # Set our color to cyan
@@ -1134,10 +1158,16 @@ class AOProtocol(asyncio.Protocol):
                     offset_pair = 25
                     # Offset them to the left
                     other_offset = -25
-                    # Set our pos to "debate"
-                    pos = "debate"
                     # Our opposing team is red
                     opposing_team = self.client.area.red_team
+                    # Set our pos to "debate"
+                    pos = "debate"
+                    if self.client.area.minigame == "Cross Swords":
+                        pos = "cs"
+                    elif self.client.area.minigame == "Scrum Debate":
+                        pos = "sd"
+                    elif self.client.area.minigame == "Panic Talk Action":
+                        pos = "pta"
 
             # We're in a minigame w/ team setups
             if opposing_team is not None:

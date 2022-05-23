@@ -84,10 +84,11 @@ class Emotes:
         # There are no emotes loaded, so allow anything
         if len(self.emotes) == 0:
             return True
-
-        # if len(sfx) <= 1:
-        #     sfx = ""
-
         # sfx checking is skipped due to custom sound list
         sfx = ""
-        return (preanim.lower(), anim.lower(), sfx.lower()) in self.emotes
+        # Loop through emotes
+        for emote in self.emotes:
+            # If we find an emote that matches all 3, allow it
+            if (preanim == "" or emote[0] == preanim) and (anim == "" or emote[1] == anim) and (sfx == "" or emote[2] == sfx):
+                return True
+        return False

@@ -784,28 +784,30 @@ def ooc_cmd_info(client, arg):
 def ooc_cmd_gm(client, arg):
     """
     Add a game master for the current Hub.
-    Usage: /gm <id>
+    If providing an *, GM all clients belonging to self.
+    Usage: /gm <id(s)>
     """
-    if not client.area.area_manager.can_gm:
+    if not client.is_mod and not client.area.area_manager.can_gm:
         raise ClientError("You can't become a GM in this Hub!")
-    if len(client.area.area_manager.owners) == 0:
-        if len(arg) > 0:
-            raise ArgumentError(
-                "You cannot 'nominate' people to be GMs when you are not one."
-            )
-        for c in client.server.client_manager.get_multiclients(
-            client.ipid, client.hdid
-        ):
-            if c in c.area.area_manager.owners:
-                raise ClientError(
-                    "One of your clients is already a GM in another hub!")
-        client.area.area_manager.add_owner(client)
-        database.log_area(
-            "gm.add", client, client.area, target=client, message="self-added"
-        )
-    elif client in client.area.area_manager.owners:
-        if len(arg) > 0:
-            arg = arg.split(" ")
+    if len(client.area.area_manager.owners) == 0 or client.is_mod or client in client.area.area_manager.owners:
+        # Client is trying to make someone else a GM
+        if arg != "":
+            # GM all self clients
+            if arg == "*":
+                arg = [c.id for c in client.server.client_manager.get_multiclients(
+                    client.ipid, client.hdid)]
+            # GM the targets
+            else:
+                arg = arg.split(" ")
+                # Client is not a mod and not a GM, meaning they're trying to nominate someone without being /gm first
+                if not client.is_mod and client not in client.area.area_manager.owners:
+                    raise ArgumentError(
+                        "You cannot 'nominate' people to be GMs when you are not one."
+                    )
+        else:
+            # Self GM
+            arg = [client.id]
+        # Loop through the ID's provided
         for id in arg:
             try:
                 id = int(id)

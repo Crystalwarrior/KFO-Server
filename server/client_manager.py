@@ -157,6 +157,13 @@ class ClientManager:
             self.viewing_hub_list = False
             # Whether or not the client used the /showname command
             self.used_showname_command = False
+            
+            # Currently requested subtheme of this client
+            self.subtheme = ""
+
+            # Compatibility stuff
+            # Determine if this client can support multi-layered audio (such as ambience)
+            self.has_multilayer_audio = False
 
         def send_raw_message(self, msg):
             """
@@ -173,20 +180,25 @@ class ClientManager:
             :param *args: list of arguments
             """
             if args:
+                # Music packet
+                if command == "MC":
+                    # If this MC packet is using multilayer audio and the client doesn't support it
+                    if args[4] != "" and int(args[4]) > 0 and not self.has_multilayer_audio:
+                        # Ignore the packet, don't send the music
+                        return
+                # IC Message packet
                 if command == "MS":
                     # Anim is blank, we're narrating.
                     # Or the pos is blank, we're using last pos.
                     if args[3] == "" or args[5] == "":
                         lst = list(args)
                         if self.area.last_ic_message is not None:
-                            if args[3] == "":
-                                # Keep the last desk mod, but only on narrating
-                                lst[0] = self.area.last_ic_message[0]
                             # Set the pos to last message's pos
                             lst[5] = self.area.last_ic_message[5]
                         else:
                             # Set the pos to the 0th pos-lock
-                            lst[5] = self.area.pos_lock[0]
+                            if len(self.area.pos_lock) > 0:
+                                lst[5] = self.area.pos_lock[0]
                         args = tuple(lst)
                     for evi_num in range(len(self.evi_list)):
                         if self.evi_list[evi_num] == args[11]:
@@ -1352,7 +1364,9 @@ class ClientManager:
                 self.send_command("BN", self.area.background, self.pos)
             self.send_command("LE", *self.area.get_evidence_list(self))
             self.send_command("MM", 1)
-
+            
+            if self.area.area_manager.subtheme != "":
+                self.send_command("ST", self.area.area_manager.subtheme, "1")
             self.area.area_manager.send_arup_players([self])
             self.area.area_manager.send_arup_status([self])
             self.area.area_manager.send_arup_cms([self])
@@ -1417,6 +1431,8 @@ class ClientManager:
                 return "Connection"
             if self.char_id == -1:
                 return "Spectator"
+            if self.char_id >= len(self.area.area_manager.char_list):
+                return "Unknown"
             return self.area.area_manager.char_list[self.char_id]
 
         @property
@@ -1425,7 +1441,7 @@ class ClientManager:
             if self._showname == "":
                 return self.char_name
             # No clue why this would ever hapepn but here we go
-            if self.char_id > len(self.area.area_manager.char_list):
+            if self.char_id >= len(self.area.area_manager.char_list):
                 return "Unknown"
             return self._showname
 

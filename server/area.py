@@ -283,8 +283,8 @@ class Area:
 
     @property
     def id(self):
-        """Get area's index in the AreaManager's 'areas' list."""
-        return self.area_manager.areas.index(self)
+        """Get area's index in the AreaManager's 'areas' list if present in its areas. Otherwise, return -1."""
+        return self.area_manager.areas.index(self) if self in self.area_manager.areas else -1
 
     @property
     def server(self):
@@ -654,6 +654,9 @@ class Area:
             int(MusicEffect.FADE_OUT | MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
         )
 
+        if client.subtheme != self.area_manager.subtheme:
+            client.send_command("ST", self.area_manager.subtheme, "1")
+
     def update_judge_buttons(self, client):
         # Judge buttons are client-sided by default.
         jd = -1
@@ -894,6 +897,7 @@ class Area:
                     f"Something went wrong, couldn't amend Statement {idx+1}!"
                 )
             return
+        noshout = False
         adding = args[4].strip(
         ) != "" and self.recording and client is not None
         if client and args[4].startswith("++") and len(self.testimony) > 0:
@@ -933,10 +937,10 @@ class Area:
                                     opponent = t
                                     break
                             # Loop through the charnames if it's @text
-                            if target in t.char_name.lower():
+                            if target in t.char_name.lower() or target.split()[0] in t.char_name.lower():
                                 opponent = t
                             # Loop through the shownames next, shownames take priority over charnames
-                            if target in t.showname.lower():
+                            if target in t.showname.lower() or target.split()[0] in t.showname.lower():
                                 opponent = t
 
                     # Minigame with an opponent
@@ -944,7 +948,13 @@ class Area:
                         self.start_debate(client, opponent, shout == "3")
                     # Concede
                     elif shout == "1" and self.minigame != "":
+                        test = False
+                        if self.minigame == "Scrum Debate":
+                            test = True
                         commands.ooc_cmd_concede(client, "")
+                        # Minigame didn't end as a result of this concede
+                        if test and self.minigame == "Scrum Debate":
+                            noshout = True
                     # Shouter provided target but no opponent was found
                     elif target != "" or self.minigame in ["Cross Swords", "Scrum Debate"]:
                         raise AreaError(
@@ -953,8 +963,10 @@ class Area:
                     client.send_ooc(ex)
                     return
 
-            # DRO 1.0.0 client compatibility, tell the client we acknowledged their MS packet
-            client.send_command("ackMS")
+            if client:
+                # DRO 1.0.0 client compatibility, tell the client we acknowledged their MS packet
+                client.send_command("ackMS")
+
             if targets is None:
                 targets = self.clients
             for c in targets:
@@ -981,6 +993,11 @@ class Area:
                             "CT", f"[pos '{args[5]}'] {name}", args[4])
                         continue
                 complete = args
+                if noshout:
+                    lst = list(args)
+                    # Remove our shout
+                    lst[10] = 0
+                    complete = tuple(lst)
                 # First-person mode support, we see our own msgs as narration
                 if c == client and client.firstperson:
                     lst = list(args)
@@ -1603,9 +1620,9 @@ class Area:
         self.invite_list = self.old_invite_list
         self.red_team.clear()
         self.blue_team.clear()
-        # Timer ID 3 is reserved for minigames
+        # Timer ID 2 is used for minigames
         # 3 stands for unset and hide
-        self.send_command("TI", 3, 3)
+        self.send_command("TI", 2, 3)
         self.send_ic(
             None,
             "1",
@@ -1791,10 +1808,9 @@ class Area:
                 f"{self.minigame} is happening! You cannot interrupt it.")
 
         timer = max(5, int(timer))
-        # Timer ID 3 is reserved for minigames
-        # 1 afterwards is to start timer
-        self.send_command("TI", 3, 2)
-        self.send_command("TI", 3, 0, timer * 1000)
+        # Timer ID 2 is used
+        self.send_command("TI", 2, 2)
+        self.send_command("TI", 2, 0, timer * 1000)
         self.minigame_schedule = asyncio.get_running_loop().call_later(
             timer, lambda: self.end_minigame("Timer expired!")
         )
