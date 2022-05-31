@@ -237,15 +237,14 @@ class AOProtocol(asyncio.Protocol):
 
         # Get the list of version vars, making sure the size of the least is at least 3 args
         verlist = self.client.version.split('.')
-        verlist = verlist + ([""] * min(0, 3 - len(verlist)))
+        if len(verlist) == 3:
+            # Get the version string
+            release, major, minor = verlist
 
-        # Get the version string
-        release, major, minor = verlist
-
-        # If we have someone joining with clients 2.8 and above
-        if int(release) >= 2 and int(major) >= 8:
-            # Let them hear ambience
-            self.client.has_multilayer_audio = True
+            # If we have someone joining with clients 2.8 and above
+            if int(release) >= 2 and int(major) >= 8:
+                # Let them hear ambience
+                self.client.has_multilayer_audio = True
 
         # If we have someone using the DRO 1.1.0 Client joining
         # if self.client.version.startswith("1.1.0"):
