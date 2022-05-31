@@ -872,7 +872,37 @@ class Area:
             "CT", f"[{self.id}]" + self.server.config["hostname"], msg, "1"
         )
 
-    def send_ic(self, client, *args, targets=None):
+    def send_ic(self, client,
+                msg_type,
+                pre,
+                folder,
+                anim,
+                msg,
+                pos,
+                sfx,
+                emote_mod,
+                cid,
+                sfx_delay,
+                button,
+                evidence,
+                flip,
+                ding,
+                color,
+                showname,
+                charid_pair,
+                other_folder,
+                other_emote,
+                offset_pair,
+                other_offset,
+                other_flip,
+                nonint_pre,
+                sfx_looping,
+                screenshake,
+                frames_shake,
+                frames_realization,
+                frames_sfx,
+                additive,
+                effect, targets=None):
         """
         Send an IC message from a client to all applicable clients in the area.
         :param client: speaker
@@ -880,13 +910,13 @@ class Area:
         """
         if client in self.afkers:
             client.server.client_manager.toggle_afk(client)
-        if client and args[4].startswith("**") and len(self.testimony) > 0:
+        if client and msg.startswith("**") and len(self.testimony) > 0:
             idx = self.testimony_index
             if idx == -1:
                 idx = 0
             try:
                 lst = list(self.testimony[idx])
-                lst[4] = "}}}" + args[4][2:]
+                lst[4] = "}}}" + msg[2:]
                 self.testimony[idx] = tuple(lst)
                 self.broadcast_ooc(
                     f"{client.showname} has amended Statement {idx+1}.")
@@ -897,32 +927,24 @@ class Area:
                     f"Something went wrong, couldn't amend Statement {idx+1}!"
                 )
             return
-        noshout = False
-        adding = args[4].strip(
+
+        adding = msg.strip(
         ) != "" and self.recording and client is not None
-        if client and args[4].startswith("++") and len(self.testimony) > 0:
+        if client and msg.startswith("++") and len(self.testimony) > 0:
             if len(self.testimony) >= 30:
                 client.send_ooc(
                     "Maximum testimony statement amount reached! (30)")
                 return
             adding = True
-        else:
-            # args[4] = msg
-            # args[15] = showname
-            name = ""
-            if args[8] != -1:
-                name = self.area_manager.char_list[args[8]]
-            if args[15] != "":
-                name = args[15]
-
+        elif client:
             # Shout used
-            shout = str(args[10]).split("<and>")[0]
+            shout = str(button).split("<and>")[0]
             if shout in ["1", "2", "3"]:
-                msg = args[4].lower()
+                lwr = msg.lower()
                 target = ""
                 # message contains an "at" sign aka we're referring to someone specific
-                if "@" in msg:
-                    target = msg[msg.find("@") + 1:]
+                if "@" in lwr:
+                    target = lwr[lwr.find("@") + 1:]
                 try:
                     opponent = None
                     target = target.lower()
@@ -943,118 +965,275 @@ class Area:
                             if target in t.showname.lower() or target.split()[0] in t.showname.lower():
                                 opponent = t
 
+                    old_minigame = self.minigame
+
                     # Minigame with an opponent
                     if opponent is not None and shout in ["2", "3"]:
                         self.start_debate(client, opponent, shout == "3")
                     # Concede
                     elif shout == "1" and self.minigame != "":
-                        test = False
-                        if self.minigame == "Scrum Debate":
-                            test = True
                         commands.ooc_cmd_concede(client, "")
-                        # Minigame didn't end as a result of this concede
-                        if test and self.minigame == "Scrum Debate":
-                            noshout = True
                     # Shouter provided target but no opponent was found
                     elif target != "" or self.minigame in ["Cross Swords", "Scrum Debate"]:
                         raise AreaError(
                             "Interjection minigame - target not found!")
+
+                    # Minigame didn't swap as a result of this shout, don't display the shout
+                    if self.minigame != "" and self.minigame == old_minigame:
+                        button = 0
                 except Exception as ex:
                     client.send_ooc(ex)
                     return
 
-            if client:
-                # DRO 1.0.0 client compatibility, tell the client we acknowledged their MS packet
-                client.send_command("ackMS")
+            # Minigames
+            opposing_team = None
+            # If we're on red team
+            if client.char_id in client.area.red_team:
+                # Set our color to red
+                color = 2
+                # Offset us to the left
+                offset_pair = -25
+                # Offset them to the right
+                other_offset = 25
+                # Our opposing team is blue
+                opposing_team = client.area.blue_team
+                # Set our pos to "debate"
+                pos = "debate"
+                if client.area.minigame == "Cross Swords":
+                    pos = "cs"
+                elif client.area.minigame == "Scrum Debate":
+                    pos = "sd"
+                elif client.area.minigame == "Panic Talk Action":
+                    pos = "pta"
+            # If we're on blue team
+            elif client.char_id in client.area.blue_team:
+                # Set our color to cyan
+                color = 7
+                # Offset them to the right
+                offset_pair = 25
+                # Offset them to the left
+                other_offset = -25
+                # Our opposing team is red
+                opposing_team = client.area.red_team
+                # Set our pos to "debate"
+                pos = "debate"
+                if client.area.minigame == "Cross Swords":
+                    pos = "cs"
+                elif client.area.minigame == "Scrum Debate":
+                    pos = "sd"
+                elif client.area.minigame == "Panic Talk Action":
+                    pos = "pta"
 
-            if targets is None:
-                targets = self.clients
-            for c in targets:
-                # Blinded clients don't receive IC messages
-                if c.blinded:
-                    continue
-                # pos doesn't match listen_pos, we're not listening so make this an OOC message instead
-                if c.listen_pos is not None:
-                    if (
-                        type(c.listen_pos) is list
-                        and not (args[5] in c.listen_pos)
-                        or c.listen_pos == "self"
-                        and args[5] != c.pos
-                    ):
-                        name = ""
-                        if args[8] != -1:
-                            name = self.area_manager.char_list[args[8]]
-                        if args[15] != "":
-                            name = args[15]
-                        # Send the mesage as OOC.
-                        # Woulda been nice if there was a packet to send messages to IC log
-                        # without displaying it in the viewport.
-                        c.send_command(
-                            "CT", f"[pos '{args[5]}'] {name}", args[4])
-                        continue
-                complete = args
-                if noshout:
-                    lst = list(args)
-                    # Remove our shout
-                    lst[10] = 0
-                    complete = tuple(lst)
-                # First-person mode support, we see our own msgs as narration
-                if c == client and client.firstperson:
-                    lst = list(args)
-                    lst[3] = ""  # Change anim to '' which should start narrator mode
-                    complete = tuple(lst)
-                c.send_command("MS", *complete)
-
-            if client:
+            # We're in a minigame w/ team setups
+            if opposing_team is not None:
+                charid_pair = -1
+                # Last speaker is us and our message already paired us with someone, and that someone is on the opposing team
                 if (
-                    args[4].strip() != ""
-                    or self.last_ic_message is None
-                    or args[8] != self.last_ic_message[8]
-                    or self.last_ic_message[4].strip() != ""
+                    client.area.last_ic_message is not None
+                    and client.area.last_ic_message[8] == client.char_id
+                    and client.area.last_ic_message[16] != -1
+                    and int(client.area.last_ic_message[16].split("^")[0])
+                    in opposing_team
                 ):
-                    database.log_area("chat.ic", client,
-                                      client.area, message=args[4])
-                if self.recording:
-                    # See if the testimony is supposed to end here.
-                    scrunched = "".join(e for e in args[4] if e.isalnum())
-                    if len(scrunched) > 0 and scrunched.lower() == "end":
-                        self.recording = False
-                        self.broadcast_ooc(
-                            f"[{client.id}] {client.showname} has ended the testimony."
-                        )
-                        self.send_command("RT", "testimony1", 1)
-                        return
-            self.last_ic_message = args
+                    # Set the pair to the person who it was last msg
+                    charid_pair = int(
+                        client.area.last_ic_message[16].split("^")[0]
+                    )
+                # The person we were trying to find is no longer on the opposing team
+                else:
+                    # Search through the opposing team's characters
+                    for other_cid in opposing_team:
+                        charid_pair = other_cid
+                        # If last message's charid matches a member of this team, prioritize theirs
+                        if (
+                            client.area.last_ic_message is not None
+                            and other_cid == client.area.last_ic_message[8]
+                        ):
+                            break
+                # If our pair opponent is found
+                if charid_pair != -1:
+                    # Search through clients in area
+                    for target in client.area.clients:
+                        # If we find our target char ID
+                        if target.char_id == charid_pair:
+                            # Set emote, flip and folder properly
+                            other_emote = target.last_sprite
+                            other_flip = target.flip
+                            other_folder = target.claimed_folder
+                            break
+                    # Speaker always goes in front
+                    charid_pair = f"{charid_pair}^0"
+            # DRO 1.0.0 client compatibility, tell the client we acknowledged their MS packet
+            client.send_command("ackMS")
+            if (
+                msg.strip() != ""
+                or self.last_ic_message is None
+                or pos != self.last_ic_message[8]
+                or self.last_ic_message[4].strip() != ""
+            ):
+                database.log_area("chat.ic", client,
+                                  client.area, message=msg)
+
+        if targets is None:
+            targets = self.clients
+        for c in targets:
+            # Blinded clients don't receive IC messages
+            if c.blinded:
+                continue
+            # pos doesn't match listen_pos, we're not listening so make this an OOC message instead
+            if c.listen_pos is not None:
+                if (
+                    type(c.listen_pos) is list
+                    and not (pos in c.listen_pos)
+                    or c.listen_pos == "self"
+                    and pos != c.pos
+                ):
+                    name = ""
+                    if cid != -1:
+                        name = self.area_manager.char_list[cid]
+                    if showname != "":
+                        name = showname
+                    # Send the mesage as OOC.
+                    # Woulda been nice if there was a packet to send messages to IC log
+                    # without displaying it in the viewport.
+                    c.send_command(
+                        "CT", f"[pos '{pos}'] {name}", msg)
+                    continue
+            c.send_command("MS", msg_type,
+                           pre,
+                           folder,
+                           # if we're in first person mode, treat our msgs as narration
+                           "" if c == client and client.firstperson else anim,
+                           msg,
+                           pos,
+                           sfx,
+                           emote_mod,
+                           cid,
+                           sfx_delay,
+                           button,
+                           evidence,
+                           flip,
+                           ding,
+                           color,
+                           showname,
+                           charid_pair,
+                           other_folder,
+                           other_emote,
+                           offset_pair,
+                           other_offset,
+                           other_flip,
+                           nonint_pre,
+                           sfx_looping,
+                           screenshake,
+                           frames_shake,
+                           frames_realization,
+                           frames_sfx,
+                           additive,
+                           effect)
+        if self.recording:
+            # See if the testimony is supposed to end here.
+            scrunched = "".join(e for e in msg if e.isalnum())
+            if len(scrunched) > 0 and scrunched.lower() == "end":
+                self.recording = False
+                self.broadcast_ooc(
+                    f"[{client.id}] {client.showname} has ended the testimony."
+                )
+                self.send_command("RT", "testimony1", 1)
+                return
+        args = (
+            msg_type,  # 0
+            pre,  # 1
+            folder,  # 2
+            anim,  # 3
+            msg,  # 4
+            pos,  # 5
+            sfx,  # 6
+            emote_mod,  # 7
+            cid,  # 8
+            sfx_delay,  # 9
+            button,  # 10
+            evidence,  # 11
+            flip,  # 12
+            ding,  # 13
+            color,  # 14
+            showname,  # 15
+            charid_pair,  # 16
+            other_folder,  # 17
+            other_emote,  # 18
+            offset_pair,  # 19
+            other_offset,  # 20
+            other_flip,  # 21
+            nonint_pre,  # 22
+            sfx_looping,  # 23
+            screenshake,  # 24
+            frames_shake,  # 25
+            frames_realization,  # 26
+            frames_sfx,  # 27
+            additive,  # 28
+            effect,  # 29
+        )
+        self.last_ic_message = args
 
         if adding:
             if len(self.testimony) >= 30:
                 client.send_ooc(
                     "Maximum testimony statement amount reached! (30)")
                 return
-            lst = list(args)
-            if lst[4].startswith("++"):
-                lst[4] = lst[4][2:]
+            if msg.startswith("++"):
+                msg = msg[2:]
             # Remove speed modifying chars and start the statement instantly
-            lst[4] = "}}}" + lst[4].replace("{", "").replace("}", "")
+            msg = "}}}" + msg.replace("{", "").replace("}", "")
             # Non-int pre automatically enabled
-            lst[18] = 1
+            nonint_pre = 1
             # Set emote_mod to conform to nonint_pre
-            if lst[7] == 1 or lst[7] == 2:
-                lst[7] = 0
-            elif lst[7] == 6:
-                lst[7] = 5
+            if emote_mod == 1 or emote_mod == 2:
+                emote_mod = 0
+            elif emote_mod == 6:
+                emote_mod = 5
             # Make it green
-            lst[14] = 1
-            rec = tuple(lst)
+            color = 1
             idx = self.testimony_index
+
+            args = (
+                msg_type,  # 0
+                pre,  # 1
+                folder,  # 2
+                anim,  # 3
+                msg,  # 4
+                pos,  # 5
+                sfx,  # 6
+                emote_mod,  # 7
+                cid,  # 8
+                sfx_delay,  # 9
+                button,  # 10
+                evidence,  # 11
+                flip,  # 12
+                ding,  # 13
+                color,  # 14
+                showname,  # 15
+                charid_pair,  # 16
+                other_folder,  # 17
+                other_emote,  # 18
+                offset_pair,  # 19
+                other_offset,  # 20
+                other_flip,  # 21
+                nonint_pre,  # 22
+                sfx_looping,  # 23
+                screenshake,  # 24
+                frames_shake,  # 25
+                frames_realization,  # 26
+                frames_sfx,  # 27
+                additive,  # 28
+                effect,  # 29
+            )
             if idx == -1:
                 # Add one statement at the very end.
-                self.testimony.append(rec)
-                idx = self.testimony.index(rec)
+                self.testimony.append(args)
+                idx = self.testimony.index(args)
             else:
                 # Add one statement ahead of the one we're currently on.
                 idx += 1
-                self.testimony.insert(idx, rec)
+                self.testimony.insert(idx, args)
             self.broadcast_ooc(f"Statement {idx+1} added.")
             if not self.recording:
                 self.testimony_send(idx)
