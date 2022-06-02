@@ -629,21 +629,31 @@ def ooc_cmd_unhide_clients(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_force_follow(client, arg):
     """
-    Force someone to follow you. Follow me!
-    Usage: /force_follow <id>
+    Force someone to follow you, or someone else. Follow me!
+    Usage: /force_follow <victim_id> [target_id]
     """
+    arg = arg.split()
     if len(arg) == 0:
         raise ArgumentError(
-            "You must specify a target. Use /force_follow <id>.")
+            "You must specify a victim. Usage: /force_follow <victim_id> [target_id]")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
+        victims = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(arg[0]), False
         )
     except Exception:
         raise ArgumentError(
-            "You must specify a target. Use /force_follow <id>.")
-    if targets:
-        for c in targets:
+            "You must specify a victim. Usage: /force_follow <victim_id> [target_id]")
+    target = client
+    if len(arg) >= 2:
+        try:
+            target = client.server.client_manager.get_targets(
+                client, TargetType.ID, int(arg[1]), False
+            )
+        except Exception:
+            raise ArgumentError(
+                "Invalid target! Usage: /force_follow <victim_id> [target_id]")
+    if victims:
+        for c in victims:
             if client == c:
                 raise ClientError(
                     "You are already forced to follow yourself because you are yourself!"
@@ -654,7 +664,7 @@ def ooc_cmd_force_follow(client, arg):
             if c.area != client.area:
                 c.set_area(client.area)
         client.send_ooc(
-            f"Forced {len(targets)} existing client(s) to follow you.")
+            f"Forced {len(victims)} client(s) to follow [{target.id}] {target.showname}.")
     else:
         client.send_ooc("No targets found.")
 
