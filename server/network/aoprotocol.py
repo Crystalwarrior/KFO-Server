@@ -833,7 +833,7 @@ class AOProtocol(asyncio.Protocol):
             pos = self.client.area.pos_dark
 
         # We're narrating, or we're hidden in some evidence.
-        if self.client.narrator or self.client.hidden_in is not None:
+        if anim == "" or self.client.narrator or self.client.hidden_in is not None:
             # Reuse same pos
             pos = ""
             # Set anim to narration
