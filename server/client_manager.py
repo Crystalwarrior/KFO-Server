@@ -941,10 +941,8 @@ class ClientManager:
                         )
                     # Something obstructed us.
                     except ClientError as ex:
-                        c.send_ooc(
-                            f"{ex} No longer following [{self.id}] {self.showname}!"
-                        )
-                        c.unfollow(silent=True)
+                        c.send_ooc(ex)
+                        c.unfollow()
                         return
 
             reason = ""
