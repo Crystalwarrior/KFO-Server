@@ -35,6 +35,7 @@ __all__ = [
     "ooc_cmd_keys",
     "ooc_cmd_kms",
     "ooc_cmd_chardesc",
+    "ooc_cmd_chardesc_clear",
     "ooc_cmd_chardesc_set",
     "ooc_cmd_chardesc_get",
     "ooc_cmd_narrate",
@@ -809,6 +810,19 @@ def ooc_cmd_chardesc(client, arg):
                 f"{client.showname} changed their character description to: {desc}."
             )
         database.log_area("chardesc.change", client, client.area, message=arg)
+
+
+def ooc_cmd_chardesc_clear(client, arg):
+    """
+    Clear your chardesc.
+    Usage: /chardesc_clear
+    """
+    client.area.area_manager.set_character_data(client, "desc", "")
+    target = client.area.area_manager.char_list[client]
+    client.send_ooc(f"{target} Description Cleared.")
+    database.log_area(
+        "chardesc.clear", client, client.area
+    )
 
 
 @mod_only(hub_owners=True)
