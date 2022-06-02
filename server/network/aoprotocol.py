@@ -811,6 +811,12 @@ class AOProtocol(asyncio.Protocol):
             )
             return
 
+        if text.lstrip() != text and text.lstrip().startswith("/"):
+            self.client.send_ooc(
+                "Your IC message was not sent for safety reasons: you left space before that slash."
+            )
+            return
+
         # We are blankposting.
         if self.client.blankpost:
             pre = "-"
