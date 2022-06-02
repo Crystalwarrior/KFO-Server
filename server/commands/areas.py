@@ -293,13 +293,16 @@ def ooc_cmd_area_kick(client, arg):
     """
     Remove a user from the current area and move them to another area.
     If id is a * char, it will kick everyone but you and CMs from current area to destination.
-    If the destination is not specified, the destination defaults to area 0.
+    If id is **, it will kick everyone including CM's from current area to destination.
+    If id is ***, it will kick everyone in the hub to destination.
+    If id is afk, it will only kick all the afk people.
+    If the destination is not specified, the destination defaults to your current area.
     target_pos is the optional position that everyone should end up in when kicked.
     Usage: /area_kick <id> [destination] [target_pos]
     """
     if not arg:
         raise ClientError(
-            "You must specify a target. Use /area_kick <id> [destination #] [target_pos]"
+            "You must specify a target. Use /area_kick <id> [destination] [target_pos]"
         )
 
     args = arg.split(" ")
@@ -322,12 +325,19 @@ def ooc_cmd_area_kick(client, arg):
                 c
                 for c in client.area.clients
             ]
+        # Kick everyone in hub
+        elif args[0] == "***":
+            targets = [
+                c
+                for c in client.area.area_manager.clients
+            ]
         else:
             targets = client.server.client_manager.get_targets(
                 client, TargetType.ID, int(args[0]), False
             )
     except ValueError:
-        raise ArgumentError("Area ID must be a number, afk or *.")
+        raise ArgumentError(
+            "Invalid Area ID. Use /area_kick <id> [destination] [target_pos]")
 
     if targets:
         try:
@@ -342,13 +352,11 @@ def ooc_cmd_area_kick(client, arg):
                         "You can't kick someone from another area as a CM!"
                     )
                 if len(args) == 1:
-                    area = client.area.area_manager.default_area()
-                    output = area.id
+                    area = client.area
                 else:
                     try:
                         area = client.area.area_manager.get_area_by_id(
                             int(args[1]))
-                        output = args[1]
                     except AreaError:
                         raise
                     if (
@@ -371,7 +379,7 @@ def ooc_cmd_area_kick(client, arg):
                     f"You were kicked from [{old_area.id}] {old_area.name} to [{area.id}] {area.name}."
                 )
                 database.log_area(
-                    "area_kick", client, client.area, target=c, message=output
+                    "area_kick", client, client.area, target=c, message=area.id
                 )
                 client.area.invite_list.discard(c.id)
         except ValueError:
