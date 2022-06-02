@@ -157,7 +157,7 @@ class ClientManager:
             self.viewing_hub_list = False
             # Whether or not the client used the /showname command
             self.used_showname_command = False
-            
+
             # Currently requested subtheme of this client
             self.subtheme = ""
 
@@ -940,12 +940,12 @@ class ClientManager:
                             f"Following [{self.id}] {self.showname} to [{area.id}] {area.name}."
                         )
                     # Something obstructed us.
-                    except ClientError:
+                    except ClientError as ex:
                         c.send_ooc(
-                            f"Cannot follow [{self.id}] {self.showname} to [{area.id}] {area.name}!"
+                            f"{ex} No longer following [{self.id}] {self.showname}!"
                         )
                         c.unfollow(silent=True)
-                        raise
+                        return
 
             reason = ""
             if (
@@ -1364,7 +1364,7 @@ class ClientManager:
                 self.send_command("BN", self.area.background, self.pos)
             self.send_command("LE", *self.area.get_evidence_list(self))
             self.send_command("MM", 1)
-            
+
             if self.area.area_manager.subtheme != "":
                 self.send_command("ST", self.area.area_manager.subtheme, "1")
             self.area.area_manager.send_arup_players([self])
