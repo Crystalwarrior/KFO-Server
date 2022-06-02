@@ -723,54 +723,71 @@ def ooc_cmd_follow(client, arg):
 def ooc_cmd_unfollow(client, arg):
     """
     Stop following whoever you are following, or free someone from being forced to follow.
+    If you're not following anyone, using this command will break whoever is following you.
     Usage: /unfollow or /unfollow <id>
     """
+    allowed = client.is_mod or client in client.area.area_manager.owners
     if len(arg) == 0:
         if (
             client.forced_to_follow
-            and not client.is_mod
-            and client not in client.area.area_manager.owners
+            and not allowed
             and client.following is not None
         ):
             raise ClientError("You can't escape being forced to follow!")
-        else:
-            try:
-                client.send_ooc(
-                    f"You are no longer following [{client.following.id}] {client.following.showname}."
-                )
-                client.following = None
-                client.forced_to_follow = False
-            except Exception:
-                client.following = None
-                raise ClientError("You're not following anyone!")
-    else:
-        if client.is_mod or client in client.area.area_manager.owners:
-            try:
-                targets = client.server.client_manager.get_targets(
-                    client, TargetType.ID, int(arg), False
-                )
-            except Exception:
-                raise ArgumentError(
-                    "You must specify a target. Use /follow_me <id>.")
-            if targets:
-                count = 0
-                for c in targets:
-                    if c.forced_to_follow:
-                        c.following = None
-                        c.forced_to_follow = False
-                        c.send_ooc(
-                            "You've been freed from having to follow someone.")
-                        count += 1
-                if count == 0:
-                    client.send_ooc("No valid targets found.")
-                else:
-                    client.send_ooc(
-                        f"Freed {count} existing client(s) from having to follow someone."
-                    )
+        try:
+            client.send_ooc(
+                f"You are no longer following [{client.following.id}] {client.following.showname}."
+            )
+            client.following = None
+            client.forced_to_follow = False
+        except Exception:
+            client.following = None
+            counter = 0
+            for c in client.area.area_manager.clients:
+                if (
+                    # Target is following us
+                    c.following == client
+                    # Target is not mod or area owner, OR we are a mod/hub owner giving us ability to stop them from following
+                    and ((not c.is_mod and c not in c.area.area_manager.owners) or allowed)
+                    # Target is in the same area as us, OR we are a mod/hub owner
+                    and (c in client.area or allowed)
+                    # Target is not forced to follow us, OR we area a mod/hub owner
+                    and (not c.forced_to_follow or allowed)
+                ):
+                    # Break their follow
+                    c.unfollow()
+                    counter += 1
+            msg = f" Made {counter} clients stop following you." if counter > 0 else ""
+            client.send_ooc(f"Not following anyone.{msg}")
+        return
+
+    if client.is_mod or client in client.area.area_manager.owners:
+        try:
+            targets = client.server.client_manager.get_targets(
+                client, TargetType.ID, int(arg), False
+            )
+        except Exception:
+            raise ArgumentError(
+                "You must specify a target. Use /follow_me <id>.")
+        if targets:
+            count = 0
+            for c in targets:
+                if c.forced_to_follow:
+                    c.following = None
+                    c.forced_to_follow = False
+                    c.send_ooc(
+                        "You've been freed from having to follow someone.")
+                    count += 1
+            if count == 0:
+                client.send_ooc("No valid targets found.")
             else:
-                client.send_ooc("No targets found.")
+                client.send_ooc(
+                    f"Freed {count} existing client(s) from having to follow someone."
+                )
         else:
-            ooc_cmd_unfollow(client, "")
+            client.send_ooc("No targets found.")
+    else:
+        ooc_cmd_unfollow(client, "")
 
 
 def ooc_cmd_info(client, arg):
