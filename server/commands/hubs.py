@@ -750,7 +750,7 @@ def ooc_cmd_unfollow(client, arg):
                     # Target is not mod or area owner, OR we are a mod/hub owner giving us ability to stop them from following
                     and ((not c.is_mod and c not in c.area.area_manager.owners) or allowed)
                     # Target is in the same area as us, OR we are a mod/hub owner
-                    and (c in client.area or allowed)
+                    and (c in client.area.clients or allowed)
                     # Target is not forced to follow us, OR we area a mod/hub owner
                     and (not c.forced_to_follow or allowed)
                 ):
