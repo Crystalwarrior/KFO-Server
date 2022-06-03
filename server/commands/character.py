@@ -35,7 +35,6 @@ __all__ = [
     "ooc_cmd_keys",
     "ooc_cmd_kms",
     "ooc_cmd_chardesc",
-    "ooc_cmd_chardescs",
     "ooc_cmd_chardesc_clear",
     "ooc_cmd_chardesc_set",
     "ooc_cmd_chardesc_get",
@@ -811,14 +810,6 @@ def ooc_cmd_chardesc(client, arg):
                 f"{client.showname} changed their character description to: {desc}."
             )
         database.log_area("chardesc.change", client, client.area, message=arg)
-
-
-def ooc_cmd_chardescs(client, arg):
-    """
-    See chardescs of everyone in area.
-    Usage: /chardescs
-    """
-    pass
 
 
 def ooc_cmd_chardesc_clear(client, arg):
