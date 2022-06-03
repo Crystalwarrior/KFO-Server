@@ -663,11 +663,10 @@ class AOProtocol(asyncio.Protocol):
                     self.server.censors["replace"],
                     False,
                 )
-        if text.lower().startswith("/a") or text.lower().startswith("/s"):
-            text = text[2:]
+        if text.lower().startswith("/a ") or text.lower().startswith("/s "):
             part = text.split(" ")
             try:
-                areas = part[0].split(",")
+                areas = part[1].split(",")
                 for a in areas:
                     try:
                         aid = int(a)
@@ -683,9 +682,9 @@ class AOProtocol(asyncio.Protocol):
                     for a in self.client.area.area_manager.areas:
                         if self.client in a.owners:
                             target_area.append(a)
-                    part = part[0:]
-                else:
                     part = part[1:]
+                else:
+                    part = part[2:]
                 if len(target_area) <= 0:
                     self.client.send_ooc("No target areas found!")
                     return
@@ -812,6 +811,12 @@ class AOProtocol(asyncio.Protocol):
             )
             return
 
+        if text.lstrip() != text and text.lstrip().startswith("/"):
+            self.client.send_ooc(
+                "Your IC message was not sent for safety reasons: you left space before that slash."
+            )
+            return
+
         # We are blankposting.
         if self.client.blankpost:
             pre = "-"
@@ -834,7 +839,7 @@ class AOProtocol(asyncio.Protocol):
             # Set anim to narration
             anim = ""
 
-        if text.lower().startswith("/w"):
+        if text.lower().startswith("/w ") or text.lower().startswith("[w] "):
             if (
                 not self.client.area.can_whisper
                 and not self.client.is_mod
@@ -842,10 +847,9 @@ class AOProtocol(asyncio.Protocol):
             ):
                 self.client.send_ooc("You can't whisper in this area!")
                 return
-            text = text[2:]
             part = text.split(" ")
             try:
-                clients = part[0].split(",")
+                clients = part[1].split(",")
                 try:
                     [int(c) for c in clients]
                 except ValueError:
@@ -858,7 +862,7 @@ class AOProtocol(asyncio.Protocol):
                     ]
                     clients = ",".join(clients)
                 else:
-                    part = part[0:]
+                    part = part[1:]
                     whisper_clients = [
                         c
                         for c in self.client.area.clients
@@ -870,13 +874,6 @@ class AOProtocol(asyncio.Protocol):
             except (ValueError, AreaError):
                 self.client.send_ooc("Invalid targets!")
                 return
-
-        if text.lstrip() != text and text.lstrip().startswith("/"):
-            self.client.send_ooc(
-                "Your IC Message was not sent for safety reasons: valid IC commands are /w for whisper, and /a for broadcast to areas."
-            )
-            return
-
         if contains_URL(
             text.replace("}", "")
             .replace("{", "")
