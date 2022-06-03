@@ -967,9 +967,7 @@ class AOProtocol(asyncio.Protocol):
             for client in self.client.area.clients:
                 if client in whisper_clients:
                     continue
-                if client in self.client.area.owners:
-                    whisper_clients.append(client)
-                if client.is_mod:
+                if client.is_mod or client in self.client.area.owners:
                     whisper_clients.append(client)
 
         if len(target_area) > 0:
