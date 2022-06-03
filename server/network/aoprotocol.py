@@ -844,7 +844,7 @@ class AOProtocol(asyncio.Protocol):
             text = text.lstrip()[2:]
             part = text.lstrip().split(" ")
             try:
-                clients = set(part[0].split(","))
+                clients = list(dict.fromkeys(part[0].split(",")))
                 try:
                     [int(c) for c in clients]
                 except ValueError:
