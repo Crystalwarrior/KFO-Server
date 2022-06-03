@@ -632,7 +632,7 @@ class AOProtocol(asyncio.Protocol):
                 return
         if text.replace(" ", "").startswith("(("):
             self.client.send_ooc(
-                "Please, *please* use the OOC chat instead of polluting IC. Normal OOC is local to area. You can use /g to talk across the entire server."
+                "Please, *please* use the OOC chat instead of polluting IC. Normal OOC is local to area. You can use /h to talk across the hub, or /g to talk across the entire server."
             )
             return
         # Scrub text and showname for bad words
@@ -811,12 +811,6 @@ class AOProtocol(asyncio.Protocol):
             )
             return
 
-        if text.lstrip() != text and text.lstrip().startswith("/"):
-            self.client.send_ooc(
-                "Your IC message was not sent for safety reasons: you left space before that slash."
-            )
-            return
-
         # We are blankposting.
         if self.client.blankpost:
             pre = "-"
@@ -839,7 +833,7 @@ class AOProtocol(asyncio.Protocol):
             # Set anim to narration
             anim = ""
 
-        if text.lower().startswith("/w ") or text.lower().startswith("[w] "):
+        if text.lower().lstrip().split(" ")[0] == "/w":
             if (
                 not self.client.area.can_whisper
                 and not self.client.is_mod
@@ -847,9 +841,10 @@ class AOProtocol(asyncio.Protocol):
             ):
                 self.client.send_ooc("You can't whisper in this area!")
                 return
-            part = text.split(" ")
+            text = text.lstrip()[2:]
+            part = text.lower().split(" ")
             try:
-                clients = part[1].split(",")
+                clients = part[0].split(",")
                 try:
                     [int(c) for c in clients]
                 except ValueError:
