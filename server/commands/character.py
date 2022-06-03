@@ -817,8 +817,8 @@ def ooc_cmd_chardesc_clear(client, arg):
     Clear your chardesc.
     Usage: /chardesc_clear
     """
-    client.area.area_manager.set_character_data(client, "desc", "")
-    target = client.area.area_manager.char_list[client]
+    client.area.area_manager.set_character_data(client.char_id, "desc", "")
+    target = client.area.area_manager.char_list[client.char_id]
     client.send_ooc(f"{target} Description Cleared.")
     database.log_area(
         "chardesc.clear", client, client.area
