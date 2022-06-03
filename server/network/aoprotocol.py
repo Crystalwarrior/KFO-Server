@@ -846,14 +846,14 @@ class AOProtocol(asyncio.Protocol):
             try:
                 clients = part[0].split(",")
                 try:
-                    [int(c) for c in clients]
+                    (int(c) for c in clients)
                 except ValueError:
                     clients = []
 
                 if len(clients) > 0:
                     part = part[1:]
                     whisper_clients = [
-                        c for c in self.client.area.clients if str(c.id) in clients
+                        c for c in self.client.area.clients if str(c.id) in clients and not c == self.client
                     ]
                     clients = ",".join(clients)
                 else:
