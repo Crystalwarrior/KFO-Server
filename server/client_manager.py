@@ -906,7 +906,7 @@ class ClientManager:
                 )
 
             delay = self.area.time_until_move(self)
-            if not allowed and delay > 0:
+            if not self.forced_to_follow and not allowed and delay > 0:
                 sec = int(math.ceil(delay * 0.001))
                 raise ClientError(
                     f"Failed to enter [{area.id}] {area.name}: You need to wait {sec} seconds until you can move again."
