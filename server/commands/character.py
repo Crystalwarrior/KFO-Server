@@ -813,6 +813,14 @@ def ooc_cmd_chardesc(client, arg):
         database.log_area("chardesc.change", client, client.area, message=arg)
 
 
+def ooc_cmd_chardescs(client, arg):
+    """
+    See chardescs of everyone in area.
+    Usage: /chardescs
+    """
+    pass
+
+
 def ooc_cmd_chardesc_clear(client, arg):
     """
     Clear your chardesc.
