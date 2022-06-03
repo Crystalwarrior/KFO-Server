@@ -837,12 +837,12 @@ class AOProtocol(asyncio.Protocol):
             if (
                 not self.client.area.can_whisper
                 and not self.client.is_mod
-                and self.client in self.client.area.owners
+                and self.client not in self.client.area.owners
             ):
                 self.client.send_ooc("You can't whisper in this area!")
                 return
             text = text.lstrip()[2:]
-            part = text.lower().split(" ")
+            part = text.split(" ")
             try:
                 clients = part[0].split(",")
                 try:
@@ -851,13 +851,12 @@ class AOProtocol(asyncio.Protocol):
                     clients = []
 
                 if len(clients) > 0:
-                    part = part[2:]
+                    part = part[1:]
                     whisper_clients = [
                         c for c in self.client.area.clients if str(c.id) in clients
                     ]
                     clients = ",".join(clients)
                 else:
-                    part = part[1:]
                     whisper_clients = [
                         c
                         for c in self.client.area.clients
