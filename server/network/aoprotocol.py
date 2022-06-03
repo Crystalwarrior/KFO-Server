@@ -833,7 +833,7 @@ class AOProtocol(asyncio.Protocol):
             # Set anim to narration
             anim = ""
 
-        if text.lower().lstrip().split(" ")[0] == "/w":
+        if text.lower().lstrip().startswith("/w"):
             if (
                 not self.client.area.can_whisper
                 and not self.client.is_mod
@@ -842,7 +842,7 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_ooc("You can't whisper in this area!")
                 return
             text = text.lstrip()[2:]
-            part = text.split(" ")
+            part = text.lstrip().split(" ")
             try:
                 clients = part[0].split(",")
                 try:
