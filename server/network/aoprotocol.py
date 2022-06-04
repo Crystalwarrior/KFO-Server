@@ -237,15 +237,14 @@ class AOProtocol(asyncio.Protocol):
 
         # Get the list of version vars, making sure the size of the least is at least 3 args
         verlist = self.client.version.split('.')
-        verlist = verlist + ([""] * min(0, 3 - len(verlist)))
+        if len(verlist) == 3:
+            # Get the version string
+            release, major, minor = verlist
 
-        # Get the version string
-        release, major, minor = verlist
-
-        # If we have someone joining with clients 2.8 and above
-        if int(release) >= 2 and int(major) >= 8:
-            # Let them hear ambience
-            self.client.has_multilayer_audio = True
+            # If we have someone joining with clients 2.8 and above
+            if int(release) >= 2 and int(major) >= 8:
+                # Let them hear ambience
+                self.client.has_multilayer_audio = True
 
         # If we have someone using the DRO 1.1.0 Client joining
         # if self.client.version.startswith("1.1.0"):
@@ -633,7 +632,7 @@ class AOProtocol(asyncio.Protocol):
                 return
         if text.replace(" ", "").startswith("(("):
             self.client.send_ooc(
-                "Please, *please* use the OOC chat instead of polluting IC. Normal OOC is local to area. You can use /g to talk across the entire server."
+                "Please, *please* use the OOC chat instead of polluting IC. Normal OOC is local to area. You can use /h to talk across the hub, or /g to talk across the entire server."
             )
             return
         # Scrub text and showname for bad words
@@ -828,36 +827,36 @@ class AOProtocol(asyncio.Protocol):
             pos = self.client.area.pos_dark
 
         # We're narrating, or we're hidden in some evidence.
-        if self.client.narrator or self.client.hidden_in is not None:
+        if anim == "" or self.client.narrator or self.client.hidden_in is not None:
             # Reuse same pos
             pos = ""
             # Set anim to narration
             anim = ""
 
-        if text.lower().startswith("/w ") or text.lower().startswith("[w] "):
+        if text.lower().lstrip().startswith("/w"):
             if (
                 not self.client.area.can_whisper
                 and not self.client.is_mod
-                and self.client in self.client.area.owners
+                and self.client not in self.client.area.owners
             ):
                 self.client.send_ooc("You can't whisper in this area!")
                 return
-            part = text.split(" ")
+            text = text.lstrip()[2:]
+            part = text.lstrip().split(" ")
             try:
-                clients = part[1].split(",")
+                clients = list(dict.fromkeys(part[0].split(",")))
                 try:
                     [int(c) for c in clients]
                 except ValueError:
                     clients = []
 
                 if len(clients) > 0:
-                    part = part[2:]
+                    part = part[1:]
                     whisper_clients = [
-                        c for c in self.client.area.clients if str(c.id) in clients
+                        c for c in self.client.area.clients if str(c.id) in clients and not c == self.client
                     ]
                     clients = ",".join(clients)
                 else:
-                    part = part[1:]
                     whisper_clients = [
                         c
                         for c in self.client.area.clients
@@ -968,9 +967,7 @@ class AOProtocol(asyncio.Protocol):
             for client in self.client.area.clients:
                 if client in whisper_clients:
                     continue
-                if client in self.client.area.owners:
-                    whisper_clients.append(client)
-                if client.is_mod:
+                if client.is_mod or client in self.client.area.owners:
                     whisper_clients.append(client)
 
         if len(target_area) > 0:
@@ -1128,86 +1125,6 @@ class AOProtocol(asyncio.Protocol):
                     self.server.bridgebot.queue_message(
                         webname, text, self.client.char_name, anim
                     )
-            # Minigames
-            opposing_team = None
-            # If we're not using shouts, and we're in CS/Scrum/PTA
-            if button == "0":
-                # If we're on red team
-                if self.client.char_id in self.client.area.red_team:
-                    # Set our color to red
-                    color = 2
-                    # Offset us to the left
-                    offset_pair = -25
-                    # Offset them to the right
-                    other_offset = 25
-                    # Our opposing team is blue
-                    opposing_team = self.client.area.blue_team
-                    # Set our pos to "debate"
-                    pos = "debate"
-                    if self.client.area.minigame == "Cross Swords":
-                        pos = "cs"
-                    elif self.client.area.minigame == "Scrum Debate":
-                        pos = "sd"
-                    elif self.client.area.minigame == "Panic Talk Action":
-                        pos = "pta"
-                # If we're on blue team
-                elif self.client.char_id in self.client.area.blue_team:
-                    # Set our color to cyan
-                    color = 7
-                    # Offset them to the right
-                    offset_pair = 25
-                    # Offset them to the left
-                    other_offset = -25
-                    # Our opposing team is red
-                    opposing_team = self.client.area.red_team
-                    # Set our pos to "debate"
-                    pos = "debate"
-                    if self.client.area.minigame == "Cross Swords":
-                        pos = "cs"
-                    elif self.client.area.minigame == "Scrum Debate":
-                        pos = "sd"
-                    elif self.client.area.minigame == "Panic Talk Action":
-                        pos = "pta"
-
-            # We're in a minigame w/ team setups
-            if opposing_team is not None:
-                charid_pair = -1
-                # Last speaker is us and our message already paired us with someone, and that someone is on the opposing team
-                if (
-                    self.client.area.last_ic_message is not None
-                    and self.client.area.last_ic_message[8] == self.client.char_id
-                    and self.client.area.last_ic_message[16] != -1
-                    and int(self.client.area.last_ic_message[16].split("^")[0])
-                    in opposing_team
-                ):
-                    # Set the pair to the person who it was last msg
-                    charid_pair = int(
-                        self.client.area.last_ic_message[16].split("^")[0]
-                    )
-                # The person we were trying to find is no longer on the opposing team
-                else:
-                    # Search through the opposing team's characters
-                    for other_cid in opposing_team:
-                        charid_pair = other_cid
-                        # If last message's charid matches a member of this team, prioritize theirs
-                        if (
-                            self.client.area.last_ic_message is not None
-                            and other_cid == self.client.area.last_ic_message[8]
-                        ):
-                            break
-                # If our pair opponent is found
-                if charid_pair != -1:
-                    # Search through clients in area
-                    for target in self.client.area.clients:
-                        # If we find our target char ID
-                        if target.char_id == charid_pair:
-                            # Set emote, flip and folder properly
-                            other_emote = target.last_sprite
-                            other_flip = target.flip
-                            other_folder = target.claimed_folder
-                            break
-                    # Speaker always goes in front
-                    charid_pair = f"{charid_pair}^0"
 
         # Additive only works on same-char messages
         if additive and (

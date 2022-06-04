@@ -138,7 +138,9 @@
 * **area\_kick** `<id>` `[destination]` `[target_pos]`
     - Remove a user from the current area and move them to another area.
     - If id is a `*` char, it will kick everyone but you and CMs from current area to destination.
-    - If id is `afk`, it will only kicl all the afk people.
+    - If id is `**`, it will kick everyone including CM's from current area to destination.
+    - If id is `***`, it will kick everyone in the hub to destination.
+    - If id is `afk`, it will only kick all the afk people.
     - If the destination is not specified, the destination defaults to area 0.
     - `[target_pos]` is the optional position that everyone should end up in when kicked.
 * **pos\_lock** `<pos(s)>`

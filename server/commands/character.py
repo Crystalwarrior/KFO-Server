@@ -35,6 +35,7 @@ __all__ = [
     "ooc_cmd_keys",
     "ooc_cmd_kms",
     "ooc_cmd_chardesc",
+    "ooc_cmd_chardesc_clear",
     "ooc_cmd_chardesc_set",
     "ooc_cmd_chardesc_get",
     "ooc_cmd_narrate",
@@ -804,11 +805,25 @@ def ooc_cmd_chardesc(client, arg):
         if not client.hidden and not client.sneaking:
             desc = arg[:128]
             if len(arg) > len(desc):
-                desc += "... Use /chardesc to read the rest."
+                desc += f"... Use /chardesc {client.id} to read the rest."
             client.area.broadcast_ooc(
                 f"{client.showname} changed their character description to: {desc}."
             )
         database.log_area("chardesc.change", client, client.area, message=arg)
+
+
+def ooc_cmd_chardesc_clear(client, arg):
+    """
+    Clear your chardesc.
+    Usage: /chardesc_clear
+    """
+    client.area.area_manager.set_character_data(client.char_id, "desc", "")
+    client.area.broadcast_ooc(
+        f"{client.showname} cleared their character description."
+    )
+    database.log_area(
+        "chardesc.clear", client, client.area
+    )
 
 
 @mod_only(hub_owners=True)

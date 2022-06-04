@@ -157,7 +157,7 @@ class ClientManager:
             self.viewing_hub_list = False
             # Whether or not the client used the /showname command
             self.used_showname_command = False
-            
+
             # Currently requested subtheme of this client
             self.subtheme = ""
 
@@ -906,7 +906,7 @@ class ClientManager:
                 )
 
             delay = self.area.time_until_move(self)
-            if not allowed and delay > 0:
+            if not self.forced_to_follow and not allowed and delay > 0:
                 sec = int(math.ceil(delay * 0.001))
                 raise ClientError(
                     f"Failed to enter [{area.id}] {area.name}: You need to wait {sec} seconds until you can move again."
@@ -940,12 +940,10 @@ class ClientManager:
                             f"Following [{self.id}] {self.showname} to [{area.id}] {area.name}."
                         )
                     # Something obstructed us.
-                    except ClientError:
-                        c.send_ooc(
-                            f"Cannot follow [{self.id}] {self.showname} to [{area.id}] {area.name}!"
-                        )
-                        c.unfollow(silent=True)
-                        raise
+                    except ClientError as ex:
+                        c.send_ooc(ex)
+                        c.unfollow()
+                        return
 
             reason = ""
             if (
@@ -1364,7 +1362,7 @@ class ClientManager:
                 self.send_command("BN", self.area.background, self.pos)
             self.send_command("LE", *self.area.get_evidence_list(self))
             self.send_command("MM", 1)
-            
+
             if self.area.area_manager.subtheme != "":
                 self.send_command("ST", self.area.area_manager.subtheme, "1")
             self.area.area_manager.send_arup_players([self])
