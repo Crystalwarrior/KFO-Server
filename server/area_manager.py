@@ -609,7 +609,7 @@ class AreaManager:
         if not self.arup_enabled:
             return
         players_list = []
-        if len(self.client.server.hub_manager.hubs) > 1:
+        if len(self.server.hub_manager.hubs) > 1:
             players_list = [0, -1]
         if clients is None:
             clients = self.clients
@@ -629,7 +629,7 @@ class AreaManager:
                             and not c.hidden
                         ):
                             playerhubcount = playerhubcount + 1
-                if len(self.client.server.hub_manager.hubs) > 1:
+                if len(self.server.hub_manager.hubs) > 1:
                     players_list[1] = playerhubcount
             self.server.send_arup(client, players_list)
 
@@ -638,7 +638,7 @@ class AreaManager:
         if not self.arup_enabled:
             return
         status_list = []
-        if len(self.client.server.hub_manager.hubs) > 1:
+        if len(self.server.hub_manager.hubs) > 1:
             status_list = [1, "GAMING"]
         if clients is None:
             clients = self.clients
@@ -655,7 +655,7 @@ class AreaManager:
         if not self.arup_enabled:
             return
         cms_list = []
-        if len(self.client.server.hub_manager.hubs) > 1:
+        if len(self.server.hub_manager.hubs) > 1:
             cms_list = [2, "Double-Click for Hubs"]
         if clients is None:
             clients = self.clients
@@ -672,7 +672,7 @@ class AreaManager:
         if not self.arup_enabled:
             return
         lock_list = []
-        if len(self.client.server.hub_manager.hubs) > 1:
+        if len(self.server.hub_manager.hubs) > 1:
             lock_list = [3, ""]
         if clients is None:
             clients = self.clients
