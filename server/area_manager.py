@@ -608,7 +608,7 @@ class AreaManager:
         """Broadcast ARUP packet containing player counts."""
         if not self.arup_enabled:
             return
-        players_list = []
+        players_list = [0]
         if len(self.server.hub_manager.hubs) > 1:
             players_list = [0, -1]
         if clients is None:
@@ -637,7 +637,7 @@ class AreaManager:
         """Broadcast ARUP packet containing area statuses."""
         if not self.arup_enabled:
             return
-        status_list = []
+        status_list = [1]
         if len(self.server.hub_manager.hubs) > 1:
             status_list = [1, "GAMING"]
         if clients is None:
@@ -654,7 +654,7 @@ class AreaManager:
         """Broadcast ARUP packet containing area CMs."""
         if not self.arup_enabled:
             return
-        cms_list = []
+        cms_list = [2]
         if len(self.server.hub_manager.hubs) > 1:
             cms_list = [2, "Double-Click for Hubs"]
         if clients is None:
@@ -671,7 +671,7 @@ class AreaManager:
         """Broadcast ARUP packet containing the lock status of each area."""
         if not self.arup_enabled:
             return
-        lock_list = []
+        lock_list = [3]
         if len(self.server.hub_manager.hubs) > 1:
             lock_list = [3, ""]
         if clients is None:
