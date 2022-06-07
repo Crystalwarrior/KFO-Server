@@ -295,7 +295,9 @@ class AOProtocol(asyncio.Protocol):
         """
 
         song_list = []
-        if not self.client.area.area_manager.arup_enabled:
+        if len(self.client.server.hub_manager.hubs) <= 1:
+            self.client.area.area_manager.arup_enabled = True
+        elif not self.client.area.area_manager.arup_enabled:
             song_list = [
                 f"[HUB: {self.client.area.area_manager.id}] {self.client.area.area_manager.name}\n Double-Click me to see Hubs\n  _______"
             ]
