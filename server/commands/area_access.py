@@ -623,7 +623,7 @@ def ooc_cmd_link_pos(client, arg):
         except Exception:
             target_id = int(args[0])
 
-        pos = args[1:]
+        pos = ' '.join(args[1:])
         client.area.links[str(target_id)]["target_pos"] = pos
         client.send_ooc(
             f'Area {client.area.name} link {target_id}\'s target pos set to "{pos}".'
