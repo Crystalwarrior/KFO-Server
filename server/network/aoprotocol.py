@@ -604,6 +604,7 @@ class AOProtocol(asyncio.Protocol):
                 "Showname changes are forbidden in this area!")
             return
         if self.client.area.is_iniswap(self.client, pre, anim, folder, sfx):
+            folder = self.client.char_name
             self.client.send_ooc(
                 f"Iniswap/custom emotes are blocked in this area for character {folder}, pre {pre} anim {anim}."
             )
@@ -1093,7 +1094,7 @@ class AOProtocol(asyncio.Protocol):
                     and self.client.area.id == self.server.bridgebot.area_id
                 ):
                     webname = self.client.char_name
-                    if showname != "" and showname != self.area.area_manager.char_list[cid]:
+                    if showname != "" and showname != self.client.area.area_manager.char_list[cid]:
                         webname = f"{showname} ({webname})"
                     # you'll hate me for this
                     text = (
