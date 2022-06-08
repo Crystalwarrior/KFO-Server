@@ -1094,7 +1094,7 @@ class AOProtocol(asyncio.Protocol):
                     and self.client.area.id == self.server.bridgebot.area_id
                 ):
                     webname = self.client.char_name
-                    if showname != "" and showname != self.area.area_manager.char_list[cid]:
+                    if showname != "" and showname != self.client.area.area_manager.char_list[cid]:
                         webname = f"{showname} ({webname})"
                     # you'll hate me for this
                     text = (
