@@ -485,7 +485,7 @@ class TsuServer3:
 
     def send_discord_chat(self, name, message, hub_id=0, area_id=0):
         area = self.hub_manager.get_hub_by_id(hub_id).get_area_by_id(area_id)
-        cid = self.get_char_id_by_name(self.config["bridgebot"]["character"])
+        cid = area.area_manager.get_char_id_by_name(self.config["bridgebot"]["character"])
         message = dezalgo(message)
         message = remove_URL(message)
         message = (
@@ -579,10 +579,11 @@ class TsuServer3:
                             "Your moderator credentials have been revoked.")
             self.config["modpass"] = cfg_yaml["modpass"]
 
+        self.load_config()
         self.load_command_aliases()
         self.load_censors()
-        self.load_characters()
         self.load_iniswaps()
+        self.load_characters()
         self.load_music()
         self.load_backgrounds()
         self.load_ipranges()
