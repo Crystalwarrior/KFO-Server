@@ -604,6 +604,7 @@ class AOProtocol(asyncio.Protocol):
                 "Showname changes are forbidden in this area!")
             return
         if self.client.area.is_iniswap(self.client, pre, anim, folder, sfx):
+            folder = self.client.char_name
             self.client.send_ooc(
                 f"Iniswap/custom emotes are blocked in this area for character {folder}, pre {pre} anim {anim}."
             )
