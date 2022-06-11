@@ -40,6 +40,7 @@ __all__ = [
     "ooc_cmd_concede",
     "ooc_cmd_minigame_start_song",
     "ooc_cmd_minigame_end_song",
+    "ooc_cmd_minigame_concede_song",
     "ooc_cmd_subtheme",
 ]
 
@@ -907,39 +908,52 @@ def ooc_cmd_pta(client, arg):
     ooc_cmd_cs(client, f"{args[0]} 1")
 
 
-def set_minigame_song(client, minigame="", song="", end=False):
+def set_minigame_song(client, minigame="", song="", condition=0):
     minigames = ["cs", "sd", "pta"]
-    start_or_end = "end" if end else "start"
     minigame = minigame.lower()
     if minigame not in minigames:
         raise ArgumentError("Must provide minigame!")
 
+    condition_str = ""
+    if condition == 0:
+        condition_str = "start"
+    elif condition == 1:
+        condition_str = "end"
+    elif condition == 2:
+        condition_str = "concede"
+
     # Songname is provided
     if song != "":
         if minigame == "cs":
-            if end:
-                client.area.cross_swords_song_end = song
-            else:
+            if condition == 0:
                 client.area.cross_swords_song_start = song
+            elif condition == 1:
+                client.area.cross_swords_song_end = song
+            elif condition == 2:
+                client.area.cross_swords_song_concede = song
         elif minigame == "sd":
-            if end:
-                client.area.scrum_debate_song_end = song
-            else:
+            if condition == 0:
                 client.area.scrum_debate_song_start = song
+            elif condition == 1:
+                client.area.scrum_debate_song_end = song
+            elif condition == 2:
+                client.area.scrum_debate_song_concede = song
         elif minigame == "pta":
-            if end:
-                client.area.panic_talk_action_song_end = song
-            else:
+            if condition == 0:
                 client.area.panic_talk_action_song_start = song
+            elif condition == 1:
+                client.area.panic_talk_action_song_end = song
+            elif condition == 2:
+                client.area.panic_talk_action_song_concede = song
         client.send_ooc(
-            f"Setting the {minigame} {start_or_end} song to {song}.")
+            f"Setting the {minigame} {condition_str} song to {song}.")
         return
 
     # Songname is not provided
     client.editing_minigame_song = minigame
-    client.editing_minigame_song_end = end
+    client.editing_minigame_song_condition = condition
     client.send_ooc(
-        f"Play a song to set the {minigame} {start_or_end} song to...")
+        f"Play a song to set the {minigame} {condition_str} song to...")
 
 
 @mod_only(area_owners=True)
@@ -952,7 +966,7 @@ def ooc_cmd_minigame_start_song(client, arg):
     minigame = args[0] if len(args) > 0 else ""
     song = " ".join(args[1:]) if len(args) > 1 else ""
     print(minigame, song)
-    set_minigame_song(client, minigame, song, end=False)
+    set_minigame_song(client, minigame, song, condition=0)
 
 
 @mod_only(area_owners=True)
@@ -964,7 +978,19 @@ def ooc_cmd_minigame_end_song(client, arg):
     args = arg.split()
     minigame = args[0] if len(args) > 0 else ""
     song = " ".join(args[1:]) if len(args) > 1 else ""
-    set_minigame_song(client, minigame, song, end=True)
+    set_minigame_song(client, minigame, song, condition=1)
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_minigame_concede_song(client, arg):
+    """
+    Edit a concede song for any specific minigame. If songname is blank, it lets you choose a song from the music list to use.
+    Usage: /minigame_concede_song <cs/sd/pta> [songname]
+    """
+    args = arg.split()
+    minigame = args[0] if len(args) > 0 else ""
+    song = " ".join(args[1:]) if len(args) > 1 else ""
+    set_minigame_song(client, minigame, song, condition=2)
 
 
 def ooc_cmd_concede(client, arg):

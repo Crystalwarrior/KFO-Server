@@ -124,7 +124,10 @@ class ClientManager:
             self.edit_ambience = False
             # if we're currently trying to set a song for the minigame
             self.editing_minigame_song = ""
-            self.editing_minigame_song_end = False
+            # 0 = start
+            # 1 = end
+            # 2 = concede
+            self.editing_minigame_song_condition = 0
             # If we are presenting evidence through a command (/evidence_present)
             self.presenting = 0
 
@@ -438,33 +441,44 @@ class ClientManager:
                             self.edit_ambinece = False
                     elif self.editing_minigame_song != "":
                         if self.is_mod or self in area.owners:
-                            start_or_end = (
-                                "end" if self.editing_minigame_song_end else "start"
-                            )
+                            condition_str = ""
+                            if self.editing_minigame_song_condition == 0:
+                                condition_str = "start"
+                            elif self.editing_minigame_song_condition == 1:
+                                condition_str = "end"
+                            elif self.editing_minigame_song_condition == 2:
+                                condition_str = "concede"
+
                             if self.editing_minigame_song == "cs":
-                                if self.editing_minigame_song_end:
-                                    self.area.cross_swords_song_end = song
-                                else:
+                                if self.editing_minigame_song_condition == 0:
                                     self.area.cross_swords_song_start = song
+                                elif self.editing_minigame_song_condition == 1:
+                                    self.area.cross_swords_song_end = song
+                                elif self.editing_minigame_song_condition == 2:
+                                    self.area.cross_swords_song_concede = song
                             elif self.editing_minigame_song == "sd":
-                                if self.editing_minigame_song_end:
-                                    self.area.scrum_debate_song_end = song
-                                else:
+                                if self.editing_minigame_song_condition == 0:
                                     self.area.scrum_debate_song_start = song
+                                elif self.editing_minigame_song_condition == 1:
+                                    self.area.scrum_debate_song_end = song
+                                elif self.editing_minigame_song_condition == 2:
+                                    self.area.scrum_debate_song_concede = song
                             elif self.editing_minigame_song == "pta":
-                                if self.editing_minigame_song_end:
-                                    self.area.panic_talk_action_song_end = song
-                                else:
+                                if self.editing_minigame_song_condition == 0:
                                     self.area.panic_talk_action_song_start = song
+                                elif self.editing_minigame_song_condition == 1:
+                                    self.area.panic_talk_action_song_end = song
+                                elif self.editing_minigame_song_condition == 2:
+                                    self.area.panic_talk_action_song_concede = song
                             self.send_ooc(
-                                f"Setting the {self.editing_minigame_song} {start_or_end} song to {song}."
+                                f"Setting the {self.editing_minigame_song} {condition_str} song to {song}."
                             )
                             self.editing_minigame_song = ""
-                            self.editing_minigame_song_end = False
+                            self.editing_minigame_song_condition = 0
                             continue
                         else:
                             self.editing_minigame_song = ""
-                            self.editing_minigame_song_end = False
+                            self.editing_minigame_song_condition = 0
 
                     # Showname info
                     if showname != "":

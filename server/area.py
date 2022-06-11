@@ -186,6 +186,8 @@ class Area:
         self.cross_swords_song_start = ""
         # The name of the song to play when minigame ends
         self.cross_swords_song_end = ""
+        # The name of the song to play when minigame is conceded
+        self.cross_swords_song_concede = ""
         # in seconds, 300s = 5m
         self.cross_swords_timer = 300
 
@@ -194,6 +196,8 @@ class Area:
         self.scrum_debate_song_start = ""
         # The name of the song to play when minigame ends
         self.scrum_debate_song_end = ""
+        # The name of the song to play when minigame is conceded
+        self.scrum_debate_song_concede = ""
         # in seconds, 300s = 5m. How much time is added on top of cross swords.
         self.scrum_debate_added_time = 300
 
@@ -202,6 +206,8 @@ class Area:
         self.panic_talk_action_song_start = ""
         # The name of the song to play when minigame ends
         self.panic_talk_action_song_end = ""
+        # The name of the song to play when minigame is conceded
+        self.panic_talk_action_song_concede = ""
         # in seconds, 300s = 5m
         self.panic_talk_action_timer = 300
         # Cooldown in seconds, 300s = 5m
@@ -486,14 +492,20 @@ class Area:
             self.cross_swords_song_start = area["cross_swords_song_start"]
         if "cross_swords_song_end" in area:
             self.cross_swords_song_end = area["cross_swords_song_end"]
+        if "cross_swords_song_concede" in area:
+            self.cross_swords_song_concede = area["cross_swords_song_concede"]
         if "scrum_debate_song_start" in area:
             self.scrum_debate_song_start = area["scrum_debate_song_start"]
         if "scrum_debate_song_end" in area:
             self.scrum_debate_song_end = area["scrum_debate_song_end"]
+        if "scrum_debate_song_concede" in area:
+            self.scrum_debate_song_concede = area["scrum_debate_song_concede"]
         if "panic_talk_action_song_start" in area:
             self.panic_talk_action_song_start = area["panic_talk_action_song_start"]
         if "panic_talk_action_song_end" in area:
             self.panic_talk_action_song_end = area["panic_talk_action_song_end"]
+        if "panic_talk_action_song_concede" in area:
+            self.panic_talk_action_song_concede = area["panic_talk_action_song_concede"]
         if "force_sneak" in area:
             self.force_sneak = area["force_sneak"]
         if "password" in area:
@@ -610,10 +622,13 @@ class Area:
         area["can_panic_talk_action"] = self.can_panic_talk_action
         area["cross_swords_song_start"] = self.cross_swords_song_start
         area["cross_swords_song_end"] = self.cross_swords_song_end
+        area["cross_swords_song_concede"] = self.cross_swords_song_concede
         area["scrum_debate_song_start"] = self.scrum_debate_song_start
         area["scrum_debate_song_end"] = self.scrum_debate_song_end
+        area["scrum_debate_song_concede"] = self.scrum_debate_song_concede
         area["panic_talk_action_song_start"] = self.panic_talk_action_song_start
         area["panic_talk_action_song_end"] = self.panic_talk_action_song_end
+        area["panic_talk_action_song_concede"] = self.panic_talk_action_song_concede
         area["force_sneak"] = self.force_sneak
         area["password"] = self.password
         area["dark"] = self.dark
@@ -1836,12 +1851,20 @@ class Area:
             "",
         )
         song = ""
-        if self.minigame == "Scrum Debate":
-            song = self.scrum_debate_song_end
-        elif self.minigame == "Cross Swords":
-            song = self.cross_swords_song_end
-        elif self.minigame == "Panic Talk Action":
-            song = self.panic_talk_action_song_end
+        if "concede" in reason.lower() or "forcibly" in reason.lower():
+            if self.minigame == "Scrum Debate":
+                song = self.scrum_debate_song_concede
+            elif self.minigame == "Cross Swords":
+                song = self.cross_swords_song_concede
+            elif self.minigame == "Panic Talk Action":
+                song = self.panic_talk_action_song_concede
+        else:
+            if self.minigame == "Scrum Debate":
+                song = self.scrum_debate_song_end
+            elif self.minigame == "Cross Swords":
+                song = self.cross_swords_song_end
+            elif self.minigame == "Panic Talk Action":
+                song = self.panic_talk_action_song_end
         # Play the song if it's not blank
         if song != "":
             self.music_player = "The Jukebox"
