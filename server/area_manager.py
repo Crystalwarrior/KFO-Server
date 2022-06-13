@@ -608,7 +608,9 @@ class AreaManager:
         """Broadcast ARUP packet containing player counts."""
         if not self.arup_enabled:
             return
-        players_list = [0, -1]
+        players_list = [0]
+        if len(self.server.hub_manager.hubs) > 1:
+            players_list = [0, -1]
         if clients is None:
             clients = self.clients
         for client in clients:
@@ -627,14 +629,17 @@ class AreaManager:
                             and not c.hidden
                         ):
                             playerhubcount = playerhubcount + 1
-                players_list[1] = playerhubcount
+                if len(self.server.hub_manager.hubs) > 1:
+                    players_list[1] = playerhubcount
             self.server.send_arup(client, players_list)
 
     def send_arup_status(self, clients=None):
         """Broadcast ARUP packet containing area statuses."""
         if not self.arup_enabled:
             return
-        status_list = [1, "GAMING"]
+        status_list = [1]
+        if len(self.server.hub_manager.hubs) > 1:
+            status_list = [1, "GAMING"]
         if clients is None:
             clients = self.clients
         for client in clients:
@@ -649,7 +654,9 @@ class AreaManager:
         """Broadcast ARUP packet containing area CMs."""
         if not self.arup_enabled:
             return
-        cms_list = [2, "Double-Click for Hubs"]
+        cms_list = [2]
+        if len(self.server.hub_manager.hubs) > 1:
+            cms_list = [2, "Double-Click for Hubs"]
         if clients is None:
             clients = self.clients
         for client in clients:
@@ -664,7 +671,9 @@ class AreaManager:
         """Broadcast ARUP packet containing the lock status of each area."""
         if not self.arup_enabled:
             return
-        lock_list = [3, ""]
+        lock_list = [3]
+        if len(self.server.hub_manager.hubs) > 1:
+            lock_list = [3, ""]
         if clients is None:
             clients = self.clients
         for client in clients:
