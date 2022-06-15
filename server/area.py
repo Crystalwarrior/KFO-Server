@@ -21,7 +21,7 @@ from server import database
 from server import commands
 from server.evidence import EvidenceList
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import MusicEffect
+from server.constants import MusicEffect, TargetType
 
 from collections import OrderedDict
 
@@ -2102,8 +2102,16 @@ class Area:
                 self.stop_demo()
                 return
         elif len(client.broadcast_list) > 0:
-            for area in client.broadcast_list:
-                area.send_command(header, *args)
+            if client.broadcast_type == 0:
+                for area in client.broadcast_list:
+                    area.send_command(header, *args)
+            elif client.broadcast_type == 1:
+                targets = []
+                for char_name in client.broadcast_list:
+                    targets += client.server.client_manager.get_targets(
+                        client, TargetType.CHAR_NAME, str(char_name))
+                for c in targets:
+                    c.send_command(header, *args)
         else:
             self.send_command(header, *args)
         # Proceed to next demo line

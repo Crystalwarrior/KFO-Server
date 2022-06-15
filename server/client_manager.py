@@ -156,6 +156,12 @@ class ClientManager:
             self.replace_music = False
             # list of areas to broadcast the message, music and judge buttons to
             self.broadcast_list = []
+
+            # Type of broadcast to make sense of the list
+            # 0 = broadcast to AREAS
+            # 1 = broadcast to CHARACTERS
+            self.broadcast_type = 0
+
             # Whether we're viewing hub list or not in the A/M area list
             self.viewing_hub_list = False
             # Whether or not the client used the /showname command
