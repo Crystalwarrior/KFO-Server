@@ -122,8 +122,8 @@ class AOProtocol(asyncio.Protocol):
             self.server.config["timeout"], self.client.disconnect
         )
 
-        # Idk why AO2 even expects a decryptor packet but here we are
-        self.client.send_command("decryptor", 34)
+        # Disables fantacrypt for clients older than 2.9, required for A02-Client to send HDID.
+        self.client.send_command("decryptor", "NOENCRYPT")
 
     def connection_lost(self, exc):
         """User disconnected
