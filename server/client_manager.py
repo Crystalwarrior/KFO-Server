@@ -391,6 +391,11 @@ class ClientManager:
             if cid != self.char_id:
                 return
 
+            # Decode AO packet
+            song = song.replace("<num>", "#") \
+                .replace("<percent>", "%") \
+                .replace("<dollar>", "$") \
+                .replace("<and>", "&")
             try:
                 if song == "~stop.mp3" or self.server.get_song_is_category(
                     self.construct_music_list(), song

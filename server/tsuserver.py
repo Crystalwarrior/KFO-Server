@@ -365,11 +365,6 @@ class TsuServer3:
         :returns: tuple (name, length or -1)
         :raises: ServerError if track not found
         """
-        # Decode AO packet
-        music = music.replace("<num>", "#") \
-            .replace("<percent>", "%") \
-            .replace("<dollar>", "$") \
-            .replace("<and>", "&")
         for item in music_list:
             if "category" not in item:  # skip settings n stuff
                 continue
