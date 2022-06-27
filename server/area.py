@@ -1079,6 +1079,7 @@ class Area:
                     # Speaker always goes in front
                     charid_pair = f"{charid_pair}^0"
             # DRO 1.0.0 client compatibility, tell the client we acknowledged their MS packet
+            # TODO: actually only send this if we're on a DRO client
             client.send_command("ackMS")
             if (
                 msg.strip() != ""

@@ -38,7 +38,13 @@ def check_deps():
         sys.exit(1)
 
     try:
+        import oyaml
+        import websockets
+        import arrow
+        import pytimeparse
+        import geoip2
         import discord
+        import stun
     except ModuleNotFoundError:
         print("Installing dependencies for you...")
         try:
