@@ -329,7 +329,8 @@ class AreaManager:
     def load_music(self, path):
         try:
             if not os.path.isfile(path):
-                raise AreaError(f"File path {path} is invalid!")
+                raise AreaError(
+                    f"Hub {self.name} trying to load music list: File path {path} is invalid!")
             with open(path, "r", encoding="utf-8") as stream:
                 music_list = yaml.safe_load(stream)
 
@@ -365,7 +366,8 @@ class AreaManager:
             with open(path, "r") as chars:
                 data = yaml.safe_load(chars)
         except Exception:
-            raise AreaError(f"File path {path} is invalid!")
+            raise AreaError(
+                f"Hub {self.name} trying to load character data: File path {path} is invalid!")
 
         try:
             for char in data.copy():
@@ -388,7 +390,8 @@ class AreaManager:
                 yaml.dump(self.character_data, stream,
                           default_flow_style=False)
         except Exception:
-            raise AreaError(f"File path {path} is invalid!")
+            raise AreaError(
+                f"Hub {self.name} trying to save character data: File path {path} is invalid!")
 
     def get_character_data(self, char, key, default_value=None):
         """
