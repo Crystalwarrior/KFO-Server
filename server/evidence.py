@@ -157,7 +157,21 @@ class EvidenceList:
             return True
         return False
 
-    def add_evidence(self, client, name, description, image, pos="all"):
+    def desc_to_pos(self, desc):
+        lines = desc.split("\n")
+        cmd = lines[0].strip(
+            " "
+        )  # remove whitespace at beginning and end of string
+        poses = cmd[7:-1]
+        can_hide_in = False
+        if lines[1].strip(" ").startswith("<can_hide_in="):
+            can_hide_in = lines[1].strip(" ")[13:-1] == "1"
+            desc = "\n".join(lines[2:])
+        else:
+            desc = "\n".join(lines[1:])
+        return desc, poses, can_hide_in
+
+    def add_evidence(self, client, name, desc, image, pos="all"):
         """
         Add an evidence item.
         :param client: origin
@@ -177,16 +191,20 @@ class EvidenceList:
                 f"You can't have more than {self.limit} evidence items at a time."
             )
             return
-        if client in client.area.owners or client.is_mod:
-            pos = "hidden"
-            self.evidences.append(self.Evidence(name, description, image, pos))
-        else:
-            if len(client.area.pos_lock) > 0:
-                pos = client.pos
-            else:
-                pos = "all"
-            self.evidences.append(self.Evidence(name, description, image, pos))
+        can_hide_in = False
+        pos = "all"
 
+        if client.area.evidence_mod == "HiddenCM":
+            if client in client.area.owners or client.is_mod:
+                pos = "hidden"
+                if self.correct_format(client, desc):
+                    desc, pos, can_hide_in = self.desc_to_pos(desc)
+            else:
+                if len(client.area.pos_lock) > 0:
+                    pos = client.pos
+
+        self.evidences.append(self.Evidence(
+            name, desc, image, pos, can_hide_in))
         id = len(self.evidences)
         # Inform the CMs of evidence manupulation
         client.area.send_owner_command(
@@ -349,6 +367,8 @@ class EvidenceList:
         desc = arg[1]
         image = arg[2]
         pos = arg[3]
+
+        can_hide_in = False
         if client in client.area.owners or client.is_mod:
             if id not in range(len(self.evidences)):
                 return
@@ -364,24 +384,14 @@ class EvidenceList:
 
             if client.area.evidence_mod == "HiddenCM":
                 if self.correct_format(client, desc):
-                    lines = desc.split("\n")
-                    cmd = lines[0].strip(
-                        " "
-                    )  # remove whitespace at beginning and end of string
-                    poses = cmd[7:-1]
-                    can_hide_in = lines[1].strip(" ")[13:-1] == "1"
-                    self.evidences[id] = self.Evidence(
-                        name, "\n".join(
-                            lines[2:]), image, poses, can_hide_in
-                    )
+                    desc, pos, can_hide_in = self.desc_to_pos(desc)
                 else:
                     client.send_ooc(
-                        'You entered a bad pos! Make sure to have <owner=pos> at the top, where "pos" is the /pos this evidence should show up in. Put in "all" if you want it to show up in all pos, or "hidden" for no pos.'
+                        'You entered a bad pos - evidence hidden! Make sure to have <owner=pos> at the top, where "pos" is the /pos this evidence should show up in. Put in "all" if you want it to show up in all pos, or "hidden" for no pos.'
                     )
-                    return
-            else:
-                self.evidences[id] = self.Evidence(
-                    name, desc, image, pos)
+                    pos = "hidden"
+            self.evidences[id] = self.Evidence(
+                name, desc, image, pos, can_hide_in)
             new_name = self.evidences[id].name
         else:
             # Are you serious? This is absolutely fucking mental.
