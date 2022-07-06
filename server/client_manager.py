@@ -332,6 +332,8 @@ class ClientManager:
                 message={"from": old_char, "to": new_char},
             )
 
+            self.area.update_timers(self, running_only=True)
+
         def change_music_cd(self):
             """
             Check if the client can change music or not.

@@ -690,6 +690,10 @@ class Area:
 
     def update_timers(self, client, running_only=False):
         """Update the timers for the target client"""
+        # this client didn't even pick char yet
+        if client.char_id is None:
+            return
+
         # Hub timers
         timer = client.area.area_manager.timer
         if timer.set:
