@@ -734,6 +734,9 @@ class ClientManager:
             # If we're using /evidence_present, reset it due to area change (evidence will be different most likely)
             self.presenting = 0
 
+            # reset pair
+            self.charid_pair = -1
+
             # Make sure the client's available areas are updated
             self.area.broadcast_area_list(self)
 
