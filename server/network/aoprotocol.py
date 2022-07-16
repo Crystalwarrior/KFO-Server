@@ -623,6 +623,7 @@ class AOProtocol(asyncio.Protocol):
             frames_shake = frames_shake.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
             frames_realization = frames_realization.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
             frames_sfx = frames_sfx.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
+            effect = effect.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
         
         if (
             not self.client.area.blankposting_allowed
