@@ -177,6 +177,8 @@ class Area:
         self.min_msg_delay = 200
         # Maximum delay before you are allowed to send another message
         self.max_msg_delay = 5000
+        # Whether to reveal evidence in all pos if it is presented
+        self.present_reveals_evidence = True
         # /prefs end
 
         # DR minigames
@@ -524,6 +526,8 @@ class Area:
             self.min_msg_delay = area['min_msg_delay']
         if 'max_msg_delay' in area:
             self.max_msg_delay = area['max_msg_delay']
+        if 'present_reveals_evidence' in area:
+            self.present_reveals_evidence = area['present_reveals_evidence']
 
         if "evidence" in area and len(area["evidence"]) > 0:
             self.evi_list.evidences.clear()
@@ -637,7 +641,7 @@ class Area:
         area["desc_dark"] = self.desc_dark
         area["passing_msg"] = self.passing_msg
         area["min_msg_delay"] = self.min_msg_delay
-        area["max_msg_delay"] = self.max_msg_delay
+        area["present_reveals_evidence"] = self.present_reveals_evidence
         if len(self.evi_list.evidences) > 0:
             area["evidence"] = [e.to_dict() for e in self.evi_list.evidences]
         if len(self.links) > 0:
