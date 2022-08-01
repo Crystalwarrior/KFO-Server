@@ -614,6 +614,17 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc(
                 "You may not iniswap while you are charcursed!")
             return
+        if (self.server.config["block_relative"]):
+            pre = pre.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
+            anim = anim.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
+            folder = folder.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
+            sfx = sfx.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
+            pos = pos.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
+            frames_shake = frames_shake.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
+            frames_realization = frames_realization.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
+            frames_sfx = frames_sfx.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
+            effect = effect.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
+        
         if (
             not self.client.area.blankposting_allowed
             and not self.client.is_mod
