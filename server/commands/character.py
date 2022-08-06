@@ -1,3 +1,5 @@
+import shlex
+
 import random
 
 from server import database
@@ -149,12 +151,18 @@ def ooc_cmd_charselect(client, arg):
     if not arg:
         client.char_select()
     else:
-        args = arg.split()
+        args = shlex.split(arg)
         try:
-            target = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
-            )[0]
-            force_charselect(target, " ".join(args[1:]))
+            if args[0].isnumeric():
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.ID, int(args[0]), False
+                )
+            else:
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.CHAR_NAME, args[0], False
+                )
+            for target in targets:
+                force_charselect(target, " ".join(args[1:]))
         except Exception as ex:
             raise ArgumentError(
                 f"Error encountered: {ex}. Use /charselect <target's id> [character]"
