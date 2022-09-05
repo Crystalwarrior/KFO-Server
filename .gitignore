@@ -84,3 +84,8 @@ coverage.xml
 
 ### VSCode
 .vscode/
+
+#why?
+os
+subprocess
+sys
