@@ -945,7 +945,8 @@ def ooc_cmd_clear_broadcast(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_hpset(client, arg):
     """
-    Set hp.
+    Set hp in area or multiple areas.
+    To include all areas, use set [area] to all or *.
     Usage: /hpset <pos> <amount> [area]
     """
     args = list(arg.split(" "))
@@ -965,6 +966,8 @@ def ooc_cmd_hpset(client, arg):
             "Invalid position. Use \"pro\" or \"def\"")
 
     if len(args) == 2:
+        client.area.change_hp(side, int(args[1]))
+    elif args[2] == "all" or args[2] == '*':
         for area in client.area.area_manager.areas:
             area.change_hp(side, int(args[1]))
     else:
