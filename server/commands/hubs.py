@@ -946,7 +946,7 @@ def ooc_cmd_clear_broadcast(client, arg):
 def ooc_cmd_hpset(client, arg):
     """
     Set hp in area or multiple areas.
-    To include all areas, use set [area] to all or *.
+    To include all areas, use set [area] to all.
     Usage: /hpset <pos> <amount> [area]
     """
     args = list(arg.split(" "))
@@ -967,7 +967,7 @@ def ooc_cmd_hpset(client, arg):
 
     if len(args) == 2:
         client.area.change_hp(side, int(args[1]))
-    elif args[2] == "all" or args[2] == '*':
+    elif args[2] == "all":
         for area in client.area.area_manager.areas:
             area.change_hp(side, int(args[1]))
     else:
