@@ -3,7 +3,6 @@ import shlex
 import arrow
 import pytimeparse
 
-
 from server import database
 from server.constants import TargetType
 from server.exceptions import ClientError, ServerError, ArgumentError
