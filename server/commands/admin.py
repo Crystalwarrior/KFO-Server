@@ -3,6 +3,7 @@ import shlex
 import arrow
 import pytimeparse
 
+
 from server import database
 from server.constants import TargetType
 from server.exceptions import ClientError, ServerError, ArgumentError
@@ -32,6 +33,7 @@ __all__ = [
     "ooc_cmd_whois",
     "ooc_cmd_restart",
     "ooc_cmd_myid",
+    "ooc_cmd_hpset",
 ]
 
 
@@ -543,3 +545,33 @@ def ooc_cmd_myid(client, arg):
     if client.name != "":
         info += f": {client.name}"
     client.send_ooc(info)
+
+
+@mod_only()
+def ooc_cmd_hpset(client, arg):
+    """
+    Set hp.
+    Usage: /hpset <pos> <amount> [area]
+    """
+    args = list(arg.split(" "))
+    if len(args) == 0:
+        raise ArgumentError(
+            "You must specify a position and HP. Use /hpset <pos> <amount> [area]")
+    elif len(args) == 1:
+        raise ArgumentError(
+            "You must specify HP. Use /hpset <pos> <amount> [area]")
+
+    if args[0] == "def":
+        side = 1
+    elif args[0] == "pro":
+        side = 2
+    else:
+        ArgumentError("Invalid position. Use \"pro\" or \"def\"")
+
+    if len(args) == 2:
+        for area in client.area.area_manager.areas:
+            area.change_hp(side, int(args[1]))
+    else:
+        for aid in args[2:]:
+            area = client.area.area_manager.get_area_by_id(int(aid))
+            area.change_hp(side, int(args[1]))
