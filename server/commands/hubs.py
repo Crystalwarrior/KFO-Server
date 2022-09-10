@@ -961,7 +961,8 @@ def ooc_cmd_hpset(client, arg):
     elif args[0] == "pro":
         side = 2
     else:
-        ArgumentError("Invalid position. Use \"pro\" or \"def\"")
+        raise ArgumentError(
+            "Invalid position. Use \"pro\" or \"def\"")
 
     if len(args) == 2:
         for area in client.area.area_manager.areas:
