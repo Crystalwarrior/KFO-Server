@@ -25,9 +25,6 @@ from server.client import Client
 from server.constants import TargetType
 from server.exceptions import ClientError
 
-import oyaml as yaml  # ordered yaml
-
-
 class ClientManager:
     """Holds the list of all clients currently connected to the server."""
     def __init__(self, server):
