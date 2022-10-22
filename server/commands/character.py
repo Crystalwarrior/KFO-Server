@@ -162,7 +162,7 @@ def ooc_cmd_charselect(client, arg):
                     client, TargetType.CHAR_NAME, args[0], False
                 )
             for target in targets:
-                force_charselect(target, " ".join(args[1:]))
+                force_charselect(client, target, " ".join(args[1:]))
         except Exception as ex:
             raise ArgumentError(
                 f"Error encountered: {ex}. Use /charselect <target's id> [character]"
@@ -170,23 +170,23 @@ def ooc_cmd_charselect(client, arg):
 
 
 @mod_only(area_owners=True)
-def force_charselect(client, char=""):
+def force_charselect(client, target, char=""):
     if char != "":
         try:
             if char == "-1" or char.lower() == "spectator":
                 cid = -1
             elif not char.isnumeric():
-                cid = client.area.area_manager.get_char_id_by_name(char)
+                cid = target.area.area_manager.get_char_id_by_name(char)
             else:
                 cid = int(char)
         except ServerError:
             raise
         try:
-            client.change_character(cid, True)
+            target.change_character(cid, True)
         except ClientError:
             raise
     else:
-        client.char_select()
+        target.char_select()
 
 
 def ooc_cmd_randomchar(client, arg):
@@ -534,28 +534,66 @@ def ooc_cmd_unhide(client, arg):
 def ooc_cmd_sneak(client, arg):
     """
     Begin sneaking a.k.a. hide your area moving messages from the OOC.
-    Usage: /sneak
+    Optional [id] forces a character to sneak.
+    Usage: /sneak [id]
     """
-    if arg != "":
-        raise ArgumentError("This command takes no arguments!")
-    if client.sneaking:
-        raise ClientError(
-            "You are already sneaking! Use /unsneak to stop sneaking.")
-    client.sneak(True)
-
+    if not arg:    
+        if client.sneaking:
+            raise ClientError(
+                "You are already sneaking! Use /unsneak to stop sneaking.")
+        client.sneak(True)
+    else:
+        args = shlex.split(arg)
+        try:
+            if args[0].isnumeric():
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.ID, int(args[0]), False
+                )
+            else:
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.CHAR_NAME, args[0], False
+                )
+            for x in targets:
+                force_sneak(client, x)
+        except Exception as ex:
+            raise ArgumentError(
+                f"Error encountered: {ex}. Use /sneak [id]")
 
 def ooc_cmd_unsneak(client, arg):
     """
     Stop sneaking a.k.a. show your area moving messages in the OOC.
-    Usage: /sneak
+    Optional [id] forces a character to stop sneaking.
+    Usage: /unsneak [id]
     """
-    if arg != "":
-        raise ArgumentError("This command takes no arguments!")
-    if not client.sneaking:
-        raise ClientError(
-            "You are not sneaking! Use /sneak to start sneaking.")
-    client.sneak(False)
+    if not arg:
+        if not client.sneaking:
+            raise ClientError(
+                "You are not sneaking! Use /sneak to start sneaking.")
+        client.sneak(False)
+    else:
+        args = shlex.split(arg)
+        try:
+            if args[0].isnumeric():
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.ID, int(args[0]), False
+                )
+            else:
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.CHAR_NAME, args[0], False
+                )
+            for x in targets:
+                force_unsneak(client, x)
+        except Exception as ex:
+            raise ArgumentError(
+                f"Error encountered: {ex}. Use /unsneak [id]")
 
+@mod_only(area_owners=True)
+def force_sneak(client, arg):
+    arg.sneak(True)
+
+@mod_only(area_owners=True)
+def force_unsneak(client, arg):
+    arg.sneak(False)
 
 def ooc_cmd_listen_pos(client, arg):
     """

@@ -44,6 +44,7 @@ __all__ = [
     "ooc_cmd_ungm",
     "ooc_cmd_broadcast",
     "ooc_cmd_clear_broadcast",
+    "ooc_cmd_hpset",
 ]
 
 
@@ -940,3 +941,36 @@ def ooc_cmd_clear_broadcast(client, arg):
         return
     client.broadcast_list.clear()
     client.send_ooc("Your broadcast list has been cleared.")
+
+@mod_only(area_owners=True)
+def ooc_cmd_hpset(client, arg):
+    """
+    Set hp in area or multiple areas.
+    To include all areas, use set [area] to all.
+    Usage: /hpset <pos> <amount> [area]
+    """
+    args = list(arg.split(" "))
+    if len(args) == 0:
+        raise ArgumentError(
+            "You must specify a position and HP. Use /hpset <pos> <amount> [area]")
+    elif len(args) == 1:
+        raise ArgumentError(
+            "You must specify HP. Use /hpset <pos> <amount> [area]")
+
+    if args[0] == "def":
+        side = 1
+    elif args[0] == "pro":
+        side = 2
+    else:
+        raise ArgumentError(
+            "Invalid position. Use \"pro\" or \"def\"")
+
+    if len(args) == 2:
+        client.area.change_hp(side, int(args[1]))
+    elif args[2] == "all":
+        for area in client.area.area_manager.areas:
+            area.change_hp(side, int(args[1]))
+    else:
+        for aid in args[2:]:
+            area = client.area.area_manager.get_area_by_id(int(aid))
+            area.change_hp(side, int(args[1]))
