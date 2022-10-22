@@ -44,6 +44,8 @@ __all__ = [
     "ooc_cmd_blankpost",
     "ooc_cmd_firstperson",
     "ooc_cmd_showname",
+    "ooc_cmd_charlists",
+    "ooc_cmd_charlist",
 ]
 
 
@@ -537,7 +539,7 @@ def ooc_cmd_sneak(client, arg):
     Optional [id] forces a character to sneak.
     Usage: /sneak [id]
     """
-    if not arg:    
+    if not arg:
         if client.sneaking:
             raise ClientError(
                 "You are already sneaking! Use /unsneak to stop sneaking.")
@@ -558,6 +560,7 @@ def ooc_cmd_sneak(client, arg):
         except Exception as ex:
             raise ArgumentError(
                 f"Error encountered: {ex}. Use /sneak [id]")
+
 
 def ooc_cmd_unsneak(client, arg):
     """
@@ -587,13 +590,16 @@ def ooc_cmd_unsneak(client, arg):
             raise ArgumentError(
                 f"Error encountered: {ex}. Use /unsneak [id]")
 
+
 @mod_only(area_owners=True)
 def force_sneak(client, arg):
     arg.sneak(True)
 
+
 @mod_only(area_owners=True)
 def force_unsneak(client, arg):
     arg.sneak(False)
+
 
 def ooc_cmd_listen_pos(client, arg):
     """
@@ -1056,3 +1062,37 @@ def ooc_cmd_showname(client, arg):
     client.used_showname_command = True
     client.showname = arg
     client.send_ooc(f"You set your showname to '{client.showname}'.")
+
+
+def ooc_cmd_charlists(client, arg):
+    """
+    Displays all the available charlists.
+    Usage: /charlists
+    """
+    text = "Available charlists:"
+    from os import listdir
+
+    for F in listdir("storage/charlists/"):
+        if F.lower().endswith(".yaml"):
+            text += "\n- {}".format(F[:-5])
+
+    client.send_ooc(text)
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_charlist(client, arg):
+    """
+    Load a character list. /charlists to see available character lists.
+    Run /charlist by itself to reset it to the server's default.
+    Usage: /charlist [path]
+    """
+    try:
+        client.area.area_manager.load_characters(arg)
+        if arg == "":
+            client.send_ooc("Resetting the charlist...")
+        else:
+            client.send_ooc(f"Loading charlist {arg}...")
+    except AreaError:
+        raise
+    except Exception:
+        client.send_ooc("File not found!")
