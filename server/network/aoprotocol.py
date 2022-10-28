@@ -1294,14 +1294,13 @@ class AOProtocol(asyncio.Protocol):
                 False,
             )
 
-        # All validation checks passed, set the name
-        if self.client.name != args[0] and self.client.fake_name != args[0]:
-            if self.client.is_valid_name(args[0]):
-                self.client.name = args[0]
-                self.client.fake_name = args[0]
-            else:
-                self.client.fake_name = args[0]
+        if not self.client.is_valid_name(args[0]):
+            self.client.send_ooc(
+                "Your OOC name is invalid!"
+            )
+            return
 
+        self.client.name = args[0]
         if args[1].lstrip() != args[1] and args[1].lstrip().startswith("/"):
             self.client.send_ooc(
                 "Your message was not sent for safety reasons: you left space before that slash."

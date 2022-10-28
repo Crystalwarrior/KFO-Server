@@ -50,7 +50,6 @@ class ClientManager:
             self.area = server.hub_manager.default_hub().default_area()
             self.server = server
             self.name = ""
-            self.fake_name = ""
             self.is_mod = False
             self.mod_profile_name = None
             self.is_dj = True
@@ -677,14 +676,14 @@ class ClientManager:
             """
             area_list = []
             if len(self.server.hub_manager.hubs) > 1:
-                    if not self.area.area_manager.arup_enabled:
-                        area_list = [
-                            f"[HUB: {self.area.area_manager.id}] {self.area.area_manager.name}\n Double-Click me to see Hubs\n  _______"
-                        ]
-                    else:
-                        area_list = [
-                            f"[HUB: {self.area.area_manager.id}] {self.area.area_manager.name}"
-                        ]
+                if not self.area.area_manager.arup_enabled:
+                    area_list = [
+                        f"[HUB: {self.area.area_manager.id}] {self.area.area_manager.name}\n Double-Click me to see Hubs\n  _______"
+                    ]
+                else:
+                    area_list = [
+                        f"[HUB: {self.area.area_manager.id}] {self.area.area_manager.name}"
+                    ]
             if len(areas) > 0:
                 # This is where we can handle all the 'rendering', such as extra info etc.
                 for area in areas:
