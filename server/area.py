@@ -1164,6 +1164,14 @@ class Area:
                 )
                 self.send_command("RT", "testimony1", 1)
                 return
+        if anim == "" or pos == "":
+            if self.last_ic_message is not None:
+                # Set the pos to last message's pos
+                pos = self.last_ic_message[5]
+            else:
+                # Set the pos to the 0th pos-lock
+                if len(self.pos_lock) > 0:
+                    pos = self.pos_lock[0]
         args = (
             msg_type,  # 0
             pre,  # 1
