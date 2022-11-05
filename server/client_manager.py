@@ -525,7 +525,7 @@ class ClientManager:
                     )
                 else:
                     self.send_ooc(
-                        f"Error: song {song} isn't recognized by server!")
+                        f"Error: song {song} was not accepted! (No permission)")
 
         def wtce_mute(self):
             """
@@ -1277,6 +1277,8 @@ class ClientManager:
             )
             for c in sorted_clients:
                 info += "\r\n"
+                if c == self:
+                    info += "* "
                 if c.is_mod:
                     info += "[M]"
                 elif c in area.area_manager.owners:
