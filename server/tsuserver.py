@@ -487,7 +487,8 @@ class TsuServer3:
 
     def send_discord_chat(self, name, message, hub_id=0, area_id=0):
         area = self.hub_manager.get_hub_by_id(hub_id).get_area_by_id(area_id)
-        cid = area.area_manager.get_char_id_by_name(self.config["bridgebot"]["character"])
+        cid = area.area_manager.get_char_id_by_name(
+            self.config["bridgebot"]["character"])
         message = dezalgo(message)
         message = remove_URL(message)
         message = (
@@ -506,37 +507,10 @@ class TsuServer3:
         if len(name) > 14:
             name = name[:14].rstrip() + "."
         area.send_ic(
-            None,
-            "1",
-            0,
-            self.config["bridgebot"]["character"],
-            self.config["bridgebot"]["emote"],
-            message,
-            self.config["bridgebot"]["pos"],
-            "",
-            0,
-            cid,
-            0,
-            0,
-            [0],
-            0,
-            0,
-            0,
-            name,
-            -1,
-            "",
-            "",
-            0,
-            0,
-            0,
-            0,
-            "0",
-            0,
-            "",
-            "",
-            "",
-            0,
-            "",
+            folder=self.config["bridgebot"]["character"],
+            anim=self.config["bridgebot"]["emote"],
+            msg=message,
+            pos=self.config["bridgebot"]["pos"],
         )
 
     def refresh(self):

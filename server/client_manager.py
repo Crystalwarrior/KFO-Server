@@ -986,39 +986,8 @@ class ClientManager:
                     if old_area.area_manager == self.area.area_manager:
                         if self.area.area_manager.passing_msg is True:
                             old_area.send_ic(
-                                None,
-                                "1",
-                                1,
-                                "",
-                                "",
-                                f'~~{"}}}"}[º{self.showname}º leaves to º{area.name}º.]',
-                                old_area.last_ic_message[5]
-                                if old_area.last_ic_message is not None
-                                else "",
-                                "",
-                                1,
-                                -1,
-                                0,
-                                0,
-                                [0],
-                                0,
-                                0,
-                                0,
-                                "",
-                                -1,
-                                "",
-                                "",
-                                0,
-                                0,
-                                0,
-                                0,
-                                "0",
-                                0,
-                                "",
-                                "",
-                                "",
-                                0,
-                                "",
+                                msg=f'~~{"}}}"}[º{self.showname}º leaves to º{area.name}º.]',
+                                emote_mod=1,
                             )
                         for c in old_area.clients:
                             # Check if the GMs should really see this msg
@@ -1063,39 +1032,8 @@ class ClientManager:
                     )
                     if self.area.area_manager.passing_msg is True:
                         self.area.send_ic(
-                            None,
-                            "1",
-                            1,
-                            "",
-                            "",
-                            f'~~{"}}}"}[º{self.showname}º enters from º{old_area.name}º.]',
-                            self.area.last_ic_message[5]
-                            if self.area.last_ic_message is not None
-                            else "",
-                            "",
-                            1,
-                            -1,
-                            0,
-                            0,
-                            [0],
-                            0,
-                            0,
-                            0,
-                            "",
-                            -1,
-                            "",
-                            "",
-                            0,
-                            0,
-                            0,
-                            0,
-                            "0",
-                            0,
-                            "",
-                            "",
-                            "",
-                            0,
-                            "",
+                            msg=f'~~{"}}}"}[º{self.showname}º enters from º{old_area.name}º.]',
+                            emote_mod=1,
                         )
                 else:
                     self.area.send_command(
