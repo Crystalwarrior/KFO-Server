@@ -1169,7 +1169,7 @@ class ClientManager:
             :param afk_check: Limit player list to afks
             :returns: information as a string
             """
-            info = "\r\n"
+            info = ""
             try:
                 area = self.area.area_manager.get_area_by_id(area_id)
             except AreaError:
