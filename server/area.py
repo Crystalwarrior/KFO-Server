@@ -540,12 +540,13 @@ class Area:
         if "links" in area and len(area["links"]) > 0:
             self.links.clear()
             for key, value in area["links"].items():
-                locked, hidden, target_pos, can_peek, evidence, password = (
+                locked, hidden, target_pos, can_peek, evidence, password, music = (
                     False,
                     False,
                     "",
                     True,
                     [],
+                    "",
                     "",
                 )
                 if "locked" in value:
@@ -560,8 +561,10 @@ class Area:
                     evidence = value["evidence"]
                 if "password" in value:
                     password = value["password"]
+                if "music" in value:
+                    music = value["music"]
                 self.link(key, locked, hidden, target_pos,
-                          can_peek, evidence, password)
+                          can_peek, evidence, password, music)
 
         # Update the clients in that area
         if self.dark:
@@ -809,6 +812,7 @@ class Area:
         can_peek=True,
         evidence=[],
         password="",
+        music="",
     ):
         """
         Sets up a one-way connection between this area and targeted area.
@@ -820,6 +824,7 @@ class Area:
         :param can_peek: can you peek through this path?
         :param evidence: a list of evidence from which this link will be accessible when you hide in it
         :param password: the password you need to input to pass through this link
+        :param music: the song that will play when you pass through this link
 
         """
         link = {
@@ -829,6 +834,7 @@ class Area:
             "can_peek": can_peek,
             "evidence": evidence,
             "password": password,
+            "music": music,
         }
         self.links[str(target)] = link
         return link
