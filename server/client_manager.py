@@ -167,6 +167,10 @@ class ClientManager:
             # Determine if this client can support multi-layered audio (such as ambience)
             self.has_multilayer_audio = False
 
+            # The currently playing audio for this client. Keeping track so we don't replay the same audio erroneously
+            # (such as in the case of music_autoplay areas)
+            self.playing_audio = ["", ""]
+
         def send_raw_message(self, msg):
             """
             Send a raw packet over TCP.
@@ -188,6 +192,7 @@ class ClientManager:
                     if args[4] != "" and int(args[4]) > 0 and not self.has_multilayer_audio:
                         # Ignore the packet, don't send the music
                         return
+                    self.playing_audio[args[4]] = args[0]
                 # IC Message packet
                 if command == "MS":
                     # Anim is blank, we're narrating.

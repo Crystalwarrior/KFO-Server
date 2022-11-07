@@ -571,9 +571,10 @@ class Area:
             self.set_ambience(self.ambience)
         if self.music_autoplay:
             for client in self.clients:
-                client.send_command(
-                    "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
-                )
+                if client.music != client.playing_audio[0]:
+                    client.send_command(
+                        "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
+                    )
 
     def save(self):
         area = OrderedDict()
@@ -654,7 +655,7 @@ class Area:
         if client.char_id is not None:
             database.log_area("area.join", client, self)
 
-        if self.music_autoplay:
+        if self.music_autoplay and self.music != client.playing_audio[0]:
             client.send_command(
                 "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
             )
@@ -662,16 +663,18 @@ class Area:
         # Update the timers for the client
         self.update_timers(client)
 
-        # Play the ambience
-        client.send_command(
-            "MC",
-            self.ambience,
-            -1,
-            "",
-            1,
-            1,
-            int(MusicEffect.FADE_OUT | MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
-        )
+        if self.ambience != client.playing_audio[1]:
+            # Play the ambience
+            client.send_command(
+                "MC",
+                self.ambience,
+                -1,
+                "",
+                1,
+                1,
+                int(MusicEffect.FADE_OUT |
+                    MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
+            )
 
         if client.subtheme != self.area_manager.subtheme:
             client.send_command("ST", self.area_manager.subtheme, "1")
