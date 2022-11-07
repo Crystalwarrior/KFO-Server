@@ -138,6 +138,7 @@ class Area:
         self.locked = False
         self.muted = False
         self.blankposting_allowed = True
+        self.blankposting_forced = True
         self.hp_def = 10
         self.hp_pro = 10
         self.doc = "No document."
@@ -431,6 +432,8 @@ class Area:
             self.muted = area["muted"]
         if "blankposting_allowed" in area:
             self.blankposting_allowed = area["blankposting_allowed"]
+        if "blankposting_forced" in area:
+            self.blankposting_forced = area["blankposting_forced"]
         if "hp_def" in area:
             self.hp_def = area["hp_def"]
         if "hp_pro" in area:
@@ -596,6 +599,7 @@ class Area:
         area["locked"] = self.locked
         area["muted"] = self.muted
         area["blankposting_allowed"] = self.blankposting_allowed
+        area["blankposting_forced"] = self.blankposting_forced
         area["hp_def"] = self.hp_def
         area["hp_pro"] = self.hp_pro
         area["doc"] = self.doc
@@ -815,6 +819,7 @@ class Area:
         :param target_pos: which position should we end up in when we come through
         :param can_peek: can you peek through this path?
         :param evidence: a list of evidence from which this link will be accessible when you hide in it
+        :param password: the password you need to input to pass through this link
 
         """
         link = {

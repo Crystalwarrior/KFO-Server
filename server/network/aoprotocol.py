@@ -615,34 +615,50 @@ class AOProtocol(asyncio.Protocol):
                 "You may not iniswap while you are charcursed!")
             return
         if (self.server.config["block_relative"]):
-            pre = pre.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
-            anim = anim.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
-            folder = folder.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
-            sfx = sfx.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
-            pos = pos.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
-            frames_shake = frames_shake.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
-            frames_realization = frames_realization.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
-            frames_sfx = frames_sfx.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
-            effect = effect.replace("../","").replace("/..","").replace("..\\","").replace("\\..","")
-        
-        if (
-            not self.client.area.blankposting_allowed
-            and not self.client.is_mod
-            and not (self.client in self.client.area.owners)
-        ):
-            if text.strip() == "":
-                self.client.send_ooc("Blankposting is forbidden in this area!")
-                return
-            # Regex is slow as hell, need to change this to be more performant
-            if (
-                len(re.sub(r"[{}\\`|(~~)]", "", text).replace(" ", "")) < 3
-                and not text.startswith("<")
-                and not text.startswith(">")
-            ):
-                self.client.send_ooc(
-                    "While that is not a blankpost, it is still pretty spammy. Try forming sentences."
-                )
-                return
+            pre = pre.replace(
+                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+            anim = anim.replace(
+                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+            folder = folder.replace(
+                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+            sfx = sfx.replace(
+                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+            pos = pos.replace(
+                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+            frames_shake = frames_shake.replace(
+                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+            frames_realization = frames_realization.replace(
+                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+            frames_sfx = frames_sfx.replace(
+                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+            effect = effect.replace(
+                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+
+        if not self.client.is_mod and not (self.client in self.client.area.owners):
+            if not self.client.area.blankposting_allowed:
+                # Regex is slow as hell, need to change this to be more performant
+                if text.strip() == "" or (
+                    len(re.sub(r"[{}\\`|(~~)]", "", text).replace(" ", "")) < 3
+                    and not text.startswith("<")
+                    and not text.startswith(">")
+                ):
+                    self.client.send_ooc(
+                        "Blankposting is forbidden in this area!"
+                    )
+                    return
+            elif self.client.area.blankposting_forced:
+                # Regex is slow as hell, need to change this to be more performant
+                if text.strip() != "" or (
+                    len(re.sub(r"[{}\\`|(~~)]", "",
+                        text).replace(" ", "")) >= 3
+                    or text.startswith("<")
+                    or text.startswith(">")
+                ):
+                    self.client.send_ooc(
+                        "You can only blankpost in this area!"
+                    )
+                    return
+
         if text.replace(" ", "").startswith("(("):
             self.client.send_ooc(
                 "Please, *please* use the OOC chat instead of polluting IC. Normal OOC is local to area. You can use /h to talk across the hub, or /g to talk across the entire server."

@@ -427,6 +427,7 @@ def ooc_cmd_area_pref(client, arg):
         "jukebox",
         "non_int_pres_only",
         "blankposting_allowed",
+        "blankposting_forced",
         "hide_clients",
         "music_autoplay",
         "replace_music",
