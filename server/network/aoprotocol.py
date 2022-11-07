@@ -647,13 +647,7 @@ class AOProtocol(asyncio.Protocol):
                     )
                     return
             elif self.client.area.blankposting_forced:
-                # Regex is slow as hell, need to change this to be more performant
-                if text.strip() != "" or (
-                    len(re.sub(r"[{}\\`|(~~)]", "",
-                        text).replace(" ", "")) >= 3
-                    or text.startswith("<")
-                    or text.startswith(">")
-                ):
+                if text.strip() != "":
                     self.client.send_ooc(
                         "You can only blankpost in this area!"
                     )
