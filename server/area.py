@@ -138,7 +138,7 @@ class Area:
         self.locked = False
         self.muted = False
         self.blankposting_allowed = True
-        self.blankposting_forced = True
+        self.blankposting_forced = False
         self.hp_def = 10
         self.hp_pro = 10
         self.doc = "No document."
