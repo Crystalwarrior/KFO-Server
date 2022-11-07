@@ -1,4 +1,9 @@
 a: area
+aa: area_create
+ap: area_pref
+ar: area_remove
+aswap: area_swap
+aswitch: area_switch
 access: links
 akick: area_kick
 amovedelay: area_move_delay
