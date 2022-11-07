@@ -1260,7 +1260,6 @@ class ClientManager:
             if area_id == -1:
                 # all areas info
                 cnt = 0
-                info = "\n== Area List =="
                 for i in range(len(self.area.area_manager.areas)):
                     area = self.area.area_manager.areas[i]
                     if afk_check:
@@ -1273,10 +1272,10 @@ class ClientManager:
                     area_info = self.get_area_info(i, mods, afk_check)
                     if (
                         len(client_list) > 0
-                        or len(self.area.area_manager.areas[i].owners) > 0
-                    ):
+                        or len(area.owners) > 0
+                    ) and area_info != "":
                         cnt += len(client_list)
-                        info += f"{area_info}"
+                        info += f"\r\n{area_info}"
                 if afk_check:
                     info = f"Current AFK-ers: {cnt}{info}"
                 else:
@@ -1295,8 +1294,6 @@ class ClientManager:
                     area_client_cnt = len(client_list)
                     if afk_check:
                         info = f"People AFK-ing in this area: {area_client_cnt}"
-                    else:
-                        info = f"People in this area: {area_client_cnt}"
                     info += area_info
 
                 except AreaError:
