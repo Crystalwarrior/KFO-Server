@@ -1176,9 +1176,9 @@ class ClientManager:
 
             if highlight_self:
                 if self.area == area:
-                    info += "◽"
+                    info += " ◽ "
                 else:
-                    info += "◾"
+                    info += " ◾ "
             if not self.can_access_area(area):
                 info += "❌"
             if not self.is_mod and self not in area.owners:
@@ -1241,9 +1241,9 @@ class ClientManager:
             for c in sorted_clients:
                 info += "\r\n"
                 if c == self:
-                    info += "◽"
+                    info += "  ◽ "
                 else:
-                    info += "◾"
+                    info += "  ◾ "
                 if c in area.afkers:
                     info += "💤"
                 if c.hidden:
@@ -1350,9 +1350,9 @@ class ClientManager:
                     owner = hub.get_gms()
                 msg += "\r\n"
                 if self.area.area_manager == hub:
-                    msg += "◽"
+                    msg += " ◽ "
                 else:
-                    msg += "◾"
+                    msg += " ◾ "
                 msg += f"[{hub.id}] {hub.name} (users: {len([c for c in hub.clients if not c.hidden])}) GM(s): {owner}"
             self.send_ooc(msg)
 
