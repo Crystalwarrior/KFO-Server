@@ -298,11 +298,11 @@ class AOProtocol(asyncio.Protocol):
         if len(self.client.server.hub_manager.hubs) > 1:
             if not self.client.area.area_manager.arup_enabled:
                 song_list = [
-                    f"[HUB: {self.client.area.area_manager.id}] {self.client.area.area_manager.name}\n Double-Click me to see Hubs\n  _______"
+                    f"🌍[{self.client.area.area_manager.id}] {self.client.area.area_manager.name}\n Double-Click me to see Hubs\n  _______"
                 ]
             else:
                 song_list = [
-                    f"[HUB: {self.client.area.area_manager.id}] {self.client.area.area_manager.name}"
+                    f"🌍[{self.client.area.area_manager.id}] {self.client.area.area_manager.name}"
                 ]
         allowed = self.client.is_mod or self.client in self.client.area.owners
         area_list = self.client.get_area_list(allowed, allowed)
@@ -1372,7 +1372,7 @@ class AOProtocol(asyncio.Protocol):
         if not self.client.is_checked:
             return
 
-        if args[0].split(":")[0] == "[HUB":
+        if args[0].split()[0].startswith("🌍["):
             # self.client.send_ooc('Switching to the list of Hubs...')
             self.client.viewing_hub_list = True
             preflist = self.client.server.supported_features.copy()
@@ -1387,7 +1387,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_command(
                 "FA",
                 *[
-                    "{ Hubs }\n Double-Click me to see Areas\n  _______",
+                    "🌐 Hubs 🌐\n Double-Click me to see Areas\n  _______",
                     *[
                         f"[{hub.id}] {hub.name} (users: {hub.count})"
                         for hub in self.client.server.hub_manager.hubs
@@ -1395,7 +1395,7 @@ class AOProtocol(asyncio.Protocol):
                 ],
             )
             return
-        if args[0].split("\n")[0] == "{ Hubs }":
+        if args[0].split("\n")[0] == "🌐 Hubs 🌐":
             # self.client.send_ooc('Switching to the list of Areas...')
             self.client.viewing_hub_list = False
             preflist = self.client.server.supported_features.copy()

@@ -829,7 +829,7 @@ def ooc_cmd_chardesc(client, arg):
     Usage: /chardesc [desc/id]
     """
     if len(arg) == 0:
-        client.send_ooc(f"{client.char_name} Description: {client.desc}")
+        client.send_ooc(f"📜{client.char_name} Description: {client.desc}")
         database.log_area("chardesc.request", client, client.area)
         return
 
@@ -847,7 +847,7 @@ def ooc_cmd_chardesc(client, arg):
             desc = client.area.area_manager.get_character_data(
                 target, "desc", "")
             target = client.area.area_manager.char_list[target]
-            client.send_ooc(f"{target} Description: {desc}")
+            client.send_ooc(f"📜{target} Description: {desc}")
             database.log_area("chardesc.request", client,
                               client.area, message=target)
         except Exception:
@@ -908,7 +908,7 @@ def ooc_cmd_chardesc_set(client, arg):
             desc = " ".join(args[1:])
         client.area.area_manager.set_character_data(target, "desc", desc)
         target = client.area.area_manager.char_list[target]
-        client.send_ooc(f"{target} Description: {desc}")
+        client.send_ooc(f"📜{target} Description: {desc}")
         database.log_area(
             "chardesc.set", client, client.area, message=f"{target}: {desc}"
         )
@@ -939,7 +939,7 @@ def ooc_cmd_chardesc_get(client, arg):
                 raise
         desc = client.area.area_manager.get_character_data(target, "desc", "")
         target = client.area.area_manager.char_list[target]
-        client.send_ooc(f"{target} Description: {desc}")
+        client.send_ooc(f"📜{target} Description: {desc}")
         database.log_area(
             "chardesc.get", client, client.area, message=f"{target}: {desc}"
         )
