@@ -687,7 +687,7 @@ def ooc_cmd_desc(client, arg):
         if len(arg) > len(desc):
             desc += "... Use /desc to read the rest."
         client.area.broadcast_ooc(
-            f"{client.showname} changed the area 📃Descrition to: {desc}."
+            f"📃{client.showname} changed the area description to: {desc}."
         )
         database.log_area("desc.change", client, client.area, message=arg)
 
