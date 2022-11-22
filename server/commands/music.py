@@ -172,7 +172,6 @@ def ooc_cmd_jukebox(client, arg):
         client.send_ooc(f"The jukebox has the following songs in it:{message}")
 
 
-@mod_only(area_owners=True)
 def ooc_cmd_play(client, arg):
     """
     Play a track and loop it. See /play_once for this command without looping.
@@ -182,10 +181,8 @@ def ooc_cmd_play(client, arg):
         raise ArgumentError("You must specify a song.")
     client.change_music(arg, client.char_id, "", 2,
                         True)  # looped change music
-    database.log_area("play", client, client.area, message=arg)
 
 
-@mod_only(area_owners=True)
 def ooc_cmd_play_once(client, arg):
     """
     Play a track without looping it. See /play for this command with looping.
@@ -195,7 +192,6 @@ def ooc_cmd_play_once(client, arg):
         raise ArgumentError("You must specify a song.")
     client.change_music(arg, client.char_id, "", 2,
                         False)  # non-looped change music
-    database.log_area("play", client, client.area, message=arg)
 
 
 @mod_only()
