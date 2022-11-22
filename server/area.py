@@ -138,6 +138,7 @@ class Area:
         self.locked = False
         self.muted = False
         self.blankposting_allowed = True
+        self.blankposting_forced = False
         self.hp_def = 10
         self.hp_pro = 10
         self.doc = "No document."
@@ -177,6 +178,8 @@ class Area:
         self.min_msg_delay = 200
         # Maximum delay before you are allowed to send another message
         self.max_msg_delay = 5000
+        # Whether to reveal evidence in all pos if it is presented
+        self.present_reveals_evidence = True
         # /prefs end
 
         # DR minigames
@@ -429,6 +432,8 @@ class Area:
             self.muted = area["muted"]
         if "blankposting_allowed" in area:
             self.blankposting_allowed = area["blankposting_allowed"]
+        if "blankposting_forced" in area:
+            self.blankposting_forced = area["blankposting_forced"]
         if "hp_def" in area:
             self.hp_def = area["hp_def"]
         if "hp_pro" in area:
@@ -524,6 +529,8 @@ class Area:
             self.min_msg_delay = area['min_msg_delay']
         if 'max_msg_delay' in area:
             self.max_msg_delay = area['max_msg_delay']
+        if 'present_reveals_evidence' in area:
+            self.present_reveals_evidence = area['present_reveals_evidence']
 
         if "evidence" in area and len(area["evidence"]) > 0:
             self.evi_list.evidences.clear()
@@ -567,9 +574,10 @@ class Area:
             self.set_ambience(self.ambience)
         if self.music_autoplay:
             for client in self.clients:
-                client.send_command(
-                    "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
-                )
+                if client.music != client.playing_audio[0]:
+                    client.send_command(
+                        "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
+                    )
 
     def save(self):
         area = OrderedDict()
@@ -591,6 +599,7 @@ class Area:
         area["locked"] = self.locked
         area["muted"] = self.muted
         area["blankposting_allowed"] = self.blankposting_allowed
+        area["blankposting_forced"] = self.blankposting_forced
         area["hp_def"] = self.hp_def
         area["hp_pro"] = self.hp_pro
         area["doc"] = self.doc
@@ -637,7 +646,7 @@ class Area:
         area["desc_dark"] = self.desc_dark
         area["passing_msg"] = self.passing_msg
         area["min_msg_delay"] = self.min_msg_delay
-        area["max_msg_delay"] = self.max_msg_delay
+        area["present_reveals_evidence"] = self.present_reveals_evidence
         if len(self.evi_list.evidences) > 0:
             area["evidence"] = [e.to_dict() for e in self.evi_list.evidences]
         if len(self.links) > 0:
@@ -650,7 +659,7 @@ class Area:
         if client.char_id is not None:
             database.log_area("area.join", client, self)
 
-        if self.music_autoplay:
+        if self.music_autoplay and self.music != client.playing_audio[0]:
             client.send_command(
                 "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
             )
@@ -658,16 +667,18 @@ class Area:
         # Update the timers for the client
         self.update_timers(client)
 
-        # Play the ambience
-        client.send_command(
-            "MC",
-            self.ambience,
-            -1,
-            "",
-            1,
-            1,
-            int(MusicEffect.FADE_OUT | MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
-        )
+        if self.ambience != client.playing_audio[1]:
+            # Play the ambience
+            client.send_command(
+                "MC",
+                self.ambience,
+                -1,
+                "",
+                1,
+                1,
+                int(MusicEffect.FADE_OUT |
+                    MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
+            )
 
         if client.subtheme != self.area_manager.subtheme:
             client.send_command("ST", self.area_manager.subtheme, "1")
@@ -690,6 +701,10 @@ class Area:
 
     def update_timers(self, client, running_only=False):
         """Update the timers for the target client"""
+        # this client didn't even pick char yet
+        if client.char_id is None:
+            return
+
         # Hub timers
         timer = client.area.area_manager.timer
         if timer.set:
@@ -804,6 +819,7 @@ class Area:
         :param target_pos: which position should we end up in when we come through
         :param can_peek: can you peek through this path?
         :param evidence: a list of evidence from which this link will be accessible when you hide in it
+        :param password: the password you need to input to pass through this link
 
         """
         link = {
@@ -887,37 +903,38 @@ class Area:
             "CT", f"[{self.id}]" + self.server.config["hostname"], msg, "1"
         )
 
-    def send_ic(self, client,
-                msg_type,
-                pre,
-                folder,
-                anim,
-                msg,
-                pos,
-                sfx,
-                emote_mod,
-                cid,
-                sfx_delay,
-                button,
-                evidence,
-                flip,
-                ding,
-                color,
-                showname,
-                charid_pair,
-                other_folder,
-                other_emote,
-                offset_pair,
-                other_offset,
-                other_flip,
-                nonint_pre,
-                sfx_looping,
-                screenshake,
-                frames_shake,
-                frames_realization,
-                frames_sfx,
-                additive,
-                effect, targets=None):
+    def send_ic(self,
+                client=None,
+                msg_type="1",
+                pre=0,
+                folder="",
+                anim="",
+                msg="",
+                pos="",
+                sfx="",
+                emote_mod=0,
+                cid=-1,
+                sfx_delay=0,
+                button=0,
+                evidence=[0],
+                flip=0,
+                ding=0,
+                color=0,
+                showname="",
+                charid_pair=-1,
+                other_folder="",
+                other_emote="",
+                offset_pair=0,
+                other_offset=0,
+                other_flip=0,
+                nonint_pre=0,
+                sfx_looping="0",
+                screenshake=0,
+                frames_shake="",
+                frames_realization="",
+                frames_sfx="",
+                additive=0,
+                effect="", targets=None):
         """
         Send an IC message from a client to all applicable clients in the area.
         :param client: speaker
@@ -1156,6 +1173,14 @@ class Area:
                 )
                 self.send_command("RT", "testimony1", 1)
                 return
+        if anim == "" or pos == "":
+            if self.last_ic_message is not None:
+                # Set the pos to last message's pos
+                pos = self.last_ic_message[5]
+            else:
+                # Set the pos to the 0th pos-lock
+                if len(self.pos_lock) > 0:
+                    pos = self.pos_lock[0]
         args = (
             msg_type,  # 0
             pre,  # 1
@@ -1819,37 +1844,8 @@ class Area:
         # 3 stands for unset and hide
         self.send_command("TI", 2, 3)
         self.send_ic(
-            None,
-            "1",
-            0,
-            "",
-            "",
-            f"~~}}}}`{self.minigame} END!`\\n{reason}",
-            self.last_ic_message[5] if self.last_ic_message is not None else "",
-            "",
-            0,
-            -1,
-            0,
-            0,
-            [0],
-            0,
-            0,
-            0,
-            "System",
-            -1,
-            "",
-            "",
-            0,
-            0,
-            0,
-            0,
-            "0",
-            0,
-            "",
-            "",
-            "",
-            0,
-            "",
+            msg=f"~~}}}}`{self.minigame} END!`\\n{reason}",
+            showname="System",
         )
         song = ""
         if "concede" in reason.lower() or "forcibly" in reason.lower():

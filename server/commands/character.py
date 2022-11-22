@@ -1,3 +1,5 @@
+import shlex
+
 import random
 
 from server import database
@@ -42,6 +44,8 @@ __all__ = [
     "ooc_cmd_blankpost",
     "ooc_cmd_firstperson",
     "ooc_cmd_showname",
+    "ooc_cmd_charlists",
+    "ooc_cmd_charlist",
 ]
 
 
@@ -149,12 +153,18 @@ def ooc_cmd_charselect(client, arg):
     if not arg:
         client.char_select()
     else:
-        args = arg.split()
+        args = shlex.split(arg)
         try:
-            target = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
-            )[0]
-            force_charselect(target, " ".join(args[1:]))
+            if args[0].isnumeric():
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.ID, int(args[0]), False
+                )
+            else:
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.CHAR_NAME, args[0], False
+                )
+            for target in targets:
+                force_charselect(client, target, " ".join(args[1:]))
         except Exception as ex:
             raise ArgumentError(
                 f"Error encountered: {ex}. Use /charselect <target's id> [character]"
@@ -162,23 +172,23 @@ def ooc_cmd_charselect(client, arg):
 
 
 @mod_only(area_owners=True)
-def force_charselect(client, char=""):
+def force_charselect(client, target, char=""):
     if char != "":
         try:
             if char == "-1" or char.lower() == "spectator":
                 cid = -1
             elif not char.isnumeric():
-                cid = client.area.area_manager.get_char_id_by_name(char)
+                cid = target.area.area_manager.get_char_id_by_name(char)
             else:
                 cid = int(char)
         except ServerError:
             raise
         try:
-            client.change_character(cid, True)
+            target.change_character(cid, True)
         except ClientError:
             raise
     else:
-        client.char_select()
+        target.char_select()
 
 
 def ooc_cmd_randomchar(client, arg):
@@ -526,27 +536,69 @@ def ooc_cmd_unhide(client, arg):
 def ooc_cmd_sneak(client, arg):
     """
     Begin sneaking a.k.a. hide your area moving messages from the OOC.
-    Usage: /sneak
+    Optional [id] forces a character to sneak.
+    Usage: /sneak [id]
     """
-    if arg != "":
-        raise ArgumentError("This command takes no arguments!")
-    if client.sneaking:
-        raise ClientError(
-            "You are already sneaking! Use /unsneak to stop sneaking.")
-    client.sneak(True)
+    if not arg:
+        if client.sneaking:
+            raise ClientError(
+                "You are already sneaking! Use /unsneak to stop sneaking.")
+        client.sneak(True)
+    else:
+        args = shlex.split(arg)
+        try:
+            if args[0].isnumeric():
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.ID, int(args[0]), False
+                )
+            else:
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.CHAR_NAME, args[0], False
+                )
+            for x in targets:
+                force_sneak(client, x)
+        except Exception as ex:
+            raise ArgumentError(
+                f"Error encountered: {ex}. Use /sneak [id]")
 
 
 def ooc_cmd_unsneak(client, arg):
     """
     Stop sneaking a.k.a. show your area moving messages in the OOC.
-    Usage: /sneak
+    Optional [id] forces a character to stop sneaking.
+    Usage: /unsneak [id]
     """
-    if arg != "":
-        raise ArgumentError("This command takes no arguments!")
-    if not client.sneaking:
-        raise ClientError(
-            "You are not sneaking! Use /sneak to start sneaking.")
-    client.sneak(False)
+    if not arg:
+        if not client.sneaking:
+            raise ClientError(
+                "You are not sneaking! Use /sneak to start sneaking.")
+        client.sneak(False)
+    else:
+        args = shlex.split(arg)
+        try:
+            if args[0].isnumeric():
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.ID, int(args[0]), False
+                )
+            else:
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.CHAR_NAME, args[0], False
+                )
+            for x in targets:
+                force_unsneak(client, x)
+        except Exception as ex:
+            raise ArgumentError(
+                f"Error encountered: {ex}. Use /unsneak [id]")
+
+
+@mod_only(area_owners=True)
+def force_sneak(client, arg):
+    arg.sneak(True)
+
+
+@mod_only(area_owners=True)
+def force_unsneak(client, arg):
+    arg.sneak(False)
 
 
 def ooc_cmd_listen_pos(client, arg):
@@ -777,7 +829,7 @@ def ooc_cmd_chardesc(client, arg):
     Usage: /chardesc [desc/id]
     """
     if len(arg) == 0:
-        client.send_ooc(f"{client.char_name} Description: {client.desc}")
+        client.send_ooc(f"📜{client.char_name} Description: {client.desc}")
         database.log_area("chardesc.request", client, client.area)
         return
 
@@ -795,7 +847,7 @@ def ooc_cmd_chardesc(client, arg):
             desc = client.area.area_manager.get_character_data(
                 target, "desc", "")
             target = client.area.area_manager.char_list[target]
-            client.send_ooc(f"{target} Description: {desc}")
+            client.send_ooc(f"📜{target} Description: {desc}")
             database.log_area("chardesc.request", client,
                               client.area, message=target)
         except Exception:
@@ -856,7 +908,7 @@ def ooc_cmd_chardesc_set(client, arg):
             desc = " ".join(args[1:])
         client.area.area_manager.set_character_data(target, "desc", desc)
         target = client.area.area_manager.char_list[target]
-        client.send_ooc(f"{target} Description: {desc}")
+        client.send_ooc(f"📜{target} Description: {desc}")
         database.log_area(
             "chardesc.set", client, client.area, message=f"{target}: {desc}"
         )
@@ -887,7 +939,7 @@ def ooc_cmd_chardesc_get(client, arg):
                 raise
         desc = client.area.area_manager.get_character_data(target, "desc", "")
         target = client.area.area_manager.char_list[target]
-        client.send_ooc(f"{target} Description: {desc}")
+        client.send_ooc(f"📜{target} Description: {desc}")
         database.log_area(
             "chardesc.get", client, client.area, message=f"{target}: {desc}"
         )
@@ -1010,3 +1062,37 @@ def ooc_cmd_showname(client, arg):
     client.used_showname_command = True
     client.showname = arg
     client.send_ooc(f"You set your showname to '{client.showname}'.")
+
+
+def ooc_cmd_charlists(client, arg):
+    """
+    Displays all the available charlists.
+    Usage: /charlists
+    """
+    text = "Available charlists:"
+    from os import listdir
+
+    for F in listdir("storage/charlists/"):
+        if F.lower().endswith(".yaml"):
+            text += "\n- {}".format(F[:-5])
+
+    client.send_ooc(text)
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_charlist(client, arg):
+    """
+    Load a character list. /charlists to see available character lists.
+    Run /charlist by itself to reset it to the server's default.
+    Usage: /charlist [path]
+    """
+    try:
+        client.area.area_manager.load_characters(arg)
+        if arg == "":
+            client.send_ooc("Resetting the charlist...")
+        else:
+            client.send_ooc(f"Loading charlist {arg}...")
+    except AreaError:
+        raise
+    except Exception:
+        client.send_ooc("File not found!")

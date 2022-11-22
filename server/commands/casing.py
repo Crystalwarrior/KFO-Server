@@ -859,39 +859,8 @@ def ooc_cmd_cs(client, arg):
                             break
                 msg = f"~~}}}}`{client.area.minigame}!`\\n{us} objects to {them}!"
                 client.area.send_ic(
-                    None,
-                    "1",
-                    0,
-                    "",
-                    "",
-                    msg,
-                    client.area.last_ic_message[5]
-                    if client.area.last_ic_message is not None
-                    else "",
-                    "",
-                    0,
-                    -1,
-                    0,
-                    2,
-                    [0],
-                    0,
-                    0,
-                    0,
-                    "System",
-                    -1,
-                    "",
-                    "",
-                    0,
-                    0,
-                    0,
-                    0,
-                    "0",
-                    0,
-                    "",
-                    "",
-                    "",
-                    0,
-                    "",
+                    msg=msg,
+                    showname="System",
                 )
         except AreaError as ex:
             raise ex

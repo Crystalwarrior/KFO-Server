@@ -62,7 +62,7 @@ def ooc_cmd_help(client, arg):
         If you don't understand a specific core feature, check the official
         repository for more information:
 
-        https://github.com/Crystalwarrior/KFO-Server/blob/master/README.md
+        https://github.com/Crystalwarrior/KFO-Server/blob/master/README.md 
 
         Available Categories:
         """
@@ -355,7 +355,7 @@ def ooc_cmd_mods(client, arg):
     Show a list of moderators online.
     Usage: /mods
     """
-    client.send_area_info(-1, True)
+    client.send_areas_clients(mods=True)
 
 
 def ooc_cmd_unmod(client, arg):

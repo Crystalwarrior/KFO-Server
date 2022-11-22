@@ -227,10 +227,7 @@ class AreaManager:
                         self.load_music(
                             f"storage/musiclists/{hub[entry]}.yaml")
                 if entry == "char_list_ref":
-                    if hub[entry] == "":
-                        self.char_list = self.server.char_list
-                    else:
-                        self.load_characters(hub[entry])
+                    self.load_characters(hub[entry])
 
         if not ("character_data" in ignore) and "character_data" in hub:
             try:
@@ -258,11 +255,24 @@ class AreaManager:
 
     def load_characters(self, charlist):
         """Load the character list from a YAML file."""
-        with open(f"storage/charlists/{charlist}.yaml", "r", encoding="utf-8") as chars:
-            self.char_list = yaml.safe_load(chars)
-        # self.char_emotes = {char: Emotes(char) for char in self.char_list}
-        for client in self.clients:
-            self.send_characters(client)
+        need_update = False
+        if charlist == "":
+            if self.char_list != self.server.char_list:
+                self.char_list = self.server.char_list
+                need_update = True
+        else:
+            new_chars = None
+            with open(f"storage/charlists/{charlist}.yaml", "r", encoding="utf-8") as chars:
+                new_chars = yaml.safe_load(chars)
+
+            if self.char_list != new_chars:
+                self.char_list = new_chars
+                need_update = True
+        if need_update:
+            # self.char_emotes = {char: Emotes(char) for char in self.char_list}
+            for client in self.clients:
+                self.send_characters(client)
+                client.char_select()
 
     def send_characters(self, client):
         client.send_command("SC", *self.char_list)
