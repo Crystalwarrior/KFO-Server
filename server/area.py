@@ -1039,8 +1039,8 @@ class Area:
                     pos = "pta"
             # If we're on blue team
             elif client.char_id in client.area.blue_team:
-                # Set our color to cyan
-                color = 7
+                # Set our color to blue
+                color = 4
                 # Offset them to the right
                 offset_pair = 25
                 # Offset them to the left
