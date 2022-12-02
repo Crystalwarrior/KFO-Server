@@ -574,7 +574,7 @@ class Area:
             self.set_ambience(self.ambience)
         if self.music_autoplay:
             for client in self.clients:
-                if client.music != client.playing_audio[0]:
+                if self.music != client.playing_audio[0]:
                     client.send_command(
                         "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
                     )
