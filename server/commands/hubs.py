@@ -156,42 +156,37 @@ def ooc_cmd_load_hub(client, arg):
     """
     if arg == "" and not client.is_mod:
         raise ArgumentError("You must be authorized to load the default hub!")
-    try:
-        if arg != "":
-            path = "storage/hubs"
-            arg = f"{path}/{arg}.yaml"
-            if not os.path.isfile(arg):
-                raise ArgumentError(f"File not found: {arg}")
-            with open(arg, "r", encoding="utf-8") as stream:
-                hub = yaml.safe_load(stream)
-            client.server.hub_manager.load(hub_id=client.area.area_manager.id)
-            client.area.area_manager.broadcast_ooc("Hub clearing initiated...")
-            client.area.area_manager.load(hub, ignore=["can_gm", "max_areas"])
-            client.send_ooc(f"Success, loading as {arg}...")
-            client.area.area_manager.send_arup_status()
-            client.area.area_manager.send_arup_cms()
-            client.area.area_manager.send_arup_lock()
-            client.server.client_manager.refresh_music(
-                client.area.area_manager.clients)
-            client.send_ooc("Success, sending ARUP and refreshing music...")
-        else:
-            client.server.hub_manager.load(hub_id=client.area.area_manager.id)
-            client.area.area_manager.broadcast_ooc("Hub clearing initiated...")
-            client.server.hub_manager.load()
-            client.send_ooc("Success, loading all Hubs from areas.yaml...")
-            clients = set()
-            for hub in client.server.hub_manager.hubs:
-                hub.send_arup_status()
-                hub.send_arup_cms()
-                hub.send_arup_lock()
-                clients = clients | hub.clients
-            client.server.client_manager.refresh_music(clients)
-            client.send_ooc("Success, sending ARUP and refreshing music...")
 
-    except Exception as ex:
-        msg = f"There is a problem: {ex}"
-        msg += "\nContact the server owner for support."
-        client.send_ooc(msg)
+    if arg != "":
+        path = "storage/hubs"
+        arg = f"{path}/{arg}.yaml"
+        if not os.path.isfile(arg):
+            raise ArgumentError(f"File not found: {arg}")
+        with open(arg, "r", encoding="utf-8") as stream:
+            hub = yaml.safe_load(stream)
+        client.server.hub_manager.load(hub_id=client.area.area_manager.id)
+        client.area.area_manager.broadcast_ooc("Hub clearing initiated...")
+        client.area.area_manager.load(hub, ignore=["can_gm", "max_areas"])
+        client.send_ooc(f"Success, loading as {arg}...")
+        client.area.area_manager.send_arup_status()
+        client.area.area_manager.send_arup_cms()
+        client.area.area_manager.send_arup_lock()
+        client.server.client_manager.refresh_music(
+            client.area.area_manager.clients)
+        client.send_ooc("Success, sending ARUP and refreshing music...")
+    else:
+        client.server.hub_manager.load(hub_id=client.area.area_manager.id)
+        client.area.area_manager.broadcast_ooc("Hub clearing initiated...")
+        client.server.hub_manager.load()
+        client.send_ooc("Success, loading all Hubs from areas.yaml...")
+        clients = set()
+        for hub in client.server.hub_manager.hubs:
+            hub.send_arup_status()
+            hub.send_arup_cms()
+            hub.send_arup_lock()
+            clients = clients | hub.clients
+        client.server.client_manager.refresh_music(clients)
+        client.send_ooc("Success, sending ARUP and refreshing music...")
 
 
 @mod_only(hub_owners=True)
@@ -202,38 +197,33 @@ def ooc_cmd_overlay_hub(client, arg):
     """
     if arg == "" and not client.is_mod:
         raise ArgumentError("You must be authorized to load the default hub!")
-    try:
-        if arg != "":
-            path = "storage/hubs"
-            arg = f"{path}/{arg}.yaml"
-            if not os.path.isfile(arg):
-                raise ArgumentError(f"File not found: {arg}")
-            with open(arg, "r", encoding="utf-8") as stream:
-                hub = yaml.safe_load(stream)
-            client.area.area_manager.load(hub, ignore=["can_gm", "max_areas"])
-            client.send_ooc(f"Overlaying as {arg}...")
-            client.area.area_manager.send_arup_status()
-            client.area.area_manager.send_arup_cms()
-            client.area.area_manager.send_arup_lock()
-            client.server.client_manager.refresh_music(
-                client.area.area_manager.clients)
-            client.send_ooc("Success, sending ARUP and refreshing music...")
-        else:
-            client.server.hub_manager.load()
-            client.send_ooc("Overlaying all Hubs from areas.yaml...")
-            clients = set()
-            for hub in client.server.hub_manager.hubs:
-                hub.send_arup_status()
-                hub.send_arup_cms()
-                hub.send_arup_lock()
-                clients = clients | hub.clients
-            client.server.client_manager.refresh_music(clients)
-            client.send_ooc("Success, sending ARUP and refreshing music...")
 
-    except Exception as ex:
-        msg = f"There is a problem: {ex}"
-        msg += "\nContact the server owner for support."
-        client.send_ooc(msg)
+    if arg != "":
+        path = "storage/hubs"
+        arg = f"{path}/{arg}.yaml"
+        if not os.path.isfile(arg):
+            raise ArgumentError(f"File not found: {arg}")
+        with open(arg, "r", encoding="utf-8") as stream:
+            hub = yaml.safe_load(stream)
+        client.area.area_manager.load(hub, ignore=["can_gm", "max_areas"])
+        client.send_ooc(f"Overlaying as {arg}...")
+        client.area.area_manager.send_arup_status()
+        client.area.area_manager.send_arup_cms()
+        client.area.area_manager.send_arup_lock()
+        client.server.client_manager.refresh_music(
+            client.area.area_manager.clients)
+        client.send_ooc("Success, sending ARUP and refreshing music...")
+    else:
+        client.server.hub_manager.load()
+        client.send_ooc("Overlaying all Hubs from areas.yaml...")
+        clients = set()
+        for hub in client.server.hub_manager.hubs:
+            hub.send_arup_status()
+            hub.send_arup_cms()
+            hub.send_arup_lock()
+            clients = clients | hub.clients
+        client.server.client_manager.refresh_music(clients)
+        client.send_ooc("Success, sending ARUP and refreshing music...")
 
 
 @mod_only()
