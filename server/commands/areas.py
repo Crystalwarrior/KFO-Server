@@ -655,7 +655,6 @@ def ooc_cmd_max_players(client, arg):
         raise
 
 
-@mod_only(area_owners=True)
 def ooc_cmd_desc(client, arg):
     """
     Set an area description that appears to the user any time they enter the area.
