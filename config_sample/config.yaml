@@ -66,6 +66,9 @@ packet_size: 1024
 # If True, you will not be able to post the same message as the last one if you posted it.
 block_repeat: true
 
+# Whether global chat is enabled
+global_chat: true
+
 # Enables additional logging.
 debug: false
 
