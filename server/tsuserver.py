@@ -511,6 +511,7 @@ class TsuServer3:
         area.send_ic(
             folder=self.config["bridgebot"]["character"],
             anim=self.config["bridgebot"]["emote"],
+            showname=name,
             msg=message,
             pos=self.config["bridgebot"]["pos"],
         )
