@@ -103,6 +103,14 @@ class ClientManager:
                     self.server.config["wtce_floodguard"]["times_per_interval"]
                 )
             ]
+            self.ooc_counter = 0
+            self.ooc_mute_time = 0
+            self.ooc_time = [
+                x * self.server.config["ooc_floodguard"]["interval_length"]
+                for x in range(
+                    self.server.config["ooc_floodguard"]["times_per_interval"]
+                )
+            ]
             # security stuff
             self.clientscon = 0
             self.gm_save_time = 0
@@ -566,6 +574,40 @@ class ClientManager:
                 return self.server.config["music_change_floodguard"]["mute_length"]
             self.wtce_counter = (self.wtce_counter + 1) % times_per_interval
             self.wtce_time[self.wtce_counter] = time.time()
+            return 0
+        
+        def ooc_mute(self):
+            """
+            Check if the client can use OOC or not.
+            :returns: how many seconds the client must wait to use OOC
+            """
+            if self.is_mod or self in self.area.owners:
+                return 0
+            if self.ooc_mute_time:
+                if (
+                    time.time() - self.ooc_mute_time
+                    < self.server.config["ooc_floodguard"]["mute_length"]
+                ):
+                    return self.server.config["ooc_floodguard"]["mute_length"] - (
+                        time.time() - self.ooc_mute_time
+                    )
+                else:
+                    self.ooc_mute_time = 0
+            times_per_interval = self.server.config["ooc_floodguard"][
+                "times_per_interval"
+            ]
+            interval_length = self.server.config["ooc_floodguard"]["interval_length"]
+            if (
+                time.time()
+                - self.ooc_time[
+                    (self.ooc_counter - times_per_interval + 1) % times_per_interval
+                ]
+                < interval_length
+            ):
+                self.ooc_mute_time = time.time()
+                return self.server.config["music_change_floodguard"]["mute_length"]
+            self.ooc_counter = (self.ooc_counter + 1) % times_per_interval
+            self.ooc_time[self.ooc_counter] = time.time()
             return 0
 
         def reload_character(self):
