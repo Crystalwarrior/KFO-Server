@@ -824,7 +824,6 @@ class AOProtocol(asyncio.Protocol):
             self.server.config["block_repeat"]
             and not self.client.is_mod
             and not (self.client in self.client.area.owners)
-            and text.strip() != ""
             and self.client.area.last_ic_message is not None
             and cid == self.client.area.last_ic_message[8]
             and text == self.client.area.last_ic_message[4]
