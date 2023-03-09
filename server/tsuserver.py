@@ -281,6 +281,12 @@ class TsuServer3:
                 "interval_length": 0,
                 "mute_length": 0,
             }
+        if "ooc_floodguard" not in self.config:
+            self.config["ooc_floodguard"] = {
+                "times_per_interval": 1,
+                "interval_length": 0,
+                "mute_length": 0,
+            }
 
         if "zalgo_tolerance" not in self.config:
             self.config["zalgo_tolerance"] = 3
