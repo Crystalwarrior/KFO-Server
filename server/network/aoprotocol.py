@@ -826,7 +826,7 @@ class AOProtocol(asyncio.Protocol):
             and not (self.client in self.client.area.owners)
             and self.client.area.last_ic_message is not None
             and cid == self.client.area.last_ic_message[8]
-            and text == self.client.area.last_ic_message[4]
+            and (text == self.client.area.last_ic_message[4] or text.strip() == self.client.area.last_ic_message[4])
         ):
             self.client.send_ooc(
                 "Your message is a repeat of the last one, don't spam!"
