@@ -1257,6 +1257,11 @@ class AOProtocol(asyncio.Protocol):
                 "Your OOC name is too long! Limit it to 30 characters."
             )
             return
+        if self.client.ooc_mute():
+            self.client.send_ooc(
+                f"You are using OOC too fast. Please try again after {int(self.client.ooc_mute())} seconds."
+            )
+            return
         for c in args[0]:
             if unicodedata.category(c) == "Cf":
                 self.client.send_ooc(
