@@ -352,6 +352,9 @@ def ooc_cmd_area_rename(client, arg):
         except (AreaError, ClientError):
             raise
 
+    if not client.is_mod and client not in area.owners:
+        raise ArgumentError("You don't own that area!")
+
     # Checks passed, set the name
     area.name = dezalgo(name)[:64]
     # Update the area list so the name change is reflected in it

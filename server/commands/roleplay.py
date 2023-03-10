@@ -487,6 +487,8 @@ def ooc_cmd_8ball(client, arg):
     arg = arg.strip()
     if len(arg) == 0:
         raise ArgumentError("You need to ask a question")
+    if len(arg) > 128:
+        raise ArgumentError("Your question is too long!")
     rolla_reload(client.area)
     ability_dice = client.area.ability_dice["8ball"]
     client.area.broadcast_ooc(
