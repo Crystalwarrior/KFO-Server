@@ -341,17 +341,17 @@ def ooc_cmd_area_kick(client, arg):
     else:
         # Try to find by char name first
         targets = client.server.client_manager.get_targets(
-            client, TargetType.CHAR_NAME, args[0], True
+            client, TargetType.CHAR_NAME, args[0]
         )
         # If that doesn't work, find by client ID
         if len(targets) == 0 and args[0].isdigit():
             targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, args[0], True
+                client, TargetType.ID, args[0]
             )
         # If that doesn't work, find by OOC Name
         if len(targets) == 0:
             targets = client.server.client_manager.get_targets(
-                client, TargetType.OOC_NAME, args[0], True
+                client, TargetType.OOC_NAME, args[0]
             )
 
     if len(targets) == 0:
