@@ -346,7 +346,7 @@ def ooc_cmd_area_kick(client, arg):
         # If that doesn't work, find by client ID
         if len(targets) == 0 and args[0].isdigit():
             targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, args[0]
+                client, TargetType.ID, int(args[0])
             )
         # If that doesn't work, find by OOC Name
         if len(targets) == 0:
