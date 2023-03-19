@@ -1098,6 +1098,11 @@ class Area:
             # DRO 1.0.0 client compatibility, tell the client we acknowledged their MS packet
             # TODO: actually only send this if we're on a DRO client
             client.send_command("ackMS")
+            # rainbow text!?!?!?
+            if client.rainbow:
+                msg = client.rainbow_message(msg)
+                color = 4
+
             if (
                 msg.strip() != ""
                 or self.last_ic_message is None

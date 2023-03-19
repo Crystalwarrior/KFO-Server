@@ -9,6 +9,7 @@ __all__ = [
     "ooc_cmd_undisemvowel",
     "ooc_cmd_shake",
     "ooc_cmd_unshake",
+    "ooc_cmd_rainbow",
 ]
 
 
@@ -103,3 +104,15 @@ def ooc_cmd_unshake(client, arg):
         client.send_ooc(f"Unshook {len(targets)} existing client(s).")
     else:
         client.send_ooc("No targets found.")
+
+
+def ooc_cmd_rainbow(client, arg):
+    """
+    rainbow text is back baybee
+    Usage: /rainbow [true/false]
+    """
+    client.rainbow = not client.rainbow
+    toggle = "now" if client.rainbow else "no longer"
+    client.send_ooc(
+        f"You will {toggle} have rainbowtext."
+    )
