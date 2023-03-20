@@ -1683,7 +1683,8 @@ class ClientManager:
             # red orange yellow green cyan blue magenta
             color_array = ['~', '|', 'º', '`', '√', '', '№']
             constructed_message = ''
-            index = 0
+            # pseudo-randomize the rainbows based on msg length
+            index = len(message) % len(color_array)
             for symbol in message:
                 symbol = f'{color_array[index]}{symbol}{color_array[index]}'
                 constructed_message += symbol
