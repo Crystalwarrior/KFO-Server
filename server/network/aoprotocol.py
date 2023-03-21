@@ -945,7 +945,12 @@ class AOProtocol(asyncio.Protocol):
         # Notably, while we only get a charid_pair and an offset, we send back a chair_pair, an emote, a talker offset
         # and an other offset.
 
-        self.client.charid_pair = charid_pair
+        # Only change the charid pair if we're not overriding
+        if not self.client.charid_pair_override:
+            self.client.charid_pair = charid_pair
+            self.client.pair_order = pair_order
+        charid_pair = self.client.charid_pair
+        pair_order = self.client.pair_order
         self.client.offset_pair = offset_pair
         if emote_mod not in (5, 6):
             self.client.last_sprite = anim

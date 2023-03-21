@@ -11,6 +11,9 @@ from . import mod_only
 __all__ = [
     "ooc_cmd_switch",
     "ooc_cmd_pos",
+    "ooc_cmd_pair",
+    "ooc_cmd_unpair",
+    "ooc_cmd_pair_order",
     "ooc_cmd_forcepos",
     "ooc_cmd_charselect",
     "ooc_cmd_randomchar",
@@ -90,6 +93,76 @@ def ooc_cmd_pos(client, arg):
             raise
         client.area.broadcast_evidence_list()
         client.send_ooc("Position changed.")
+
+
+def ooc_cmd_pair(client, arg):
+    """
+    Pair with someone. Overrides client pairing choice.
+    Run by itself to check your current (last?) pairing partner.
+    Usage: /pair [cid|charname]
+    """
+    if len(arg) == 0:
+        char = client.charid_pair
+        if client.charid_pair in range(0, len(client.area.area_manager.char_list)):
+            char = client.area.area_manager.char_list[client.charid_pair]
+        client.send_ooc(f"Your current pair character is '{char}'.")
+        return
+
+    if arg.isdigit():
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(arg), True
+        )
+        if len(targets) > 0:
+            client.charid_pair = targets[0].char_id
+            client.charid_pair_override = True
+    else:
+        for i in range(0, len(client.area.area_manager.char_list)):
+            if arg.lower() == client.area.area_manager.char_list[i].lower():
+                client.charid_pair = i
+                client.charid_pair_override = True
+
+    if client.charid_pair_override:
+        char = client.charid_pair
+        if client.charid_pair in range(0, len(client.area.area_manager.char_list)):
+            char = client.area.area_manager.char_list[client.charid_pair]
+        client.send_ooc(f"Successfully paired with '{char}'! Ask them to pair with you back, and show up on the same /pos for it to work.")
+    else:
+        client.send_ooc("Pairing target not found!")
+
+
+def ooc_cmd_unpair(client, arg):
+    """
+    Stop pairing with someone. Stops overriding client pairing choice.
+    Usage: /unpair
+    """
+    if client.charid_pair_override:
+        client.charid_pair = -1
+        client.charid_pair_override = False
+        client.send_ooc("You're no longer force-paired.")
+    else:
+        client.send_ooc("Serverside force-pairing is already disabled, check your client pairing settings!")
+
+
+def ooc_cmd_pair_order(client, arg):
+    """
+    Choose if you'll appear in front or behind someone when pairing. Only works when using serverside /pair
+    [order] can be either front/0 or behind/1
+    Usage: /pair_order [order]
+    """
+    if client.charid_pair_override:
+        msg = ['in front of', 'behind']
+        if arg:
+            if arg.lower() == 'front':
+                client.pair_order = 0
+            elif arg.lower() == 'behind':
+                client.pair_order = 1
+            elif arg.isdigit() and int(arg) in [0, 1]:
+                client.pair_order = int(arg)
+        else:
+            client.pair_order = (client.pair_order + 1) % 2
+        client.send_ooc(f"You will now appear {msg[client.pair_order]} your pairing partner.")
+    else:
+        client.send_ooc("Serverside pairing is disabled, use your client pairing settings or use /pair command!")
 
 
 @mod_only(area_owners=True)
@@ -294,7 +367,6 @@ def ooc_cmd_uncharcurse(client, arg):
         client.send_ooc("No targets found.")
 
 
-@mod_only()
 def ooc_cmd_charids(client, arg):
     """
     Show character IDs corresponding to each character name.

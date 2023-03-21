@@ -68,9 +68,15 @@ class ClientManager:
             self.ipid = ipid
             self.version = ""
 
-            # Pairing stuff
+            # Pairing character ID
             self.charid_pair = -1
+            # Override if using the /pair command will lock "charid_pair" from being changed by MS packet
+            self.charid_pair_override = False
+            # Pairing order, either 0 (in front) or 1 (behind)
+            self.pair_order = 0
+            # Pairing offset
             self.offset_pair = 0
+
             self.last_sprite = ""
             self.flip = 0
             self.claimed_folder = ""
