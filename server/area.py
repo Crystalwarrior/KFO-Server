@@ -1306,7 +1306,7 @@ class Area:
         for char in "@$`|_~%\\}{":
             msg = msg.replace(char, "")
         # Very basic approximation of text length
-        delay = len(msg) * 40
+        delay = len(msg) * 40 + 40
         # Minimum area msg delay
         delay = max(self.min_msg_delay, delay)
         # Maximum area msg delay
