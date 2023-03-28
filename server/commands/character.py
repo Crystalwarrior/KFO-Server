@@ -143,6 +143,7 @@ def ooc_cmd_forcepos(client, arg):
     )
 
 
+@mod_only()
 def ooc_cmd_charselect(client, arg):
     """
     Enter the character select screen, or force another user to select
