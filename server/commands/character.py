@@ -143,7 +143,6 @@ def ooc_cmd_forcepos(client, arg):
     )
 
 
-@mod_only()
 def ooc_cmd_charselect(client, arg):
     """
     Enter the character select screen, or force another user to select
@@ -153,7 +152,7 @@ def ooc_cmd_charselect(client, arg):
     """
     if not arg:
         client.char_select()
-    else:
+    elif client.is_mod:
         args = shlex.split(arg)
         try:
             if args[0].isnumeric():
