@@ -225,27 +225,29 @@ def ooc_cmd_charselect(client, arg):
     """
     if not arg:
         client.char_select()
-    else:
-        args = shlex.split(arg)
-        try:
-            if args[0].isnumeric():
-                targets = client.server.client_manager.get_targets(
-                    client, TargetType.ID, int(args[0]), False
-                )
-            else:
-                targets = client.server.client_manager.get_targets(
-                    client, TargetType.CHAR_NAME, args[0], False
-                )
-            for target in targets:
-                force_charselect(client, target, " ".join(args[1:]))
-        except Exception as ex:
-            raise ArgumentError(
-                f"Error encountered: {ex}. Use /charselect <target's id> [character]"
+        return
+
+    args = shlex.split(arg)
+    try:
+        if args[0].isnumeric():
+            targets = client.server.client_manager.get_targets(
+                client, TargetType.ID, int(args[0]), False
             )
+        else:
+            targets = client.server.client_manager.get_targets(
+                client, TargetType.CHAR_NAME, args[0], False
+            )
+        for target in targets:
+            force_charselect(client, target, " ".join(args[1:]))
+    except Exception as ex:
+        raise ArgumentError(
+            f"Error encountered: {ex}. Use /charselect <target's id> [character] as a mod or area owner."
+        )
 
 
-@mod_only(area_owners=True)
 def force_charselect(client, target, char=""):
+    if not client.is_mod and client not in target.area.owners:
+        raise ClientError(f'Insufficient permissions for {char}')
     if char != "":
         try:
             if char == "-1" or char.lower() == "spectator":
