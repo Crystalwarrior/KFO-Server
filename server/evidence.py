@@ -184,8 +184,9 @@ class EvidenceList:
         """
         if not self.login(client):
             return
-        if client.area.dark:
-            return
+        if not client.is_mod and client not in client.area.owners:
+            if client.area.dark:
+                return
         if len(self.evidences) >= self.limit:
             client.send_ooc(
                 f"You can't have more than {self.limit} evidence items at a time."
@@ -309,8 +310,9 @@ class EvidenceList:
         """
         if not self.login(client):
             return
-        if client.area.dark:
-            return
+        if not client.is_mod and client not in client.area.owners:
+            if client.area.dark:
+                return
         if id not in range(len(self.evidences)):
             return
         if not client.is_mod and client not in client.area.owners:
@@ -360,8 +362,9 @@ class EvidenceList:
         """
         if not self.login(client):
             return
-        if client.area.dark:
-            return
+        if not client.is_mod and client not in client.area.owners:
+            if client.area.dark:
+                return
 
         name = arg[0]
         desc = arg[1]
