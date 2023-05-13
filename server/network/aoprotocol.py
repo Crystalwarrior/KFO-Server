@@ -201,7 +201,10 @@ class AOProtocol(asyncio.Protocol):
 
             msg = f"{ban.reason}\r\n"
             msg += f"ID: {ban.ban_id}\r\n"
-            msg += f"Until: {unban_date.humanize()}"
+            if unban_date == "N/A":
+                msg += f"Until: {unban_date}"
+            else:
+                msg += f"Until: {unban_date.humanize()}"
 
             database.log_connect(self.client, failed=True)
             self.client.send_command("BD", msg)
