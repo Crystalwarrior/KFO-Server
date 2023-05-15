@@ -26,7 +26,7 @@ from heapq import heappop, heappush
 
 
 from server import database
-from server.constants import TargetType, encode_ao_packet
+from server.constants import TargetType, encode_ao_packet, contains_URL
 from server.exceptions import ClientError, AreaError, ServerError
 
 import oyaml as yaml  # ordered yaml
@@ -433,6 +433,17 @@ class ClientManager:
                             raise
                 if not loop:
                     length = 0
+
+                if (contains_URL(song)):
+                    checked = False
+                    for line in self.server.music_whitelist:
+                        if song.startswith(line):
+                            checked = True
+                    if checked == False:
+                        self.send_ooc(
+                            "This URL is not allowed."
+                        )
+                        return
 
                 target_areas = [self.area]
                 if len(self.broadcast_list) > 0 and (

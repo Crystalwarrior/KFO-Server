@@ -354,8 +354,16 @@ class TsuServer3:
             logger.debug("Cannot find iprange_ban.txt")
 
     def load_music_list(self):
-        with open("config/music.yaml", "r", encoding="utf-8") as music:
-            self.music_list = yaml.safe_load(music)
+        try:
+            with open("config/music.yaml", "r", encoding="utf-8") as music:
+                self.music_list = yaml.safe_load(music)
+        except Exception:
+            logger.debug("Cannot find music.yaml")
+        try:
+            with open("config/url.txt", "r", encoding="utf-8") as url:
+                self.music_whitelist = url.read().splitlines()
+        except Exception:
+            logger.debug("Cannot find url.txt")
 
     def build_music_list(self, music_list):
         song_list = []
