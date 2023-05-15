@@ -288,7 +288,8 @@ class Database:
 
         def __post_init__(self):
             self.ban_date = arrow.get(self.ban_date).datetime
-            self.unban_date = arrow.get(self.unban_date).datetime
+            if self.unban_date is not None:
+                self.unban_date = arrow.get(self.unban_date).datetime
 
         @property
         def ipids(self):
