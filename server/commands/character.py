@@ -1153,6 +1153,16 @@ def ooc_cmd_charlists(client, arg):
     client.send_ooc(text)
 
 
+def ooc_cmd_webfiles(client, arg):
+    """
+    Gives a link to download each characters files from webAO
+    Usage: /webfiles
+    """
+    text = "To download the files, visit https://attorneyonline.github.io/webDownloader/index.html"
+
+    client.send_ooc(text)
+
+
 @mod_only(hub_owners=True)
 def ooc_cmd_charlist(client, arg):
     """
