@@ -50,6 +50,7 @@ class ClientManager:
             self.area = server.hub_manager.default_hub().default_area()
             self.server = server
             self.name = ""
+            self.iniswap = ""
             self.is_mod = False
             self.mod_profile_name = None
             self.is_dj = True

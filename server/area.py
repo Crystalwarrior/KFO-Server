@@ -1322,6 +1322,11 @@ class Area:
         :param char: name of character
 
         """
+        if char.lower() != client.char_name.lower():
+            client.iniswap = char
+        else:
+            client.iniswap = ""
+        
         if self.iniswap_allowed:
             return False
         # Our client is narrating or blankposting via slash command
