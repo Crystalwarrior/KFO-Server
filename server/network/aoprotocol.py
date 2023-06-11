@@ -27,7 +27,7 @@ from enum import Enum
 import asyncio
 import re
 import unicodedata
-
+import traceback
 import logging
 
 logger_debug = logging.getLogger("debug")
@@ -94,6 +94,7 @@ class AOProtocol(asyncio.Protocol):
                 logger_debug.debug(
                     f"Unknown incoming message from {ipid}: {msg}")
             except Exception:
+                print(traceback.format_exc())
                 self.client.disconnect()
                 raise
 
@@ -201,7 +202,10 @@ class AOProtocol(asyncio.Protocol):
 
             msg = f"{ban.reason}\r\n"
             msg += f"ID: {ban.ban_id}\r\n"
-            msg += f"Until: {unban_date.humanize()}"
+            if unban_date == "N/A":
+                msg += f"Until: {unban_date}"
+            else:
+                msg += f"Until: {unban_date.humanize()}"
 
             database.log_connect(self.client, failed=True)
             self.client.send_command("BD", msg)
