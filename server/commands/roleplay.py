@@ -5,6 +5,7 @@ import arrow
 import time
 import datetime
 import pytimeparse
+import shlex
 
 from server import database
 from server.constants import TargetType
@@ -500,21 +501,21 @@ def ooc_cmd_timer(client, arg):
     """
     Manage a countdown timer in the current area. Note that timer of ID `0` is hub-wide. All other timer ID's are local to area.
     Anyone can check ongoing timers, their status and time left using `/timer <id>`, so `/timer 0`.
-    `[time]` can be formated as `10m5s` for 10 minutes 5 seconds, `1h30m` for 1 hour 30 minutes, etc.
+    `[time]` can be formated as `10m5s`, or `"10 minutes 5 seconds"` (quotes included) - full list of time formats: https://pypi.org/project/pytimeparse/
     You can optionally add or subtract time, like so: `/timer 0 +5s` to add `5` seconds to timer id `0`.
     `start` starts the previously set timer, so `/timer 0 start`.
     `pause` OR `stop` pauses the timer that's currently running, so `/timer 0 pause`.
     `unset` OR `hide` hides the timer for it to no longer show up, so `/timer 0 hide`.
+    Commands can also be passed - /cmd is a command that you want to run when the timer expires. That command will be added to the stack of commands to run.
+    For example, `/timer 0 /timer 0 hide` will hide the timer when it expires. Adding `/timer 0 /h hello there` will also say "hello there" in hub chat as your client.
+    If you want to clear all commands, use `/timer <id> /clear`
     Usage:
-    /timer <id> [+][time]
-    /timer <id> start
-    /timer <id> <pause|stop>
-    /timer <id> hide
-    /timer <id> /
+    /timer <id> [+][time] [start|pause/stop|unset/hide]
+    /timer <id> /cmd
     """
 
-    arg = arg.split()
-    if len(arg) < 1:
+    args = shlex.split(arg)
+    if len(args) < 1:
         msg = "Currently active timers:"
         # Hub timer
         timer = client.area.area_manager.timer
@@ -540,14 +541,14 @@ def ooc_cmd_timer(client, arg):
     # Type 2 = show timer
     # Type 3 = hide timer
     # Value = Time to set on the timer
-    timer_id = int(arg[0])
+    timer_id = int(args[0])
     if timer_id < 0 or timer_id > 20:
         raise ArgumentError("Invalid ID. Usage: /timer <id>")
     if timer_id == 0:
         timer = client.area.area_manager.timer
     else:
         timer = client.area.timers[timer_id - 1]
-    if len(arg) < 2:
+    if len(args) < 2:
         if timer.set:
             if timer.started:
                 client.send_ooc(
@@ -569,16 +570,19 @@ def ooc_cmd_timer(client, arg):
         raise ArgumentError(
             "Only GMs can set hub-wide timer ID 0. Usage: /timer <id>")
 
-    duration = pytimeparse.parse("".join(arg[1:]))
+    command_arg = args[1]
+
+    duration_arg = args[1]
+    duration = pytimeparse.parse(duration_arg)
     if duration is not None:
         if timer.set:
             if timer.started:
-                if not (arg[1] == "+" or arg[1][0] == "+" or duration < 0):
+                if not (duration_arg[0] == "+" or duration < 0):
                     timer.target = arrow.get()
                 timer.target = timer.target.shift(seconds=duration)
                 timer.static = timer.target - arrow.get()
             else:
-                if not (arg[1] == "+" or arg[1][0] == "+" or duration < 0):
+                if not (duration_arg[0] == "+" or duration < 0):
                     timer.static = datetime.timedelta(0)
                 timer.static += datetime.timedelta(seconds=duration)
         else:
@@ -588,20 +592,22 @@ def ooc_cmd_timer(client, arg):
                 client.area.area_manager.send_command("TI", timer_id, 2)
             else:
                 client.area.send_command("TI", timer_id, 2)
+        if len(args) > 2:
+            command_arg = args[2]
 
     if not timer.set:
         client.send_ooc(f"Timer {timer_id} is not set in this area.")
         return
 
-    if arg[1] == "start" and not timer.started:
+    if command_arg == "start" and not timer.started:
         timer.target = timer.static + arrow.get()
         timer.started = True
         client.send_ooc(f"Starting timer {timer_id}.")
-    elif arg[1] in ("pause", "stop") and timer.started:
+    elif command_arg in ("pause", "stop") and timer.started:
         timer.static = timer.target - arrow.get()
         timer.started = False
         client.send_ooc(f"Stopping timer {timer_id}.")
-    elif arg[1] in ("unset", "hide"):
+    elif command_arg in ("unset", "hide"):
         timer.set = False
         timer.started = False
         timer.static = None
@@ -614,8 +620,8 @@ def ooc_cmd_timer(client, arg):
             client.area.area_manager.send_command("TI", timer_id, 3)
         else:
             client.area.send_command("TI", timer_id, 3)
-    elif arg[1][0] == "/":
-        full = " ".join(arg[1:])[1:]
+    elif args[1][0] == "/":
+        full = " ".join(args[1:])[1:]
         if full == "":
             txt = f"Timer {timer_id} commands:"
             for command in timer.commands:
