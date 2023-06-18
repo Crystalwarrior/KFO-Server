@@ -59,6 +59,7 @@ class TsuServer3:
         self.char_list = None
         self.char_emotes = None
         self.music_list = []
+        self.music_whitelist = []
         self.backgrounds = None
         self.zalgo_tolerance = None
         self.ipRange_bans = []
