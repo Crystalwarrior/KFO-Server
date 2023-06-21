@@ -27,7 +27,7 @@ from enum import Enum
 import asyncio
 import re
 import unicodedata
-
+import traceback
 import logging
 
 logger_debug = logging.getLogger("debug")
@@ -94,6 +94,7 @@ class AOProtocol(asyncio.Protocol):
                 logger_debug.debug(
                     f"Unknown incoming message from {ipid}: {msg}")
             except Exception:
+                print(traceback.format_exc())
                 self.client.disconnect()
                 raise
 
