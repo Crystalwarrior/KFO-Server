@@ -123,7 +123,7 @@ class AOProtocol(asyncio.Protocol):
             self.server.config["timeout"], self.client.disconnect
         )
 
-        # Disables fantacrypt for clients older than 2.9, required for A02-Client to send HDID.
+        # Disables fantacrypt for clients older than 2.9, required for AO2-Client to send HDID.
         self.client.send_command("decryptor", "NOENCRYPT")
 
     def connection_lost(self, exc):
