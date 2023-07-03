@@ -348,6 +348,9 @@
 * **load\_hub** `<name>`
     - Load Hub data from the server's `storage/hubs/<name>.yaml` file.
     - If blank and you're a mod, it will reload the server's `config/areas.yaml`.
+* **overlay\_hub** `<name>`
+    - Overlay Hub data from the server's `storage/hubs/<name>.yaml` file on top of the current hub, only applying properties defined in that yaml.
+    - If blank and you're a mod, it will overlay the server's `config/areas.yaml`.
 * **list\_hubs**
     - Show all the available hubs for loading in the `storage/hubs/` folder.
 * **clear\_hub**
