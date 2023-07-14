@@ -598,6 +598,11 @@ def ooc_cmd_testimony(client, arg):
     Optionally, id can be passed to move to that statement.
     Usage: /testimony [id]
     """
+    # Check if testifying is enabled on the server
+    if not client.area.server.testify_enabled:
+        _notify_testify_disabled(client)
+        return
+
     if len(client.area.testimony) <= 0:
         client.send_ooc("There is no testimony recorded!")
         return
@@ -1003,3 +1008,8 @@ def ooc_cmd_subtheme(client, arg):
     client.send_ooc(
         f"Setting hub subtheme to {arg}."
     )
+
+def _notify_testify_disabled(client):
+    """Simply an encapsulated way of telling the player the testimony
+    functionality is disabled"""
+    client.send_ooc('The Testify functionality is disabled on this server')

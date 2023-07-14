@@ -4,10 +4,28 @@ from server.exceptions import ClientError, ArgumentError, AreaError
 
 from . import mod_only
 
+max_log_length = 5
+lastneeds = []
+
+def lastneed():
+    '''A way for the admin command /lastneed
+    to get the lastneeds content'''
+    return lastneeds
+
+def addNeed(arg):
+    '''Updates the lastneeds list with every call of /need'''
+    lastneeds.append(arg)
+    while len(lastneeds) > max_log_length:
+        del lastneeds[0]
+
 __all__ = [
+    "ooc_cmd_a",
+    "ooc_cmd_s",
     "ooc_cmd_g",
+    "ooc_cmd_gm",
     "ooc_cmd_h",
     "ooc_cmd_m",
+    "ooc_cmd_lm",
     "ooc_cmd_announce",
     "ooc_cmd_toggleglobal",
     "ooc_cmd_need",
@@ -15,6 +33,7 @@ __all__ = [
     "ooc_cmd_pm",
     "ooc_cmd_mutepm",
 ]
+
 
 
 def message_areas_cm(client, areas, message):
@@ -27,6 +46,38 @@ def message_areas_cm(client, areas, message):
         a.send_owner_command("CT", name, message)
         database.log_area("chat.cm", client, a, message=message)
 
+
+def ooc_cmd_a(client, arg):
+    """
+    Send a message to an area that you are a CM in.
+    Usage: /a <area> <message>
+    """
+    if len(arg) == 0:
+        raise ArgumentError('You must specify an area.')
+    arg = arg.split(' ')
+
+    try:
+        area = client.server.area_manager.get_area_by_id(int(arg[0]))
+    except ValueError:
+        raise ArgumentError('The first argument must be an area ID.')
+    except AreaError:
+        raise
+
+    message_areas_cm(client, [area], ' '.join(arg[1:]))
+
+def ooc_cmd_s(client, arg):
+    """
+    Send a message to all areas that you are a CM in.
+    Usage: /s <message>
+    """
+    areas = []
+    for a in client.server.area_manager.areas:
+        if client in a.owners:
+            areas.append(a)
+    if not areas:
+        client.send_ooc('You aren\'t a CM in any area!')
+        return
+    message_areas_cm(client, areas, arg)
 
 def ooc_cmd_g(client, arg):
     """
@@ -42,6 +93,18 @@ def ooc_cmd_g(client, arg):
     client.server.broadcast_global(client, arg, client.is_mod)
     database.log_area("chat.global", client, client.area, message=arg)
 
+@mod_only()
+def ooc_cmd_gm(client, arg):
+    """
+    Broadcast a message to all areas, speaking officially.
+    Usage: /gm <message>
+    """
+    if client.muted_global:
+        raise ClientError('You have the global chat muted.')
+    if len(arg) == 0:
+        raise ArgumentError("Can't send an empty message.")
+    client.server.broadcast_global(client, arg, True)
+    database.log_room('chat.global-mod', client, client.area, message=arg)
 
 def ooc_cmd_h(client, arg):
     """
@@ -73,6 +136,18 @@ def ooc_cmd_m(client, arg):
     client.server.send_modchat(client, arg)
     database.log_area("chat.mod", client, client.area, message=arg)
 
+@mod_only()
+def ooc_cmd_lm(client, arg):
+    """
+    Send a message to everyone in the current area, speaking officially.
+    Usage: /lm <message>
+    """
+    if len(arg) == 0:
+        raise ArgumentError("Can't send an empty message.")
+    client.area.send_command(
+        'CT', '{}[MOD][{}]'.format(client.server.config['hostname'],
+                                   client.char_name), arg)
+    database.log_room('chat.local-mod', client, client.area, message=arg)
 
 @mod_only()
 def ooc_cmd_announce(client, arg):

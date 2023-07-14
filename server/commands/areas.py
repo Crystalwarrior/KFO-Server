@@ -6,6 +6,19 @@ from server.exceptions import ClientError, ArgumentError, AreaError
 
 from . import mod_only
 
+max_log_length = 3
+
+bg_log = []
+
+def logBGChange(entry):
+    bg_log.append(entry)
+    while len(bg_log) > max_log_length:
+        del bg_log[0]
+
+def getBGLog():
+    return bg_log
+
+
 __all__ = [
     "ooc_cmd_bg",
     "ooc_cmd_bgs",
@@ -27,6 +40,14 @@ __all__ = [
     "ooc_cmd_desc",
     "ooc_cmd_edit_ambience",
     "ooc_cmd_lights",
+    "ooc_cmd_area_lock",
+    "ooc_cmd_area_unlock",
+    "ooc_cmd_area_spectate",
+    "ooc_cmd_area_unlock",
+    "ooc_cmd_delay",
+    "ooc_cmd_allow_iniswap",
+    "ooc_cmd_force_nonint_pres",
+
 ]
 
 
@@ -765,3 +786,88 @@ def ooc_cmd_lights(client, arg):
             pos = client.area.pos_dark
         c.send_command("BN", bg, pos)
     client.send_ooc(f"This area is {stat} dark.")
+
+
+def ooc_cmd_area_lock(client, arg):
+    """
+    Prevent users from joining the current area.
+    Usage: /area_lock
+    """
+    if not client.area.locking_allowed:
+        client.send_ooc('Area locking is disabled in this area.')
+    elif client.area.is_locked == client.area.Locked.LOCKED:
+        client.send_ooc('Area is already locked.')
+    elif client in client.area.owners or client.is_mod:
+        client.area.lock()
+    else:
+        raise ClientError('Only CM can lock the area.')
+
+def ooc_cmd_area_unlock(client, arg):
+    """
+    Allow anyone to freely join the current area.
+    Usage: /area_unlock
+    """
+    if client.area.is_locked == client.area.Locked.FREE:
+        raise ClientError('Area is already unlocked.')
+    elif client in client.area.owners or client.is_mod:
+        client.area.unlock()
+        client.send_ooc('Area is unlocked.')
+    else:
+        raise ClientError('Only CM can unlock area.')
+
+def ooc_cmd_area_spectate(client, arg):
+    """
+    Allow users to join the current area, but only as spectators.
+    Usage: /area_spectate
+    """
+    if not client.area.locking_allowed:
+        client.send_ooc('Area locking is disabled in this area.')
+    elif client.area.is_locked == client.area.Locked.SPECTATABLE:
+        client.send_ooc('Area is already spectatable.')
+    elif client in client.area.owners or client.is_mod:
+        client.area.spectator()
+    else:
+        raise ClientError('Only CM can make the area spectatable.')
+
+
+@mod_only()
+def ooc_cmd_delay(client, arg):
+    """
+    Change the minimum delay between messages, default is 100.
+    Usage: /delay [delay]
+    """
+    if len(arg) == 0:
+        client.area.next_message_delay = 100
+    else:
+        client.area.next_message_delay = int(arg)
+
+    database.log_room('delay', client, client.area, message=client.area.next_message_delay)
+
+
+@mod_only()
+def ooc_cmd_allow_iniswap(client, arg):
+    """
+    Toggle whether or not users are allowed to swap INI files in character
+    folders to allow playing as a character other than the one chosen in
+    the character list.
+    Usage: /allow_iniswap
+    """
+    client.area.iniswap_allowed = not client.area.iniswap_allowed
+    answer = 'allowed' if client.area.iniswap_allowed else 'forbidden'
+    client.send_ooc(f'Iniswap is {answer}.')
+    database.log_room('iniswap', client, client.area, message=client.area.iniswap_allowed)
+
+@mod_only(area_owners=True)
+def ooc_cmd_force_nonint_pres(client, arg):
+    """
+    Toggle whether or not all pre-animations lack a delay before a
+    character begins speaking.
+    Usage: /force_nonint_pres
+    """
+    client.area.non_int_pres_only = not client.area.non_int_pres_only
+    answer = 'non-interrupting only' if client.area.non_int_pres_only else 'non-interrupting or interrupting as you choose'
+    client.area.broadcast_ooc(
+        '{} [{}] has set pres in the area to be {}.'.format(
+            client.char_name, client.id, answer))
+    database.log_room('force_nonint_pres', client, client.area, message=client.area.non_int_pres_only)
+
