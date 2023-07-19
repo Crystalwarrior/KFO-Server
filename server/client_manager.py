@@ -1322,14 +1322,17 @@ class ClientManager:
                     info += "[CM]"
                 info += f"[{c.id}] "
                 if c.showname != c.char_name:
-                    info += f'"{c.showname}" ({c.char_name})'
+                    if self.is_mod:
+                        info += f'"{c.showname}" ({c.char_name})'
+                    else:
+                        info += f'{c.char_name}'
                 else:
                     info += f"{c.showname}"
                 if c.pos != "":
                     info += f" <{c.pos}>"
                 if self.is_mod:
                     info += f" ({c.ipid})"
-                if c.name != "" and (self.is_mod or self in area.owners):
+                if c.name != "" and self.is_mod:
                     info += f": {c.name}"
             return info
 
