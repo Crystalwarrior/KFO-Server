@@ -497,7 +497,7 @@ def ooc_cmd_player_move_delay(client, arg):
         raise
 
 
-@mod_only(hub_owners=True)
+@mod_only()
 def ooc_cmd_player_hide(client, arg):
     """
     Hide player(s) from /getarea and playercounts.
@@ -538,7 +538,7 @@ def ooc_cmd_player_hide(client, arg):
         client.send_ooc("No targets found.")
 
 
-@mod_only(hub_owners=True)
+@mod_only()
 def ooc_cmd_player_unhide(client, arg):
     """
     Unhide player(s) from /getarea and playercounts.
@@ -607,7 +607,7 @@ def ooc_cmd_unhide(client, arg):
     client.hide(False)
     client.area.broadcast_area_list(client)
 
-
+@mod_only()
 def ooc_cmd_sneak(client, arg):
     """
     Begin sneaking a.k.a. hide your area moving messages from the OOC.
@@ -636,7 +636,7 @@ def ooc_cmd_sneak(client, arg):
             raise ArgumentError(
                 f"Error encountered: {ex}. Use /sneak [id]")
 
-
+@mod_only()
 def ooc_cmd_unsneak(client, arg):
     """
     Stop sneaking a.k.a. show your area moving messages in the OOC.
@@ -666,12 +666,12 @@ def ooc_cmd_unsneak(client, arg):
                 f"Error encountered: {ex}. Use /unsneak [id]")
 
 
-@mod_only(area_owners=True)
+@mod_only()
 def force_sneak(client, arg):
     arg.sneak(True)
 
 
-@mod_only(area_owners=True)
+@mod_only()
 def force_unsneak(client, arg):
     arg.sneak(False)
 
