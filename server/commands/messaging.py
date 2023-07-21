@@ -190,6 +190,8 @@ def ooc_cmd_need(client, arg):
         raise ClientError("You have advertisements muted.")
     if len(arg) == 0:
         raise ArgumentError("You must specify what you need.")
+
+    addNeed((client.ipid, arg))
     client.server.broadcast_need(client, arg)
     database.log_area("chat.announce.need", client, client.area, message=arg)
 
