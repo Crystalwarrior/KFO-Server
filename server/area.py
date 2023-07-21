@@ -646,6 +646,7 @@ class Area:
         area["desc_dark"] = self.desc_dark
         area["passing_msg"] = self.passing_msg
         area["min_msg_delay"] = self.min_msg_delay
+        area["max_msg_delay"] = self.max_msg_delay
         area["present_reveals_evidence"] = self.present_reveals_evidence
         if len(self.evi_list.evidences) > 0:
             area["evidence"] = [e.to_dict() for e in self.evi_list.evidences]
