@@ -177,7 +177,7 @@ class Area:
         # Minimum time that has to pass before you can send another message
         self.min_msg_delay = 200
         # Maximum delay before you are allowed to send another message
-        self.max_msg_delay = 5000
+        self.max_msg_delay = 200
         # Whether to reveal evidence in all pos if it is presented
         self.present_reveals_evidence = True
         # /prefs end
