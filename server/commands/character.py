@@ -607,7 +607,7 @@ def ooc_cmd_unhide(client, arg):
     client.hide(False)
     client.area.broadcast_area_list(client)
 
-@mod_only()
+
 def ooc_cmd_sneak(client, arg):
     """
     Begin sneaking a.k.a. hide your area moving messages from the OOC.
@@ -636,7 +636,7 @@ def ooc_cmd_sneak(client, arg):
             raise ArgumentError(
                 f"Error encountered: {ex}. Use /sneak [id]")
 
-@mod_only()
+
 def ooc_cmd_unsneak(client, arg):
     """
     Stop sneaking a.k.a. show your area moving messages in the OOC.
