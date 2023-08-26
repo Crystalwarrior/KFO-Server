@@ -666,12 +666,12 @@ def ooc_cmd_unsneak(client, arg):
                 f"Error encountered: {ex}. Use /unsneak [id]")
 
 
-@mod_only()
+@mod_only(area_owners=True)
 def force_sneak(client, arg):
     arg.sneak(True)
 
 
-@mod_only()
+@mod_only(area_owners=True)
 def force_unsneak(client, arg):
     arg.sneak(False)
 
