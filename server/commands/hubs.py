@@ -192,7 +192,7 @@ def ooc_cmd_load_hub(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_overlay_hub(client, arg):
     """
-    Overlay Hub data from the server's storage/hubs/<name>.yaml file over the current hub.
+    Overlay Hub data from the server's `storage/hubs/<name>.yaml` file on top of the current hub, only applying properties defined in that yaml.
     Usage: /overlay_hub <name>
     """
     if arg == "" and not client.is_mod:

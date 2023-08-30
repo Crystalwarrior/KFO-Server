@@ -497,7 +497,7 @@ def ooc_cmd_player_move_delay(client, arg):
         raise
 
 
-@mod_only(hub_owners=True)
+@mod_only()
 def ooc_cmd_player_hide(client, arg):
     """
     Hide player(s) from /getarea and playercounts.
@@ -538,7 +538,7 @@ def ooc_cmd_player_hide(client, arg):
         client.send_ooc("No targets found.")
 
 
-@mod_only(hub_owners=True)
+@mod_only()
 def ooc_cmd_player_unhide(client, arg):
     """
     Unhide player(s) from /getarea and playercounts.
