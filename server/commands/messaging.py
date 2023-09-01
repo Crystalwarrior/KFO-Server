@@ -104,7 +104,7 @@ def ooc_cmd_gmod(client, arg):
     if len(arg) == 0:
         raise ArgumentError("Can't send an empty message.")
     client.server.broadcast_global(client, arg, True)
-    database.log_room('chat.global-mod', client, client.area, message=arg)
+    database.log_area('chat.global-mod', client, client.area, message=arg)
 
 def ooc_cmd_h(client, arg):
     """
