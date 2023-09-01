@@ -40,10 +40,6 @@ __all__ = [
     "ooc_cmd_desc",
     "ooc_cmd_edit_ambience",
     "ooc_cmd_lights",
-    "ooc_cmd_area_lock",
-    "ooc_cmd_area_unlock",
-    "ooc_cmd_area_spectate",
-    "ooc_cmd_area_unlock",
     "ooc_cmd_delay",
     "ooc_cmd_allow_iniswap",
     "ooc_cmd_force_nonint_pres",
@@ -786,48 +782,6 @@ def ooc_cmd_lights(client, arg):
             pos = client.area.pos_dark
         c.send_command("BN", bg, pos)
     client.send_ooc(f"This area is {stat} dark.")
-
-
-def ooc_cmd_area_lock(client, arg):
-    """
-    Prevent users from joining the current area.
-    Usage: /area_lock
-    """
-    if not client.area.locking_allowed:
-        client.send_ooc('Area locking is disabled in this area.')
-    elif client.area.is_locked == client.area.Locked.LOCKED:
-        client.send_ooc('Area is already locked.')
-    elif client in client.area.owners or client.is_mod:
-        client.area.lock()
-    else:
-        raise ClientError('Only CM can lock the area.')
-
-def ooc_cmd_area_unlock(client, arg):
-    """
-    Allow anyone to freely join the current area.
-    Usage: /area_unlock
-    """
-    if client.area.is_locked == client.area.Locked.FREE:
-        raise ClientError('Area is already unlocked.')
-    elif client in client.area.owners or client.is_mod:
-        client.area.unlock()
-        client.send_ooc('Area is unlocked.')
-    else:
-        raise ClientError('Only CM can unlock area.')
-
-def ooc_cmd_area_spectate(client, arg):
-    """
-    Allow users to join the current area, but only as spectators.
-    Usage: /area_spectate
-    """
-    if not client.area.locking_allowed:
-        client.send_ooc('Area locking is disabled in this area.')
-    elif client.area.is_locked == client.area.Locked.SPECTATABLE:
-        client.send_ooc('Area is already spectatable.')
-    elif client in client.area.owners or client.is_mod:
-        client.area.spectator()
-    else:
-        raise ClientError('Only CM can make the area spectatable.')
 
 
 @mod_only()
