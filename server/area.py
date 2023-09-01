@@ -175,9 +175,7 @@ class Area:
         # Sends a message to the IC when changing areas
         self.passing_msg = False
         # Minimum time that has to pass before you can send another message
-        self.min_msg_delay = 200
-        # Maximum delay before you are allowed to send another message
-        self.max_msg_delay = 5000
+        self.msg_delay = 200
         # Whether to reveal evidence in all pos if it is presented
         self.present_reveals_evidence = True
         # /prefs end
@@ -525,10 +523,8 @@ class Area:
             self.desc_dark = area["desc_dark"]
         if 'passing_msg' in area:
             self.passing_msg = area['passing_msg']
-        if 'min_msg_delay' in area:
-            self.min_msg_delay = area['min_msg_delay']
-        if 'max_msg_delay' in area:
-            self.max_msg_delay = area['max_msg_delay']
+        if 'msg_delay' in area:
+            self.msg_delay = area['msg_delay']
         if 'present_reveals_evidence' in area:
             self.present_reveals_evidence = area['present_reveals_evidence']
 
@@ -645,7 +641,7 @@ class Area:
         area["pos_dark"] = self.pos_dark
         area["desc_dark"] = self.desc_dark
         area["passing_msg"] = self.passing_msg
-        area["min_msg_delay"] = self.min_msg_delay
+        area["msg_delay"] = self.msg_delay
         area["present_reveals_evidence"] = self.present_reveals_evidence
         if len(self.evi_list.evidences) > 0:
             area["evidence"] = [e.to_dict() for e in self.evi_list.evidences]
@@ -1298,20 +1294,11 @@ class Area:
             raise AreaError("Invalid testimony reference!")
 
     def parse_msg_delay(self, msg):
-        """Parses the correct delay for the message supporting escaped characters and }}} {{{ speed-ups/slowdowns.
+        """Just returns the delay value between messages.
         :param msg: the string
         :return: delay integer in ms
         """
-        # Strip formatting chars
-        for char in "@$`|_~%\\}{":
-            msg = msg.replace(char, "")
-        # Very basic approximation of text length
-        delay = len(msg) * 40 + 40
-        # Minimum area msg delay
-        delay = max(self.min_msg_delay, delay)
-        # Maximum area msg delay
-        delay = min(self.max_msg_delay, delay)
-        return delay
+        return self.msg_delay
 
     def is_iniswap(self, client, preanim, anim, char, sfx):
         """
