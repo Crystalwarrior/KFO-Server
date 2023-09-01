@@ -22,7 +22,7 @@ __all__ = [
     "ooc_cmd_a",
     "ooc_cmd_s",
     "ooc_cmd_g",
-    "ooc_cmd_gm",
+    "ooc_cmd_gmod",
     "ooc_cmd_h",
     "ooc_cmd_m",
     "ooc_cmd_lm",
@@ -94,7 +94,7 @@ def ooc_cmd_g(client, arg):
     database.log_area("chat.global", client, client.area, message=arg)
 
 @mod_only()
-def ooc_cmd_gm(client, arg):
+def ooc_cmd_gmod(client, arg):
     """
     Broadcast a message to all areas, speaking officially.
     Usage: /gm <message>
