@@ -189,7 +189,7 @@ def ooc_cmd_play(client, arg):
         raise ArgumentError('Invalid Host. Please use a valid content source.')
     client.area.play_music(arg, client.char_id, -1)  # loop it
     client.area.add_music_playing(client, arg)
-    database.log_room('play', client, client.area, message=arg)
+    database.log_area('play', client, client.area, message=arg)
 
 
 def ooc_cmd_play_once(client, arg):
