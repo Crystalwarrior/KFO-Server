@@ -57,7 +57,7 @@ def ooc_cmd_a(client, arg):
     arg = arg.split(' ')
 
     try:
-        area = client.server.area_manager.get_area_by_id(int(arg[0]))
+        area = client.area.area_manager.get_area_by_id(int(arg[0]))
     except ValueError:
         raise ArgumentError('The first argument must be an area ID.')
     except AreaError:
@@ -71,7 +71,7 @@ def ooc_cmd_s(client, arg):
     Usage: /s <message>
     """
     areas = []
-    for a in client.server.area_manager.areas:
+    for a in client.area.area_manager.areas:
         if client in a.owners:
             areas.append(a)
     if not areas:
@@ -116,7 +116,7 @@ def ooc_cmd_h(client, arg):
     prefix = ""
     if client.is_mod:
         prefix = "[M]"
-    elif client in client.area.area_manager.owners:
+    elif client in client.area_manager.owners:
         prefix = "[GM]"
 
     name = f"{prefix}{client.name}"
@@ -147,7 +147,7 @@ def ooc_cmd_lm(client, arg):
     client.area.send_command(
         'CT', '{}[MOD][{}]'.format(client.server.config['hostname'],
                                    client.char_name), arg)
-    database.log_room('chat.local-mod', client, client.area, message=arg)
+    database.log_area('chat.local-mod', client, client.area, message=arg)
 
 @mod_only()
 def ooc_cmd_announce(client, arg):

@@ -795,7 +795,7 @@ def ooc_cmd_delay(client, arg):
     else:
         client.area.next_message_delay = int(arg)
 
-    database.log_room('delay', client, client.area, message=client.area.next_message_delay)
+    database.log_area('delay', client, client.area, message=client.area.next_message_delay)
 
 
 @mod_only()
@@ -809,7 +809,7 @@ def ooc_cmd_allow_iniswap(client, arg):
     client.area.iniswap_allowed = not client.area.iniswap_allowed
     answer = 'allowed' if client.area.iniswap_allowed else 'forbidden'
     client.send_ooc(f'Iniswap is {answer}.')
-    database.log_room('iniswap', client, client.area, message=client.area.iniswap_allowed)
+    database.log_area('iniswap', client, client.area, message=client.area.iniswap_allowed)
 
 @mod_only(area_owners=True)
 def ooc_cmd_force_nonint_pres(client, arg):
@@ -823,5 +823,5 @@ def ooc_cmd_force_nonint_pres(client, arg):
     client.area.broadcast_ooc(
         '{} [{}] has set pres in the area to be {}.'.format(
             client.char_name, client.id, answer))
-    database.log_room('force_nonint_pres', client, client.area, message=client.area.non_int_pres_only)
+    database.log_area('force_nonint_pres', client, client.area, message=client.area.non_int_pres_only)
 
