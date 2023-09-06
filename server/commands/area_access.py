@@ -26,7 +26,7 @@ __all__ = [
     "ooc_cmd_setpw",
 ]
 
-
+@mod_only(area_owners=True)
 def ooc_cmd_area_lock(client, arg):
     """
     Prevent users from joining the current area.
@@ -157,7 +157,7 @@ def ooc_cmd_area_unmute(client, arg):
     except (ClientError, AreaError):
         raise
 
-
+@mod_only(area_owners=True)
 def ooc_cmd_area_unlock(client, arg):
     """
     Allow anyone to freely join the current area.
