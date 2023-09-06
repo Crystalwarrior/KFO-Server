@@ -892,12 +892,6 @@ class ClientManager:
             )
 
         def try_access_area(self, area, peek=False):
-            if (
-                self.area.locked
-                and self not in self.area.owners
-                and self.id not in self.area.invite_list
-            ):
-                raise ClientError("Current area is locked!")
 
             if len(self.area.links) > 0:
                 if str(area.id) not in self.area.links:
