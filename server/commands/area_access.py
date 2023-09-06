@@ -212,7 +212,7 @@ def ooc_cmd_area_unlock(client, arg):
     except (ClientError, AreaError):
         raise
 
-
+@mod_only(area_owners=True)
 def ooc_cmd_lock(client, arg):
     """
     Context-sensitive function to lock area(s) and/or area link(s).
@@ -237,7 +237,7 @@ def ooc_cmd_lock(client, arg):
         print(links)
         ooc_cmd_link_lock(client, links)
 
-
+@mod_only(area_owners=True)
 def ooc_cmd_unlock(client, arg):
     """
     Context-sensitive function to unlock area(s) and/or area link(s).
@@ -343,7 +343,7 @@ def ooc_cmd_unlink(client, arg):
     except (AreaError, ClientError):
         raise
 
-
+@mod_only(area_owners=True)
 def ooc_cmd_links(client, arg):
     """
     Display this area's information about area links.
@@ -455,7 +455,7 @@ def ooc_cmd_oneunlink(client, arg):
     except (AreaError, ClientError):
         raise
 
-
+@mod_only(area_owners=True)
 def ooc_cmd_link_lock(client, arg):
     """
     Lock the path leading to target area(s).
@@ -500,7 +500,7 @@ def ooc_cmd_link_lock(client, arg):
     except (AreaError, ClientError):
         raise
 
-
+@mod_only(area_owners=True)
 def ooc_cmd_link_unlock(client, arg):
     """
     Unlock the path leading to target area(s).
