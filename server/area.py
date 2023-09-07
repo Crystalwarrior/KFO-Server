@@ -163,7 +163,7 @@ class Area:
         self.can_cross_swords = False
         self.can_scrum_debate = False
         self.can_panic_talk_action = False
-        self.force_sneak = False
+        self.force_sneak = True
         # Whether the area is dark or not
         self.dark = False
         # The background to set when area's lights are turned off
