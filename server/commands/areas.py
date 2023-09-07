@@ -349,12 +349,6 @@ def ooc_cmd_area_kick(client, arg):
             c
             for c in client.area.clients
         ]
-    # Kick everyone in hub
-    elif args[0] == "***":
-        targets = [
-            c
-            for c in client.area.area_manager.clients
-        ]
     else:
         # Try to find by char name first
         targets = client.server.client_manager.get_targets(
@@ -400,9 +394,10 @@ def ooc_cmd_area_kick(client, arg):
                     not client.is_mod
                     and client not in client.area.area_manager.owners
                     and client not in area.owners
+                    and area.locked
                 ):
                     raise ArgumentError(
-                        "You can't kick someone to an area you don't own as a CM!"
+                        "You can't kick someone to a locked area you don't own as a CM!"
                     )
             target_pos = ""
             old_area = c.area
