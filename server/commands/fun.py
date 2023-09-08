@@ -9,7 +9,6 @@ __all__ = [
     "ooc_cmd_undisemvowel",
     "ooc_cmd_shake",
     "ooc_cmd_unshake",
-    "ooc_cmd_rainbow",
 ]
 
 
