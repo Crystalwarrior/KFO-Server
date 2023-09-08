@@ -121,7 +121,7 @@ class AreaManager:
         self.single_cm = False
         self.censor_ic = True
         self.censor_ooc = True
-        self.can_spectate = True
+        self.can_spectate = False
         self.can_getareas = True
         self.passing_msg = False
         # /prefs
