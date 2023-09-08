@@ -22,7 +22,6 @@ __all__ = [
     "ooc_cmd_a",
     "ooc_cmd_s",
     "ooc_cmd_g",
-    "ooc_cmd_gmod",
     "ooc_cmd_h",
     "ooc_cmd_m",
     "ooc_cmd_lm",
