@@ -9,6 +9,7 @@ __all__ = [
     "ooc_cmd_undisemvowel",
     "ooc_cmd_shake",
     "ooc_cmd_unshake",
+    "ooc_cmd_rainbow",
 ]
 
 
@@ -104,7 +105,7 @@ def ooc_cmd_unshake(client, arg):
     else:
         client.send_ooc("No targets found.")
 
-
+@mod_only()
 def ooc_cmd_rainbow(client, arg):
     """
     rainbow text is back baybee
