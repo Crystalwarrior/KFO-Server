@@ -35,6 +35,7 @@ __all__ = [
     "ooc_cmd_pos_lock",
     "ooc_cmd_pos_lock_clear",
     "ooc_cmd_knock",
+    "ooc_cmd_peek",
     "ooc_cmd_max_players",
     "ooc_cmd_desc",
     "ooc_cmd_edit_ambience",
@@ -564,7 +565,7 @@ def ooc_cmd_knock(client, arg):
     except (AreaError, ClientError):
         raise
 
-
+@mod_only()
 def ooc_cmd_peek(client, arg):
     """
     Peek into an area to see if there's people in it.
