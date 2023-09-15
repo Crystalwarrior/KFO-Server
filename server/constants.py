@@ -119,3 +119,7 @@ def encode_ao_packet(params):
                 .replace("&", "<and>")
             )
     return new_params
+
+def derelative(sample):
+    return sample.replace(
+                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")

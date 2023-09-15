@@ -3,7 +3,7 @@ import shlex
 import random
 
 from server import database
-from server.constants import TargetType
+from server.constants import TargetType, derelative
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 from . import mod_only
@@ -722,7 +722,7 @@ def ooc_cmd_save_character_data(client, arg):
 
     try:
         path = "storage/character_data"
-        arg = f"{path}/{arg}.yaml"
+        arg = f"{path}/{derelative(arg)}.yaml"
         client.area.area_manager.save_character_data(arg)
         client.send_ooc(f"Saving as {arg} character data...")
     except AreaError:
@@ -737,7 +737,7 @@ def ooc_cmd_load_character_data(client, arg):
     """
     try:
         path = "storage/character_data"
-        arg = f"{path}/{arg}.yaml"
+        arg = f"{path}/{derelative(arg)}.yaml"
         client.area.area_manager.load_character_data(arg)
         client.send_ooc(f"Loading {arg} character data...")
     except AreaError:

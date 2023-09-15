@@ -18,7 +18,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from .. import commands
-from server.constants import dezalgo, censor, contains_URL
+from server.constants import dezalgo, censor, contains_URL, derelative
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server import database
 import time
@@ -619,24 +619,15 @@ class AOProtocol(asyncio.Protocol):
                 "You may not iniswap while you are charcursed!")
             return
         if (self.server.config["block_relative"]):
-            pre = pre.replace(
-                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
-            anim = anim.replace(
-                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
-            folder = folder.replace(
-                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
-            sfx = sfx.replace(
-                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
-            pos = pos.replace(
-                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
-            frames_shake = frames_shake.replace(
-                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
-            frames_realization = frames_realization.replace(
-                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
-            frames_sfx = frames_sfx.replace(
-                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
-            effect = effect.replace(
-                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+            pre = derelative(pre)
+            anim = derelative(anim)
+            folder = derelative(folder)
+            sfx = derelative(sfx)
+            pos = derelative(pos)
+            frames_shake = derelative(frames_shake)
+            frames_realization = derelative(frames_realization)
+            frames_sfx = derelative(frames_sfx)
+            effect = derelative(effect)
 
         if not self.client.is_mod and not (self.client in self.client.area.owners):
             if not self.client.area.blankposting_allowed:
