@@ -1373,9 +1373,7 @@ class Area:
             return
         if length == 0:
             self.remove_jukebox_vote(client, False)
-            if len(self.jukebox_votes) <= 1 or (
-                not self.music_looper or self.music_looper.cancelled()
-            ):
+            if len(self.jukebox_votes) <= 1:
                 self.start_jukebox()
         else:
             self.remove_jukebox_vote(client, True)
@@ -1383,9 +1381,7 @@ class Area:
                 self.JukeboxVote(client, music_name, length, showname)
             )
             client.send_ooc("Your song was added to the jukebox.")
-            if len(self.jukebox_votes) == 1 or (
-                not self.music_looper or self.music_looper.cancelled()
-            ):
+            if len(self.jukebox_votes) == 1:
                 self.start_jukebox()
 
     def remove_jukebox_vote(self, client, silent):
