@@ -2,7 +2,7 @@ import random
 import re
 
 from server import database
-from server.constants import TargetType
+from server.constants import TargetType, derelative
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 from . import mod_only
@@ -272,6 +272,7 @@ def ooc_cmd_musiclist(client, arg):
     Usage: /musiclist [path]
     """
     try:
+        arg = derelative(arg)
         if arg == "":
             client.clear_music()
             client.send_ooc("Clearing local musiclist.")
@@ -294,6 +295,7 @@ def ooc_cmd_area_musiclist(client, arg):
     Usage: /area_musiclist [path]
     """
     try:
+        arg = derelative(arg)
         if arg == "":
             client.area.clear_music()
             client.send_ooc("Clearing area musiclist.")
@@ -316,6 +318,7 @@ def ooc_cmd_hub_musiclist(client, arg):
     Usage: /hub_musiclist [path]
     """
     try:
+        arg = derelative(arg)
         if arg == "":
             client.area.area_manager.clear_music()
             client.send_ooc("Clearing hub musiclist.")

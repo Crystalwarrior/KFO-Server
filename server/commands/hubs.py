@@ -3,7 +3,7 @@ import os
 import oyaml as yaml  # ordered yaml
 
 from server import database
-from server.constants import TargetType
+from server.constants import TargetType, derelative
 from server.exceptions import ClientError, ArgumentError, AreaError
 from server.constants import dezalgo
 
@@ -102,7 +102,7 @@ def ooc_cmd_save_hub(client, arg):
                     "Server storage full! Please contact the server host to resolve this issue."
                 )
             try:
-                arg = f"{path}/{arg}.yaml"
+                arg = f"{path}/{derelative(arg)}.yaml"
                 if os.path.isfile(arg):
                     with open(arg, "r", encoding="utf-8") as stream:
                         hub = yaml.safe_load(stream)
@@ -142,7 +142,7 @@ def ooc_cmd_load_hub(client, arg):
 
     if arg != "":
         path = "storage/hubs"
-        arg = f"{path}/{arg}.yaml"
+        arg = f"{path}/{derelative(arg)}.yaml"
         if not os.path.isfile(arg):
             raise ArgumentError(f"File not found: {arg}")
         with open(arg, "r", encoding="utf-8") as stream:
@@ -183,7 +183,7 @@ def ooc_cmd_overlay_hub(client, arg):
 
     if arg != "":
         path = "storage/hubs"
-        arg = f"{path}/{arg}.yaml"
+        arg = f"{path}/{derelative(arg)}.yaml"
         if not os.path.isfile(arg):
             raise ArgumentError(f"File not found: {arg}")
         with open(arg, "r", encoding="utf-8") as stream:
