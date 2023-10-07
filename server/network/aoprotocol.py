@@ -1149,6 +1149,71 @@ class AOProtocol(asyncio.Protocol):
                         webname, text, self.client.char_name, anim
                     )
 
+        # Check whether or not the reserved character for Emote Tags is in the message
+        if "¨" in text:
+            emote = anim  # We'll use this variable for storing each new emote in our message
+            messages = text.split("¨")
+            separator = "\p\p\p" + " " 
+
+            # Iterate through the messages
+            for index, message in enumerate(messages):
+                stripped_message = message.strip()
+
+                # Check if the stripped message is enclosed in parentheses (indicating an emote)
+                if stripped_message.startswith("(") and stripped_message.endswith(")"):
+                    emote = stripped_message[
+                        1:-1
+                    ]  # Update the emote variable with what we found inside the parentheses
+                else:
+                    # If we swap emotes after a full stop, we add the separator variable (\p\p\p) to make it less abrupt
+                    text = (
+                        stripped_message + separator
+                        if stripped_message.endswith(".")
+                        else stripped_message + " "
+                    )
+                    emote_value = (
+                        anim if index == 0 else emote
+                    )  # Use 'anim' if it's the first message, otherwise use the emote variable
+                    additive_value = (
+                        0 if index == 0 else 1
+                    )  # Set additive_value to 0 for the first message, 1 for subsequent messages
+
+                    self.client.area.send_ic(
+                        self.client,
+                        msg_type,
+                        pre,
+                        folder,
+                        emote_value,
+                        text,
+                        pos,
+                        sfx,
+                        emote_mod,
+                        cid,
+                        sfx_delay,
+                        button,
+                        self.client.evi_list[evidence],
+                        flip,
+                        ding,
+                        color,
+                        showname,
+                        charid_pair,
+                        other_folder,
+                        other_emote,
+                        offset_pair,
+                        other_offset,
+                        other_flip,
+                        nonint_pre,
+                        sfx_looping,
+                        screenshake,
+                        frames_shake,
+                        frames_realization,
+                        frames_sfx,
+                        additive_value,
+                        effect,
+                    )
+
+            return
+                   
         # Additive only works on same-char messages
         if additive and (
             self.client.area.last_ic_message is None
