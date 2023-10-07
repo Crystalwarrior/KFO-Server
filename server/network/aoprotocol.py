@@ -1155,12 +1155,12 @@ class AOProtocol(asyncio.Protocol):
             messages = text.split("¨")
             separator = "\p\p\p" + " " 
 
-            # Iterate through the messages
+            # Iterate through the split message
             for index, message in enumerate(messages):
                 stripped_message = message.strip()
 
                 # Check if the stripped message is enclosed in parentheses (indicating an emote)
-                if stripped_message.startswith("(") and stripped_message.endswith(")"):
+                if stripped_message.startswith("<") and stripped_message.endswith(">"):
                     emote = stripped_message[
                         1:-1
                     ]  # Update the emote variable with what we found inside the parentheses
