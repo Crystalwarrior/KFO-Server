@@ -111,7 +111,8 @@ def ooc_cmd_kick(client, arg):
     elif arg[0] == "*":
         targets = [c for c in client.area.clients if c != client]
     elif arg[0] == "**":
-        targets = [c for c in client.server.client_manager.clients if c != client]
+        #targets = [c for c in client.server.client_manager.clients if c != client]
+        client.send_ooc("Do not try to kick the whole server/hub please!")
     else:
         targets = None
 
