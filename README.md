@@ -42,7 +42,7 @@ This operation should not require administrator privileges, unless you decide to
 
 ### Configure tsuserver
 
-* **Rename `config_sample` to `config`**.
+* **Copy `config_sample` to `config`**.
 * Edit the values in the `.yaml` files to your liking. If you downloaded tsuserver from a zip and try to edit it from Notepad, the line breaks will be missing. That's because Notepad is stupid. Use [Notepad++](https://notepad-plus-plus.org/) instead like the pro you are.
 * Be sure to check your YAML file for syntax errors. Use this website: <http://www.yamllint.com/>
   * *Use spaces only; do not use tabs.* That's another reason we recommend anything that isn't Notepad.
