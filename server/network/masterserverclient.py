@@ -75,6 +75,8 @@ class MasterServerClient:
             body['ip'] = cfg['masterserver_custom_hostname']
         if cfg['use_websockets']:
             body['ws_port'] = cfg['websocket_port']
+        if cfg['use_securewebsockets']:
+            body['wss_port'] = cfg['securewebsocket_port']
 
         async with http.post(f'{API_BASE_URL}/servers', json=body) as res:
             err_body = await res.text()
