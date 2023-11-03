@@ -44,7 +44,10 @@ motd: Welcome to my server!
 use_websockets: true
 websocket_port: 50001
 
-use_securewebsockets: true
+# This setting is only used for advertising the server on the server list
+# and is not used for actual connections, since typically a secure connection
+# should be terminated at a reverse proxy.
+use_securewebsockets: false
 securewebsocket_port: 50002
 
 # WebAO Asset URL for hosting files. Leave blank to use vanilla
