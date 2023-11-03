@@ -66,7 +66,6 @@ class MasterServerClient:
         loop = asyncio.get_event_loop()
         cfg = self.server.config
         body = {
-            'ip': await loop.run_in_executor(None, self.get_my_ip),
             'port': cfg['port'],
             'name': cfg['masterserver_name'],
             'description': cfg['masterserver_description'],
@@ -75,6 +74,9 @@ class MasterServerClient:
 
         if 'masterserver_custom_hostname' in cfg:
             body['ip'] = cfg['masterserver_custom_hostname']
+        else:
+            body['ip'] = await loop.run_in_executor(None, self.get_my_ip)
+
         if cfg['use_websockets']:
             body['ws_port'] = cfg['websocket_port']
         if cfg['use_securewebsockets']:
