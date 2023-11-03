@@ -34,6 +34,7 @@ stun_servers = [
 
 API_BASE_URL = 'https://servers.aceattorneyonline.com'
 
+
 class MasterServerClient:
     """Advertises information about this server to the master server."""
 
@@ -46,8 +47,9 @@ class MasterServerClient:
                 try:
                     await self.send_server_info(http)
                 except aiohttp.ClientError:
-                    logger.exception('Connection error occurred. (Master server down?)')
-                except: # If is a unknown error
+                    logger.exception(
+                        'Connection error occurred. (Master server down?)')
+                except:  # If is a unknown error
                     logger.debug("Connection error occurred. (No internet?)")
                     await asyncio.sleep(5)
                 finally:
@@ -83,6 +85,7 @@ class MasterServerClient:
             try:
                 res.raise_for_status()
             except aiohttp.ClientResponseError as err:
-                logging.error(f"Got status={err.status} advertising {body}: {err_body}")
+                logging.error(
+                    f"Got status={err.status} advertising {body}: {err_body}")
 
         logger.debug(f'Heartbeat to {API_BASE_URL}/servers')
