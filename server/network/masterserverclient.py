@@ -46,7 +46,10 @@ class MasterServerClient:
                 try:
                     await self.send_server_info(http)
                 except aiohttp.ClientError:
-                    logger.exception('Connection error occurred.')
+                    logger.exception('Connection error occurred. (Master server down?)')
+                except: # If is a unknown error
+                    logger.debug("Connection error occurred. (No internet?)")
+                    await asyncio.sleep(5)
                 finally:
                     await asyncio.sleep(60)
 
