@@ -17,11 +17,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import logging as l
+import logging
 import asyncio
 
 import stun
 import aiohttp
+
+
+logger = logging.getLogger("msclient")
 
 
 class MasterServerClient:
@@ -29,7 +32,6 @@ class MasterServerClient:
 
     def __init__(self, server):
         self.server = server
-        self.logger = l.getLogger("msclient")
         self.masterserver_url = 'https://servers.aceattorneyonline.com/servers'
         self.interval = 60
         cfg = self.server.config
@@ -53,7 +55,7 @@ class MasterServerClient:
                 try:
                     await self.send_server_info(http)
                 except Exception as e:
-                    self.logger.error(
+                    logger.error(
                         "Failed to send server info to masterserver.")
                     # We don't know how to handle or recover from this error, so re-raise it.
                     raise e
@@ -67,15 +69,16 @@ class MasterServerClient:
         async with http.post(self.masterserver_url, json=self.serverinfo) as res:
             response_body = await res.text(encoding='utf-8')
             if res.status >= 300:
-                self.logger.error(
+                logger.error(
                     "Failed to send info to masterserver: received status code: %d and body: %s",
                     res.status, response_body)
             else:
-                self.logger.debug(
+                logger.debug(
                     'Sent server info to masterserver: %s', self.masterserver_url)
 
+    @staticmethod
     # Use STUN servers to get our public IP address, should work for both ipv4 and ipv6
-    def get_my_ip(self):
+    def get_my_ip():
         stun_servers = [
             ('stun.l.google.com', 19302),
             ('global.stun.twilio.com', 3478),
@@ -89,6 +92,6 @@ class MasterServerClient:
                 return external_ip
 
         # Should be a rare case
-        self.logger.error(
+        logger.error(
             "Failed to fetch public IP address from STUN servers.")
         return ''

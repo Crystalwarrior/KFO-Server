@@ -30,8 +30,7 @@ import unicodedata
 import traceback
 import logging
 
-logger_debug = logging.getLogger("debug")
-logger = logging.getLogger("events")
+logger = logging.getLogger("aoprotocol")
 
 
 class AOProtocol(asyncio.Protocol):
@@ -81,7 +80,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc(
                 "Your last action was dropped because it was too big! Contact the server administrator for more information."
             )
-            logger_debug.debug(f"Buffer overflow from {ipid} with {len(buf)}")
+            logger.debug("Buffer overflow from %s with %s", ipid, len(buf))
             return
         self.buffer = buf
         for msg in self.get_messages():
@@ -91,8 +90,8 @@ class AOProtocol(asyncio.Protocol):
                 cmd, *args = msg.split("#")
                 self.net_cmd_dispatcher[cmd](self, args)
             except KeyError:
-                logger_debug.debug(
-                    f"Unknown incoming message from {ipid}: {msg}")
+                logger.debug(
+                    "Unknown incoming message from %s: %s", ipid, msg)
             except Exception:
                 print(traceback.format_exc())
                 self.client.disconnect()
@@ -133,7 +132,7 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if self.client is not None:
-            logger.debug(f"{self.client.ipid} disconnected.")
+            logger.debug("%s disconnected.", self.client.ipid)
             self.server.remove_client(self.client)
         if self.ping_timeout is not None:
             self.ping_timeout.cancel()
@@ -1213,7 +1212,7 @@ class AOProtocol(asyncio.Protocol):
                     )
 
             return
-                   
+
         # Additive only works on same-char messages
         if additive and (
             self.client.area.last_ic_message is None
