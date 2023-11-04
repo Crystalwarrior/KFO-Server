@@ -1153,7 +1153,7 @@ class AOProtocol(asyncio.Protocol):
         if "¨" in text:
             emote = anim  # We'll use this variable for storing each new emote in our message
             messages = text.split("¨")
-            separator = "\p\p\p" + " " 
+            separator = " "
 
             # Iterate through the split message
             for index, message in enumerate(messages):
