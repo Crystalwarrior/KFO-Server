@@ -180,6 +180,9 @@ class ClientManager:
             # Currently requested subtheme of this client
             self.subtheme = ""
 
+            # The last char_url set by this client.
+            self.char_url = ""
+
             # Compatibility stuff
             # Determine if this client can support multi-layered audio (such as ambience)
             self.has_multilayer_audio = False
@@ -1046,6 +1049,9 @@ class ClientManager:
                         c.send_ooc(ex)
                         c.unfollow()
                         return
+            # Last error check got done above.
+
+            self.clear_area_char_links(old_area)
 
             reason = ""
             if (
@@ -1162,6 +1168,50 @@ class ClientManager:
                 self.send_ooc(
                     "This area is muted - you cannot talk in-character unless invited."
                 )
+
+        # User links stuff
+        def remove_user_link(self, char_name):
+            """Removes an user link on this client."""
+            self.send_command("CU", "0", "0", char_name)
+
+        def add_user_link(self, char_name, char_url):
+            """Adds an user link on this client."""
+            self.send_command("CU", "0", "1", char_name, char_url)
+
+        def clear_user_links(self):
+            """Clear all user links of this client."""
+            self.send_command("CU", "0", "2")
+
+        def get_new_area_user_links(self):
+            """"
+            Get the char_urls of the new area that the client changed to.
+            And applying the changes.
+            """
+
+            self.clear_user_links()
+
+            clients = (c for c in self.area.clients if c.id != self.id)
+
+            for client in clients:
+                self.add_user_link(client.char_name, client.char_url)
+
+
+
+        def clear_area_char_links(self, old_area):
+            """
+            Clears all user links in the old area.
+            And declare them in the new area.
+            The client should be already in the new area for this to be called
+            """
+            self.get_new_area_user_links()
+
+            for client in old_area.clients:
+                client.remove_user_link(self.char_name)
+            clients = (c for c in self.area.clients if c.id != self.id)
+
+            for client in clients:
+                client.add_user_link(self.char_name, self.char_url)
+
 
         def get_area_list(self, hidden=False, unlinked=False):
             area_list = []
