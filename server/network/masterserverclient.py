@@ -31,7 +31,7 @@ class MasterServerClient:
         self.server = server
         self.logger = l.getLogger("msclient")
         self.masterserver_url = 'https://servers.aceattorneyonline.com/servers'
-        self.interval = 10
+        self.interval = 60
         cfg = self.server.config
         self.serverinfo = {
             'port': cfg['port'],
