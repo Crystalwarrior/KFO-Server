@@ -40,7 +40,7 @@ from server.network.webhooks import Webhooks
 from server.constants import remove_URL, dezalgo
 
 
-logger = logging.getLogger("debug")
+logger = logging.getLogger("main")
 
 
 class TsuServer3:
@@ -130,6 +130,7 @@ class TsuServer3:
 
     def start(self):
         """Start the server."""
+        logger.info("Starting server")
         loop = asyncio.get_event_loop_policy().get_event_loop()
 
         bound_ip = "0.0.0.0"

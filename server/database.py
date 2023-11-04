@@ -15,8 +15,7 @@ import arrow
 
 import logging
 
-logger = logging.getLogger("debug")
-event_logger = logging.getLogger("events")
+logger = logging.getLogger("database")
 
 
 DB_FILE = "storage/db.sqlite3"
@@ -85,7 +84,7 @@ class Database:
                         else:
                             if effective_id != ipid:
                                 logger.debug(
-                                    f"IPID {ipid} reassigned to {effective_id}"
+                                    "IPID %s reassigned to %s", ipid, effective_id
                                 )
                             break
 
@@ -97,7 +96,7 @@ class Database:
                         # correspond to any IPIDs in the IPID table.
                         if ipid not in ipids:
                             logger.debug(
-                                f"IPID {ipid} in HDID list does not exist. Ignoring."
+                                "IPID %s in HDID list does not exist. Ignoring.", ipid
                             )
                             continue
                         conn.execute(
@@ -119,11 +118,12 @@ class Database:
                     try:
                         ipid = int(ipid)
                     except ValueError:
-                        logger.debug(f"Bad IPID {ipid} in ban list. Ignoring.")
+                        logger.debug(
+                            "Bad IPID %s in ban list. Ignoring.", ipid)
                         continue
                     if ipid not in ipids:
                         logger.debug(
-                            f"IPID {ipid} in ban list does not exist. Ignoring."
+                            "IPID %s in ban list does not exist. Ignoring.", ipid
                         )
                         continue
                     ban_id = conn.execute(
@@ -160,7 +160,7 @@ class Database:
 
             with open(f"migrations/v{version}.sql", "r") as file:
                 conn.executescript(file.read())
-        logger.debug(f"Migration to v{version} complete")
+        logger.debug("Migration to v%s complete", version)
 
     def ipid(self, ip):
         """Get an IPID from an IP address."""
@@ -211,7 +211,7 @@ class Database:
         """
         with self.db as conn:
             if ban_id is None:
-                event_logger.info(
+                logger.info(
                     f"{banned_by.name} ({banned_by.ipid}) "
                     + f"banned {target_id}: '{reason}'."
                 )
@@ -365,7 +365,7 @@ class Database:
 
     def unban(self, ban_id):
         """Remove a ban entry."""
-        event_logger.info(f"Unbanning {ban_id}")
+        logger.info("Unbanning %s", ban_id)
         with self.db as conn:
             unbans = conn.execute(
                 dedent(
@@ -441,7 +441,7 @@ class Database:
         if showname != client.char_name:
             showname = f"{showname}/{client.char_name}"
 
-        event_logger.info(
+        logger.info(
             f"[H{area.area_manager.id} A{area.id} '{area.name}'] {showname}"
             + f"/{client.name} ({client.ipid}): event {event_subtype} ({message})"
         )
@@ -471,7 +471,7 @@ class Database:
 
     def log_connect(self, client, failed=False):
         """Log a connect attempt."""
-        event_logger.info(
+        logger.info(
             f"{client.ipid} (HDID: {client.hdid}) "
             + f'{"was blocked from connecting" if failed else "connected"}.'
         )
@@ -494,8 +494,8 @@ class Database:
         target_ipid = target.ipid if target is not None else None
         subtype_id = self._subtype_atom("misc", event_subtype)
         data_json = json.dumps(data)
-        event_logger.info(
-            f"{event_subtype} ({client_ipid} onto {target_ipid}): {data}")
+        logger.info(
+            "%s (%s onto %s): %s", event_subtype, client_ipid, target_ipid, data)
 
         with self.db as conn:
             conn.execute(
