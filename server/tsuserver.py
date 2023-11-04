@@ -123,7 +123,7 @@ class TsuServer3:
             sys.exit(1)
 
         self.client_manager = ClientManager(self)
-        server.logger.setup_logger(debug=self.config["debug"])
+        server.logger.setup_logging(debug=self.config["debug"])
 
         self.webhooks = Webhooks(self)
         self.bridgebot = None
