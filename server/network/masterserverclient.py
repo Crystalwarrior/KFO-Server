@@ -31,6 +31,7 @@ class MasterServerClient:
         self.server = server
         self.logger = l.getLogger("msclient")
         self.masterserver_url = 'https://servers.aceattorneyonline.com/servers'
+        self.interval = 10
         cfg = self.server.config
         self.serverinfo = {
             'port': cfg['port'],
@@ -57,7 +58,7 @@ class MasterServerClient:
                     # We don't know how to handle or recover from this error, so re-raise it.
                     raise e
                 finally:
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(self.interval)
 
     async def send_server_info(self, http: aiohttp.ClientSession):
         # Update playercount
