@@ -65,7 +65,7 @@ class MasterServerClient:
         self.serverinfo['players'] = self.server.player_count
 
         async with http.post(self.masterserver_url, json=self.serverinfo) as res:
-            response_body = await res.text()
+            response_body = await res.text(encoding='utf-8')
             if res.status >= 300:
                 self.logger.error(
                     "Failed to send info to masterserver: received status code: %d and body: %s",
