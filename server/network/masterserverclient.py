@@ -32,7 +32,6 @@ class MasterServerClient:
 
     def __init__(self, server):
         self.server = server
-        self.api_url = "https://servers.aceattorneyonline.com/servers"
 
     async def connect(self):
         """
