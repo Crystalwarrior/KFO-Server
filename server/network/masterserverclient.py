@@ -26,19 +26,13 @@ import aiohttp
 import stun
 
 logger = logging.getLogger("debug")
-stun_servers = [
-    ('stun.l.google.com', 19302),
-    ('global.stun.twilio.com', 3478),
-    ('stun.voip.blackberry.com', 3478),
-]
-
-API_BASE_URL = 'https://servers.aceattorneyonline.com'
 
 class MasterServerClient:
     """Advertises information about this server to the master server."""
 
     def __init__(self, server):
         self.server = server
+        self.api_url = "https://servers.aceattorneyonline.com/servers"
 
     async def connect(self):
         """
