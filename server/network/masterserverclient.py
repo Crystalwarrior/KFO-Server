@@ -64,7 +64,7 @@ class MasterServerClient:
                     logger.debug("Unknown connection error occurred on the master server. Error: (%s)\nRetrying in 5 seconds...", err)
                     await asyncio.sleep(5)
                 finally:
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(self.interval)
 
     def get_my_ip(self):
         """
