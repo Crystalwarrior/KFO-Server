@@ -149,7 +149,7 @@ class TsuServer3:
 
         if self.config["use_masterserver"]:
             self.ms_client = MasterServerClient(self)
-            asyncio.ensure_future(self.ms_client.connect(), loop=loop)
+            asyncio.ensure_future(self.ms_client.advertising_loop(), loop=loop)
 
         if self.config["zalgo_tolerance"]:
             self.zalgo_tolerance = self.config["zalgo_tolerance"]

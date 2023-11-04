@@ -17,22 +17,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
-import aiohttp
-import stun
-import time
-from threading import Thread
-
 import logging
+import asyncio
+
+import stun
+import aiohttp
 
 logger = logging.getLogger("debug")
-stun_servers = [
-    ('stun.l.google.com', 19302),
-    ('global.stun.twilio.com', 3478),
-    ('stun.voip.blackberry.com', 3478),
-]
-
-API_BASE_URL = 'https://servers.aceattorneyonline.com'
 
 
 class MasterServerClient:
@@ -40,54 +31,63 @@ class MasterServerClient:
 
     def __init__(self, server):
         self.server = server
+        self.masterserver_url = 'https://servers.aceattorneyonline.com/servers'
+        cfg = self.server.config
+        self.serverinfo = {
+            'port': cfg['port'],
+            'name': cfg['masterserver_name'],
+            'description': cfg['masterserver_description'],
+            'players': self.server.player_count,
+            'ip': cfg['masterserver_custom_hostname'] if 'masterserver_custom_hostname' in cfg else MasterServerClient.get_my_ip()
+        }
 
-    async def connect(self):
+        if 'use_websockets' in cfg and cfg['use_websockets']:
+            self.serverinfo['ws_port'] = cfg['websocket_port']
+        if 'use_securewebsockets' in cfg and cfg['use_securewebsockets']:
+            self.serverinfo['wss_port'] = cfg['securewebsocket_port']
+
+    # Sends server info to masterserver every 60 seconds
+    async def advertising_loop(self):
         async with aiohttp.ClientSession() as http:
             while True:
                 try:
                     await self.send_server_info(http)
-                except aiohttp.ClientError:
-                    logger.exception(
-                        'Connection error occurred. (Master server down?)')
-                except:  # If is a unknown error
-                    logger.debug("Connection error occurred. (No internet?)")
-                    await asyncio.sleep(5)
+                except Exception as e:
+                    logger.error("Failed to send server info to masterserver.")
+                    # We don't know how to handle or recover from this error, so re-raise it.
+                    raise e
                 finally:
                     await asyncio.sleep(60)
 
-    def get_my_ip(self):
+    async def send_server_info(self, http: aiohttp.ClientSession):
+        # Update playercount
+        self.serverinfo['players'] = self.server.player_count
+
+        async with http.post(self.masterserver_url, json=self.serverinfo) as res:
+            response_body = await res.text()
+            if res.status >= 300:
+                logger.error(
+                    "Failed to send info to masterserver: received status code: %d and body: %s",
+                    res.status, response_body)
+            else:
+                logger.debug(
+                    'Sent server info to masterserver: %s', self.masterserver_url)
+
+    @staticmethod
+    # Use STUN servers to get our public IP address, should work for both ipv4 and ipv6
+    def get_my_ip():
+        stun_servers = [
+            ('stun.l.google.com', 19302),
+            ('global.stun.twilio.com', 3478),
+            ('stun.voip.blackberry.com', 3478),
+        ]
+
         for stun_ip, stun_port in stun_servers:
             nat_type, external_ip, _external_port = \
                 stun.get_ip_info(stun_host=stun_ip, stun_port=stun_port)
             if nat_type != stun.Blocked:
                 return external_ip
 
-    async def send_server_info(self, http: aiohttp.ClientSession):
-        loop = asyncio.get_event_loop()
-        cfg = self.server.config
-        body = {
-            'port': cfg['port'],
-            'name': cfg['masterserver_name'],
-            'description': cfg['masterserver_description'],
-            'players': self.server.player_count
-        }
-
-        if 'masterserver_custom_hostname' in cfg:
-            body['ip'] = cfg['masterserver_custom_hostname']
-        else:
-            body['ip'] = await loop.run_in_executor(None, self.get_my_ip)
-
-        if cfg['use_websockets']:
-            body['ws_port'] = cfg['websocket_port']
-        if cfg['use_securewebsockets']:
-            body['wss_port'] = cfg['securewebsocket_port']
-
-        async with http.post(f'{API_BASE_URL}/servers', json=body) as res:
-            err_body = await res.text()
-            try:
-                res.raise_for_status()
-            except aiohttp.ClientResponseError as err:
-                logging.error(
-                    f"Got status={err.status} advertising {body}: {err_body}")
-
-        logger.debug(f'Heartbeat to {API_BASE_URL}/servers')
+        # Should be a rare case
+        logger.error("Failed to fetch public IP address from STUN servers.")
+        return ''
