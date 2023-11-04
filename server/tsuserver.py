@@ -16,6 +16,17 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import sys
+import logging
+import asyncio
+import importlib
+
+import websockets
+import geoip2.database
+import yaml
+
+import server.logger
 from server import database
 from server.hub_manager import HubManager
 from server.client_manager import ClientManager
@@ -28,18 +39,6 @@ from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
 from server.constants import remove_URL, dezalgo
 
-import server.logger
-import sys
-import importlib
-
-import asyncio
-import websockets
-
-import geoip2.database
-
-import yaml
-
-import logging
 
 logger = logging.getLogger("debug")
 
