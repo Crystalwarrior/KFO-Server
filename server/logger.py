@@ -18,27 +18,26 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import sys
-
+import time
 import logging
 import logging.handlers
-import time
 
 
-def setup_logger(debug):
+def setup_logging(debug: bool):
     """
-    Set up all loggers.
+    Set up all logging.
     :param debug: whether debug mode should be enabled
 
     """
     logging.Formatter.converter = time.gmtime
     debug_formatter = logging.Formatter("[%(asctime)s UTC] %(message)s")
 
-    stdoutHandler = logging.StreamHandler(sys.stdout)
-    stdoutHandler.setLevel(logging.DEBUG)
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
         "[%(name)s] %(module)s@%(lineno)d : %(message)s")
-    stdoutHandler.setFormatter(formatter)
-    logging.getLogger().addHandler(stdoutHandler)
+    stdout_handler.setFormatter(formatter)
+    logging.getLogger().addHandler(stdout_handler)
 
     debug_log = logging.getLogger("debug")
     debug_log.setLevel(logging.DEBUG)
