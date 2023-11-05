@@ -1169,7 +1169,18 @@ class ClientManager:
                     "This area is muted - you cannot talk in-character unless invited."
                 )
 
-        # User links stuff
+        # CU Packet
+        # CU#<authority:int>#<action:int>#<char_name:str>#<link:str>#%
+        # Sets the character_URL of the client.
+
+        # authority:
+        #             0 = server
+        #         |   1 = client,
+
+        # action:     0 = Delete,
+        #         |   1 = Add,
+        #         |   2 = Clear all,
+
         def remove_user_link(self, char_name):
             """Removes an user link on this client."""
             self.send_command("CU", "0", "0", char_name)
