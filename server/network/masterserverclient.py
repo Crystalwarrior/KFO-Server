@@ -65,11 +65,11 @@ class MasterServerClient:
                     await self.send_server_info(http)
                 except aiohttp.ClientError as err:  # Connection error
                     logger.debug(
-                        'Connection error occurred. (Couldn\'t reach the master server). Error: (%s)', err)
+                        'Connection error occurred. (Couldn\'t reach the master server). Error: (%s)\nRetrying in 5 seconds...', err)
 
                     await asyncio.sleep(5)
                 except Exception as err:  # Unknown error
-                    logger.debug("Unknown connection error occurred on the master server. Error: (%s)", err)
+                    logger.debug("Unknown connection error occurred on the master server. Error: (%s)\nRetrying in 5 seconds...", err)
                     await asyncio.sleep(5)
                 finally:
                     await asyncio.sleep(60)
