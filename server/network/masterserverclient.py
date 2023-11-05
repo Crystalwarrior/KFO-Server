@@ -42,6 +42,23 @@ class MasterServerClient:
         self.server = server
 
     async def connect(self):
+        """
+        Connects to the server and sends server information periodically.
+
+        This function establishes a connection to the server using the aiohttp library's
+        ClientSession. It then enters a loop where it continuously sends server information
+        using the `send_server_info` method. If a `ClientError` occurs while sending the
+        information, it is logged as a connection error. Otherwise, if an unknown error
+        occurs, it is logged as an unknown connection error. In both cases, the function
+        sleeps for 5 seconds before retrying. Finally, the function sleeps for 60 seconds
+        before sending the next server information.
+
+        Parameters:
+            self: The instance of the class.
+
+        Returns:
+            None
+        """
         async with aiohttp.ClientSession() as http:
             while True:
                 try:
@@ -58,6 +75,12 @@ class MasterServerClient:
                     await asyncio.sleep(60)
 
     def get_my_ip(self):
+        """
+        Get the external IP address using STUN servers.
+
+        Returns:
+            str: The external IP address.
+        """
         for stun_ip, stun_port in stun_servers:
             nat_type, external_ip, _external_port = \
                 stun.get_ip_info(stun_host=stun_ip, stun_port=stun_port)
@@ -65,6 +88,16 @@ class MasterServerClient:
                 return external_ip
 
     async def send_server_info(self, http: aiohttp.ClientSession):
+        """
+        Send server information to the specified HTTP client session.
+        Usually being the master server.
+
+        Parameters:
+            http (aiohttp.ClientSession): The aiohttp client to send the server information to.
+
+        Returns:
+            None
+        """
         loop = asyncio.get_event_loop()
         cfg = self.server.config
         body = {
