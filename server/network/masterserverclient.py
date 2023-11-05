@@ -17,10 +17,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# Internal imports
+import logging
+
+# External imports
 import asyncio
 import aiohttp
 import stun
-import logging
 
 logger = logging.getLogger("debug")
 stun_servers = [
