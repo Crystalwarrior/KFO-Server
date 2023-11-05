@@ -126,7 +126,6 @@ class MasterServerClient:
             try:
                 res.raise_for_status()
             except aiohttp.ClientResponseError as err:
-                logging.error(
-                    f"Got status={err.status} advertising {body}: {err_body}")
+                logging.error("Got status=%s advertising %s: %s", err.status, body, err_body)
 
-        logger.debug(f'Heartbeat to {API_BASE_URL}/servers')
+        logger.debug('Heartbeat to %s/servers', API_BASE_URL)
