@@ -1883,6 +1883,9 @@ class AOProtocol(asyncio.Protocol):
             return
         #                       char_name
         self.client.char_name = args[1]
+        # Note: Updating the emote_name could make things like updating the pair emote by just starting to type.
+        # For example, this could be done by adding:
+        #   self.client.emote_name = args[2]
         if args[0] in (0, 1):
             clients = (c for c in self.client.area.clients if c.id != self.client.id)
             for c in clients:
