@@ -34,7 +34,6 @@ stun_servers = [
 
 API_BASE_URL = 'https://servers.aceattorneyonline.com'
 
-
 class MasterServerClient:
     """Advertises information about this server to the master server."""
 
@@ -47,9 +46,8 @@ class MasterServerClient:
                 try:
                     await self.send_server_info(http)
                 except aiohttp.ClientError:
-                    logger.exception(
-                        'Connection error occurred. (Master server down?)')
-                except:  # If is a unknown error
+                    logger.exception('Connection error occurred. (Master server down?)')
+                except: # If is a unknown error
                     logger.debug("Connection error occurred. (No internet?)")
                     await asyncio.sleep(5)
                 finally:
@@ -66,6 +64,7 @@ class MasterServerClient:
         loop = asyncio.get_event_loop()
         cfg = self.server.config
         body = {
+            'ip': await loop.run_in_executor(None, self.get_my_ip),
             'port': cfg['port'],
             'name': cfg['masterserver_name'],
             'description': cfg['masterserver_description'],
@@ -74,20 +73,14 @@ class MasterServerClient:
 
         if 'masterserver_custom_hostname' in cfg:
             body['ip'] = cfg['masterserver_custom_hostname']
-        else:
-            body['ip'] = await loop.run_in_executor(None, self.get_my_ip)
-
         if cfg['use_websockets']:
             body['ws_port'] = cfg['websocket_port']
-        if cfg['use_securewebsockets']:
-            body['wss_port'] = cfg['securewebsocket_port']
 
         async with http.post(f'{API_BASE_URL}/servers', json=body) as res:
             err_body = await res.text()
             try:
                 res.raise_for_status()
             except aiohttp.ClientResponseError as err:
-                logging.error(
-                    f"Got status={err.status} advertising {body}: {err_body}")
+                logging.error(f"Got status={err.status} advertising {body}: {err_body}")
 
         logger.debug(f'Heartbeat to {API_BASE_URL}/servers')
