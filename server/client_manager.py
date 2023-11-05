@@ -1223,12 +1223,19 @@ class ClientManager:
             """
 
             # Removes the client's user link from the old area
+            # TODO: Maybe take into account than sending the "CU" packet can reveal your cover.
+            # So you could simply treat the hidden client as if they didn't declare their char_url.
+            # Probably using a bool for it.
             if self.char_url != "":
                 for client in old_area.clients:
                     client.remove_user_link(self.char_name)
 
             # Fetch the user links of the new area
             self.get_new_area_user_links()
+
+            # TODO: Maybe take into account than sending the "CU" packet can reveal your cover.
+            # So you could simply treat the hidden client as if they didn't declare their char_url.
+            # Probably using a bool for it.
 
             # Declare your user link in the new area for everyone to see
             if self.char_url != "":
