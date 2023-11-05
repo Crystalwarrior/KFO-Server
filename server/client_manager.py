@@ -1183,15 +1183,15 @@ class ClientManager:
 
         def remove_user_link(self, char_name):
             """Removes an user link on this client."""
-            self.send_command("CU", "0", "0", char_name)
+            self.send_command("CU", "1", "0", char_name)
 
         def add_user_link(self, char_name, char_url):
             """Adds an user link on this client."""
-            self.send_command("CU", "0", "1", char_name, char_url)
+            self.send_command("CU", "1", "1", char_name, char_url)
 
         def clear_user_links(self):
             """Clear all user links of this client."""
-            self.send_command("CU", "0", "2")
+            self.send_command("CU", "1", "2")
 
         def get_new_area_user_links(self):
             """"
