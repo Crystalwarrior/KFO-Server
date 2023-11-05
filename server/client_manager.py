@@ -1222,15 +1222,17 @@ class ClientManager:
             """
 
             # Removes the client's user link from the old area
-            for client in old_area.clients:
-                client.remove_user_link(self.char_name)
+            if self.char_url != "":
+                for client in old_area.clients:
+                    client.remove_user_link(self.char_name)
 
             # Fetch the user links of the new area
             self.get_new_area_user_links()
 
             # Declare your user link in the new area for everyone to see
-            for client in self.area.clients:
-                client.add_user_link(self.char_name, self.char_url)
+            if self.char_url != "":
+                for client in self.area.clients:
+                    client.add_user_link(self.char_name, self.char_url)
 
 
         def get_area_list(self, hidden=False, unlinked=False):
