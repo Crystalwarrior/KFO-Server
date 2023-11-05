@@ -1221,12 +1221,12 @@ class ClientManager:
             The client should be already in the new area for this to be called
             """
 
-            # Fetch the user links of the new area
-            self.get_new_area_user_links()
-
             # Removes the client's user link from the old area
             for client in old_area.clients:
                 client.remove_user_link(self.char_name)
+
+            # Fetch the user links of the new area
+            self.get_new_area_user_links()
 
 
         def get_area_list(self, hidden=False, unlinked=False):
