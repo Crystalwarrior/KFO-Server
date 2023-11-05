@@ -1228,13 +1228,6 @@ class ClientManager:
             for client in old_area.clients:
                 client.remove_user_link(self.char_name)
 
-            # Get all the clients minus ourselves.
-            clients = (c for c in self.area.clients if c.id != self.id)
-
-            # Get the char_urls of the new area
-            for client in clients:
-                client.add_user_link(self.char_name, self.char_url)
-
 
         def get_area_list(self, hidden=False, unlinked=False):
             area_list = []
