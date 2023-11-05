@@ -20,9 +20,6 @@
 import asyncio
 import aiohttp
 import stun
-import time
-from threading import Thread
-
 import logging
 
 logger = logging.getLogger("debug")
