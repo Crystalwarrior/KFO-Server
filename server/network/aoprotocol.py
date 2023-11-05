@@ -1866,6 +1866,79 @@ class AOProtocol(asyncio.Protocol):
         """
         self.net_cmd_ct(["opban", "/ban {}".format(args[0])])
 
+    def net_cmd_tt(self, args):
+        """
+        Sended when the client is typing on the IC chat.
+
+        TT#<state: int>#<char_name:str>#<emote_name:str>#%
+        
+        state:      0 = stopped typing
+                |   1 = typing
+        
+        Client implementation details:
+        The state is cleared after the client sends the IC message.
+        Also cleared after 100-200ms of inactivity.
+        """
+        if not self.validate_net_cmd(args, self.ArgType.INT, self.ArgType.STR, self.ArgType.STR, needs_auth=False):
+            return
+        if args[0] in (0, 1):
+            clients = (c for c in self.client.area.clients if c.id != self.client.id)
+            for c in clients:
+                c.send_command("TT", args[0], args[1], args[2])
+
+    def net_cmd_cu(self, args):
+        """
+        
+        Sets the character_URL of the client.
+        
+        CU#<authority:int>#<action:int>#<char_name:str>#<link:str>#%
+        
+        authority:     
+                    0 = server
+                |   1 = client,
+       
+        action:     0 = Delete,
+                |   1 = Add,
+                |   2 = Clear all,
+                    
+        """
+        if not self.validate_net_cmd(args,
+                                     self.ArgType.INT,
+                                     self.ArgType.INT,
+                                     self.ArgType.STR,
+                                     self.ArgType.STR,
+                                     needs_auth=False):
+            return
+
+        if args[0] == 0:
+            # Only the server should have access to the "server" authority
+            # or any other added authority level of the future by default.
+            # If planned to add more authority levels, this "if" should be reconsidered.
+            return
+
+        clients = (c for c in self.client.area.clients if c.id != self.client.id)
+
+        # In the case the char_url was already set, clear it.
+        if self.client.char_url != "":
+            for c in clients:
+                # Clear the old char_url
+                #                   authority, action, char_name
+                c.send_command('CU', args[0], "0", self.client.char_name)
+
+                # Add the new char_url
+                #                   authority, action, char_name, link
+                c.send_command('CU', args[0], args[1], args[2], args[3])
+        else:
+            for c in clients:
+                # Set the char_url
+                #                   authority, action, char_name, link
+                c.send_command('CU', args[0], args[1], args[2], args[3])
+
+
+        #                      link
+        self.client.char_url = args[3]
+
+
     net_cmd_dispatcher = {
         "HI": net_cmd_hi,  # handshake
         "ID": net_cmd_id,  # client version
@@ -1888,4 +1961,6 @@ class AOProtocol(asyncio.Protocol):
         "ZZ": net_cmd_zz,  # call mod button
         "opKICK": net_cmd_opKICK,  # /kick with guard on
         "opBAN": net_cmd_opBAN,  # /ban with guard on
+        "TT": net_cmd_tt,
+        "CU": net_cmd_cu,
     }

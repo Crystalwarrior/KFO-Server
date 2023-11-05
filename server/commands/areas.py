@@ -7,6 +7,7 @@ from server.exceptions import ClientError, ArgumentError, AreaError
 from . import mod_only
 
 __all__ = [
+    "ooc_cmd_overlay",
     "ooc_cmd_bg",
     "ooc_cmd_bgs",
     "ooc_cmd_status",
@@ -29,6 +30,38 @@ __all__ = [
     "ooc_cmd_lights",
 ]
 
+def ooc_cmd_overlay(client, arg):
+    """
+    Set the overlay of an area.
+    Usage: /overlay <background>
+    """
+    if len(arg) == 0:
+        pos_lock = ""
+        if len(client.area.pos_lock) > 0:
+            pos = ", ".join(str(lpos) for lpos in client.area.pos_lock)
+            pos_lock = f"\nAvailable positions: {pos}."
+        client.send_ooc(
+            f"Current overlay is {client.area.overlay}.{pos_lock}")
+        return
+    if client not in client.area.owners and not client.is_mod and client.area.overlay_lock:
+        raise AreaError("This area's overlay system is locked!")
+    if client.area.cannot_ic_interact(client):
+        raise AreaError("You are not on the area's invite list!")
+    if (
+        not client.is_mod
+        and not (client in client.area.owners)
+        and client.char_id == -1
+    ):
+        raise ClientError("You may not do that while spectating!")
+    if client.area.dark and not client.is_mod and not (client in client.area.owners):
+        raise ClientError("You must be authorized to do that.")
+    try:
+        client.area.change_background(client.area.background, overlay=arg)
+    except AreaError:
+        raise
+    client.area.broadcast_ooc(
+        f"{client.showname} changed the overlay to {arg}.")
+    database.log_area("overlay", client, client.area, message=arg)
 
 def ooc_cmd_bg(client, arg):
     """

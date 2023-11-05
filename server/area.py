@@ -124,8 +124,10 @@ class Area:
 
         # Initialize prefs
         self.background = "default"
+        self.overlay = ""
         self.pos_lock = []
         self.bg_lock = False
+        self.overlay_lock = False
         self.evidence_mod = "FFA"
         self.can_cm = False
         self.locking_allowed = False
@@ -394,6 +396,8 @@ class Area:
             self.o_background = self.background
         if "bg_lock" in area:
             self.bg_lock = area["bg_lock"]
+        if "overlay_lock" in area:
+            self.overlay_lock = area["overlay_lock"]
         if "pos_lock" in area:
             _pos_lock = area["pos_lock"].split(" ")
 
@@ -583,6 +587,7 @@ class Area:
         if len(self.pos_lock) > 0:
             area["pos_lock"] = " ".join(map(str, self.pos_lock))
         area["bg_lock"] = self.bg_lock
+        area["overlay_lock"] = self.overlay_lock
         area["evidence_mod"] = self.evidence_mod
         area["can_cm"] = self.can_cm
         area["locking_allowed"] = self.locking_allowed
@@ -1609,11 +1614,36 @@ class Area:
             self.hp_pro = val
         self.send_command("HP", side, val)
 
-    def change_background(self, bg, silent=False):
+    def change_background(self, bg, silent=False, overlay="", mode=-1):
         """
-        Set the background.
-        :param bg: background name
+        Set the background and/or overlay.
+        
+        parameters:
+        bg:      background name
+        silent:  should send the pre 2.8 packet or the new one?
+        overlay: overlay name (optional)
+        
         :raises: AreaError if `bg` is not in background list
+        
+        BN packet implementation:
+        
+        Before 2.8 (Changes after sending a IC message):
+        BN # <background name>
+        
+        AO 2.8 (Clear viewport and update/change background position):
+        BN # <background name> # <pos>
+        
+        AOG 1.0 (Put a additional image on top of the character):
+        BN # <background name> # <pos> # <overlay:str> # <mode:int>
+        
+        mode: 0 = pre 2.8 version (change background after IC message)
+              1 = 2.8 version (Change background immediately, clearing the viewport)
+              2 = Change background without clearing the viewport
+              3 = Change the overlay immediately and the background in the next IC message
+
+        The client should be expected to implement at least the first two.
+
+        
         """
         if self.use_backgrounds_yaml:
             if len(self.server.backgrounds) <= 0:
@@ -1624,17 +1654,36 @@ class Area:
                 raise AreaError(
                     f'Invalid background name {bg}.\nPlease add it to the "backgrounds.yaml" or change the background name for area [{self.id}] {self.name}.'
                 )
+        # TODO: Make overlay use  "self.use_overlay_yaml". For now it guessses that it is always disabled.
+
         if self.dark:
             self.background_dark = bg
         else:
             self.background = bg
-        for client in self.clients:
-            # Update all clients to the pos lock
-            if len(self.pos_lock) > 0 and client.pos not in self.pos_lock:
-                client.change_position(self.pos_lock[0])
-            if silent:
+
+        if len(self.pos_lock) > 0:
+            for client in self.clients:
+                # Update all clients to the pos lock
+                if client.pos not in self.pos_lock:
+                    client.change_position(self.pos_lock[0])
+
+        if overlay != "":
+            # In case "mode" is unspecified
+            if mode == -1:
+                if silent:
+                    mode = 0
+                else:
+                    mode = 1
+            for client in self.clients:
+                client.send_command("BN", bg, client.pos, overlay, mode)
+
+        # Pre AOG packet fallback
+        # In case overlay wasn't specified
+        elif silent:
+            for client in self.clients:
                 client.send_command("BN", bg)
-            else:
+        else:
+            for client in self.clients:
                 client.send_command("BN", bg, client.pos)
 
     def change_status(self, value):
