@@ -1051,7 +1051,7 @@ class ClientManager:
                         return
             # Last error check got done above.
 
-            self.clear_area_char_links(old_area)
+            self.refresh_area_char_links(old_area)
 
             reason = ""
             if (
@@ -1197,7 +1197,7 @@ class ClientManager:
 
 
 
-        def clear_area_char_links(self, old_area):
+        def refresh_area_char_links(self, old_area):
             """
             Clears all user links in the old area.
             And declare them in the new area.
