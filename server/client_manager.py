@@ -1228,6 +1228,10 @@ class ClientManager:
             # Fetch the user links of the new area
             self.get_new_area_user_links()
 
+            # Declare your user link in the new area for everyone to see
+            for client in self.area.clients:
+                client.add_user_link(self.char_name, self.char_url)
+
 
         def get_area_list(self, hidden=False, unlinked=False):
             area_list = []
