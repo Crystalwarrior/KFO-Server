@@ -1881,6 +1881,8 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.validate_net_cmd(args, self.ArgType.INT, self.ArgType.STR, self.ArgType.STR, needs_auth=False):
             return
+        #                       char_name
+        self.client.char_name = args[1]
         if args[0] in (0, 1):
             clients = (c for c in self.client.area.clients if c.id != self.client.id)
             for c in clients:
@@ -1915,6 +1917,8 @@ class AOProtocol(asyncio.Protocol):
             # or any other added authority level of the future by default.
             # If planned to add more authority levels, this "if" should be reconsidered.
             return
+        #                       char_name
+        self.client.char_name = args[2]
 
         clients = (c for c in self.client.area.clients if c.id != self.client.id)
 
