@@ -1202,13 +1202,13 @@ class ClientManager:
             And applying the changes.
             """
 
-            # Clear existing user links
+            # Clear existing user links on this client
             self.clear_user_links()
 
-            # Get all the clients minus ourselves.
+            # Get all the clients in the current area minus ourselves.
             clients = (c for c in self.area.clients if c.id != self.id)
 
-            # Get the char_urls of the new area
+            # Get the char_urls of the new area for this client.
             for client in clients:
                 self.add_user_link(client.char_name, client.char_url)
 
