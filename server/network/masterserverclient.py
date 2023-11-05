@@ -98,7 +98,6 @@ class MasterServerClient:
         Returns:
             None
         """
-        loop = asyncio.get_event_loop()
         cfg = self.server.config
 
         # Try to get the custom hostname
@@ -106,6 +105,7 @@ class MasterServerClient:
 
         # If fails, try to get the external IP
         if not f_ip:
+            loop = asyncio.get_event_loop()
             f_ip = await loop.run_in_executor(None, self.get_my_ip)
 
         body = {
