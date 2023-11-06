@@ -1881,8 +1881,10 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.validate_net_cmd(args, self.ArgType.INT, self.ArgType.STR, self.ArgType.STR, needs_auth=False):
             return
+
+        # TODO: Add a variable to add the "iniswap_name" of the client.
         #                       char_name
-        self.client.char_name = args[1]
+        # self.client.char_name = args[1]
         # Note: Updating the emote_name could make things like updating the pair emote by just starting to type.
         # For example, this could be done by adding:
         #   self.client.emote_name = args[2]
@@ -1954,8 +1956,8 @@ class AOProtocol(asyncio.Protocol):
                 #                   authority, action, char_name, link
                 c.send_command('CU', args[0], args[1], args[2], args[3])
 
-
-        self.client.char_name = args[2]
+        # TODO: Add a variable to add the "iniswap_name" of the client.
+        # self.client.char_name = args[2]
         #                      link
         self.client.char_url = args[3]
 
