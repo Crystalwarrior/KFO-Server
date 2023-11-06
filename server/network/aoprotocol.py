@@ -1928,8 +1928,6 @@ class AOProtocol(asyncio.Protocol):
             # Or even clear all the user link entries of the area.
             return
 
-        self.client.char_name = args[2]
-
         clients = (c for c in self.client.area.clients if c.id != self.client.id)
 
         # Clear the char_url that the client sent on the previous CU packet.
@@ -1957,6 +1955,7 @@ class AOProtocol(asyncio.Protocol):
                 c.send_command('CU', args[0], args[1], args[2], args[3])
 
 
+        self.client.char_name = args[2]
         #                      link
         self.client.char_url = args[3]
 
