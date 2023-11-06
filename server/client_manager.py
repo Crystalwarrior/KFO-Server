@@ -1181,6 +1181,21 @@ class ClientManager:
         #         |   1 = Add,
         #         |   2 = Clear all,
 
+        def remove_server_link(self, name):
+            """Removes an server link on this client."""
+            #                     server, delete, name
+            self.send_command("CU", "0", "0", name)
+
+        def add_server_link(self, name, url):
+            """Adds an server link on this client."""
+            #                     server, add, name, url
+            self.send_command("CU", "0", "1", name, url)
+
+        def clear_server_links(self):
+            """Clear all server links of this client."""
+            #                      server, clear
+            self.send_command("CU", "0", "2")
+
         def remove_user_link(self, char_name):
             """Removes an user link on this client."""
             #                      client, delete, char_name
@@ -1242,6 +1257,25 @@ class ClientManager:
                 for client in self.area.clients:
                     client.add_user_link(self.char_name, self.char_url)
 
+        def send_server_link_list(self):
+            """
+            Sends the list of server links declared by the server to the client.
+            """
+            if self.server.server_links is None:
+                return
+            for name, url in self.server.server_links.items():
+                self.add_server_link(name, url)
+
+        def refresh_server_link_list(self):
+            """
+            Refreshs the list of server links for this client.
+            Called when the command /refresh is used.
+            """
+            if self.server.server_links is None:
+                return
+            self.clear_server_links()
+            for name, url in self.server.server_links.items():
+                self.add_server_link(name, url)
 
         def get_area_list(self, hidden=False, unlinked=False):
             area_list = []
@@ -1533,6 +1567,9 @@ class ClientManager:
             # Get the char_urls of the new area for this client.
             for client in clients:
                 self.add_user_link(client.char_name, client.char_url)
+
+            # Send the server's declared links to the client.
+            self.send_server_link_list()
 
             self.send_command("DONE")
 
