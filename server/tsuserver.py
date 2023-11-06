@@ -61,6 +61,7 @@ class TsuServer3:
         self.music_list = []
         self.music_whitelist = []
         self.backgrounds = None
+        self.server_links = None
         self.zalgo_tolerance = None
         self.ipRange_bans = []
         self.geoIpReader = None
@@ -104,6 +105,7 @@ class TsuServer3:
             self.load_characters()
             self.load_music()
             self.load_backgrounds()
+            self.load_server_links()
             self.load_ipranges()
             self.hub_manager = HubManager(self)
         except yaml.YAMLError as exc:
@@ -337,6 +339,14 @@ class TsuServer3:
         """Load the backgrounds list from a YAML file."""
         with open("config/backgrounds.yaml", "r", encoding="utf-8") as bgs:
             self.backgrounds = yaml.safe_load(bgs)
+
+    def load_server_links(self):
+        """Load the server links list from a YAML file."""
+        try:
+            with open("config/server_links.yaml", "r", encoding="utf-8") as links:
+                self.server_links = yaml.safe_load(links)
+        except Exception as e:
+            logger.debug("Cannot find server_links.yaml, error: (%s)", e)
 
     def load_iniswaps(self):
         """Load a list of characters for which INI swapping is allowed."""
@@ -580,6 +590,14 @@ class TsuServer3:
         self.load_characters()
         self.load_music()
         self.load_backgrounds()
+
+        # TODO: Only do the refresh if the server link list has changed
+        # Clear the list of user links so they can be reloaded after.
+        for client in self.client_manager.clients:
+            client.refresh_server_link_list()
+        # Load the new server links
+        self.load_server_links()
+
         self.load_ipranges()
 
         import server.commands

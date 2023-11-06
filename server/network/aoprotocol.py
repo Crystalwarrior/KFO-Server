@@ -1881,6 +1881,17 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.validate_net_cmd(args, self.ArgType.INT, self.ArgType.STR, self.ArgType.STR, needs_auth=False):
             return
+
+        #  char_name
+        if args[1].lower() != self.client.char_name.lower():
+        #                       char_name
+            self.client.iniswap = args[1]
+        else:
+            self.client.iniswap = ""
+        # Note: Updating the last_sprite could make things like updating the pair emote by just starting to type.
+        # For example, this could be done by adding:
+        #   self.client.last_sprite = args[2]
+        # TODO: Think if it is a desired behaviour or not.
         if args[0] in (0, 1):
             clients = (c for c in self.client.area.clients if c.id != self.client.id)
             for c in clients:
@@ -1905,7 +1916,7 @@ class AOProtocol(asyncio.Protocol):
         if not self.validate_net_cmd(args,
                                      self.ArgType.INT,
                                      self.ArgType.INT,
-                                     self.ArgType.STR,
+                                     self.ArgType.STR_OR_EMPTY,
                                      self.ArgType.STR,
                                      needs_auth=False):
             return
@@ -1915,15 +1926,30 @@ class AOProtocol(asyncio.Protocol):
             # or any other added authority level of the future by default.
             # If planned to add more authority levels, this "if" should be reconsidered.
             return
+        #                       char_name
+        #  action
+        if args[1] != 1:
+            # Only you should be able to edit your own user link
+            # Fixes a bug where you could change the character URL of another user.
+            # Or even clear all the user link entries of the area.
+            return
 
         clients = (c for c in self.client.area.clients if c.id != self.client.id)
+
+        # Clear the char_url that the client sent on the previous CU packet.
+        if args[2] == "":
+            for c in clients:
+                #                   authority, action, char_name
+                c.send_command('CU', args[0], "1", self.client.f_char_name_raw)
+            self.client.char_url = ""
+            return
 
         # In the case the char_url was already set, clear it.
         if self.client.char_url != "":
             for c in clients:
                 # Clear the old char_url
                 #                   authority, action, char_name
-                c.send_command('CU', args[0], "0", self.client.char_name)
+                c.send_command('CU', args[0], "0", self.client.f_char_name_raw)
 
                 # Add the new char_url
                 #                   authority, action, char_name, link
@@ -1934,6 +1960,12 @@ class AOProtocol(asyncio.Protocol):
                 #                   authority, action, char_name, link
                 c.send_command('CU', args[0], args[1], args[2], args[3])
 
+        #  char_name
+        if args[2].lower() != self.client.char_name.lower():
+        #                       char_name
+            self.client.iniswap = args[2]
+        else:
+            self.client.iniswap = ""
 
         #                      link
         self.client.char_url = args[3]
