@@ -1910,7 +1910,7 @@ class AOProtocol(asyncio.Protocol):
         if not self.validate_net_cmd(args,
                                      self.ArgType.INT,
                                      self.ArgType.INT,
-                                     self.ArgType.STR,
+                                     self.ArgType.STR_OR_EMPTY,
                                      self.ArgType.STR,
                                      needs_auth=False):
             return
@@ -1931,6 +1931,14 @@ class AOProtocol(asyncio.Protocol):
         self.client.char_name = args[2]
 
         clients = (c for c in self.client.area.clients if c.id != self.client.id)
+
+        # Clear the char_url that the client sent on the previous CU packet.
+        if args[2] == "":
+            for c in clients:
+                #                   authority, action, char_name
+                c.send_command('CU', args[0], "1", self.client.char_name)
+            self.client.char_url = ""
+            return
 
         # In the case the char_url was already set, clear it.
         if self.client.char_url != "":
