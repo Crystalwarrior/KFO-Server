@@ -1921,6 +1921,13 @@ class AOProtocol(asyncio.Protocol):
             # If planned to add more authority levels, this "if" should be reconsidered.
             return
         #                       char_name
+        #  action
+        if args[1] != 1:
+            # Only you should be able to edit your own user link
+            # Fixes a bug where you could change the character URL of another user.
+            # Or even clear all the user link entries of the area.
+            return
+
         self.client.char_name = args[2]
 
         clients = (c for c in self.client.area.clients if c.id != self.client.id)
