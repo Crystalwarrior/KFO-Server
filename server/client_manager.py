@@ -1588,6 +1588,33 @@ class ClientManager:
             return self.area.area_manager.char_list[self.char_id]
 
         @property
+        def f_char_name_raw(self):
+            """Get the name of either the character that the client is using or the iniswap."""
+            if self.iniswap != "":
+                return self.iniswap
+
+            if (    self.char_id is None
+                or  self.char_id <= -1
+                or  self.char_id >= len(self.area.area_manager.char_list)):
+                return ""
+
+            return self.area.area_manager.char_list[self.char_id]
+        @property
+        def f_char_name(self):
+            """Get the name of either the character that the client is using or the iniswap."""
+            if self.iniswap != "":
+                return self.iniswap
+
+            if self.char_id is None:
+                return "Connection"
+            if self.char_id == -1:
+                return "Spectator"
+            if self.char_id >= len(self.area.area_manager.char_list):
+                return "Unknown"
+
+            return self.area.area_manager.char_list[self.char_id]
+
+        @property
         def showname(self):
             """Get the showname of this client, or the char name if none."""
             if self._showname == "":

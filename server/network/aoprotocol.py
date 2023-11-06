@@ -1882,9 +1882,12 @@ class AOProtocol(asyncio.Protocol):
         if not self.validate_net_cmd(args, self.ArgType.INT, self.ArgType.STR, self.ArgType.STR, needs_auth=False):
             return
 
-        # TODO: Add a variable to add the "iniswap_name" of the client.
+        #  char_name
+        if args[1].lower() != self.client.char_name.lower():
         #                       char_name
-        # self.client.char_name = args[1]
+            self.client.iniswap = args[1]
+        else:
+            self.client.iniswap = ""
         # Note: Updating the emote_name could make things like updating the pair emote by just starting to type.
         # For example, this could be done by adding:
         #   self.client.emote_name = args[2]
@@ -1936,7 +1939,7 @@ class AOProtocol(asyncio.Protocol):
         if args[2] == "":
             for c in clients:
                 #                   authority, action, char_name
-                c.send_command('CU', args[0], "1", self.client.char_name)
+                c.send_command('CU', args[0], "1", self.client.f_char_name_raw)
             self.client.char_url = ""
             return
 
@@ -1945,7 +1948,7 @@ class AOProtocol(asyncio.Protocol):
             for c in clients:
                 # Clear the old char_url
                 #                   authority, action, char_name
-                c.send_command('CU', args[0], "0", self.client.char_name)
+                c.send_command('CU', args[0], "0", self.client.f_char_name_raw)
 
                 # Add the new char_url
                 #                   authority, action, char_name, link
@@ -1956,8 +1959,13 @@ class AOProtocol(asyncio.Protocol):
                 #                   authority, action, char_name, link
                 c.send_command('CU', args[0], args[1], args[2], args[3])
 
-        # TODO: Add a variable to add the "iniswap_name" of the client.
-        # self.client.char_name = args[2]
+        #  char_name
+        if args[2].lower() != self.client.char_name.lower():
+        #                       char_name
+            self.client.iniswap = args[2]
+        else:
+            self.client.iniswap = ""
+
         #                      link
         self.client.char_url = args[3]
 
