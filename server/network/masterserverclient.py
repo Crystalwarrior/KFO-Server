@@ -17,13 +17,13 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+# Internal imports
+import logging
+
+# External imports
 import asyncio
 import aiohttp
 import stun
-import time
-from threading import Thread
-
-import logging
 
 logger = logging.getLogger("debug")
 stun_servers = [
@@ -41,19 +41,45 @@ class MasterServerClient:
         self.server = server
 
     async def connect(self):
+        """
+        Connects to the server and sends server information periodically.
+
+        This function establishes a connection to the server using the aiohttp library's
+        ClientSession. It then enters a loop where it continuously sends server information
+        using the `send_server_info` method. If a `ClientError` occurs while sending the
+        information, it is logged as a connection error. Otherwise, if an unknown error
+        occurs, it is logged as an unknown connection error. In both cases, the function
+        sleeps for 5 seconds before retrying. Finally, the function sleeps for 60 seconds
+        before sending the next server information.
+
+        Parameters:
+            self: The instance of the class.
+
+        Returns:
+            None
+        """
         async with aiohttp.ClientSession() as http:
             while True:
                 try:
                     await self.send_server_info(http)
-                except aiohttp.ClientError:
-                    logger.exception('Connection error occurred. (Master server down?)')
-                except: # If is a unknown error
-                    logger.debug("Connection error occurred. (No internet?)")
+                except aiohttp.ClientError as err:  # Connection error
+                    logger.debug(
+                        'Connection error occurred. (Couldn\'t reach the master server). Error: (%s)\nRetrying in 5 seconds...', err)
+
+                    await asyncio.sleep(5)
+                except Exception as err:  # Unknown error
+                    logger.debug("Unknown connection error occurred on the master server. Error: (%s)\nRetrying in 5 seconds...", err)
                     await asyncio.sleep(5)
                 finally:
                     await asyncio.sleep(60)
 
     def get_my_ip(self):
+        """
+        Get the external IP address using STUN servers.
+
+        Returns:
+            str: The external IP address.
+        """
         for stun_ip, stun_port in stun_servers:
             nat_type, external_ip, _external_port = \
                 stun.get_ip_info(stun_host=stun_ip, stun_port=stun_port)
@@ -61,18 +87,34 @@ class MasterServerClient:
                 return external_ip
 
     async def send_server_info(self, http: aiohttp.ClientSession):
-        loop = asyncio.get_event_loop()
+        """
+        Send server information to the specified HTTP client session.
+        Usually being the master server.
+
+        Parameters:
+            http (aiohttp.ClientSession): The aiohttp client to send the server information to.
+
+        Returns:
+            None
+        """
         cfg = self.server.config
+
+        # Try to get the custom hostname
+        f_ip = cfg.get('masterserver_custom_hostname')
+
+        # If fails, try to get the external IP
+        if not f_ip:
+            loop = asyncio.get_event_loop()
+            f_ip = await loop.run_in_executor(None, self.get_my_ip)
+
         body = {
-            'ip': await loop.run_in_executor(None, self.get_my_ip),
+            'ip': f_ip,
             'port': cfg['port'],
             'name': cfg['masterserver_name'],
             'description': cfg['masterserver_description'],
             'players': self.server.player_count
         }
 
-        if 'masterserver_custom_hostname' in cfg:
-            body['ip'] = cfg['masterserver_custom_hostname']
         if cfg['use_websockets']:
             body['ws_port'] = cfg['websocket_port']
 
@@ -81,6 +123,6 @@ class MasterServerClient:
             try:
                 res.raise_for_status()
             except aiohttp.ClientResponseError as err:
-                logging.error(f"Got status={err.status} advertising {body}: {err_body}")
+                logging.error("Got status=%s advertising %s: %s", err.status, body, err_body)
 
-        logger.debug(f'Heartbeat to {API_BASE_URL}/servers')
+        logger.debug('Heartbeat to %s/servers', API_BASE_URL)
