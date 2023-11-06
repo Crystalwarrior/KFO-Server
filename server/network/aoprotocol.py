@@ -1888,9 +1888,10 @@ class AOProtocol(asyncio.Protocol):
             self.client.iniswap = args[1]
         else:
             self.client.iniswap = ""
-        # Note: Updating the emote_name could make things like updating the pair emote by just starting to type.
+        # Note: Updating the last_sprite could make things like updating the pair emote by just starting to type.
         # For example, this could be done by adding:
-        #   self.client.emote_name = args[2]
+        #   self.client.last_sprite = args[2]
+        # TODO: Think if it is a desired behaviour or not.
         if args[0] in (0, 1):
             clients = (c for c in self.client.area.clients if c.id != self.client.id)
             for c in clients:
