@@ -1524,6 +1524,16 @@ class ClientManager:
             self.area.area_manager.send_arup_cms([self])
             self.area.area_manager.send_arup_lock([self])
 
+            # Send user links of the lobby.
+
+            # Get all the clients in the current area, if they have their user link declared.
+            # While also not including ourselves.
+            clients = (c for c in self.area.clients if c.char_url != "" and c.id != self.id)
+
+            # Get the char_urls of the new area for this client.
+            for client in clients:
+                self.add_user_link(client.char_name, client.char_url)
+
             self.send_command("DONE")
 
         def char_select(self):
@@ -1874,6 +1884,16 @@ class ClientManager:
             if c.following == client:
                 c.unfollow()
         self.clients.remove(client)
+
+        # TODO: Maybe take into account than sending the "CU" packet can reveal your cover.
+        # So you could simply treat the hidden client as if they didn't declare their char_url.
+        # Probably using a bool for it.
+
+        # Removes the client's user link from the area it was.
+        if client.char_url != "":
+            clients = (c for c in client.area.clients if c.id != client.id)
+            for c in clients:
+                c.remove_user_link(client.char_name)
         for hub in self.server.hub_manager.hubs:
             count = 0
             for c in hub.clients:
