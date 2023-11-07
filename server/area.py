@@ -2144,13 +2144,13 @@ class Area:
                 return
         elif len(client.broadcast_list) > 0:
             for area in client.broadcast_list:
+                area.send_command(header, *args)
                 if header == "MS":
                     area.last_ic_message = tuple(args)
-                area.send_command(header, *args)
         else:
+            self.send_command(header, *args)
             if header == "MS":
                 self.last_ic_message = tuple(args)
-            self.send_command(header, *args)
         # Proceed to next demo line
         self.play_demo(client)
 
