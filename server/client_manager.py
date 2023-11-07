@@ -1050,7 +1050,7 @@ class ClientManager:
                         return
             # Last error check got done above.
 
-            self.clear_area_char_links(old_area)
+            self.refresh_area_char_links(old_area)
 
             reason = ""
             if (
@@ -1168,18 +1168,47 @@ class ClientManager:
                     "This area is muted - you cannot talk in-character unless invited."
                 )
 
-        # User links stuff
+        # CU Packet
+        # CU#<authority:int>#<action:int>#<char_name:str>#<link:str>#%
+        # Sets the character_URL of the client.
+
+        # authority:
+        #             0 = server
+        #         |   1 = client,
+
+        # action:     0 = Delete,
+        #         |   1 = Add,
+        #         |   2 = Clear all,
+
+        def remove_server_link(self, name):
+            """Removes an server link on this client."""
+            #                     server, delete, name
+            self.send_command("CU", "0", "0", name)
+
+        def add_server_link(self, name, url):
+            """Adds an server link on this client."""
+            #                     server, add, name, url
+            self.send_command("CU", "0", "1", name, url)
+
+        def clear_server_links(self):
+            """Clear all server links of this client."""
+            #                      server, clear
+            self.send_command("CU", "0", "2")
+
         def remove_user_link(self, char_name):
             """Removes an user link on this client."""
-            self.send_command("CU", "0", "0", char_name)
+            #                      client, delete, char_name
+            self.send_command("CU", "1", "0", char_name)
 
         def add_user_link(self, char_name, char_url):
             """Adds an user link on this client."""
-            self.send_command("CU", "0", "1", char_name, char_url)
+            #                      client, add, char_name, char_url
+            self.send_command("CU", "1", "1", char_name, char_url)
 
         def clear_user_links(self):
             """Clear all user links of this client."""
-            self.send_command("CU", "0", "2")
+            #                      client, clear
+            self.send_command("CU", "1", "2")
 
         def get_new_area_user_links(self):
             """"
@@ -1187,30 +1216,65 @@ class ClientManager:
             And applying the changes.
             """
 
+            # Clear existing user links on this client
             self.clear_user_links()
 
-            clients = (c for c in self.area.clients if c.id != self.id)
+            # Get all the clients in the current area, if they have their user link declared.
+            # While also not including ourselves.
+            clients = (c for c in self.area.clients if c.char_url != "" and c.id != self.id)
 
+            # Get the char_urls of the new area for this client.
             for client in clients:
                 self.add_user_link(client.char_name, client.char_url)
 
 
 
-        def clear_area_char_links(self, old_area):
+        def refresh_area_char_links(self, old_area):
             """
             Clears all user links in the old area.
             And declare them in the new area.
             The client should be already in the new area for this to be called
             """
+
+            # Removes the client's user link from the old area
+            # TODO: Maybe take into account than sending the "CU" packet can reveal your cover.
+            # So you could simply treat the hidden client as if they didn't declare their char_url.
+            # Probably using a bool for it.
+            if self.char_url != "":
+                for client in old_area.clients:
+                    client.remove_user_link(self.char_name)
+
+            # Fetch the user links of the new area
             self.get_new_area_user_links()
 
-            for client in old_area.clients:
-                client.remove_user_link(self.char_name)
-            clients = (c for c in self.area.clients if c.id != self.id)
+            # TODO: Maybe take into account than sending the "CU" packet can reveal your cover.
+            # So you could simply treat the hidden client as if they didn't declare their char_url.
+            # Probably using a bool for it.
 
-            for client in clients:
-                client.add_user_link(self.char_name, self.char_url)
+            # Declare your user link in the new area for everyone to see
+            if self.char_url != "":
+                for client in self.area.clients:
+                    client.add_user_link(self.char_name, self.char_url)
 
+        def send_server_link_list(self):
+            """
+            Sends the list of server links declared by the server to the client.
+            """
+            if self.server.server_links is None:
+                return
+            for name, url in self.server.server_links.items():
+                self.add_server_link(name, url)
+
+        def refresh_server_link_list(self):
+            """
+            Refreshs the list of server links for this client.
+            Called when the command /refresh is used.
+            """
+            if self.server.server_links is None:
+                return
+            self.clear_server_links()
+            for name, url in self.server.server_links.items():
+                self.add_server_link(name, url)
 
         def get_area_list(self, hidden=False, unlinked=False):
             area_list = []
@@ -1493,6 +1557,19 @@ class ClientManager:
             self.area.area_manager.send_arup_cms([self])
             self.area.area_manager.send_arup_lock([self])
 
+            # Send user links of the lobby.
+
+            # Get all the clients in the current area, if they have their user link declared.
+            # While also not including ourselves.
+            clients = (c for c in self.area.clients if c.char_url != "" and c.id != self.id)
+
+            # Get the char_urls of the new area for this client.
+            for client in clients:
+                self.add_user_link(client.char_name, client.char_url)
+
+            # Send the server's declared links to the client.
+            self.send_server_link_list()
+
             self.send_command("DONE")
 
         def char_select(self):
@@ -1554,6 +1631,33 @@ class ClientManager:
                 return "Spectator"
             if self.char_id >= len(self.area.area_manager.char_list):
                 return "Unknown"
+            return self.area.area_manager.char_list[self.char_id]
+
+        @property
+        def f_char_name_raw(self):
+            """Get the name of either the character that the client is using or the iniswap."""
+            if self.iniswap != "":
+                return self.iniswap
+
+            if (    self.char_id is None
+                or  self.char_id <= -1
+                or  self.char_id >= len(self.area.area_manager.char_list)):
+                return ""
+
+            return self.area.area_manager.char_list[self.char_id]
+        @property
+        def f_char_name(self):
+            """Get the name of either the character that the client is using or the iniswap."""
+            if self.iniswap != "":
+                return self.iniswap
+
+            if self.char_id is None:
+                return "Connection"
+            if self.char_id == -1:
+                return "Spectator"
+            if self.char_id >= len(self.area.area_manager.char_list):
+                return "Unknown"
+
             return self.area.area_manager.char_list[self.char_id]
 
         @property
@@ -1816,6 +1920,16 @@ class ClientManager:
             if c.following == client:
                 c.unfollow()
         self.clients.remove(client)
+
+        # TODO: Maybe take into account than sending the "CU" packet can reveal your cover.
+        # So you could simply treat the hidden client as if they didn't declare their char_url.
+        # Probably using a bool for it.
+
+        # Removes the client's user link from the area it was.
+        if client.char_url != "":
+            clients = (c for c in client.area.clients if c.id != client.id)
+            for c in clients:
+                c.remove_user_link(client.char_name)
         for hub in self.server.hub_manager.hubs:
             count = 0
             for c in hub.clients:
