@@ -218,9 +218,8 @@ class ClientManager:
                     self.playing_audio[args[4]] = args[0]
                 # IC Message packet
                 if command == "MS":
-                    # Anim is blank, we're narrating.
-                    # Or the pos is blank, we're using last pos.
-                    if args[3] == "" or args[5] == "":
+                    # The pos is blank, we're using last pos.
+                    if args[5] == "":
                         lst = list(args)
                         if self.area.last_ic_message is not None:
                             # Set the pos to last message's pos
