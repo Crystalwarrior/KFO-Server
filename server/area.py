@@ -2144,13 +2144,29 @@ class Area:
                 return
         elif len(client.broadcast_list) > 0:
             for area in client.broadcast_list:
-                area.send_command(header, *args)
                 if header == "MS":
-                    area.last_ic_message = tuple(args)
+                    # If we're on narration pos
+                    if args[5] == "":
+                        if area.last_ic_message is not None:
+                            # Set the pos to last message's pos
+                            args[5] = area.last_ic_message[5]
+                        else:
+                            # Set the pos to the 0th pos-lock
+                            if len(self.pos_lock) > 0:
+                                args[5] = self.pos_lock[0]
+                area.send_command(header, *args)
         else:
-            self.send_command(header, *args)
             if header == "MS":
-                self.last_ic_message = tuple(args)
+                # If we're on narration pos
+                if args[5] == "":
+                    if self.last_ic_message is not None:
+                        # Set the pos to last message's pos
+                        args[5] = self.last_ic_message[5]
+                    else:
+                        # Set the pos to the 0th pos-lock
+                        if len(self.pos_lock) > 0:
+                            args[5] = self.pos_lock[0]
+            self.send_command(header, *args)
         # Proceed to next demo line
         self.play_demo(client)
 
