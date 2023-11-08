@@ -211,11 +211,14 @@ class ClientManager:
             if args:
                 # Music packet
                 if command == "MC":
+                    channel = int(args[4])
                     # If this MC packet is using multilayer audio and the client doesn't support it
-                    if args[4] != "" and int(args[4]) > 0 and not self.has_multilayer_audio:
+                    # ...or we got an invalid channel
+                    if channel < 0 or (channel > 0 and not self.has_multilayer_audio):
                         # Ignore the packet, don't send the music
                         return
-                    self.playing_audio[args[4]] = args[0]
+                    if channel in [0, 1]:
+                        self.playing_audio[channel] = args[0]
                 # IC Message packet
                 if command == "MS":
                     # The pos is blank, we're using last pos.
