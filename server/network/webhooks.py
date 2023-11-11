@@ -69,7 +69,8 @@ class Webhooks:
             return
 
         if mods == 0 and no_mods_ping:
-            message = f"@{mod_role_id if mod_role_id is not None else 'here'} A user called for a moderator, but there are none online!"
+            modcall = f"<&@{mod_role_id}>"
+            message = f"{modcall if mod_role_id is not None else '@here'} A user called for a moderator, but there are none online!"
         else:
             if mods == 1:
                 s = ""
