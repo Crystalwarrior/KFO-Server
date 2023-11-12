@@ -16,6 +16,17 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+import sys
+import logging
+import asyncio
+import importlib
+
+import websockets
+import geoip2.database
+import yaml
+
+import server.logger
 from server import database
 from server.hub_manager import HubManager
 from server.client_manager import ClientManager
@@ -28,20 +39,8 @@ from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
 from server.constants import remove_URL, dezalgo
 
-import server.logger
-import sys
-import importlib
 
-import asyncio
-import websockets
-
-import geoip2.database
-
-import yaml
-
-import logging
-
-logger = logging.getLogger("debug")
+logger = logging.getLogger("main")
 
 
 class TsuServer3:
@@ -124,13 +123,14 @@ class TsuServer3:
             sys.exit(1)
 
         self.client_manager = ClientManager(self)
-        server.logger.setup_logger(debug=self.config["debug"])
+        server.logger.setup_logging(debug=self.config["debug"])
 
         self.webhooks = Webhooks(self)
         self.bridgebot = None
 
     def start(self):
         """Start the server."""
+        logger.info("Starting server")
         loop = asyncio.get_event_loop_policy().get_event_loop()
 
         bound_ip = "0.0.0.0"

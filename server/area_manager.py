@@ -27,7 +27,7 @@ import os
 import datetime
 import logging
 
-logger = logging.getLogger("events")
+logger = logging.getLogger("areamanager")
 
 
 class AreaManager:
@@ -95,7 +95,7 @@ class AreaManager:
                     self.caller.send_ooc(
                         f"[Timer 0] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
                     )
-                    logger.exception("Exception while running a command")
+                    logger.error("Exception while running a command")
                     # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
                     self.commands.clear()
                     # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.

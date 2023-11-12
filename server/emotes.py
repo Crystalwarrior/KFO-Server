@@ -3,7 +3,7 @@ from configparser import ConfigParser
 
 import logging
 
-logger = logging.getLogger("debug")
+logger = logging.getLogger("emotes")
 
 char_dir = "characters"
 
@@ -31,7 +31,8 @@ class Emotes:
             with open(char_path, encoding="utf-8-sig") as f:
                 char_ini.read_file(f)
                 logger.info(
-                    f"Found char.ini for {char_path} that can be used for iniswap restrictions!"
+                    "Found char.ini for %s that can be used for iniswap restrictions!",
+                    char_path
                 )
         except FileNotFoundError:
             return
@@ -59,20 +60,20 @@ class Emotes:
                     self.emotes.add(
                         (preanim.lower(), anim.lower(), sfx.lower()))
                 except KeyError as e:
-                    logger.warn(
-                        f"Broken key {e.args[0]} in character file {char_path}. "
-                        "This indicates a malformed character INI file."
+                    logger.warning(
+                        "Broken key %s in character file %s. "
+                        "This indicates a malformed character INI file.", e.args[0], char_path
                     )
         except KeyError as e:
-            logger.warn(
-                f"Unknown key {e.args[0]} in character file {char_path}. "
-                "This indicates a malformed character INI file."
+            logger.warning(
+                "Unknown key %s in character file %s. "
+                "This indicates a malformed character INI file.", e.args[0], char_path
             )
             return
         except ValueError as e:
-            logger.warn(
-                f"Value error in character file {char_path}:\n{e}\n"
-                "This indicates a malformed character INI file."
+            logger.warning(
+                "Value error in character file %s:\n%ss\n"
+                "This indicates a malformed character INI file.", char_path, e
             )
             return
 
