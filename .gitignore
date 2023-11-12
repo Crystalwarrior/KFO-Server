@@ -64,3 +64,6 @@ coverage.xml
 
 # JetBrains stuff
 .idea/
+
+# VSCode
+.vscode/
