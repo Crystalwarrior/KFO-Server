@@ -7,13 +7,13 @@ KFO-Server is the official Python-based server for Attorney Online, forked from 
 
 Documentation: ["Commands"](https://github.com/Crystalwarrior/KFO-Server/blob/master/docs/commands.md). You may also use the /help documentation on the server.
 
-## Easy setup instructions
+## Simple setup
 
 The server will not work out of the box. **You must follow these instructions.**
 
 ### Install Python
 
-* Install the [latest version of Python](https://www.python.org/downloads/). **Python 2 will not work**, as KFO-Server depends on async/await, which can only be found on Python 3.7 and newer.
+* Install the [latest version of Python](https://www.python.org/downloads/). You will need Python 3.11 or newer.
 * If you run Windows, make sure to check the "Add Python to PATH" and install pip checkboxes in the installer
 * If you run anything other than Windows, you should read "Advanced setup instructions" below.
 
