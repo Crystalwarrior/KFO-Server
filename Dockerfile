@@ -10,7 +10,6 @@ RUN pip install -r requirements.txt
 
 COPY server/ server/
 COPY migrations/ migrations/
-COPY characters/ characters/
+COPY storage/ storage/
 
 CMD python ./start_server.py
-
