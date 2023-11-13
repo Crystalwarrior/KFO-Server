@@ -42,19 +42,13 @@ Then, we need to activate the virtual environment.
 If you're on a unix system (bash or similar), you can run the following command:
 
 ```bash
-. ./venv/bin/activate
+./venv/bin/pip install -r requirements.txt
 ```
 
 If you're on Windows (cmd), you may have to do this instead:
 
 ```batch
-venv\Scripts\activate
-```
-
-Once the virtual environment has been activated, you can install the dependencies by running the following command:
-
-```bash
-pip install -r requirements.txt
+venv\Scripts\pip install -r requirements.txt
 ```
 
 ### Configure tsuserver
