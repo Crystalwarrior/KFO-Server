@@ -1,10 +1,11 @@
-# Internal imports
+import sys
 import logging
+import traceback
 
-# External imports
 import asyncio
 import aiohttp
 import stun
+
 
 logger = logging.getLogger("debug")
 stun_servers = [
@@ -49,8 +50,10 @@ class MasterServerClient:
                     # Master server is down or unreachable, may be temporary so log it as a warning
                     logger.warning('Failed to connect to the master server')
                 except Exception as err:
-                    # Unknown error occurred, log it as a hard error
-                    logger.error("Unknown error while connecting to the master server: %s", err)
+                    # Unknown error occurred, log it as a hard error with full exception information
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    logger.error("Uncaught exception while advertising server to masterserver")
+                    traceback.print_exception(exc_type, exc_value, exc_traceback)
                 finally:
                     await asyncio.sleep(self.interval)
 
