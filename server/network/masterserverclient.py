@@ -15,6 +15,7 @@ stun_servers = [
 
 API_BASE_URL = 'https://servers.aceattorneyonline.com'
 
+
 class MasterServerClient:
     """Advertises information about this server to the master server."""
 
