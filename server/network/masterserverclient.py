@@ -21,6 +21,7 @@ class MasterServerClient:
 
     def __init__(self, server):
         self.server = server
+        self.interval = 60
 
     async def connect(self):
         """
@@ -44,16 +45,14 @@ class MasterServerClient:
             while True:
                 try:
                     await self.send_server_info(http)
-                except aiohttp.ClientError as err:  # Connection error
-                    logger.debug(
-                        'Connection error occurred. (Couldn\'t reach the master server). Error: (%s)\nRetrying in 5 seconds...', err)
-
-                    await asyncio.sleep(5)
-                except Exception as err:  # Unknown error
-                    logger.debug("Unknown connection error occurred on the master server. Error: (%s)\nRetrying in 5 seconds...", err)
-                    await asyncio.sleep(5)
+                except aiohttp.ClientError:
+                    # Master server is down or unreachable, may be temporary so log it as a warning
+                    logger.warning('Failed to connect to the master server')
+                except Exception as err:
+                    # Unknown error occurred, log it as a hard error
+                    logger.error("Unknown error while connecting to the master server: %s", err)
                 finally:
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(self.interval)
 
     def get_my_ip(self):
         """
