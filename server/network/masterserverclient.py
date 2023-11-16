@@ -1,10 +1,11 @@
-# Internal imports
+import sys
 import logging
+import traceback
 
-# External imports
 import asyncio
 import aiohttp
 import stun
+
 
 logger = logging.getLogger("debug")
 stun_servers = [
@@ -15,11 +16,13 @@ stun_servers = [
 
 API_BASE_URL = 'https://servers.aceattorneyonline.com'
 
+
 class MasterServerClient:
     """Advertises information about this server to the master server."""
 
     def __init__(self, server):
         self.server = server
+        self.interval = 60
 
     async def connect(self):
         """
@@ -43,16 +46,16 @@ class MasterServerClient:
             while True:
                 try:
                     await self.send_server_info(http)
-                except aiohttp.ClientError as err:  # Connection error
-                    logger.debug(
-                        'Connection error occurred. (Couldn\'t reach the master server). Error: (%s)\nRetrying in 5 seconds...', err)
-
-                    await asyncio.sleep(5)
-                except Exception as err:  # Unknown error
-                    logger.debug("Unknown connection error occurred on the master server. Error: (%s)\nRetrying in 5 seconds...", err)
-                    await asyncio.sleep(5)
+                except aiohttp.ClientError:
+                    # Master server is down or unreachable, may be temporary so log it as a warning
+                    logger.warning('Failed to connect to the master server')
+                except Exception as err:
+                    # Unknown error occurred, log it as a hard error with full exception information
+                    exc_type, exc_value, exc_traceback = sys.exc_info()
+                    logger.error("Uncaught exception while advertising server to masterserver")
+                    traceback.print_exception(exc_type, exc_value, exc_traceback)
                 finally:
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(self.interval)
 
     def get_my_ip(self):
         """
@@ -98,6 +101,10 @@ class MasterServerClient:
 
         if cfg['use_websockets']:
             body['ws_port'] = cfg['websocket_port']
+
+        if 'use_securewebsockets' in cfg and cfg['use_securewebsockets']:
+            if 'secure_websocket_port' in cfg:
+                body['wss_port'] = cfg['secure_websocket_port']
 
         async with http.post(f'{API_BASE_URL}/servers', json=body) as res:
             err_body = await res.text()
