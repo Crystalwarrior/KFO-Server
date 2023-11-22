@@ -1796,7 +1796,7 @@ class AOProtocol(asyncio.Protocol):
                 "[{} UTC] {} ({}) in hub {} [{}]{} without reason (not using 2.6?)".format(
                     current_time,
                     self.client.char_name,
-                    self.client.ip,
+                    self.client.ipid,
                     self.client.area.area_manager.name,
                     self.client.area.abbreviation,
                     self.client.area.name,
@@ -1806,7 +1806,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.set_mod_call_delay()
             database.log_area("modcall", self.client, self.client.area)
             self.server.webhooks.modcall(
-                char=self.client.char_name, ipid=self.client.ip, area=self.client.area
+                char=self.client.char_name, ipid=self.client.ipid, area=self.client.area
             )
         else:
             self.server.send_all_cmd_pred(
@@ -1814,7 +1814,7 @@ class AOProtocol(asyncio.Protocol):
                 "[{} UTC] {} ({}) in hub {} [{}]{} with reason: {}".format(
                     current_time,
                     self.client.char_name,
-                    self.client.ip,
+                    self.client.ipid,
                     self.client.area.area_manager.name,
                     self.client.area.abbreviation,
                     self.client.area.name,
@@ -1827,7 +1827,7 @@ class AOProtocol(asyncio.Protocol):
                               self.client.area, message=args[0])
             self.server.webhooks.modcall(
                 char=self.client.char_name,
-                ipid=self.client.ip,
+                ipid=self.client.ipid,
                 area=self.client.area,
                 reason=args[0][:100],
             )

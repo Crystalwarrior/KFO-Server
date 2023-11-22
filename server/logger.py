@@ -36,7 +36,7 @@ def parse_client_info(client):
     """Prepend information about a client to a log entry."""
     if client is None:
         return ""
-    ipid = client.ip
+    ipid = client.ipid
     prefix = f"[{ipid:<15}][{client.id:<3}][{client.name}]"
     if client.is_mod:
         prefix += "[MOD]"

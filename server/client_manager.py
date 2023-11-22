@@ -48,6 +48,7 @@ class ClientManager:
             self.pm_mute = False
             self.mod_call_time = 0
             self.ipid = ipid
+            self.ip = ""
             self.version = ""
 
             # Pairing character ID
@@ -1602,11 +1603,6 @@ class ClientManager:
                 raise ClientError("Invalid password.")
 
         @property
-        def ip(self):
-            """Get an anonymized version of the IP address."""
-            return self.ipid
-
-        @property
         def char_name(self):
             """Get the name of the character that the client is using."""
             if self.char_id is None:
@@ -1874,6 +1870,7 @@ class ClientManager:
 
         c = self.Client(self.server, transport, user_id,
                         database.ipid(peername))
+        c.ip = peername
         self.clients.add(c)
         temp_ipid = c.ipid
         for client in self.server.client_manager.clients:
@@ -1957,7 +1954,7 @@ class ClientManager:
         for area in areas:
             for client in area.clients:
                 if key == TargetType.IP:
-                    if value.lower().startswith(client.ip.lower()):
+                    if value.lower().startswith(client.ipid.lower()):
                         targets.append(client)
                 elif key == TargetType.OOC_NAME:
                     if value.lower().startswith(client.name.lower()) and client.name:

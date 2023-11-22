@@ -472,7 +472,7 @@ class Database:
     def log_connect(self, client, failed=False):
         """Log a connect attempt."""
         logger.info(
-            f"{client.ipid} (HDID: {client.hdid}) "
+            f"(ID: {client.ipid}, HDID: {client.hdid}, IP: {client.ip}) "
             + f'{"was blocked from connecting" if failed else "connected"}.'
         )
         with self.db as conn:
