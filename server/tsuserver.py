@@ -19,6 +19,7 @@ from server.network.aoprotocol_ws import new_websocket_client
 from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
 from server.constants import remove_URL, dezalgo
+from server.network.proxy_manager import ProxyManager
 
 
 logger = logging.getLogger("main")
@@ -66,6 +67,7 @@ class TsuServer3:
             "y_offset",
         ]
         self.command_aliases = {}
+        self.proxy_manager = ProxyManager()
 
         try:
             self.geoIpReader = geoip2.database.Reader(
@@ -152,6 +154,8 @@ class TsuServer3:
                 # Don't end the whole server if bridgebot destroys itself
                 print(ex)
         asyncio.ensure_future(self.schedule_unbans())
+
+        asyncio.ensure_future(self.proxy_manager.init(), loop=loop)
 
         database.log_misc("start")
         print("Server started and is listening on port {}".format(
