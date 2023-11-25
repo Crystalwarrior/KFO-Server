@@ -137,6 +137,7 @@ def ooc_cmd_pm(client, arg):
     """
     Send a private message to another online user. These messages are not
     logged by the server owner.
+    The Target Types <ooc-name> and <char-name> work only if the target is in the same area.
     Usage: /pm <id|ooc-name|char-name> <message>
     """
     args = arg.split()
@@ -152,7 +153,7 @@ def ooc_cmd_pm(client, arg):
     key = TargetType.CHAR_NAME
     if len(targets) == 0 and args[0].isdigit():
         targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(args[0]), False
+            client, TargetType.ID, int(args[0]), False, False, True
         )
         key = TargetType.ID
     if len(targets) == 0:
