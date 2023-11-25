@@ -18,6 +18,11 @@ class ProxyManager:
         self.ip_whitelist = []
 
     async def init(self):
+        # Localhost is always a trusted IP address
+        # This important for setups using CloudFlare tunnels
+        # See https://www.cloudflare.com/products/tunnel/
+        self.ip_whitelist.append("127.0.0.1")
+
         cloudflare_ips = await self.get_cloudflare_ips()
         self.ip_whitelist.extend(cloudflare_ips.splitlines())
 
