@@ -14,7 +14,7 @@ class UnauthorizedProxy(Exception):
 
 class ProxyManager:
     def __init__(self):
-        # IP addresses that are whitelisted for use
+        # IP addresses that are whitelisted for use as proxies
         self.ip_whitelist = []
 
     async def init(self):
