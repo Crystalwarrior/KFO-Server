@@ -1944,7 +1944,7 @@ class ClientManager:
         :param value: data identifying a client
         :param local: search in current area only (Default value = False)
         :param single: search only a single user (Default value = False)
-        :param all_hub: search in all hubs (Default = False)
+        :param all_hub: search in all hubs (Default value = False)
         """
         targets = []
         if key == TargetType.ALL:
