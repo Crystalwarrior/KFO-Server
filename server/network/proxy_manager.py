@@ -45,6 +45,8 @@ class ProxyManager:
                 network = ipaddress.ip_network(entry, strict=False)
                 # Check if the IP address is within the CIDR block
                 if ip_address in network:
+                    logger.debug('IP address %s is approved for use as a proxy. Found CIDR match in %s',
+                                 ip, network)
                     return True
             except ValueError:
                 try:
@@ -55,6 +57,8 @@ class ProxyManager:
 
                 # Check if the IP address matches the entry
                 if ip_address == entry_ip_address:
+                    logger.debug('IP address %s is approved for use as a proxy. Found exact match in %s',
+                                 ip_address, entry_ip_address)
                     return True
 
         return False
