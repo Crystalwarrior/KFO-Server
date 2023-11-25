@@ -49,9 +49,36 @@ __all__ = [
     "ooc_cmd_showname",
     "ooc_cmd_charlists",
     "ooc_cmd_charlist",
-    "ooc_cmd_webfiles"
+    "ooc_cmd_webfiles",
+    "ooc_cmd_set_url",
+    "ooc_cmd_get_urls",
 ]
 
+
+def ooc_cmd_set_url(client, arg):
+    """
+    This command sets the URL of the current character.
+    That URL is used client-side on AOG and server-side with the /get_link and /get_links commands.
+    Usage: /set_url <url>
+    """
+
+    arg_strip = arg.strip()
+
+    if arg_strip == "":
+        client.send_ooc("URL has been reset successfully.")
+    else:
+        client.send_ooc(f"URL set to {arg_strip}")
+    client.char_url = arg_strip
+
+def ooc_cmd_get_urls(client, arg):
+    """
+    This command returns the server's URL List.
+    Usage: /get_urls
+    """
+    f_server_links = "Server URLs:\n"
+    for name, url in client.server.server_links.items():
+        f_server_links += f"{name}: {url} \n"
+    client.send_ooc(f_server_links)
 
 def ooc_cmd_switch(client, arg):
     """
