@@ -24,7 +24,7 @@ class ProxyManager:
         self.ip_whitelist.append("127.0.0.1")
 
         cloudflare_ips = await self.get_cloudflare_ips()
-        self.ip_whitelist.extend(cloudflare_ips.splitlines())
+        self.ip_whitelist.extend(cloudflare_ips)
 
         # TODO: Implement additional manual IP whitelist in configuration
 
