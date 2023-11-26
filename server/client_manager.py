@@ -11,6 +11,7 @@ from pathlib import Path
 from server import database
 from server.constants import TargetType, encode_ao_packet, contains_URL
 from server.exceptions import ClientError, AreaError, ServerError
+from server.network.aoprotocol_ws import AOProtocolWS
 
 import oyaml as yaml  # ordered yaml
 import geoip2.database
@@ -1885,6 +1886,29 @@ class ClientManager:
             raise ClientError
 
         client_ip = transport.get_extra_info("peername")[0]
+
+        using_websocket = isinstance(transport, AOProtocolWS.WSTransport)
+        if using_websocket and 'X-Forwarded-For' in transport.ws.request_headers:
+            # This means the client claims to be behind a reverse proxy
+            # However, we can't trust this information and need to check it against a whitelist
+            # So we need to check if the IP of the proxy itself is approved
+            proxy_ip = client_ip
+            claimed_client_ip = transport.ws.request_headers['X-Forwarded-For']
+            proxy_manager = self.server.proxy_manager
+            if not proxy_manager.is_ip_authorized_as_proxy(proxy_ip):
+                msg = f"Unauthorized proxy detected. Proxy IP: {proxy_ip}. Client IP: {claimed_client_ip}."
+                # This means the request is coming from an unauthorized proxy, which is suspicious
+                logging.warning(
+                    msg,
+                    proxy_ip, claimed_client_ip)
+
+                ban_msg = f"BD#{msg}#%"
+
+                transport.write(ban_msg.encode("utf-8"))
+                raise ClientError
+
+            # The proxy is authorized, so we can trust the claimed client IP
+            client_ip = claimed_client_ip
 
         if self.useGeoIp:
             try:

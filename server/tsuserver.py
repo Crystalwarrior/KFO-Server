@@ -65,7 +65,7 @@ class TsuServer3:
             "y_offset",
         ]
         self.command_aliases = {}
-        self.proxy_manager = ProxyManager.instance()
+        self.proxy_manager = ProxyManager(self)
         self.ms_client = None
         sys.setrecursionlimit(50)
         try:
