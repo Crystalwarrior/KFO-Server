@@ -8,13 +8,6 @@ logger = logging.getLogger(__name__)
 
 # Proxy Manager, authorizes IPs that claim to be proxies. Implemented as singleton
 class ProxyManager:
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super(ProxyManager, cls).__new__(cls)
-        return cls._instance
-
     def __init__(self, server):
         # IP addresses that are whitelisted for use as proxies
         self.ip_whitelist = []
