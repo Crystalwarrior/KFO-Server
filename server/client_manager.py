@@ -4,6 +4,8 @@ import time
 import math
 import os
 from heapq import heappop, heappush
+import logging
+from pathlib import Path
 
 
 from server import database
@@ -11,6 +13,10 @@ from server.constants import TargetType, encode_ao_packet, contains_URL
 from server.exceptions import ClientError, AreaError, ServerError
 
 import oyaml as yaml  # ordered yaml
+import geoip2.database
+
+
+logger = logging.getLogger(__name__)
 
 
 class ClientManager:
@@ -1846,6 +1852,16 @@ class ClientManager:
         self.clients = set()
         self.server = server
         self.cur_id = [i for i in range(self.server.config["playerlimit"])]
+        self.ipRange_bans = []
+
+        try:
+            self.geoIpReader = geoip2.database.Reader(
+                "./storage/GeoLite2-ASN.mmdb")
+            self.useGeoIp = True
+            # if you're on debian and the geoip-database-extra package is installed
+            # you can use /usr/share/GeoIP/GeoIPASNum.dat instead
+        except FileNotFoundError:
+            self.useGeoIp = False
 
     def new_client_preauth(self, client):
         maxclients = self.server.config["multiclient_limit"]
@@ -1866,11 +1882,32 @@ class ClientManager:
             transport.write(b"BD#This server is full.#%")
             raise ClientError
 
-        peername = transport.get_extra_info("peername")[0]
+        client_ip = transport.get_extra_info("peername")[0]
+
+        if self.useGeoIp:
+            try:
+                geo_ip_response = self.geoIpReader.asn(client_ip)
+                asn = str(geo_ip_response.autonomous_system_number)
+            except geoip2.errors.AddressNotFoundError:
+                asn = "Loopback"
+                pass
+        else:
+            asn = "Loopback"
+
+        for line, rangeBan in enumerate(self.ipRange_bans):
+            if rangeBan != "" and ((client_ip.startswith(rangeBan) and (rangeBan.endswith('.') or rangeBan.endswith(':'))) or asn == rangeBan):
+                msg = "BD#"
+                msg += "Abuse\r\n"
+                msg += f"ID: {line}\r\n"
+                msg += "Until: N/A"
+                msg += "#%"
+
+                transport.write(msg.encode("utf-8"))
+                raise ClientError
 
         c = self.Client(self.server, transport, user_id,
-                        database.ipid(peername))
-        c.ip = peername
+                        database.ipid(client_ip))
+        c.ip = client_ip
         self.clients.add(c)
         temp_ipid = c.ipid
         for client in self.server.client_manager.clients:
@@ -2018,3 +2055,14 @@ class ClientManager:
 
     def get_mods(self):
         return [c for c in self.clients if c.is_mod]
+
+    def load_ipranges(self):
+        """Load a list of banned IP ranges."""
+        path = Path("config/iprange_ban.txt")
+
+        if not path.is_file():
+            logger.debug("Cannot find iprange_ban.txt")
+            return
+
+        with open("config/iprange_ban.txt", "r", encoding="utf-8") as f:
+            self.ipRange_bans.extend(f.read().splitlines())

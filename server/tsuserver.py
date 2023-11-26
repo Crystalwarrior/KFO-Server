@@ -4,7 +4,6 @@ import asyncio
 import importlib
 
 import websockets
-import geoip2.database
 import yaml
 
 import server.logger
@@ -13,10 +12,9 @@ from server.hub_manager import HubManager
 from server.client_manager import ClientManager
 from server.emotes import Emotes
 from server.discordbot import Bridgebot
-from server.exceptions import ClientError, ServerError
+from server.exceptions import ServerError
 from server.network.aoprotocol import AOProtocol
 from server.network.aoprotocol_ws import new_websocket_client
-from server.network.aoprotocol_ws import AOProtocolWS
 from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
 from server.constants import remove_URL, dezalgo
@@ -45,7 +43,6 @@ class TsuServer3:
         self.backgrounds = None
         self.server_links = None
         self.zalgo_tolerance = None
-        self.ipRange_bans = []
         self.geoIpReader = None
         self.useGeoIp = False
         self.supported_features = [
@@ -69,15 +66,6 @@ class TsuServer3:
         ]
         self.command_aliases = {}
         self.proxy_manager = ProxyManager.instance()
-
-        try:
-            self.geoIpReader = geoip2.database.Reader(
-                "./storage/GeoLite2-ASN.mmdb")
-            self.useGeoIp = True
-            # on debian systems you can use /usr/share/GeoIP/GeoIPASNum.dat if the geoip-database-extra package is installed
-        except FileNotFoundError:
-            self.useGeoIp = False
-
         self.ms_client = None
         sys.setrecursionlimit(50)
         try:
@@ -191,54 +179,6 @@ class TsuServer3:
         :param transport: asyncio transport
         :returns: created client object
         """
-        peername = transport.get_extra_info("peername")[0]
-
-        if isinstance(transport, AOProtocolWS.TransportWrapper):
-            # This means it's a websocket connection
-            headers = transport.ws.request_headers
-            if 'X-Forwarded-For' in headers:
-                # This means the client claims to be behind a reverse proxy
-                # However, we can't trust this information and need to check it against a whitelist
-                claimed_remote_ip = headers['X-Forwarded-For']
-                # Check if the IP of the proxy itself is approved
-                if not self.proxy_manager.is_ip_approved(peername):
-                    # This means the request is coming from an unauthorized proxy, which is suspicious
-                    # We will log this and disconnect the client
-                    logger.warning("Suspicious websocket connection from %s claiming to be behind proxy %s",
-                                   peername)
-
-                    msg = "BD#"
-                    msg += "Abuse\r\n"
-                    msg += f"IP: {peername}\r\n"
-                    msg += "Until: N/A"
-                    msg += "#%"
-
-                    transport.write(msg.encode("utf-8"))
-                    raise ClientError
-
-                logger.debug("Proxy connection approved")
-                peername = headers['X-Forwarded-For']
-
-        if self.useGeoIp:
-            try:
-                geoIpResponse = self.geoIpReader.asn(peername)
-                asn = str(geoIpResponse.autonomous_system_number)
-            except geoip2.errors.AddressNotFoundError:
-                asn = "Loopback"
-                pass
-        else:
-            asn = "Loopback"
-
-        for line, rangeBan in enumerate(self.ipRange_bans):
-            if rangeBan != "" and ((peername.startswith(rangeBan) and (rangeBan.endswith('.') or rangeBan.endswith(':'))) or asn == rangeBan):
-                msg = "BD#"
-                msg += "Abuse\r\n"
-                msg += f"ID: {line}\r\n"
-                msg += "Until: N/A"
-                msg += "#%"
-
-                transport.write(msg.encode("utf-8"))
-                raise ClientError
 
         c = self.client_manager.new_client(transport)
         c.server = self
@@ -367,14 +307,6 @@ class TsuServer3:
                 self.allowed_iniswaps = yaml.safe_load(iniswaps)
         except Exception:
             logger.debug("Cannot find iniswaps.yaml")
-
-    def load_ipranges(self):
-        """Load a list of banned IP ranges."""
-        try:
-            with open("config/iprange_ban.txt", "r", encoding="utf-8") as ipranges:
-                self.ipRange_bans = ipranges.read().splitlines()
-        except Exception:
-            logger.debug("Cannot find iprange_ban.txt")
 
     def load_music_list(self):
         try:
