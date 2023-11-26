@@ -133,17 +133,6 @@ class TsuServer3:
             )
             asyncio.ensure_future(ao_server_ws)
 
-        # We also listen on the secure websocket port if it's enabled
-        # Do note that we expect a reverse proxy to handle the TLS termination
-        # This is required because Cloudflare only does straight port to port forwarding
-        if "use_securewebsockets" in self.config and self.config["use_securewebsockets"]:
-            if "secure_websocket_port" in self.config:
-                ao_server_wss = websockets.serve(
-                    new_websocket_client(
-                        self), bound_ip, self.config["secure_websocket_port"]
-                )
-                asyncio.ensure_future(ao_server_wss)
-
         if self.config["use_masterserver"]:
             self.ms_client = MasterServerClient(self)
             asyncio.ensure_future(self.ms_client.connect(), loop=loop)
