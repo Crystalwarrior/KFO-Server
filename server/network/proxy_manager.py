@@ -6,11 +6,6 @@ import aiohttp
 logger = logging.getLogger(__name__)
 
 
-class UnauthorizedProxy(Exception):
-    """Exception raised when an unauthorized proxy is detected."""
-    pass
-
-
 # Proxy Manager, authorizes IPs that claim to be proxies. Implemented as singleton
 class ProxyManager:
     _instance = None
