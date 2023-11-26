@@ -618,7 +618,7 @@ def ooc_cmd_testimony(client, arg):
             raise
         return
 
-    msg = "Use > IC to progress, < to backtrack, >3 or <3 to go to specific statements."
+    msg = "Use > IC to progress, < to backtrack, = to repeat, >3 or <3 to go to specific statements."
     msg += f"\n-- {client.area.testimony_title} --"
     for i, statement in enumerate(client.area.testimony):
         # [15] SHOWNAME
