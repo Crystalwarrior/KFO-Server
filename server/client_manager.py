@@ -1885,51 +1885,12 @@ class ClientManager:
             transport.write(b"BD#This server is full.#%")
             raise ClientError
 
-        client_ip = transport.get_extra_info("peername")[0]
+        client_ip = self.get_client_ip(transport)
 
-        using_websocket = isinstance(transport, AOProtocolWS.WSTransport)
-        if using_websocket and 'X-Forwarded-For' in transport.ws.request_headers:
-            # This means the client claims to be behind a reverse proxy
-            # However, we can't trust this information and need to check it against a whitelist
-            # So we need to check if the IP of the proxy itself is approved
-            proxy_ip = client_ip
-            claimed_client_ip = transport.ws.request_headers['X-Forwarded-For']
-            proxy_manager = self.server.proxy_manager
-            if not proxy_manager.is_ip_authorized_as_proxy(proxy_ip):
-                msg = f"Unauthorized proxy detected. Proxy IP: {proxy_ip}. Client IP: {claimed_client_ip}."
-                # This means the request is coming from an unauthorized proxy, which is suspicious
-                logging.warning(
-                    msg,
-                    proxy_ip, claimed_client_ip)
-
-                ban_msg = f"BD#{msg}#%"
-
-                transport.write(ban_msg.encode("utf-8"))
-                raise ClientError
-
-            # The proxy is authorized, so we can trust the claimed client IP
-            client_ip = claimed_client_ip
-
-        if self.useGeoIp:
-            try:
-                geo_ip_response = self.geoIpReader.asn(client_ip)
-                asn = str(geo_ip_response.autonomous_system_number)
-            except geoip2.errors.AddressNotFoundError:
-                asn = "Loopback"
-                pass
-        else:
-            asn = "Loopback"
-
-        for line, rangeBan in enumerate(self.ipRange_bans):
-            if rangeBan != "" and ((client_ip.startswith(rangeBan) and (rangeBan.endswith('.') or rangeBan.endswith(':'))) or asn == rangeBan):
-                msg = "BD#"
-                msg += "Abuse\r\n"
-                msg += f"ID: {line}\r\n"
-                msg += "Until: N/A"
-                msg += "#%"
-
-                transport.write(msg.encode("utf-8"))
-                raise ClientError
+        if self.is_ip_rangebanned(client_ip):
+            msg = f"BD#Rangebanned IP: {client_ip}#%"
+            transport.write(msg.encode("utf-8"))
+            raise ClientError
 
         c = self.Client(self.server, transport, user_id,
                         database.ipid(client_ip))
@@ -2081,6 +2042,53 @@ class ClientManager:
 
     def get_mods(self):
         return [c for c in self.clients if c.is_mod]
+
+    def get_client_ip(self, transport) -> str:
+        """Gets the real IP of the client."""
+        if not isinstance(transport, AOProtocolWS.WSTransport):
+            # This means the client is connecting with TCP, so just return the IP
+            return transport.get_extra_info("peername")[0]
+
+        # Using websockets, so use property in the websocket object
+        client_ip = transport.ws.remote_address[0]
+        if 'X-Forwarded-For' not in transport.ws.request_headers:
+            # Client doesn't claim to be behind a proxy, so all looks ok
+            return client_ip
+
+        # This means the client claims to be behind a reverse proxy
+        # However, we can't trust this information and need to check the proxy IP against a whitelist
+        proxy_ip = client_ip
+        claimed_client_ip = transport.ws.request_headers['X-Forwarded-For']
+        if not self.server.proxy_manager.is_ip_authorized_as_proxy(proxy_ip):
+            msg = f"Unauthorized proxy detected. Proxy IP: {proxy_ip}. Client IP: {claimed_client_ip}."
+            logging.warning(
+                msg,
+                proxy_ip, claimed_client_ip)
+
+            ban_msg = f"BD#{msg}#%"
+
+            transport.write(ban_msg.encode("utf-8"))
+            raise ClientError
+
+        # The proxy is authorized, so we can trust the claimed client IP
+        return claimed_client_ip
+
+    def is_ip_rangebanned(self, client_ip: str) -> bool:
+        if self.useGeoIp:
+            try:
+                geo_ip_response = self.geoIpReader.asn(client_ip)
+                asn = str(geo_ip_response.autonomous_system_number)
+            except geoip2.errors.AddressNotFoundError:
+                asn = "Loopback"
+                pass
+        else:
+            asn = "Loopback"
+
+        for line, rangeBan in enumerate(self.ipRange_bans):
+            if rangeBan != "" and ((client_ip.startswith(rangeBan) and (rangeBan.endswith('.') or rangeBan.endswith(':'))) or asn == rangeBan):
+                return True
+
+        return False
 
     def load_ipranges(self):
         """Load a list of banned IP ranges."""
