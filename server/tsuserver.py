@@ -68,7 +68,7 @@ class TsuServer3:
             "y_offset",
         ]
         self.command_aliases = {}
-        self.proxy_manager = ProxyManager()
+        self.proxy_manager = ProxyManager.instance()
 
         try:
             self.geoIpReader = geoip2.database.Reader(

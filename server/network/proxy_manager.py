@@ -1,7 +1,6 @@
 import logging
 import ipaddress
 
-import asyncio
 import aiohttp
 
 logger = logging.getLogger(__name__)
@@ -17,12 +16,14 @@ class ProxyManager:
     _instance = None
 
     def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls.instance = super(ProxyManager, cls).__new__(cls)
+        if cls._instance is None:
+            cls._instance = super(ProxyManager, cls).__new__(cls)
         return cls._instance
 
     @classmethod
     def instance(cls):
+        if cls._instance is None:
+            cls._instance = cls()
         return cls._instance
 
     def __init__(self):
@@ -40,9 +41,9 @@ class ProxyManager:
 
         # TODO: Implement additional manual IP whitelist in configuration
 
-    def is_ip_approved(self, ip: str) -> bool:
+    def is_ip_authorized_as_proxy(self, ip: str) -> bool:
         """
-        Check if the specified IP address is approved for use as a proxy.
+        Check if the specified IP address is authorized for use as a proxy.
         """
         # Convert the given IP address to an ipaddress.IPv4Address or ipaddress.IPv6Address object
         try:
