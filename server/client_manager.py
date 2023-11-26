@@ -1887,6 +1887,8 @@ class ClientManager:
 
         client_ip = self.get_client_ip(transport)
 
+        # TODO: Should probably check if the IP is specifically banned here?
+
         if self.is_ip_rangebanned(client_ip):
             msg = f"BD#Rangebanned IP: {client_ip}#%"
             transport.write(msg.encode("utf-8"))
