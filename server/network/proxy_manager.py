@@ -20,15 +20,10 @@ class ProxyManager:
             cls._instance = super(ProxyManager, cls).__new__(cls)
         return cls._instance
 
-    @classmethod
-    def instance(cls):
-        if cls._instance is None:
-            cls._instance = cls()
-        return cls._instance
-
-    def __init__(self):
+    def __init__(self, server):
         # IP addresses that are whitelisted for use as proxies
         self.ip_whitelist = []
+        self.server = server
 
     async def init(self):
         # Localhost is always a trusted IP address
@@ -39,7 +34,9 @@ class ProxyManager:
         cloudflare_ips = await self.get_cloudflare_ips()
         self.ip_whitelist.extend(cloudflare_ips)
 
-        # TODO: Implement additional manual IP whitelist in configuration
+        if 'authorized_proxies' in self.server.config and \
+                isinstance(self.server.config['authorized_proxies'], list):
+            self.ip_whitelist.extend(self.server.config['authorized_proxies'])
 
     def is_ip_authorized_as_proxy(self, ip: str) -> bool:
         """
