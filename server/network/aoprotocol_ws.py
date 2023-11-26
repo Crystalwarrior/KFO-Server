@@ -1,11 +1,8 @@
 import asyncio
-import logging
 
 from websockets import ConnectionClosed
 
 from server.network.aoprotocol import AOProtocol
-from server.network.proxy_manager import ProxyManager
-from server.exceptions import ClientError
 
 
 class AOProtocolWS(AOProtocol):
