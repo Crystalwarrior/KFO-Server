@@ -77,7 +77,7 @@ class TsuServer3:
             self.load_music()
             self.load_backgrounds()
             self.load_server_links()
-            self.load_ipranges()
+            self.client_manager = ClientManager(self)
             self.hub_manager = HubManager(self)
         except yaml.YAMLError as exc:
             print("There was a syntax error parsing a configuration file:")
@@ -94,7 +94,6 @@ class TsuServer3:
             print("Please check sample config files for the correct format.")
             sys.exit(1)
 
-        self.client_manager = ClientManager(self)
         server.logger.setup_logging(debug=self.config["debug"])
 
         self.webhooks = Webhooks(self)

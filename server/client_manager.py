@@ -1863,6 +1863,8 @@ class ClientManager:
         except FileNotFoundError:
             self.useGeoIp = False
 
+        self.load_ipranges()
+
     def new_client_preauth(self, client):
         maxclients = self.server.config["multiclient_limit"]
         for c in self.server.client_manager.clients:
