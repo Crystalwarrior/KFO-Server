@@ -147,3 +147,10 @@ unban_webhook:
   enabled: true
   username: Unban
   avatar_url:
+
+# Additional list of proxies that are allowed to connect to the server.
+# This is useful if you have a custom reverse proxy in front of the server.
+# Localhost and cloudflare are allowed by default (see proxy_manager.py).
+# authorized_proxies:
+#  - 1.1.1.1
+#  - 2.2.2.2
