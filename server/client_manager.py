@@ -1935,7 +1935,7 @@ class ClientManager:
                     ],
                 )
 
-    def get_targets(self, client, key, value, local=False, single=False):
+    def get_targets(self, client, key, value, local=False, single=False, all_hub=False):
         """
         Find players by a combination of identifying data.
         Possible keys: player ID, OOC name, character name, HDID, IPID,
@@ -1946,36 +1946,41 @@ class ClientManager:
         :param value: data identifying a client
         :param local: search in current area only (Default value = False)
         :param single: search only a single user (Default value = False)
+        :param all_hub: search in all hubs (Default value = False)
         """
-        areas = None
-        if local:
-            areas = [client.area]
-        else:
-            areas = client.area.area_manager.areas
         targets = []
         if key == TargetType.ALL:
             for nkey in range(6):
                 targets += self.get_targets(client, nkey, value, local)
-        for area in areas:
-            for client in area.clients:
-                if key == TargetType.IP:
-                    if value.lower().startswith(client.ip.lower()):
-                        targets.append(client)
-                elif key == TargetType.OOC_NAME:
-                    if value.lower().startswith(client.name.lower()) and client.name:
-                        targets.append(client)
-                elif key == TargetType.CHAR_NAME:
-                    if value.lower().startswith(client.char_name.lower()):
-                        targets.append(client)
-                elif key == TargetType.ID:
-                    if client.id == value:
-                        targets.append(client)
-                elif key == TargetType.IPID:
-                    if client.ipid == value:
-                        targets.append(client)
-                elif key == TargetType.AFK:
-                    if client in area.afkers:
-                        targets.append(client)
+        if all_hub and not local:
+            hubs = self.server.hub_manager.hubs
+        else:
+            hubs = [client.area.area_manager]
+        for hub in hubs:
+            if local:
+                areas = [client.area]
+            else:
+                areas = hub.areas
+            for area in areas:
+                for client in area.clients:
+                    if key == TargetType.IP:
+                        if value.lower().startswith(client.ip.lower()):
+                            targets.append(client)
+                    elif key == TargetType.OOC_NAME:
+                        if value.lower().startswith(client.name.lower()) and client.name:
+                            targets.append(client)
+                    elif key == TargetType.CHAR_NAME:
+                        if value.lower().startswith(client.char_name.lower()):
+                            targets.append(client)
+                    elif key == TargetType.ID:
+                        if client.id == value:
+                             targets.append(client)
+                    elif key == TargetType.IPID:
+                        if client.ipid == value:
+                            targets.append(client)
+                    elif key == TargetType.AFK:
+                        if client in area.afkers:
+                            targets.append(client)
         return targets
 
     def get_muted_clients(self):
