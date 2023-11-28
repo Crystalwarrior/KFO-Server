@@ -616,6 +616,7 @@ class AOProtocol(asyncio.Protocol):
                     len(re.sub(r"[{}\\`|(~~)]", "", text).replace(" ", "")) < 3
                     and not text.startswith("<")
                     and not text.startswith(">")
+                    and not text.startswith("=")
                 ):
                     self.client.send_ooc(
                         "Blankposting is forbidden in this area!"
@@ -692,7 +693,7 @@ class AOProtocol(asyncio.Protocol):
                     "That does not look like a valid area ID!")
                 return
         if len(self.client.area.testimony) > 0 and (
-            text.lstrip().startswith(">") or text.lstrip().startswith("<")
+            text.lstrip().startswith(">") or text.lstrip().startswith("<") or text.lstrip().startswith("=")
         ):
             if self.client.area.recording is True:
                 self.client.send_ooc("It is not cross-examination yet!")
@@ -712,6 +713,8 @@ class AOProtocol(asyncio.Protocol):
                     idx += 1
                 if cmd == "<":
                     idx -= 1
+                if cmd == "=":
+                    idx = idx
                 idx = idx % len(self.client.area.testimony)
             try:
                 self.client.area.testimony_send(idx)

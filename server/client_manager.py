@@ -1364,7 +1364,7 @@ class ClientManager:
             info += f"[{area.id}] {area.name}{users}{status}{owner}{hidden}{locked}{pathlocked}{passworded}{muted}{dark}"
             return info
 
-        def get_area_clients(self, area_id, mods=False, afk_check=False):
+        def get_area_clients(self, area_id, mods=False, afk_check=False, show_links=False):
             info = ""
             area = self.area.area_manager.get_area_by_id(area_id)
             if afk_check:
@@ -1436,9 +1436,11 @@ class ClientManager:
                     info += f" ({c.ipid})"
                 if c.name != "" and (self.is_mod or self in area.owners):
                     info += f": {c.name}"
+                if show_links and c.char_url != "":
+                    info += f" < {c.char_url} >"
             return info
 
-        def send_areas_clients(self, mods=False, afk_check=False):
+        def send_areas_clients(self, mods=False, afk_check=False, show_links=False):
             """
             Send information over OOC about all areas of the client's hub.
             :param area_id: area ID
@@ -1473,7 +1475,7 @@ class ClientManager:
                     continue
 
                 try:
-                    area_info += self.get_area_clients(i, mods, afk_check)
+                    area_info += self.get_area_clients(i, mods, afk_check, show_links)
                 except ClientError:
                     area_info = ""
                 if area_info == "":
@@ -1491,7 +1493,7 @@ class ClientManager:
                 info += f"Current online: {cnt}"
             self.send_ooc(info)
 
-        def send_area_info(self, area_id, mods=False, afk_check=False):
+        def send_area_info(self, area_id, mods=False, afk_check=False, show_links=False):
             """
             Send information over OOC about a specific area.
             :param area_id: area ID
@@ -1504,7 +1506,7 @@ class ClientManager:
                     raise ClientError("You are blinded!")
             area_info = f'📍 Clients in {self.get_area_info(area_id)} 📍'
             try:
-                area_info += self.get_area_clients(area_id, mods, afk_check)
+                area_info += self.get_area_clients(area_id, mods, afk_check, show_links)
             except ClientError as ex:
                 area_info += f'\n{ex}'
             info += area_info
@@ -1956,7 +1958,7 @@ class ClientManager:
                     ],
                 )
 
-    def get_targets(self, client, key, value, local=False, single=False):
+    def get_targets(self, client, key, value, local=False, single=False, all_hub=False):
         """
         Find players by a combination of identifying data.
         Possible keys: player ID, OOC name, character name, HDID, IPID,
@@ -1967,36 +1969,41 @@ class ClientManager:
         :param value: data identifying a client
         :param local: search in current area only (Default value = False)
         :param single: search only a single user (Default value = False)
+        :param all_hub: search in all hubs (Default value = False)
         """
-        areas = None
-        if local:
-            areas = [client.area]
-        else:
-            areas = client.area.area_manager.areas
         targets = []
         if key == TargetType.ALL:
             for nkey in range(6):
                 targets += self.get_targets(client, nkey, value, local)
-        for area in areas:
-            for client in area.clients:
-                if key == TargetType.IP:
-                    if value.lower().startswith(client.ipid.lower()):
-                        targets.append(client)
-                elif key == TargetType.OOC_NAME:
-                    if value.lower().startswith(client.name.lower()) and client.name:
-                        targets.append(client)
-                elif key == TargetType.CHAR_NAME:
-                    if value.lower().startswith(client.char_name.lower()):
-                        targets.append(client)
-                elif key == TargetType.ID:
-                    if client.id == value:
-                        targets.append(client)
-                elif key == TargetType.IPID:
-                    if client.ipid == value:
-                        targets.append(client)
-                elif key == TargetType.AFK:
-                    if client in area.afkers:
-                        targets.append(client)
+        if all_hub and not local:
+            hubs = self.server.hub_manager.hubs
+        else:
+            hubs = [client.area.area_manager]
+        for hub in hubs:
+            if local:
+                areas = [client.area]
+            else:
+                areas = hub.areas
+            for area in areas:
+                for client in area.clients:
+                    if key == TargetType.IP:
+                        if value.lower().startswith(client.ip.lower()):
+                            targets.append(client)
+                    elif key == TargetType.OOC_NAME:
+                        if value.lower().startswith(client.name.lower()) and client.name:
+                            targets.append(client)
+                    elif key == TargetType.CHAR_NAME:
+                        if value.lower().startswith(client.char_name.lower()):
+                            targets.append(client)
+                    elif key == TargetType.ID:
+                        if client.id == value:
+                             targets.append(client)
+                    elif key == TargetType.IPID:
+                        if client.ipid == value:
+                            targets.append(client)
+                    elif key == TargetType.AFK:
+                        if client in area.afkers:
+                            targets.append(client)
         return targets
 
     def get_muted_clients(self):
