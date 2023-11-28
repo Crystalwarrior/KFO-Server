@@ -2060,7 +2060,8 @@ class ClientManager:
         # This means the client claims to be behind a reverse proxy
         # However, we can't trust this information and need to check the proxy IP against a whitelist
         proxy_ip = client_ip
-        claimed_client_ip = transport.ws.request_headers['X-Forwarded-For']
+        # X-Forwarded-For may contain a comma-delimited list of IPs, so get the first one
+        claimed_client_ip = transport.ws.request_headers['X-Forwarded-For'].split(',')[0].strip()
         if not self.server.proxy_manager.is_ip_authorized_as_proxy(proxy_ip):
             msg = f"Unauthorized proxy detected. Proxy IP: {proxy_ip}. Client IP: {claimed_client_ip}."
             logging.warning(
