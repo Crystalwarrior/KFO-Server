@@ -1485,6 +1485,64 @@ class ClientManager:
                 info += f"Current online: {cnt}"
             self.send_ooc(info)
 
+        def send_hubs_clients(self, mods=False, afk_check=False, show_links=False):
+            """
+            Send information over OOC about all hubs.
+            """
+            if (
+                not self.is_mod
+                and self not in self.area.area_manager.owners
+                and self.char_id != -1
+            ):
+                if self.blinded:
+                    raise ClientError("You are blinded!")
+                if not self.area.area_manager.can_gethubs:
+                    raise ClientError(
+                        "You cannot see players in all areas in this hub!")
+            cnt = 0
+            info = "🗺️ Clients in Hubs 🗺️\n"
+            for hub in client.server.hub_manager.hubs:
+                if not hub.can_getareas:
+                    hub_info = f"\n[{hub.id}]{hub.name} (clients: {hub.clients}): ❌\n"
+                else:
+                    for i in range(len(self.area.area_manager.areas)):
+                        area = self.area.area_manager.areas[i]
+                        if afk_check:
+                            client_list = area.afkers
+                        else:
+                            client_list = area.clients
+                        if not self.is_mod and self not in area.owners:
+                            # We exclude hidden players here because we don't want them to count for the user count
+                            client_list = [c for c in client_list if not c.hidden]
+
+                        area_info = f'{self.get_area_info(i)}:'
+                        if area_info == "":
+                            continue
+
+                        try:
+                            area_info += self.get_area_clients(i, mods, afk_check, show_links)
+                        except ClientError:
+                            area_info = ""
+                        if area_info == "":
+                            continue
+
+                        if (
+                            len(client_list) > 0
+                            or len(area.owners) > 0
+                        ):
+                            cnt += len(client_list)
+                            hub_info += f"{area_info}\n"
+                if (
+                    not hub_info == ""
+                    and hub.can_getareas
+                ):
+                    info += f"\n[{hub.id}]{hub.name} (clients: {hub.clients}):\n{hub_info}\n"
+            if afk_check:
+                info += f"Current AFK-ers: {cnt}"
+            else:
+                info += f"Current online: {cnt}"
+            self.send_ooc(info)
+
         def send_area_info(self, area_id, mods=False, afk_check=False, show_links=False):
             """
             Send information over OOC about a specific area.
