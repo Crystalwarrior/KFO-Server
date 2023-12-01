@@ -196,6 +196,7 @@ class AreaManager:
             "censor_ooc",
             "can_spectate",
             "can_getareas",
+            "can_gethubs",
             "passing_msg",
             "char_list_ref",
         ]
@@ -299,6 +300,7 @@ class AreaManager:
             "censor_ooc",
             "can_spectate",
             "can_getareas",
+            "can_gethubs",
             "passing_msg",
             "char_list_ref",
         ]
