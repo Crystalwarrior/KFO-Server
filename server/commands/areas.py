@@ -16,6 +16,7 @@ __all__ = [
     "ooc_cmd_autogetarea",
     "ooc_cmd_getarea",
     "ooc_cmd_getareas",
+    "ooc_cmd_gethubs",
     "ooc_cmd_getlinks",
     "ooc_cmd_getlink",
     "ooc_cmd_getafk",
@@ -225,6 +226,13 @@ def ooc_cmd_getareas(client, arg):
     Usage: /getareas
     """
     client.send_areas_clients()
+
+def ooc_cmd_gethubs(client, arg):
+    """
+    Show information about all hubs.
+    Usage: /gethubs
+    """
+    client.send_hubs_clients()
 
 def ooc_cmd_getlink(client, arg):
     """

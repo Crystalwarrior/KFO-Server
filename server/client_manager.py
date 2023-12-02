@@ -1307,7 +1307,7 @@ class ClientManager:
                 msg += f'\n{self.get_area_info(area.id, highlight_self=True)}'
             self.send_ooc(msg)
 
-        def get_area_info(self, area_id, highlight_self=False):
+        def get_area_info(self, area_id, highlight_self=False, hub=None):
             """
             Get information about a specific area.
             :param area_id: area ID
@@ -1315,7 +1315,10 @@ class ClientManager:
             :highlight_self: highlight the area where we're located
             """
             info = ""
-            area = self.area.area_manager.get_area_by_id(area_id)
+            if hub is None:
+                area = self.area.area_manager.get_area_by_id(area_id)
+            else:
+                area = hub.areas[area_id]
             status = ""
             if self.area.area_manager.arup_enabled:
                 status = f" [{area.status}]"
@@ -1327,6 +1330,7 @@ class ClientManager:
             pathlocked = (
                 "🚧"
                 if str(area.id) in self.area.links
+                and area.area_manager.hub == self.area.area_manager.hub
                 and self.area.links[str(area.id)]["locked"]
                 else ""
             )
@@ -1356,9 +1360,12 @@ class ClientManager:
             info += f"[{area.id}] {area.name}{users}{status}{owner}{hidden}{locked}{pathlocked}{passworded}{muted}{dark}"
             return info
 
-        def get_area_clients(self, area_id, mods=False, afk_check=False, show_links=False):
+        def get_area_clients(self, area_id, mods=False, afk_check=False, show_links=False, hub=None):
             info = ""
-            area = self.area.area_manager.get_area_by_id(area_id)
+            if hub is None:
+                area = self.area.area_manager.get_area_by_id(area_id)
+            else:
+                area = hub.areas[area_id]
             if afk_check:
                 player_list = area.afkers
             else:
@@ -1479,6 +1486,76 @@ class ClientManager:
                 ):
                     cnt += len(client_list)
                     info += f"{area_info}\n"
+            if afk_check:
+                info += f"Current AFK-ers: {cnt}"
+            else:
+                info += f"Current online: {cnt}"
+            self.send_ooc(info)
+
+        def send_hubs_clients(self, mods=False, afk_check=False, show_links=False):
+            """
+            Send information over OOC about all hubs.
+            """
+            if (
+                not self.is_mod
+                and self not in self.area.area_manager.owners
+                and self.char_id != -1
+            ):
+                if self.blinded:
+                    raise ClientError("You are blinded!")
+                if not self.server.config["can_gethubs"]:
+                    raise ClientError(
+                        "In this server it is not allowed to use the command /gethubs!"
+                    )
+            cnt = 0
+            info = "\n🗺️ Clients in Hubs 🗺️\n"
+            for hub in self.server.hub_manager.hubs:
+                hub_info = ""
+                if (
+                    (not hub.can_getareas or hub.hide_clients)
+                    and not self.is_mod
+                    and self not in hub.owners
+                ):
+                    info += f"\n⛩[{hub.id}]{hub.name}⛩: ❌\n"
+                else:
+                    for i in range(len(hub.areas)):
+                        area = hub.areas[i]
+                        if afk_check:
+                            client_list = area.afkers
+                        else:
+                            client_list = area.clients
+                        if not self.is_mod and self not in area.owners:
+                            # We exclude hidden players here because we don't want them to count for the user count
+                            client_list = [c for c in client_list if not c.hidden]
+
+                        area_info = f"{self.get_area_info(i, hub=hub)}:"
+                        if area_info == "":
+                            continue
+
+                        try:
+                            area_info += self.get_area_clients(
+                                i, mods, afk_check, show_links, hub=hub
+                            )
+                        except ClientError:
+                            area_info = ""
+                        if area_info == "":
+                            continue
+
+                        if len(client_list) > 0 or len(area.owners) > 0:
+                            cnt += len(client_list)
+                            hub_info += f"{area_info}\n"
+                if not hub_info == "" and (
+                    hub.can_getareas or self.is_mod or self in hub.owners
+                ):
+                    if not self.is_mod and self not in hub.owners:
+                        hub_count = 0
+                        for area in hub.areas:
+                            if not area.hide_clients and not area.dark:
+                                player_list = [c for c in area.clients if not c.hidden]
+                                hub_count += len(player_list)
+                        info += f"\n⛩[{hub.id}]{hub.name} (users: {hub_count})⛩:\n{hub_info}\n"
+                    else:
+                        info += f"\n⛩[{hub.id}]{hub.name} (users: {len(hub.clients)})⛩:\n{hub_info}\n"
             if afk_check:
                 info += f"Current AFK-ers: {cnt}"
             else:

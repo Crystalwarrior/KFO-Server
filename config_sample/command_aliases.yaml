@@ -48,6 +48,7 @@ fp: firstperson
 fps: firstperson
 ga: getarea
 gas: getareas
+gh: gethubs
 hmovedelay: hub_move_delay
 hmusiclist: hub_musiclist
 hub_clear: clear_hub
