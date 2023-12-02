@@ -1503,15 +1503,20 @@ class ClientManager:
             ):
                 if self.blinded:
                     raise ClientError("You are blinded!")
-                if not self.area.area_manager.can_gethubs:
+                if not self.server.config["can_gethubs"]:
                     raise ClientError(
-                        "You cannot see players in all areas in this hub!")
+                        "In this server it is not allowed to use the command /gethubs!"
+                    )
             cnt = 0
             info = "\n🗺️ Clients in Hubs 🗺️\n"
             for hub in self.server.hub_manager.hubs:
                 hub_info = ""
-                if (not hub.can_getareas or hub.hide_clients) and (not self.is_mod or self not in hub.owners):
-                    hub_info += f"\n⛩[{hub.id}]{hub.name}⛩: ❌\n"
+                if (
+                    (not hub.can_getareas or hub.hide_clients)
+                    and not self.is_mod
+                    and self not in hub.owners
+                ):
+                    info += f"\n⛩[{hub.id}]{hub.name}⛩: ❌\n"
                 else:
                     for i in range(len(hub.areas)):
                         area = hub.areas[i]
@@ -1523,26 +1528,24 @@ class ClientManager:
                             # We exclude hidden players here because we don't want them to count for the user count
                             client_list = [c for c in client_list if not c.hidden]
 
-                        area_info = f'{self.get_area_info(i, hub=hub)}:'
+                        area_info = f"{self.get_area_info(i, hub=hub)}:"
                         if area_info == "":
                             continue
 
                         try:
-                            area_info += self.get_area_clients(i, mods, afk_check, show_links, hub=hub)
+                            area_info += self.get_area_clients(
+                                i, mods, afk_check, show_links, hub=hub
+                            )
                         except ClientError:
                             area_info = ""
                         if area_info == "":
                             continue
 
-                        if (
-                            len(client_list) > 0
-                            or len(area.owners) > 0
-                        ):
+                        if len(client_list) > 0 or len(area.owners) > 0:
                             cnt += len(client_list)
                             hub_info += f"{area_info}\n"
-                if (
-                    not hub_info == ""
-                    and hub.can_getareas
+                if not hub_info == "" and (
+                    hub.can_getareas or self.is_mod or self in hub.owners
                 ):
                     if not self.is_mod and self not in hub.owners:
                         hub_count = 0
