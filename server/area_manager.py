@@ -104,7 +104,6 @@ class AreaManager:
         self.censor_ooc = True
         self.can_spectate = True
         self.can_getareas = True
-        self.can_gethubs = True
         self.passing_msg = False
         # /prefs
 
@@ -196,7 +195,6 @@ class AreaManager:
             "censor_ooc",
             "can_spectate",
             "can_getareas",
-            "can_gethubs",
             "passing_msg",
             "char_list_ref",
         ]
@@ -300,7 +298,6 @@ class AreaManager:
             "censor_ooc",
             "can_spectate",
             "can_getareas",
-            "can_gethubs",
             "passing_msg",
             "char_list_ref",
         ]
