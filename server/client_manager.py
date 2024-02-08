@@ -6,6 +6,7 @@ import os
 import sys
 import yt_dlp
 import requests
+import datetime
 from heapq import heappop, heappush
 
 
@@ -160,6 +161,8 @@ class ClientManager:
             self.viewing_hub_list = False
             # Whether or not the client used the /showname command
             self.used_showname_command = False
+            # a cache of youtube IDs paired with their URL and datetime
+            self.yt_cache = {}
 
             # Currently requested subtheme of this client
             self.subtheme = ""
@@ -178,6 +181,7 @@ class ClientManager:
             # rainbowtext hell
             self.rainbow = False
 
+            # yt-dlp parameters
             self.ydl_opts = {
                     'format': 'ogg/bestaudio/best',
                     'postprocessors': [{  # Extract audio using ffmpeg
@@ -357,6 +361,33 @@ class ClientManager:
 
             self.area.update_timers(self, running_only=True)
 
+        def save_yt_cache(self):
+            pass #Let's just do yaml instead of json. Python plays nicer.
+
+        def load_yt_cache(self):
+            pass
+
+        def mirror_youtube(self, yt_url):
+            with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+                info = ydl.extract_info(yt_url, download=True)
+
+            yt_song_path = info.get("requested_downloads")[0].get("filepath")
+            yt_file = open(yt_song_path, 'rb')
+            yt_config = self.server.config["youtube_play"]
+
+            #r = requests.post("https://litterbox.catbox.moe/resources/internals/api.php", data={'reqtype':'fileupload', 'time':'24h'}, files={'fileToUpload':yt_file}).content.decode("utf-8")
+            r = requests.post(yt_config["request_url"],
+                              data=yt_config["args"],
+                              files={yt_config["file_form_name"]:yt_file}).content.decode("utf-8")
+            cache_entry = {
+                            "upload_time": datetime.datetime.now(),
+                            "song_url": r
+                    }
+            self.yt_cache[info["id"]] = cache_entry
+            os.remove(yt_song_path)
+            #self.save_yt_cache()
+            return r
+
         def change_music_cd(self):
             """
             Check if the client can change music or not.
@@ -445,25 +476,25 @@ class ClientManager:
                         )
                         return
                  
-                yt_pattern = re.compile(r"^(https?\:\/\/)?((www\.)?youtube\.com|youtu\.be)\/.+$")
+                yt_pattern = re.compile(r"^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$")
 
                 if yt_pattern.match(song):
                         sys.setrecursionlimit(1200) #FIXME: figure out what's causing a RecursionError. Python's regex module should not recurse so far that it causes this to happen.
                         info = ""
-                        with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
-                            info = ydl.extract_info(song)
+                        yt_id = yt_pattern.match(song).group(5)
+                        yt_cached = self.yt_cache.get(yt_id)
+                        cache_duration = self.server.config["youtube_play"]["cache_duration"]
 
-                        yt_song_path = info.get("requested_downloads")[0].get("filepath")
-                        yt_file = open(yt_song_path, 'rb')
-                        dat = {
-                        'reqtype':(None,'fileupload'),
-                        'time':(None,'12h'),
-                        'fileToUpload': (yt_song_path, yt_file)
-                        }
+                        if yt_cached is not None:
+                            if yt_cached["upload_time"] + datetime.timedelta(hours=cache_duration) > datetime.datetime.now() or cache_duration == 0:
+                                name = yt_cached["song_url"]
+                            else:
+                                self.yt_cache.pop(yt_id)
+                                name = self.mirror_youtube(song)
+                                save_yt_cache()
+                        else:
+                            name = self.mirror_youtube(song)
 
-                        r = requests.post("https://litterbox.catbox.moe/resources/internals/api.php", files=dat).content.decode("utf-8")
-                        name = r
-                        os.remove(yt_song_path)
 
                 target_areas = [self.area]
                 if len(self.broadcast_list) > 0 and (

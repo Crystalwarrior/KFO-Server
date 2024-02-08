@@ -289,6 +289,17 @@ class TsuServer3:
         if "global_chat" not in self.config:
             self.config["global_chat"] = True
 
+        if "youtube_play" not in self.config:
+            self.config["youtube_play"] = {
+              "cache_duration": 24,
+              "request_url": "https://litterbox.catbox.moe/resources/internals/api.php",
+              "file_form_name": "fileToUpload",
+              "args": { 
+                   "time": "24h",
+                   "reqtype": "fileupload"
+                   }
+              }
+
     def load_command_aliases(self):
         """Load a list of alternative command names."""
         try:
