@@ -1,8 +1,12 @@
+
 import re
 import string
 import time
 import math
 import os
+import sys
+import yt_dlp
+import requests
 from heapq import heappop, heappush
 
 
@@ -11,7 +15,6 @@ from server.constants import TargetType, encode_ao_packet, contains_URL
 from server.exceptions import ClientError, AreaError, ServerError
 
 import oyaml as yaml  # ordered yaml
-
 
 class ClientManager:
     """Holds the list of all clients currently connected to the server."""
@@ -174,6 +177,16 @@ class ClientManager:
             
             # rainbowtext hell
             self.rainbow = False
+
+            self.ydl_opts = {
+                    'format': 'ogg/bestaudio/best',
+                    'postprocessors': [{  # Extract audio using ffmpeg
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'vorbis',
+                        'preferredquality': '192',
+                    }],
+                    "outtmpl": 'storage/tmp/%(title)s.%(ext)s'
+            }
 
         def send_raw_message(self, msg):
             """
@@ -421,6 +434,7 @@ class ClientManager:
                 if not loop:
                     length = 0
 
+
                 if (contains_URL(song)):
                     checked = False
                     for line in self.server.music_whitelist:
@@ -431,6 +445,26 @@ class ClientManager:
                             "This URL is not allowed."
                         )
                         return
+                 
+                yt_pattern = re.compile(r"^(https?\:\/\/)?((www\.)?youtube\.com|youtu\.be)\/.+$")
+
+                if yt_pattern.match(song):
+                        sys.setrecursionlimit(1200) #FIXME: figure out what's causing a RecursionError. Python's regex module should not recurse so far that it causes this to happen.
+                        info = ""
+                        with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+                            info = ydl.extract_info(song)
+
+                        yt_song_path = info.get("requested_downloads")[0].get("filepath")
+                        yt_file = open(yt_song_path, 'rb')
+                        dat = {
+                        'reqtype':(None,'fileupload'),
+                        'time':(None,'12h'),
+                        'fileToUpload': (yt_song_path, yt_file)
+                        }
+
+                        r = requests.post("https://litterbox.catbox.moe/resources/internals/api.php", files=dat).content.decode("utf-8")
+                        name = r
+                        os.remove(yt_song_path)
 
                 target_areas = [self.area]
                 if len(self.broadcast_list) > 0 and (
