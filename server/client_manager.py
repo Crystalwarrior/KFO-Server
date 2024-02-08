@@ -1,4 +1,3 @@
-
 import re
 import string
 import time
@@ -15,6 +14,7 @@ from server.constants import TargetType, encode_ao_packet, contains_URL
 from server.exceptions import ClientError, AreaError, ServerError
 
 import oyaml as yaml  # ordered yaml
+
 
 class ClientManager:
     """Holds the list of all clients currently connected to the server."""
@@ -433,7 +433,6 @@ class ClientManager:
                             raise
                 if not loop:
                     length = 0
-
 
                 if (contains_URL(song)):
                     checked = False
