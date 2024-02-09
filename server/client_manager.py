@@ -361,11 +361,14 @@ class ClientManager:
 
             self.area.update_timers(self, running_only=True)
 
+        '''
         def save_yt_cache(self):
-            pass #Let's just do yaml instead of json. Python plays nicer.
+            with open("storage/yt_cache.yaml", "w", encoding="utf-8") as stream:
+                yaml.dump(self.yt_cache, stream, default_flow_style=False)
 
         def load_yt_cache(self):
             pass
+        '''
 
         def mirror_youtube(self, yt_url):
             with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
