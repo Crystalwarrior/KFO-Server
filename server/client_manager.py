@@ -494,7 +494,6 @@ class ClientManager:
                             else:
                                 self.yt_cache.pop(yt_id)
                                 name = self.mirror_youtube(song)
-                                save_yt_cache()
                         else:
                             name = self.mirror_youtube(song)
 
