@@ -548,9 +548,10 @@ class TsuServer3:
         server_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
         bin_dir = os.path.join(server_dir, 'bin')
         try:
-            if os.path.exists(os.path.join(bin_dir, 'ffmpeg')):
-                print("ffmpeg is already installed.") 
-                return
+            for file in os.listdir(bin_dir):
+                if file.startswith('ffmpeg'):
+                    print("ffmpeg is already installed.") 
+                    return
         except:
             pass
         ffmpeg_dl = ""
@@ -559,7 +560,7 @@ class TsuServer3:
                 logger.info("Downloading ffmpeg...")
                 ffmpeg_dl = requests.get('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip', stream=True).content
                 logger.info("ffmpeg downloaded. Now extracting...")
-                Path.mkdir(bin_dir, exist_ok=True)
+                Path(bin_dir).mkdir(exist_ok=True)
                 with zipfile.ZipFile(BytesIO(ffmpeg_dl), 'r') as ffmpeg_zip:
                     for file in ffmpeg_zip.infolist():
                         if file.filename.startswith('ffmpeg-6.1.1-essentials_build/bin'):
@@ -570,7 +571,7 @@ class TsuServer3:
                 logger.info("Downloading ffmpeg...")
                 ffmpeg_dl = requests.get('https://evermeet.cx/ffmpeg/ffmpeg-6.1.1.zip', stream=True).content
                 ffprobe_dl = requests.get('https://evermeet.cx/ffmpeg/ffprobe-6.1.1.zip', stream=True).content
-                Path.mkdir(bin_dir, exist_ok=True)
+                Path(bin_dir).mkdir(exist_ok=True)
                 logger.info("ffmpeg downloaded. Now extracting...")
                 with zipfile.ZipFile(BytesIO(ffmpeg_dl), 'r') as ffmpeg_zip:
                     ffmpeg_zip.extractall(bin_dir)
