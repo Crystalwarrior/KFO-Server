@@ -545,7 +545,7 @@ class TsuServer3:
 
     def get_ffmpeg(self):
         target_system = platform.system()
-        server_dir = os.path.realpath(os.path.dirname(__file__))
+        server_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
         bin_dir = os.path.join(server_dir, 'bin')
         try:
             if os.path.exists(os.path.join(bin_dir, 'ffmpeg')):
@@ -559,11 +559,12 @@ class TsuServer3:
                 logger.info("Downloading ffmpeg...")
                 ffmpeg_dl = requests.get('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip', stream=True).content
                 logger.info("ffmpeg downloaded. Now extracting...")
+                Path.mkdir(bin_dir, exist_ok=True)
                 with zipfile.ZipFile(BytesIO(ffmpeg_dl), 'r') as ffmpeg_zip:
                     for file in ffmpeg_zip.infolist():
                         if file.filename.startswith('ffmpeg-6.1.1-essentials_build/bin'):
                             file.filename = file.filename.replace('ffmpeg-6.1.1-essentials_build/bin', '')
-                            ffmpeg_zip.extract(file, server_dir)
+                            ffmpeg_zip.extract(file, bin_dir)
                 logger.info("ffmpeg successfully extracted.")
             case "Darwin":
                 logger.info("Downloading ffmpeg...")

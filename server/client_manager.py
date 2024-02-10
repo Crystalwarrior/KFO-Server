@@ -190,7 +190,7 @@ class ClientManager:
                         'preferredquality': '192',
                     }],
                     "outtmpl": 'storage/tmp/%(title)s.%(ext)s',
-                    "ffmpeg-location": 'bin/'
+                    "ffmpeg_location": 'bin/'
             }
 
         def send_raw_message(self, msg):
@@ -392,7 +392,10 @@ class ClientManager:
                             "song_url": r
                     }
             self.yt_cache[info["id"]] = cache_entry
-            os.remove(yt_song_path)
+            try:
+                os.remove(yt_song_path)
+            except PermissionError:
+                pass #FIXME: unlucky
             #self.save_yt_cache()
             return r
 
