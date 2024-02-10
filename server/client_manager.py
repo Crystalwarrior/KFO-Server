@@ -377,7 +377,7 @@ class ClientManager:
                     info = ydl.extract_info(yt_url, download=True)
             except yt_dlp.utils.DownloadError:
                 raise ClientError("Server is not configured with ffmpeg. Please inform the staff of the server about the issue.")
-            print("YouTube support non-functional without ffmpeg. Please enable 'get_ffmpeg' in the config.yaml or install ffmpeg on your system and add it to the PATH environmental variable.") #FIXME: use logger
+                print("YouTube support non-functional without ffmpeg. Please enable 'get_ffmpeg' in the config.yaml or install ffmpeg on your system and add it to the PATH environmental variable.") #FIXME: use logger
 
 
             yt_song_path = info.get("requested_downloads")[0].get("filepath")
