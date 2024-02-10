@@ -560,7 +560,10 @@ class TsuServer3:
                 ffmpeg_dl = requests.get('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip', stream=True).content
                 logger.info("ffmpeg downloaded. Now extracting...")
                 with zipfile.ZipFile(BytesIO(ffmpeg_dl), 'r') as ffmpeg_zip:
-                    ffmpeg_zip.extract("bin", server_dir)
+                    for file in ffmpeg_zip.infolist():
+                        if file.filename.startswith('ffmpeg-6.1.1-essentials_build/bin'):
+                            file.filename = file.filename.replace('ffmpeg-6.1.1-essentials_build/bin', '')
+                            ffmpeg_zip.extract(file, server_dir)
                 logger.info("ffmpeg successfully extracted.")
             case "Darwin":
                 logger.info("Downloading ffmpeg...")
