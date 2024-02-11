@@ -391,6 +391,7 @@ class ClientManager:
                             "upload_time": datetime.datetime.now(),
                             "song_url": r
                     }
+            yt_file.close()
             self.yt_cache[info["id"]] = cache_entry
             try:
                 os.remove(yt_song_path)
