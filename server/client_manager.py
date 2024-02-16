@@ -190,7 +190,7 @@ class ClientManager:
                         'preferredquality': '192',
                     }],
                     "outtmpl": 'storage/tmp/%(title)s.%(ext)s',
-                    "ffmpeg_location": 'bin/'
+                    "ffmpeg_location": self.server.config["ffmpeg_location"]
             }
 
         def send_raw_message(self, msg):

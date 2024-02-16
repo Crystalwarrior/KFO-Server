@@ -120,6 +120,9 @@ youtube_play:
 # Automatically download and extract the required ffmpeg binaries for YouTube functionality.
 get_ffmpeg: false
 
+# Directory containing the ffmpeg binary.
+ffmpeg_location: "bin/"
+
 # Set up a Discord Bridge bot that keeps track of user messages on both ends (AO2 and Discord).
 bridgebot:
   enabled: false # Whether or not this bot is enabled

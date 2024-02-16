@@ -310,6 +310,9 @@ class TsuServer3:
                    }
               }
 
+        if "ffmpeg_location" not in self.config:
+            self.config["ffmpeg_location"] = "bin/"
+
     def load_command_aliases(self):
         """Load a list of alternative command names."""
         try:
@@ -591,7 +594,7 @@ class TsuServer3:
                      "opensuse-tumbleweed": "zypper install ffmpeg-4" #Are they fucking serious?
                      }
                 try:
-                    logger.info('Please run \033[92m{}\033[0m in a terminal with root permissions.'.format(distro_cmd[distro]))
+                    logger.info('Please run \033[31m{}\033[0m in a terminal with root permissions in order to install ffmpeg.'.format(distro_cmd[distro]))
                 except KeyError:
                     logger.info("Unknown distribution. Please consult with your package manager.")
             case _:
