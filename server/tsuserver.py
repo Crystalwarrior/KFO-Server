@@ -2,6 +2,13 @@ import sys
 import logging
 import asyncio
 import importlib
+import platform
+import requests
+import zipfile
+import os
+
+from pathlib import Path
+from io import BytesIO
 
 import websockets
 import geoip2.database
@@ -136,6 +143,9 @@ class TsuServer3:
 
         if self.config["zalgo_tolerance"]:
             self.zalgo_tolerance = self.config["zalgo_tolerance"]
+
+        if self.config["get_ffmpeg"]:
+            self.get_ffmpeg()
 
         if "bridgebot" in self.config and self.config["bridgebot"]["enabled"]:
             try:
@@ -288,6 +298,20 @@ class TsuServer3:
             self.config["block_relative"] = False
         if "global_chat" not in self.config:
             self.config["global_chat"] = True
+
+        if "youtube_play" not in self.config:
+            self.config["youtube_play"] = {
+              "cache_duration": 24,
+              "request_url": "https://litterbox.catbox.moe/resources/internals/api.php",
+              "file_form_name": "fileToUpload",
+              "args": { 
+                   "time": "24h",
+                   "reqtype": "fileupload"
+                   }
+              }
+
+        if "ffmpeg_location" not in self.config:
+            self.config["ffmpeg_location"] = None
 
     def load_command_aliases(self):
         """Load a list of alternative command names."""
@@ -521,6 +545,60 @@ class TsuServer3:
             msg=message,
             pos=self.config["bridgebot"]["pos"],
         )
+
+    def get_ffmpeg(self):
+        target_system = platform.system()
+        server_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
+        bin_dir = os.path.join(server_dir, 'bin')
+        try:
+            for file in os.listdir(bin_dir):
+                if file.startswith('ffmpeg'):
+                    print("ffmpeg is already installed. Please set ffmpeg_location to \"bin\"") 
+                    return
+        except:
+            pass
+        ffmpeg_dl = ""
+        match target_system: 
+            case "Windows":
+                logger.info("Downloading ffmpeg...")
+                ffmpeg_dl = requests.get('https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip', stream=True).content
+                logger.info("ffmpeg downloaded. Now extracting...")
+                Path(bin_dir).mkdir(exist_ok=True)
+                with zipfile.ZipFile(BytesIO(ffmpeg_dl), 'r') as ffmpeg_zip:
+                    for file in ffmpeg_zip.infolist():
+                        if file.filename.startswith('ffmpeg-6.1.1-essentials_build/bin'):
+                            file.filename = file.filename.replace('ffmpeg-6.1.1-essentials_build/bin', '')
+                            ffmpeg_zip.extract(file, bin_dir)
+                logger.info("ffmpeg successfully extracted.")
+            case "Darwin":
+                logger.info("Downloading ffmpeg...")
+                ffmpeg_dl = requests.get('https://evermeet.cx/ffmpeg/ffmpeg-6.1.1.zip', stream=True).content
+                ffprobe_dl = requests.get('https://evermeet.cx/ffmpeg/ffprobe-6.1.1.zip', stream=True).content
+                Path(bin_dir).mkdir(exist_ok=True)
+                logger.info("ffmpeg downloaded. Now extracting...")
+                with zipfile.ZipFile(BytesIO(ffmpeg_dl), 'r') as ffmpeg_zip:
+                    ffmpeg_zip.extractall(bin_dir)
+                with zipfile.ZipFile(BytesIO(ffprobe_dl), 'r') as ffmpeg_zip:
+                    ffmpeg_zip.extractall(bin_dir)
+                logger.info("ffmpeg successfully extracted.")
+            case "Linux": 
+                distro = platform.freedesktop_os_release()
+                distro = distro["ID"]
+                distro_cmd = {
+                     "debian":"apt install ffmpeg",
+                     "ubuntu": "apt install ffmpeg",
+                     "arch": "pacman -S ffmpeg",
+                     "manjaro": "pacman -S ffmpeg",
+                     "fedora": "dnf install ffmpeg",
+                     "opensuse-leap": "zypper install ffmpeg-4", #This surely won't deprecate.
+                     "opensuse-tumbleweed": "zypper install ffmpeg-4" #Are they fucking serious?
+                     }
+                try:
+                    logger.info('Please run \033[31m{}\033[0m in a terminal with root permissions in order to install ffmpeg.'.format(distro_cmd[distro]))
+                except KeyError:
+                    logger.info("Unknown distribution. Please consult with your package manager.")
+            case _:
+                logger.info("Unknown operating system. You are on your own.")
 
     def refresh(self):
         """

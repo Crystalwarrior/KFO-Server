@@ -1,9 +1,15 @@
 import re
+import logging
 import string
 import time
 import math
 import os
+import sys
+import yt_dlp
+import requests
+import datetime
 from heapq import heappop, heappush
+from urllib.parse import urlparse, parse_qs
 
 
 from server import database
@@ -12,6 +18,7 @@ from server.exceptions import ClientError, AreaError, ServerError
 
 import oyaml as yaml  # ordered yaml
 
+logger = logging.getLogger("clientmanager")
 
 class ClientManager:
     """Holds the list of all clients currently connected to the server."""
@@ -157,6 +164,8 @@ class ClientManager:
             self.viewing_hub_list = False
             # Whether or not the client used the /showname command
             self.used_showname_command = False
+            # a cache of youtube IDs paired with their URL and datetime
+            self.yt_cache = {}
 
             # Currently requested subtheme of this client
             self.subtheme = ""
@@ -174,6 +183,18 @@ class ClientManager:
             
             # rainbowtext hell
             self.rainbow = False
+
+            # yt-dlp parameters
+            self.ydl_opts = {
+                    'format': 'ogg/bestaudio/best',
+                    'postprocessors': [{  # Extract audio using ffmpeg
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'vorbis',
+                        'preferredquality': '192',
+                    }],
+                    "outtmpl": 'storage/tmp/%(title)s.%(ext)s',
+                    "ffmpeg_location": self.server.config["ffmpeg_location"]
+            }
 
         def send_raw_message(self, msg):
             """
@@ -344,6 +365,43 @@ class ClientManager:
 
             self.area.update_timers(self, running_only=True)
 
+        '''
+        def save_yt_cache(self):
+            with open("storage/yt_cache.yaml", "w", encoding="utf-8") as stream:
+                yaml.dump(self.yt_cache, stream, default_flow_style=False)
+
+        def load_yt_cache(self):
+            pass
+        '''
+
+        def mirror_youtube(self, yt_url):
+            try:
+                with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+                    info = ydl.extract_info(yt_url, download=True)
+            except yt_dlp.utils.DownloadError:
+                raise ClientError("Server is not configured with ffmpeg. Please inform the staff of the server about the issue.")
+                logger.debug("YouTube support non-functional without ffmpeg. Please enable 'get_ffmpeg' in the config.yaml and set 'ffmpeg_location' to bin or install ffmpeg on your system and add it to the PATH environmental variable.")
+
+            yt_song_path = info.get("requested_downloads")[0].get("filepath")
+            yt_file = open(yt_song_path, 'rb')
+            yt_config = self.server.config["youtube_play"]
+
+            r = requests.post(yt_config["request_url"],
+                              data=yt_config["args"],
+                              files={yt_config["file_form_name"]:yt_file}).content.decode("utf-8")
+            cache_entry = {
+                            "upload_time": datetime.datetime.now(),
+                            "song_url": r
+                    }
+            yt_file.close()
+            self.yt_cache[info["id"]] = cache_entry
+            try:
+                os.remove(yt_song_path)
+            except PermissionError:
+                logger.debug(f"Failed to delete {yt_song_path}.")
+            #self.save_yt_cache()
+            return r
+
         def change_music_cd(self):
             """
             Check if the client can change music or not.
@@ -431,6 +489,24 @@ class ClientManager:
                             "This URL is not allowed."
                         )
                         return
+                yt_parse = urlparse(song)
+
+                if "youtube" in yt_parse.netloc:
+                        sys.setrecursionlimit(1200) #FIXME: figure out what's causing a RecursionError. Python's regex module should not recurse so far that it causes this to happen.
+                        info = ""
+                        yt_id = parse_qs(yt_parse.query)['v'][0]
+                        yt_cached = self.yt_cache.get(yt_id)
+                        cache_duration = self.server.config["youtube_play"]["cache_duration"]
+
+                        if yt_cached is not None:
+                            if yt_cached["upload_time"] + datetime.timedelta(hours=cache_duration) > datetime.datetime.now() or cache_duration == 0:
+                                name = yt_cached["song_url"]
+                            else:
+                                self.yt_cache.pop(yt_id)
+                                name = self.mirror_youtube(song)
+                        else:
+                            name = self.mirror_youtube(song)
+
 
                 target_areas = [self.area]
                 if len(self.broadcast_list) > 0 and (
