@@ -9,6 +9,7 @@ import yt_dlp
 import requests
 import datetime
 from heapq import heappop, heappush
+from urllib.parse import urlparse, parse_qs
 
 
 from server import database
@@ -488,13 +489,12 @@ class ClientManager:
                             "This URL is not allowed."
                         )
                         return
+                yt_parse = urlparse(song)
 
-                yt_pattern = re.compile(r"^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$")
-
-                if yt_pattern.match(song):
+                if "youtube" in yt_parse.netloc:
                         sys.setrecursionlimit(1200) #FIXME: figure out what's causing a RecursionError. Python's regex module should not recurse so far that it causes this to happen.
                         info = ""
-                        yt_id = yt_pattern.match(song).group(5)
+                        yt_id = parse_qs(yt_parse.query)['v'][0]
                         yt_cached = self.yt_cache.get(yt_id)
                         cache_duration = self.server.config["youtube_play"]["cache_duration"]
 
