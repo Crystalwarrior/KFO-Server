@@ -1,4 +1,5 @@
 import re
+import logging
 import string
 import time
 import math
@@ -16,6 +17,7 @@ from server.exceptions import ClientError, AreaError, ServerError
 
 import oyaml as yaml  # ordered yaml
 
+logger = logging.getLogger("clientmanager")
 
 class ClientManager:
     """Holds the list of all clients currently connected to the server."""
@@ -377,8 +379,7 @@ class ClientManager:
                     info = ydl.extract_info(yt_url, download=True)
             except yt_dlp.utils.DownloadError:
                 raise ClientError("Server is not configured with ffmpeg. Please inform the staff of the server about the issue.")
-                print("YouTube support non-functional without ffmpeg. Please enable 'get_ffmpeg' in the config.yaml or install ffmpeg on your system and add it to the PATH environmental variable.") #FIXME: use logger
-
+                logger.debug("YouTube support non-functional without ffmpeg. Please enable 'get_ffmpeg' in the config.yaml and set 'ffmpeg_location' to bin or install ffmpeg on your system and add it to the PATH environmental variable.")
 
             yt_song_path = info.get("requested_downloads")[0].get("filepath")
             yt_file = open(yt_song_path, 'rb')
@@ -396,7 +397,7 @@ class ClientManager:
             try:
                 os.remove(yt_song_path)
             except PermissionError:
-                pass #FIXME: unlucky
+                logger.debug(f"Failed to delete {yt_song_path}.")
             #self.save_yt_cache()
             return r
 
@@ -487,7 +488,7 @@ class ClientManager:
                             "This URL is not allowed."
                         )
                         return
-                 
+
                 yt_pattern = re.compile(r"^((?:https?:)?\/\/)?((?:www|m)\.)?((?:youtube\.com|youtu.be))(\/(?:[\w\-]+\?v=|embed\/|v\/)?)([\w\-]+)(\S+)?$")
 
                 if yt_pattern.match(song):

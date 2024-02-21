@@ -121,7 +121,7 @@ youtube_play:
 get_ffmpeg: false
 
 # Directory containing the ffmpeg binary.
-ffmpeg_location: "bin/"
+ffmpeg_location: null
 
 # Set up a Discord Bridge bot that keeps track of user messages on both ends (AO2 and Discord).
 bridgebot:

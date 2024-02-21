@@ -311,7 +311,7 @@ class TsuServer3:
               }
 
         if "ffmpeg_location" not in self.config:
-            self.config["ffmpeg_location"] = "bin/"
+            self.config["ffmpeg_location"] = None
 
     def load_command_aliases(self):
         """Load a list of alternative command names."""
@@ -553,7 +553,7 @@ class TsuServer3:
         try:
             for file in os.listdir(bin_dir):
                 if file.startswith('ffmpeg'):
-                    print("ffmpeg is already installed.") 
+                    print("ffmpeg is already installed. Please set ffmpeg_location to \"bin\"") 
                     return
         except:
             pass
