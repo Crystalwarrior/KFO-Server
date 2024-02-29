@@ -1,22 +1,3 @@
-# KFO-Server, an Attorney Online server
-#
-# Copyright (C) 2020 Crystalwarrior <varsash@gmail.com>
-#
-# Derivative of tsuserver3, an Attorney Online server. Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 import re
 import string
 import time
@@ -1326,7 +1307,7 @@ class ClientManager:
                 msg += f'\n{self.get_area_info(area.id, highlight_self=True)}'
             self.send_ooc(msg)
 
-        def get_area_info(self, area_id, highlight_self=False):
+        def get_area_info(self, area_id, highlight_self=False, hub=None):
             """
             Get information about a specific area.
             :param area_id: area ID
@@ -1334,7 +1315,10 @@ class ClientManager:
             :highlight_self: highlight the area where we're located
             """
             info = ""
-            area = self.area.area_manager.get_area_by_id(area_id)
+            if hub is None:
+                area = self.area.area_manager.get_area_by_id(area_id)
+            else:
+                area = hub.areas[area_id]
             status = ""
             if self.area.area_manager.arup_enabled:
                 status = f" [{area.status}]"
@@ -1346,6 +1330,7 @@ class ClientManager:
             pathlocked = (
                 "🚧"
                 if str(area.id) in self.area.links
+                and area.area_manager.hub == self.area.area_manager.hub
                 and self.area.links[str(area.id)]["locked"]
                 else ""
             )
@@ -1375,9 +1360,12 @@ class ClientManager:
             info += f"[{area.id}] {area.name}{users}{status}{owner}{hidden}{locked}{pathlocked}{passworded}{muted}{dark}"
             return info
 
-        def get_area_clients(self, area_id, mods=False, afk_check=False):
+        def get_area_clients(self, area_id, mods=False, afk_check=False, show_links=False, hub=None):
             info = ""
-            area = self.area.area_manager.get_area_by_id(area_id)
+            if hub is None:
+                area = self.area.area_manager.get_area_by_id(area_id)
+            else:
+                area = hub.areas[area_id]
             if afk_check:
                 player_list = area.afkers
             else:
@@ -1447,9 +1435,11 @@ class ClientManager:
                     info += f" ({c.ipid})"
                 if c.name != "" and (self.is_mod or self in area.owners):
                     info += f": {c.name}"
+                if show_links and c.char_url != "":
+                    info += f" < {c.char_url} >"
             return info
 
-        def send_areas_clients(self, mods=False, afk_check=False):
+        def send_areas_clients(self, mods=False, afk_check=False, show_links=False):
             """
             Send information over OOC about all areas of the client's hub.
             :param area_id: area ID
@@ -1484,7 +1474,7 @@ class ClientManager:
                     continue
 
                 try:
-                    area_info += self.get_area_clients(i, mods, afk_check)
+                    area_info += self.get_area_clients(i, mods, afk_check, show_links)
                 except ClientError:
                     area_info = ""
                 if area_info == "":
@@ -1502,7 +1492,77 @@ class ClientManager:
                 info += f"Current online: {cnt}"
             self.send_ooc(info)
 
-        def send_area_info(self, area_id, mods=False, afk_check=False):
+        def send_hubs_clients(self, mods=False, afk_check=False, show_links=False):
+            """
+            Send information over OOC about all hubs.
+            """
+            if (
+                not self.is_mod
+                and self not in self.area.area_manager.owners
+                and self.char_id != -1
+            ):
+                if self.blinded:
+                    raise ClientError("You are blinded!")
+                if not self.server.config["can_gethubs"]:
+                    raise ClientError(
+                        "In this server it is not allowed to use the command /gethubs!"
+                    )
+            cnt = 0
+            info = "\n🗺️ Clients in Hubs 🗺️\n"
+            for hub in self.server.hub_manager.hubs:
+                hub_info = ""
+                if (
+                    (not hub.can_getareas or hub.hide_clients)
+                    and not self.is_mod
+                    and self not in hub.owners
+                ):
+                    info += f"\n⛩[{hub.id}]{hub.name}⛩: ❌\n"
+                else:
+                    for i in range(len(hub.areas)):
+                        area = hub.areas[i]
+                        if afk_check:
+                            client_list = area.afkers
+                        else:
+                            client_list = area.clients
+                        if not self.is_mod and self not in area.owners:
+                            # We exclude hidden players here because we don't want them to count for the user count
+                            client_list = [c for c in client_list if not c.hidden]
+
+                        area_info = f"{self.get_area_info(i, hub=hub)}:"
+                        if area_info == "":
+                            continue
+
+                        try:
+                            area_info += self.get_area_clients(
+                                i, mods, afk_check, show_links, hub=hub
+                            )
+                        except ClientError:
+                            area_info = ""
+                        if area_info == "":
+                            continue
+
+                        if len(client_list) > 0 or len(area.owners) > 0:
+                            cnt += len(client_list)
+                            hub_info += f"{area_info}\n"
+                if not hub_info == "" and (
+                    hub.can_getareas or self.is_mod or self in hub.owners
+                ):
+                    if not self.is_mod and self not in hub.owners:
+                        hub_count = 0
+                        for area in hub.areas:
+                            if not area.hide_clients and not area.dark:
+                                player_list = [c for c in area.clients if not c.hidden]
+                                hub_count += len(player_list)
+                        info += f"\n⛩[{hub.id}]{hub.name} (users: {hub_count})⛩:\n{hub_info}\n"
+                    else:
+                        info += f"\n⛩[{hub.id}]{hub.name} (users: {len(hub.clients)})⛩:\n{hub_info}\n"
+            if afk_check:
+                info += f"Current AFK-ers: {cnt}"
+            else:
+                info += f"Current online: {cnt}"
+            self.send_ooc(info)
+
+        def send_area_info(self, area_id, mods=False, afk_check=False, show_links=False):
             """
             Send information over OOC about a specific area.
             :param area_id: area ID
@@ -1515,7 +1575,7 @@ class ClientManager:
                     raise ClientError("You are blinded!")
             area_info = f'📍 Clients in {self.get_area_info(area_id)} 📍'
             try:
-                area_info += self.get_area_clients(area_id, mods, afk_check)
+                area_info += self.get_area_clients(area_id, mods, afk_check, show_links)
             except ClientError as ex:
                 area_info += f'\n{ex}'
             info += area_info
@@ -1952,7 +2012,7 @@ class ClientManager:
                     ],
                 )
 
-    def get_targets(self, client, key, value, local=False, single=False):
+    def get_targets(self, client, key, value, local=False, single=False, all_hub=False):
         """
         Find players by a combination of identifying data.
         Possible keys: player ID, OOC name, character name, HDID, IPID,
@@ -1963,36 +2023,41 @@ class ClientManager:
         :param value: data identifying a client
         :param local: search in current area only (Default value = False)
         :param single: search only a single user (Default value = False)
+        :param all_hub: search in all hubs (Default value = False)
         """
-        areas = None
-        if local:
-            areas = [client.area]
-        else:
-            areas = client.area.area_manager.areas
         targets = []
         if key == TargetType.ALL:
             for nkey in range(6):
                 targets += self.get_targets(client, nkey, value, local)
-        for area in areas:
-            for client in area.clients:
-                if key == TargetType.IP:
-                    if value.lower().startswith(client.ip.lower()):
-                        targets.append(client)
-                elif key == TargetType.OOC_NAME:
-                    if value.lower().startswith(client.name.lower()) and client.name:
-                        targets.append(client)
-                elif key == TargetType.CHAR_NAME:
-                    if value.lower().startswith(client.char_name.lower()):
-                        targets.append(client)
-                elif key == TargetType.ID:
-                    if client.id == value:
-                        targets.append(client)
-                elif key == TargetType.IPID:
-                    if client.ipid == value:
-                        targets.append(client)
-                elif key == TargetType.AFK:
-                    if client in area.afkers:
-                        targets.append(client)
+        if all_hub and not local:
+            hubs = self.server.hub_manager.hubs
+        else:
+            hubs = [client.area.area_manager]
+        for hub in hubs:
+            if local:
+                areas = [client.area]
+            else:
+                areas = hub.areas
+            for area in areas:
+                for client in area.clients:
+                    if key == TargetType.IP:
+                        if value.lower().startswith(client.ip.lower()):
+                            targets.append(client)
+                    elif key == TargetType.OOC_NAME:
+                        if value.lower().startswith(client.name.lower()) and client.name:
+                            targets.append(client)
+                    elif key == TargetType.CHAR_NAME:
+                        if value.lower().startswith(client.char_name.lower()):
+                            targets.append(client)
+                    elif key == TargetType.ID:
+                        if client.id == value:
+                             targets.append(client)
+                    elif key == TargetType.IPID:
+                        if client.ipid == value:
+                            targets.append(client)
+                    elif key == TargetType.AFK:
+                        if client in area.afkers:
+                            targets.append(client)
         return targets
 
     def get_muted_clients(self):

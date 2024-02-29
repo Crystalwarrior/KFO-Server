@@ -1,32 +1,9 @@
-#!/usr/bin/env python3
-
-# KFO-Server, an Attorney Online server
-#
-# Copyright (C) 2020 Crystalwarrior <varsash@gmail.com>
-#
-# Derivative of tsuserver3, an Attorney Online server. Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
-# Install dependencies in case one is missing
-
 import sys
 import subprocess
 import os
 
 
+# Install dependencies in case one is missing
 def check_deps():
     py_version = sys.version_info
     if py_version.major < 3 or (py_version.major == 3 and py_version.minor < 7):

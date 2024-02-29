@@ -1,22 +1,3 @@
-# KFO-Server, an Attorney Online server
-#
-# Copyright (C) 2020 Crystalwarrior <varsash@gmail.com>
-#
-# Derivative of tsuserver3, an Attorney Online server. Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 from .. import commands
 from server.constants import dezalgo, censor, contains_URL, derelative
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
@@ -635,6 +616,7 @@ class AOProtocol(asyncio.Protocol):
                     len(re.sub(r"[{}\\`|(~~)]", "", text).replace(" ", "")) < 3
                     and not text.startswith("<")
                     and not text.startswith(">")
+                    and not text.startswith("=")
                 ):
                     self.client.send_ooc(
                         "Blankposting is forbidden in this area!"
@@ -711,7 +693,7 @@ class AOProtocol(asyncio.Protocol):
                     "That does not look like a valid area ID!")
                 return
         if len(self.client.area.testimony) > 0 and (
-            text.lstrip().startswith(">") or text.lstrip().startswith("<")
+            text.lstrip().startswith(">") or text.lstrip().startswith("<") or text.lstrip().startswith("=")
         ):
             if self.client.area.recording is True:
                 self.client.send_ooc("It is not cross-examination yet!")
@@ -731,6 +713,8 @@ class AOProtocol(asyncio.Protocol):
                     idx += 1
                 if cmd == "<":
                     idx -= 1
+                if cmd == "=":
+                    idx = idx
                 idx = idx % len(self.client.area.testimony)
             try:
                 self.client.area.testimony_send(idx)

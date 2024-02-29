@@ -43,6 +43,12 @@ motd: Welcome to my server!
 # and must also be forwarded.
 use_websockets: true
 websocket_port: 50001
+
+# Whether or not the server is open to secure websocket connections
+# Do note that this requires special setup on the server side (terminating SSL)
+use_securewebsockets: false
+secure_websocket_port: 50002
+
 # WebAO Asset URL for hosting files. Leave blank to use vanilla
 asset_url:
 
@@ -87,6 +93,9 @@ ooc_floodguard:
   times_per_interval: 5
   interval_length: 5
   mute_length: 30
+
+# Enables to use the command /gethubs
+can_gethubs: true
 
 # How many subscripts zalgo is stripped by; 3 is recommended as not to hurt special language diacritics
 zalgo_tolerance: 3

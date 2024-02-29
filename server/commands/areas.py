@@ -16,6 +16,9 @@ __all__ = [
     "ooc_cmd_autogetarea",
     "ooc_cmd_getarea",
     "ooc_cmd_getareas",
+    "ooc_cmd_gethubs",
+    "ooc_cmd_getlinks",
+    "ooc_cmd_getlink",
     "ooc_cmd_getafk",
     "ooc_cmd_invite",
     "ooc_cmd_uninvite",
@@ -224,6 +227,37 @@ def ooc_cmd_getareas(client, arg):
     """
     client.send_areas_clients()
 
+def ooc_cmd_gethubs(client, arg):
+    """
+    Show information about all hubs.
+    Usage: /gethubs
+    """
+    client.send_hubs_clients()
+
+def ooc_cmd_getlink(client, arg):
+    """
+    Show information about the current area, or target area id with sufficient permissions.
+    Including the client's link.
+    Usage: /getlink [id]
+    """
+    aid = client.area.id
+    if arg.strip().isnumeric():
+        area = client.area.area_manager.get_area_by_id(int(arg))
+        if area.id == client.area.id or (client.is_mod or client in area.owners):
+            aid = int(arg)
+        else:
+            raise ClientError(
+                "Can't see that area - insufficient permissions!")
+    client.send_area_info(aid, show_links=True)
+
+
+def ooc_cmd_getlinks(client, arg):
+    """
+    Show information about all areas.
+    Including the client's link.
+    Usage: /getlinks
+    """
+    client.send_areas_clients(show_links=True)
 
 def ooc_cmd_getafk(client, arg):
     """

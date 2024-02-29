@@ -48,6 +48,7 @@ fp: firstperson
 fps: firstperson
 ga: getarea
 gas: getareas
+gh: gethubs
 hmovedelay: hub_move_delay
 hmusiclist: hub_musiclist
 hub_clear: clear_hub
@@ -101,3 +102,9 @@ swaptestimony: testimony_swap
 unlistenpos: unlisten_pos
 unmuteooc: ooc_unmute
 aga: autogetarea
+gl: getlink
+gls: getlinks
+seturl: set_url
+surl: set_url
+get_link: getlink
+get_links: getlinks
