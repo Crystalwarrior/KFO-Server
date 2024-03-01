@@ -174,6 +174,9 @@ class ClientManager:
             
             # rainbowtext hell
             self.rainbow = False
+            
+            # rock paper scissors choice
+            self.rps_choice = ""
 
         def send_raw_message(self, msg):
             """
