@@ -229,7 +229,7 @@ def ooc_cmd_notecard(client, arg):
             client.send_ooc("No notecard found. Usage: /notecard <message>")
         return
     client.area.cards[client.char_name] = arg
-    client.area.broadcast_ooc("{} wrote a note card.".format(client.showname))
+    client.area.broadcast_ooc(f"[{client.id}] {client.showname} wrote a note card.")
     database.log_area("notecard", client, client.area)
 
 
@@ -455,9 +455,7 @@ def ooc_cmd_rolla(client, arg):
     ability_dice = client.area.ability_dice[client.ability_dice_set]
     roll, max_roll, ability = rolla(ability_dice)
     client.area.broadcast_ooc(
-        "{} rolled a {} (out of {}): {}.".format(
-            client.showname, roll, max_roll, ability
-        )
+        f"[{client.id}] {client.showname} rolled a {roll} (out of {max_roll}): {ability}."
     )
     database.log_area(
         "rolla", client, client.area, message=f"{roll} out of {max_roll}: {ability}"
@@ -474,7 +472,7 @@ def ooc_cmd_coinflip(client, arg):
     coin = ["heads", "tails"]
     flip = random.choice(coin)
     client.area.broadcast_ooc(
-        "{} flipped a coin and got {}.".format(client.showname, flip)
+        f"[{client.id}] {client.showname} flipped a coin and got {flip}."
     )
     database.log_area("coinflip", client, client.area, message=flip)
 
