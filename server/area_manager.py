@@ -125,6 +125,15 @@ class AreaManager:
         self.subtheme = ""
 
         self.timer = self.Timer()
+        
+        # RPS-5 rules as default
+        self.rps_rules = [
+            ["rock", "scissors", "lizard"],
+            ["paper", "rock", "spock"],
+            ["scissors", "paper", "lizard"],
+            ["lizard", "paper", "spock"],
+            ["spock", "scissors", "rock"],
+        ]
 
     @property
     def name(self):

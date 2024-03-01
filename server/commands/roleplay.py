@@ -31,6 +31,7 @@ __all__ = [
     "ooc_cmd_coinflip",
     "ooc_cmd_8ball",
     "ooc_cmd_rps",
+    "ooc_cmd_rps_rules",
     "ooc_cmd_timer",
     "ooc_cmd_demo",
     "ooc_cmd_trigger",
@@ -501,20 +502,14 @@ def ooc_cmd_rps(client, arg):
     Starts a match of Rock Paper Scissors.
     If [choice] is not provided, view current RPS rules.
     Usage: /rps [choice]
+    To abandon the match, use /rps cancel
     """
     # format:
     # [
     #   [a, b, c, ...] where 'a' beats 'b', 'c', ...
     # ]
-    
-    # RPS-5
-    rps_rules = [
-        ["rock", "scissors", "lizard"],
-        ["paper", "rock", "spock"],
-        ["scissors", "paper", "lizard"],
-        ["lizard", "paper", "spock"],
-        ["spock", "scissors", "rock"],
-    ]
+
+    rps_rules = client.area.area_manager.rps_rules
 
     # Strip the input of blank spaces on edges 
     arg = arg.strip()
@@ -522,8 +517,8 @@ def ooc_cmd_rps(client, arg):
     # If doing /rps by itself, simply tell the user the rules.
     if not arg:
         msg = "RPS rules:"
-        for rule in rps_rules:
-            msg += "\n  ◽ "
+        for i, rule in enumerate(rps_rules):
+            msg += f"\n  {i+1}) "
             choice = rule[0]
             msg += choice
             if len(choice) > 1:
@@ -532,20 +527,36 @@ def ooc_cmd_rps(client, arg):
         client.send_ooc(msg)
         return
 
+    if arg.lower() in ["clear", "cancel"]:
+        if client.rps_choice:
+            client.area.broadcast_ooc(f'[{client.id}] {client.showname} no longer wants to play 🎲Rock Paper Scissors🎲... 🙁')
+        client.rps_choice = ""
+        client.send_ooc('You cleared your choice.')
+        return
+
     # List of our available choices
     choices = [c[0].lower() for c in rps_rules]
-    if arg.lower() not in choices:
+    picked = ""
+    for choice in choices:
+        # Exact match, can't get better than this. Break out of the loop
+        if arg.lower() == choice:
+            picked = choice
+            break
+        # Fuzzy match, queue up our pick but look if we can get something better
+        if arg.lower() in choice:
+            picked = choice
+    
+    if picked not in choices:
         raise ArgumentError(f"Invalid choice! Available choices are: {', '.join(choices)}")
-
     
     # If we already have made a rps choice before, simply silently swap our choice.
     if client.rps_choice:
-        client.rps_choice = arg
+        client.rps_choice = picked
         client.send_ooc(f'Swapped your choice to {client.rps_choice}!')
         return
         
     # Set our Rock Paper Scissors choice
-    client.rps_choice = arg
+    client.rps_choice = picked
 
     # Loop through clients in area to see if they're waiting on the challenge
     # TODO: this method is gonna be bug-prone, please fix.
@@ -574,14 +585,15 @@ def ooc_cmd_rps(client, arg):
     b = client.rps_choice.lower()
     winner = None
     for rule in rps_rules:
+        rule = [r.lower() for r in rule]
         choice = rule[0]
         losers = []
-        if len(choice) > 1:
+        if len(rule) > 1:
             losers = rule[1:]
-        if choice.startswith(a) and b in losers:
+        if a in choice and b in losers:
             winner = target
             break
-        elif choice.startswith(b) and a in losers:
+        elif b in choice and a in losers:
             winner = client
             break
 
@@ -597,6 +609,59 @@ def ooc_cmd_rps(client, arg):
     # Clear the game for our 2 contestants
     target.rps_choice = ""
     client.rps_choice = ""
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_rps_rules(client, arg):
+    """
+    Review or change rps rules
+    Usage:  /rps_rules - review current rules, indexed
+            /rps_rules <add|new|+> [a beats b, c, d, ...] - add a new rule, or rules if the param is split by line break
+            /rps_rules <del|remove|-> [index] - delete a rule at index
+            /rps_rules <clear|clean|reset|wipe> - wipe all current rules
+    """
+    #client.area.area_manager.rps_rules
+
+    # Strip the input of blank spaces on edges 
+    arg = arg.strip()
+    
+    # If doing /rps_rules by itself, simply tell the user the rules.
+    if not arg:
+        ooc_cmd_rps(client, "")
+        return
+    
+    try:
+        args = arg.split(maxsplit=1)
+        action = args[0]
+        param = ""
+        if len(args) > 1:
+            param = args[1]
+        if action.lower() in ["add", "new", "+"]:
+            rules = param.splitlines()
+            for rule in rules:
+                newrule = rule.split("beats")
+                newrule = [newrule[0].strip()] + newrule[1].strip().split(",")
+                client.area.area_manager.rps_rules.append(newrule)
+                client.send_ooc(f"Added a new rule: {rule}")
+        elif action.lower() in ["del", "remove", "-"]:
+            index = int(param)-1
+            if index < 0 or index >= len(client.area.area_manager.rps_rules):
+                raise ArgumentError(
+                    "Invalid index!"
+                )
+            client.send_ooc(f"Deleted a rule: {client.area.area_manager.rps_rules[index]}")
+            client.area.area_manager.rps_rules.pop(index)
+        elif action.lower() in ["clear", "clean", "reset", "wipe"]:
+            client.send_ooc("Deleted all rules.")
+            client.area.area_manager.rps_rules.clear()
+        else:
+            raise ArgumentError(
+                "Invalid action!"
+            )
+    except ValueError:
+        raise ArgumentError(
+            "Invalid parameter!"
+        )
 
 
 def ooc_cmd_timer(client, arg):
