@@ -535,7 +535,11 @@ def ooc_cmd_rps(client, arg):
         return
 
     # List of our available choices
-    choices = [c[0].lower() for c in rps_rules]
+    choices = []
+    for rule in rps_rules:
+        rule = rule[0].lower()
+        if rule not in choices:
+            choices.append(rule)
     picked = ""
     for choice in choices:
         # Exact match, can't get better than this. Break out of the loop
