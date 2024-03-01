@@ -30,6 +30,7 @@ __all__ = [
     "ooc_cmd_rolla",
     "ooc_cmd_coinflip",
     "ooc_cmd_8ball",
+    "ooc_cmd_rps",
     "ooc_cmd_timer",
     "ooc_cmd_demo",
     "ooc_cmd_trigger",
@@ -495,6 +496,109 @@ def ooc_cmd_8ball(client, arg):
     client.area.broadcast_ooc(
         f'{client.showname} asked the 8ball - "{arg}", and it responded: "{rolla(ability_dice)[2]}".'
     )
+
+
+def ooc_cmd_rps(client, arg):
+    """
+    Starts a match of Rock Paper Scissors.
+    If [choice] is not provided, view current RPS rules.
+    Usage: /rps [choice]
+    """
+    # format:
+    # [
+    #   [a, b, c, ...] where 'a' beats 'b', 'c', ...
+    # ]
+    
+    # RPS-5
+    rps_rules = [
+        ["rock", "scissors", "lizard"],
+        ["paper", "rock", "spock"],
+        ["scissors", "paper", "lizard"],
+        ["lizard", "paper", "spock"],
+        ["spock", "scissors", "rock"],
+    ]
+
+    # Strip the input of blank spaces on edges 
+    arg = arg.strip()
+    
+    # If doing /rps by itself, simply tell the user the rules.
+    if not arg:
+        msg = "RPS rules:"
+        for rule in rps_rules:
+            msg += "\n  ◽ "
+            choice = rule[0]
+            msg += choice
+            if len(choice) > 1:
+                losers = ', '.join(rule[1:])
+                msg += f" beats {losers}"
+        client.send_ooc(msg)
+        return
+
+    # List of our available choices
+    choices = [c[0].lower() for c in rps_rules]
+    if arg.lower() not in choices:
+        raise ArgumentError(f"Invalid choice! Available choices are: {', '.join(choices)}")
+
+    
+    # If we already have made a rps choice before, simply silently swap our choice.
+    if client.rps_choice:
+        client.rps_choice = arg
+        client.send_ooc(f'Swapped your choice to {client.rps_choice}!')
+        return
+        
+    # Set our Rock Paper Scissors choice
+    client.rps_choice = arg
+
+    # Loop through clients in area to see if they're waiting on the challenge
+    # TODO: this method is gonna be bug-prone, please fix.
+    target = None
+    for c in client.area.clients:
+        if c == client:
+            continue
+        if c.rps_choice:
+            target = c
+            break
+
+    # Look for our opponent if none is present
+    if not target:
+        msg = f'[{client.id}] {client.showname} wants to play 🎲Rock Paper Scissors🎲!\n❕ Do /rps [choice] to challenge them! ❕'
+        client.area.broadcast_ooc(msg)
+        client.send_ooc(f'You picked {client.rps_choice}!')
+        return
+
+    # Start constructing our output message
+    msg = '🎲Rock Paper Scissors🎲'
+    msg += f'\n  ◽ [{target.id}] {target.showname} picks {target.rps_choice}!'
+    msg += f'\n  ◽ [{client.id}] {client.showname} picks {client.rps_choice}!'
+    
+    # Calculate our winner
+    a = target.rps_choice.lower()
+    b = client.rps_choice.lower()
+    winner = None
+    for rule in rps_rules:
+        choice = rule[0]
+        losers = []
+        if len(choice) > 1:
+            losers = rule[1:]
+        if choice.startswith(a) and b in losers:
+            winner = target
+            break
+        elif choice.startswith(b) and a in losers:
+            winner = client
+            break
+
+    # Congratulate our winner or announce a tie
+    if winner:
+        msg += f"\n  🏆[{winner.id}] {winner.showname} WINS!!!🏆"
+    else:
+        msg += f"\n  👔It's a tie!👔"
+
+    # Announce the message!
+    client.area.broadcast_ooc(msg)
+
+    # Clear the game for our 2 contestants
+    target.rps_choice = ""
+    client.rps_choice = ""
 
 
 def ooc_cmd_timer(client, arg):
