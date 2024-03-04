@@ -1333,7 +1333,6 @@ class ClientManager:
             pathlocked = (
                 "🚧"
                 if str(area.id) in self.area.links
-                and area.area_manager.hub == self.area.area_manager.hub
                 and self.area.links[str(area.id)]["locked"]
                 else ""
             )
