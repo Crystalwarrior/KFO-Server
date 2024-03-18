@@ -645,6 +645,7 @@ def ooc_cmd_rps_rules(client, arg):
             for rule in rules:
                 newrule = rule.split("beats")
                 newrule = [newrule[0].strip()] + newrule[1].strip().split(",")
+                newrule = [a.strip() for a in newrule]
                 client.area.area_manager.rps_rules.append(newrule)
                 client.send_ooc(f"Added a new rule: {rule}")
         elif action.lower() in ["del", "remove", "-"]:
