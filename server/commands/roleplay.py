@@ -30,6 +30,8 @@ __all__ = [
     "ooc_cmd_rolla",
     "ooc_cmd_coinflip",
     "ooc_cmd_8ball",
+    "ooc_cmd_rps",
+    "ooc_cmd_rps_rules",
     "ooc_cmd_timer",
     "ooc_cmd_demo",
     "ooc_cmd_trigger",
@@ -229,7 +231,7 @@ def ooc_cmd_notecard(client, arg):
             client.send_ooc("No notecard found. Usage: /notecard <message>")
         return
     client.area.cards[client.char_name] = arg
-    client.area.broadcast_ooc("{} wrote a note card.".format(client.showname))
+    client.area.broadcast_ooc(f"[{client.id}] {client.showname} wrote a note card.")
     database.log_area("notecard", client, client.area)
 
 
@@ -455,9 +457,7 @@ def ooc_cmd_rolla(client, arg):
     ability_dice = client.area.ability_dice[client.ability_dice_set]
     roll, max_roll, ability = rolla(ability_dice)
     client.area.broadcast_ooc(
-        "{} rolled a {} (out of {}): {}.".format(
-            client.showname, roll, max_roll, ability
-        )
+        f"[{client.id}] {client.showname} rolled a {roll} (out of {max_roll}): {ability}."
     )
     database.log_area(
         "rolla", client, client.area, message=f"{roll} out of {max_roll}: {ability}"
@@ -474,7 +474,7 @@ def ooc_cmd_coinflip(client, arg):
     coin = ["heads", "tails"]
     flip = random.choice(coin)
     client.area.broadcast_ooc(
-        "{} flipped a coin and got {}.".format(client.showname, flip)
+        f"[{client.id}] {client.showname} flipped a coin and got {flip}."
     )
     database.log_area("coinflip", client, client.area, message=flip)
 
@@ -495,6 +495,178 @@ def ooc_cmd_8ball(client, arg):
     client.area.broadcast_ooc(
         f'{client.showname} asked the 8ball - "{arg}", and it responded: "{rolla(ability_dice)[2]}".'
     )
+
+
+def ooc_cmd_rps(client, arg):
+    """
+    Starts a match of Rock Paper Scissors.
+    If [choice] is not provided, view current RPS rules.
+    Usage: /rps [choice]
+    To abandon the match, use /rps cancel
+    """
+    # format:
+    # [
+    #   [a, b, c, ...] where 'a' beats 'b', 'c', ...
+    # ]
+
+    rps_rules = client.area.area_manager.rps_rules
+
+    # Strip the input of blank spaces on edges 
+    arg = arg.strip()
+    
+    # If doing /rps by itself, simply tell the user the rules.
+    if not arg:
+        msg = "RPS rules:"
+        for i, rule in enumerate(rps_rules):
+            msg += f"\n  {i+1}) "
+            choice = rule[0]
+            msg += choice
+            if len(choice) > 1:
+                losers = ', '.join(rule[1:])
+                msg += f" beats {losers}"
+        client.send_ooc(msg)
+        return
+
+    if arg.lower() in ["clear", "cancel"]:
+        if client.rps_choice:
+            client.area.broadcast_ooc(f'[{client.id}] {client.showname} no longer wants to play 🎲Rock Paper Scissors🎲... 🙁')
+        client.rps_choice = ""
+        client.send_ooc('You cleared your choice.')
+        return
+
+    # List of our available choices
+    choices = []
+    for rule in rps_rules:
+        rule = rule[0].lower()
+        if rule not in choices:
+            choices.append(rule)
+    picked = ""
+    for choice in choices:
+        # Exact match, can't get better than this. Break out of the loop
+        if arg.lower() == choice:
+            picked = choice
+            break
+        # Fuzzy match, queue up our pick but look if we can get something better
+        if arg.lower() in choice:
+            picked = choice
+    
+    if picked not in choices:
+        raise ArgumentError(f"Invalid choice! Available choices are: {', '.join(choices)}")
+    
+    # If we already have made a rps choice before, simply silently swap our choice.
+    if client.rps_choice:
+        client.rps_choice = picked
+        client.send_ooc(f'Swapped your choice to {client.rps_choice}!')
+        return
+        
+    # Set our Rock Paper Scissors choice
+    client.rps_choice = picked
+
+    # Loop through clients in area to see if they're waiting on the challenge
+    # TODO: this method is gonna be bug-prone, please fix.
+    target = None
+    for c in client.area.clients:
+        if c == client:
+            continue
+        if c.rps_choice:
+            target = c
+            break
+
+    # Look for our opponent if none is present
+    if not target:
+        msg = f'[{client.id}] {client.showname} wants to play 🎲Rock Paper Scissors🎲!\n❕ Do /rps [choice] to challenge them! ❕'
+        client.area.broadcast_ooc(msg)
+        client.send_ooc(f'You picked {client.rps_choice}!')
+        return
+
+    # Start constructing our output message
+    msg = '🎲Rock Paper Scissors🎲'
+    msg += f'\n  ◽ [{target.id}] {target.showname} picks {target.rps_choice}!'
+    msg += f'\n  ◽ [{client.id}] {client.showname} picks {client.rps_choice}!'
+    
+    # Calculate our winner
+    a = target.rps_choice.lower()
+    b = client.rps_choice.lower()
+    winner = None
+    for rule in rps_rules:
+        rule = [r.lower() for r in rule]
+        choice = rule[0]
+        losers = []
+        if len(rule) > 1:
+            losers = rule[1:]
+        if a in choice and b in losers:
+            winner = target
+            break
+        elif b in choice and a in losers:
+            winner = client
+            break
+
+    # Congratulate our winner or announce a tie
+    if winner:
+        msg += f"\n  🏆[{winner.id}] {winner.showname} WINS!!!🏆"
+    else:
+        msg += f"\n  👔It's a tie!👔"
+
+    # Announce the message!
+    client.area.broadcast_ooc(msg)
+
+    # Clear the game for our 2 contestants
+    target.rps_choice = ""
+    client.rps_choice = ""
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_rps_rules(client, arg):
+    """
+    Review or change rps rules
+    Usage:  /rps_rules - review current rules, indexed
+            /rps_rules <add|new|+> [a beats b, c, d, ...] - add a new rule, or rules if the param is split by line break
+            /rps_rules <del|remove|-> [index] - delete a rule at index
+            /rps_rules <clear|clean|reset|wipe> - wipe all current rules
+    """
+    #client.area.area_manager.rps_rules
+
+    # Strip the input of blank spaces on edges 
+    arg = arg.strip()
+    
+    # If doing /rps_rules by itself, simply tell the user the rules.
+    if not arg:
+        ooc_cmd_rps(client, "")
+        return
+    
+    try:
+        args = arg.split(maxsplit=1)
+        action = args[0]
+        param = ""
+        if len(args) > 1:
+            param = args[1]
+        if action.lower() in ["add", "new", "+"]:
+            rules = param.splitlines()
+            for rule in rules:
+                newrule = rule.split("beats")
+                newrule = [newrule[0].strip()] + newrule[1].strip().split(",")
+                newrule = [a.strip() for a in newrule]
+                client.area.area_manager.rps_rules.append(newrule)
+                client.send_ooc(f"Added a new rule: {rule}")
+        elif action.lower() in ["del", "remove", "-"]:
+            index = int(param)-1
+            if index < 0 or index >= len(client.area.area_manager.rps_rules):
+                raise ArgumentError(
+                    "Invalid index!"
+                )
+            client.send_ooc(f"Deleted a rule: {client.area.area_manager.rps_rules[index]}")
+            client.area.area_manager.rps_rules.pop(index)
+        elif action.lower() in ["clear", "clean", "reset", "wipe"]:
+            client.send_ooc("Deleted all rules.")
+            client.area.area_manager.rps_rules.clear()
+        else:
+            raise ArgumentError(
+                "Invalid action!"
+            )
+    except ValueError:
+        raise ArgumentError(
+            "Invalid parameter!"
+        )
 
 
 def ooc_cmd_timer(client, arg):
