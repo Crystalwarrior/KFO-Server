@@ -258,6 +258,12 @@ class Area:
             "leave": "",  # User leaves the area.
         }
 
+        # Battle system stuff
+        self.can_battle = True
+        self.battle_started = False
+        self.fighters = []
+        self.num_selected_move = 0
+
     @property
     def name(self):
         """Area's name string. Abbreviation is also updated according to this."""
@@ -560,6 +566,9 @@ class Area:
                         "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
                     )
 
+        if "can_battle" in area:
+            self.can_battle = area["can_battle"]
+
     def save(self):
         area = OrderedDict()
         area["area"] = self.name
@@ -633,6 +642,7 @@ class Area:
             area["evidence"] = [e.to_dict() for e in self.evi_list.evidences]
         if len(self.links) > 0:
             area["links"] = self.links
+        area["can_battle"] = self.can_battle
         return area
 
     def new_client(self, client):
