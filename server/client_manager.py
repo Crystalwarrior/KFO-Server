@@ -2128,9 +2128,7 @@ class ClientManager:
                 self.target = None
                 self.selected_move = -1
                 self.status = None
-                self.moves = []
-                for move in char[arg]["Moves"]:
-                    self.moves.append(ClientManager.Move(move))
+                self.moves = [ClientManager.Move(move) for move in char[arg]["Moves"]]
 
     class Move:
         def __init__(self, move):
