@@ -178,6 +178,9 @@ class ClientManager:
             # rock paper scissors choice
             self.rps_choice = ""
 
+            # Battle system stuff
+            self.battle = None
+
         def send_raw_message(self, msg):
             """
             Send a raw packet over TCP.
@@ -2107,3 +2110,35 @@ class ClientManager:
 
     def get_mods(self):
         return [c for c in self.clients if c.is_mod]
+        
+    class Battle_char:
+        def __init__(self, client, arg):
+            with open(
+                "storage/battlesystem/battlesystem.yaml", "r", encoding="utf-8"
+            ) as c:
+                char = yaml.safe_load(c)
+                self.fighter = arg
+                self.hp = float(char[arg]["HP"])
+                self.maxhp = self.hp
+                self.atk = float(char[arg]["ATK"])
+                self.defe = float(char[arg]["DEF"])
+                self.spa = float(char[arg]["SPA"])
+                self.spd = float(char[arg]["SPD"])
+                self.spe = float(char[arg]["SPE"])
+                self.target = None
+                self.selected_move = -1
+                self.status = None
+                self.moves = []
+                for move in char[arg]["Moves"]:
+                    self.moves.append(ClientManager.Move(move))
+
+    class Move:
+        def __init__(self, move):
+            self.name = move["Name"]
+            self.type = move["MovesType"]
+            self.power = float(move["Power"])
+            self.effect = move["Effects"]
+            tot = len(self.effect) * 50 + self.power
+            self.accuracy = -0.8 * tot + 156
+            if self.accuracy > 100:
+                self.accuracy = 100
