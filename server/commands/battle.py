@@ -30,7 +30,7 @@ def ooc_cmd_choose_fighter(client, arg):
     with open("storage/battlesystem/battlesystem.yaml", "r", encoding="utf-8") as c:
         char = yaml.safe_load(c)
         if arg.lower() in char:
-            client.battle = ClientManager.Battle_char(client, arg)
+            client.battle = ClientManager.Battle_char(client, arg.lower())
             send_info_fighter(client)
         else:
             client.send_ooc("No fighter has this name!")
