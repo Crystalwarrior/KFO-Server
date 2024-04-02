@@ -1,0 +1,14 @@
+hero:
+  HP: 60
+  ATK: 40
+  DEF: 40
+  SPA: 40
+  SPD: 40
+  SPE: 40
+  Moves:
+  - Name: slash
+    MovesType: atk
+    Power: 60
+    Effects:
+    - atkall
+    - defdown
