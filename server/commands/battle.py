@@ -37,6 +37,10 @@ def ooc_cmd_choose_fighter(client, arg):
 
 
 def ooc_cmd_info_fighter(client, arg):
+    """
+    Send info about your fighter.
+    Usage: /info_fighter
+    """
     if client.battle is not None:
         send_info_fighter(client)
     else:
