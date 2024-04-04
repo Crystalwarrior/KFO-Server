@@ -2136,7 +2136,4 @@ class ClientManager:
             self.type = move["MovesType"]
             self.power = float(move["Power"])
             self.effect = move["Effects"]
-            tot = len(self.effect) * 50 + self.power
-            self.accuracy = -0.8 * tot + 156
-            if self.accuracy > 100:
-                self.accuracy = 100
+            self.accuracy = float(move["Accuracy"])
