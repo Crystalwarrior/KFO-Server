@@ -9,6 +9,7 @@ hero:
   - Name: slash
     MovesType: atk
     Power: 60
+    Accuracy: 80
     Effects:
     - atkall
     - defdown
