@@ -13,6 +13,7 @@ __all__ = [
     "ooc_cmd_modify_stat",
     "ooc_cmd_delete_fighter",
     "ooc_cmd_delete_move",
+    "ooc_cmd_custom_battle",
 ]
 
 
@@ -87,29 +88,41 @@ def ooc_cmd_create_fighter(client, arg):
                 and args[5].isdigit()
                 and args[6].isdigit()
             ):
-                with open(
-                    "storage/battlesystem/battlesystem.yaml", "r", encoding="utf-8"
-                ) as c_load:
-                    char = yaml.safe_load(c_load)
-                    args[0] = args[0].lower()
-                    if args[0] not in char:
-                        char[args[0]] = {}
-                        char[args[0]]["HP"] = float(args[1])
-                        char[args[0]]["ATK"] = float(args[2])
-                        char[args[0]]["DEF"] = float(args[3])
-                        char[args[0]]["SPA"] = float(args[4])
-                        char[args[0]]["SPD"] = float(args[5])
-                        char[args[0]]["SPE"] = float(args[6])
-                        char[args[0]]["Moves"] = []
-                        with open(
-                            "storage/battlesystem/battlesystem.yaml",
-                            "w",
-                            encoding="utf-8",
-                        ) as c_save:
-                            yaml.dump(char, c_save)
-                            client.send_ooc(f"{args[0]} has been created!")
-                    else:
-                        client.send_ooc("This fighter has already been created.")
+                if (
+                    float(args[1]) > 0
+                    and float(args[2]) > 0
+                    and float(args[3]) > 0
+                    and float(args[4]) > 0
+                    and float(args[5]) > 0
+                    and float(args[6]) > 0
+                ):
+                    with open(
+                        "storage/battlesystem/battlesystem.yaml", "r", encoding="utf-8"
+                    ) as c_load:
+                        char = yaml.safe_load(c_load)
+                        args[0] = args[0].lower()
+                        if args[0] not in char:
+                            char[args[0]] = {}
+                            char[args[0]]["HP"] = float(args[1])
+                            char[args[0]]["ATK"] = float(args[2])
+                            char[args[0]]["DEF"] = float(args[3])
+                            char[args[0]]["SPA"] = float(args[4])
+                            char[args[0]]["SPD"] = float(args[5])
+                            char[args[0]]["SPE"] = float(args[6])
+                            char[args[0]]["Moves"] = []
+                            with open(
+                                "storage/battlesystem/battlesystem.yaml",
+                                "w",
+                                encoding="utf-8",
+                            ) as c_save:
+                                yaml.dump(char, c_save)
+                                client.send_ooc(f"{args[0]} has been created!")
+                        else:
+                            client.send_ooc("This fighter has already been created.")
+                else:
+                    client.send_ooc(
+                        "hp, atk, def, spa, spd, spe have to be greater than zero!"
+                    )
             else:
                 client.send_ooc("Some argument is not an integer.")
         else:
@@ -127,7 +140,7 @@ def ooc_cmd_create_move(client, arg):
     """
     if client.battle is not None:
         args = arg.split(" ")
-        if args[2].isdigit:
+        if args[2].isdigit and float(args[2]) > 0:
             if args[3].isdigit and float(args[3]) > 0 and float(args[3]) < 101:
                 if args[1].lower() in ["atk", "spa"]:
                     with open(
@@ -188,15 +201,17 @@ def ooc_cmd_modify_stat(client, arg):
         char = yaml.safe_load(c_load)
         if args[0].lower() in char:
             if args[1].lower() in ["hp", "atk", "def", "spa", "spd", "spe"]:
-                if args[2].isdigit:
+                if args[2].isdigit and float(args[2]) > 0:
                     char[args[0].lower()][args[1].upper()] = float(args[2])
                     with open(
                         "storage/battlesystem/battlesystem.yaml", "w", encoding="utf-8"
                     ) as c_save:
                         yaml.dump(char, c_save)
                         client.send_ooc(
-                            f"{args[0]}'s stat has been modified. To check the changes choose again this fighter"
+                            f"{args[0]}'s {args[1]} has been modified. To check the changes choose again this fighter"
                         )
+                else:
+                    client.send_ooc("The value have to be an integer greater than zero")
             else:
                 client.send_ooc(
                     "You could just modify this stats:\nhp, atk, def, spa, spd, spe"
@@ -256,3 +271,27 @@ def ooc_cmd_delete_move(client, arg):
                 client.send_ooc(f"{arg} is not found in the fighter moves")
     else:
         client.send_ooc("You have to choose the fighter first")
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_custom_battle(client, arg):
+    """
+    Allow you to customize some battle settings.
+    parameters: paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage
+    Usage: /custom_battle parameter value
+    """
+    args = arg.split(" ")
+    if args[1].isdigit:
+        if args[0].lower() == "paralysis_rate":
+            client.area.battle_paralysis_rate = int(args[1])
+        if args[0].lower() == "critical_rate":
+            client.area.battle_critical_rate = int(args[1])
+        if args[0].lower() == "critical_bonus":
+            client.area.battle_critical_bonus = float(args[1])
+        if args[0].lower() == "bonus_malus":
+            client.area.battle_bonus_malus = float(args[1])
+        if args[0].lower() == "poison_damage":
+            client.area.battle_poison_damage = float(args[1])
+        client.send_ooc(f"{args[0].lower()} has been changed to {args[1]}")
+    else:
+        client.send_ooc("value is not a digit")
