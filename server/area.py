@@ -264,6 +264,12 @@ class Area:
         self.fighters = []
         self.num_selected_move = 0
 
+        # Battle system customization
+        self.battle_paralysis_rate = 3
+        self.battle_critical_rate = 15
+        self.battle_bonus_malus = 1.5
+        self.battle_poison_damage = 16
+
     @property
     def name(self):
         """Area's name string. Abbreviation is also updated according to this."""
