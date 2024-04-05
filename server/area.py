@@ -267,6 +267,7 @@ class Area:
         # Battle system customization
         self.battle_paralysis_rate = 3
         self.battle_critical_rate = 15
+        self.battle_critical_bonus = 1.5
         self.battle_bonus_malus = 1.5
         self.battle_poison_damage = 16
 
