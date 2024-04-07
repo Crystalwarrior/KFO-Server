@@ -310,7 +310,7 @@ def send_battle_info(client):
         else:
             emoji = "⚔️"
         msg += (
-            f"{emoji} [{client.id}]{client.battle.fighter} ({client.showname}) {emoji}"
+            f"{emoji} [{client.id}]{client.battle.fighter} ({client.showname}) {emoji}\n"
         )
     return msg
 
