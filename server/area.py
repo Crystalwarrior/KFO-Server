@@ -776,38 +776,13 @@ class Area:
         if client in client.area.fighters:
             client.area.fighters.remove(client)
             client.area.send_ic(
-                client=None,
-                msg_type="1",
                 pre=client.last_sprite,
-                folder="",
-                anim="",
                 msg=f"~{client.battle.fighter}~ suddenly died... (disconnected)",
                 pos=client.pos,
-                sfx="",
-                emote_mod=0,
-                cid=-1,
-                sfx_delay=0,
-                button=0,
-                evidence=[0],
                 flip=client.flip,
-                ding=0,
                 color=3,
-                showname="",
                 charid_pair=client.charid_pair,
-                other_folder="",
-                other_emote="",
                 offset_pair=100,
-                other_offset=0,
-                other_flip=0,
-                nonint_pre=0,
-                sfx_looping="0",
-                screenshake=0,
-                frames_shake="",
-                frames_realization="",
-                frames_sfx="",
-                additive=0,
-                effect="",
-                targets=None,
             )
 
         # Update everyone's available characters list
