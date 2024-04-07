@@ -1012,6 +1012,44 @@ class ClientManager:
             ) and not area.is_char_available(self.char_id):
                 self.check_char_taken(area)
 
+            #Battle system
+            if self in self.area.fighters:
+                self.area.fighters.remove(self)
+                self.area.send_ic(
+                    client=None,
+                    msg_type="1",
+                    pre="",
+                    folder="",
+                    anim="",
+                    msg=f"~{self.battle.fighter}~ suddenly died... (changed area)",
+                    pos=self.pos,
+                    sfx="",
+                    emote_mod=0,
+                    cid=-1,
+                    sfx_delay=0,
+                    button=0,
+                    evidence=[0],
+                    flip=self.flip,
+                    ding=0,
+                    color=3,
+                    showname="",
+                    charid_pair=self.charid_pair,
+                    other_folder="",
+                    other_emote="",
+                    offset_pair=100,
+                    other_offset=0,
+                    other_flip=0,
+                    nonint_pre=0,
+                    sfx_looping="0",
+                    screenshake=0,
+                    frames_shake="",
+                    frames_realization="",
+                    frames_sfx="",
+                    additive=0,
+                    effect="",
+                    targets=None,
+                )
+                
             old_area = self.area
             self.set_area(area, target_pos)
             self.last_move_time = round(time.time() * 1000.0)
