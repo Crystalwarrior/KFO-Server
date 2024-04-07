@@ -1,4 +1,5 @@
 import yaml
+import random
 
 from server.client_manager import ClientManager
 
@@ -14,6 +15,10 @@ __all__ = [
     "ooc_cmd_delete_fighter",
     "ooc_cmd_delete_move",
     "ooc_cmd_custom_battle",
+    "ooc_cmd_fight",
+    "ooc_cmd_atk",
+    "ooc_cmd_battle_info",
+    "ooc_cmd_refresh_battle",
 ]
 
 
@@ -295,3 +300,298 @@ def ooc_cmd_custom_battle(client, arg):
         client.send_ooc(f"{args[0].lower()} has been changed to {args[1]}")
     else:
         client.send_ooc("value is not a digit")
+
+
+def send_battle_info(client):
+    msg = "\n⚔️🛡️ Battle Fighters Info 🛡️⚔️:\n\n"
+    for client in client.area.fighters:
+        if client.battle.selected_move == -1:
+            emoji = "🔎"
+        else:
+            emoji = "⚔️"
+        msg += (
+            f"{emoji} [{client.id}]{client.battle.fighter} ({client.showname}) {emoji}"
+        )
+    return msg
+
+
+def ooc_cmd_battle_info(client, arg):
+    """
+    Send you info about the battle.
+    Usage: /battle_info
+    """
+    if client in client.area.fighters:
+        msg = send_battle_info(client)
+        client.send_ooc(msg)
+    else:
+        client.send_ooc("You are not fighting!")
+
+
+def ooc_cmd_fight(client, arg):
+    """
+    Allow you to join the battle!
+    Usage: /fight
+    """
+    if client.area.can_battle:
+        if client.battle is not None:
+            if client not in client.area.fighters:
+                if not client.area.battle_started:
+                    client.area.fighters.append(client)
+                    msg = send_battle_info(client)
+                    for client in client.area.fighters:
+                        client.send_ooc(msg)
+                    client.area.broadcast_ooc(
+                        f"⚔️{client.battle.fighter} ({client.showname}) is ready to fight!⚔️"
+                    )
+                    fighter_name = client.area.area_manager.char_list[client.char_id]
+                    client.area.send_ic(
+                        client=None,
+                        msg_type="1",
+                        pre=client.last_sprite,
+                        folder=fighter_name,
+                        anim=client.last_sprite,
+                        msg=f"~{client.battle.fighter}~ is ready to fight",
+                        pos=client.pos,
+                        sfx="",
+                        emote_mod=0,
+                        cid=-1,
+                        sfx_delay=0,
+                        button=0,
+                        evidence=[0],
+                        flip=client.flip,
+                        ding=0,
+                        color=3,
+                        showname="",
+                        charid_pair=client.charid_pair,
+                        other_folder="",
+                        other_emote="",
+                        offset_pair=0,
+                        other_offset=0,
+                        other_flip=0,
+                        nonint_pre=0,
+                        sfx_looping="0",
+                        screenshake=0,
+                        frames_shake="",
+                        frames_realization="",
+                        frames_sfx="",
+                        additive=0,
+                        effect="",
+                        targets=None,
+                    )
+                else:
+                    client.send_ooc("The battle is already started!")
+            else:
+                client.send_ooc("You are already in battle!")
+        else:
+            client.send_ooc("You have to choose a fighter to start a battle!")
+    else:
+        client.send_ooc("You cannot fight in this area!")
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_refresh_battle(client, arg):
+    """
+    Refresh the battle
+    Usage: /refresh_battle
+    """
+    for c in client.area.fighters:
+        c.battle.selected_move = -1
+        c.target = None
+    client.area.fighters = []
+    client.area.battle_started = False
+    client.send_ooc("The battle has been refreshed!")
+
+
+def ooc_cmd_atk(client, arg):
+    """
+    This command will let you use a move during a battle!
+    Heal and AttAll moves don't need a target!
+    Usage: /atk MoveName Target_ID
+    """
+    if client.battle is not None:
+        if client in client.area.fighters:
+            if client.battle.selected_move == -1:
+                args = arg.split(" ")
+                moves_list = [move.name for move in client.battle.moves]
+                if args[0].lower() in moves_list:
+                    move_id = moves_list.index(args[0].lower())
+                    if len(args) == 2:
+                        fighter_id_list = {c.id: c for c in client.area.fighters}
+                        if int(args[1]) in fighter_id_list:
+                            client.battle.target = fighter_id_list[int(args[1])]
+                            client.battle.selected_move = move_id
+                            client.area.num_selected_move += 1
+                            client.send_ooc(f"You have choosen {args[0].lower()}")
+                        else:
+                            client.send_ooc("Your target is not in the fighter list")
+                    elif "heal" in client.battle.moves[move_id]["Effects"]:
+                        client.battle.target = client
+                        client.battle.selected_move = move_id
+                        client.area.num_selected_move += 1
+                        client.send_ooc(f"You have choosen {args[0].lower()}")
+                    elif "atkall" in client.battle.moves[move_id]["Effects"]:
+                        client.battle.target = "all"
+                        client.battle.selected_move = move_id
+                        client.area.num_selected_move += 1
+                        client.send_ooc(f"You have choosen {args[0].lower()}")
+                    else:
+                        client.send_ooc("Not enough argument to attack")
+                    if client.area.num_selected_move == len(client.area.fighters):
+                        client.area.fighters = start_battle_animation(client.area)
+                        client.area.num_selected_move = 0
+                        if not client.area.battle_started:
+                            client.area.battle_started = True
+                        if len(client.area.fighters) < 2:
+                            client.area.fighters = []
+                            client.area.battle_started = False
+                else:
+                    client.send_ooc("There is no move with this name!")
+            else:
+                client.send_ooc("You already selected a move!")
+        else:
+            client.send_ooc("You are not ready to fight!")
+    else:
+        client.send_ooc("You have to choose a fighter first!")
+
+
+def start_battle_animation(area):
+    # first of all we sort the fighters compared to their speed.
+    fighter_speed = {client: client.battle.spe for client in area.fighters}
+    sorted_fighter_speed = sorted(fighter_speed.items(), key=lambda x: x[1])
+    sorted_fighter_speed = dict(sorted_fighter_speed)
+    area.fighters = list(sorted_fighter_speed.keys())
+    for client in list(area.fighters):
+        if client.battle.hp > 0:    
+            fighter_name = client.area.area_manager.char_list[client.char_id]
+            move = client.battle.moves[client.battle.selected_move]
+            # check if the fighter misses the move
+            miss = random.randint(0, 99)
+            if move.accuracy > miss:
+                # check if the fighter is paralysed
+                paralysis = random.randint(1, area.battle_paralysis_rate)
+                if paralysis < area.battle_paralysis_rate or client.battle.status != "paralysis":
+                    if "heal" in move.effect or "healally" in move.effect:
+                        targets = []
+                    elif "atkall" in move.effect:
+                        targets = area.fighters
+                        targets.remove(client)
+                    else:
+                        if client.battle.target in area.fighters:
+                            targets = [client.battle.target]
+                        else:
+                            targets = []
+                    #send in ic the message 'fighter uses this move'
+                    area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"~{client.battle.fighter}~ uses ~{move.name}~", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="", targets=None)
+                    if targets == []:
+                        if "heal" in move.effect or "healally" in move.effect:
+                            if client.battle.target in area.fighter:
+                                if "atk" == move.type:
+                                    heal = (move.power + client.battle.atk) * 0.25
+                                else:
+                                    heal = (move.power + client.battle.spa) * 0.25   
+                                client.battle.target.battle.hp += heal
+                                if client.battle.target.battle.hp > client.battle.target.battle.maxhp:
+                                    client.battle.target.battle.hp = client.battle.target.battle.maxhp
+                                if client.battle.target == client:
+                                    area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"and heals itself of ~{heal}~ hp", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="lifeup", targets=None)
+                                else:
+                                    target_fighter_name = client.battle.target.area.area_manager.char_list[client.battle.target.char_id]
+                                    area.send_ic(client=None, msg_type="1", pre=client.battle.target.last_sprite, folder=target_fighter_name, anim=client.last_sprite, msg=f"and heals ~{client.battle.target.battle.fighter}~ of ~{heal}~ hp", pos=client.battle.target.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.battle.target.flip, ding=0, color=3, showname="", charid_pair=client.battle.target.charid_pair, other_folder="", other_emote="", offset_pair=client.battle.target.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="lifeup", targets=None)
+                            else:
+                                area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"and tries to heal but the target is already dead", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="", targets=None)      
+                        else:
+                            area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"and tries to attack but the target is already dead", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="", targets=None)
+                    else:
+                        for target in targets:
+                            target_fighter_name = target.area.area_manager.char_list[target.char_id]
+                            #calculate damage
+                            if move.type == "atk":
+                                damage = (
+                                    move.power * client.battle.atk / 5 * target.battle.defe
+                                )
+                                effect = "attack"
+                            else:
+                                damage = (
+                                    move.power * client.battle.spa / 5 * target.battle.spd
+                                )
+                                effect = "specialattack"
+                            #calculate critical damage
+                            critical = random.randint(1,area.battle_critical_rate)
+                            critical_message = ""
+                            if critical == 1:
+                                critical_message = "with a critical"
+                                damage = damage*area.battle_critical_bonus
+                            target.battle.hp += -damage
+                            area.send_ic(client=None, msg_type="1", pre=target.last_sprite, folder=target_fighter_name, anim=client.last_sprite, msg=f"and attacks ~{target.battle.fighter}~ {critical_message} dealing a damage of ~{damage}~", pos=target.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=target.flip, ding=0, color=3, showname="", charid_pair=target.charid_pair, other_folder="", other_emote="", offset_pair=target.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=1, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect=effect, targets=None)
+                            if "atkdown" in move.effect:
+                                target.battle.atk = target.battle.atk / area.battle_bonus_malus
+                                area.send_ic(client=None, msg_type="1", pre=target.last_sprite, folder=target_fighter_name, anim=client.last_sprite, msg=f"The attack of ~{target.battle.fighter}~ goes down", pos=target.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=target.flip, ding=0, color=3, showname="", charid_pair=target.charid_pair, other_folder="", other_emote="", offset_pair=target.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="statdown", targets=None)
+                            if "defdown" in move.effect:
+                                target.battle.defe = target.battle.defe / area.battle_bonus_malus
+                                area.send_ic(client=None, msg_type="1", pre=target.last_sprite, folder=target_fighter_name, anim=client.last_sprite, msg=f"The defense of ~{target.battle.fighter}~ goes down", pos=target.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=target.flip, ding=0, color=3, showname="", charid_pair=target.charid_pair, other_folder="", other_emote="", offset_pair=target.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="statdown", targets=None)
+                            if "spadown" in move.effect:
+                                target.battle.spa = target.battle.spa / area.battle_bonus_malus
+                                area.send_ic(client=None, msg_type="1", pre=target.last_sprite, folder=target_fighter_name, anim=client.last_sprite, msg=f"The special attack of ~{target.battle.fighter}~ goes down", pos=target.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=target.flip, ding=0, color=3, showname="", charid_pair=target.charid_pair, other_folder="", other_emote="", offset_pair=target.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="statdown", targets=None)
+                            if "spddown" in move.effect:
+                                target.battle.spd = target.battle.spd / area.battle_bonus_malus
+                                area.send_ic(client=None, msg_type="1", pre=target.last_sprite, folder=target_fighter_name, anim=client.last_sprite, msg=f"The special defense of ~{target.battle.fighter}~ goes down", pos=target.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=target.flip, ding=0, color=3, showname="", charid_pair=target.charid_pair, other_folder="", other_emote="", offset_pair=target.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="statdown", targets=None)
+                            if "spedown" in move.effect:
+                                target.battle.spe = target.battle.spe / area.battle_bonus_malus
+                                area.send_ic(client=None, msg_type="1", pre=target.last_sprite, folder=target_fighter_name, anim=client.last_sprite, msg=f"The speed of ~{target.battle.fighter}~ goes down", pos=target.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=target.flip, ding=0, color=3, showname="", charid_pair=target.charid_pair, other_folder="", other_emote="", offset_pair=target.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="statdown", targets=None)
+                            if "poison" in move.effect:
+                                if target.battle.status is None:
+                                    target.battle.status = "poison"
+                                    area.send_ic(client=None, msg_type="1", pre=target.last_sprite, folder=target_fighter_name, anim=client.last_sprite, msg=f"~{target.battle.fighter}~ is affected by poisoning", pos=target.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=target.flip, ding=0, color=3, showname="", charid_pair=target.charid_pair, other_folder="", other_emote="", offset_pair=target.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="poison", targets=None)
+                            if "paralysis" in move.effect:
+                                if target.battle.status is None:
+                                    target.battle.status = "paralysis"
+                                    area.send_ic(client=None, msg_type="1", pre=target.last_sprite, folder=target_fighter_name, anim=client.last_sprite, msg=f"~{target.battle.fighter}~ is affected by paralysis", pos=target.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=target.flip, ding=0, color=3, showname="", charid_pair=target.charid_pair, other_folder="", other_emote="", offset_pair=target.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=1, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="paralysis", targets=None)
+                            if target.battle.hp < 1:
+                                target.battle.selected_move = -1
+                                target.battle.target = None
+                                area.fighters.remove(target)
+                                target.battle = ClientManager.Battle_char(
+                                    target, target.battle.fighter
+                                )
+                                area.send_ic(client=None, msg_type="1", pre=target.last_sprite, folder=target_fighter_name, anim=client.last_sprite, msg=f"~{target.battle.fighter}~ dies...", pos=target.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=target.flip, ding=0, color=3, showname="", charid_pair=target.charid_pair, other_folder="", other_emote="", offset_pair=100, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="", targets=None)
+                        if "atkraise" in move.effect:
+                            client.battle.atk = client.battle.atk * area.battle_bonus_malus
+                            area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"The attack goes up", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="statup", targets=None)
+                        if "defraise" in move.effect:
+                            client.battle.defe = client.battle.defe * area.battle_bonus_malus
+                            area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"The defense goes up", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="statup", targets=None)
+                        if "sparaise" in move.effect:
+                            client.battle.spa = client.battle.spa * area.battle_bonus_malus
+                            area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"The special attack goes up", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="statup", targets=None)
+                        if "spdraise" in move.effect:
+                            client.battle.spd = client.battle.spd * area.battle_bonus_malus
+                            area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"The special defense goes up", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="statup", targets=None)
+                        if "speraise" in move.effect:
+                            client.battle.spe = client.battle.spe * area.battle_bonus_malus
+                            area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"The speed goes up", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="statup", targets=None)
+                else:
+                    area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"~{client.battle.fighter}~ is affected by paralysis and cannot fight", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="paralysis", targets=None)  
+            else:
+                area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"~{client.battle.fighter}~ misses the target", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="", targets=None)  
+            client.battle.selected_move = -1
+            client.battle.target = None
+    for client in list(area.fighters):
+        fighter_name = client.area.area_manager.char_list[client.char_id]
+        if client.battle.status == "poison":
+            client.battle.hp += -client.battle.maxhp / area.battle_poison_damage
+            area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"~{client.battle.fighter}~ is affected by poisoning and loses {client.battle.maxhp / area.battle_poison_damage} hp", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=client.offset_pair, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="poison", targets=None)
+        if client.battle.hp < 1:
+            area.fighters.remove(client)
+            client.battle = ClientManager.Battle_char(client, client.battle.fighter)
+            area.send_ic(client=None, msg_type="1", pre=client.last_sprite, folder=fighter_name, anim=client.last_sprite, msg=f"~{client.battle.fighter}~ dies...", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=100, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="", targets=None)
+        send_info_fighter(client)
+        msg = send_battle_info(client)
+        client.send_ooc(msg)
+    if len(area.fighters) == 1:
+        winner = area.fighters[0]
+        fighter_name = winner.area.area_manager.char_list[winner.char_id]
+        area.send_ic(client=None, msg_type="1", pre=1, folder=fighter_name, anim=client.last_sprite, msg=f"~{client.battle.fighter}~ wins the battle!", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=0, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="", targets=None)
+        winner.battle = ClientManager.Battle_char(winner, winner.battle.fighter)
+    if len(area.fighters) == 0:
+        area.send_ic(client=None, msg_type="1", pre=1, folder=fighter_name, anim=client.last_sprite, msg=f"~Everyone~ died...", pos=client.pos, sfx="", emote_mod=0, cid=-1, sfx_delay=0, button=0, evidence=[0], flip=client.flip, ding=0, color=3, showname="", charid_pair=client.charid_pair, other_folder="", other_emote="", offset_pair=0, other_offset=0, other_flip=0, nonint_pre=0, sfx_looping="0", screenshake=0, frames_shake="", frames_realization="", frames_sfx="", additive=0, effect="", targets=None)
+    return area.fighters
