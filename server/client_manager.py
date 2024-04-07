@@ -2111,24 +2111,20 @@ class ClientManager:
     def get_mods(self):
         return [c for c in self.clients if c.is_mod]
         
-    class Battle_char:
-        def __init__(self, client, arg):
-            with open(
-                "storage/battlesystem/battlesystem.yaml", "r", encoding="utf-8"
-            ) as c:
-                char = yaml.safe_load(c)
-                self.fighter = arg
-                self.hp = float(char[arg]["HP"])
-                self.maxhp = self.hp
-                self.atk = float(char[arg]["ATK"])
-                self.defe = float(char[arg]["DEF"])
-                self.spa = float(char[arg]["SPA"])
-                self.spd = float(char[arg]["SPD"])
-                self.spe = float(char[arg]["SPE"])
-                self.target = None
-                self.selected_move = -1
-                self.status = None
-                self.moves = [ClientManager.Move(move) for move in char[arg]["Moves"]]
+    class BattleChar:
+        def __init__(self, client, fighter_name, fighter):
+            self.fighter = fighter_name
+            self.hp = float(fighter["HP"])
+            self.maxhp = self.hp
+            self.atk = float(fighter["ATK"])
+            self.defe = float(fighter["DEF"])
+            self.spa = float(fighter["SPA"])
+            self.spd = float(fighter["SPD"])
+            self.spe = float(fighter["SPE"])
+            self.target = None
+            self.selected_move = -1
+            self.status = None
+            self.moves = [ClientManager.Move(move) for move in fighter["Moves"]]
 
     class Move:
         def __init__(self, move):
