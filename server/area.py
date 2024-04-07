@@ -774,7 +774,10 @@ class Area:
 
         #Battle system
         if client in client.area.fighters:
-            client.area.fighters.remove(client)
+            if client.battle.seletected_move == -1:
+                client.area.fighters.remove(client)
+            else:
+                client.battle.hp = 0
             client.area.send_ic(
                 pre=client.last_sprite,
                 msg=f"~{client.battle.fighter}~ suddenly died... (disconnected)",
