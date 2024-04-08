@@ -43,6 +43,9 @@ battle_effects = [
 
 
 def send_info_fighter(client):
+    """
+    Prepare the message about fighter info
+    """
     msg = f"\n👤 {client.battle.fighter} 👤:\n\nHP 💗: {client.battle.hp}/{client.battle.maxhp}\nATK 🗡️: {client.battle.atk}\nDEF 🛡️: {client.battle.defe}\nSPA ✨: {client.battle.spa}\nSPD 🔮: {client.battle.spd}\nSPE 💨: {client.battle.spe}\n\n"
     for move in client.battle.moves:
         msg += f"🌠 {move.name} 🌠:\nType 💠: {move.type}\nPower 💪: {move.power}\nAccuracy 🔎: {move.accuracy}%\n Effects 🔰:\n"
@@ -301,6 +304,9 @@ def ooc_cmd_custom_battle(client, arg):
 
 
 def send_battle_info(client):
+    """
+    Prepare the message about battle info
+    """
     msg = "\n⚔️🛡️ Battle Fighters Info 🛡️⚔️:\n\n"
     for client in client.area.fighters:
         if client.battle.selected_move == -1:
@@ -432,6 +438,13 @@ def ooc_cmd_atk(client, arg):
 
 
 def battle_send_ic(client, msg, effect="", shake=0, offset=0):
+    """
+    A function used to send battle information in IC
+    effect: statdown, statup, poison, paralysis, lifeup, attack, specialattack
+    shake: screeenshake 0 = False, 1 = True
+    offset: 0 = alive, 100 = dead
+    Choosen_color = 3
+    """
     fighter_name = client.area.area_manager.char_list[client.char_id]
 
     if offset != 0:
@@ -464,223 +477,208 @@ def start_battle_animation(area):
     for client in area.fighters:
         if client.battle.hp > 0:
             move = client.battle.moves[client.battle.selected_move]
-            # check if the fighter misses the move
-            miss = random.randint(0, 99)
-            if move.accuracy > miss:
-                # check if the fighter is paralysed
-                paralysis = random.randint(1, area.battle_paralysis_rate)
-                if (
-                    paralysis < area.battle_paralysis_rate
-                    or client.battle.status != "paralysis"
-                ):
-                    if "heal" in move.effect or "healally" in move.effect:
-                        targets = []
-                    elif "atkall" in move.effect:
-                        targets = area.fighters
-                        targets.remove(client)
-                    else:
-                        targets = [client.battle.target]
-                    # send in ic the message 'fighter uses this move'
-                    battle_send_ic(
-                        client, msg=f"~{client.battle.fighter}~ uses ~{move.name}~"
-                    )
 
-                    # heal move
-                    if targets == []:
-                        if client.battle.target.battle.hp > 0:
-                            if "atk" == move.type:
-                                heal = (move.power + client.battle.atk) * 0.25
-                            else:
-                                heal = (move.power + client.battle.spa) * 0.25
-                            client.battle.target.battle.hp += heal
-                            if (
-                                client.battle.target.battle.hp
-                                > client.battle.target.battle.maxhp
-                            ):
-                                client.battle.target.battle.hp = (
-                                    client.battle.target.battle.maxhp
-                                )
-                            if client.battle.target == client:
-                                battle_send_ic(
-                                    client,
-                                    msg=f"and heals itself of ~{heal}~ hp",
-                                    effect="lifeup",
-                                )
-                            else:
-                                battle_send_ic(
-                                    client.battle.target,
-                                    msg=f"and heals ~{client.battle.target.battle.fighter}~ of ~{heal}~ hp",
-                                    effect="lifeup",
-                                )
-                        else:
-                            battle_send_ic(
-                                client,
-                                msg=f"and tries to heal but the target is already dead",
-                            )
-                    else:
-                        # damage move
-                        for target in targets:
-                            if target.battle.hp > 0:
-                                # calculate damage
-                                if move.type == "atk":
-                                    damage = (
-                                        move.power
-                                        * client.battle.atk
-                                        / 5
-                                        * target.battle.defe
-                                    )
-                                    effect = "attack"
-                                else:
-                                    damage = (
-                                        move.power
-                                        * client.battle.spa
-                                        / 5
-                                        * target.battle.spd
-                                    )
-                                    effect = "specialattack"
-                                # calculate critical damage
-                                critical = random.randint(1, area.battle_critical_rate)
-                                critical_message = ""
-                                if critical == 1:
-                                    critical_message = "with a critical"
-                                    damage = damage * area.battle_critical_bonus
-                                target.battle.hp += -damage
-                                battle_send_ic(
-                                    target,
-                                    msg=f"and attacks ~{target.battle.fighter}~ {critical_message} dealing a damage of ~{damage}~",
-                                    effect=effect,
-                                    shake=1,
-                                )
-                                if "atkdown" in move.effect:
-                                    target.battle.atk = (
-                                        target.battle.atk / area.battle_bonus_malus
-                                    )
-                                    battle_send_ic(
-                                        target,
-                                        msg=f"The attack of ~{target.battle.fighter}~ goes down",
-                                        effect="statdown",
-                                    )
-                                if "defdown" in move.effect:
-                                    target.battle.defe = (
-                                        target.battle.defe / area.battle_bonus_malus
-                                    )
-                                    battle_send_ic(
-                                        target,
-                                        msg=f"The defense of ~{target.battle.fighter}~ goes down",
-                                        effect="statdown",
-                                    )
-                                if "spadown" in move.effect:
-                                    target.battle.spa = (
-                                        target.battle.spa / area.battle_bonus_malus
-                                    )
-                                    battle_send_ic(
-                                        target,
-                                        msg=f"The special attack of ~{target.battle.fighter}~ goes down",
-                                        effect="statdown",
-                                    )
-                                if "spddown" in move.effect:
-                                    target.battle.spd = (
-                                        target.battle.spd / area.battle_bonus_malus
-                                    )
-                                    battle_send_ic(
-                                        target,
-                                        msg=f"The special defense of ~{target.battle.fighter}~ goes down",
-                                        effect="statdown",
-                                    )
-                                if "spedown" in move.effect:
-                                    target.battle.spe = (
-                                        target.battle.spe / area.battle_bonus_malus
-                                    )
-                                    battle_send_ic(
-                                        target,
-                                        msg=f"The speed of ~{target.battle.fighter}~ goes down",
-                                        effect="statdown",
-                                    )
-                                if "poison" in move.effect:
-                                    if target.battle.status is None:
-                                        target.battle.status = "poison"
-                                        battle_send_ic(
-                                            target,
-                                            msg=f"~{target.battle.fighter}~ is affected by poisoning",
-                                            effect="poison",
-                                            shake=1,
-                                        )
-                                if "paralysis" in move.effect:
-                                    if target.battle.status is None:
-                                        target.battle.status = "paralysis"
-                                        battle_send_ic(
-                                            target,
-                                            msg=f"~{target.battle.fighter}~ is affected by paralysis",
-                                            effect="paralysis",
-                                            shake=1,
-                                        )
-                                if target.battle.hp <= 0:
-                                    battle_send_ic(
-                                        target,
-                                        msg=f"~{target.battle.fighter}~ dies...",
-                                        offset=100,
-                                    )
-                            else:
-                                if len(targets) == 1:
-                                    battle_send_ic(
-                                        client, msg="but the target is already died"
-                                    )
-                            if "atkraise" in move.effect:
-                                client.battle.atk = (
-                                    client.battle.atk * area.battle_bonus_malus
-                                )
-                                battle_send_ic(
-                                    client,
-                                    msg=f"The attack of ~{client.battle.fighter}~ goes up",
-                                    effect="statup",
-                                )
-                            if "defraise" in move.effect:
-                                client.battle.defe = (
-                                    client.battle.defe * area.battle_bonus_malus
-                                )
-                                battle_send_ic(
-                                    client,
-                                    msg=f"The defense of ~{client.battle.fighter}~ goes up",
-                                    effect="statup",
-                                )
-                            if "sparaise" in move.effect:
-                                client.battle.spa = (
-                                    client.battle.spa * area.battle_bonus_malus
-                                )
-                                battle_send_ic(
-                                    client,
-                                    msg=f"The special attack of ~{client.battle.fighter}~ goes up",
-                                    effect="statup",
-                                )
-                            if "spdraise" in move.effect:
-                                client.battle.spd = (
-                                    client.battle.spd * area.battle_bonus_malus
-                                )
-                                battle_send_ic(
-                                    client,
-                                    msg=f"The special defense of ~{client.battle.fighter}~ goes up",
-                                    effect="statup",
-                                )
-                            if "speraise" in move.effect:
-                                client.battle.spe = (
-                                    client.battle.spe * area.battle_bonus_malus
-                                )
-                                battle_send_ic(
-                                    client,
-                                    msg=f"The speed of ~{client.battle.fighter}~ goes up",
-                                    effect="statup",
-                                )
-                else:
-                    battle_send_ic(
-                        client,
-                        msg=f"~{client.battle.fighter}~ is affected by paralysis and cannot fight",
-                        effect="paralysis",
-                        shake=1,
-                    )
-            else:
+            # check if the fighter misses the move
+            miss = random.randint(1, 100)
+            if move.accuracy <= miss:
                 battle_send_ic(
                     client, msg=f"~{client.battle.fighter}~ misses the target"
                 )
+                continue
+
+            # check if the fighter is paralysed
+            paralysis = random.randint(1, area.battle_paralysis_rate)
+            if (
+                paralysis == area.battle_paralysis_rate
+                and client.battle.status == "paralysis"
+            ):
+                battle_send_ic(
+                    client,
+                    msg=f"~{client.battle.fighter}~ is affected by paralysis and cannot fight",
+                    effect="paralysis",
+                    shake=1,
+                )
+                continue
+
+            # creating target list
+            if "atkall" in move.effect:
+                targets = area.fighters
+                targets.remove(client)
+            else:
+                targets = [client.battle.target]
+
+            # send in ic the message 'fighter uses this move'
+            battle_send_ic(client, msg=f"~{client.battle.fighter}~ uses ~{move.name}~")
+
+            # heal move
+            if "heal" in move.effect or "healally" in move.effect:
+                if client.battle.target.battle.hp <= 0:
+                    battle_send_ic(
+                        client, msg=f"and tries to heal but the target is already dead"
+                    )
+                else:
+                    # calculate heal
+                    if "atk" == move.type:
+                        heal = (move.power + client.battle.atk) * 0.25
+                    else:
+                        heal = (move.power + client.battle.spa) * 0.25
+
+                    client.battle.target.battle.hp += heal
+
+                    # check if heal+hp is greater than maxhp
+                    if (
+                        client.battle.target.battle.hp
+                        > client.battle.target.battle.maxhp
+                    ):
+                        client.battle.target.battle.hp = (
+                            client.battle.target.battle.maxhp
+                        )
+
+                    # send ic healing move
+                    if client.battle.target == client:
+                        battle_send_ic(
+                            client,
+                            msg=f"and heals itself of ~{heal}~ hp",
+                            effect="lifeup",
+                        )
+                    else:
+                        battle_send_ic(
+                            client.battle.target,
+                            msg=f"and heals ~{client.battle.target.battle.fighter}~ of ~{heal}~ hp",
+                            effect="lifeup",
+                        )
+                continue
+
+            # damage move
+            for target in targets:
+                if target.battle.hp <= 0:
+                    if len(targets) == 1:
+                        battle_send_ic(client, msg="but the target is already dead")
+                    continue
+
+                # calculate damage
+                if move.type == "atk":
+                    damage = move.power * client.battle.atk / (5 * target.battle.defe)
+                    effect = "attack"
+                else:
+                    damage = move.power * client.battle.spa / (5 * target.battle.spd)
+                    effect = "specialattack"
+
+                # calculate critical damage
+                critical = random.randint(1, area.battle_critical_rate)
+                critical_message = ""
+                if critical == area.battle_critical_rate:
+                    critical_message = "with a critical"
+                    damage = damage * area.battle_critical_bonus
+                target.battle.hp += -damage
+
+                # send ic damage move
+                battle_send_ic(
+                    target,
+                    msg=f"and attacks ~{target.battle.fighter}~ {critical_message} dealing a damage of ~{damage}~",
+                    effect=effect,
+                    shake=1,
+                )
+
+                # check malus move effects
+                if "atkdown" in move.effect:
+                    target.battle.atk = target.battle.atk / area.battle_bonus_malus
+                    battle_send_ic(
+                        target,
+                        msg=f"The attack of ~{target.battle.fighter}~ goes down",
+                        effect="statdown",
+                    )
+                if "defdown" in move.effect:
+                    target.battle.defe = target.battle.defe / area.battle_bonus_malus
+                    battle_send_ic(
+                        target,
+                        msg=f"The defense of ~{target.battle.fighter}~ goes down",
+                        effect="statdown",
+                    )
+                if "spadown" in move.effect:
+                    target.battle.spa = target.battle.spa / area.battle_bonus_malus
+                    battle_send_ic(
+                        target,
+                        msg=f"The special attack of ~{target.battle.fighter}~ goes down",
+                        effect="statdown",
+                    )
+                if "spddown" in move.effect:
+                    target.battle.spd = target.battle.spd / area.battle_bonus_malus
+                    battle_send_ic(
+                        target,
+                        msg=f"The special defense of ~{target.battle.fighter}~ goes down",
+                        effect="statdown",
+                    )
+                if "spedown" in move.effect:
+                    target.battle.spe = target.battle.spe / area.battle_bonus_malus
+                    battle_send_ic(
+                        target,
+                        msg=f"The speed of ~{target.battle.fighter}~ goes down",
+                        effect="statdown",
+                    )
+                if "poison" in move.effect:
+                    if target.battle.status is None:
+                        target.battle.status = "poison"
+                        battle_send_ic(
+                            target,
+                            msg=f"~{target.battle.fighter}~ is affected by poisoning",
+                            effect="poison",
+                            shake=1,
+                        )
+                if "paralysis" in move.effect:
+                    if target.battle.status is None:
+                        target.battle.status = "paralysis"
+                        battle_send_ic(
+                            target,
+                            msg=f"~{target.battle.fighter}~ is affected by paralysis",
+                            effect="paralysis",
+                            shake=1,
+                        )
+
+                # check if target is dead
+                if target.battle.hp <= 0:
+                    battle_send_ic(
+                        target, msg=f"~{target.battle.fighter}~ dies...", offset=100
+                    )
+
+            #check bonus move effect
+            if "atkraise" in move.effect:
+                client.battle.atk = client.battle.atk * area.battle_bonus_malus
+                battle_send_ic(
+                    client,
+                    msg=f"The attack of ~{client.battle.fighter}~ goes up",
+                    effect="statup",
+                )
+            if "defraise" in move.effect:
+                client.battle.defe = client.battle.defe * area.battle_bonus_malus
+                battle_send_ic(
+                    client,
+                    msg=f"The defense of ~{client.battle.fighter}~ goes up",
+                    effect="statup",
+                )
+            if "sparaise" in move.effect:
+                client.battle.spa = client.battle.spa * area.battle_bonus_malus
+                battle_send_ic(
+                    client,
+                    msg=f"The special attack of ~{client.battle.fighter}~ goes up",
+                    effect="statup",
+                )
+            if "spdraise" in move.effect:
+                client.battle.spd = client.battle.spd * area.battle_bonus_malus
+                battle_send_ic(
+                    client,
+                    msg=f"The special defense of ~{client.battle.fighter}~ goes up",
+                    effect="statup",
+                )
+            if "speraise" in move.effect:
+                client.battle.spe = client.battle.spe * area.battle_bonus_malus
+                battle_send_ic(
+                    client,
+                    msg=f"The speed of ~{client.battle.fighter}~ goes up",
+                    effect="statup",
+                )
+
+            # Unselect move and target
             client.battle.selected_move = -1
             client.battle.target = None
 
@@ -726,7 +724,7 @@ def start_battle_animation(area):
                 winner, winner.battle.fighter, char
             )
     elif len(area.fighters) == 0:
-        battle_send_ic(client, msg=f"~Everyone~ died...", offset=100)
+        battle_send_ic(client, msg=f"~Everyone~ is dead...", offset=100)
     else:
         # prepare for the next turn
         for client in area.fighters:
