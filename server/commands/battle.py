@@ -480,7 +480,7 @@ def start_battle_animation(area):
 
             # check if the fighter misses the move
             miss = random.randint(1, 100)
-            if move.accuracy <= miss:
+            if move.accuracy < miss:
                 battle_send_ic(
                     client, msg=f"~{client.battle.fighter}~ misses the target"
                 )
