@@ -1705,7 +1705,7 @@ class Area:
         """
         if len(self.judgelog) >= 10:
             self.judgelog = self.judgelog[1:]
-        self.judgelog.append(f"{client.char_name} ({client.ip}) {msg}.")
+        self.judgelog.append(f"{client.char_name} ({client.ipid}) {msg}.")
 
     def add_music_playing(self, client, name, showname="", autoplay=None):
         """

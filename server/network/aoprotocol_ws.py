@@ -8,32 +8,15 @@ from server.network.aoprotocol import AOProtocol
 class AOProtocolWS(AOProtocol):
     """A websocket wrapper around AOProtocol."""
 
-    class TransportWrapper:
-        """A class to wrap asyncio's Transport class."""
+    class WSTransport(asyncio.Transport):
+        """A subclass of asyncio's Transport class to handle websocket connections."""
 
         def __init__(self, websocket):
+            super().__init__()
             self.ws = websocket
 
-        def get_extra_info(self, key):
-            """Get extra info about the client.
-            Used for getting the remote address.
-
-            :param key: requested key
-
-            """
-            remote_address = self.ws.remote_address
-            if (remote_address[0] == "127.0.0.1"):
-                # See if proxy
-                try:
-                    remote_address = (
-                        self.ws.request_headers['X-Forwarded-For'], 0)
-                except Exception:
-                    pass
-            info = {"peername": remote_address}
-            return info[key]
-
         def write(self, message):
-            """Write message to the socket.
+            """Write message to the socket. Overrides asyncio.Transport.write.
 
             :param message: message in bytes
 
@@ -42,7 +25,7 @@ class AOProtocolWS(AOProtocol):
             asyncio.ensure_future(self.ws_try_writing_message(message))
 
         def close(self):
-            """Disconnect the client by force."""
+            """Disconnect the client by force. Overrides asyncio.Transport.close."""
             asyncio.ensure_future(self.ws.close())
 
         async def ws_try_writing_message(self, message):
@@ -64,7 +47,7 @@ class AOProtocolWS(AOProtocol):
 
     def ws_on_connect(self):
         """Handle a new client connection."""
-        self.connection_made(self.TransportWrapper(self.ws))
+        self.connection_made(self.WSTransport(self.ws))
 
     async def ws_handle(self):
         try:
