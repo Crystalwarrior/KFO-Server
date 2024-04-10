@@ -932,6 +932,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.offset_pair = offset_pair
         if emote_mod not in (5, 6):
             self.client.last_sprite = anim
+            self.client.last_pre = pre
         self.client.flip = flip
         self.client.claimed_folder = folder
         other_offset = 0
