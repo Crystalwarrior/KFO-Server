@@ -1505,9 +1505,9 @@ class ClientManager:
             ):
                 if self.blinded:
                     raise ClientError("You are blinded!")
-                if not self.server.config["can_gethubs"]:
+                if "can_gethubs" not in self.server.config or not self.server.config["can_gethubs"]:
                     raise ClientError(
-                        "In this server it is not allowed to use the command /gethubs!"
+                        "You are not permitted to use the /gethubs command in this server!"
                     )
             cnt = 0
             info = "\n🗺️ Clients in Hubs 🗺️\n"
