@@ -55,6 +55,14 @@ def send_info_fighter(client):
     client.send_ooc(msg)
 
 
+def send_stats_fighter(client):
+    """
+    Prepare the message about fighter stats
+    """
+    msg = f"\n👤 {client.battle.fighter} 👤:\n\nHP 💗: {client.battle.hp}/{client.battle.maxhp}\nATK 🗡️: {client.battle.atk}\nDEF 🛡️: {client.battle.defe}\nSPA ✨: {client.battle.spa}\nSPD 🔮: {client.battle.spd}\nSPE 💨: {client.battle.spe}\n\n"
+    client.send_ooc(msg)
+
+
 def ooc_cmd_choose_fighter(client, arg):
     """
     Allow you to choose a fighter from the list of the server.
@@ -415,12 +423,12 @@ def ooc_cmd_atk(client, arg):
             client.send_ooc(f"You have choosen {args[0].lower()}")
         else:
             client.send_ooc("Your target is not in the fighter list")
-    elif "heal" in client.battle.moves[move_id]["Effects"]:
+    elif "heal" in client.battle.moves[move_id].effect:
         client.battle.target = client
         client.battle.selected_move = move_id
         client.area.num_selected_move += 1
         client.send_ooc(f"You have choosen {args[0].lower()}")
-    elif "atkall" in client.battle.moves[move_id]["Effects"]:
+    elif "atkall" in client.battle.moves[move_id].effect:
         client.battle.target = "all"
         client.battle.selected_move = move_id
         client.area.num_selected_move += 1
@@ -452,11 +460,19 @@ def battle_send_ic(client, msg, effect="", shake=0, offset=0):
     else:
         offset = client.offset_pair
 
+    if effect == "":
+        sfx = ""
+    else:
+        sfx = f"sfx-{effect}.mp3"
+
     client.area.send_ic(
+        pre=client.last_pre,
         folder=fighter_name,
         anim=client.last_sprite,
         msg=msg,
         pos=client.pos,
+        sfx=sfx,
+        emote_mod=1,
         flip=client.flip,
         color=3,
         charid_pair=client.charid_pair,
@@ -502,7 +518,7 @@ def start_battle_animation(area):
 
             # creating target list
             if "atkall" in move.effect:
-                targets = area.fighters
+                targets = list(area.fighters)
                 targets.remove(client)
             else:
                 targets = [client.battle.target]
@@ -678,11 +694,7 @@ def start_battle_animation(area):
                     effect="statup",
                 )
 
-            # Unselect move and target
-            client.battle.selected_move = -1
-            client.battle.target = None
-
-    # check poisoned fighters
+    # check poisoned fighters 
     for client in area.fighters:
         fighter_name = client.area.area_manager.char_list[client.char_id]
         if client.battle.status == "poison" and client.battle.hp > 0:
@@ -698,8 +710,14 @@ def start_battle_animation(area):
                     client, msg=f"~{client.battle.fighter}~ dies...", offset=100
                 )
 
-    # check dead fighters
+    # check dead fighters and unselect move and target
     for client in area.fighters:
+        
+        # Unselect move and target
+        client.battle.selected_move = -1
+        client.battle.target = None
+            
+        # check dead fighters
         if client.battle.hp <= 0:
             area.fighters.remove(client)
             with open(
@@ -728,7 +746,7 @@ def start_battle_animation(area):
     else:
         # prepare for the next turn
         for client in area.fighters:
-            send_info_fighter(client)
+            send_stats_fighter(client)
             msg = send_battle_info(client)
             client.send_ooc(msg)
-        return area.fighters
+    return area.fighters
