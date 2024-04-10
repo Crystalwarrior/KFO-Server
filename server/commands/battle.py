@@ -577,7 +577,7 @@ def start_battle_animation(area):
                     damage = move.power + client.battle.atk - target.battle.defe
                     effect = "attack"
                 else:
-                    damage = move.power + client.battle.spa - target.battle.spd)
+                    damage = move.power + client.battle.spa - target.battle.spd
                     effect = "specialattack"
 
                 # calculate critical damage
