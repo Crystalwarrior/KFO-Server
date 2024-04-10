@@ -106,14 +106,14 @@ def ooc_cmd_bgs(client, arg):
     Usage: /bgs category
     """
     if arg == "":
-        msg = "Available backgrounds:\n"
+        msg = "Available Categories:"
         for category in client.area.server.backgrounds_categories:
-            msg += f"\n{category};"
+            msg += f"\n{category}"
         client.send_ooc(msg)
     elif arg in client.server.backgrounds_categories:
-        msg = f"Available {arg} backgrounds:\n"
+        msg = f"Backgrounds in Category '{arg}':"
         for bg in client.server.backgrounds_categories[arg]:
-            msg += f"\n{bg};"
+            msg += f"\n{bg}"
         client.send_ooc(msg)
     else:
         client.send_ooc("There is no category with this name in server background list.")
