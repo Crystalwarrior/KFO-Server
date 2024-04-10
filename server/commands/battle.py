@@ -15,9 +15,9 @@ __all__ = [
     "ooc_cmd_modify_stat",
     "ooc_cmd_delete_fighter",
     "ooc_cmd_delete_move",
-    "ooc_cmd_custom_battle",
+    "ooc_cmd_battle_config",
     "ooc_cmd_fight",
-    "ooc_cmd_atk",
+    "ooc_cmd_use_move",
     "ooc_cmd_battle_info",
     "ooc_cmd_refresh_battle",
 ]
@@ -288,7 +288,7 @@ def ooc_cmd_delete_move(client, arg):
 
 
 @mod_only(hub_owners=True)
-def ooc_cmd_custom_battle(client, arg):
+def ooc_cmd_battle_config(client, arg):
     """
     Allow you to customize some battle settings.
     parameters: paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage
@@ -390,7 +390,7 @@ def ooc_cmd_refresh_battle(client, arg):
     client.send_ooc("The battle has been refreshed!")
 
 
-def ooc_cmd_atk(client, arg):
+def ooc_cmd_use_move(client, arg):
     """
     This command will let you use a move during a battle!
     Heal and AttAll moves don't need a target!
