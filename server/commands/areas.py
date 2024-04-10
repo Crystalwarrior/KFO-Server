@@ -103,11 +103,20 @@ def ooc_cmd_bg(client, arg):
 def ooc_cmd_bgs(client, arg):
     """
     Display the server's available backgrounds.
-    Usage: /bgs
+    Usage: /bgs category
     """
-    msg = "Available backgrounds:"
-    msg += "\n" + "; ".join(client.server.backgrounds)
-    client.send_ooc(msg)
+    if arg == "":
+        msg = "Available backgrounds:\n"
+        for category in client.area.server.backgrounds_categories:
+            msg += f"\n{category};"
+        client.send_ooc(msg)
+    elif arg in client.server.backgrounds_categories:
+        msg = f"Available {arg} backgrounds:\n"
+        for bg in client.server.backgrounds_categories[arg]:
+            msg += f"\n{bg};"
+        client.send_ooc(msg)
+    else:
+        client.send_ooc("There is no category with this name in server background list.")
 
 
 def ooc_cmd_status(client, arg):
