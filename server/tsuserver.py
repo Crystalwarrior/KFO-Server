@@ -41,6 +41,7 @@ class TsuServer3:
         self.music_list = []
         self.music_whitelist = []
         self.backgrounds = None
+        self.backgrounds_categories = None
         self.server_links = None
         self.zalgo_tolerance = None
         self.ipRange_bans = []
@@ -319,7 +320,8 @@ class TsuServer3:
     def load_backgrounds(self):
         """Load the backgrounds list from a YAML file."""
         with open("config/backgrounds.yaml", "r", encoding="utf-8") as bgs:
-            self.backgrounds = yaml.safe_load(bgs)
+            self.backgrounds_categories = yaml.safe_load(bgs)
+            self.backgrounds = list(self.backgrounds_categories.values())
 
     def load_server_links(self):
         """Load the server links list from a YAML file."""
