@@ -1,23 +1,24 @@
-backgrounds:
- - Anime
- - birthday
- - Christmas
- - CountyCourt
- - CruiseCourt
+Courtrooms:
  - default
  - DGSEnglishCourt
  - DGSJapanCourt
  - DualDestinies
  - EnglishCourt
  - gs4
- - GS4Night
  - HD
  - Khura'in
  - NewCourt
  - RuinedCourt
+ - Themis
+ - WitchTrialCourt
+Custom Courts:
+ - Anime
+ - birthday
+ - Christmas
+ - CountyCourt
+ - CruiseCourt
+ - GS4Night
  - Sky
  - SpaceCourt
- - Themis
  - TouhouCourt
- - WitchTrialCourt
  - Zetta
