@@ -60,6 +60,7 @@ class ClientManager:
             self.offset_pair = 0
 
             self.last_sprite = ""
+            self.last_pre = ""
             self.flip = 0
             self.claimed_folder = ""
 
