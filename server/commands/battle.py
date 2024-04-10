@@ -463,7 +463,7 @@ def battle_send_ic(client, msg, effect="", shake=0, offset=0):
     if effect == "":
         sfx = ""
     else:
-        sfx = f"sfx-{effect}.mp3"
+        sfx = f"sfx-{effect}"
 
     client.area.send_ic(
         pre=client.last_pre,
@@ -478,7 +478,7 @@ def battle_send_ic(client, msg, effect="", shake=0, offset=0):
         charid_pair=client.charid_pair,
         offset_pair=offset,
         screenshake=shake,
-        effect=effect,
+        effect=f"{effect}|BattleEffects|{sfx}",
     )
 
 
