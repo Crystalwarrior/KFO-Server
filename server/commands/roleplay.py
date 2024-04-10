@@ -898,6 +898,7 @@ def ooc_cmd_demo(client, arg):
     client.area.play_demo(client)
 
 
+@mod_only(area_owners=True)
 def ooc_cmd_trigger(client, arg):
     """
     Set up a trigger for this area which, when fulfilled, will call the command.
