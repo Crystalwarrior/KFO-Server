@@ -134,7 +134,7 @@
     - ID can be `*` to invite everyone in the current area.
 * **uninvite** `<id>`
     - Revoke an invitation for a particular user.
-    - ID can be * to uninvite everyone in the current area.
+    - ID can be    - to uninvite everyone in the current area.
 * **area\_kick** `<id>` `[destination]` `[target_pos]`
     - Remove a user from the current area and move them to another area.
     - If id is a `*` char, it will kick everyone but you and CMs from current area to destination.
@@ -518,7 +518,45 @@
     - `start` starts the previously set timer, so `/timer 0 start`.
     - `pause` OR `stop` pauses the timer that's currently running, so `/timer 0 pause`.
     - `unset` OR `hide` hides the timer for it to no longer show up, so `/timer 0 hide`.
-
+## Battle
+* **choose\_fighter** `<NameFighter>`
+    - Allow you to choose a fighter from the list of the server.
+    - You will receive its stats and its moves.
+* **info\_fighter**
+    - Send info about your fighter.
+* **create\_fighter** `<FighterName>` `<HP>` `<ATK>` `<DEF>` `<SPA>` `<SPD>` `<SPE>`
+    - Allow you to create a fighter and to customize its stats.
+* **create\_move** `<MoveName>` `<MovesType>` `<Power>` `<Accuracy>` `<Effects>`
+    - Allow you to create a move for a fighter.
+    - You have to choose a fighter first!
+    - MovesType: Atk or Spa
+* **modify\_stat** `<FighterName>` `<Stat>` `<Value>`
+    - Allow you to modify fighter's stats.
+* **delete\_fighter** `<FighterName>`
+    - Allow you to delete a fighter.
+* **delete\_move** `<MoveName>`
+    - Delete a move from a fighter.
+    - You have to choose a fighter first!
+* **battle\_config** `<parameter>` `<value>`
+    - Allow you to customize some battle settings.
+    - parameters: paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage
+* **fight**
+    - Allow you to join the battle!
+* **use\_move** `<MoveName>` `<Target_ID>`
+    - This command will let you use a move during a battle!
+    - Heal and AttAll moves don't need a target!
+* **battle\_info**
+    - Send you info about the battle.
+* **refresh\_battle**
+    - Refresh the battle
+* **remove\_fighter** `<Target_ID>`
+    - Force a fighter to leave the battle.
+* **surrender**
+    - A command to surrend from the current battle.
+* **skip\_move**
+    - Allow you to skip the turn
+* **force\_skip\_move** `<Target_ID>`
+    - Force a fighter to skip the turn
 ## In-Character Commands
 * **/a** `[id(s)]` `[msg]`
     - Put this in the In-Character chat.
