@@ -778,6 +778,8 @@ class Area:
                 client.area.fighters.remove(client)
             else:
                 client.battle.hp = 0
+                client.battle.selected_move = -1
+                client.battle.target = None
             client.area.send_ic(
                 pre=client.last_sprite,
                 msg=f"~{client.battle.fighter}~ suddenly died... (disconnected)",
@@ -787,6 +789,8 @@ class Area:
                 charid_pair=client.charid_pair,
                 offset_pair=100,
             )
+            if len(client.area.fighters) == 0:
+                client.area.battle_started = False
 
         # Update everyone's available characters list
         # Commented out due to potentially causing clientside lag...
