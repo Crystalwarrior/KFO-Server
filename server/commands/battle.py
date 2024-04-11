@@ -22,6 +22,8 @@ __all__ = [
     "ooc_cmd_refresh_battle",
     "ooc_cmd_remove_fighter",
     "ooc_cmd_surrender",
+    "ooc_cmd_skip_move",
+    "ooc_cmd_force_skip_move",
 ]
 
 
@@ -467,6 +469,63 @@ def ooc_cmd_remove_fighter(client, arg):
         client.send_ooc("Target not found!")
 
 
+@mod_only(hub_owners=True)
+def ooc_cmd_force_skip_move(client, arg):
+    """
+    Force a fighter to skip the turn
+    Usage: /force_skip_move Target_ID
+    """
+
+    fighter_ids = {c.id: c for c in client.area.fighters}
+    if int(arg) not in fighter_ids:
+        client.send_ooc("The target is not in the fighter list")
+        return
+
+    target = client.area.fighters[int(arg)]
+
+    if target.battle.selected_move == -1:
+        target.area.num_selected_move += 1
+
+    target.battle.selected_move = -2
+    target.send_ooc("You have been forced to skip the turn")
+    client.send_ooc(f"{target.battle.fighter} has been forced to skip the turn")
+
+    if client.area.num_selected_move == len(client.area.fighters):
+        client.area.fighters = start_battle_animation(client.area)
+        client.area.num_selected_move = 0
+        if not client.area.battle_started:
+            client.area.battle_started = True
+        if len(client.area.fighters) < 2:
+            client.area.fighters = []
+            client.area.battle_started = False
+
+
+def ooc_cmd_skip_move(client, arg):
+    """
+    Allow you to skip the turn
+    Usage: /skip_move
+    """
+    if client not in client.area.fighters:
+        client.send_ooc("You cannot skip the turn if you are not in the fight!")
+        return
+    if client.battle.selected_move != -1:
+        client.send_ooc("You already selected a move!")
+        return
+
+    client.battle.selected_move = -2
+    client.area.num_selected_move += 1
+    client.send_ooc(f"You have choosen to skip the turn")
+
+    if client.area.num_selected_move == len(client.area.fighters):
+        client.area.fighters = start_battle_animation(client.area)
+        client.area.num_selected_move = 0
+        if not client.area.battle_started:
+            client.area.battle_started = True
+        if len(client.area.fighters) < 2:
+            client.area.fighters = []
+            client.area.battle_started = False
+
+
 def ooc_cmd_use_move(client, arg):
     """
     This command will let you use a move during a battle!
@@ -569,6 +628,14 @@ def start_battle_animation(area):
     # Let all fighters do their moves
     for client in area.fighters:
         if client.battle.hp > 0:
+
+            # check if a fighter skipped the turn
+            if client.battle.selected_move == -2:
+                battle_send_ic(
+                    client, msg=f"~{client.battle.fighter}~ decides to skip the turn"
+                )
+                continue
+                
             move = client.battle.moves[client.battle.selected_move]
 
             # check if the fighter misses the move
@@ -788,7 +855,7 @@ def start_battle_animation(area):
                 )
 
     # check dead fighters and unselect move and target
-    for client in area.fighters:
+    for client in list(area.fighters):
         
         # Unselect move and target
         client.battle.selected_move = -1
