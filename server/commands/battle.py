@@ -20,6 +20,8 @@ __all__ = [
     "ooc_cmd_use_move",
     "ooc_cmd_battle_info",
     "ooc_cmd_refresh_battle",
+    "ooc_cmd_remove_fighter",
+    "ooc_cmd_surrender",
 ]
 
 
@@ -388,6 +390,63 @@ def ooc_cmd_refresh_battle(client, arg):
     client.area.fighters = []
     client.area.battle_started = False
     client.send_ooc("The battle has been refreshed!")
+
+
+def ooc_cmd_surrender(client, arg):
+    """
+    A command to surrend from the current battle.
+    Usage: /surrender
+    """
+    if client in client.area.fighters:
+        if client.battle.selected_move == -1:
+            client.area.fighters.remove(client)
+        else:
+            client.battle.hp = 0
+            target.battle.selected_move = -1
+            target.battle.target = None
+        client.area.send_ic(
+            pre=client.last_sprite,
+            msg=f"~{client.battle.fighter}~ decides to surrend",
+            pos=client.pos,
+            flip=client.flip,
+            color=3,
+            charid_pair=client.charid_pair,
+            offset_pair=100,
+        )
+        if len(client.area.fighters) == 0:
+            client.area.battle_started = False
+    else:
+        client.send_ooc("You are not fighting in this moment!")
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_remove_fighter(client, arg):
+    """
+    Force a fighter to leave the battle.
+    Usage: /remove_fighter Target_ID
+    """
+    fighter_ids = {c.id: c for c in client.area.fighters}
+    if int(arg) in fighter_ids:
+        target = client.area.fighters[int(arg)]
+        if target.battle.selected_move == -1:
+            client.area.fighters.remove(target)
+        else:
+            target.battle.hp = 0
+            target.battle.selected_move = -1
+            target.battle.target = None
+        client.area.send_ic(
+            pre=target.last_sprite,
+            msg=f"~{target.battle.fighter}~ suddenly died... (forced to leave the battle)",
+            pos=target.pos,
+            flip=target.flip,
+            color=3,
+            charid_pair=target.charid_pair,
+            offset_pair=100,
+        )
+        if len(client.area.fighters) == 0:
+            client.area.battle_started = False
+    else:
+        client.send_ooc("Target not found!")
 
 
 def ooc_cmd_use_move(client, arg):
