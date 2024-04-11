@@ -101,11 +101,15 @@ def ooc_cmd_create_fighter(client, arg):
     args = arg.split(" ")
 
     if len(args) > 7:
-        client.send_ooc("Too many arguments...")
+        client.send_ooc(
+            "Too many arguments...\nUsage: /create_fighter FighterName HP ATK DEF SPA SPD SPE"
+        )
         return
 
     if len(args) < 7:
-        client.send_ooc("Not enough arguments...")
+        client.send_ooc(
+            "Not enough arguments...\nUsage: /create_fighter FighterName HP ATK DEF SPA SPD SPE"
+        )
         return
 
     if (
@@ -116,7 +120,9 @@ def ooc_cmd_create_fighter(client, arg):
         or float(args[5]) <= 0
         or float(args[6]) <= 0
     ):
-        client.send_ooc("hp, atk, def, spa, spd, spe have to be greater than zero!")
+        client.send_ooc(
+            "hp, atk, def, spa, spd, spe have to be greater than zero!\nUsage: /create_fighter FighterName HP ATK DEF SPA SPD SPE"
+        )
         return
 
     fighter_list = os.listdir("storage/battlesystem")
@@ -158,16 +164,28 @@ def ooc_cmd_create_move(client, arg):
 
     args = arg.split(" ")
 
+    if len(args) < 4:
+        client.send_ooc(
+            "Not enough arguments...\nUsage: /create_move MoveName MovesType Power Accuracy Effects"
+        )
+        return
+
     if float(args[2]) <= 0:
-        client.send_ooc("Power has to be greater than 0.")
+        client.send_ooc(
+            "Power has to be greater than 0.\nUsage: /create_move MoveName MovesType Power Accuracy Effects"
+        )
         return
 
     if float(args[3]) <= 0 or float(args[3]) > 100:
-        client.send_ooc("Accuracy should be a integer between 1 and 100")
+        client.send_ooc(
+            "Accuracy should be a integer between 1 and 100\nUsage: /create_move MoveName MovesType Power Accuracy Effects"
+        )
         return
 
     if args[1].lower() not in ["atk", "spa"]:
-        client.send_ooc("Move's Type should be atk or spa!")
+        client.send_ooc(
+            "Move's Type should be atk or spa!\nUsage: /create_move MoveName MovesType Power Accuracy Effects"
+        )
         return
 
     with open(
