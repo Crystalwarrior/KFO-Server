@@ -782,7 +782,7 @@ class Area:
                 client.battle.target = None
             client.area.send_ic(
                 pre=client.last_sprite,
-                msg=f"~{client.battle.fighter}~ suddenly died... (disconnected)",
+                msg=f"~{client.battle.fighter}~ suddenly ran out of hp! (disconnected)",
                 pos=client.pos,
                 flip=client.flip,
                 color=3,
