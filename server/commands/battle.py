@@ -402,8 +402,8 @@ def ooc_cmd_surrender(client, arg):
             client.area.fighters.remove(client)
         else:
             client.battle.hp = 0
-            target.battle.selected_move = -1
-            target.battle.target = None
+            client.battle.selected_move = -1
+            client.battle.target = None
         client.area.send_ic(
             pre=client.last_sprite,
             msg=f"~{client.battle.fighter}~ decides to surrend",
