@@ -312,7 +312,7 @@ def ooc_cmd_battle_config(client, arg):
     """
     Allow you to customize some battle settings.
     parameters: paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage
-    Usage: /custom_battle parameter value
+    Usage: /battle_config parameter value
     """
     args = arg.split(" ")
     if args[1].isdigit:
@@ -471,7 +471,7 @@ def ooc_cmd_use_move(client, arg):
     """
     This command will let you use a move during a battle!
     Heal and AttAll moves don't need a target!
-    Usage: /atk MoveName Target_ID
+    Usage: /use_move MoveName Target_ID
     """
     if client.battle is None:
         client.send_ooc("You have to choose a fighter first!")
