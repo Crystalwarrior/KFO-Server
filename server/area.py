@@ -1668,7 +1668,7 @@ class Area:
                 raise AreaError(
                     'backgrounds.yaml failed to initialize! Please set "use_backgrounds_yaml" to "false" in the config/config.yaml, or create a new "backgrounds.yaml" list in the "config/" folder.'
                 )
-            if bg.lower() not in (name.lower() for name in self.server.backgrounds.values()):
+            if bg.lower() not in (name.lower() for name in self.server.backgrounds):
                 raise AreaError(
                     f'Invalid background name {bg}.\nPlease add it to the "backgrounds.yaml" or change the background name for area [{self.id}] {self.name}.'
                 )
