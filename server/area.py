@@ -774,7 +774,7 @@ class Area:
 
         #Battle system
         if client in client.area.fighters:
-            if client.battle.seletected_move == -1:
+            if client.battle.selected_move == -1:
                 client.area.fighters.remove(client)
             else:
                 client.battle.hp = 0
