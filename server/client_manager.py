@@ -60,6 +60,7 @@ class ClientManager:
             self.offset_pair = 0
 
             self.last_sprite = ""
+            self.last_pre = ""
             self.flip = 0
             self.claimed_folder = ""
 
@@ -177,6 +178,9 @@ class ClientManager:
             
             # rock paper scissors choice
             self.rps_choice = ""
+
+            # Battle system stuff
+            self.battle = None
 
         def send_raw_message(self, msg):
             """
@@ -1008,7 +1012,7 @@ class ClientManager:
                 self.is_mod or self in area.owners or self.char_id == -1
             ) and not area.is_char_available(self.char_id):
                 self.check_char_taken(area)
-
+                
             old_area = self.area
             self.set_area(area, target_pos)
             self.last_move_time = round(time.time() * 1000.0)
@@ -2107,3 +2111,26 @@ class ClientManager:
 
     def get_mods(self):
         return [c for c in self.clients if c.is_mod]
+        
+    class BattleChar:
+        def __init__(self, client, fighter_name, fighter):
+            self.fighter = fighter_name
+            self.hp = float(fighter["HP"])
+            self.maxhp = self.hp
+            self.atk = float(fighter["ATK"])
+            self.defe = float(fighter["DEF"])
+            self.spa = float(fighter["SPA"])
+            self.spd = float(fighter["SPD"])
+            self.spe = float(fighter["SPE"])
+            self.target = None
+            self.selected_move = -1
+            self.status = None
+            self.moves = [ClientManager.Move(move) for move in fighter["Moves"]]
+
+    class Move:
+        def __init__(self, move):
+            self.name = move["Name"]
+            self.type = move["MovesType"]
+            self.power = float(move["Power"])
+            self.effect = move["Effects"]
+            self.accuracy = float(move["Accuracy"])

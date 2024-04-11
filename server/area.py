@@ -258,6 +258,19 @@ class Area:
             "leave": "",  # User leaves the area.
         }
 
+        # Battle system stuff
+        self.can_battle = True
+        self.battle_started = False
+        self.fighters = []
+        self.num_selected_move = 0
+
+        # Battle system customization
+        self.battle_paralysis_rate = 3
+        self.battle_critical_rate = 15
+        self.battle_critical_bonus = 1.5
+        self.battle_bonus_malus = 1.5
+        self.battle_poison_damage = 16
+
     @property
     def name(self):
         """Area's name string. Abbreviation is also updated according to this."""
@@ -560,6 +573,9 @@ class Area:
                         "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
                     )
 
+        if "can_battle" in area:
+            self.can_battle = area["can_battle"]
+
     def save(self):
         area = OrderedDict()
         area["area"] = self.name
@@ -633,6 +649,7 @@ class Area:
             area["evidence"] = [e.to_dict() for e in self.evi_list.evidences]
         if len(self.links) > 0:
             area["links"] = self.links
+        area["can_battle"] = self.can_battle
         return area
 
     def new_client(self, client):
@@ -754,6 +771,26 @@ class Area:
             database.log_area("area.leave", client, self)
         if not client.hidden:
             self.area_manager.send_arup_players()
+
+        #Battle system
+        if client in client.area.fighters:
+            if client.battle.selected_move == -1:
+                client.area.fighters.remove(client)
+            else:
+                client.battle.hp = 0
+                client.battle.selected_move = -1
+                client.battle.target = None
+            client.area.send_ic(
+                pre=client.last_sprite,
+                msg=f"~{client.battle.fighter}~ suddenly ran out of hp! (disconnected)",
+                pos=client.pos,
+                flip=client.flip,
+                color=3,
+                charid_pair=client.charid_pair,
+                offset_pair=100,
+            )
+            if len(client.area.fighters) == 0:
+                client.area.battle_started = False
 
         # Update everyone's available characters list
         # Commented out due to potentially causing clientside lag...
