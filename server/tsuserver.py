@@ -329,7 +329,7 @@ class TsuServer3:
             # new style of categorized backgrounds.yaml
             else:
                 self.backgrounds_categories = bg_yaml
-                self.backgrounds = list(self.backgrounds_categories.values())
+                self.backgrounds = sum(list(self.backgrounds_categories.values()), [])
 
     def load_server_links(self):
         """Load the server links list from a YAML file."""
