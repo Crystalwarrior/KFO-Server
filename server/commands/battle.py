@@ -454,7 +454,7 @@ def ooc_cmd_remove_fighter(client, arg):
             target.battle.target = None
         client.area.send_ic(
             pre=target.last_sprite,
-            msg=f"~{target.battle.fighter}~ suddenly died... (forced to leave the battle)",
+            msg=f"~{target.battle.fighter}~ ran out of hp! (forced to leave the battle)",
             pos=target.pos,
             flip=target.flip,
             color=3,
@@ -646,7 +646,7 @@ def start_battle_animation(area):
             for target in targets:
                 if target.battle.hp <= 0:
                     if len(targets) == 1:
-                        battle_send_ic(client, msg="but the target is already dead")
+                        battle_send_ic(client, msg="but the target is already down")
                     continue
 
                 # calculate damage
@@ -731,7 +731,7 @@ def start_battle_animation(area):
                 # check if target is dead
                 if target.battle.hp <= 0:
                     battle_send_ic(
-                        target, msg=f"~{target.battle.fighter}~ dies...", offset=100
+                        target, msg=f"~{target.battle.fighter}~ ran out of hp!", offset=100
                     )
 
             #check bonus move effect
@@ -784,7 +784,7 @@ def start_battle_animation(area):
             )
             if client.battle.hp <= 0:
                 battle_send_ic(
-                    client, msg=f"~{client.battle.fighter}~ dies...", offset=100
+                    client, msg=f"~{client.battle.fighter}~ ran out of hp!", offset=100
                 )
 
     # check dead fighters and unselect move and target
@@ -819,7 +819,7 @@ def start_battle_animation(area):
                 winner, winner.battle.fighter, char
             )
     elif len(area.fighters) == 0:
-        battle_send_ic(client, msg=f"~Everyone~ is dead...", offset=100)
+        battle_send_ic(client, msg=f"~Everyone~ is down...", offset=100)
     else:
         # prepare for the next turn
         for client in area.fighters:
