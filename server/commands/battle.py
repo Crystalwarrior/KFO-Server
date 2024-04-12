@@ -619,6 +619,10 @@ def battle_send_ic(client, msg, effect="", shake=0, offset=0):
         color=3,
         charid_pair=client.charid_pair,
         offset_pair=offset,
+        other_offset=other_offset,
+        other_emote=other_emote,
+        other_flip=other_flip,
+        other_folder=other_folder,
         screenshake=shake,
         effect=f"{effect}|BattleEffects|{sfx}",
     )
