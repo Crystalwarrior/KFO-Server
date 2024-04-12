@@ -385,7 +385,6 @@ def ooc_cmd_fight(client, arg):
     client.area.broadcast_ooc(
         f"⚔️{client.battle.fighter} ({client.showname}) is ready to fight!⚔️"
     )
-    fighter_name = client.area.area_manager.char_list[client.char_id]
     battle_send_ic(client, msg=f"~{client.battle.fighter}~ is ready to fight")
 
 
@@ -578,7 +577,6 @@ def battle_send_ic(client, msg, effect="", shake=0, offset=0):
     offset: 0 = alive, 100 = dead
     Choosen_color = 3
     """
-    fighter_name = client.area.area_manager.char_list[client.char_id]
 
     if offset != 0:
         offset = 100
@@ -609,7 +607,7 @@ def battle_send_ic(client, msg, effect="", shake=0, offset=0):
 
     client.area.send_ic(
         pre=client.last_pre,
-        folder=fighter_name,
+        folder=client.claimed_folder,
         anim=client.last_sprite,
         msg=msg,
         pos=client.pos,
@@ -850,7 +848,6 @@ def start_battle_animation(area):
 
     # check poisoned fighters 
     for client in area.fighters:
-        fighter_name = client.area.area_manager.char_list[client.char_id]
         if client.battle.status == "poison" and client.battle.hp > 0:
             client.battle.hp += -client.battle.maxhp / area.battle_poison_damage
             battle_send_ic(
