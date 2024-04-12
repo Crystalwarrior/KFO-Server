@@ -2,6 +2,7 @@ import sys
 import logging
 import asyncio
 import importlib
+import traceback
 
 import websockets
 import geoip2.database
@@ -41,6 +42,7 @@ class TsuServer3:
         self.music_list = []
         self.music_whitelist = []
         self.backgrounds = None
+        self.backgrounds_categories = None
         self.server_links = None
         self.zalgo_tolerance = None
         self.ipRange_bans = []
@@ -88,18 +90,18 @@ class TsuServer3:
             self.load_server_links()
             self.load_ipranges()
             self.hub_manager = HubManager(self)
-        except yaml.YAMLError as exc:
+        except yaml.YAMLError:
             print("There was a syntax error parsing a configuration file:")
-            print(exc)
+            traceback.print_exc()
             print("Please revise your syntax and restart the server.")
             sys.exit(1)
-        except OSError as exc:
+        except OSError:
             print("There was an error opening or writing to a file:")
-            print(exc)
+            traceback.print_exc()
             sys.exit(1)
-        except Exception as exc:
+        except Exception:
             print("There was a configuration error:")
-            print(exc)
+            traceback.print_exc()
             print("Please check sample config files for the correct format.")
             sys.exit(1)
 
@@ -319,7 +321,15 @@ class TsuServer3:
     def load_backgrounds(self):
         """Load the backgrounds list from a YAML file."""
         with open("config/backgrounds.yaml", "r", encoding="utf-8") as bgs:
-            self.backgrounds = yaml.safe_load(bgs)
+            bg_yaml = yaml.safe_load(bgs)
+            # old style of backgrounds.yaml
+            if type(bg_yaml) is list:
+                self.backgrounds_categories = {"backgrounds": bg_yaml}
+                self.backgrounds = bg_yaml
+            # new style of categorized backgrounds.yaml
+            else:
+                self.backgrounds_categories = bg_yaml
+                self.backgrounds = sum(list(self.backgrounds_categories.values()), [])
 
     def load_server_links(self):
         """Load the server links list from a YAML file."""
