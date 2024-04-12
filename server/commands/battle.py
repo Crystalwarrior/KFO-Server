@@ -469,7 +469,7 @@ def ooc_cmd_force_skip_move(client, arg):
         client.send_ooc("The target is not in the fighter list")
         return
 
-    target = fighters_ids[int(arg)]
+    target = fighter_ids[int(arg)]
 
     if target.battle.selected_move == -1:
         target.area.num_selected_move += 1
