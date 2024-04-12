@@ -386,16 +386,7 @@ def ooc_cmd_fight(client, arg):
         f"⚔️{client.battle.fighter} ({client.showname}) is ready to fight!⚔️"
     )
     fighter_name = client.area.area_manager.char_list[client.char_id]
-    client.area.send_ic(
-        folder=fighter_name,
-        anim=client.last_sprite,
-        msg=f"~{client.battle.fighter}~ is ready to fight",
-        pos=client.pos,
-        flip=client.flip,
-        color=3,
-        charid_pair=client.charid_pair,
-        offset_pair=client.offset_pair,
-    )
+    battle_send_ic(client, msg=f"~{client.battle.fighter}~ is ready to fight")
 
 
 @mod_only(hub_owners=True)
@@ -430,7 +421,6 @@ def ooc_cmd_surrender(client, arg):
             pos=client.pos,
             flip=client.flip,
             color=3,
-            charid_pair=client.charid_pair,
             offset_pair=100,
         )
         if len(client.area.fighters) == 0:
@@ -460,7 +450,6 @@ def ooc_cmd_remove_fighter(client, arg):
             pos=target.pos,
             flip=target.flip,
             color=3,
-            charid_pair=target.charid_pair,
             offset_pair=100,
         )
         if len(client.area.fighters) == 0:
@@ -600,6 +589,23 @@ def battle_send_ic(client, msg, effect="", shake=0, offset=0):
         sfx = ""
     else:
         sfx = f"sfx-{effect}"
+
+    if client.charid_pair != -1:
+        client_ids = {c.char_id: c for c in client.area.clients}
+        if client.charid_pair in client_ids:
+            target = client_ids[client.charid_pair]
+            other_offset = target.offset_pair
+            other_emote = target.last_sprite
+            other_flip = target.flip
+            other_folder = target.claimed_folder
+        else:
+            client.charid_pair = -1
+
+    if client.charid_pair == -1:
+        other_offset = 0
+        other_emote = ""
+        other_flip = 0
+        other_folder = ""
 
     client.area.send_ic(
         pre=client.last_pre,
