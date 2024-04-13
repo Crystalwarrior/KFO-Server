@@ -760,11 +760,13 @@ def start_battle_animation(area):
 
                 # calculate damage
                 if move.type == "atk":
-                    damage = move.power + client.battle.atk - target.battle.defe
+                    damage = move.power * client.battle.atk / target.battle.defe
                     effect = "attack"
                 else:
-                    damage = move.power + client.battle.spa - target.battle.spd
+                    damage = move.power * client.battle.spa / target.battle.spd
                     effect = "specialattack"
+
+                damage = round(damage, 2)
 
                 # calculate critical damage
                 critical = random.randint(1, area.battle_critical_rate)
