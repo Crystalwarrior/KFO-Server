@@ -497,6 +497,7 @@ def ooc_cmd_force_skip_move(client, arg):
     target.battle.selected_move = -2
     target.send_ooc("You have been forced to skip the turn")
     client.send_ooc(f"{target.battle.fighter} has been forced to skip the turn")
+    client.area.broadcast_ooc(f"{target.battle.fighter} has choosen a move")
 
     if client.area.num_selected_move == len(client.area.fighters):
         client.area.fighters = start_battle_animation(client.area)
@@ -523,6 +524,7 @@ def ooc_cmd_skip_move(client, arg):
     client.battle.selected_move = -2
     client.area.num_selected_move += 1
     client.send_ooc(f"You have choosen to skip the turn")
+    client.area.broadcast_ooc(f"{client.battle.fighter} has choosen a move")
 
     if client.area.num_selected_move == len(client.area.fighters):
         client.area.fighters = start_battle_animation(client.area)
@@ -574,6 +576,7 @@ def ooc_cmd_use_move(client, arg):
             client.battle.selected_move = move_id
             client.area.num_selected_move += 1
             client.send_ooc(f"You have choosen {args[0].lower()}")
+            client.area.broadcast_ooc(f"{client.battle.fighter} has choosen a move")
         else:
             client.send_ooc("Your target is not in the fighter list")
     elif "heal" in client.battle.moves[move_id].effect:
@@ -581,11 +584,13 @@ def ooc_cmd_use_move(client, arg):
         client.battle.selected_move = move_id
         client.area.num_selected_move += 1
         client.send_ooc(f"You have choosen {args[0].lower()}")
+        client.area.broadcast_ooc(f"{client.battle.fighter} has choosen a move")
     elif "atkall" in client.battle.moves[move_id].effect:
         client.battle.target = "all"
         client.battle.selected_move = move_id
         client.area.num_selected_move += 1
         client.send_ooc(f"You have choosen {args[0].lower()}")
+        client.area.broadcast_ooc(f"{client.battle.fighter} has choosen a move")
     else:
         client.send_ooc("Not enough argument to attack")
     if client.area.num_selected_move == len(client.area.fighters):
