@@ -385,17 +385,7 @@ def ooc_cmd_fight(client, arg):
     client.area.broadcast_ooc(
         f"⚔️{client.battle.fighter} ({client.showname}) is ready to fight!⚔️"
     )
-    fighter_name = client.area.area_manager.char_list[client.char_id]
-    client.area.send_ic(
-        folder=fighter_name,
-        anim=client.last_sprite,
-        msg=f"~{client.battle.fighter}~ is ready to fight",
-        pos=client.pos,
-        flip=client.flip,
-        color=3,
-        charid_pair=client.charid_pair,
-        offset_pair=client.offset_pair,
-    )
+    battle_send_ic(client, msg=f"~{client.battle.fighter}~ is ready to fight")
 
 
 @mod_only(hub_owners=True)
@@ -430,7 +420,6 @@ def ooc_cmd_surrender(client, arg):
             pos=client.pos,
             flip=client.flip,
             color=3,
-            charid_pair=client.charid_pair,
             offset_pair=100,
         )
         if len(client.area.fighters) == 0:
@@ -460,7 +449,6 @@ def ooc_cmd_remove_fighter(client, arg):
             pos=target.pos,
             flip=target.flip,
             color=3,
-            charid_pair=target.charid_pair,
             offset_pair=100,
         )
         if len(client.area.fighters) == 0:
@@ -481,7 +469,7 @@ def ooc_cmd_force_skip_move(client, arg):
         client.send_ooc("The target is not in the fighter list")
         return
 
-    target = client.area.fighters[int(arg)]
+    target = fighter_ids[int(arg)]
 
     if target.battle.selected_move == -1:
         target.area.num_selected_move += 1
@@ -589,7 +577,6 @@ def battle_send_ic(client, msg, effect="", shake=0, offset=0):
     offset: 0 = alive, 100 = dead
     Choosen_color = 3
     """
-    fighter_name = client.area.area_manager.char_list[client.char_id]
 
     if offset != 0:
         offset = 100
@@ -601,9 +588,26 @@ def battle_send_ic(client, msg, effect="", shake=0, offset=0):
     else:
         sfx = f"sfx-{effect}"
 
+    if client.charid_pair != -1:
+        client_ids = {c.char_id: c for c in client.area.clients}
+        if client.charid_pair in client_ids:
+            target = client_ids[client.charid_pair]
+            other_offset = target.offset_pair
+            other_emote = target.last_sprite
+            other_flip = target.flip
+            other_folder = target.claimed_folder
+        else:
+            client.charid_pair = -1
+
+    if client.charid_pair == -1:
+        other_offset = 0
+        other_emote = ""
+        other_flip = 0
+        other_folder = ""
+
     client.area.send_ic(
         pre=client.last_pre,
-        folder=fighter_name,
+        folder=client.claimed_folder,
         anim=client.last_sprite,
         msg=msg,
         pos=client.pos,
@@ -613,6 +617,10 @@ def battle_send_ic(client, msg, effect="", shake=0, offset=0):
         color=3,
         charid_pair=client.charid_pair,
         offset_pair=offset,
+        other_offset=other_offset,
+        other_emote=other_emote,
+        other_flip=other_flip,
+        other_folder=other_folder,
         screenshake=shake,
         effect=f"{effect}|BattleEffects|{sfx}",
     )
@@ -840,7 +848,6 @@ def start_battle_animation(area):
 
     # check poisoned fighters 
     for client in area.fighters:
-        fighter_name = client.area.area_manager.char_list[client.char_id]
         if client.battle.status == "poison" and client.battle.hp > 0:
             client.battle.hp += -client.battle.maxhp / area.battle_poison_damage
             battle_send_ic(

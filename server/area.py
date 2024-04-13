@@ -786,7 +786,6 @@ class Area:
                 pos=client.pos,
                 flip=client.flip,
                 color=3,
-                charid_pair=client.charid_pair,
                 offset_pair=100,
             )
             if len(client.area.fighters) == 0:
