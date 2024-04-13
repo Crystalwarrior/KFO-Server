@@ -270,6 +270,7 @@ class Area:
         self.battle_critical_bonus = 1.5
         self.battle_bonus_malus = 1.5
         self.battle_poison_damage = 16
+        self.battle_show_hp = True
 
     @property
     def name(self):
