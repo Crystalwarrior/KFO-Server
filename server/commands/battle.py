@@ -528,7 +528,7 @@ def ooc_cmd_use_move(client, arg):
     """
     This command will let you use a move during a battle!
     Heal and AttAll moves don't need a target!
-    Usage: /use_move MoveName Target_ID
+    Usage: /use_move MoveName/Move_ID Target_ID
     """
     if client.battle is None:
         client.send_ooc("You have to choose a fighter first!")
@@ -540,14 +540,23 @@ def ooc_cmd_use_move(client, arg):
         client.send_ooc("You already selected a move!")
         return
 
-    args = arg.split(" ")
-    moves_list = [move.name for move in client.battle.moves]
+    args = shlex.split(arg)
+    if args[0].isnumeric():
+        if int(args[0]) > len(client.battle.moves):
+            client.send_ooc("There is no move with that ID!")
+            return
 
-    if args[0].lower() not in moves_list:
-        client.send_ooc("There is no move with this name!")
-        return
+        move_id = int(args[0])
+        args[0] = client.battle.moves[move_id].name
+    else:
+        moves_list = [move.name for move in client.battle.moves]
 
-    move_id = moves_list.index(args[0].lower())
+        if args[0].lower() not in moves_list:
+            client.send_ooc("There is no move with this name!")
+            return
+
+        move_id = moves_list.index(args[0].lower())
+        
     if len(args) == 2:
         fighter_id_list = {c.id: c for c in client.area.fighters}
         if int(args[1]) in fighter_id_list:
