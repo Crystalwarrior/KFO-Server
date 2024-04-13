@@ -329,6 +329,12 @@ def ooc_cmd_battle_config(client, arg):
         if args[0].lower() == "poison_damage":
             client.area.battle_poison_damage = float(args[1])
         client.send_ooc(f"{args[0].lower()} has been changed to {args[1]}")
+    elif args[1].lower() in ["true", "false"] and args[0].lower() == "show_hp":
+        if args[1].lower() == "true":
+            client.area.battle_show_hp = True
+        else:
+            client.area.battle_show_hp = False
+        client.send_ooc(f"{args[0].lower()} has been changed to {args[1].lower()}")
     else:
         client.send_ooc("value is not a digit")
 
@@ -343,9 +349,13 @@ def send_battle_info(client):
             emoji = "🔎"
         else:
             emoji = "⚔️"
-        msg += (
-            f"{emoji} [{client.id}]{client.battle.fighter} ({client.showname}) {emoji}\n"
-        )
+
+        if client.area.battle_show_hp:
+            show_hp = f": {round(client.battle.hp*100/client.battle.maxhp,2)}%"
+        else:
+            show_hp = ""
+
+        msg += f"{emoji} [{client.id}]{client.battle.fighter} ({client.showname}){show_hp} {emoji}\n"
     return msg
 
 
