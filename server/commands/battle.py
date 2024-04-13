@@ -1,6 +1,7 @@
 import yaml
 import random
 import os
+import shlex
 
 from server.client_manager import ClientManager
 
@@ -50,11 +51,17 @@ def send_info_fighter(client):
     """
     Prepare the message about fighter info
     """
-    msg = f"\n👤 {client.battle.fighter} 👤:\n\nHP 💗: {client.battle.hp}/{client.battle.maxhp}\nATK 🗡️: {client.battle.atk}\nDEF 🛡️: {client.battle.defe}\nSPA ✨: {client.battle.spa}\nSPD 🔮: {client.battle.spd}\nSPE 💨: {client.battle.spe}\n\n"
+    msg = f"\n👤 {client.battle.fighter} 👤:\n"
+    if client.battle.status != None:
+        msg += f"Status 🌈: {client.battle.status}\n"
+    msg += f"\nHP 💗: {round(client.battle.hp,2)}/{client.battle.maxhp}\nATK 🗡️: {round(client.battle.atk,2)}\nDEF 🛡️: {round(client.battle.defe,2)}\nSPA ✨: {round(client.battle.spa,2)}\nSPD 🔮: {round(client.battle.spd,2)}\nSPE 💨: {round(client.battle.spe,2)}\n\n"
     for move in client.battle.moves:
-        msg += f"🌠 {move.name} 🌠:\nType 💠: {move.type}\nPower 💪: {move.power}\nAccuracy 🔎: {move.accuracy}%\n Effects 🔰:\n"
-        for effect in move.effect:
-            msg += f"- {effect}\n"
+        move_id = client.battle.moves.index(move)
+        msg += f"🌠 [{move_id}]{move.name} 🌠:\nType 💠: {move.type}\nPower 💪: {move.power}\nAccuracy 🔎: {move.accuracy}%\n"
+        if move.effect != []:
+            msg += "Effects 🔰:\n"
+            for effect in move.effect:
+                msg += f"- {effect}\n"
         msg += "\n"
     client.send_ooc(msg)
 
@@ -63,7 +70,10 @@ def send_stats_fighter(client):
     """
     Prepare the message about fighter stats
     """
-    msg = f"\n👤 {client.battle.fighter} 👤:\n\nHP 💗: {client.battle.hp}/{client.battle.maxhp}\nATK 🗡️: {client.battle.atk}\nDEF 🛡️: {client.battle.defe}\nSPA ✨: {client.battle.spa}\nSPD 🔮: {client.battle.spd}\nSPE 💨: {client.battle.spe}\n\n"
+    msg = f"\n👤 {client.battle.fighter} 👤:\n"
+    if client.battle.status != None:
+        msg += f"Status 🌈: {client.battle.status}\n"
+    msg += f"\nHP 💗: {round(client.battle.hp,2)}/{client.battle.maxhp}\nATK 🗡️: {round(client.battle.atk,2)}\nDEF 🛡️: {round(client.battle.defe,2)}\nSPA ✨: {round(client.battle.spa,2)}\nSPD 🔮: {round(client.battle.spd,2)}\nSPE 💨: {round(client.battle.spe,2)}\n\n"
     client.send_ooc(msg)
 
 
@@ -100,7 +110,7 @@ def ooc_cmd_create_fighter(client, arg):
     Allow you to create a fighter and to customize its stats.
     Usage: /create_fighter FighterName HP ATK DEF SPA SPD SPE
     """
-    args = arg.split(" ")
+    args = shlex.split(arg)
 
     if len(args) > 7:
         client.send_ooc(
@@ -164,7 +174,7 @@ def ooc_cmd_create_move(client, arg):
         )
         return
 
-    args = arg.split(" ")
+    args = shlex.split(arg)
 
     if len(args) < 4:
         client.send_ooc(
@@ -230,7 +240,7 @@ def ooc_cmd_modify_stat(client, arg):
     Allow you to modify fighter's stats.
     Usage: /modify_stat FighterName Stat Value
     """
-    args = arg.split(" ")
+    args = shlex.split(arg)
     if f"{args[0].lower()}.yaml" not in os.listdir("storage/battlesystem"):
         client.send_ooc("No fighter has this name!")
         return
@@ -329,6 +339,12 @@ def ooc_cmd_battle_config(client, arg):
         if args[0].lower() == "poison_damage":
             client.area.battle_poison_damage = float(args[1])
         client.send_ooc(f"{args[0].lower()} has been changed to {args[1]}")
+    elif args[1].lower() in ["true", "false"] and args[0].lower() == "show_hp":
+        if args[1].lower() == "true":
+            client.area.battle_show_hp = True
+        else:
+            client.area.battle_show_hp = False
+        client.send_ooc(f"{args[0].lower()} has been changed to {args[1].lower()}")
     else:
         client.send_ooc("value is not a digit")
 
@@ -343,9 +359,13 @@ def send_battle_info(client):
             emoji = "🔎"
         else:
             emoji = "⚔️"
-        msg += (
-            f"{emoji} [{client.id}]{client.battle.fighter} ({client.showname}) {emoji}\n"
-        )
+
+        if client.area.battle_show_hp:
+            show_hp = f": {round(client.battle.hp*100/client.battle.maxhp,2)}%"
+        else:
+            show_hp = ""
+
+        msg += f"{emoji} [{client.id}]{client.battle.fighter} ({client.showname}){show_hp} {emoji}\n"
     return msg
 
 
@@ -477,6 +497,7 @@ def ooc_cmd_force_skip_move(client, arg):
     target.battle.selected_move = -2
     target.send_ooc("You have been forced to skip the turn")
     client.send_ooc(f"{target.battle.fighter} has been forced to skip the turn")
+    client.area.broadcast_ooc(f"{target.battle.fighter} has choosen a move")
 
     if client.area.num_selected_move == len(client.area.fighters):
         client.area.fighters = start_battle_animation(client.area)
@@ -503,6 +524,7 @@ def ooc_cmd_skip_move(client, arg):
     client.battle.selected_move = -2
     client.area.num_selected_move += 1
     client.send_ooc(f"You have choosen to skip the turn")
+    client.area.broadcast_ooc(f"{client.battle.fighter} has choosen a move")
 
     if client.area.num_selected_move == len(client.area.fighters):
         client.area.fighters = start_battle_animation(client.area)
@@ -518,7 +540,7 @@ def ooc_cmd_use_move(client, arg):
     """
     This command will let you use a move during a battle!
     Heal and AttAll moves don't need a target!
-    Usage: /use_move MoveName Target_ID
+    Usage: /use_move MoveName/Move_ID Target_ID
     """
     if client.battle is None:
         client.send_ooc("You have to choose a fighter first!")
@@ -530,14 +552,23 @@ def ooc_cmd_use_move(client, arg):
         client.send_ooc("You already selected a move!")
         return
 
-    args = arg.split(" ")
-    moves_list = [move.name for move in client.battle.moves]
+    args = shlex.split(arg)
+    if args[0].isnumeric():
+        if int(args[0]) > len(client.battle.moves):
+            client.send_ooc("There is no move with that ID!")
+            return
 
-    if args[0].lower() not in moves_list:
-        client.send_ooc("There is no move with this name!")
-        return
+        move_id = int(args[0])
+        args[0] = client.battle.moves[move_id].name
+    else:
+        moves_list = [move.name for move in client.battle.moves]
 
-    move_id = moves_list.index(args[0].lower())
+        if args[0].lower() not in moves_list:
+            client.send_ooc("There is no move with this name!")
+            return
+
+        move_id = moves_list.index(args[0].lower())
+        
     if len(args) == 2:
         fighter_id_list = {c.id: c for c in client.area.fighters}
         if int(args[1]) in fighter_id_list:
@@ -545,6 +576,7 @@ def ooc_cmd_use_move(client, arg):
             client.battle.selected_move = move_id
             client.area.num_selected_move += 1
             client.send_ooc(f"You have choosen {args[0].lower()}")
+            client.area.broadcast_ooc(f"{client.battle.fighter} has choosen a move")
         else:
             client.send_ooc("Your target is not in the fighter list")
     elif "heal" in client.battle.moves[move_id].effect:
@@ -552,11 +584,13 @@ def ooc_cmd_use_move(client, arg):
         client.battle.selected_move = move_id
         client.area.num_selected_move += 1
         client.send_ooc(f"You have choosen {args[0].lower()}")
+        client.area.broadcast_ooc(f"{client.battle.fighter} has choosen a move")
     elif "atkall" in client.battle.moves[move_id].effect:
         client.battle.target = "all"
         client.battle.selected_move = move_id
         client.area.num_selected_move += 1
         client.send_ooc(f"You have choosen {args[0].lower()}")
+        client.area.broadcast_ooc(f"{client.battle.fighter} has choosen a move")
     else:
         client.send_ooc("Not enough argument to attack")
     if client.area.num_selected_move == len(client.area.fighters):
@@ -726,11 +760,13 @@ def start_battle_animation(area):
 
                 # calculate damage
                 if move.type == "atk":
-                    damage = move.power + client.battle.atk - target.battle.defe
+                    damage = move.power * client.battle.atk / target.battle.defe
                     effect = "attack"
                 else:
-                    damage = move.power + client.battle.spa - target.battle.spd
+                    damage = move.power * client.battle.spa / target.battle.spd
                     effect = "specialattack"
+
+                damage = round(damage, 2)
 
                 # calculate critical damage
                 critical = random.randint(1, area.battle_critical_rate)
