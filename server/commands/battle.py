@@ -1,6 +1,7 @@
 import yaml
 import random
 import os
+import shlex
 
 from server.client_manager import ClientManager
 
@@ -109,7 +110,7 @@ def ooc_cmd_create_fighter(client, arg):
     Allow you to create a fighter and to customize its stats.
     Usage: /create_fighter FighterName HP ATK DEF SPA SPD SPE
     """
-    args = arg.split(" ")
+    args = shlex.split(arg)
 
     if len(args) > 7:
         client.send_ooc(
@@ -173,7 +174,7 @@ def ooc_cmd_create_move(client, arg):
         )
         return
 
-    args = arg.split(" ")
+    args = shlex.split(arg)
 
     if len(args) < 4:
         client.send_ooc(
@@ -239,7 +240,7 @@ def ooc_cmd_modify_stat(client, arg):
     Allow you to modify fighter's stats.
     Usage: /modify_stat FighterName Stat Value
     """
-    args = arg.split(" ")
+    args = shlex.split(arg)
     if f"{args[0].lower()}.yaml" not in os.listdir("storage/battlesystem"):
         client.send_ooc("No fighter has this name!")
         return
