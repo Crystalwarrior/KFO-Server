@@ -126,14 +126,14 @@ def ooc_cmd_create_fighter(client, arg):
 
     if (
         float(args[1]) <= 0
-        or float(args[2]) <= 0
-        or float(args[3]) <= 0
-        or float(args[4]) <= 0
-        or float(args[5]) <= 0
-        or float(args[6]) <= 0
+        or float(args[2]) < 0
+        or float(args[3]) < 0
+        or float(args[4]) < 0
+        or float(args[5]) < 0
+        or float(args[6]) < 0
     ):
         client.send_ooc(
-            "hp, atk, def, spa, spd, spe have to be greater than zero!\nUsage: /create_fighter FighterName HP ATK DEF SPA SPD SPE"
+            "atk, def, spa, spd, spe have to be greater than or equal to zero\nhp has to be greater than zero\nUsage: /create_fighter FighterName HP ATK DEF SPA SPD SPE"
         )
         return
 
@@ -327,7 +327,13 @@ def ooc_cmd_battle_config(client, arg):
     Usage: /battle_config parameter value
     """
     args = arg.split(" ")
-    if args[1].isdigit:
+    if args[0] in [
+        "paralysis_rate",
+        "critical_rate",
+        "critical_bonus",
+        "bonus_malus",
+        "poison_damage",
+    ]:
         if args[0].lower() == "paralysis_rate":
             client.area.battle_paralysis_rate = int(args[1])
         if args[0].lower() == "critical_rate":
@@ -346,7 +352,7 @@ def ooc_cmd_battle_config(client, arg):
             client.area.battle_show_hp = False
         client.send_ooc(f"{args[0].lower()} has been changed to {args[1].lower()}")
     else:
-        client.send_ooc("value is not a digit")
+        client.send_ooc("value is not valid")
 
 
 def send_battle_info(client):
@@ -456,7 +462,7 @@ def ooc_cmd_remove_fighter(client, arg):
     """
     fighter_ids = {c.id: c for c in client.area.fighters}
     if int(arg) in fighter_ids:
-        target = client.area.fighters[int(arg)]
+        target = fighter_ids[int(arg)]
         if target.battle.selected_move == -1:
             client.area.fighters.remove(target)
         else:
@@ -760,10 +766,16 @@ def start_battle_animation(area):
 
                 # calculate damage
                 if move.type == "atk":
-                    damage = move.power * client.battle.atk / target.battle.defe
+                    if target.battle.defe != 0:
+                        damage = move.power * client.battle.atk / target.battle.defe
+                    else:
+                        damage = target.battle.maxhp
                     effect = "attack"
                 else:
-                    damage = move.power * client.battle.spa / target.battle.spd
+                    if target.battle.spd != 0:
+                        damage = move.power * client.battle.spa / target.battle.spd
+                    else:
+                        damage = target.battle.maxhp
                     effect = "specialattack"
 
                 damage = round(damage, 2)
