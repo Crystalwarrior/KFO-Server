@@ -327,32 +327,25 @@ def ooc_cmd_battle_config(client, arg):
     Usage: /battle_config parameter value
     """
     args = arg.split(" ")
-    if args[0] in [
-        "paralysis_rate",
-        "critical_rate",
-        "critical_bonus",
-        "bonus_malus",
-        "poison_damage",
-    ]:
-        if args[0].lower() == "paralysis_rate":
-            client.area.battle_paralysis_rate = int(args[1])
-        if args[0].lower() == "critical_rate":
-            client.area.battle_critical_rate = int(args[1])
-        if args[0].lower() == "critical_bonus":
-            client.area.battle_critical_bonus = float(args[1])
-        if args[0].lower() == "bonus_malus":
-            client.area.battle_bonus_malus = float(args[1])
-        if args[0].lower() == "poison_damage":
-            client.area.battle_poison_damage = float(args[1])
-        client.send_ooc(f"{args[0].lower()} has been changed to {args[1]}")
+    if args[0].lower() == "paralysis_rate":
+        client.area.battle_paralysis_rate = int(args[1])
+    elif args[0].lower() == "critical_rate":
+        client.area.battle_critical_rate = int(args[1])
+    elif args[0].lower() == "critical_bonus":
+        client.area.battle_critical_bonus = float(args[1])
+    elif args[0].lower() == "bonus_malus":
+        client.area.battle_bonus_malus = float(args[1])
+    elif args[0].lower() == "poison_damage":
+        client.area.battle_poison_damage = float(args[1])
     elif args[1].lower() in ["true", "false"] and args[0].lower() == "show_hp":
         if args[1].lower() == "true":
             client.area.battle_show_hp = True
         else:
             client.area.battle_show_hp = False
-        client.send_ooc(f"{args[0].lower()} has been changed to {args[1].lower()}")
     else:
         client.send_ooc("value is not valid")
+        return
+    client.send_ooc(f"{args[0].lower()} has been changed to {args[1]}")
 
 
 def send_battle_info(client):
