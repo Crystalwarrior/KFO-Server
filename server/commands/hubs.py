@@ -625,7 +625,7 @@ def ooc_cmd_toggle_getareas(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_toggle_spectate(client, arg):
     """
-    Disable the ARea UPdate system for this hub.
+    Disable the ability to use a spectator character for non-GMs for this hub.
     Usage: /toggle_spectate
     """
     client.area.area_manager.can_spectate = not client.area.area_manager.can_spectate
