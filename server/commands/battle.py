@@ -182,9 +182,9 @@ def ooc_cmd_create_move(client, arg):
         )
         return
 
-    if float(args[2]) <= 0:
+    if float(args[2]) < 0:
         client.send_ooc(
-            "Power has to be greater than 0.\nUsage: /create_move MoveName MovesType Power Accuracy Effects"
+            "Power has to be greater than or equal to zero.\nUsage: /create_move MoveName MovesType Power Accuracy Effects"
         )
         return
 
