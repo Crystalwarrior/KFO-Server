@@ -1010,6 +1010,7 @@ def ooc_cmd_subtheme(client, arg):
     )
 
 
+@mod_only(hub_owners=True)
 def ooc_cmd_evidence_lists(client, arg):
     """
     Show all evidence lists available on the server.
@@ -1044,7 +1045,6 @@ def evidence_load(client, name, overlay = False):
 
 @mod_only(area_owners=True)
 def ooc_cmd_evidence_load(client, arg):
-    
     """
     Allow you to load an evidence list from the server.
     Usage: /evidence_load <name>
