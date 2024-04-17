@@ -1031,7 +1031,11 @@ def ooc_cmd_load_evidences(client, arg):
     if arg == "":
         client.send_ooc("Usage: /load_evidences EvidencesPacketName")
         return
-
+        
+    if f"{arg}.yaml" not in os.listdir("storage/evidences"):
+        client.send_ooc("Evidences Packet not found in the server list!")
+        return
+        
     num_evidences = len(client.area.get_evidence_list(client))
     with open(f"storage/evidences/{arg}.yaml", "r", encoding="utf-8") as yaml_load:
         evidences = yaml.safe_load(yaml_load)
