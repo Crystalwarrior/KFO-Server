@@ -44,12 +44,11 @@ __all__ = [
     "ooc_cmd_minigame_end_song",
     "ooc_cmd_minigame_concede_song",
     "ooc_cmd_subtheme",
-    "ooc_cmd_save_evidence",
-    "ooc_cmd_load_evidence",
-    "ooc_cmd_overlay_evidence",
-    "ooc_cmd_list_evidence",
+    "ooc_cmd_evidence_save",
+    "ooc_cmd_evidence_load",
+    "ooc_cmd_evidence_overlay",
+    "ooc_cmd_evidence_lists",
 ]
-
 
 def ooc_cmd_doc(client, arg):
     """
@@ -1011,19 +1010,20 @@ def ooc_cmd_subtheme(client, arg):
     )
 
 
-def ooc_cmd_list_evidence(client, arg):
+def ooc_cmd_evidence_lists(client, arg):
     """
     Show all evidence lists available on the server.
-    Usage: /list_evidence
+    Usage: /evidence_lists
     """
     msg = "\nAvailable Evidence Lists:\n\n"
-    for evi_pack in os.listdir("storage/evidence"):
-        msg += f"- {evi_pack[:-5]}\n"
+    for F in os.listdir("storage/evidence/"):
+        if F.lower().endswith(".yaml"):
+            text += "\n- {}".format(F[:-5])
 
     client.send_ooc(msg)
 
 
-def load_evidence(client, name, overlay = False):
+def evidence_load(client, name, overlay = False):
     if f"{name}.yaml" not in os.listdir("storage/evidence"):
         client.send_ooc(f"Evidence List {name} not found!")
         return
@@ -1043,38 +1043,38 @@ def load_evidence(client, name, overlay = False):
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_load_evidence(client, arg):
+def ooc_cmd_evidence_load(client, arg):
     
     """
     Allow you to load an evidence list from the server.
-    Usage: /load_evidence <name>
+    Usage: /evidence_load <name>
     """
     if arg == "":
-        client.send_ooc("Usage: /load_evidence <name>")
+        client.send_ooc("Usage: /evidence_load <name>")
         return
-    load_evidence(client, derelative(arg))
+    evidence_load(client, derelative(arg))
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_overlay_evidence(client, arg):
+def ooc_cmd_evidence_overlay(client, arg):
     """
     Allow you to load and overlay an evidence list from the server to the existing evidence.
-    Usage: /overlay_evidence <name>
+    Usage: /evidence_overlay <name>
     """
     if arg == "":
-        client.send_ooc("Usage: /overlay_evidence <name>")
+        client.send_ooc("Usage: /evidence_overlay <name>")
         return
-    load_evidence(client, derelative(arg), overlay = True)
+    evidence_load(client, derelative(arg), overlay = True)
 
 
 @mod_only(area_owners=True)
-def ooc_cmd_save_evidence(client, arg):
+def ooc_cmd_evidence_save(client, arg):
     """
     Allow you to save evidence in a list stored in the server files!
-    Usage: /save_evidence <name>
+    Usage: /evidence_save <name>
     """
     if arg == "":
-        client.send_ooc("Usage: /save_evidence <name>")
+        client.send_ooc("Usage: /evidence_save <name>")
         return
 
     if len(client.area.evi_list.evidences) <= 0:
