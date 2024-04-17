@@ -1015,7 +1015,7 @@ def ooc_cmd_evidence_lists(client, arg):
     Show all evidence lists available on the server.
     Usage: /evidence_lists
     """
-    msg = "\nAvailable Evidence Lists:\n\n"
+    msg = "Available Evidence Lists:"
     for F in os.listdir("storage/evidence/"):
         if F.lower().endswith(".yaml"):
             text += "\n- {}".format(F[:-5])
