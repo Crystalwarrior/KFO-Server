@@ -1031,10 +1031,10 @@ def evidence_load(client, name, overlay = False):
     with open(f"storage/evidence/{name}.yaml", "r", encoding="utf-8") as stream:
         evidence = yaml.safe_load(stream)
 
-        done_what = "load"
+        done_what = "overlay"
         if not overlay:
             client.area.evi_list.evidences.clear()
-            done_what = "overlay"
+            done_what = "load"
 
         client.area.evi_list.import_evidence(evidence)
         client.area.broadcast_evidence_list()
