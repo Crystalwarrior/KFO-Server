@@ -647,7 +647,7 @@ class Area:
         area["msg_delay"] = self.msg_delay
         area["present_reveals_evidence"] = self.present_reveals_evidence
         if len(self.evi_list.evidences) > 0:
-            area["evidence"] = [e.to_dict() for e in self.evi_list.evidences]
+            area["evidence"] = self.evi_list.export_evidence()
         if len(self.links) > 0:
             area["links"] = self.links
         area["can_battle"] = self.can_battle

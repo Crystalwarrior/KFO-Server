@@ -282,6 +282,9 @@ class EvidenceList:
             self.evidences.append(self.Evidence(
                 name, desc, image, pos, can_hide_in))
 
+    def export_evidence(self):
+        return [e.to_dict() for e in self.evidences]
+
     def del_evidence(self, client, id):
         """
         Delete an evidence item.
