@@ -1,4 +1,6 @@
 import shlex
+import yaml
+import os
 
 import re
 
@@ -42,6 +44,9 @@ __all__ = [
     "ooc_cmd_minigame_end_song",
     "ooc_cmd_minigame_concede_song",
     "ooc_cmd_subtheme",
+    "ooc_cmd_save_evidences",
+    "ooc_cmd_load_evidences",
+    "ooc_cmd_list_evidences_packet",
 ]
 
 
@@ -1002,4 +1007,81 @@ def ooc_cmd_subtheme(client, arg):
         c.send_command("ST", arg, "1")
     client.send_ooc(
         f"Setting hub subtheme to {arg}."
+    )
+
+
+def ooc_cmd_list_evidences_packet(client, arg):
+    """
+    Show all evidences packet stored in the server files!
+    Usage: /list_evidences_packet
+    """
+    msg = "\nAvailable Evideces Packet:\n\n"
+    for evi_pack in os.listdir("storage/evidences"):
+        msg += f"- {evi_pack[:-5]}\n"
+
+    client.send_ooc(msg)
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_load_evidences(client, arg):
+    """
+    Allow you to load evidences from a packet stored in the server files!
+    Usage: /load_evidences EvidencesPacketName
+    """
+    if arg == "":
+        client.send_ooc("Usage: /load_evidences EvidencesPacketName")
+        return
+        
+    if f"{arg}.yaml" not in os.listdir("storage/evidences"):
+        client.send_ooc("Evidences Packet not found in the server list!")
+        return
+        
+    num_evidences = len(client.area.get_evidence_list(client))
+    with open(f"storage/evidences/{arg}.yaml", "r", encoding="utf-8") as yaml_load:
+        evidences = yaml.safe_load(yaml_load)
+        for evi in evidences:
+            client.area.evi_list.add_evidence(
+                client,
+                evidences[evi]["name"],
+                evidences[evi]["desc"],
+                evidences[evi]["image"],
+                "all",
+            )
+            database.log_area("evidence.add", client, client.area)
+    client.area.broadcast_evidence_list()
+    if num_evidences + len(evidences) > client.area.evi_list.limit:
+        client.send_ooc(
+            f"Warning not all evidences have been added from '{arg}' Packet due to area evidences limit!"
+        )
+    else:
+        client.send_ooc(f"You have added evidences from '{arg}' Packet!")
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_save_evidences(client, arg):
+    """
+    Allow you to save evidences in packet stored in the server files!
+    Usage: /save_evidences EvidencesPacketName
+    """
+    if arg == "":
+        client.send_ooc("Usage: /save_evidences EvidencesPacketName")
+        return
+
+    evi_list = client.area.get_evidence_list(client)
+    if len(evi_list) == 0:
+        client.send_ooc("There are no evidences in the area!")
+        return
+
+    evidences = {}
+    for i, evi in enumerate(evi_list):
+        evidences[i] = {}
+        evidences[i]["name"] = evi[0]
+        evidences[i]["desc"] = evi[1]
+        evidences[i]["image"] = evi[2]
+
+    with open(f"storage/evidences/{arg}.yaml", "w", encoding="utf-8") as yaml_save:
+        yaml.dump(evidences, yaml_save)
+
+    client.send_ooc(
+        f"Evidences have been saved as '{arg}' Packet in the server evidences packet list"
     )
