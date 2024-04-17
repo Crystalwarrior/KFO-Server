@@ -1018,7 +1018,7 @@ def ooc_cmd_evidence_lists(client, arg):
     msg = "Available Evidence Lists:"
     for F in os.listdir("storage/evidence/"):
         if F.lower().endswith(".yaml"):
-            text += "\n- {}".format(F[:-5])
+            msg += "\n- {}".format(F[:-5])
 
     client.send_ooc(msg)
 
