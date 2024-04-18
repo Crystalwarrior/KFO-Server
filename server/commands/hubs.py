@@ -22,6 +22,7 @@ __all__ = [
     # Area Creation system
     "ooc_cmd_area_create",
     "ooc_cmd_area_remove",
+    "ooc_cmd_area_duplicate",
     "ooc_cmd_area_rename",
     "ooc_cmd_area_swap",
     "ooc_cmd_area_switch",
@@ -319,6 +320,32 @@ def ooc_cmd_area_remove(client, arg):
     else:
         raise ArgumentError(
             "Invalid number of arguments. Use /area_remove <aid>.")
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_area_duplicate(client, arg):
+    """
+    Duplicate an area, copying all of its properties and evidence.
+    Usage: /area_duplicate <aid>
+    """
+    args = arg.split()
+
+    if len(args) == 1:
+        try:
+            area = client.area.area_manager.get_area_by_id(int(args[0]))
+            name = area.name
+            data = area.save()
+            new_area = client.area.area_manager.create_area()
+            new_area.load(data)
+            client.area.area_manager.broadcast_area_list()
+            client.send_ooc(f"Area {name} duplicated!")
+        except ValueError:
+            raise ArgumentError("Area ID must be a number.")
+        except (AreaError, ClientError):
+            raise
+    else:
+        raise ArgumentError(
+            "Invalid number of arguments. Use /area_duplicate <aid>.")
 
 
 @mod_only(area_owners=True)
@@ -625,7 +652,7 @@ def ooc_cmd_toggle_getareas(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_toggle_spectate(client, arg):
     """
-    Disable the ARea UPdate system for this hub.
+    Disable the ability to use a spectator character for non-GMs for this hub.
     Usage: /toggle_spectate
     """
     client.area.area_manager.can_spectate = not client.area.area_manager.can_spectate
