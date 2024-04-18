@@ -629,10 +629,10 @@ def ooc_cmd_skip_move(client, arg):
             client.area.battle_started = False
 
 
-def ooc_cmd_show_battle_effects(client, arg):
+def ooc_cmd_battle_effects(client, arg):
     """
     Show all available battle effects
-    Usage: /show_battle_effects
+    Usage: /battle_effects
     """
     msg = "Available Battle Effects:\n"
     for effect in battle_effects:
