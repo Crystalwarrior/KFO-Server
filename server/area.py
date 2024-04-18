@@ -793,7 +793,7 @@ class Area:
                 msg=f"~{client.battle.fighter}~ disconnected",
                 anim=client.last_sprite,
                 color=3,
-                offset=100,
+                offset_pair=100,
             )
 
         # Update everyone's available characters list
