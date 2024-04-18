@@ -920,7 +920,7 @@ def start_battle_animation(area):
                         effect="confused",
                     )
 
-            if "sleep" in client.battle.status:
+            if client.battle.status is not None and "sleep" in client.battle.status:
                 if client.battle.status == "sleep-1":
                     battle_send_ic(
                         client,
@@ -967,12 +967,12 @@ def start_battle_animation(area):
             # creating target list
             if "atkall" in move.effect:
                 if (
-                    "heal"
-                    or "healstatus"
-                    or "atkraiseally"
-                    or "defraiseally"
-                    or "sparaiseally"
-                    or "spdraiseally"
+                    "heal" in move.effect
+                    or "healstatus" in move.effect
+                    or "atkraiseally" in move.effect
+                    or "defraiseally" in move.effect
+                    or "sparaiseally" in move.effect
+                    or "spdraiseally" in move.effect
                     or "speraiseally" in move.effect
                 ):
                     if client.battle.guild is None:
@@ -1165,7 +1165,7 @@ def start_battle_animation(area):
                         shake=1,
                     )
 
-                if "sleep" in target.battle.status:
+                if target.battle.status is not None and "sleep" in target.battle.status:
                     target.battle.status = None
                     battle_send_ic(target, msg=f"~{target.battle.fighter}~ wakes up")
 
