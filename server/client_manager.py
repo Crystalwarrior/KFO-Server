@@ -2127,7 +2127,6 @@ class ClientManager:
             self.selected_move = -1
             self.status = None
             self.current_client = client
-            self.status = None
             self.guild = None
             self.moves = [ClientManager.Move(move) for move in fighter["Moves"]]
 
