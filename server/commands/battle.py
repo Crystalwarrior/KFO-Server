@@ -70,6 +70,25 @@ battle_effects = [
 ]
 
 
+def send_info_fighter(client):
+    """
+    Prepare the message about fighter info
+    """
+    msg = f"\n👤 {client.battle.fighter} 👤:\n"
+    if client.battle.status != None:
+        msg += f"Status 🌈: {client.battle.status}\n"
+    msg += f"\nHP 💗: {round(client.battle.hp,2)}/{client.battle.maxhp}\nMANA 💧: {round(client.battle.mana,2)}\nATK 🗡️: {round(client.battle.atk,2)}\nDEF 🛡️: {round(client.battle.defe,2)}\nSPA ✨: {round(client.battle.spa,2)}\nSPD 🔮: {round(client.battle.spd,2)}\nSPE 💨: {round(client.battle.spe,2)}\n\n"
+    for move in client.battle.moves:
+        move_id = client.battle.moves.index(move)
+        msg += f"🌠 [{move_id}]{move.name} 🌠:\nManaCost 💧: {move.cost}\nType 💠: {move.type}\nPower 💪: {move.power}\nAccuracy 🔎: {move.accuracy}%\n"
+        if move.effect != []:
+            msg += "Effects 🔰:\n"
+            for effect in move.effect:
+                msg += f"- {effect}\n"
+        msg += "\n"
+    client.send_ooc(msg)
+    
+
 def send_stats_fighter(client):
     """
     Prepare the message about fighter stats
