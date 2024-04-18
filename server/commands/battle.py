@@ -1418,7 +1418,7 @@ def start_battle_animation(area):
             )
 
     # check dead fighters and unselect move and target
-    for client in area.fighters:
+    for client in list(area.fighters):
         # Unselect move and target
         client.battle.selected_move = -1
         client.battle.target = None
