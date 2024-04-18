@@ -395,7 +395,7 @@ def ooc_cmd_battle_config(client, arg):
    else:
        client.send_ooc("value is not valid")
        return
-   client.send_ooc(f"{args[0].lower()} has been changed to {args[1].lower()}")
+   client.send_ooc(f"{args[0].lower()} has been changed to {args[1]}")
 
 
 def send_battle_info(client):
