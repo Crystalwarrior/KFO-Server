@@ -2118,6 +2118,7 @@ class ClientManager:
             self.hp = float(fighter["HP"])
             self.maxhp = self.hp
             self.atk = float(fighter["ATK"])
+            self.mana = float(fighter["MANA"])
             self.defe = float(fighter["DEF"])
             self.spa = float(fighter["SPA"])
             self.spd = float(fighter["SPD"])
@@ -2125,11 +2126,15 @@ class ClientManager:
             self.target = None
             self.selected_move = -1
             self.status = None
+            self.current_client = client
+            self.status = None
+            self.guild = None
             self.moves = [ClientManager.Move(move) for move in fighter["Moves"]]
 
     class Move:
         def __init__(self, move):
             self.name = move["Name"]
+            self.cost = move["ManaCost"]
             self.type = move["MovesType"]
             self.power = float(move["Power"])
             self.effect = move["Effects"]
