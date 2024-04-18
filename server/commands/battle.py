@@ -1011,7 +1011,7 @@ def start_battle_animation(area):
             # send in ic the message 'fighter uses this move'
             battle_send_ic(client, msg=f"~{client.battle.fighter}~ uses ~{move.name}~")
 
-            # heal move
+            # Ally move
             if "heal" in move.effect:
                 for target in targets:
                     if target.battle.hp <= 0:
@@ -1047,6 +1047,8 @@ def start_battle_animation(area):
                                 msg=f"and heals ~{target.battle.fighter}~ of ~{heal}~ hp",
                                 effect="lifeup",
                             )
+                        client.battle.target.battle.hp += heal
+                        
                     if "healstatus" in move.effect:
                         if target.battle.status is None:
                             battle_send_ic(
