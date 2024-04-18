@@ -757,7 +757,7 @@ def ooc_cmd_use_move(client, arg):
     """
     This command will let you use a move during a battle!
     AttAll moves don't need a target!
-    Usage: /use_move MoveName Target_ID
+    Usage: /use_move MoveName/Move_ID Target_ID
     """
     if client.battle is None:
         client.send_ooc("You have to choose a fighter first!")
