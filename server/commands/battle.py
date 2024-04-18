@@ -209,13 +209,13 @@ def ooc_cmd_create_move(client, arg):
 
     if float(args[1]) < 0:
         client.send_ooc(
-            "ManaCost has to be greater than or equalt to zero.\nUsage: /create_move MoveName ManaCost MovesType Power Accuracy Effects"
+            "ManaCost has to be greater than or equal to zero.\nUsage: /create_move MoveName ManaCost MovesType Power Accuracy Effects"
         )
         return
 
     if float(args[3]) < 0:
         client.send_ooc(
-            "Power has to be greater than or equalt to zero.\nUsage: /create_move MoveName ManaCost MovesType Power Accuracy Effects"
+            "Power has to be greater than or equal to zero.\nUsage: /create_move MoveName ManaCost MovesType Power Accuracy Effects"
         )
         return
 
