@@ -262,7 +262,7 @@ class Area:
         self.can_battle = True
         self.battle_started = False
         self.fighters = []
-        self.num_selected_move = 0<
+        self.num_selected_move = 0
         self.battle_guilds = {}
 
         # Battle system customization
