@@ -597,8 +597,7 @@ def ooc_cmd_force_skip_move(client, arg):
         client.area.num_selected_move = 0
         if not client.area.battle_started:
             client.area.battle_started = True
-        if len(client.area.fighters) < 2:
-            client.area.fighters = []
+        if len(client.area.fighters) == 0:
             client.area.battle_started = False
 
 
@@ -624,8 +623,7 @@ def ooc_cmd_skip_move(client, arg):
         client.area.num_selected_move = 0
         if not client.area.battle_started:
             client.area.battle_started = True
-        if len(client.area.fighters) < 2:
-            client.area.fighters = []
+        if len(client.area.fighters) == 0:
             client.area.battle_started = False
 
 
@@ -817,6 +815,8 @@ def ooc_cmd_use_move(client, arg):
         client.area.num_selected_move = 0
         if not client.area.battle_started:
             client.area.battle_started = True
+        if len(client.area.fighters) == 0:
+            client.area.battle_started = False
 
 
 def battle_send_ic(client, msg, effect="", shake=0, offset=0):
@@ -1448,21 +1448,18 @@ def start_battle_animation(area):
                 winner, winner.battle.fighter, char
             )
         area.fighters = []
-        area.battle_started = False
     elif len(area.fighters) == 0:
         battle_send_ic(client, msg=f"~Everyone~ is down...", offset=100)
         area.fighters = []
-        area.battle_started = False
     else:
         # check if there is a winner guild
         winner_guild = None
-        for guild in area.battle_guilds:
-            if set(area.fighters).issubset(set(guild)):
-                winner_guild = area.battle_guilds[guild]
-        if winner_guild is not None:
+        guilds = [c.battle.guild for c in area.fighters]
+        if len(set(guilds)) == 1 and guilds[0] is not None:
+            guild = guilds[0]
+            winner_guild = client.area.battle_guilds[guild]
             battle_send_ic(winner_guild[0], msg=f"~{guild}~ wins the battle!")
             area.fighters = []
-            area.battle_started = False
             for winner in winner_guild:
                 with open(
                     f"storage/battlesystem/{winner.battle.fighter}.yaml",
