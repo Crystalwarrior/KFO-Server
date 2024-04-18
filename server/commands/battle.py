@@ -272,7 +272,7 @@ def ooc_cmd_modify_stat(client, arg):
     Allow you to modify fighter's stats.
     Usage: /modify_stat FighterName Stat Value
     """
-    args = arg.split(" ")
+    args = shlex.split(arg)
     if f"{args[0].lower()}.yaml" not in os.listdir("storage/battlesystem"):
         client.send_ooc("No fighter has this name!")
         return
