@@ -474,8 +474,9 @@ def ooc_cmd_fight(client, arg):
                 client.battle = target.battle
 
             client.battle.current_client = client
-            index = client.area.battle_guilds[client.battle.guild].index(target)
-            client.area.battle_guilds[client.battle.guild][index] = client
+            if client.battle.guild is not None:
+                index = client.area.battle_guilds[client.battle.guild].index(target)
+                client.area.battle_guilds[client.battle.guild][index] = client
             client.area.fighters.remove(target)
             client.area.fighters.append(client)
             msg = send_battle_info(client)
