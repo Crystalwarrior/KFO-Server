@@ -30,6 +30,7 @@ __all__ = [
     "ooc_cmd_join_guild",
     "ooc_cmd_leave_guild",
     "ooc_cmd_battle_effects",
+    "ooc_cmd_close_guild",
 ]
 
 
@@ -628,6 +629,25 @@ def ooc_cmd_skip_move(client, arg):
             client.area.battle_started = False
 
 
+def ooc_cmd_close_guild(client, arg):
+    """
+    Allow GM to close all guilds if arg is "", or to close a specific guild is arg is GuildName
+    Usage: /close_guild <GuildName>
+    """
+    if arg == "":
+        for guild in client.area.battle_guilds:
+            for c in client.area.battle_guilds[guild]:
+                c.battle.guild = None
+        client.area.battle_guilds = {}
+        client.area.broadcast_ooc("All guilds have been closed!")
+    elif arg in client.area.battle_guilds:
+        for c in client.area.battle_guilds[arg]:
+            c.send_ooc(f"'{arg}' Guild has been closed")
+        client.area.battle_guilds.pop(arg)
+    else:
+        client.send_ooc("Guild not found!")
+
+
 def ooc_cmd_battle_effects(client, arg):
     """
     Show all available battle effects
@@ -642,18 +662,53 @@ def ooc_cmd_battle_effects(client, arg):
 def ooc_cmd_leave_guild(client, arg):
     """
     Allow you to leave your current guid
-    Usage: /leave_guild
+    Usage: /leave_guild <Target_ID>
     """
-    if client.battle.guild is None:
-        client.send_ooc("You are not in any guilds!")
-        return
+    if arg == "":
+        if client.battle.guild is None:
+            client.send_ooc("You are not in any guilds!")
+            return
 
-    guild = client.battle.guild
-    client.area.battle_guilds[guild].remove(client)
-    client.send_ooc("You have been removed from the current guild")
-    if client.area.battle_guilds[guild] == []:
-        client.area.battle_guild.pop(guild)
-    client.battle.guild = None
+        guild = client.battle.guild
+        client.area.battle_guilds[guild].remove(client)
+        client.send_ooc("You have been removed from the current guild")
+        if client.area.battle_guilds[guild] == []:
+            client.area.battle_guild.pop(guild)
+        client.battle.guild = None
+    else:
+        if client in client.area.area_manager.owners:
+            area_ids = {c.id: c for c in client.area.clients}
+            if int(arg) in area_ids:
+                target = area_ids[int(arg)]
+                if target.battle is None or target.battle.guild is None:
+                    client.send_ooc("Target has not a fighter or is not in a guild!")
+                    return
+                guild = target.battle.guild
+                client.area.battle_guilds[guild].remove(target)
+                if len(client.area.battle_guilds[guild]) == 0:
+                    client.area.battle_guilds.pop(guild)
+                target.battle.guild = None
+                client.send_ooc(f"Target has been removed from '{guild}' Guild")
+                target.send_ooc(f"You have been removed from '{guild}' Guild")
+            else:
+                client.send_ooc("Target not found!")
+        elif client == client.area.battle_guilds[client.battle.guild][0]:
+            guild_ids = {
+                c.id: c for c in client.area.battle_guilds[client.battle.guild]
+            }
+            if int(arg) in guild_ids:
+                target = guild_ids[int(arg)]
+                guild = target.battle.guild
+                client.area.battle_guilds[guild].remove(target)
+                if len(client.area.battle_guilds[guild]) == 0:
+                    client.area.battle_guilds.pop(guild)
+                target.battle.guild = None
+                client.send_ooc(f"Target has been removed from '{guild}' Guild")
+                target.send_ooc(f"You have been removed from '{guild}' Guild")
+            else:
+                client.send_ooc("Target not found!")
+        else:
+            client.send_ooc("You are not a GM or a Guild Leader")
 
 
 def ooc_cmd_join_guild(client, arg):
@@ -701,6 +756,8 @@ def ooc_cmd_join_guild(client, arg):
     target.battle.guild = guild
     client.send_ooc(f"{target.battle.fighter} joined to the {guild} Guild!")
     target.send_ooc(f"You joined to the {guild} Guild!")
+    for client in client.area.battle_guilds[guild]:
+        send_info_guild(client)
 
 
 def ooc_cmd_create_guild(client, arg):
@@ -720,6 +777,7 @@ def ooc_cmd_create_guild(client, arg):
     client.area.battle_guilds[arg].append(client)
     client.battle.guild = arg
     client.send_ooc(f"{arg} Guild has been created!")
+    send_info_guild(client)
 
 
 def ooc_cmd_info_guild(client, arg):
@@ -735,6 +793,10 @@ def ooc_cmd_info_guild(client, arg):
         client.send_ooc("You are not in any guilds!")
         return
 
+    send_info_guild(client)
+
+
+def send_info_guild(client):
     guild = client.battle.guild
 
     guild_leader = client.area.battle_guilds[guild][0]
