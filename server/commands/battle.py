@@ -265,6 +265,12 @@ def ooc_cmd_create_move(client, arg):
 
         client.send_ooc(f"{args[0]} has been added!")
         client.battle = ClientManager.BattleChar(client, client.battle.fighter, char)
+        guild = None
+        for g in client.area.battle_guilds:
+            if client in client.area.battle_guilds[g]:
+                guild = g
+
+        client.battle.guild = guild
 
 
 @mod_only(hub_owners=True)
@@ -347,6 +353,12 @@ def ooc_cmd_delete_move(client, arg):
             client.battle = ClientManager.BattleChar(
                 client, client.battle.fighter, char
             )
+            guild = None
+            for g in client.area.battle_guilds:
+                if client in client.area.battle_guilds[g]:
+                    guild = g
+
+            client.battle.guild = guild
             client.send_ooc(f"{arg} has been deleted!")
         else:
             client.send_ooc(f"{arg} is not found in the fighter moves")
@@ -540,6 +552,21 @@ def ooc_cmd_surrender(client, arg):
         battle_send_ic(
             client, msg=f"~{client.battle.fighter}~ decides to surrend", offset=100
         )
+        with open(
+            f"storage/battlesystem/{client.battle.fighter}.yaml",
+            "r",
+            encoding="utf-8",
+        ) as c_load:
+            char = yaml.safe_load(c_load)
+            client.battle = ClientManager.BattleChar(
+                client, client.battle.fighter, char
+            )
+        guild = None
+        for g in client.area.battle_guilds:
+            if client in client.area.battle_guilds[g]:
+                guild = g
+
+        client.battle.guild = guild
         if len(client.area.fighters) == 0:
             client.area.battle_started = False
     else:
@@ -566,6 +593,21 @@ def ooc_cmd_remove_fighter(client, arg):
             msg=f"~{target.battle.fighter}~ ran out of hp! (forced to leave the battle)",
             offset=100,
         )
+        with open(
+            f"storage/battlesystem/{target.battle.fighter}.yaml",
+            "r",
+            encoding="utf-8",
+        ) as c_load:
+            char = yaml.safe_load(c_load)
+            target.battle = ClientManager.BattleChar(
+                target, target.battle.fighter, char
+            )
+        guild = None
+        for g in target.area.battle_guilds:
+            if target in target.area.battle_guilds[g]:
+                guild = g
+
+        target.battle.guild = guild
         if len(client.area.fighters) == 0:
             client.area.battle_started = False
     else:
@@ -1502,6 +1544,12 @@ def start_battle_animation(area):
                 client.battle = ClientManager.BattleChar(
                     client, client.battle.fighter, char
                 )
+            guild = None
+            for g in client.area.battle_guilds:
+                if client in client.area.battle_guilds[g]:
+                    guild = g
+
+            client.battle.guild = guild
 
     # check if there is a winner or everyone is dead
     if len(area.fighters) == 1:
@@ -1514,6 +1562,12 @@ def start_battle_animation(area):
             winner.battle = ClientManager.BattleChar(
                 winner, winner.battle.fighter, char
             )
+        guild = None
+        for g in winner.area.battle_guilds:
+            if winner in winner.area.battle_guilds[g]:
+                guild = g
+
+        winner.battle.guild = guild
         area.fighters = []
     elif len(area.fighters) == 0:
         battle_send_ic(client, msg=f"~Everyone~ is down...", offset=100)
@@ -1537,6 +1591,12 @@ def start_battle_animation(area):
                     winner.battle = ClientManager.BattleChar(
                         winner, winner.battle.fighter, char
                     )
+                guild = None
+                for g in winner.area.battle_guilds:
+                    if winner in winner.area.battle_guilds[g]:
+                        guild = g
+
+                winner.battle.guild = guild
         else:
             # prepare for the next turn
             for client in area.fighters:
