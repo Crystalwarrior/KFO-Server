@@ -1380,6 +1380,8 @@ def start_battle_animation(area):
 
     # check poisoned, burned and frozen fighters
     for client in area.fighters:
+        if client.battle.hp <= 0:
+            continue
         fighter_name = client.area.area_manager.char_list[client.char_id]
         if client.battle.status == "poison" and client.battle.hp > 0:
             client.battle.hp += -client.battle.maxhp / area.battle_poison_damage
