@@ -1057,6 +1057,8 @@ def start_battle_animation(area):
                             )
                         else:
                             status = target.battle.status
+                            if "sleep" in status:
+                                status = "sleep"
                             target.battle.status = None
                             battle_send_ic(
                                 target,
@@ -1146,7 +1148,7 @@ def start_battle_animation(area):
                 target.battle.hp += -damage
 
                 if client.battle.status == "enraged":
-                    client.battle, status = None
+                    client.battle.status = None
                     damage = damage * area.battle_enraged_bonus
                     battle_send_ic(client, msg=f"focuses all strenght")
 
