@@ -263,6 +263,7 @@ class Area:
         self.battle_started = False
         self.fighters = []
         self.num_selected_move = 0
+        self.battle_guilds = {}
 
         # Battle system customization
         self.battle_paralysis_rate = 3
@@ -271,6 +272,13 @@ class Area:
         self.battle_bonus_malus = 1.5
         self.battle_poison_damage = 16
         self.battle_show_hp = True
+        self.battle_min_multishot = 2
+        self.battle_max_multishot = 5
+        self.battle_burn_damage = 8
+        self.battle_freeze_damage = 8
+        self.battle_confusion_rate = 3
+        self.battle_enraged_bonus = 2.25
+        self.battle_stolen_stat = 10
 
     @property
     def name(self):
@@ -775,22 +783,22 @@ class Area:
 
         #Battle system
         if client in client.area.fighters:
-            if client.battle.selected_move == -1:
-                client.area.fighters.remove(client)
+            if client.area.battle_started:
+                client.battle.current_client = None
             else:
-                client.battle.hp = 0
-                client.battle.selected_move = -1
-                client.battle.target = None
+                client.area.fighters.remove(client)
+                if client.battle.guild is not None:
+                    guild = client.battle.guild
+                    client.battle.guild = None
+                    client.area.battle_guilds[guild].remove(client)
+                if client.battle.selected_move != -1:
+                    client.area.num_selected_move += -1
             client.area.send_ic(
-                pre=client.last_sprite,
-                msg=f"~{client.battle.fighter}~ suddenly ran out of hp! (disconnected)",
-                pos=client.pos,
-                flip=client.flip,
+                msg=f"~{client.battle.fighter}~ disconnected",
+                anim=client.last_sprite,
                 color=3,
                 offset_pair=100,
             )
-            if len(client.area.fighters) == 0:
-                client.area.battle_started = False
 
         # Update everyone's available characters list
         # Commented out due to potentially causing clientside lag...

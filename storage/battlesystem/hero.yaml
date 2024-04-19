@@ -1,4 +1,5 @@
 HP: 100.0
+MANA: 100.0
 ATK: 200.0
 DEF: 100.0
 SPA: 100.0
@@ -6,6 +7,7 @@ SPD: 100.0
 SPE: 100.0
 Moves:
 - Name: slash
+  ManaCost: 20.0
   MovesType: atk
   Power: 100.0
   Accuracy: 100.0
