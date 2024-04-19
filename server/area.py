@@ -787,6 +787,10 @@ class Area:
                 client.battle.current_client = None
             else:
                 client.area.fighters.remove(client)
+                if client.battle.guild is not None:
+                    guild = client.battle.guild
+                    client.battle.guild = None
+                    client.area.battle_guilds[guild].remove(client)
                 if client.battle.selected_move != -1:
                     client.area.num_selected_move += -1
             client.area.send_ic(
