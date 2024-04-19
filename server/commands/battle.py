@@ -1320,7 +1320,7 @@ def start_battle_animation(area):
                         target.battle.status = "sleep-1"
                         battle_send_ic(
                             target,
-                            msg=f"~{target.battle.fighter}~ is sleep",
+                            msg=f"~{target.battle.fighter}~ is sleeping",
                             effect="sleep",
                         )
                 # check if target is dead
