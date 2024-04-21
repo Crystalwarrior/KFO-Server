@@ -554,7 +554,7 @@ def ooc_cmd_musiclist_add(client, arg):
         path = client.area.area_manager.music_ref
         client.area.area_manager.music_list = musiclist_rebuild(musiclist, path)
                 
-    client.server.client_manager.refresh_music()
+    client.server.client_manager.refresh_music(targets)
     client.send_ooc(f"'{args[2]}' song has been added to '{path}' musiclist.")
 
 
