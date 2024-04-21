@@ -351,43 +351,109 @@ def ooc_cmd_random_music(client, arg):
     client.change_music(song_name, client.char_id, "", 2)
 
 
+def musiclist_rebuild(musiclist, path):
+    prepath = ""
+    for item in musiclist:
+        if (
+            "use_unique_folder" in item
+            and item["use_unique_folder"] is True
+        ):
+            prepath = os.path.splitext(
+                os.path.basename(f"storage/musiclists/{path}"))[0] + "/"
+
+        if "category" not in item:
+            continue
+
+        for song in item["songs"]:
+            song["name"] = prepath + song["name"]
+            
+    return musiclist
+
+
 @mod_only(hub_owners=True)
+def ooc_cmd_musiclist_save(client, arg):
+    """
+    Allow you to save a musiclist on server list!
+    Usage: /musiclist_save <local/area/hub>
+    """
+    if arg == "":
+        client.send_ooc("Usage: /musiclist_save <local/area/hub>")
+        return
+
+    if arg not in ["local", "area", "hub"]:
+        client.send_ooc("Usage: /musiclist_save <local/area/hub>")
+        return
+    
+    if arg == "local":
+        musiclist = client.music_list
+        name = client.music_ref
+    elif arg == "area":
+        musiclist = client.area.music_list
+        name = client.area.music_ref
+    else:
+        musiclist = client.area.area_manager.music_list
+        name = client.area.area_manager.music_ref
+       
+    with open(f"storage/musiclists/{name}.yaml", "w", encoding="utf-8") as yaml_save:
+        yaml.dump(musiclist, yaml_save)
+    
+
+
 def ooc_cmd_musiclist_remove(client, arg):
     """
     Allow you to remove a song from a musiclist!
     Remember to insert also Music extension in <MusicName>
-    Usage: /musiclist_remove <MusiclistName> <Category> <MusicName>
+    Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>
     """
     if arg == "":
         client.send_ooc(
-            "Usage: /musiclist_remove <MusiclistName> <Category> <MusicName>"
+            "Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>"
         )
         return
 
     args = shlex.split(arg)
     if len(args) != 3:
         client.send_ooc(
-            "Usage: /musiclist_remove <MusiclistName> <Category> <MusicName>"
+            "Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>"
         )
         return
 
-    args[0] = f"storage/musiclists/{derelative(args[0])}.yaml"
-    if not os.path.isfile(args[0]):
-        client.send_ooc("Musiclist has not been found!")
+    if args[0] not in ["local", "area", "hub"]:
+        client.send_ooc("You can add a song if musiclist is loaded in local or in area or in hub.\nUsage: /musiclist_add <local/area/hub> <Category> <MusicName>")
+        return
+    
+    if args[0] == "local":
+        targets = [client]
+        musiclist = client.music_list
+    elif args[0] == "area":
+        if client not in client.area.owners and client not in client.area.area_manager.owners and not client.is_mod:
+            client.send_ooc("You should be at least cm to add a song in a musiclist!")
+            return
+        targets = client.area.clients
+        musiclist = client.area.music_list
+    else:
+        if client not in client.area.area_manager.owners and not client.is_mod:
+            client.send_ooc("You should be at least gm to add a song in a musiclist!")
+            return
+        targets = client.area.area_manager.clients
+        musiclist = client.area.area_manager.music_list
+        
+    if musiclist == []:
+        client.send_ooc("You can add a song if a musiclist is loaded in local or in area or in hub.")
         return
 
-    with open(args[0], "r", encoding="utf-8") as stream:
-        musiclist = yaml.safe_load(stream)
-
     categories = []
-    if len(musiclist) > 1:
-        categories = [musiclist[i]["category"] for i in range(1, len(musiclist))]
+    for i in range(0, len(musiclist)):
+        if "category" in musiclist[i]:
+            categories.append(musiclist[i]["category"])
+        else:
+            categories.append(None)
 
     if f"=={args[1]}==" not in categories:
         client.send_ooc("Category has not been found!")
         return
 
-    category_id = categories.index(f"=={args[1]}==") + 1
+    category_id = categories.index(f"=={args[1]}==")
 
     songs = [
         musiclist[category_id]["songs"][i]["name"]
@@ -403,47 +469,65 @@ def ooc_cmd_musiclist_remove(client, arg):
     if len(musiclist[category_id]["songs"]) == 0:
         musiclist.pop(category_id)
 
-    if len(musiclist) == 1:
-        os.remove(args[0])
-        client.send_ooc("Musiclist has been deleted!")
-
+    if args[0] == "local":
+        path = client.music_ref
+        client.music_list = musiclist_rebuild(musiclist, path)
+    elif args[0] == "area":
+        path = client.area.music_ref
+        client.area.music_list = musiclist_rebuild(musiclist, path)
     else:
-        with open(args[0], "w", encoding="utf-8") as yaml_save:
-            yaml.dump(musiclist, yaml_save)
-        args = shlex.split(arg)
-        client.send_ooc(
-            f"'{args[2]}' song has been removed from '{derelative(args[0])}' musiclist."
-        )
+        path = client.area.area_manager.music_ref
+        client.area.area_manager.music_list = musiclist_rebuild(musiclist, path)
+        
+    client.server.client_manager.refresh_music(targets)
+    client.send_ooc(f"'{args[2]}' song has been removed to '{path}' musiclist.")
 
 
-@mod_only(hub_owners=True)
 def ooc_cmd_musiclist_add(client, arg):
     """
-    Allow you to add a song in a musiclist!
+    Allow you to add a song in a loaded musiclist!
     Remember to insert also Music extension in <MusicName>
-    Usage: /musiclist_add <MusiclistName> <Category> <MusicName>
+    Usage: /musiclist_add <local/area/hub> <Category> <MusicName>
     """
     if arg == "":
-        client.send_ooc("Usage: /musiclist_add <MusiclistName> <Category> <MusicName>")
+        client.send_ooc("Usage: /musiclist_add <local/area/hub> <Category> <MusicName>")
         return
 
     args = shlex.split(arg)
     if len(args) != 3:
-        client.send_ooc("Usage: /musiclist_add <MusiclistName> <Category> <MusicName>")
+        client.send_ooc("Usage: /musiclist_add <local/area/hub> <Category> <MusicName>")
         return
-
-    args[0] = f"storage/musiclists/{derelative(args[0])}.yaml"
-
-    if not os.path.isfile(args[0]):
-        client.send_ooc("Musiclist has not been found!")
+    
+    if args[0] not in ["local", "area", "hub"]:
+        client.send_ooc("You can add a song if musiclist is loaded in local or in area or in hub.\nUsage: /musiclist_add <local/area/hub> <Category> <MusicName>")
         return
-
-    with open(args[0], "r", encoding="utf-8") as stream:
-        musiclist = yaml.safe_load(stream)
-
+    
+    if args[0] == "local":
+        targets = [client]
+        musiclist = client.music_list
+    elif args[0] == "area":
+        if client not in client.area.owners and client not in client.area.area_manager.owners and not client.is_mod:
+            client.send_ooc("You should be at least cm to add a song in a musiclist!")
+            return
+        targets = client.area.clients
+        musiclist = client.area.music_list
+    else:
+        if client not in client.area.area_manager.owners and not client.is_mod:
+            client.send_ooc("You should be at least gm to add a song in a musiclist!")
+            return
+        targets = client.area.area_manager.clients
+        musiclist = client.area.area_manager.music_list
+        
+    if musiclist == []:
+        client.send_ooc("You can add a song if a musiclist is loaded in local or in area or in hub.")
+        return
+             
     categories = []
-    if len(musiclist) > 1:
-        categories = [musiclist[i]["category"] for i in range(1, len(musiclist))]
+    for i in range(0, len(musiclist)):
+        if "category" in musiclist[i]:
+            categories.append(musiclist[i]["category"])
+        else:
+            categories.append(None)
 
     if f"=={args[1]}==" not in categories:
         musiclist.append({})
@@ -451,7 +535,7 @@ def ooc_cmd_musiclist_add(client, arg):
         musiclist[category_id]["category"] = f"=={args[1]}=="
         musiclist[category_id]["songs"] = []
     else:
-        category_id = categories.index(f"=={args[1]}==") + 1
+        category_id = categories.index(f"=={args[1]}==")
 
     musiclist[category_id]["songs"].append({})
     song_id = len(musiclist[category_id]["songs"]) - 1
@@ -459,11 +543,18 @@ def ooc_cmd_musiclist_add(client, arg):
     musiclist[category_id]["songs"][song_id]["name"] = args[2]
     musiclist[category_id]["songs"][song_id]["length"] = -1
 
-    with open(args[0], "w", encoding="utf-8") as yaml_save:
-        yaml.dump(musiclist, yaml_save)
-
-    args = shlex.split(arg)
-    client.send_ooc(f"'{args[2]}' song has added to '{derelative(args[0])}' musiclist.")
+    if args[0] == "local":
+        path = client.music_ref
+        client.music_list = musiclist_rebuild(musiclist, path)
+    elif args[0] == "area":
+        path = client.area.music_ref
+        client.area.music_list = musiclist_rebuild(musiclist, path)
+    else:
+        path = client.area.area_manager.music_ref
+        client.area.area_manager.music_list = musiclist_rebuild(musiclist, path)
+                
+    client.server.client_manager.refresh_music()
+    client.send_ooc(f"'{args[2]}' song has been added to '{path}' musiclist.")
 
 
 @mod_only(hub_owners=True)
@@ -486,27 +577,24 @@ def ooc_cmd_musiclist_create(client, arg):
         raise ArgumentError(f"Musiclist {args[0]} already exists")
 
     musiclist = [{}]
-    with open(args[0], "w", encoding="utf-8") as yaml_save:
-        replace = False
-        if "replace" in args or "Replace" in args:
-            replace = True
+    replace = False
+    if "replace" in args or "Replace" in args:
+        replace = True
 
-        useuniquefolder = False
-        if (
-            "UseUniqueFolder" in args
-            or "Useuniquefolder" in args
-            or "useuniquefolder" in args
-        ):
-            useuniquefolder = True
+    useuniquefolder = False
+    if (
+        "UseUniqueFolder" in args
+        or "Useuniquefolder" in args
+        or "useuniquefolder" in args
+    ):
+        useuniquefolder = True
 
-        musiclist[0]["replace"] = replace
-        musiclist[0]["use_unique_folder"] = useuniquefolder
-        yaml.dump(musiclist, yaml_save)
-
+    musiclist[0]["replace"] = replace
+    musiclist[0]["use_unique_folder"] = useuniquefolder
     with open(args[0], "w", encoding="utf-8") as yaml_save:
         yaml.dump(musiclist, yaml_save)
 
-    args = shlex.split(arg)
+    name = shlex.split(arg)[0]
     client.send_ooc(
-        f"Musiclist has been saved as '{derelative(args[0])}' on the server."
+        f"Musiclist has been saved as '{derelative(name)}' on the server."
     )
