@@ -27,6 +27,7 @@ __all__ = [
     "ooc_cmd_musiclist_create",
     "ooc_cmd_musiclist_remove",
     "ooc_cmd_musiclist_add",
+    "ooc_cmd_musiclist_save",
 ]
 
 
