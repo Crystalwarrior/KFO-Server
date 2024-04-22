@@ -396,7 +396,7 @@ def ooc_cmd_musiclist_save(client, arg):
         musiclist = client.area.area_manager.music_list
         name = client.area.area_manager.music_ref
 
-    if musiclist == "unsaved":
+    if name == "unsaved":
         if len(args) == 2:
             name = args[1]
         else:
@@ -532,7 +532,7 @@ def ooc_cmd_musiclist_add(client, arg):
         musiclist[0]["use_unique_folder"] = False
         if args[0] == "local":
             client.music_ref = "unsaved"
-        elif args[1] == "area":
+        elif args[0] == "area":
             client.area.music_ref = "unsaved"
         else:
             client.area.area_manager.music_ref = "unsaved"
