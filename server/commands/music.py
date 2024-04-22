@@ -397,7 +397,7 @@ def ooc_cmd_musiclist_save(client, arg):
        
     with open(f"storage/musiclists/{name}.yaml", "w", encoding="utf-8") as yaml_save:
         yaml.dump(musiclist, yaml_save)
-    
+    client.send_ooc(f"Musiclist '{name}' saved on server list!")
 
 
 def ooc_cmd_musiclist_remove(client, arg):
@@ -480,7 +480,7 @@ def ooc_cmd_musiclist_remove(client, arg):
         path = client.area.area_manager.music_ref
         client.area.area_manager.music_list = musiclist_rebuild(musiclist, path)
         
-    client.server.client_manager.refresh_music(targets)
+    client.server.client_manager.refresh_music(targets, True)
     client.send_ooc(f"'{args[2]}' song has been removed to '{path}' musiclist.")
 
 
@@ -554,7 +554,7 @@ def ooc_cmd_musiclist_add(client, arg):
         path = client.area.area_manager.music_ref
         client.area.area_manager.music_list = musiclist_rebuild(musiclist, path)
                 
-    client.server.client_manager.refresh_music(targets)
+    client.server.client_manager.refresh_music(targets, True)
     client.send_ooc(f"'{args[2]}' song has been added to '{path}' musiclist.")
 
 
@@ -579,15 +579,11 @@ def ooc_cmd_musiclist_create(client, arg):
 
     musiclist = [{}]
     replace = False
-    if "replace" in args or "Replace" in args:
+    if len(args) > 1 and args[1].lower() == "replace":
         replace = True
 
     useuniquefolder = False
-    if (
-        "UseUniqueFolder" in args
-        or "Useuniquefolder" in args
-        or "useuniquefolder" in args
-    ):
+    if len(args) == 3 and args[2].lower() == "useuniquefolder":
         useuniquefolder = True
 
     musiclist[0]["replace"] = replace
