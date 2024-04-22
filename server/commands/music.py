@@ -544,7 +544,7 @@ def ooc_cmd_musiclist_add(client, arg):
         else:
             categories.append(None)
 
-    if args[1]" not in categories:
+    if args[1] not in categories:
         musiclist.append({})
         category_id = len(musiclist) - 1
         musiclist[category_id]["category"] = args[1]
