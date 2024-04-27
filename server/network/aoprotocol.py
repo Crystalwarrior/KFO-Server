@@ -213,7 +213,9 @@ class AOProtocol(asyncio.Protocol):
                 "KB", "Your client version was sent a second time by your client.")
             self.client.disconnect()
             return
-        self.client.version = args[1]
+        software, version = args[0], args[1]
+        self.client.version = version
+        self.client.software = software
         preflist = self.client.server.supported_features.copy()
         if not self.client.area.area_manager.arup_enabled and "arup" in preflist:
             preflist.remove("arup")
@@ -221,6 +223,12 @@ class AOProtocol(asyncio.Protocol):
 
         # Get the list of version vars, making sure the size of the least is at least 3 args
         verlist = self.client.version.split('.')
+
+        # DRO client connected, partial DRO support
+        if self.client.software == "DRO":
+            # send it back to the client
+            self.client.send_command("client_version", *verlist)
+
         if len(verlist) == 3:
             # Get the version string
             release, major, minor = verlist
@@ -230,11 +238,6 @@ class AOProtocol(asyncio.Protocol):
                 # Let them hear ambience
                 self.client.has_multilayer_audio = True
 
-        # If we have someone using the DRO 1.1.0 Client joining
-        # if self.client.version.startswith("1.1.0"):
-        # DRO Client partial support.
-        # For some reason, if DRO Client doesn't receive this back it just never clears the IC input box even if we send back the correct MS# packet.
-        #    self.client.send_command("client_version", 1, 1, 0)
         # Send Asset packet if asset_url is defined
         if self.server.config["asset_url"] != "":
             self.client.send_command("ASS", self.server.config["asset_url"])
@@ -1277,6 +1280,11 @@ class AOProtocol(asyncio.Protocol):
             additive,
             effect,
         )
+
+        # DRO client support
+        if self.client.software == "DRO":
+            # send it back to the client
+            self.client.send_command("ackMS")
 
     def net_cmd_ct(self, args):
         """OOC Message

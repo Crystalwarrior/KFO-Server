@@ -49,6 +49,7 @@ class ClientManager:
             self.mod_call_time = 0
             self.ipid = ipid
             self.version = ""
+            self.software = ""
 
             # Pairing character ID
             self.charid_pair = -1
@@ -226,8 +227,8 @@ class ClientManager:
                             lst[11] = evi_num
                             args = tuple(lst)
                             break
-                    # If we have someone using the DRO 1.1.0 Client
-                    if self.version.startswith("1.1.0"):
+                    # If we have someone using the DRO Client
+                    if self.software == "DRO":
                         lst = list(args)
                         lst[16] = ""  # No video support :(
                         lst[17] = 0  # no hiding character
