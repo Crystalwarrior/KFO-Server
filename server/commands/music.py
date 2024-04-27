@@ -4,7 +4,7 @@ import os
 import yaml
 
 from server import database
-from server.constants import TargetType, derelative
+from server.constants import TargetType, derelative, contains_URL
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 from . import mod_only
@@ -496,19 +496,25 @@ def ooc_cmd_musiclist_add(client, arg):
     """
     Allow you to add a song in a loaded musiclist!
     Remember to insert also Music extension in <MusicName>
-    Usage: /musiclist_add <local/area/hub> <Category> <MusicName>
+    Usage: /musiclist_add <local/area/hub> <Category> <MusicName> <Url>
     """
     if arg == "":
-        client.send_ooc("Usage: /musiclist_add <local/area/hub> <Category> <MusicName>")
+        client.send_ooc(
+            "Usage: /musiclist_add <local/area/hub> <Category> <MusicName> or /musiclist_add <local/area/hub> <Category> <MusicName> <Url>"
+        )
         return
 
     args = shlex.split(arg)
-    if len(args) != 3:
-        client.send_ooc("Usage: /musiclist_add <local/area/hub> <Category> <MusicName>")
+    if len(args) not in [3, 4]:
+        client.send_ooc(
+            "Usage: /musiclist_add <local/area/hub> <Category> <MusicName> or /musiclist_add <local/area/hub> <Category> <MusicName> <Url>"
+        )
         return
     
     if args[0] not in ["local", "area", "hub"]:
-        client.send_ooc("You can add a song if musiclist is loaded in local or in area or in hub.\nUsage: /musiclist_add <local/area/hub> <Category> <MusicName>")
+        client.send_ooc(
+            "You can add a song if musiclist is loaded in local or in area or in hub.\nUsage: /musiclist_add <local/area/hub> <Category> <MusicName> or or /musiclist_add <local/area/hub> <Category> <MusicName> <Url>"
+        )
         return
     
     if args[0] == "local":
@@ -557,6 +563,14 @@ def ooc_cmd_musiclist_add(client, arg):
 
     musiclist[category_id]["songs"][song_id]["name"] = args[2]
     musiclist[category_id]["songs"][song_id]["length"] = -1
+
+    if len(args) == 4:
+        if contains_URL(args[3]):
+            musiclist[category_id]["songs"][song_id]["name"] = f"{args[2]}.music"
+            musiclist[category_id]["songs"][song_id]["url"] = args[3]
+        else:
+            client.send_ooc("Url not valid!")
+            return
 
     if args[0] == "local":
         path = client.music_ref
