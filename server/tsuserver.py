@@ -393,7 +393,10 @@ class TsuServer3:
             for song in item["songs"]:
                 if song["name"] == music:
                     try:
-                        return song["name"], song["length"]
+                        if "url" in song:
+                            return song["url"], song["length"]
+                        else:
+                            return song["name"], song["length"]
                     except KeyError:
                         return song["name"], -1
         raise ServerError("Music not found.")
