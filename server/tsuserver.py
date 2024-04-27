@@ -374,7 +374,10 @@ class TsuServer3:
                 continue
             song_list.append(item["category"])
             for song in item["songs"]:
-                song_list.append(song["name"])
+                if "url" in song and not song["name"].endswith(".music"):
+                    song_list.append(f"{song['name']}.music")
+                else:
+                    song_list.append(song["name"])
         return song_list
 
     def get_song_data(self, music_list, music):
