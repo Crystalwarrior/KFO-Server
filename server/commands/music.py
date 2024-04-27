@@ -469,7 +469,7 @@ def ooc_cmd_musiclist_remove(client, arg):
         for i in range(0, len(musiclist[category_id]["songs"]))
     ]
 
-    if args[2] not in songs or f"{args[2]}.music" not in songs:
+    if args[2] not in songs and f"{args[2]}.music" not in songs:
         client.send_ooc("Song has not been found!")
         return
 
