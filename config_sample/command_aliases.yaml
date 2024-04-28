@@ -109,3 +109,6 @@ seturl: set_url
 surl: set_url
 get_link: getlink
 get_links: getlinks
+remove_musiclist: musiclist_remove
+add_musiclist: musiclist_add
+save_musiclist: musiclist_save

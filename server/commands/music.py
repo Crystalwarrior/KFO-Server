@@ -374,8 +374,8 @@ def musiclist_rebuild(musiclist, path):
 def ooc_cmd_musiclist_save(client, arg):
     """
     Allow you to save a musiclist on server list!
-    If the musiclist is already in the server list, you don't have to add <MusiclistName>
-    Usage: /musiclist_save <local/area/hub> <MusiclistName>
+    If the musiclist you're editing is already in the server list, you don't have to add [MusiclistName]
+    Usage: /musiclist_save <local/area/hub> [MusiclistName]
     """
     if arg == "":
         client.send_ooc("Usage: /musiclist_save <local/area/hub> <MusiclistName>")
@@ -419,7 +419,7 @@ def ooc_cmd_musiclist_save(client, arg):
 def ooc_cmd_musiclist_remove(client, arg):
     """
     Allow you to remove a song from a musiclist!
-    Remember to insert also Music extension in <MusicName>
+    Remember to insert a file extension in <MusicName>. For songs without extension, put in .music.
     Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>
     """
     if arg == "":
