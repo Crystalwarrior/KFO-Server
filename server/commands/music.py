@@ -402,8 +402,16 @@ def ooc_cmd_musiclist_save(client, arg):
         else:
             client.send_ooc("This is a new musiclist, you should give it a name")
             return
-       
-    with open(f"storage/musiclists/{name}.yaml", "w", encoding="utf-8") as yaml_save:
+
+    filepath = f"storage/musiclists/{name}.yaml"
+
+    with open(filepath, "r", encoding="utf-8") as stream:
+        test = yaml.safe_load(stream)
+    if "read_only" in test and test["read_only"] is True:
+        raise ArgumentError(
+            f"Musiclist '{name}' already exists and it is read-only!"
+        )
+    with open(filepath, "w", encoding="utf-8") as yaml_save:
         yaml.dump(musiclist, yaml_save)
     client.send_ooc(f"Musiclist '{name}' saved on server list!")
 
@@ -495,25 +503,26 @@ def ooc_cmd_musiclist_remove(client, arg):
 def ooc_cmd_musiclist_add(client, arg):
     """
     Allow you to add a song in a loaded musiclist!
-    Remember to insert also Music extension in <MusicName>
-    Usage: /musiclist_add <local/area/hub> <Category> <MusicName> <Url>
+    Remember to insert a file extension in <MusicName> unless you are using the optional [Path] (useful for streamed songs!)
+    If Length is 0, song will not loop. If Length is -1, song will loop. Any other value will tell the server the length of the song (in seconds)
+    Usage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]
     """
     if arg == "":
         client.send_ooc(
-            "Usage: /musiclist_add <local/area/hub> <Category> <MusicName> or /musiclist_add <local/area/hub> <Category> <MusicName> <Url>"
+            "Usage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]"
         )
         return
 
     args = shlex.split(arg)
-    if len(args) not in [3, 4]:
+    if len(args) < 3:
         client.send_ooc(
-            "Usage: /musiclist_add <local/area/hub> <Category> <MusicName> or /musiclist_add <local/area/hub> <Category> <MusicName> <Url>"
+            "Usage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]"
         )
         return
     
     if args[0] not in ["local", "area", "hub"]:
         client.send_ooc(
-            "You can add a song if musiclist is loaded in local or in area or in hub.\nUsage: /musiclist_add <local/area/hub> <Category> <MusicName> or or /musiclist_add <local/area/hub> <Category> <MusicName> <Url>"
+            "You can add a song if musiclist is loaded in local or in area or in hub.\nUsage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]"
         )
         return
     
@@ -561,15 +570,22 @@ def ooc_cmd_musiclist_add(client, arg):
     musiclist[category_id]["songs"].append({})
     song_id = len(musiclist[category_id]["songs"]) - 1
 
-    musiclist[category_id]["songs"][song_id]["name"] = args[2]
-    musiclist[category_id]["songs"][song_id]["length"] = -1
+    name = args[2]
+    if not name.endswith(('.mp3', '.ogg', '.opus', '.wav', '.m4a')):
+        name += '.music'
+    musiclist[category_id]["songs"][song_id]["name"] = name
 
-    if len(args) == 4:
-        if contains_URL(args[3]):
-            musiclist[category_id]["songs"][song_id]["url"] = args[3]
-        else:
-            client.send_ooc("Url not valid!")
-            return
+    length = -1
+    if len(args) > 3:
+        try:
+            length = int(args[3])
+        except ValueError:
+            raise ArgumentError(f"Song length must be a number, given {args[3]}!")
+
+    musiclist[category_id]["songs"][song_id]["length"] = length
+
+    if len(args) > 4:
+        musiclist[category_id]["songs"][song_id]["path"] = args[4]
 
     if args[0] == "local":
         path = client.music_ref

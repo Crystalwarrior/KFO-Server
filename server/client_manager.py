@@ -707,13 +707,6 @@ class ClientManager:
                 else:
                     song_list = song_list + self.music_list
 
-            for item in song_list:
-                if "category" not in item:
-                    continue
-                for song in item["songs"]:
-                    if "url" in song and not song["name"].endswith(".music"):
-                        song["name"] = song["name"] + ".music"
-
             return song_list
 
         def refresh_music(self, reload=False):

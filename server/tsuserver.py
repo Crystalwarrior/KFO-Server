@@ -374,10 +374,7 @@ class TsuServer3:
                 continue
             song_list.append(item["category"])
             for song in item["songs"]:
-                if "url" in song and not song["name"].endswith(".music"):
-                    song_list.append(f"{song['name']}.music")
-                else:
-                    song_list.append(song["name"])
+                song_list.append(song["name"])
         return song_list
 
     def get_song_data(self, music_list, music):
@@ -395,13 +392,14 @@ class TsuServer3:
                 return item["category"], 0
             for song in item["songs"]:
                 if song["name"] == music:
-                    try:
-                        if "url" in song:
-                            return song["url"], song["length"]
-                        else:
-                            return song["name"], song["length"]
-                    except KeyError:
-                        return song["name"], -1
+                    length = -1
+                    if "length" in song:
+                        length = song["length"]
+
+                    if "path" in song:
+                        return song["path"], length
+
+                    return song["name"], length
         raise ServerError("Music not found.")
 
     def get_song_is_category(self, music_list, music):
