@@ -231,7 +231,7 @@ class ClientManager:
                     if self.software == "DRO":
                         lst = list(args)
                         lst[16] = ""  # No video support :(
-                        lst[17] = args[1] == "misc/blank" or args[1] == ""  # hide character if preanim is misc/blank or narration
+                        lst[17] = 0  # no hiding character
                         lst[18] = self.id  # sender character id
                         args = tuple(lst)
             command, *args = encode_ao_packet([command] + list(args))
