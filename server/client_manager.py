@@ -232,7 +232,7 @@ class ClientManager:
                         lst = list(args)
                         lst[16] = ""  # No video support :(
                         lst[17] = 0  # no hiding character
-                        lst[18] = self.id  # sender character id
+                        lst[18] = -1  # would be char id, but we dunno who
                         args = tuple(lst)
             command, *args = encode_ao_packet([command] + list(args))
             message = f"{command}#"
