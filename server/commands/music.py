@@ -1,7 +1,10 @@
 import random
+import shlex
+import os
+import yaml
 
 from server import database
-from server.constants import TargetType, derelative
+from server.constants import TargetType, derelative, contains_URL
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 from . import mod_only
@@ -21,6 +24,9 @@ __all__ = [
     "ooc_cmd_area_musiclist",
     "ooc_cmd_hub_musiclist",
     "ooc_cmd_random_music",
+    "ooc_cmd_musiclist_remove",
+    "ooc_cmd_musiclist_add",
+    "ooc_cmd_musiclist_save",
 ]
 
 
@@ -343,3 +349,253 @@ def ooc_cmd_random_music(client, arg):
             "Could not find a single song that fit the criteria!")
     song_name = songs[random.randint(0, len(songs) - 1)]["name"]
     client.change_music(song_name, client.char_id, "", 2)
+
+
+def musiclist_rebuild(musiclist, path):
+    prepath = ""
+    for item in musiclist:
+        if (
+            "use_unique_folder" in item
+            and item["use_unique_folder"] is True
+        ):
+            prepath = os.path.splitext(
+                os.path.basename(f"storage/musiclists/{path}"))[0] + "/"
+
+        if "category" not in item:
+            continue
+
+        for song in item["songs"]:
+            song["name"] = prepath + song["name"]
+            
+    return musiclist
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_musiclist_save(client, arg):
+    """
+    Allow you to save a musiclist on server list!
+    If the musiclist you're editing is already in the server list, you don't have to add [MusiclistName]
+    Usage: /musiclist_save <local/area/hub> [MusiclistName]
+    """
+    if arg == "":
+        client.send_ooc("Usage: /musiclist_save <local/area/hub> <MusiclistName>")
+        return
+
+    args = shlex.split(arg)
+    if args[0] not in ["local", "area", "hub"]:
+        client.send_ooc("Usage: /musiclist_save <local/area/hub> <MusiclistName>")
+        return
+    
+    if args[0] == "local":
+        musiclist = client.music_list
+        name = client.music_ref
+    elif args[0] == "area":
+        musiclist = client.area.music_list
+        name = client.area.music_ref
+    else:
+        musiclist = client.area.area_manager.music_list
+        name = client.area.area_manager.music_ref
+
+    if name == "unsaved":
+        if len(args) == 2:
+            name = args[1]
+        else:
+            client.send_ooc("This is a new musiclist, you should give it a name")
+            return
+
+    filepath = f"storage/musiclists/{name}.yaml"
+
+    with open(filepath, "r", encoding="utf-8") as stream:
+        test = yaml.safe_load(stream)
+    if "read_only" in test and test["read_only"] is True:
+        raise ArgumentError(
+            f"Musiclist '{name}' already exists and it is read-only!"
+        )
+    with open(filepath, "w", encoding="utf-8") as yaml_save:
+        yaml.dump(musiclist, yaml_save)
+    client.send_ooc(f"Musiclist '{name}' saved on server list!")
+
+
+def ooc_cmd_musiclist_remove(client, arg):
+    """
+    Allow you to remove a song from a musiclist!
+    Remember to insert a file extension in <MusicName>. For songs without extension, put in .music.
+    Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>
+    """
+    if arg == "":
+        client.send_ooc(
+            "Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>"
+        )
+        return
+
+    args = shlex.split(arg)
+    if len(args) != 3:
+        client.send_ooc(
+            "Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>"
+        )
+        return
+
+    if args[0] not in ["local", "area", "hub"]:
+        client.send_ooc("You can add a song if musiclist is loaded in local or in area or in hub.\nUsage: /musiclist_add <local/area/hub> <Category> <MusicName>")
+        return
+    
+    if args[0] == "local":
+        targets = [client]
+        musiclist = client.music_list
+    elif args[0] == "area":
+        if client not in client.area.owners and client not in client.area.area_manager.owners and not client.is_mod:
+            client.send_ooc("You should be at least cm to add a song in a musiclist!")
+            return
+        targets = client.area.clients
+        musiclist = client.area.music_list
+    else:
+        if client not in client.area.area_manager.owners and not client.is_mod:
+            client.send_ooc("You should be at least gm to add a song in a musiclist!")
+            return
+        targets = client.area.area_manager.clients
+        musiclist = client.area.area_manager.music_list
+        
+    if musiclist == []:
+        client.send_ooc("You cannot remove a song, if there aren't songs in the musiclist.")
+        return
+
+    categories = []
+    for i in range(0, len(musiclist)):
+        if "category" in musiclist[i]:
+            categories.append(musiclist[i]["category"])
+        else:
+            categories.append(None)
+
+    if args[1] not in categories:
+        client.send_ooc("Category has not been found!")
+        return
+
+    category_id = categories.index(args[1])
+
+    songs = [
+        musiclist[category_id]["songs"][i]["name"]
+        for i in range(0, len(musiclist[category_id]["songs"]))
+    ]
+
+    if args[2] not in songs:
+        client.send_ooc("Song has not been found!")
+        return
+
+    song_id = songs.index(args[2])
+    musiclist[category_id]["songs"].pop(song_id)
+    if len(musiclist[category_id]["songs"]) == 0:
+        musiclist.pop(category_id)
+
+    if args[0] == "local":
+        path = client.music_ref
+        client.music_list = musiclist_rebuild(musiclist, path)
+    elif args[0] == "area":
+        path = client.area.music_ref
+        client.area.music_list = musiclist_rebuild(musiclist, path)
+    else:
+        path = client.area.area_manager.music_ref
+        client.area.area_manager.music_list = musiclist_rebuild(musiclist, path)
+        
+    client.server.client_manager.refresh_music(targets, True)
+    client.send_ooc(f"'{args[2]}' song has been removed to '{path}' musiclist.")
+
+
+def ooc_cmd_musiclist_add(client, arg):
+    """
+    Allow you to add a song in a loaded musiclist!
+    Remember to insert a file extension in <MusicName> unless you are using the optional [Path] (useful for streamed songs!)
+    If Length is 0, song will not loop. If Length is -1, song will loop. Any other value will tell the server the length of the song (in seconds)
+    Usage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]
+    """
+    if arg == "":
+        client.send_ooc(
+            "Usage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]"
+        )
+        return
+
+    args = shlex.split(arg)
+    if len(args) < 3:
+        client.send_ooc(
+            "Usage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]"
+        )
+        return
+    
+    if args[0] not in ["local", "area", "hub"]:
+        client.send_ooc(
+            "You can add a song if musiclist is loaded in local or in area or in hub.\nUsage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]"
+        )
+        return
+    
+    if args[0] == "local":
+        targets = [client]
+        musiclist = client.music_list
+    elif args[0] == "area":
+        if client not in client.area.owners and client not in client.area.area_manager.owners and not client.is_mod:
+            client.send_ooc("You should be at least cm to add a song in a musiclist!")
+            return
+        targets = client.area.clients
+        musiclist = client.area.music_list
+    else:
+        if client not in client.area.area_manager.owners and not client.is_mod:
+            client.send_ooc("You should be at least gm to add a song in a musiclist!")
+            return
+        targets = client.area.area_manager.clients
+        musiclist = client.area.area_manager.music_list
+        
+    if musiclist == []:
+        musiclist.append({})
+        musiclist[0]["use_unique_folder"] = False
+        if args[0] == "local":
+            client.music_ref = "unsaved"
+        elif args[0] == "area":
+            client.area.music_ref = "unsaved"
+        else:
+            client.area.area_manager.music_ref = "unsaved"
+             
+    categories = []
+    for i in range(0, len(musiclist)):
+        if "category" in musiclist[i]:
+            categories.append(musiclist[i]["category"])
+        else:
+            categories.append(None)
+
+    if args[1] not in categories:
+        musiclist.append({})
+        category_id = len(musiclist) - 1
+        musiclist[category_id]["category"] = args[1]
+        musiclist[category_id]["songs"] = []
+    else:
+        category_id = categories.index(args[1])
+
+    musiclist[category_id]["songs"].append({})
+    song_id = len(musiclist[category_id]["songs"]) - 1
+
+    name = args[2]
+    if not name.endswith(('.mp3', '.ogg', '.opus', '.wav', '.m4a')):
+        name += '.music'
+    musiclist[category_id]["songs"][song_id]["name"] = name
+
+    length = -1
+    if len(args) > 3:
+        try:
+            length = int(args[3])
+        except ValueError:
+            raise ArgumentError(f"Song length must be a number, given {args[3]}!")
+
+    musiclist[category_id]["songs"][song_id]["length"] = length
+
+    if len(args) > 4:
+        musiclist[category_id]["songs"][song_id]["path"] = args[4]
+
+    if args[0] == "local":
+        path = client.music_ref
+        client.music_list = musiclist_rebuild(musiclist, path)
+    elif args[0] == "area":
+        path = client.area.music_ref
+        client.area.music_list = musiclist_rebuild(musiclist, path)
+    else:
+        path = client.area.area_manager.music_ref
+        client.area.area_manager.music_list = musiclist_rebuild(musiclist, path)
+                
+    client.server.client_manager.refresh_music(targets, True)
+    client.send_ooc(f"'{args[2]}' song has been added to '{path}' musiclist.")

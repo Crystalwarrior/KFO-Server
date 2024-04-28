@@ -518,6 +518,17 @@
     - `start` starts the previously set timer, so `/timer 0 start`.
     - `pause` OR `stop` pauses the timer that's currently running, so `/timer 0 pause`.
     - `unset` OR `hide` hides the timer for it to no longer show up, so `/timer 0 hide`.
+## Musiclists
+* **musiclist\_add** `<local/area/hub>` `<Category>` `<MusicName>` `[Length]` `[Path]`
+    - Allow you to add a song in a loaded musiclist!
+    - Remember to insert a file extension in `<MusicName>` unless you are using the optional `[Path]` (useful for streamed songs!)
+    - If Length is `0`, song will not loop. If Length is `-1`, song will loop. Any other value will tell the server the length of the song (in seconds)
+* **musiclist\_remove** `<local/area/hub>` `<Category>` `<MusicName>`
+    - Allow you to remove a song from a musiclist!
+    - Remember to insert a file extension in `<MusicName>`. For songs without extension, put in .music.
+* **musiclist\_save** `<local/area/hub>` `[MusiclistName]`
+    - Allow you to save a musiclist on server list!
+    - If the musiclist you're editing is already in the server list, you don't have to add `[MusiclistName]`
 ## Battle
 * **choose\_fighter** `<NameFighter>`
     - Allow you to choose a fighter from the list of the server.

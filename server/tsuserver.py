@@ -392,10 +392,14 @@ class TsuServer3:
                 return item["category"], 0
             for song in item["songs"]:
                 if song["name"] == music:
-                    try:
-                        return song["name"], song["length"]
-                    except KeyError:
-                        return song["name"], -1
+                    length = -1
+                    if "length" in song:
+                        length = song["length"]
+
+                    if "path" in song:
+                        return song["path"], length
+
+                    return song["name"], length
         raise ServerError("Music not found.")
 
     def get_song_is_category(self, music_list, music):

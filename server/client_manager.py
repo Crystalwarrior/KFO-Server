@@ -710,12 +710,12 @@ class ClientManager:
 
             return song_list
 
-        def refresh_music(self):
+        def refresh_music(self, reload=False):
             """
             Rebuild the client's music list, updating the local music list if there was a change.
             """
             song_list = self.construct_music_list()
-            if self.local_music_list != song_list:
+            if self.local_music_list != song_list or reload:
                 self.reload_music_list(song_list)
 
         def reload_music_list(self, music=[]):
@@ -2096,7 +2096,7 @@ class ClientManager:
             client.send_ooc("You are now AFK. Have a good day!")
             client.area.afkers.append(client)
 
-    def refresh_music(self, clients=None):
+    def refresh_music(self, clients=None, reload=False):
         """
         Refresh the listed clients' music lists.
         :param clients: list of clients whose music lists should be regenerated.
@@ -2105,7 +2105,7 @@ class ClientManager:
         if clients is None:
             clients = self.clients
         for client in clients:
-            client.refresh_music()
+            client.refresh_music(reload)
 
     def get_multiclients(self, ipid=-1, hdid=""):
         return [c for c in self.clients if c.ipid == ipid or c.hdid == hdid]

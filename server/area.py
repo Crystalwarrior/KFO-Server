@@ -1472,7 +1472,8 @@ class Area:
                             b["name"] for b in c["songs"]
                         ]:
                             for s in c["songs"]:
-                                if s["length"] == 0 or s["name"] == self.music:
+                                looping = ("length" not in s or s["length"] == -1)
+                                if not looping or s["name"] == self.music:
                                     continue
                                 songs = songs + [s]
             song = random.choice(songs)
