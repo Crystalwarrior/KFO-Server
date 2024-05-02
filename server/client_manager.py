@@ -7,7 +7,7 @@ from heapq import heappop, heappush
 
 
 from server import database
-from server.constants import TargetType, encode_ao_packet, contains_URL
+from server.constants import TargetType, encode_ao_packet, contains_URL, derelative
 from server.exceptions import ClientError, AreaError, ServerError
 
 import oyaml as yaml  # ordered yaml
@@ -229,9 +229,17 @@ class ClientManager:
                             break
                     # If we have someone using the DRO Client
                     if self.software == "DRO":
+                        anim = args[3]
+                        hide_char = 0
+                        # We are blankposting.
+                        if self.blankpost or derelative(anim) == "misc/blank":
+                            hide_char = 1
+                        # We're narrating, or we're hidden in some evidence.
+                        if anim == "" or self.narrator or self.hidden_in is not None:
+                            hide_char = 1
                         lst = list(args)
                         lst[16] = ""  # No video support :(
-                        lst[17] = 0  # no hiding character
+                        lst[17] = hide_char # hide character if we're blankposting or narrating
                         lst[18] = -1  # would be char id, but we dunno who
                         args = tuple(lst)
             command, *args = encode_ao_packet([command] + list(args))
@@ -273,6 +281,37 @@ class ClientManager:
             players = self.server.player_count
             limit = self.server.config["playerlimit"]
             self.send_ooc(f"👥{players}/{limit} players online.")
+
+        def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+            if self.software == "DRO":
+                # configuration. There's no situation where these values are different on KFO-Server
+                self.send_timer_set_step_length(timer_id, -16) # 16 milliseconds, matches AO
+                self.send_timer_set_firing_interval(timer_id, 16) # 16 milliseconds, matches AO
+                
+                self.send_command("TST", timer_id, new_time) # set time
+                if start:
+                    self.send_command("TR", timer_id) # resume
+                else:
+                    self.send_command("TP", timer_id) # pause
+            else:
+                if new_time == None:
+                    self.send_command("TI", timer_id, 1, 0) # Stop timer
+                    self.send_command("TI", timer_id, 3, 0) # Hide timer
+                else:
+                    self.send_command("TI", timer_id, 2, new_time) # Show timer
+                    self.send_command("TI", timer_id, int(not start), new_time) # Set timer with value and start
+
+        def send_timer_set_step_length(self, timer_id=None, new_step_length=None):
+            if self.software == "DRO":
+                self.send_command("TSS", timer_id, new_step_length) # set step
+            else:
+                pass # no ao equivalent
+
+        def send_timer_set_firing_interval(self, timer_id=None, new_firing_interval=None):
+            if self.software == "DRO":
+                self.send_command("TSF", timer_id, new_firing_interval) #set firing
+            else:
+                pass # no ao equivalent
 
         def is_valid_name(self, name):
             """

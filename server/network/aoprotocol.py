@@ -432,24 +432,24 @@ class AOProtocol(asyncio.Protocol):
         ):
             # DRO1.1.0 validation monstrosity.
             (
-                msg_type,
-                pre,
-                folder,
-                anim,
-                text,
-                pos,
-                sfx,
-                emote_mod,
-                cid,
-                sfx_delay,
-                button,
-                evidence,
-                flip,
-                ding,
-                color,
-                showname,
-                video,
-                blankpost,
+                msg_type, # 0
+                pre, # 1
+                folder, # 2
+                anim, # 3
+                text, # 4
+                pos, # 5
+                sfx, # 6
+                emote_mod, # 7
+                cid, # 8
+                sfx_delay, # 9
+                button, # 10
+                evidence, # 11
+                flip, # 12
+                ding, # 13
+                color, # 14
+                showname, # 15
+                video, # 16
+                blankpost, # 17
             ) = args
             if ding != 1:
                 ding = 0
@@ -594,7 +594,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.area.is_iniswap(self.client, pre, anim, folder, sfx):
             folder = self.client.char_name
             self.client.send_ooc(
-                f"Iniswap/custom emotes are blocked in this area for character {folder}, pre {pre} anim {anim}."
+                f"Iniswap/custom emotes are blocked in this area for character '{folder}', pre '{pre}' anim '{anim}'."
             )
             return
         if len(self.client.charcurse) > 0 and folder != self.client.char_name:

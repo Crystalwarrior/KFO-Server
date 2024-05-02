@@ -2,7 +2,7 @@ from server import database
 from server import commands
 from server.evidence import EvidenceList
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import MusicEffect
+from server.constants import MusicEffect, derelative
 
 from collections import OrderedDict
 
@@ -716,40 +716,25 @@ class Area:
         # Hub timers
         timer = client.area.area_manager.timer
         if timer.set:
-            s = int(not timer.started)
             current_time = timer.static
             if timer.started:
                 current_time = timer.target - arrow.get()
             int_time = int(current_time.total_seconds()) * 1000
-            # Unhide the timer
-            client.send_command("TI", 0, 2, int_time)
-            # Start the timer
-            client.send_command("TI", 0, s, int_time)
+            client.send_timer_set_time(0, int_time, timer.started)
         elif not running_only:
-            # Stop the timer
-            client.send_command("TI", 0, 3, 0)
-            # Hide the timer
-            client.send_command("TI", 0, 1, 0)
+            client.send_timer_set_time(0, None, False)
 
         # Area timers
         for timer_id, timer in enumerate(self.timers):
             # Send static time if applicable
             if timer.set:
-                s = int(not timer.started)
                 current_time = timer.static
                 if timer.started:
                     current_time = timer.target - arrow.get()
                 int_time = int(current_time.total_seconds()) * 1000
-                # Start the timer
-                client.send_command("TI", timer_id + 1, s, int_time)
-                # Unhide the timer
-                client.send_command("TI", timer_id + 1, 2, int_time)
-                # client.send_ooc(f"Timer {timer_id+1} is at {current_time}")
+                client.send_timer_set_time(timer_id + 1, int_time, timer.started)
             elif not running_only:
-                # Stop the timer
-                client.send_command("TI", timer_id + 1, 1, 0)
-                # Hide the timer
-                client.send_command("TI", timer_id + 1, 3, 0)
+                client.send_timer_set_time(timer_id + 1, None, False)
 
     def remove_client(self, client):
         """Remove a disconnected client from the area."""
@@ -919,6 +904,11 @@ class Area:
                 c.send_command(cmd, *args)
                 if c.area.background != bg:
                     c.send_command("BN", c.area.background)
+
+    def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+        """Broadcast a timer to all clients in this area."""
+        for c in self.clients:
+            c.send_timer_set_time(timer_id, new_time, start)
 
     def broadcast_ooc(self, msg):
         """
@@ -1349,6 +1339,9 @@ class Area:
             return False
         # Our client is narrating or blankposting via slash command
         if client.narrator or client.blankpost:
+            return False
+        # Our client is narrating or blankposting via ini editing
+        if anim == "" or derelative(anim) == "misc/blank":
             return False
         if char.lower() != client.char_name.lower():
             for char_link in self.server.allowed_iniswaps:
@@ -1911,9 +1904,7 @@ class Area:
         self.invite_list = self.old_invite_list
         self.red_team.clear()
         self.blue_team.clear()
-        # Timer ID 2 is used for minigames
-        # 3 stands for unset and hide
-        self.send_command("TI", 2, 3)
+        self.send_timer_set_time(2, None)
         self.send_ic(
             msg=f"~~}}}}`{self.minigame} END!`\\n{reason}",
             showname="System",
@@ -2078,9 +2069,8 @@ class Area:
                 f"{self.minigame} is happening! You cannot interrupt it.")
 
         timer = max(5, int(timer))
-        # Timer ID 2 is used
-        self.send_command("TI", 2, 2)
-        self.send_command("TI", 2, 0, timer * 1000)
+        # Timer ID 2 is used, start it
+        self.send_timer_set_time(2, timer * 1000, True)
         self.minigame_schedule = asyncio.get_running_loop().call_later(
             timer, lambda: self.end_minigame("Timer expired!")
         )

@@ -597,6 +597,11 @@ class AreaManager:
             a.send_command(cmd, *args)
             a.send_owner_command(cmd, *args)
 
+    def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+        """Broadcast a timer to all areas in this hub."""
+        for area in self.areas:
+            area.send_timer_set_time(timer_id, new_time, start)
+
     def broadcast_area_list(self, refresh=False):
         """Global update of all areas for the client music lists in the hub."""
         for area in self.areas:
