@@ -1,4 +1,5 @@
 import os
+import shlex
 
 import oyaml as yaml  # ordered yaml
 
@@ -100,16 +101,17 @@ def ooc_cmd_save_hub(client, arg):
     """
     Save the current Hub in the server's storage/hubs/<name>.yaml file.
     If blank and you're a mod, it will save to server's config/areas_new.yaml for the server owner to approve.
-    Usage: /save_hub <name>
+    Usage: /save_hub <name> <read_only>
     """
+    args = shlex.split(arg)
     if not client.is_mod:
-        if arg == "":
+        if args[0] == "":
             raise ArgumentError(
                 "You must be authorized to save the default hub!")
-        if len(arg) < 3:
+        if len(args[0]) < 3:
             raise ArgumentError("Filename must be at least 3 symbols long!")
     try:
-        if arg != "":
+        if args[0] != "":
             path = "storage/hubs"
             num_files = len(
                 [f for f in os.listdir(path) if os.path.isfile(
@@ -120,26 +122,28 @@ def ooc_cmd_save_hub(client, arg):
                     "Server storage full! Please contact the server host to resolve this issue."
                 )
             try:
-                arg = f"{path}/{derelative(arg)}.yaml"
-                if os.path.isfile(arg):
-                    with open(arg, "r", encoding="utf-8") as stream:
+                args[0] = f"{path}/{derelative(args[0])}.yaml"
+                if os.path.isfile(args[0]):
+                    with open(args[0], "r", encoding="utf-8") as stream:
                         hub = yaml.safe_load(stream)
                     if "read_only" in hub and hub["read_only"] is True:
                         raise ArgumentError(
-                            f"Hub {arg} already exists and it is read-only!"
+                            f"Hub {args[0]} already exists and it is read-only!"
                         )
-                with open(arg, "w", encoding="utf-8") as stream:
+                hub = client.area.area_manager.save(ignore=["can_gm", "max_areas"])
+                if len(args) == 2 and args[1] == "read_only":
+                    hub["read_only"] = True
+                with open(args[0], "w", encoding="utf-8") as stream:
                     yaml.dump(
-                        client.area.area_manager.save(
-                            ignore=["can_gm", "max_areas"]),
+                        hub,
                         stream,
                         default_flow_style=False,
                     )
             except ArgumentError:
                 raise
             except Exception:
-                raise AreaError(f"File path {arg} is invalid!")
-            client.send_ooc(f"Saving as {arg}...")
+                raise AreaError(f"File path {args[0]} is invalid!")
+            client.send_ooc(f"Saving as {args[0]}...")
         else:
             client.server.hub_manager.save("config/areas_new.yaml")
             client.send_ooc(
@@ -227,18 +231,34 @@ def ooc_cmd_overlay_hub(client, arg):
         client.send_ooc("Success, sending ARUP and refreshing music...")
 
 
-@mod_only()
 def ooc_cmd_list_hubs(client, arg):
     """
     Show all the available hubs for loading in the storage/hubs/ folder.
     Usage: /list_hubs
     """
-    text = "Available hubs:"
+    hubs_editable = []
+    hubs_read_only = []
     for F in os.listdir("storage/hubs/"):
         if F.lower().endswith(".yaml"):
-            text += "\n- {}".format(F[:-5])
+            with open(f"storage/hubs/{F}", "r", encoding="utf-8") as stream:
+                hub = yaml.safe_load(stream)
+            if "read_only" in hub and hub["read_only"] is True:
+                hubs_read_only.append(F[:-5])
+            else:
+                hubs_editable.append(F[:-5])
 
-    client.send_ooc(text)
+    hubs_read_only.sort()
+    msg = "\n⛩️ Available Read Only Hubs: ⛩️\n"
+    for hub in hubs_read_only:
+        msg += f"\n🌎 [👀]{hub}"
+
+    if client.is_mod:
+        hubs_editable.sort()
+        msg += "\n\n⛩️ Available Editable Hubs: ⛩️\n"
+        for hub in hubs_editable:
+            msg += f"\n🌎 {hub}"
+
+    client.send_ooc(msg)
 
 
 @mod_only(hub_owners=True)
