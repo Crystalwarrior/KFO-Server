@@ -11,6 +11,7 @@ from server.constants import TargetType, encode_ao_packet, contains_URL, derelat
 from server.exceptions import ClientError, AreaError, ServerError
 
 import oyaml as yaml  # ordered yaml
+import json
 
 
 class ClientManager:
@@ -237,11 +238,66 @@ class ClientManager:
                         # We're narrating, or we're hidden in some evidence.
                         if anim == "" or self.narrator or self.hidden_in is not None:
                             hide_char = 1
+
+                        # On KFO, self_offset can be set even without a pairing partner
+                        charid_pair = "-1"
+                        if len(args) > 16 and args[16]:
+                            charid_pair = str(args[16])
+                        self_offset_x = 0
+                        if len(args) > 19 and args[19]:
+                            self_offset_x = str(args[19]).split('<and>')[0]
+                        offset_pair_x = 0
+                        if len(args) > 20 and args[20]:
+                            offset_pair_x = str(args[20]).split('<and>')[0]
+
+                        # Pair data detected!
+                        if (charid_pair and charid_pair != "-1") or self_offset_x != 0:
+                            pair_jsn_packet = {}
+                            pair_jsn_packet['packet'] = 'pair_data'
+                            pair_jsn_packet['data'] = {}
+                            other_emote = ""
+                            other_folder = ""
+                            other_flip = False
+                            if len(args) > 17:
+                                other_folder = args[17]
+                            if len(args) > 18:
+                                other_emote = args[18]
+                            if len(args) > 21:
+                                other_flip = bool(args[21])
+                            pair_jsn_packet['data']['character'] = other_folder
+                            pair_jsn_packet['data']['last_sprite'] = other_emote
+                            pair_jsn_packet['data']['flipped'] = other_flip
+                            
+                            # no y offset is supported and on DRO Client, the pairing offsets are measured in pixels rather than percentage
+                            if self_offset_x:
+                                self_offset_x = int((float(self_offset_x) / 100) * 960 + 480) # offset_pair
+                            if offset_pair_x:
+                                offset_pair_x = int((float(offset_pair_x) / 100) * 960 + 480) # other_offset
+                            pair_jsn_packet['data']['self_offset'] = self_offset_x
+                            pair_jsn_packet['data']['offset_pair'] = offset_pair_x
+                            
+                            # Send the result!
+                            json_data = json.dumps(pair_jsn_packet)
+                            self.send_command('JSN', json_data)
+                        # No pair :(
+                        else:
+                            pair_jsn_packet = {}
+                            pair_jsn_packet['packet'] = 'pair'
+                            pair_jsn_packet['data'] = {}
+                            pair_jsn_packet['data']['pair_left'] = -1
+                            pair_jsn_packet['data']['pair_right'] = -1
+                            pair_jsn_packet['data']['offset_left'] = 0
+                            pair_jsn_packet['data']['offset_right'] = 0
+                            json_data = json.dumps(pair_jsn_packet)
+                            self.send_command('JSN', json_data)
+
+                        # Now, modify the packet
                         lst = list(args)
                         lst[16] = ""  # No video support :(
                         lst[17] = hide_char # hide character if we're blankposting or narrating
-                        lst[18] = -1  # would be char id, but we dunno who
+                        lst[18] = -1  # would be target id, but we dunno who
                         args = tuple(lst)
+                        # Packet modified!
             command, *args = encode_ao_packet([command] + list(args))
             message = f"{command}#"
             for arg in args:
