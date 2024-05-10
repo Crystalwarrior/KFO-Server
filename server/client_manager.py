@@ -251,7 +251,7 @@ class ClientManager:
                             offset_pair_x = str(args[20]).split('<and>')[0]
 
                         # Pair data detected!
-                        if (charid_pair and charid_pair != "-1") or self_offset_x != 0:
+                        if (charid_pair and charid_pair != "-1") or (self_offset_x and self_offset_x != "0"):
                             pair_jsn_packet = {}
                             pair_jsn_packet['packet'] = 'pair_data'
                             pair_jsn_packet['data'] = {}
