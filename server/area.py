@@ -15,6 +15,7 @@ import oyaml as yaml  # ordered yaml
 import os
 import datetime
 import logging
+import traceback
 
 logger = logging.getLogger("area")
 
@@ -2156,7 +2157,9 @@ class Area:
                 client.send_ooc(
                     f"[Demo] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
                 )
-                logger.error("Exception while running a command")
+                logger.error("Exception while running a Demo command:")
+                traceback.print_exc()
+                print(ex)
                 self.stop_demo()
                 return
         elif len(client.broadcast_list) > 0:
