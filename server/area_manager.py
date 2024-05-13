@@ -647,7 +647,7 @@ class AreaManager:
             return
         status_list = [1]
         if len(self.server.hub_manager.hubs) > 1:
-            status_list = [1, "GAMING"]
+            status_list = [1, "HUB"]
         if clients is None:
             clients = self.clients
         for client in clients:
