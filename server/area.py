@@ -2,7 +2,7 @@ from server import database
 from server import commands
 from server.evidence import EvidenceList
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import MusicEffect, derelative
+from server.constants import MusicEffect, derelative, censor
 
 from collections import OrderedDict
 
