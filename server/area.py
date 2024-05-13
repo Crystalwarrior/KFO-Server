@@ -1711,6 +1711,15 @@ class Area:
         Set the status of the area.
         :param value: status code
         """
+        possible_values = (
+            "idle",
+            "rp",
+            "casing",
+            "looking-for-players",
+            "lfp",
+            "recess",
+            "gaming",
+        )
         value = censor(
             value,
             self.server.censors["whole"],
@@ -1725,7 +1734,7 @@ class Area:
         )
         if value.lower() == "hub":
             raise AreaError(
-                f'Invalid status. Possible values: {", ".join(allowed_values)}'
+                f'Invalid status. Possible values: {", ".join(possible_values)}'
             )
         if value.lower() == "lfp":
             value = "looking-for-players"
