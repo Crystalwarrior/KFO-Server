@@ -1711,16 +1711,19 @@ class Area:
         Set the status of the area.
         :param value: status code
         """
-        allowed_values = (
-            "idle",
-            "rp",
-            "casing",
-            "looking-for-players",
-            "lfp",
-            "recess",
-            "gaming",
+        value = censor(
+            value,
+            self.server.censors["whole"],
+            self.server.censors["replace"],
+            True,
         )
-        if value.lower() not in allowed_values:
+        value = censor(
+            value,
+            self.server.censors["partial"],
+            self.server.censors["replace"],
+            False,
+        )
+        if value.lower() == "hub":
             raise AreaError(
                 f'Invalid status. Possible values: {", ".join(allowed_values)}'
             )
