@@ -252,14 +252,34 @@ def ooc_cmd_musiclists(client, arg):
     Displays all the available music lists.
     Usage: /musiclists
     """
-    text = "Available musiclists:"
-    from os import listdir
 
-    for F in listdir("storage/musiclists/"):
+    musiclist_editable = []
+    musiclist_read_only = []
+    for F in os.listdir("storage/musiclists/"):
         if F.lower().endswith(".yaml"):
-            text += "\n- {}".format(F[:-5])
+            with open(f"storage/musiclists/{F}", "r", encoding="utf-8") as stream:
+                musiclist = yaml.safe_load(stream)
+            read_only = False
+            for item in musiclist:
+                if "read_only" in item and item["read_only"] is True:
+                    musiclist_read_only.append(F[:-5])
+                    read_only = True
+                    break
+            if not read_only:
+                musiclist_editable.append(F[:-5])
 
-    client.send_ooc(text)
+    musiclist_read_only.sort()
+    msg = "\n🎶 Available Read Only Musiclists: 🎶\n"
+    for ml in musiclist_read_only:
+        msg += f"\n🎜 [👀]{ml}"
+
+    if client.is_mod:
+        musiclist_editable.sort()
+        msg += "\n\n🎶 Available Editable Musiclists: 🎶\n"
+        for ml in musiclist_editable:
+            msg += f"\n🎜 {ml}"
+
+    client.send_ooc(msg)
 
 
 def ooc_cmd_musiclist(client, arg):
@@ -375,17 +395,18 @@ def ooc_cmd_musiclist_save(client, arg):
     """
     Allow you to save a musiclist on server list!
     If the musiclist you're editing is already in the server list, you don't have to add [MusiclistName]
-    Usage: /musiclist_save <local/area/hub> [MusiclistName]
+    Argument "read_only" is optional
+    Usage: /musiclist_save <local/area/hub> [MusiclistName] <read_only>
     """
     if arg == "":
-        client.send_ooc("Usage: /musiclist_save <local/area/hub> <MusiclistName>")
+        client.send_ooc("Usage: /musiclist_save <local/area/hub> <MusiclistName> <read_only>")
         return
 
     args = shlex.split(arg)
     if args[0] not in ["local", "area", "hub"]:
-        client.send_ooc("Usage: /musiclist_save <local/area/hub> <MusiclistName>")
+        client.send_ooc("Usage: /musiclist_save <local/area/hub> <MusiclistName> <read_only>")
         return
-    
+
     if args[0] == "local":
         musiclist = client.music_list
         name = client.music_ref
@@ -397,20 +418,25 @@ def ooc_cmd_musiclist_save(client, arg):
         name = client.area.area_manager.music_ref
 
     if name == "unsaved":
-        if len(args) == 2:
+        if len(args) >= 2:
             name = args[1]
         else:
             client.send_ooc("This is a new musiclist, you should give it a name")
             return
 
+    if len(args) > 2 and args[2].lower() == "read_only":
+        musiclist.append({"read_only": True})
+
     filepath = f"storage/musiclists/{name}.yaml"
 
-    with open(filepath, "r", encoding="utf-8") as stream:
-        test = yaml.safe_load(stream)
-    if "read_only" in test and test["read_only"] is True:
-        raise ArgumentError(
-            f"Musiclist '{name}' already exists and it is read-only!"
-        )
+    if os.path.isfile(filepath):
+        with open(filepath, "r", encoding="utf-8") as stream:
+            test = yaml.safe_load(stream)
+        for item in test:
+            if "read_only" in item and item["read_only"] is True:
+                raise ArgumentError(
+                    f"Musiclist '{name}' already exists and it is read-only!"
+                )
     with open(filepath, "w", encoding="utf-8") as yaml_save:
         yaml.dump(musiclist, yaml_save)
     client.send_ooc(f"Musiclist '{name}' saved on server list!")
