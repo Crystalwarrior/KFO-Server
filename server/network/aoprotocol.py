@@ -1433,6 +1433,9 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.client.is_checked:
             return
+        
+        if len(args) <= 0:
+            return
 
         if args[0].split()[0].startswith("🌍["):
             # self.client.send_ooc('Switching to the list of Hubs...')

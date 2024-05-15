@@ -245,10 +245,10 @@ class ClientManager:
                             charid_pair = str(args[16])
                         self_offset_x = 0
                         if len(args) > 19 and args[19]:
-                            self_offset_x = str(args[19]).split('<and>')[0]
+                            self_offset_x = str(args[19]).replace('<and>', '&').split('&')[0]
                         offset_pair_x = 0
                         if len(args) > 20 and args[20]:
-                            offset_pair_x = str(args[20]).split('<and>')[0]
+                            offset_pair_x = str(args[20]).replace('<and>', '&').split('&')[0]
 
                         # Pair data detected!
                         if (charid_pair and charid_pair != "-1") or (self_offset_x and self_offset_x != "0"):
