@@ -263,7 +263,7 @@ class ClientManager:
                             if len(args) > 18:
                                 other_emote = args[18]
                             if len(args) > 21:
-                                other_flip = bool(args[21])
+                                other_flip = bool(int(args[21]))
                             pair_jsn_packet['data']['character'] = other_folder
                             pair_jsn_packet['data']['last_sprite'] = other_emote
                             pair_jsn_packet['data']['flipped'] = other_flip
