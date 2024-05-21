@@ -32,6 +32,7 @@ class Area:
             target=None,
             area=None,
             caller=None,
+            self.format = "hh:mm:ss.zzz",
         ):
             self.id = _id
             self.set = Set
