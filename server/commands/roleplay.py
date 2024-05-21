@@ -944,3 +944,40 @@ def ooc_cmd_trigger(client, arg):
         val = args[1]
         client.area.triggers[trig] = val
         client.send_ooc(f'Changed to Call "{val}" on trigger "{trig}"')
+
+
+def ooc_cmd_format_timer(client, arg):
+    """
+    Format the timer
+    /format_timer <Timer_iD> <Format>
+    """
+    args = shlex.split(arg)
+    try:
+        args[0] = int(args[0])
+    except:
+        raise ArgumentError("Timer ID should be an integer")
+    if args[0] == 0:
+        if client.is_mod or client in client.area.area_manager.owners:
+            timer = client.area.area_manager.timer
+            areas = [client.area.area_manager.areas]
+        else:
+            client.send_ooc("You cannot change timer 0 format if you are not GM")
+            return
+    else:
+        if (
+            client.is_mod
+            or client in client.area.area_manager.owners
+            or client in client.area.owners
+        ):
+            timer = client.area.timers[args[0] - 1]
+            areas = [client.area]
+        else:
+            client.send_ooc("You cannot change timer format if you are at least CM")
+            return
+    timer.format = args[1]
+    if timer.set:
+        current_time = int(timer.static.total_seconds()) * 1000
+        for area in areas:
+            for c in area.clients:
+                c.send_command("TF", args[0], args[1], current_time)
+    client.send_ooc(f"Timer {args[0]} format: '{args[1]}'")
