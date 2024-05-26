@@ -986,6 +986,7 @@ class AOProtocol(asyncio.Protocol):
                     )
                     and target != self.client
                     and target.pos == self.client.pos
+                    and self.client.charid_pair != self.client.third_charid
                 ):
                     third_confirmed = True
                     third_offset = target.offset_pair
