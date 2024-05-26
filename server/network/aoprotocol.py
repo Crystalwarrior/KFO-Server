@@ -1041,41 +1041,41 @@ class AOProtocol(asyncio.Protocol):
                         tempdeskmod = a.last_ic_message[0]
                     a.send_command(
                         "MS",
-                        tempdeskmod,
-                        pre,
-                        folder,
-                        anim,
-                        msg,
-                        tempos,
-                        sfx,
-                        emote_mod,
-                        cid,
-                        sfx_delay,
-                        button,
-                        self.client.evi_list[evidence],
-                        flip,
-                        ding,
-                        color,
-                        showname,
-                        charid_pair,
-                        other_folder,
-                        other_emote,
-                        offset_pair,
-                        other_offset,
-                        other_flip,
-                        nonint_pre,
-                        sfx_looping,
-                        screenshake,
-                        frames_shake,
-                        frames_realization,
-                        frames_sfx,
-                        add,
-                        effect,
-                        third_charid,
-                        third_folder,
-                        third_emote,
-                        third_offset,
-                        third_flip,
+                        tempdeskmod, # 0
+                        pre, # 1
+                        folder, # 2
+                        anim, # 3
+                        msg, # 4
+                        tempos, # 5
+                        sfx, # 6
+                        emote_mod, # 7
+                        cid, # 8
+                        sfx_delay, # 9
+                        button, # 10
+                        self.client.evi_list[evidence], # 11
+                        flip, # 12
+                        ding, # 13
+                        color, # 14
+                        showname, # 15
+                        charid_pair, # 16
+                        other_folder, # 17
+                        other_emote, # 18
+                        offset_pair, # 19
+                        other_offset, # 20
+                        other_flip, # 21
+                        nonint_pre, # 22
+                        sfx_looping, # 23
+                        screenshake, # 24
+                        frames_shake, # 25
+                        frames_realization, # 26
+                        frames_sfx, # 27
+                        add, # 28
+                        effect, # 29
+                        third_charid, # 30
+                        third_folder, # 31
+                        third_emote, # 32
+                        third_offset, # 33
+                        third_flip, # 33
                     )
                 a_list = ", ".join([str(a.id) for a in target_area])
                 if not (self.client.area in target_area):
