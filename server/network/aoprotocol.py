@@ -373,6 +373,7 @@ class AOProtocol(asyncio.Protocol):
         additive = 0
         effect = ""
         pair_order = 0
+        third_charid = -1
         if self.validate_net_cmd(
             args,
             self.ArgType.STR,  # msg_type
@@ -932,6 +933,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.pair_order = pair_order
         charid_pair = self.client.charid_pair
         pair_order = self.client.pair_order
+        third_charid = self.client.third_charid
         self.client.offset_pair = offset_pair
         if emote_mod not in (5, 6):
             self.client.last_sprite = anim
@@ -942,6 +944,10 @@ class AOProtocol(asyncio.Protocol):
         other_emote = ""
         other_flip = 0
         other_folder = ""
+        third_offset = 0
+        third_emote = ""
+        third_flip = 0
+        third_folder = ""
 
         confirmed = False
         if charid_pair > -1:
@@ -949,7 +955,10 @@ class AOProtocol(asyncio.Protocol):
                 if (
                     not confirmed
                     and target.char_id == self.client.charid_pair
-                    and target.charid_pair == self.client.char_id
+                    and (
+                        target.charid_pair == self.client.char_id
+                        or target.third_charid == self.client.char_id
+                    )
                     and target != self.client
                     and target.pos == self.client.pos
                 ):
@@ -964,6 +973,29 @@ class AOProtocol(asyncio.Protocol):
 
         if not confirmed:
             charid_pair = -1
+
+        third_confirmed = False
+        if third_charid > -1:
+            for target in self.client.area.clients:
+                if (
+                    not third_confirmed
+                    and target.char_id == self.client.third_charid
+                    and (
+                        target.charid_pair == self.client.char_id
+                        or target.third_charid == self.client.char_id
+                    )
+                    and target != self.client
+                    and target.pos == self.client.pos
+                ):
+                    third_confirmed = True
+                    third_offset = target.offset_pair
+                    third_emote = target.last_sprite
+                    third_flip = target.flip
+                    third_folder = target.claimed_folder
+                    third_charid = "{}^{}".format(third_charid, 0)
+
+        if not third_confirmed:
+            third_charid = -1
 
         ver = self.client.version.split('.')
         if len(ver) >= 2:
@@ -1039,6 +1071,11 @@ class AOProtocol(asyncio.Protocol):
                         frames_sfx,
                         add,
                         effect,
+                        third_charid,
+                        third_folder,
+                        third_emote,
+                        third_offset,
+                        third_flip,
                     )
                 a_list = ", ".join([str(a.id) for a in target_area])
                 if not (self.client.area in target_area):
@@ -1076,6 +1113,11 @@ class AOProtocol(asyncio.Protocol):
                         frames_sfx,
                         add,
                         effect,
+                        third_charid,
+                        third_folder,
+                        third_emote,
+                        third_offset,
+                        third_flip,
                     )
                 self.client.send_ooc(f"Broadcasting to areas {a_list}")
             except (AreaError, ValueError):
@@ -1197,6 +1239,11 @@ class AOProtocol(asyncio.Protocol):
                         frames_sfx,
                         additive_value,
                         effect,
+                        third_charid,
+                        third_folder,
+                        third_emote,
+                        third_offset,
+                        third_flip,
                     )
 
             return
@@ -1245,6 +1292,11 @@ class AOProtocol(asyncio.Protocol):
             additive=additive,
             effect=effect,
             targets=whisper_clients,
+            third_charid=third_charid,
+            third_folder=third_folder,
+            third_emote=third_emote,
+            third_offset=third_offset,
+            third_flip=third_flip,
         )
         self.client.area.send_owner_ic(
             self.client.area.background,
@@ -1279,6 +1331,11 @@ class AOProtocol(asyncio.Protocol):
             frames_sfx,
             additive,
             effect,
+            third_charid,
+            third_folder,
+            third_emote,
+            third_offset,
+            third_flip,
         )
 
         # DRO client support
