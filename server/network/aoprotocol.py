@@ -500,32 +500,32 @@ class AOProtocol(asyncio.Protocol):
             ) = args
         elif self.validate_net_cmd(
             args,
-            self.ArgType.STR,
-            self.ArgType.STR_OR_EMPTY,  # msg_type, pre
-            self.ArgType.STR,
-            self.ArgType.STR_OR_EMPTY,
-            self.ArgType.STR_OR_EMPTY,  # folder, anim, text
-            self.ArgType.STR,
-            self.ArgType.STR,
-            self.ArgType.INT,  # pos, sfx, emote_mod
-            self.ArgType.INT,
-            self.ArgType.INT,
-            self.ArgType.INT_OR_STR,  # cid, sfx_delay, button
-            self.ArgType.INT,
-            self.ArgType.INT,
-            self.ArgType.INT,  # evidence, flip, ding
-            self.ArgType.INT,
-            self.ArgType.STR_OR_EMPTY,
-            self.ArgType.STR,  # color, showname, charid_pair
-            self.ArgType.STR,
-            self.ArgType.INT,
-            self.ArgType.STR,  # offset_pair, nonint_pre, sfx_looping
-            self.ArgType.INT,
-            self.ArgType.STR,
-            self.ArgType.STR,  # screenshake, frames_shake, frames_realization
-            self.ArgType.STR,
-            self.ArgType.INT,
-            self.ArgType.STR,  # frames_sfx, additive, effect
+            self.ArgType.STR, # 0 # msg_type
+            self.ArgType.STR_OR_EMPTY, # 1  # pre
+            self.ArgType.STR, # 2 # folder
+            self.ArgType.STR_OR_EMPTY, # 3 # anim
+            self.ArgType.STR_OR_EMPTY, # 4  # text
+            self.ArgType.STR, # 5 # pos
+            self.ArgType.STR, # 6 # sfx
+            self.ArgType.INT, # 7 # emote_mod
+            self.ArgType.INT, # 8 # cid
+            self.ArgType.INT, # 9 # sfx_delay
+            self.ArgType.INT_OR_STR, # 10 # button
+            self.ArgType.INT, # 11 # evidence
+            self.ArgType.INT, # 12 # flip
+            self.ArgType.INT, # 13 # ding
+            self.ArgType.INT, # 14 # color
+            self.ArgType.STR_OR_EMPTY, # 15 # showname
+            self.ArgType.STR, # 16 # charid_pair
+            self.ArgType.STR, # 17 # offset_pair
+            self.ArgType.INT, # 18 # nonint_pre
+            self.ArgType.STR, # 19 # sfx_looping
+            self.ArgType.INT, # 20 # screenshake
+            self.ArgType.STR, # 21 # frames_shake
+            self.ArgType.STR, # 22 # frames_realization
+            self.ArgType.STR, # 23 # frames_sfx
+            self.ArgType.INT, # 24 # additive
+            self.ArgType.STR, # 25  # effect
         ):
             # 2.8 validation monstrosity. (rip 2.7)
             (
@@ -1490,6 +1490,9 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if not self.client.is_checked:
+            return
+        
+        if len(args) <= 0:
             return
 
         if args[0].split()[0].startswith("🌍["):

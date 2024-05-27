@@ -480,10 +480,10 @@ def ooc_cmd_fight(client, arg):
             client.battle.current_client = client
             return
         if len(free_fighters) > 0:
+            fighter, target = random.choice(list(free_fighters.items()))
             if client.battle is not None and client.battle.fighter in free_fighters:
                 client.battle = free_fighters[client.battle.fighter].battle
             else:
-                fighter, target = random.choice(list(free_fighters.items()))
                 client.battle = target.battle
 
             client.battle.current_client = client
