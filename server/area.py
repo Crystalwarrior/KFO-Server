@@ -952,7 +952,13 @@ class Area:
                 frames_realization="",
                 frames_sfx="",
                 additive=0,
-                effect="", targets=None):
+                effect="", 
+                targets=None,
+                third_charid=-1,
+                third_folder="",
+                third_emote=0,
+                third_offset="",
+                third_flip=0):
         """
         Send an IC message from a client to all applicable clients in the area.
         :param client: speaker
@@ -1077,6 +1083,7 @@ class Area:
             # We're in a minigame w/ team setups
             if opposing_team is not None:
                 charid_pair = -1
+                third_charid = -1
                 # Last speaker is us and our message already paired us with someone, and that someone is on the opposing team
                 if (
                     client.area.last_ic_message is not None
@@ -1183,7 +1190,12 @@ class Area:
                            frames_realization,
                            frames_sfx,
                            additive,
-                           effect)
+                           effect,
+                           third_charid,
+                           third_folder,
+                           third_emote,
+                           third_offset,
+                           third_flip)
         if self.recording:
             # See if the testimony is supposed to end here.
             scrunched = "".join(e for e in msg if e.isalnum())
@@ -1233,6 +1245,11 @@ class Area:
             frames_sfx,  # 27
             additive,  # 28
             effect,  # 29
+            third_charid, # 30
+            third_folder, # 31
+            third_emote, # 32
+            third_offset, # 33
+            third_flip, # 34
         )
         self.last_ic_message = args
 
@@ -1287,6 +1304,11 @@ class Area:
                 frames_sfx,  # 27
                 additive,  # 28
                 effect,  # 29
+                third_charid, # 30
+                third_folder, # 31
+                third_emote, # 32
+                third_offset, # 33
+                third_flip, # 34
             )
             if idx == -1:
                 # Add one statement at the very end.

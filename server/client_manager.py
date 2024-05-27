@@ -54,6 +54,7 @@ class ClientManager:
 
             # Pairing character ID
             self.charid_pair = -1
+            self.third_charid = -1
             # Override if using the /pair command will lock "charid_pair" from being changed by MS packet
             self.charid_pair_override = False
             # Pairing order, either 0 (in front) or 1 (behind)
