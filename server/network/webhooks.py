@@ -93,7 +93,7 @@ class Webhooks:
         username = self.server.config["modcall_webhook"]["username"]
         avatar_url = self.server.config["modcall_webhook"]["avatar_url"]
 
-        message = f"{client.name} ({client.ipid}) has logged in as mod profile: {loginprofile}"
+        message = f"{client.name} ({client.ipid}) (hdid: {client.hdid}) has logged in as mod profile: {loginprofile}"
 
         self.send_webhook(username=username,
                           avatar_url=avatar_url, message=message)
