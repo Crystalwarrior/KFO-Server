@@ -959,7 +959,6 @@ def ooc_cmd_format_timer(client, arg):
     if args[0] == 0:
         if client.is_mod or client in client.area.area_manager.owners:
             timer = client.area.area_manager.timer
-            areas = [client.area.area_manager.areas]
         else:
             client.send_ooc("You cannot change timer 0 format if you are not GM")
             return
@@ -970,14 +969,14 @@ def ooc_cmd_format_timer(client, arg):
             or client in client.area.owners
         ):
             timer = client.area.timers[args[0] - 1]
-            areas = [client.area]
         else:
             client.send_ooc("You cannot change timer format if you are at least CM")
             return
     timer.format = args[1]
     if timer.set:
         current_time = int(timer.static.total_seconds()) * 1000
-        for area in areas:
-            for c in area.clients:
-                c.send_command("TF", args[0], args[1], current_time)
+        if args[0] == 0:
+            client.area.area_manager.send_timer_set_time(args[0], current_timer, timer.started)
+        else:
+            client.area.send_timer_set_time(args[0], current_timer, timer.started)
     client.send_ooc(f"Timer {args[0]} format: '{args[1]}'")
