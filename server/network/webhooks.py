@@ -90,8 +90,12 @@ class Webhooks:
         )
 
     def login(self, client=None, loginprofile=""):
+        is_enabled = self.server.config["modcall_webhook"]["enabled"]
         username = self.server.config["modcall_webhook"]["username"]
         avatar_url = self.server.config["modcall_webhook"]["avatar_url"]
+        
+        if not is_enabled:
+            return
 
         message = f"{client.name} ({client.ipid}) (hdid: {client.hdid}) has logged in as mod profile: {loginprofile}"
 
