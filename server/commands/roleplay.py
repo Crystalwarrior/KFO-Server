@@ -976,7 +976,7 @@ def ooc_cmd_format_timer(client, arg):
     if timer.set:
         current_time = int(timer.static.total_seconds()) * 1000
         if args[0] == 0:
-            client.area.area_manager.send_timer_set_time(args[0], current_timer, timer.started)
+            client.area.area_manager.send_timer_set_time(args[0], current_time, timer.started)
         else:
             client.area.send_timer_set_time(args[0], current_timer, timer.started)
     client.send_ooc(f"Timer {args[0]} format: '{args[1]}'")
