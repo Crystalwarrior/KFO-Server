@@ -89,6 +89,15 @@ class Webhooks:
             description=description,
         )
 
+    def login(self, client=None, loginprofile=""):
+        username = self.server.config["modcall_webhook"]["username"]
+        avatar_url = self.server.config["modcall_webhook"]["avatar_url"]
+
+        message = f"{client.name} ({client.ipid}) has logged in as mod profile: {loginprofile}"
+
+        self.send_webhook(username=username,
+                          avatar_url=avatar_url, message=message)
+
     def kick(self, ipid, reason="", client=None, char=None):
         is_enabled = self.server.config["kick_webhook"]["enabled"]
         username = self.server.config["kick_webhook"]["username"]
