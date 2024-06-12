@@ -949,6 +949,28 @@ class AOProtocol(asyncio.Protocol):
         third_flip = 0
         third_folder = ""
 
+        if client.area.multiple_pair:
+            charid_pair = -1
+            third_charid = -1
+            clients_pos = [c for c in self.client.area.clients if c.pos == self.client.pos]
+            num_pairs = len(clients_pos)
+            for i, c in enumerate(clients_pos):
+                set_offset = int(50*(1/num_pairs + 2*i/num_pairs - 1))
+                if c == self.client:
+                    offset_pair = set_offset
+                else:
+                    chars_offset += f"<and>{set_offset}"
+                    chars_id += f"<and>{c.char_id}^0"
+                    chars_flip += f"<and>{c.flip}"
+                    chars_folder += f"<and>{c.claimed_folder}"
+                    chars_emote += f"<and>{c.last_sprite}"
+            if chars_id != "":
+                chars_id = chars_id[5:]
+                chars_folder = chars_folder[5:]
+                chars_flip = chars_flip[5:]
+                chars_emote = chars_emote[5:]
+                chars_offset = chars_offset[5:]
+
         confirmed = False
         if charid_pair > -1:
             for target in self.client.area.clients:
@@ -1077,6 +1099,11 @@ class AOProtocol(asyncio.Protocol):
                         third_emote, # 32
                         third_offset, # 33
                         third_flip, # 33
+                        chars_id, # 34
+                        chars_folder, # 35
+                        chars_emote, # 36
+                        chars_offset, # 37
+                        chars_flip, #38
                     )
                 a_list = ", ".join([str(a.id) for a in target_area])
                 if not (self.client.area in target_area):
@@ -1119,6 +1146,11 @@ class AOProtocol(asyncio.Protocol):
                         third_emote,
                         third_offset,
                         third_flip,
+                        chars_id,
+                        chars_folder,
+                        chars_emote,
+                        chars_offset,
+                        chars_flip,
                     )
                 self.client.send_ooc(f"Broadcasting to areas {a_list}")
             except (AreaError, ValueError):
@@ -1245,6 +1277,11 @@ class AOProtocol(asyncio.Protocol):
                         third_emote,
                         third_offset,
                         third_flip,
+                        chars_id,
+                        chars_folder,
+                        chars_emote,
+                        chars_offset,
+                        chars_flip,
                     )
 
             return
@@ -1298,6 +1335,11 @@ class AOProtocol(asyncio.Protocol):
             third_emote=third_emote,
             third_offset=third_offset,
             third_flip=third_flip,
+            chars_id=chars_id,
+            chars_folder=chars_folder,
+            chars_emote=chars_emote,
+            chars_offset=chars_offset,
+            chars_flip=chars_flip,
         )
         self.client.area.send_owner_ic(
             self.client.area.background,
@@ -1337,6 +1379,11 @@ class AOProtocol(asyncio.Protocol):
             third_emote,
             third_offset,
             third_flip,
+            chars_id,
+            chars_folder,
+            chars_emote,
+            chars_offset,
+            chars_flip,
         )
 
         # DRO client support
