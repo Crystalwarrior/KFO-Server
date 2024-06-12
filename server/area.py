@@ -281,6 +281,9 @@ class Area:
         self.battle_enraged_bonus = 2.25
         self.battle_stolen_stat = 10
 
+        # multiple pair
+        self.multiple_pair = False
+
     @property
     def name(self):
         """Area's name string. Abbreviation is also updated according to this."""
@@ -586,6 +589,9 @@ class Area:
         if "can_battle" in area:
             self.can_battle = area["can_battle"]
 
+        if "multiple_pair" in area:
+            self.multiple_pair = area["multiple_pair"]
+
     def save(self):
         area = OrderedDict()
         area["area"] = self.name
@@ -660,6 +666,7 @@ class Area:
         if len(self.links) > 0:
             area["links"] = self.links
         area["can_battle"] = self.can_battle
+        area["multiple_pair"] = self.multiple_pair
         return area
 
     def new_client(self, client):
@@ -958,7 +965,12 @@ class Area:
                 third_folder="",
                 third_emote=0,
                 third_offset="",
-                third_flip=0):
+                third_flip=0,
+                chars_id="",
+                chars_folder="",
+                chars_emote="",
+                chars_offset="",
+                chars_flip="" ):
         """
         Send an IC message from a client to all applicable clients in the area.
         :param client: speaker
@@ -1084,6 +1096,7 @@ class Area:
             if opposing_team is not None:
                 charid_pair = -1
                 third_charid = -1
+                chars_id = ""
                 # Last speaker is us and our message already paired us with someone, and that someone is on the opposing team
                 if (
                     client.area.last_ic_message is not None
@@ -1195,7 +1208,12 @@ class Area:
                            third_folder,
                            third_emote,
                            third_offset,
-                           third_flip)
+                           third_flip,
+                           chars_id,
+                           chars_folder,
+                           chars_emote,
+                           chars_offset,
+                           chars_flip)
         if self.recording:
             # See if the testimony is supposed to end here.
             scrunched = "".join(e for e in msg if e.isalnum())
@@ -1250,6 +1268,11 @@ class Area:
             third_emote, # 32
             third_offset, # 33
             third_flip, # 34
+            chars_id, # 35
+            chars_folder, # 36
+            chars_emote, # 37
+            chars_offset, #38
+            chars_flip, #39
         )
         self.last_ic_message = args
 
@@ -1309,6 +1332,11 @@ class Area:
                 third_emote, # 32
                 third_offset, # 33
                 third_flip, # 34
+                chars_id, # 35
+                chars_folder, # 36
+                chars_emote, # 37
+                chars_offset, # 38
+                chars_flip, # 39
             )
             if idx == -1:
                 # Add one statement at the very end.
