@@ -949,7 +949,7 @@ def ooc_cmd_trigger(client, arg):
 def ooc_cmd_format_timer(client, arg):
     """
     Format the timer
-    /format_timer <Timer_iD> <Format>
+    Usage: /format_timer <Timer_iD> <Format>
     """
     args = shlex.split(arg)
     try:
@@ -974,7 +974,11 @@ def ooc_cmd_format_timer(client, arg):
             return
     timer.format = args[1]
     if timer.set:
-        current_time = int(timer.static.total_seconds()) * 1000
+        if timer.started:
+            current_time = timer.target - arrow.get()
+            current_time = int(current_time.total_seconds()) * 1000
+        else:
+            current_time = int(timer.static.total_seconds()) * 1000
         if args[0] == 0:
             client.area.area_manager.send_timer_set_time(args[0], current_time, timer.started)
         else:
