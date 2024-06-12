@@ -35,6 +35,7 @@ __all__ = [
     "ooc_cmd_timer",
     "ooc_cmd_demo",
     "ooc_cmd_trigger",
+    "ooc_cmd_format_timer",
 ]
 
 
