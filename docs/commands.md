@@ -521,6 +521,9 @@
 * **format_timer** `<id> <format>`
     - Format the timer in the current area or hub.
     - Example of format: `Time Left: hh:mm`
+* **timer_interval** `<id> <interval>`
+    - Set timer interval in the current area or hub.
+    - Example: /timer_interval 1 15m
 ## Musiclists
 * **musiclist\_add** `<local/area/hub>` `<Category>` `<MusicName>` `[Length]` `[Path]`
     - Allow you to add a song in a loaded musiclist!
