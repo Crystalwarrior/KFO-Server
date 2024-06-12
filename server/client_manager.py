@@ -305,6 +305,7 @@ class ClientManager:
                     else:
                         timer = self.area.timers[timer_id-1]
                     self.send_command("TF", timer_id, timer.format, new_time)
+                    self.send_command("TIN", timer_id, timer.interval)
 
         def send_timer_set_step_length(self, timer_id=None, new_step_length=None):
             if self.software == "DRO":
