@@ -949,7 +949,7 @@ class AOProtocol(asyncio.Protocol):
         third_flip = 0
         third_folder = ""
 
-        if client.area.multiple_pair:
+        if self.client.area.multiple_pair:
             charid_pair = -1
             third_charid = -1
             clients_pos = [c for c in self.client.area.clients if c.pos == self.client.pos]
