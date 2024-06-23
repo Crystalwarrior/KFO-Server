@@ -2006,7 +2006,7 @@ class ClientManager:
             try:
                 self.need_call_time = round(
                     time.time() * 1000.0
-                    + int(self.server.config["need_webhook"]["timer"]) * 1000.0
+                    + int(self.server.config["need_webhook"]["delay"]) * 1000.0
                 )
             except:
                 self.need_call_time = round(time.time() * 1000 + 60000)
