@@ -150,3 +150,13 @@ unban_webhook:
   enabled: true
   username: Unban
   avatar_url:
+
+need_webhook:
+  enabled: true
+  timer: 60
+  username: 
+  avatar_url: Need
+  color: "12745742"  
+  pingoption: false
+  role_id:
+  message: "A user has used the /need command for players in the Attorney Online server!"  
