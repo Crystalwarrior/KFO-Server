@@ -89,6 +89,37 @@ class Webhooks:
             description=description,
         )
 
+    def needcall(self, client=None, reason=None):
+        is_enabled = self.server.config["need_webhook"]["enabled"]
+        username = self.server.config["need_webhook"]["username"]
+        avatar_url = self.server.config["need_webhook"]["avatar_url"]
+        color = self.server.config["need_webhook"]["color"]
+        title = self.server.config["need_webhook"]["title"]
+        url = self.server.config["need_webhook"]["url"]
+        pingoption = self.server.config["need_webhook"]["pingoption"]
+        if pingoption not in [True, False]:
+            pingoption = False
+
+        if not is_enabled:
+            return
+
+        message = ""
+        if pingoption:
+            message += f"<@&{self.server.config['need_webhook']['role_id']}> \n"
+        message += self.server.config["need_webhook"]["message"]
+        description = f"{client.name} ({client.ipid}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name} {'without reason (using <2.6?)' if reason is None else f'needs: {reason}'}"
+
+        self.send_webhook(
+            username=username,
+            avatar_url=avatar_url,
+            message=message,
+            embed=True,
+            title=title,
+            color=color,
+            description=description,
+            url=url,
+        )
+
     def kick(self, ipid, reason="", client=None, char=None):
         is_enabled = self.server.config["kick_webhook"]["enabled"]
         username = self.server.config["kick_webhook"]["username"]
