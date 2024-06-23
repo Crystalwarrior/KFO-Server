@@ -159,5 +159,6 @@ need_webhook:
   color: "12745742"  
   pingoption: false
   role_id:
+  title: "AO NEED CALL"  
   message: "A user has used the /need command for players in the Attorney Online server!"  
   url:
