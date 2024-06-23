@@ -154,8 +154,8 @@ unban_webhook:
 need_webhook:
   enabled: true
   timer: 60
-  username: 
-  avatar_url: Need
+  username: Need
+  avatar_url:
   color: "12745742"  
   pingoption: false
   role_id:
