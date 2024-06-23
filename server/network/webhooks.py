@@ -21,6 +21,7 @@ class Webhooks:
         message=None,
         embed=False,
         title=None,
+        color=None,
         description=None,
         url=None,
     ):
@@ -40,6 +41,7 @@ class Webhooks:
             embed = {}
             embed["description"] = description
             embed["title"] = title
+            embed["color"] = color
             data["embeds"].append(embed)
         result = requests.post(
             url, data=json.dumps(data), headers={"Content-Type": "application/json"}
