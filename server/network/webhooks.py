@@ -90,6 +90,9 @@ class Webhooks:
         )
 
     def needcall(self, client=None, reason=None):
+        if need_webhook not in self.server.config:
+            return
+            
         is_enabled = self.server.config["need_webhook"]["enabled"]
         username = self.server.config["need_webhook"]["username"]
         avatar_url = self.server.config["need_webhook"]["avatar_url"]
