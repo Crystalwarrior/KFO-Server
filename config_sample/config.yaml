@@ -151,12 +151,12 @@ unban_webhook:
   username: Unban
   avatar_url:
 
-<<<<<<< modpass-log
+
 login_webhook:
   enabled: true
   username: Login
   avatar_url:
-=======
+
 need_webhook:
   enabled: true
   delay: 60
@@ -168,4 +168,3 @@ need_webhook:
   title: "AO NEED CALL"  
   message: "A user has used the /need command for players in the Attorney Online server!"  
   url:
->>>>>>> master
