@@ -91,7 +91,6 @@ class Webhooks:
             description=description,
         )
 
-<<<<<<< modpass-log
     def login(self, client=None, loginprofile=""):
         if "login_webhook" not in self.server.config:
             return
@@ -106,7 +105,7 @@ class Webhooks:
 
         self.send_webhook(username=username,
                           avatar_url=avatar_url, message=message)
-=======
+
     def needcall(self, client=None, reason=None):
         if "need_webhook" not in self.server.config:
             return
@@ -140,7 +139,7 @@ class Webhooks:
             description=description,
             url=url,
         )
->>>>>>> master
+
 
     def kick(self, ipid, reason="", client=None, char=None):
         is_enabled = self.server.config["kick_webhook"]["enabled"]
