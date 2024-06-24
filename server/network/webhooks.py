@@ -90,6 +90,8 @@ class Webhooks:
         )
 
     def login(self, client=None, loginprofile=""):
+        if "login_webhook" not in self.server.config:
+            return
         is_enabled = self.server.config["login_webhook"]["enabled"]
         username = self.server.config["login_webhook"]["username"]
         avatar_url = self.server.config["login_webhook"]["avatar_url"]
