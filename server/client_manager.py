@@ -77,6 +77,9 @@ class ClientManager:
             self.casing_steno = False
             self.case_call_time = 0
 
+            # Need command
+            self.need_call_time = 0
+
             # flood-guard stuff
             self.mus_counter = 0
             self.mus_mute_time = 0
@@ -1998,9 +2001,23 @@ class ClientManager:
             """Begin the case announcement cooldown."""
             self.case_call_time = round(time.time() * 1000.0 + 60000)
 
+        def set_need_call_delay(self):
+            """Begin the need cooldown."""
+            try:
+                self.need_call_time = round(
+                    time.time() * 1000.0
+                    + int(self.server.config["need_webhook"]["delay"]) * 1000.0
+                )
+            except:
+                self.need_call_time = round(time.time() * 1000 + 60000)
+
         def can_call_case(self):
             """Whether or not the client can currently announce a case."""
             return (time.time() * 1000.0 - self.case_call_time) > 0
+
+        def can_call_need(self):
+            """Whether or not the client can currently call a need."""
+            return (time.time() * 1000.0 - self.need_call_time) > 0
 
         def disemvowel_message(self, message):
             """Disemvowel a chat message."""
