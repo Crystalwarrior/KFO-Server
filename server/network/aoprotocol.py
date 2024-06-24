@@ -1240,6 +1240,7 @@ class AOProtocol(asyncio.Protocol):
                         frames_sfx,
                         additive_value,
                         effect,
+                        None,
                         third_charid,
                         third_folder,
                         third_emote,

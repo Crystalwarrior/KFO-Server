@@ -21,6 +21,7 @@ class Webhooks:
         message=None,
         embed=False,
         title=None,
+        color=None,
         description=None,
         url=None,
     ):
@@ -40,6 +41,7 @@ class Webhooks:
             embed = {}
             embed["description"] = description
             embed["title"] = title
+            embed["color"] = color
             data["embeds"].append(embed)
         result = requests.post(
             url, data=json.dumps(data), headers={"Content-Type": "application/json"}
@@ -89,6 +91,7 @@ class Webhooks:
             description=description,
         )
 
+<<<<<<< modpass-log
     def login(self, client=None, loginprofile=""):
         if "login_webhook" not in self.server.config:
             return
@@ -103,6 +106,41 @@ class Webhooks:
 
         self.send_webhook(username=username,
                           avatar_url=avatar_url, message=message)
+=======
+    def needcall(self, client=None, reason=None):
+        if "need_webhook" not in self.server.config:
+            return
+            
+        is_enabled = self.server.config["need_webhook"]["enabled"]
+        username = self.server.config["need_webhook"]["username"]
+        avatar_url = self.server.config["need_webhook"]["avatar_url"]
+        color = self.server.config["need_webhook"]["color"]
+        title = self.server.config["need_webhook"]["title"]
+        url = self.server.config["need_webhook"]["url"]
+        pingoption = self.server.config["need_webhook"]["pingoption"]
+        if pingoption not in [True, False]:
+            pingoption = False
+
+        if not is_enabled:
+            return
+
+        message = ""
+        if pingoption:
+            message += f"<@&{self.server.config['need_webhook']['role_id']}> \n"
+        message += self.server.config["need_webhook"]["message"]
+        description = f"{client.name} ({client.ipid}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name} {'without reason (using <2.6?)' if reason is None else f'needs: {reason}'}"
+
+        self.send_webhook(
+            username=username,
+            avatar_url=avatar_url,
+            message=message,
+            embed=True,
+            title=title,
+            color=color,
+            description=description,
+            url=url,
+        )
+>>>>>>> master
 
     def kick(self, ipid, reason="", client=None, char=None):
         is_enabled = self.server.config["kick_webhook"]["enabled"]

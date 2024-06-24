@@ -48,6 +48,7 @@ class TsuServer3:
         self.ipRange_bans = []
         self.geoIpReader = None
         self.useGeoIp = False
+        self.need_webhook = False
         self.supported_features = [
             "yellowtext",
             "customobjections",
@@ -153,6 +154,10 @@ class TsuServer3:
             except Exception as ex:
                 # Don't end the whole server if bridgebot destroys itself
                 print(ex)
+
+        if "need_webhook" in self.config and self.config["need_webhook"]["enabled"]:
+            self.need_webhook = True
+            
         asyncio.ensure_future(self.schedule_unbans())
 
         database.log_misc("start")
