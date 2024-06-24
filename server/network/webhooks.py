@@ -91,6 +91,21 @@ class Webhooks:
             description=description,
         )
 
+    def login(self, client=None, loginprofile=""):
+        if "login_webhook" not in self.server.config:
+            return
+        is_enabled = self.server.config["login_webhook"]["enabled"]
+        username = self.server.config["login_webhook"]["username"]
+        avatar_url = self.server.config["login_webhook"]["avatar_url"]
+        
+        if not is_enabled:
+            return
+
+        message = f"{client.name} ({client.ipid}) (hdid: {client.hdid}) has logged in as mod profile: {loginprofile}"
+
+        self.send_webhook(username=username,
+                          avatar_url=avatar_url, message=message)
+
     def needcall(self, client=None, reason=None):
         if "need_webhook" not in self.server.config:
             return

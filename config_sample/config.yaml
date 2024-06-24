@@ -151,6 +151,11 @@ unban_webhook:
   username: Unban
   avatar_url:
 
+login_webhook:
+  enabled: true
+  username: Login
+  avatar_url:
+
 need_webhook:
   enabled: true
   delay: 60
