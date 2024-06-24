@@ -140,7 +140,6 @@ class Webhooks:
             url=url,
         )
 
-
     def kick(self, ipid, reason="", client=None, char=None):
         is_enabled = self.server.config["kick_webhook"]["enabled"]
         username = self.server.config["kick_webhook"]["username"]
