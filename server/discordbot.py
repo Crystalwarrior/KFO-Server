@@ -44,10 +44,12 @@ class Bridgebot(commands.Bot):
                 embed.add_field(name="Announce Name:", value=name, inline=False)
             else:
                 self.channel.send("Arguments error!\n!announcing name description url additional when where")
+                return
             if description is not None:
                 embed.add_field(name="Description:", value=description,inline=False)
             else:
                 self.channel.send("Arguments error!\n!announcing name description url additional when where")
+                return
             embed.set_thumbnail(url=self.announce_image)
             if url is not None:
                 embed.add_field(name="Document Link:", value=url, inline=False)
