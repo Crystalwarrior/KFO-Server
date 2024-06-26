@@ -45,6 +45,7 @@ evimod: evidence_mod
 eviswap: evidence_swap
 force_follow: follow_me
 force_pos: forcepos
+timer_format: format_timer
 fp: firstperson
 fps: firstperson
 ga: getarea
