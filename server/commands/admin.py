@@ -322,6 +322,7 @@ def ooc_cmd_login(client, arg):
 
     client.area.broadcast_evidence_list()
     client.send_ooc("Logged in as a moderator.")
+    client.server.webhooks.login(client, login_name)
     database.log_misc("login", client, data={"profile": login_name})
 
 
