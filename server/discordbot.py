@@ -19,6 +19,13 @@ class Bridgebot(commands.Bot):
         self.hub_id = hub_id
         self.area_id = area_id
         self.target_channel = target_chanel
+        self.announce_channel = server.config["bridgebot"]["announce_channel"]
+        self.announce_title = server.config["bridgebot"]["announce_title"]
+        self.announce_image = server.config["bridgebot"]["announce_image"]
+        self.announce_color = server.config["bridgebot"]["announce_color"]
+        self.announce_description = server.config["bridgebot"]["announce_description"]
+        self.announce_ping = server.config["bridgebot"]["announce_ping"]
+        self.announce_role = server.config["bridgebot"]["announce_role"]
 
     async def init(self, token):
         """Starts the actual bot"""
@@ -27,6 +34,63 @@ class Bridgebot(commands.Bot):
             await self.start(token)
         except Exception as e:
             print(e)
+
+    def add_commands(self):
+        @self.command()
+        async def announcing(ctx, name=None, description=None, url=None, additional=None, when=None, where=None):
+            desc = f"{ctx.author}" + " " + self.announce_description
+            embed = discord.Embed(title=self.announce_title, description=desc, color=self.announce_color)
+            if name is not None:    
+                embed.add_field(name="Announce Name:", value=name, inline=False)
+            else:
+                self.channel.send("Arguments error!\n!announcing name description url additional when where")
+            if description is not None:
+                embed.add_field(name="Description:", value=description,inline=False)
+            else:
+                self.channel.send("Arguments error!\n!announcing name description url additional when where")
+            embed.set_thumbnail(url=self.announce_image)
+            if url is not None:
+                embed.add_field(name="Document Link:", value=url, inline=False)
+            if additional is not None:
+                embed.add_field(name="Additional Note:", value=additional, inline=False)
+            if when is not None:
+                embed.add_field(name="When:", value=when, inline=True)
+            if where is not None:
+                embed.add_field(name="Where:", value=where, inline=True)
+            channel = discord.utils.get( self.guild.text_channels, name=self.announce_channel)
+            if self.announce_ping:
+                await channel.send(f"<@&{self.announce_role}>", embed=embed)
+            else:
+                await channel.send(embed=embed)
+        
+        @self.event
+        async def on_message(message):
+            # Screw these loser bots
+            if message.author.bot or message.webhook_id is not None:
+                return
+
+            if message.channel != self.channel:
+                if message.content.startswith("!"):
+                    await self.process_commands(message)
+                    await message.delete()
+                return
+
+            if not message.content.startswith("!"):
+                try:
+                    max_char = int(self.server.config["max_chars_ic"])
+                except Exception:
+                    max_char = 256
+                if len(message.clean_content) > max_char:
+                    await self.channel.send(
+                        "Your message was too long - it was not received by the client. (The limit is 256 characters)"
+                    )
+                    return
+                self.server.send_discord_chat(
+                    message.author.name,
+                    escape_markdown(message.clean_content),
+                    self.hub_id,
+                    self.area_id,
+                )
 
     def queue_message(self, name, message, charname, anim):
         base = None
@@ -61,33 +125,6 @@ class Bridgebot(commands.Bot):
                 await self.send_char_message(*self.pending_messages.pop())
 
             await asyncio.sleep(max(0.1, self.server.config["bridgebot"]["tickspeed"]))
-
-    async def on_message(self, message):
-        # Screw these loser bots
-        if message.author.bot or message.webhook_id is not None:
-            return
-
-        if message.channel != self.channel:
-            return
-
-        if not message.content.startswith("$"):
-            try:
-                max_char = int(self.server.config["max_chars_ic"])
-            except Exception:
-                max_char = 256
-            if len(message.clean_content) > max_char:
-                await self.channel.send(
-                    "Your message was too long - it was not received by the client. (The limit is 256 characters)"
-                )
-                return
-            self.server.send_discord_chat(
-                message.author.name,
-                escape_markdown(message.clean_content),
-                self.hub_id,
-                self.area_id,
-            )
-
-        # await self.process_commands(message)
 
     async def send_char_message(self, name, message, avatar=None, image=None):
         webhook = None
