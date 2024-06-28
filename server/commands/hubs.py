@@ -133,6 +133,11 @@ def ooc_cmd_save_hub(client, arg):
                 hub = client.area.area_manager.save(ignore=["can_gm", "max_areas"])
                 if len(args) == 2 and args[1] == "read_only":
                     hub["read_only"] = True
+                if "music_ref" in hub and hub["music_ref"] == "unsaved":
+                    del hub["music_ref"]
+                for i in range(0, len(hub["areas"])):
+                    if "music_ref" in hub["areas"][i] and hub["areas"][i]["music_ref"] == "unsaved":
+                        del hub["areas"][i]["music_ref"]
                 with open(args[0], "w", encoding="utf-8") as stream:
                     yaml.dump(
                         hub,
@@ -239,13 +244,16 @@ def ooc_cmd_list_hubs(client, arg):
     hubs_editable = []
     hubs_read_only = []
     for F in os.listdir("storage/hubs/"):
-        if F.lower().endswith(".yaml"):
-            with open(f"storage/hubs/{F}", "r", encoding="utf-8") as stream:
-                hub = yaml.safe_load(stream)
-            if "read_only" in hub and hub["read_only"] is True:
-                hubs_read_only.append(F[:-5])
-            else:
-                hubs_editable.append(F[:-5])
+        try:
+            if F.lower().endswith(".yaml"):
+                with open(f"storage/hubs/{F}", "r", encoding="utf-8") as stream:
+                    hub = yaml.safe_load(stream)
+                if "read_only" in hub and hub["read_only"] is True:
+                    hubs_read_only.append(F[:-5])
+                else:
+                    hubs_editable.append(F[:-5])
+        except:
+            continue
 
     hubs_read_only.sort()
     msg = "\n⛩️ Available Read Only Hubs: ⛩️\n"
