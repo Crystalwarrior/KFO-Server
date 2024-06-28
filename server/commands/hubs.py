@@ -133,7 +133,7 @@ def ooc_cmd_save_hub(client, arg):
                 hub = client.area.area_manager.save(ignore=["can_gm", "max_areas"])
                 if len(args) == 2 and args[1] == "read_only":
                     hub["read_only"] = True
-                if hub["music_ref"] == "unsaved":
+                if "music_ref" in hub["music_ref"] and hub["music_ref"] == "unsaved":
                     del hub["music_ref"]
                 for i in range(0, len(hub["areas"])):
                     if "music_ref" in hub["areas"][i] and hub["areas"][i]["music_ref"] == "unsaved":
