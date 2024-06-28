@@ -239,13 +239,16 @@ def ooc_cmd_list_hubs(client, arg):
     hubs_editable = []
     hubs_read_only = []
     for F in os.listdir("storage/hubs/"):
-        if F.lower().endswith(".yaml"):
-            with open(f"storage/hubs/{F}", "r", encoding="utf-8") as stream:
-                hub = yaml.safe_load(stream)
-            if "read_only" in hub and hub["read_only"] is True:
-                hubs_read_only.append(F[:-5])
-            else:
-                hubs_editable.append(F[:-5])
+        try:
+            if F.lower().endswith(".yaml"):
+                with open(f"storage/hubs/{F}", "r", encoding="utf-8") as stream:
+                    hub = yaml.safe_load(stream)
+                if "read_only" in hub and hub["read_only"] is True:
+                    hubs_read_only.append(F[:-5])
+                else:
+                    hubs_editable.append(F[:-5])
+        except:
+            continue
 
     hubs_read_only.sort()
     msg = "\n⛩️ Available Read Only Hubs: ⛩️\n"
