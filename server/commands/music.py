@@ -256,17 +256,20 @@ def ooc_cmd_musiclists(client, arg):
     musiclist_editable = []
     musiclist_read_only = []
     for F in os.listdir("storage/musiclists/"):
-        if F.lower().endswith(".yaml"):
-            with open(f"storage/musiclists/{F}", "r", encoding="utf-8") as stream:
-                musiclist = yaml.safe_load(stream)
-            read_only = False
-            for item in musiclist:
-                if "read_only" in item and item["read_only"] is True:
-                    musiclist_read_only.append(F[:-5])
-                    read_only = True
-                    break
-            if not read_only:
-                musiclist_editable.append(F[:-5])
+        try:
+            if F.lower().endswith(".yaml"):
+                with open(f"storage/musiclists/{F}", "r", encoding="utf-8") as stream:
+                    musiclist = yaml.safe_load(stream)
+                read_only = False
+                for item in musiclist:
+                    if "read_only" in item and item["read_only"] is True:
+                        musiclist_read_only.append(F[:-5])
+                        read_only = True
+                        break
+                if not read_only:
+                    musiclist_editable.append(F[:-5])
+        except:
+            continue
 
     musiclist_read_only.sort()
     msg = "\n🎶 Available Read Only Musiclists: 🎶\n"
