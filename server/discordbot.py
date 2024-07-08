@@ -70,6 +70,54 @@ class Bridgebot(commands.Bot):
         if message.channel != self.channel:
             return
 
+        if message.content == "!getareas":
+            msg = ""
+            number_players = int(self.server.player_count)
+            msg += f"**Clients in Areas**\n"
+            for hub in self.server.hub_manager.hubs:
+                if len(hub.clients) == 0:
+                    continue
+                msg += f"**[={hub.name}=]**\n"
+                for area in hub.areas:
+                    if area.hidden:
+                        continue
+                    if len(area.clients) == 0:
+                        continue
+                    msg += f"\t**[{area.id}] {area.name} (users: {len(area.clients)}) [{area.status}]"
+                    if area.locked:
+                        msg += f" [LOCKED]"
+                    elif area.muted:
+                        msg += f" [SPECTATABLE]"
+                    if area.get_owners() != "":
+                        msg += f" [CM(s): {area.get_owners()}]"
+                    msg += "**\n"
+                    for client in area.clients:
+                        if client.hidden:
+                            continue
+                        msg += "\t  ◾ "
+                        if client in area.afkers:
+                            msg += "[AFK] "
+                        if client.is_mod:
+                            msg += "[M] "
+                        elif client in area.area_manager.owners:
+                            msg += "[GM] "
+                        elif client in area._owners:
+                            msg += "[CM] "
+                        if client.showname != client.char_name:
+                            msg += f'[{client.id}] "{client.showname}" ({client.char_name})'
+                        else:
+                            msg += f"[{client.id}] {client.showname}"
+                        if client.pos != "":
+                            msg += f" <{client.pos}>"
+                        msg += "\n"
+                msg += "\n"
+            msg += f"Current online: {number_players} clients\n"
+            if len(msg) > 2000:
+                await self.channel.send(f"Current online: {number_players} clients\nArea information hidden due to char limit.")
+            else:
+                await self.channel.send(msg)
+            return
+
         if not message.content.startswith("$"):
             try:
                 max_char = int(self.server.config["max_chars_ic"])
