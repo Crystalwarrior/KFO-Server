@@ -112,7 +112,10 @@ def ooc_cmd_save_hub(client, arg):
             raise ArgumentError("Filename must be at least 3 symbols long!")
     try:
         if args[0] != "":
-            path = "storage/hubs"
+            if len(args) > 2 and args[2].lower() == "read_only":
+                path = "storage/hubs/read_only"
+            else:
+                path = "storage/hubs/write_read"
             num_files = len(
                 [f for f in os.listdir(path) if os.path.isfile(
                     os.path.join(path, f))]
@@ -122,14 +125,11 @@ def ooc_cmd_save_hub(client, arg):
                     "Server storage full! Please contact the server host to resolve this issue."
                 )
             try:
+                if os.path.isfile(f"storage/hubs/read_only/{derelative(args[0])}.yaml"):
+                    raise ArgumentError(f"Hub {args[0]} already exists and it is read-only!")
+                if os.path.isfile(f"storage/hubs/write_read/{derelative(args[0])}.yaml") and len(args) > 2 and args[2].lower() == "read_only":
+                    os.remove(f"storage/hubs/write_read/{derelative(args[0])}.yaml")
                 args[0] = f"{path}/{derelative(args[0])}.yaml"
-                if os.path.isfile(args[0]):
-                    with open(args[0], "r", encoding="utf-8") as stream:
-                        hub = yaml.safe_load(stream)
-                    if "read_only" in hub and hub["read_only"] is True:
-                        raise ArgumentError(
-                            f"Hub {args[0]} already exists and it is read-only!"
-                        )
                 hub = client.area.area_manager.save(ignore=["can_gm", "max_areas"])
                 if len(args) == 2 and args[1] == "read_only":
                     hub["read_only"] = True
@@ -168,7 +168,10 @@ def ooc_cmd_load_hub(client, arg):
         raise ArgumentError("You must be authorized to load the default hub!")
 
     if arg != "":
-        path = "storage/hubs"
+        if os.path.isfile(f"storage/hubs/read_only/{arg}.yaml"):
+            path = "storage/hubs/read_only"
+        else:
+            path = "storage/hubs/write_read"
         arg = f"{path}/{derelative(arg)}.yaml"
         if not os.path.isfile(arg):
             raise ArgumentError(f"File not found: {arg}")
@@ -243,15 +246,17 @@ def ooc_cmd_list_hubs(client, arg):
     """
     hubs_editable = []
     hubs_read_only = []
-    for F in os.listdir("storage/hubs/"):
+    for F in os.listdir("storage/hubs/read_only/"):
         try:
             if F.lower().endswith(".yaml"):
-                with open(f"storage/hubs/{F}", "r", encoding="utf-8") as stream:
-                    hub = yaml.safe_load(stream)
-                if "read_only" in hub and hub["read_only"] is True:
-                    hubs_read_only.append(F[:-5])
-                else:
-                    hubs_editable.append(F[:-5])
+                hubs_read_only.append(F[:-5])
+        except:
+            continue
+
+    for F in os.listdir("storage/hubs/write_read/"):
+        try:
+            if F.lower().endswith(".yaml"):
+                hubs_editable.append(F[:-5])
         except:
             continue
 
