@@ -255,19 +255,17 @@ def ooc_cmd_musiclists(client, arg):
 
     musiclist_editable = []
     musiclist_read_only = []
-    for F in os.listdir("storage/musiclists/"):
+    for F in os.listdir("storage/musiclists/read_only/"):
         try:
             if F.lower().endswith(".yaml"):
-                with open(f"storage/musiclists/{F}", "r", encoding="utf-8") as stream:
-                    musiclist = yaml.safe_load(stream)
-                read_only = False
-                for item in musiclist:
-                    if "read_only" in item and item["read_only"] is True:
-                        musiclist_read_only.append(F[:-5])
-                        read_only = True
-                        break
-                if not read_only:
-                    musiclist_editable.append(F[:-5])
+                musiclist_read_only.append(F[:-5])
+        except:
+            continue
+
+    for F in os.listdir("storage/musiclists/write_read/"):
+        try:
+            if F.lower().endswith(".yaml"):
+                musiclist_editable.append(F[:-5])
         except:
             continue
 
@@ -297,7 +295,10 @@ def ooc_cmd_musiclist(client, arg):
             client.clear_music()
             client.send_ooc("Clearing local musiclist.")
         else:
-            client.load_music(f"storage/musiclists/{arg}.yaml")
+            if os.path.isfile(f"storage/musiclists/read_only/{arg}.yaml"):
+                client.load_music(f"storage/musiclists/read_only/{arg}.yaml")
+            else:
+                client.load_music(f"storage/musiclists/write_read/{arg}.yaml")
             client.music_ref = arg
             client.send_ooc(f"Loading local musiclist {arg}...")
         client.refresh_music()
@@ -320,7 +321,10 @@ def ooc_cmd_area_musiclist(client, arg):
             client.area.clear_music()
             client.send_ooc("Clearing area musiclist.")
         else:
-            client.area.load_music(f"storage/musiclists/{arg}.yaml")
+            if os.path.isfile(f"storage/musiclists/read_only/{arg}.yaml"):
+                client.area.load_music(f"storage/musiclists/read_only/{arg}.yaml")
+            else:
+                client.area.load_music(f"storage/musiclists/write_read/{arg}.yaml")
             client.area.music_ref = arg
             client.send_ooc(f"Loading area musiclist {arg}...")
         client.server.client_manager.refresh_music(client.area.clients)
@@ -343,8 +347,10 @@ def ooc_cmd_hub_musiclist(client, arg):
             client.area.area_manager.clear_music()
             client.send_ooc("Clearing hub musiclist.")
         else:
-            client.area.area_manager.load_music(
-                f"storage/musiclists/{arg}.yaml")
+            if os.path.isfile(f"storage/musiclists/read_only/{arg}.yaml"):
+                client.area.area_manager.load_music(f"storage/musiclists/read_only/{arg}.yaml")
+            else:
+                client.area.area_manager.load_music(f"storage/musiclists/write_read/{arg}.yaml")
             client.area.area_manager.music_ref = arg
             client.send_ooc(f"Loading hub musiclist {arg}...")
         client.server.client_manager.refresh_music(
@@ -428,18 +434,15 @@ def ooc_cmd_musiclist_save(client, arg):
             return
 
     if len(args) > 2 and args[2].lower() == "read_only":
-        musiclist.append({"read_only": True})
+        filepath = f"storage/musiclists/read_only/{name}.yaml"
+    else:
+        filepath = f"storage/musiclists/write_read/{name}.yaml"
 
-    filepath = f"storage/musiclists/{name}.yaml"
-
-    if os.path.isfile(filepath):
-        with open(filepath, "r", encoding="utf-8") as stream:
-            test = yaml.safe_load(stream)
-        for item in test:
-            if "read_only" in item and item["read_only"] is True:
-                raise ArgumentError(
-                    f"Musiclist '{name}' already exists and it is read-only!"
-                )
+    if os.path.isfile(f"storage/musiclists/read_only/{name}.yaml"):
+        raise ArgumentError(f"Musiclist '{name}' already exists and it is read-only!")
+    if os.path.isfile(f"storage/musiclists/write_read/{name}.yaml") and len(args) > 2 and args[2].lower() == "read_only":
+        os.remove(f"storage/musiclists/write_read/{name}.yaml")
+        
     with open(filepath, "w", encoding="utf-8") as yaml_save:
         yaml.dump(musiclist, yaml_save)
     client.send_ooc(f"Musiclist '{name}' saved on server list!")
