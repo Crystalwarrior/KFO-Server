@@ -128,7 +128,10 @@ def ooc_cmd_save_hub(client, arg):
                 if os.path.isfile(f"storage/hubs/read_only/{derelative(args[0])}.yaml"):
                     raise ArgumentError(f"Hub {args[0]} already exists and it is read-only!")
                 if os.path.isfile(f"storage/hubs/write_read/{derelative(args[0])}.yaml") and len(args) > 2 and args[2].lower() == "read_only":
-                    os.remove(f"storage/hubs/write_read/{derelative(args[0])}.yaml")
+                    try:
+                        os.remove(f"storage/hubs/write_read/{derelative(args[0])}.yaml")
+                    except:
+                        raise AreaError(f"{args[0]} hasn't been removed from write and read folder!")
                 args[0] = f"{path}/{derelative(args[0])}.yaml"
                 hub = client.area.area_manager.save(ignore=["can_gm", "max_areas"])
                 if len(args) == 2 and args[1] == "read_only":
