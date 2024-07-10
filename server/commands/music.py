@@ -441,7 +441,10 @@ def ooc_cmd_musiclist_save(client, arg):
     if os.path.isfile(f"storage/musiclists/read_only/{name}.yaml"):
         raise ArgumentError(f"Musiclist '{name}' already exists and it is read-only!")
     if os.path.isfile(f"storage/musiclists/write_read/{name}.yaml") and len(args) > 2 and args[2].lower() == "read_only":
-        os.remove(f"storage/musiclists/write_read/{name}.yaml")
+        try:
+            os.remove(f"storage/musiclists/write_read/{name}.yaml")
+        except:
+            raise AreaError(f"{args[0]} hasn't been removed from write and read folder!")
         
     with open(filepath, "w", encoding="utf-8") as yaml_save:
         yaml.dump(musiclist, yaml_save)
