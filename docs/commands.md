@@ -526,18 +526,19 @@
 * **musiclist\_remove** `<local/area/hub>` `<Category>` `<MusicName>`
     - Allow you to remove a song from a musiclist!
     - Remember to insert a file extension in `<MusicName>`. For songs without extension, put in .music.
-* **musiclist\_save** `<local/area/hub>` `[MusiclistName]`
+* **musiclist\_save** `<local/area/hub>` `[MusiclistName]` `[read_only]`
     - Allow you to save a musiclist on server list!
     - If the musiclist you're editing is already in the server list, you don't have to add `[MusiclistName]`
+    - If `[read_only]` is a parameter in the arguments then none can rewrite the current musiclist
 ## Battle
 * **choose\_fighter** `<NameFighter>`
     - Allow you to choose a fighter from the list of the server.
     - You will receive its stats and its moves.
 * **info\_fighter**
     - Send info about your fighter.
-* **create\_fighter** `<FighterName>` `<HP>` `<ATK>` `<DEF>` `<SPA>` `<SPD>` `<SPE>`
+* **create\_fighter** `<FighterName>` `<HP>` `<MANA>` `<ATK>` `<DEF>` `<SPA>` `<SPD>` `<SPE>`
     - Allow you to create a fighter and to customize its stats.
-* **create\_move** `<MoveName>` `<MovesType>` `<Power>` `<Accuracy>` `<Effects>`
+* **create\_move** `<MoveName>` `<ManaCost>` `<MovesType>` `<Power>` `<Accuracy>` `<Effects>`
     - Allow you to create a move for a fighter.
     - You have to choose a fighter first!
     - MovesType: Atk or Spa
@@ -550,7 +551,7 @@
     - You have to choose a fighter first!
 * **battle\_config** `<parameter>` `<value>`
     - Allow you to customize some battle settings.
-    - parameters: paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage
+    - parameters: paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage, show hp, min_multishot, max_multishot, burn_damage, freeze_damage, confusion_rate, enraged_bonus, stolen_stat
 * **fight**
     - Allow you to join the battle!
 * **use\_move** `<MoveName>` `<Target_ID>`
