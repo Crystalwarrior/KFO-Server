@@ -345,7 +345,7 @@
 * **save\_hub** `<name>` `[read_only]`
     - Save the current Hub in the server's `storage/hubs/read_only/<name>.yaml` or `storage/hubs/write_read/<name>.yaml` file.
     - If blank and you're a mod, it will save to server's `config/areas_new.yaml` for the server owner to approve.
-    - If `[read_only]` is a parameter in the arguments then none can rewrite the current musiclist
+    - If `[read_only]` is a parameter in the arguments then none can rewrite the current hub.
 * **load\_hub** `<name>`
     - Load Hub data from the server's `storage/hubs/read_only/<name>.yaml` or `storage/hubs/write_read/<name>.yaml` file.
     - If blank and you're a mod, it will reload the server's `config/areas.yaml`.
