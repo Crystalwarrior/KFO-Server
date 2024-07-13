@@ -342,11 +342,12 @@
 * **hub** `[id/name]`
     - List hubs, or go to another hub.
 ### Saving/loading
-* **save\_hub** `<name>`
-    - Save the current Hub in the server's `storage/hubs/<name>.yaml` file.
+* **save\_hub** `<name>` `[read_only]`
+    - Save the current Hub in the server's `storage/hubs/read_only/<name>.yaml` or `storage/hubs/write_read/<name>.yaml` file.
     - If blank and you're a mod, it will save to server's `config/areas_new.yaml` for the server owner to approve.
+    - If `[read_only]` is a parameter in the arguments then none can rewrite the current musiclist
 * **load\_hub** `<name>`
-    - Load Hub data from the server's `storage/hubs/<name>.yaml` file.
+    - Load Hub data from the server's `storage/hubs/read_only/<name>.yaml` or `storage/hubs/write_read/<name>.yaml` file.
     - If blank and you're a mod, it will reload the server's `config/areas.yaml`.
 * **overlay\_hub** `<name>`
     - Overlay Hub data from the server's `storage/hubs/<name>.yaml` file on top of the current hub, only applying properties defined in that yaml.
@@ -569,6 +570,18 @@
     - Allow you to skip the turn
 * **force\_skip\_move** `<Target_ID>`
     - Force a fighter to skip the turn
+* **create\_guild** `<NameGuild>`
+    - Allow you to create a guild
+* **info\_guild**
+    - Send info about your guild
+* **join\_guild** `<Target_ID>`
+    - Allow the guild leader to let a fighter to join the guild
+* **leave\_guild** `<Target_ID>`
+    - Allow you to leave your current guid
+* **close\_guild** `<GuildName>`
+    - Allow GM to close all guilds if arg is "", or to close a specific guild is arg is GuildName
+* **battle\_effects**
+    - Show all available battle effects
 ## In-Character Commands
 * **/a** `[id(s)]` `[msg]`
     - Put this in the In-Character chat.
