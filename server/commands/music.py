@@ -262,7 +262,7 @@ def ooc_cmd_musiclists(client, arg):
         except:
             continue
 
-    for F in os.listdir("storage/musiclists/write_read/"):
+    for F in os.listdir("storage/musiclists/"):
         try:
             if F.lower().endswith(".yaml"):
                 musiclist_editable.append(F[:-5])
@@ -298,7 +298,7 @@ def ooc_cmd_musiclist(client, arg):
             if os.path.isfile(f"storage/musiclists/read_only/{arg}.yaml"):
                 client.load_music(f"storage/musiclists/read_only/{arg}.yaml")
             else:
-                client.load_music(f"storage/musiclists/write_read/{arg}.yaml")
+                client.load_music(f"storage/musiclists/{arg}.yaml")
             client.music_ref = arg
             client.send_ooc(f"Loading local musiclist {arg}...")
         client.refresh_music()
@@ -324,7 +324,7 @@ def ooc_cmd_area_musiclist(client, arg):
             if os.path.isfile(f"storage/musiclists/read_only/{arg}.yaml"):
                 client.area.load_music(f"storage/musiclists/read_only/{arg}.yaml")
             else:
-                client.area.load_music(f"storage/musiclists/write_read/{arg}.yaml")
+                client.area.load_music(f"storage/musiclists/{arg}.yaml")
             client.area.music_ref = arg
             client.send_ooc(f"Loading area musiclist {arg}...")
         client.server.client_manager.refresh_music(client.area.clients)
@@ -350,7 +350,7 @@ def ooc_cmd_hub_musiclist(client, arg):
             if os.path.isfile(f"storage/musiclists/read_only/{arg}.yaml"):
                 client.area.area_manager.load_music(f"storage/musiclists/read_only/{arg}.yaml")
             else:
-                client.area.area_manager.load_music(f"storage/musiclists/write_read/{arg}.yaml")
+                client.area.area_manager.load_music(f"storage/musiclists/{arg}.yaml")
             client.area.area_manager.music_ref = arg
             client.send_ooc(f"Loading hub musiclist {arg}...")
         client.server.client_manager.refresh_music(
@@ -436,13 +436,13 @@ def ooc_cmd_musiclist_save(client, arg):
     if len(args) > 2 and args[2].lower() == "read_only":
         filepath = f"storage/musiclists/read_only/{name}.yaml"
     else:
-        filepath = f"storage/musiclists/write_read/{name}.yaml"
+        filepath = f"storage/musiclists/{name}.yaml"
 
     if os.path.isfile(f"storage/musiclists/read_only/{name}.yaml"):
         raise ArgumentError(f"Musiclist '{name}' already exists and it is read-only!")
-    if os.path.isfile(f"storage/musiclists/write_read/{name}.yaml") and len(args) > 2 and args[2].lower() == "read_only":
+    if os.path.isfile(f"storage/musiclists/{name}.yaml") and len(args) > 2 and args[2].lower() == "read_only":
         try:
-            os.remove(f"storage/musiclists/write_read/{name}.yaml")
+            os.remove(f"storage/musiclists/{name}.yaml")
         except:
             raise AreaError(f"{args[0]} hasn't been removed from write and read folder!")
         
