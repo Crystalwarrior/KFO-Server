@@ -472,7 +472,7 @@ class Area:
             if os.path.isfile(f"storage/musiclists/read_only/{self.music_ref}.yaml"):
                 self.load_music(f"storage/musiclists/read_only/{self.music_ref}.yaml")
             else:
-                self.load_music(f"storage/musiclists/write_read/{self.music_ref}.yaml")
+                self.load_music(f"storage/musiclists/{self.music_ref}.yaml")
 
         if "client_music" in area:
             self.client_music = area["client_music"]
