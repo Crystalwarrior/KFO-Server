@@ -77,6 +77,8 @@ class Bridgebot(commands.Bot):
             for hub in self.server.hub_manager.hubs:
                 if len(hub.clients) == 0:
                     continue
+                if not hub.can_getareas or hub.hide_clients:
+                    continue
                 msg += f"**[={hub.name}=]**\n"
                 for area in hub.areas:
                     if area.hidden:
