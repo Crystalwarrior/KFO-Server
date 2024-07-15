@@ -115,7 +115,7 @@ def ooc_cmd_save_hub(client, arg):
             if len(args) > 2 and args[2].lower() == "read_only":
                 path = "storage/hubs/read_only"
             else:
-                path = "storage/hubs/write_read"
+                path = "storage/hubs"
             num_files = len(
                 [f for f in os.listdir(path) if os.path.isfile(
                     os.path.join(path, f))]
@@ -127,9 +127,9 @@ def ooc_cmd_save_hub(client, arg):
             try:
                 if os.path.isfile(f"storage/hubs/read_only/{derelative(args[0])}.yaml"):
                     raise ArgumentError(f"Hub {args[0]} already exists and it is read-only!")
-                if os.path.isfile(f"storage/hubs/write_read/{derelative(args[0])}.yaml") and len(args) > 2 and args[2].lower() == "read_only":
+                if os.path.isfile(f"storage/hubs/{derelative(args[0])}.yaml") and len(args) > 2 and args[2].lower() == "read_only":
                     try:
-                        os.remove(f"storage/hubs/write_read/{derelative(args[0])}.yaml")
+                        os.remove(f"storage/hubs/{derelative(args[0])}.yaml")
                     except:
                         raise AreaError(f"{args[0]} hasn't been removed from write and read folder!")
                 args[0] = f"{path}/{derelative(args[0])}.yaml"
@@ -174,7 +174,7 @@ def ooc_cmd_load_hub(client, arg):
         if os.path.isfile(f"storage/hubs/read_only/{arg}.yaml"):
             path = "storage/hubs/read_only"
         else:
-            path = "storage/hubs/write_read"
+            path = "storage/hubs"
         arg = f"{path}/{derelative(arg)}.yaml"
         if not os.path.isfile(arg):
             raise ArgumentError(f"File not found: {arg}")
@@ -256,7 +256,7 @@ def ooc_cmd_list_hubs(client, arg):
         except:
             continue
 
-    for F in os.listdir("storage/hubs/write_read/"):
+    for F in os.listdir("storage/hubs/"):
         try:
             if F.lower().endswith(".yaml"):
                 hubs_editable.append(F[:-5])
