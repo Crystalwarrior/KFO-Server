@@ -176,7 +176,7 @@ def ooc_cmd_load_hub(client, arg):
             path = "storage/hubs/read_only"
         else:
             path = "storage/hubs"
-        arg = f"{path}/{derelative(arg).replace("/", "")}.yaml"
+        arg = f"{path}/{derelative(arg).replace('/', '')}.yaml"
         if not os.path.isfile(arg):
             raise ArgumentError(f"File not found: {arg}")
         with open(arg, "r", encoding="utf-8") as stream:
