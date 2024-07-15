@@ -112,7 +112,7 @@ def ooc_cmd_save_hub(client, arg):
             raise ArgumentError("Filename must be at least 3 symbols long!")
     try:
         if args[0] != "":
-            name = derelative(args[0]).replace("/", ""))
+            name = derelative(args[0]).replace("/", "")
             if len(args) > 2 and args[1].lower() == "read_only":
                 path = "storage/hubs/read_only"
             else:
