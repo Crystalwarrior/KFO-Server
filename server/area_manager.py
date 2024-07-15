@@ -214,8 +214,10 @@ class AreaManager:
                     if hub[entry] == "":
                         self.clear_music()
                     else:
-                        self.load_music(
-                            f"storage/musiclists/{hub[entry]}.yaml")
+                        if os.path.isfile(f"storage/musiclists/read_only/{hub[entry]}.yaml"):
+                            self.load_music(f"storage/musiclists/read_only/{hub[entry]}.yaml")
+                        else:
+                            self.load_music(f"storage/musiclists/{hub[entry]}.yaml")
                 if entry == "char_list_ref":
                     self.load_characters(hub[entry])
 
