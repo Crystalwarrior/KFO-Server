@@ -112,7 +112,8 @@ def ooc_cmd_save_hub(client, arg):
             raise ArgumentError("Filename must be at least 3 symbols long!")
     try:
         if args[0] != "":
-            if len(args) > 2 and args[2].lower() == "read_only":
+            name = derelative(args[0]).replace("\", "")
+            if len(args) > 2 and args[1].lower() == "read_only":
                 path = "storage/hubs/read_only"
             else:
                 path = "storage/hubs"
@@ -125,14 +126,14 @@ def ooc_cmd_save_hub(client, arg):
                     "Server storage full! Please contact the server host to resolve this issue."
                 )
             try:
-                if os.path.isfile(f"storage/hubs/read_only/{derelative(args[0])}.yaml"):
-                    raise ArgumentError(f"Hub {args[0]} already exists and it is read-only!")
-                if os.path.isfile(f"storage/hubs/{derelative(args[0])}.yaml") and len(args) > 2 and args[2].lower() == "read_only":
+                if os.path.isfile(f"storage/hubs/read_only/{name}.yaml"):
+                    raise ArgumentError(f"Hub {name} already exists and it is read-only!")
+                if os.path.isfile(f"storage/hubs/{name}.yaml") and len(args) > 2 and args[1].lower() == "read_only":
                     try:
-                        os.remove(f"storage/hubs/{derelative(args[0])}.yaml")
+                        os.remove(f"storage/hubs/{name}.yaml")
                     except:
-                        raise AreaError(f"{args[0]} hasn't been removed from write and read folder!")
-                args[0] = f"{path}/{derelative(args[0])}.yaml"
+                        raise AreaError(f"{name} hasn't been removed from write and read folder!")
+                name = f"{path}/{name}.yaml"
                 hub = client.area.area_manager.save(ignore=["can_gm", "max_areas"])
                 if len(args) == 2 and args[1] == "read_only":
                     hub["read_only"] = True
@@ -141,7 +142,7 @@ def ooc_cmd_save_hub(client, arg):
                 for i in range(0, len(hub["areas"])):
                     if "music_ref" in hub["areas"][i] and hub["areas"][i]["music_ref"] == "unsaved":
                         del hub["areas"][i]["music_ref"]
-                with open(args[0], "w", encoding="utf-8") as stream:
+                with open(name, "w", encoding="utf-8") as stream:
                     yaml.dump(
                         hub,
                         stream,
@@ -150,8 +151,8 @@ def ooc_cmd_save_hub(client, arg):
             except ArgumentError:
                 raise
             except Exception:
-                raise AreaError(f"File path {args[0]} is invalid!")
-            client.send_ooc(f"Saving as {args[0]}...")
+                raise AreaError(f"File path {name} is invalid!")
+            client.send_ooc(f"Saving as {name}...")
         else:
             client.server.hub_manager.save("config/areas_new.yaml")
             client.send_ooc(
@@ -175,7 +176,7 @@ def ooc_cmd_load_hub(client, arg):
             path = "storage/hubs/read_only"
         else:
             path = "storage/hubs"
-        arg = f"{path}/{derelative(arg)}.yaml"
+        arg = f"{path}/{derelative(arg).replace("\", "")}.yaml"
         if not os.path.isfile(arg):
             raise ArgumentError(f"File not found: {arg}")
         with open(arg, "r", encoding="utf-8") as stream:
