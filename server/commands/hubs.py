@@ -112,7 +112,7 @@ def ooc_cmd_save_hub(client, arg):
             raise ArgumentError("Filename must be at least 3 symbols long!")
     try:
         if args[0] != "":
-            name = derelative(args[0]).replace("\", "")
+            name = derelative(args[0]).replace("/", "")
             if len(args) > 2 and args[1].lower() == "read_only":
                 path = "storage/hubs/read_only"
             else:
@@ -176,7 +176,7 @@ def ooc_cmd_load_hub(client, arg):
             path = "storage/hubs/read_only"
         else:
             path = "storage/hubs"
-        arg = f"{path}/{derelative(arg).replace("\", "")}.yaml"
+        arg = f"{path}/{derelative(arg).replace("/", "")}.yaml"
         if not os.path.isfile(arg):
             raise ArgumentError(f"File not found: {arg}")
         with open(arg, "r", encoding="utf-8") as stream:
