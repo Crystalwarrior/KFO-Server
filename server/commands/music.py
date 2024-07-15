@@ -428,19 +428,19 @@ def ooc_cmd_musiclist_save(client, arg):
 
     if name == "unsaved":
         if len(args) >= 2:
-            name = args[1]
+            name = derelative(args[1]).replace("/", "")
         else:
             client.send_ooc("This is a new musiclist, you should give it a name")
             return
 
-    if len(args) > 2 and args[2].lower() == "read_only":
+    if len(args) > 2 and args[1].lower() == "read_only":
         filepath = f"storage/musiclists/read_only/{name}.yaml"
     else:
         filepath = f"storage/musiclists/{name}.yaml"
 
     if os.path.isfile(f"storage/musiclists/read_only/{name}.yaml"):
         raise ArgumentError(f"Musiclist '{name}' already exists and it is read-only!")
-    if os.path.isfile(f"storage/musiclists/{name}.yaml") and len(args) > 2 and args[2].lower() == "read_only":
+    if os.path.isfile(f"storage/musiclists/{name}.yaml") and len(args) > 2 and args[1].lower() == "read_only":
         try:
             os.remove(f"storage/musiclists/{name}.yaml")
         except:
