@@ -587,7 +587,7 @@
     - Examples: /create_item steak hp x1.5, /create_item rottenmeat hp +-20
 * **give\_item** `<Target_ID>` `<ItemName>`
     - This command will give an item to a fighter
-* **use\_item**
+* **use\_item** `<ItemName>`
     - This command will let you use an item from your bag
 ## In-Character Commands
 * **/a** `[id(s)]` `[msg]`
