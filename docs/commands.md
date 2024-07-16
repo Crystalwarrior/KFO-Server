@@ -342,11 +342,12 @@
 * **hub** `[id/name]`
     - List hubs, or go to another hub.
 ### Saving/loading
-* **save\_hub** `<name>`
-    - Save the current Hub in the server's `storage/hubs/<name>.yaml` file.
+* **save\_hub** `<name>` `[read_only]`
+    - Save the current Hub in the server's `storage/hubs/read_only/<name>.yaml` or `storage/hubs/<name>.yaml` file.
     - If blank and you're a mod, it will save to server's `config/areas_new.yaml` for the server owner to approve.
+    - If `[read_only]` is a parameter in the arguments then none can rewrite the current hub.
 * **load\_hub** `<name>`
-    - Load Hub data from the server's `storage/hubs/<name>.yaml` file.
+    - Load Hub data from the server's `storage/hubs/read_only/<name>.yaml` or `storage/hubs/<name>.yaml` file.
     - If blank and you're a mod, it will reload the server's `config/areas.yaml`.
 * **overlay\_hub** `<name>`
     - Overlay Hub data from the server's `storage/hubs/<name>.yaml` file on top of the current hub, only applying properties defined in that yaml.
@@ -526,18 +527,19 @@
 * **musiclist\_remove** `<local/area/hub>` `<Category>` `<MusicName>`
     - Allow you to remove a song from a musiclist!
     - Remember to insert a file extension in `<MusicName>`. For songs without extension, put in .music.
-* **musiclist\_save** `<local/area/hub>` `[MusiclistName]`
+* **musiclist\_save** `<local/area/hub>` `[MusiclistName]` `[read_only]`
     - Allow you to save a musiclist on server list!
     - If the musiclist you're editing is already in the server list, you don't have to add `[MusiclistName]`
+    - If `[read_only]` is a parameter in the arguments then none can rewrite the current musiclist
 ## Battle
 * **choose\_fighter** `<NameFighter>`
     - Allow you to choose a fighter from the list of the server.
     - You will receive its stats and its moves.
 * **info\_fighter**
     - Send info about your fighter.
-* **create\_fighter** `<FighterName>` `<HP>` `<ATK>` `<DEF>` `<SPA>` `<SPD>` `<SPE>`
+* **create\_fighter** `<FighterName>` `<HP>` `<MANA>` `<ATK>` `<DEF>` `<SPA>` `<SPD>` `<SPE>`
     - Allow you to create a fighter and to customize its stats.
-* **create\_move** `<MoveName>` `<MovesType>` `<Power>` `<Accuracy>` `<Effects>`
+* **create\_move** `<MoveName>` `<ManaCost>` `<MovesType>` `<Power>` `<Accuracy>` `<Effects>`
     - Allow you to create a move for a fighter.
     - You have to choose a fighter first!
     - MovesType: Atk or Spa
@@ -550,7 +552,7 @@
     - You have to choose a fighter first!
 * **battle\_config** `<parameter>` `<value>`
     - Allow you to customize some battle settings.
-    - parameters: paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage
+    - parameters: paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage, show hp, min_multishot, max_multishot, burn_damage, freeze_damage, confusion_rate, enraged_bonus, stolen_stat
 * **fight**
     - Allow you to join the battle!
 * **use\_move** `<MoveName>` `<Target_ID>`
@@ -568,6 +570,18 @@
     - Allow you to skip the turn
 * **force\_skip\_move** `<Target_ID>`
     - Force a fighter to skip the turn
+* **create\_guild** `<NameGuild>`
+    - Allow you to create a guild
+* **info\_guild**
+    - Send info about your guild
+* **join\_guild** `<Target_ID>`
+    - Allow the guild leader to let a fighter to join the guild
+* **leave\_guild** `<Target_ID>`
+    - Allow you to leave your current guid
+* **close\_guild** `<GuildName>`
+    - Allow GM to close all guilds if arg is "", or to close a specific guild is arg is GuildName
+* **battle\_effects**
+    - Show all available battle effects
 ## In-Character Commands
 * **/a** `[id(s)]` `[msg]`
     - Put this in the In-Character chat.
