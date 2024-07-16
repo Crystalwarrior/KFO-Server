@@ -265,6 +265,7 @@ class Area:
         self.fighters = []
         self.num_selected_move = 0
         self.battle_guilds = {}
+        self.battle_items = {}
 
         # Battle system customization
         self.battle_paralysis_rate = 3
