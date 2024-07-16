@@ -868,6 +868,7 @@ def send_info_guild(client):
     client.send_ooc(msg)
 
 
+@mod_only(hub_owners=True)
 def ooc_cmd_create_item(client, arg):
     """
     This command will let you create an item
@@ -899,6 +900,7 @@ def ooc_cmd_create_item(client, arg):
     client.send_ooc(f"{args[0]} has been created!")
 
 
+@mod_only(hub_owners=True)
 def ooc_cmd_give_item(client, arg):
     """
     This command will give an item to a fighter
