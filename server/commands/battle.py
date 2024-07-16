@@ -4,6 +4,7 @@ import os
 import shlex
 
 from server.client_manager import ClientManager
+from server.constants import TargetType
 
 from . import mod_only
 from .. import commands
@@ -31,6 +32,9 @@ __all__ = [
     "ooc_cmd_leave_guild",
     "ooc_cmd_battle_effects",
     "ooc_cmd_close_guild",
+    "ooc_cmd_create_item",
+    "ooc_cmd_give_item",
+    "ooc_cmd_use_item",
 ]
 
 
@@ -79,6 +83,10 @@ def send_info_fighter(client):
     if client.battle.status != None:
         msg += f"Status 🌈: {client.battle.status}\n"
     msg += f"\nHP 💗: {round(client.battle.hp,2)}/{client.battle.maxhp}\nMANA 💧: {round(client.battle.mana,2)}\nATK 🗡️: {round(client.battle.atk,2)}\nDEF 🛡️: {round(client.battle.defe,2)}\nSPA ✨: {round(client.battle.spa,2)}\nSPD 🔮: {round(client.battle.spd,2)}\nSPE 💨: {round(client.battle.spe,2)}\n\n"
+    if len(client.battle.bag) > 0:
+        msg += "Bag 🎒:\n"
+        for item in client.battle.bag:
+            msg += f"- {item}\n"
     for move in client.battle.moves:
         move_id = client.battle.moves.index(move)
         msg += f"🌠 [{move_id}]{move.name} 🌠:\nManaCost 💧: {move.cost}\nType 💠: {move.type}\nPower 💪: {move.power}\nAccuracy 🔎: {move.accuracy}%\n"
@@ -98,6 +106,10 @@ def send_stats_fighter(client):
     if client.battle.status != None:
         msg += f"Status 🌈: {client.battle.status}\n"
     msg += f"\nHP 💗: {round(client.battle.hp,2)}/{client.battle.maxhp}\nMANA 💧: {round(client.battle.mana,2)}\nATK 🗡️: {round(client.battle.atk,2)}\nDEF 🛡️: {round(client.battle.defe,2)}\nSPA ✨: {round(client.battle.spa,2)}\nSPD 🔮: {round(client.battle.spd,2)}\nSPE 💨: {round(client.battle.spe,2)}\n\n"
+    if len(client.battle.bag) > 0:
+        msg += "Bag 🎒:\n"
+        for item in client.battle.bag:
+            msg += f"- {item}\n"
     client.send_ooc(msg)
 
 
@@ -854,6 +866,144 @@ def send_info_guild(client):
                 )
 
     client.send_ooc(msg)
+
+
+def ooc_cmd_create_item(client, arg):
+    """
+    This command will let you create an item
+    Examples: /create_item steak hp x1.5, /create_item rottenmeat hp +-20
+    Usage: /create_item <ItemName> <stat> <operation>
+    """
+    args = shlex.split(arg)
+    if len(args) < 3:
+        client.send_ooc("Argument error\n: /create_item <stat> <operation>")
+        return
+    if args[1].lower() not in ["hp", "mana", "atk", "def", "spa", "spd", "spe"]:
+        client.send_ooc("Argument error\n: /create_item <ItemName> <stat> <operation>")
+        return
+    if args[2][0] not in ["x", "+"]:
+        client.send_ooc("Argument error\n: /create_item <ItemName> <stat> <operation>")
+        return
+    try:
+        num = float(args[2][1:])
+    except:
+        client.send_ooc("Argument error\n: /create_item <ItemName> <stat> <operation>")
+        return
+    if args[2][0] == "x" and float(args[2][1:]) < 0:
+        client.send_ooc("you cannot multiply for a negative number")
+        return
+    client.area.battle_items[f"{args[0]}"] = {}
+    client.area.battle_items[f"{args[0]}"]["stat"] = args[1].lower()
+    client.area.battle_items[f"{args[0]}"]["operation"] = args[2][0]
+    client.area.battle_items[f"{args[0]}"]["number"] = num
+    client.send_ooc(f"{args[0]} has been created!")
+
+
+def ooc_cmd_give_item(client, arg):
+    """
+    This command will give an item to a fighter
+    Usage: /give_item <TargetID> <ItemName>
+    """
+    args = shlex.split(arg)
+    if len(args) < 2:
+        client.send_ooc("Argument error\n: /give_item <TargetID> <item>")
+        return
+    if not args[0].isdigit():
+        client.send_ooc("Argument error\n: /give_item <TargetID> <item>")
+        return
+    try:
+        target = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(args[0]), False
+        )[0]
+    except:
+        client.send_ooc("Argument error\n: /give_item <TargetID> <item>")
+        return
+    if target not in client.area.clients:
+        client.send_ooc("Target is not in the current area!")
+        return
+    if args[1] not in client.area.battle_items:
+        client.send_ooc("Item doesn't exist!")
+        return
+    if target.battle is None:
+        client.send_ooc("Target isn't using a fighter in this moment!")
+        return
+    target.battle.bag.append(args[1])
+    client.send_ooc(f"{args[1]} has been given to {target.battle.fighter}")
+    send_stats_fighter(target)
+    target.send_ooc(f"You have obtained {args[1]}")
+
+
+def ooc_cmd_use_item(client, arg):
+    """
+    This command will let you use an item from your bag
+    Usage: /use_item <ItemName>
+    """
+    if client.battle is None:
+        client.send_ooc("You are not using fighter in this moment!")
+        return
+    if arg not in client.battle.bag:
+        client.send_ooc("Item not found in your bag")
+        return
+    item = client.area.battle_items[arg]
+    if item["stat"] == "hp":
+        if item["operation"] == "x":
+            client.battle.hp *= item["number"]
+        else:
+            client.battle.hp += item["number"]
+        if client.battle.hp > client.battle.maxhp:
+            client.battle.hp = client.battle.maxhp
+        if client.battle.hp <= 0:
+            client.battle.hp = 1
+    if item["stat"] == "mana":
+        if item["operation"] == "x":
+            client.battle.mana *= item["number"]
+        else:
+            client.battle.mana += item["number"]
+    if item["stat"] == "atk":
+        if item["operation"] == "x":
+            client.battle.atk *= item["number"]
+        else:
+            client.battle.atk += item["number"]
+    if item["stat"] == "def":
+        if item["operation"] == "x":
+            client.battle.defe *= item["number"]
+        else:
+            client.battle.defe += item["number"]
+    if item["stat"] == "spa":
+        if item["operation"] == "x":
+            client.battle.spa *= item["number"]
+        else:
+            client.battle.spa += item["number"]
+    if item["stat"] == "spd":
+        if item["operation"] == "x":
+            client.battle.spd *= item["number"]
+        else:
+            client.battle.spd += item["number"]
+    if item["stat"] == "spe":
+        if item["operation"] == "x":
+            client.battle.spe *= item["number"]
+        else:
+            client.battle.spe += item["number"]
+
+    battle_send_ic(client, msg=f"~{client.battle.fighter}~ uses {arg} from the bag")
+
+    if (item["operation"] == "+" and item["number"] < 0) or (
+        item["operation"] == "x" and item["number"] < 1
+    ):
+        battle_send_ic(
+            client,
+            msg=f"~{client.battle.fighter}~'s {item['stat']} goes down",
+            effect="statup",
+            shake=1,
+        )
+    else:
+        battle_send_ic(
+            client,
+            msg=f"~{client.battle.fighter}~'s {item['stat']} goes up",
+            effect="statup",
+        )
+    client.battle.bag.remove(arg)
+    send_stats_fighter(client)
 
 
 def ooc_cmd_use_move(client, arg):
