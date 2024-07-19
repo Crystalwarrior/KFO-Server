@@ -112,9 +112,7 @@ class Bridgebot(commands.Bot):
                 msg += "\n"
             msg += f"Current online: {number_players} clients\n"
             if len(msg) > 2000:
-                    msgchunks = [msg[i:i+2000] for i in range(0, len(msg), 2000)]
-                    for chunk in msgchunks:
-                        await ctx.send(chunk)
+                await ctx.send(f"Current online: {number_players} clients\nArea information hidden due to char limit.")
             else:
                 await ctx.send(msg)
 
