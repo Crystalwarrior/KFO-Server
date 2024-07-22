@@ -602,7 +602,7 @@ class ClientManager:
             Check if the client can use OOC or not.
             :returns: how many seconds the client must wait to use OOC
             """
-            if self.is_mod or self in self.area.owners:
+            if self.is_mod:
                 return 0
             if self.ooc_mute_time:
                 if (
