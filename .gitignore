@@ -63,7 +63,7 @@ coverage.xml
 .pytest_cache/
 
 # JetBrains
-/.idea/
+.idea/
 
 ### VSCode
 .vscode/
