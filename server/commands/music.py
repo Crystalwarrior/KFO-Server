@@ -128,16 +128,29 @@ def ooc_cmd_jukebox_skip(client, arg):
 
 def ooc_cmd_jukebox(client, arg):
     """
-    Show information about the jukebox's queue and votes.
-    Usage: /jukebox
+    Command to control the jukebox.
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
-    if not client.area.jukebox:
-        raise ClientError("This area does not have a jukebox.")
-    if len(client.area.jukebox_votes) == 0:
-        client.send_ooc("The jukebox has no songs in it.")
-    else:
+
+    def jukebox_help() -> str:
+        return """
+Jukebox commands:
+/jukebox help - Show this message.
+/jukebox info - Show the current jukebox queue.
+/jukebox mode <mode> - Set jukebox mode (vote, queue).
+   vote - Song plays are counted as a vote.
+   queue - Songs are queued instead of played.
+   shuffle - Songs are shuffled instead of played.
+   off - Turns off the jukebox. Songs played are played normally.
+/jukebox skip - Skip the current track."""
+
+    def jukebox_info() -> str:
+        """
+        Returns information about the jukebox's queue and votes.
+        """
+
+        if len(client.area.jukebox_votes) == 0:
+            return "The jukebox has no songs in it."
+
         total = 0
         songs = []
         voters = dict()
@@ -175,7 +188,13 @@ def ooc_cmd_jukebox(client, arg):
                 message += "-- CHANCE: " + \
                     str(round(chance[song] / total * 100))
 
-        client.send_ooc(f"The jukebox has the following songs in it:{message}")
+        return f"The jukebox has the following songs in it:{message}"
+
+    if len(arg) == 0:
+        client.send_ooc(jukebox_help())
+        return
+
+    args = shlex.split(arg)
 
 
 def ooc_cmd_play(client, arg):
