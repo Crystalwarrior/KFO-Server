@@ -36,28 +36,13 @@ def ooc_cmd_music(client, arg):
 
 
 def ooc_cmd_currentmusic(client, arg):
+    # New command: /music showcurrent
     ooc_cmd_music(client, arg)
 
 
 def ooc_cmd_getmusic(client, arg):
-    """
-    Grab the last played track in this area.
-    Usage: /getmusic
-    """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
-    if client.area.music == "":
-        raise ClientError("There is no music currently playing.")
-    client.send_command(
-        "MC",
-        client.area.music,
-        -1,
-        "",
-        client.area.music_looping,
-        0,
-        client.area.music_effects,
-    )
-    client.send_ooc(f"Playing track '{client.area.music}'.")
+    # New command: /music playlast
+    ooc_cmd_music(client, arg)
 
 
 @mod_only(area_owners=True)
