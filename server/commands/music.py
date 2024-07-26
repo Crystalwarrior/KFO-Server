@@ -36,29 +36,7 @@ def ooc_cmd_music(client, arg):
 
 
 def ooc_cmd_currentmusic(client, arg):
-    # New command: /music showcurrent
-    """
-    Show the current music playing.
-    Usage: /currentmusic
-    """
-    if len(arg) != 0:
-        raise ArgumentError("This command has no arguments.")
-    if client.area.music == "":
-        raise ClientError("There is no music currently playing.")
-    if client.is_mod:
-        client.send_ooc(
-            "The current music is '{}' and was played by {} ({}).".format(
-                client.area.music,
-                client.area.music_player,
-                client.area.music_player_ipid,
-            )
-        )
-    else:
-        client.send_ooc(
-            "The current music is '{}' and was played by {}.".format(
-                client.area.music, client.area.music_player
-            )
-        )
+    client.area.music_manager.handle_music_cmd(client, arg)
 
 
 def ooc_cmd_getmusic(client, arg):

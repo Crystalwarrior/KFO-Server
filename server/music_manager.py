@@ -2,6 +2,8 @@ import os
 import shlex
 from pathlib import Path
 
+from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
+
 
 script_dir = Path(os.path.dirname(os.path.realpath(__file__)))
 
@@ -20,10 +22,31 @@ class MusicManager:
             client.send_ooc(self.helptext)
             return
 
-        client.send_ooc(arg)
-        print(type(arg))
-        print(arg)
-        client.send_ooc("hi")
+        subcmd = args[0]
+        if subcmd == 'showcurrent':
+            self.cmd_showcurrent(client, args[1:])
+        else:
+            client.send_ooc("Unknown command. Use /music help for a list of commands.")
+
+    def cmd_showcurrent(self, client, arg):
+        if len(arg) != 0:
+            raise ArgumentError("This command has no arguments.")
+        if client.area.music == "":
+            raise ClientError("There is no music currently playing.")
+        if client.is_mod:
+            client.send_ooc(
+                "The current music is '{}' and was played by {} ({}).".format(
+                    client.area.music,
+                    client.area.music_player,
+                    client.area.music_player_ipid,
+                )
+            )
+        else:
+            client.send_ooc(
+                "The current music is '{}' and was played by {}.".format(
+                    client.area.music, client.area.music_player
+                )
+            )
 
     def add_music(self, music):
         self.music.append(music)
