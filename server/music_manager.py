@@ -1,11 +1,19 @@
 import os
 import shlex
 from pathlib import Path
+from enum import Enum
 
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 
 script_dir = Path(os.path.dirname(os.path.realpath(__file__)))
+
+
+class MusicMode(Enum):
+    NORMAL = "normal"
+    QUEUE = "queue"
+    SHUFFLE = "shuffle"
+    VOTE = "vote"
 
 
 class MusicManager:
@@ -14,6 +22,7 @@ class MusicManager:
         self.area = area
         self.music = []
         self.helptext = MusicManager.load_help()
+        self.musicmode = MusicMode.NORMAL
 
     def handle_music_cmd(self, client, arg):
         args = shlex.split(arg)
@@ -65,6 +74,18 @@ class MusicManager:
             client.area.music_effects,
         )
         client.send_ooc(f"Playing track '{client.area.music}'.")
+
+    def cmd_mode(self, client, arg):
+        if not client.is_mod or self.area.is_owner(client):
+            raise ClientError("You need to be a moderator or area owner to change the music mode.")
+
+        if len(arg) != 1 or arg[0] not in (item.value for item in MusicMode):
+            raise ArgumentError("Usage: /music mode normal/queue/shuffle/vote. See /music help for more information.")
+
+        new_mode = MusicMode(arg[0])
+        self.musicmode = new_mode
+
+        client.send_ooc(f"Music mode set to '{self.musicmode.value}'.")
 
     @staticmethod
     def load_help():

@@ -47,6 +47,7 @@ def ooc_cmd_getmusic(client, arg):
 
 @mod_only(area_owners=True)
 def ooc_cmd_jukebox_toggle(client, arg):
+    # New command: /music mode
     """
     Toggle jukebox mode. While jukebox mode is on, all music changes become
     votes for the next track, rather than changing the track immediately.
