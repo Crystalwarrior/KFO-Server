@@ -2235,6 +2235,13 @@ class Area:
         else:
             self.send_command("BN", self.background)
 
+    def is_owner(self, client):
+        """
+        Check if a client is an owner of the area.
+        :param client: client
+        """
+        return client in self.owners
+
     class JukeboxVote:
         """Represents a single vote cast for the jukebox."""
 
