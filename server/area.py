@@ -1,5 +1,6 @@
 from server import database
 from server import commands
+from server.music_manager import MusicManager
 from server.evidence import EvidenceList
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server.constants import MusicEffect, derelative
@@ -102,6 +103,7 @@ class Area:
         self.clients = set()
         self.invite_list = set()
         self.area_manager = area_manager
+        self.music_manager = MusicManager(self)
         self._name = name
 
         # Initialize prefs
