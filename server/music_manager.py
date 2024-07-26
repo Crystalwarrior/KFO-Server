@@ -26,7 +26,7 @@ class MusicManager:
         if subcmd == 'showcurrent':
             self.cmd_showcurrent(client, args[1:])
         else:
-            client.send_ooc("Unknown command. Use /music help for a list of commands.")
+            client.send_ooc(f"Unknown subcommand {subcmd}. Use /music help for a list of commands.")
 
     def cmd_showcurrent(self, client, arg):
         if len(arg) != 0:

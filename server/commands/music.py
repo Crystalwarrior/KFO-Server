@@ -36,7 +36,7 @@ def ooc_cmd_music(client, arg):
 
 
 def ooc_cmd_currentmusic(client, arg):
-    client.area.music_manager.handle_music_cmd(client, arg)
+    ooc_cmd_music(client, arg)
 
 
 def ooc_cmd_getmusic(client, arg):
