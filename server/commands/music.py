@@ -10,6 +10,7 @@ from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 from . import mod_only
 
 __all__ = [
+    "ooc_cmd_music",
     "ooc_cmd_currentmusic",
     "ooc_cmd_getmusic",
     "ooc_cmd_jukebox_toggle",
@@ -30,7 +31,12 @@ __all__ = [
 ]
 
 
+def ooc_cmd_music(client, arg):
+    client.area.music_manager.handle_music_cmd(client, arg)
+
+
 def ooc_cmd_currentmusic(client, arg):
+    # New command: /music showcurrent
     """
     Show the current music playing.
     Usage: /currentmusic
@@ -132,16 +138,7 @@ def ooc_cmd_jukebox(client, arg):
     """
 
     def jukebox_help() -> str:
-        return """
-Jukebox commands:
-/jukebox help - Show this message.
-/jukebox info - Show the current jukebox queue.
-/jukebox mode <mode> - Set jukebox mode (vote, queue).
-   vote - Song plays are counted as a vote.
-   queue - Songs are queued instead of played.
-   shuffle - Songs are shuffled instead of played.
-   off - Turns off the jukebox. Songs played are played normally.
-/jukebox skip - Skip the current track."""
+        return ''
 
     def jukebox_info() -> str:
         """

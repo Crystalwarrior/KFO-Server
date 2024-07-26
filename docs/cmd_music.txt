@@ -1,0 +1,24 @@
+Music commands:
+/music help - Show this message.
+/music showcurrent - Shows the currently playing song.
+/music playlast - Play the last song that was played.
+/music mode vote/queue/shuffle/normal - Set the music mode.
+   normal - Songs played are played normally.
+   queue - Songs are queued instead of played.
+   vote - Song plays are counted as a vote.
+
+/music skip - Skips the currently playing song if there is another in queue.
+/music info - Show info about current queue/votes
+/music play <link> - Play a song from a link. Must be a direct link to an mp3 file.
+/music playonce <link> - Play a song from a link, but do not loop it.
+/music block <id> - Block a player from playing songs.
+/music unblock <id> - Unblock a player from playing songs.
+/music showlists - Shows all available music lists.
+/music loadlist [<path>] - Load a client-side music list. If no argument is passed, reset the list.
+/music loadarealist [<path>] - Load an area-wide music list. If no argument is passed, reset the list.
+/music loadhublist [<path>] - Load a hub-wide music list. If no argument is passed, reset the list.
+/music playrandom - Play a random song from the current list.
+/music rebuildlist - Rebuild the current list.
+/music savelist local/area/hub [<MusiclistName>] [<read_only>] - Save a musiclist on the server list. If the musiclist you're editing is already in the server list, you don't have to add [MusiclistName]
+/music removelist local/area/hub <Category> <MusicName> - Remove a song from a musiclist. Remember to insert a file extension in <MusicName>. For songs without extension, put in .music.
+/music addtolist local/area/hub <Category> <MusicName> [Length] [Path] - Add a song in a loaded musiclist. Remember to insert a file extension in <MusicName> unless you are using the optional [Path] (useful for streamed songs). If Length is 0, song will not loop. If Length is -1, song will loop. Any other value will tell the server the length of the song (in seconds).
