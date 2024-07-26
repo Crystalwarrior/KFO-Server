@@ -23,10 +23,12 @@ class MusicManager:
             return
 
         subcmd = args[0]
-        if subcmd == 'showcurrent':
-            self.cmd_showcurrent(client, args[1:])
-        else:
-            client.send_ooc(f"Unknown subcommand {subcmd}. Use /music help for a list of commands.")
+        cmd_function_name = f"cmd_{subcmd}"
+        if not hasattr(self, cmd_function_name):
+            raise ClientError(f"Unknown subcommand {subcmd}. Use /music help for a list of commands.")
+
+        cmd_function = getattr(self, cmd_function_name)
+        cmd_function(client, args[1:])
 
     def cmd_showcurrent(self, client, arg):
         if len(arg) != 0:
@@ -48,14 +50,21 @@ class MusicManager:
                 )
             )
 
-    def add_music(self, music):
-        self.music.append(music)
-
-    def get_music(self):
-        return self.music
-
-    def remove_music(self, music):
-        self.music.remove(music)
+    def cmd_playlast(self, client, arg):
+        if len(arg) != 0:
+            raise ArgumentError("This command has no arguments.")
+        if client.area.music == "":
+            raise ClientError("There is no music currently playing.")
+        client.send_command(
+            "MC",
+            client.area.music,
+            -1,
+            "",
+            client.area.music_looping,
+            0,
+            client.area.music_effects,
+        )
+        client.send_ooc(f"Playing track '{client.area.music}'.")
 
     @staticmethod
     def load_help():
