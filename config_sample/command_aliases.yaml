@@ -77,7 +77,6 @@ maxplayers: max_players
 minimap: links
 music_list: musiclist
 music_lists: musiclists
-music: currentmusic
 muteooc: ooc_mute
 oocmute: ooc_mute
 oocunmute: ooc_unmute
