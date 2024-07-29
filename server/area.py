@@ -281,6 +281,9 @@ class Area:
         self.battle_enraged_bonus = 2.25
         self.battle_stolen_stat = 10
 
+        # multiple pair
+        self.auto_pair = False
+
     @property
     def name(self):
         """Area's name string. Abbreviation is also updated according to this."""
@@ -589,6 +592,9 @@ class Area:
         if "can_battle" in area:
             self.can_battle = area["can_battle"]
 
+        if "auto_pair" in area:
+            self.auto_pair = area["auto_pair"]
+
     def save(self):
         area = OrderedDict()
         area["area"] = self.name
@@ -663,6 +669,7 @@ class Area:
         if len(self.links) > 0:
             area["links"] = self.links
         area["can_battle"] = self.can_battle
+        area["auto_pair"] = self.auto_pair
         return area
 
     def new_client(self, client):

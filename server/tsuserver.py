@@ -151,6 +151,7 @@ class TsuServer3:
                 asyncio.ensure_future(
                     self.bridgebot.init(self.config["bridgebot"]["token"]), loop=loop
                 )
+                self.bridgebot.add_commands()
             except Exception as ex:
                 # Don't end the whole server if bridgebot destroys itself
                 print(ex)
