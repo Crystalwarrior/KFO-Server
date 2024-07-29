@@ -850,5 +850,6 @@ def ooc_cmd_auto_pair(client, arg):
     Usage: /auto_pair <double/triple>
     """
     if arg.lower() not in ["double", "triple"]:
-         client.send_ooc("Argument Error!\nUsage: /auto_pair <double/triple>")
+        client.send_ooc("Argument Error!\nUsage: /auto_pair <double/triple>")
+        return
     client.area.auto_pair_max = arg.lower()
