@@ -849,6 +849,6 @@ def ooc_cmd_auto_pair(client, arg):
     Set the max of players displayed on the screen.
     Usage: /auto_pair <double/triple>
     """
-    if arg.lower() not in ["double", "triple"]
+    if arg.lower() not in ["double", "triple"]:
          client.send_ooc("Argument Error!\nUsage: /auto_pair <double/triple>")
     client.area.auto_pair_max = arg.lower()
