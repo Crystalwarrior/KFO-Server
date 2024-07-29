@@ -521,6 +521,8 @@
 * **format_timer** `<id> <format>`
     - Format the timer in the current area or hub.
     - Example of format: `Time Left: hh:mm`
+    - Default format: `hh:mm:ss.zzz`
+    - For more information on how to implement your format, [go here!](https://doc.qt.io/qt-6/qtime.html#toString)
 * **timer_interval** `<id> <interval>`
     - Set timer interval in the current area or hub.
     - Example: /timer_interval 1 15m
