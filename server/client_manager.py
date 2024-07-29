@@ -61,6 +61,7 @@ class ClientManager:
             self.pair_order = 0
             # Pairing offset
             self.offset_pair = 0
+            self.last_offset = 0
 
             self.last_sprite = ""
             self.last_pre = ""
