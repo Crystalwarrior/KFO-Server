@@ -168,6 +168,7 @@
     - tog can be `on`, `off` or empty.
 * **auto\_pair** `<double/triple>`
     - Set the max of players displayed on the screen.
+    - Depends on the /area_pref auto_pair setting
 ## Casing
 * **doc** `[url]`
     - Show or change the link for the current case document.
