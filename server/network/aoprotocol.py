@@ -1014,17 +1014,43 @@ class AOProtocol(asyncio.Protocol):
                     client_pair = clients_pos[position-1]
                     third_client = clients_pos[position-2]
                     
-                offset_pair = 0
+
                 charid_pair = f"{client_pair.char_id}^0"
-                other_offset = -33
                 other_emote = client_pair.last_sprite
                 other_flip = client_pair.flip
                 other_folder = client_pair.claimed_folder
                 third_charid = f"{third_client.char_id}^0"
-                third_offset = 33
                 third_emote = third_client.last_sprite
                 third_flip = third_client.flip
                 third_folder = third_client.claimed_folder
+
+                if self.client.last_offset == -33 and client_pair.last_offset == 0 and third_client.last_offset == 33:
+                    offset_pair = -33
+                    other_offset = 0
+                    third_offset = 33
+                elif self.client.last_offset == -33 and client_pair.last_offset == 33 and third_client.last_offset == 0:
+                    offset_pair = -33
+                    other_offset = 33
+                    third_offset = 0
+                elif self.client.last_offset == 33 and client_pair.last_offset == -33 and third_client.last_offset == 0:
+                    offset_pair = 33
+                    other_offset = -33
+                    third_offset = 0
+                elif self.client.last_offset == 33 and client_pair.last_offset == 0 and third_client.last_offset == -33:
+                    offset_pair = 33
+                    other_offset = 0
+                    third_offset = -33
+                elif self.client.last_offset == 0 and client_pair.last_offset == -33 and third_client.last_offset == 33:
+                    offset_pair = 0
+                    other_offset = -33
+                    third_offset = 33
+                else:
+                    offset_pair = 0
+                    other_offset = -33
+                    third_offset = 33
+                    self.client.last_offset = 0
+                    client_pair.last_offset = -33
+                    third_client.last_offset = 33
                    
             else:
                 offset_pair = 0
