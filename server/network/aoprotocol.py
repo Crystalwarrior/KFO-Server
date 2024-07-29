@@ -1040,10 +1040,10 @@ class AOProtocol(asyncio.Protocol):
                     offset_pair = 33
                     other_offset = 0
                     third_offset = -33
-                elif self.client.last_offset == 0 and client_pair.last_offset == -33 and third_client.last_offset == 33:
+                elif self.client.last_offset == 0 and client_pair.last_offset == 33 and third_client.last_offset == -33:
                     offset_pair = 0
-                    other_offset = -33
-                    third_offset = 33
+                    other_offset = 33
+                    third_offset = -33
                 else:
                     offset_pair = 0
                     other_offset = -33
