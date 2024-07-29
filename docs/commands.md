@@ -525,7 +525,8 @@
     - For more information on how to implement your format, [go here!](https://doc.qt.io/qt-6/qtime.html#toString)
 * **timer_interval** `<id> <interval>`
     - Set timer interval in the current area or hub.
-    - Example: /timer_interval 1 15m
+    - Example: `/timer_interval 1 15m`
+    - Default interval: `/timer_interval 1 16ms`
 ## Musiclists
 * **musiclist\_add** `<local/area/hub>` `<Category>` `<MusicName>` `[Length]` `[Path]`
     - Allow you to add a song in a loaded musiclist!
