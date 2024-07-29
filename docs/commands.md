@@ -166,6 +166,8 @@
     - Players will also be unable to see area movement messages or use `/chardesc`.
     - You can change `/bg`, `/desc` and `/pos_lock` of the area when its dark and it will remember it next time you turn the lights off.
     - tog can be `on`, `off` or empty.
+* **auto\_pair** `<double/triple>`
+    - Set the max of players displayed on the screen.
 ## Casing
 * **doc** `[url]`
     - Show or change the link for the current case document.
