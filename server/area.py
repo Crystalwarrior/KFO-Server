@@ -284,6 +284,7 @@ class Area:
         # multiple pair
         self.auto_pair = False
         self.auto_pair_max = "triple"
+        self.auto_pair_cycle = False
 
     @property
     def name(self):
