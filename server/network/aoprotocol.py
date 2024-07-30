@@ -1024,26 +1024,18 @@ class AOProtocol(asyncio.Protocol):
                 third_flip = third_client.flip
                 third_folder = third_client.claimed_folder
 
-                if self.client.last_offset == -33 and client_pair.last_offset == 0 and third_client.last_offset == 33:
-                    offset_pair = -33
-                    other_offset = 0
-                    third_offset = 33
-                elif self.client.last_offset == -33 and client_pair.last_offset == 33 and third_client.last_offset == 0:
-                    offset_pair = -33
-                    other_offset = 33
-                    third_offset = 0
-                elif self.client.last_offset == 33 and client_pair.last_offset == -33 and third_client.last_offset == 0:
-                    offset_pair = 33
-                    other_offset = -33
-                    third_offset = 0
-                elif self.client.last_offset == 33 and client_pair.last_offset == 0 and third_client.last_offset == -33:
-                    offset_pair = 33
-                    other_offset = 0
-                    third_offset = -33
-                elif self.client.last_offset == 0 and client_pair.last_offset == 33 and third_client.last_offset == -33:
-                    offset_pair = 0
-                    other_offset = 33
-                    third_offset = -33
+                if (
+                    self.client.last_offset in [-33, 33, 0]
+                    and client_pair.last_offset in [-33, 33, 0]
+                    and third_client.last_offset in [-33, 33, 0]
+                    and self.client.last_offset != client_pair.last_offset
+                    and self.client.last_offset != third_client.last_offset
+                    and client_pair.last_offset != third_client.last_offset
+                    and not self.client.area.auto_pair_cycle
+                ):
+                    offset_pair = self.client.last_offset
+                    other_offset = client_pair.last_offset
+                    third_offset = third_client.last_offset
                 else:
                     offset_pair = 0
                     other_offset = -33
@@ -1058,7 +1050,7 @@ class AOProtocol(asyncio.Protocol):
                     if clients_pos.index(self.client) == 0:
                         client_pair = clients_pos[1]
                     else:
-                        client_pair = clients_pos[clients_pos.index(self.client)-1]
+                        client_pair = clients_pos[clients_pos.index(self.client) - 1]
                     if self.client.last_offset == -25 or client_pair.last_offset == 25:
                         offset_pair = -25
                         other_offset = 25
