@@ -126,5 +126,8 @@ If you're looking for the list of commands, it can be found [here](commands.md).
 * **auto\_pair**
     - When True allows clients to pair directly if they are in the same pos without using commands.
     - Default: *False*
+* **auto\_pair\_cycle**
+    - When True and when auto_pair is on, it shows always the player who is speaking in the center.
+    - Default: *False*
 ### Mods Only
 * Nothing here yet!
