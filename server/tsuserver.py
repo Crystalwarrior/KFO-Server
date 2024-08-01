@@ -5,7 +5,6 @@ import importlib
 import traceback
 
 import websockets
-import geoip2.database
 import yaml
 
 import server.logger
@@ -14,12 +13,13 @@ from server.hub_manager import HubManager
 from server.client_manager import ClientManager
 from server.emotes import Emotes
 from server.discordbot import Bridgebot
-from server.exceptions import ClientError, ServerError
+from server.exceptions import ServerError
 from server.network.aoprotocol import AOProtocol
 from server.network.aoprotocol_ws import new_websocket_client
 from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
 from server.constants import remove_URL, dezalgo
+from server.network.proxy_manager import ProxyManager
 
 
 logger = logging.getLogger("main")
@@ -45,7 +45,6 @@ class TsuServer3:
         self.backgrounds_categories = None
         self.server_links = None
         self.zalgo_tolerance = None
-        self.ipRange_bans = []
         self.geoIpReader = None
         self.useGeoIp = False
         self.need_webhook = False
@@ -69,15 +68,7 @@ class TsuServer3:
             "y_offset",
         ]
         self.command_aliases = {}
-
-        try:
-            self.geoIpReader = geoip2.database.Reader(
-                "./storage/GeoLite2-ASN.mmdb")
-            self.useGeoIp = True
-            # on debian systems you can use /usr/share/GeoIP/GeoIPASNum.dat if the geoip-database-extra package is installed
-        except FileNotFoundError:
-            self.useGeoIp = False
-
+        self.proxy_manager = ProxyManager(self)
         self.ms_client = None
         sys.setrecursionlimit(50)
         try:
@@ -89,7 +80,7 @@ class TsuServer3:
             self.load_music()
             self.load_backgrounds()
             self.load_server_links()
-            self.load_ipranges()
+            self.client_manager = ClientManager(self)
             self.hub_manager = HubManager(self)
         except yaml.YAMLError:
             print("There was a syntax error parsing a configuration file:")
@@ -106,7 +97,6 @@ class TsuServer3:
             print("Please check sample config files for the correct format.")
             sys.exit(1)
 
-        self.client_manager = ClientManager(self)
         server.logger.setup_logging(debug=self.config["debug"])
 
         self.webhooks = Webhooks(self)
@@ -161,6 +151,8 @@ class TsuServer3:
             
         asyncio.ensure_future(self.schedule_unbans())
 
+        asyncio.ensure_future(self.proxy_manager.init(), loop=loop)
+
         database.log_misc("start")
         print("Server started and is listening on port {}".format(
             self.config["port"]))
@@ -194,28 +186,6 @@ class TsuServer3:
         :param transport: asyncio transport
         :returns: created client object
         """
-        peername = transport.get_extra_info("peername")[0]
-
-        if self.useGeoIp:
-            try:
-                geoIpResponse = self.geoIpReader.asn(peername)
-                asn = str(geoIpResponse.autonomous_system_number)
-            except geoip2.errors.AddressNotFoundError:
-                asn = "Loopback"
-                pass
-        else:
-            asn = "Loopback"
-
-        for line, rangeBan in enumerate(self.ipRange_bans):
-            if rangeBan != "" and ((peername.startswith(rangeBan) and (rangeBan.endswith('.') or rangeBan.endswith(':'))) or asn == rangeBan):
-                msg = "BD#"
-                msg += "Abuse\r\n"
-                msg += f"ID: {line}\r\n"
-                msg += "Until: N/A"
-                msg += "#%"
-
-                transport.write(msg.encode("utf-8"))
-                raise ClientError
 
         c = self.client_manager.new_client(transport)
         c.server = self
@@ -352,14 +322,6 @@ class TsuServer3:
                 self.allowed_iniswaps = yaml.safe_load(iniswaps)
         except Exception:
             logger.debug("Cannot find iniswaps.yaml")
-
-    def load_ipranges(self):
-        """Load a list of banned IP ranges."""
-        try:
-            with open("config/iprange_ban.txt", "r", encoding="utf-8") as ipranges:
-                self.ipRange_bans = ipranges.read().splitlines()
-        except Exception:
-            logger.debug("Cannot find iprange_ban.txt")
 
     def load_music_list(self):
         try:

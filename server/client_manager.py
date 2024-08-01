@@ -4,14 +4,21 @@ import time
 import math
 import os
 from heapq import heappop, heappush
+import logging
+from pathlib import Path
+import json
 
 
 from server import database
 from server.constants import TargetType, encode_ao_packet, contains_URL, derelative
 from server.exceptions import ClientError, AreaError, ServerError
+from server.network.aoprotocol_ws import AOProtocolWS
 
 import oyaml as yaml  # ordered yaml
-import json
+import geoip2.database
+
+
+logger = logging.getLogger(__name__)
 
 
 class ClientManager:
@@ -49,6 +56,7 @@ class ClientManager:
             self.pm_mute = False
             self.mod_call_time = 0
             self.ipid = ipid
+            self.ip = ""
             self.version = ""
             self.software = ""
 
@@ -1788,11 +1796,6 @@ class ClientManager:
                 raise ClientError("Invalid password.")
 
         @property
-        def ip(self):
-            """Get an anonymized version of the IP address."""
-            return self.ipid
-
-        @property
         def char_name(self):
             """Get the name of the character that the client is using."""
             if self.char_id is None:
@@ -2050,6 +2053,18 @@ class ClientManager:
         self.clients = set()
         self.server = server
         self.cur_id = [i for i in range(self.server.config["playerlimit"])]
+        self.ipRange_bans = []
+
+        try:
+            self.geoIpReader = geoip2.database.Reader(
+                "./storage/GeoLite2-ASN.mmdb")
+            self.useGeoIp = True
+            # if you're on debian and the geoip-database-extra package is installed
+            # you can use /usr/share/GeoIP/GeoIPASNum.dat instead
+        except FileNotFoundError:
+            self.useGeoIp = False
+
+        self.load_ipranges()
 
     def new_client_preauth(self, client):
         maxclients = self.server.config["multiclient_limit"]
@@ -2070,10 +2085,18 @@ class ClientManager:
             transport.write(b"BD#This server is full.#%")
             raise ClientError
 
-        peername = transport.get_extra_info("peername")[0]
+        client_ip = self.get_client_ip(transport)
+
+        # TODO: Should probably check if the IP is specifically banned here?
+
+        if self.is_ip_rangebanned(client_ip):
+            msg = f"BD#Rangebanned IP: {client_ip}#%"
+            transport.write(msg.encode("utf-8"))
+            raise ClientError
 
         c = self.Client(self.server, transport, user_id,
-                        database.ipid(peername))
+                        database.ipid(client_ip))
+        c.ip = client_ip
         self.clients.add(c)
         temp_ipid = c.ipid
         for client in self.server.client_manager.clients:
@@ -2226,7 +2249,66 @@ class ClientManager:
 
     def get_mods(self):
         return [c for c in self.clients if c.is_mod]
-        
+
+    def get_client_ip(self, transport) -> str:
+        """Gets the real IP of the client."""
+        if not isinstance(transport, AOProtocolWS.WSTransport):
+            # This means the client is connecting with TCP, so just return the IP
+            return transport.get_extra_info("peername")[0]
+
+        # Using websockets, so use property in the websocket object
+        client_ip = transport.ws.remote_address[0]
+        if 'X-Forwarded-For' not in transport.ws.request_headers:
+            # Client doesn't claim to be behind a proxy, so all looks ok
+            return client_ip
+
+        # This means the client claims to be behind a reverse proxy
+        # However, we can't trust this information and need to check the proxy IP against a whitelist
+        proxy_ip = client_ip
+        # X-Forwarded-For may contain a comma-delimited list of IPs, so get the first one
+        claimed_client_ip = transport.ws.request_headers['X-Forwarded-For'].split(',')[0].strip()
+        if not self.server.proxy_manager.is_ip_authorized_as_proxy(proxy_ip):
+            msg = f"Unauthorized proxy detected. Proxy IP: {proxy_ip}. Client IP: {claimed_client_ip}."
+            logging.warning(
+                msg,
+                proxy_ip, claimed_client_ip)
+
+            ban_msg = f"BD#{msg}#%"
+
+            transport.write(ban_msg.encode("utf-8"))
+            raise ClientError
+
+        # The proxy is authorized, so we can trust the claimed client IP
+        return claimed_client_ip
+
+    def is_ip_rangebanned(self, client_ip: str) -> bool:
+        if self.useGeoIp:
+            try:
+                geo_ip_response = self.geoIpReader.asn(client_ip)
+                asn = str(geo_ip_response.autonomous_system_number)
+            except geoip2.errors.AddressNotFoundError:
+                asn = "Loopback"
+                pass
+        else:
+            asn = "Loopback"
+
+        for line, rangeBan in enumerate(self.ipRange_bans):
+            if rangeBan != "" and ((client_ip.startswith(rangeBan) and (rangeBan.endswith('.') or rangeBan.endswith(':'))) or asn == rangeBan):
+                return True
+
+        return False
+
+    def load_ipranges(self):
+        """Load a list of banned IP ranges."""
+        path = Path("config/iprange_ban.txt")
+
+        if not path.is_file():
+            logger.debug("Cannot find iprange_ban.txt")
+            return
+
+        with open("config/iprange_ban.txt", "r", encoding="utf-8") as f:
+            self.ipRange_bans.extend(f.read().splitlines())
+
     class BattleChar:
         def __init__(self, client, fighter_name, fighter):
             self.fighter = fighter_name

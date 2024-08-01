@@ -174,3 +174,10 @@ need_webhook:
   title: "AO NEED CALL"  
   message: "A user has used the /need command for players in the Attorney Online server!"  
   url:
+
+# Additional list of proxies that are allowed to connect to the server.
+# This is useful if you have a custom reverse proxy in front of the server.
+# Localhost and cloudflare are allowed by default (see proxy_manager.py).
+# authorized_proxies:
+#  - 1.1.1.1
+#  - 2.2.2.2
