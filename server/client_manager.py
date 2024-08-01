@@ -6,10 +6,11 @@ import os
 from heapq import heappop, heappush
 import logging
 from pathlib import Path
+import json
 
 
 from server import database
-from server.constants import TargetType, encode_ao_packet, contains_URL
+from server.constants import TargetType, encode_ao_packet, contains_URL, derelative
 from server.exceptions import ClientError, AreaError, ServerError
 from server.network.aoprotocol_ws import AOProtocolWS
 
@@ -57,17 +58,21 @@ class ClientManager:
             self.ipid = ipid
             self.ip = ""
             self.version = ""
+            self.software = ""
 
             # Pairing character ID
             self.charid_pair = -1
+            self.third_charid = -1
             # Override if using the /pair command will lock "charid_pair" from being changed by MS packet
             self.charid_pair_override = False
             # Pairing order, either 0 (in front) or 1 (behind)
             self.pair_order = 0
             # Pairing offset
             self.offset_pair = 0
+            self.last_offset = 0
 
             self.last_sprite = ""
+            self.last_pre = ""
             self.flip = 0
             self.claimed_folder = ""
 
@@ -80,6 +85,9 @@ class ClientManager:
             self.casing_jur = False
             self.casing_steno = False
             self.case_call_time = 0
+
+            # Need command
+            self.need_call_time = 0
 
             # flood-guard stuff
             self.mus_counter = 0
@@ -182,6 +190,12 @@ class ClientManager:
             
             # rainbowtext hell
             self.rainbow = False
+            
+            # rock paper scissors choice
+            self.rps_choice = ""
+
+            # Battle system stuff
+            self.battle = None
 
         def send_raw_message(self, msg):
             """
@@ -227,13 +241,76 @@ class ClientManager:
                             lst[11] = evi_num
                             args = tuple(lst)
                             break
-                    # If we have someone using the DRO 1.1.0 Client
-                    if self.version.startswith("1.1.0"):
+                    # If we have someone using the DRO Client
+                    if self.software == "DRO":
+                        anim = args[3]
+                        hide_char = 0
+                        # We are blankposting.
+                        if self.blankpost or derelative(anim) == "misc/blank":
+                            hide_char = 1
+                        # We're narrating, or we're hidden in some evidence.
+                        if anim == "" or self.narrator or self.hidden_in is not None:
+                            hide_char = 1
+
+                        # On KFO, self_offset can be set even without a pairing partner
+                        charid_pair = "-1"
+                        if len(args) > 16 and args[16]:
+                            charid_pair = str(args[16])
+                        self_offset_x = 0
+                        if len(args) > 19 and args[19]:
+                            self_offset_x = str(args[19]).replace('<and>', '&').split('&')[0]
+                        offset_pair_x = 0
+                        if len(args) > 20 and args[20]:
+                            offset_pair_x = str(args[20]).replace('<and>', '&').split('&')[0]
+
+                        # Pair data detected!
+                        if (charid_pair and charid_pair != "-1") or (self_offset_x and self_offset_x != "0"):
+                            pair_jsn_packet = {}
+                            pair_jsn_packet['packet'] = 'pair_data'
+                            pair_jsn_packet['data'] = {}
+                            other_emote = ""
+                            other_folder = ""
+                            other_flip = False
+                            if len(args) > 17:
+                                other_folder = args[17]
+                            if len(args) > 18:
+                                other_emote = args[18]
+                            if len(args) > 21:
+                                other_flip = bool(int(args[21]))
+                            pair_jsn_packet['data']['character'] = other_folder
+                            pair_jsn_packet['data']['last_sprite'] = other_emote
+                            pair_jsn_packet['data']['flipped'] = other_flip
+                            
+                            # no y offset is supported and on DRO Client, the pairing offsets are measured in pixels rather than percentage
+                            if self_offset_x:
+                                self_offset_x = int((float(self_offset_x) / 100) * 960 + 480) # offset_pair
+                            if offset_pair_x:
+                                offset_pair_x = int((float(offset_pair_x) / 100) * 960 + 480) # other_offset
+                            pair_jsn_packet['data']['self_offset'] = self_offset_x
+                            pair_jsn_packet['data']['offset_pair'] = offset_pair_x
+                            
+                            # Send the result!
+                            json_data = json.dumps(pair_jsn_packet)
+                            self.send_command('JSN', json_data)
+                        # No pair :(
+                        else:
+                            pair_jsn_packet = {}
+                            pair_jsn_packet['packet'] = 'pair'
+                            pair_jsn_packet['data'] = {}
+                            pair_jsn_packet['data']['pair_left'] = -1
+                            pair_jsn_packet['data']['pair_right'] = -1
+                            pair_jsn_packet['data']['offset_left'] = 0
+                            pair_jsn_packet['data']['offset_right'] = 0
+                            json_data = json.dumps(pair_jsn_packet)
+                            self.send_command('JSN', json_data)
+
+                        # Now, modify the packet
                         lst = list(args)
                         lst[16] = ""  # No video support :(
-                        lst[17] = 0  # no hiding character
-                        lst[18] = self.id  # sender character id
+                        lst[17] = hide_char # hide character if we're blankposting or narrating
+                        lst[18] = -1  # would be target id, but we dunno who
                         args = tuple(lst)
+                        # Packet modified!
             command, *args = encode_ao_packet([command] + list(args))
             message = f"{command}#"
             for arg in args:
@@ -273,6 +350,37 @@ class ClientManager:
             players = self.server.player_count
             limit = self.server.config["playerlimit"]
             self.send_ooc(f"👥{players}/{limit} players online.")
+
+        def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+            if self.software == "DRO":
+                # configuration. There's no situation where these values are different on KFO-Server
+                self.send_timer_set_step_length(timer_id, -16) # 16 milliseconds, matches AO
+                self.send_timer_set_firing_interval(timer_id, 16) # 16 milliseconds, matches AO
+                
+                self.send_command("TST", timer_id, new_time) # set time
+                if start:
+                    self.send_command("TR", timer_id) # resume
+                else:
+                    self.send_command("TP", timer_id) # pause
+            else:
+                if new_time == None:
+                    self.send_command("TI", timer_id, 1, 0) # Stop timer
+                    self.send_command("TI", timer_id, 3, 0) # Hide timer
+                else:
+                    self.send_command("TI", timer_id, 2, new_time) # Show timer
+                    self.send_command("TI", timer_id, int(not start), new_time) # Set timer with value and start
+
+        def send_timer_set_step_length(self, timer_id=None, new_step_length=None):
+            if self.software == "DRO":
+                self.send_command("TSS", timer_id, new_step_length) # set step
+            else:
+                pass # no ao equivalent
+
+        def send_timer_set_firing_interval(self, timer_id=None, new_firing_interval=None):
+            if self.software == "DRO":
+                self.send_command("TSF", timer_id, new_firing_interval) #set firing
+            else:
+                pass # no ao equivalent
 
         def is_valid_name(self, name):
             """
@@ -710,12 +818,12 @@ class ClientManager:
 
             return song_list
 
-        def refresh_music(self):
+        def refresh_music(self, reload=False):
             """
             Rebuild the client's music list, updating the local music list if there was a change.
             """
             song_list = self.construct_music_list()
-            if self.local_music_list != song_list:
+            if self.local_music_list != song_list or reload:
                 self.reload_music_list(song_list)
 
         def reload_music_list(self, music=[]):
@@ -1013,7 +1121,7 @@ class ClientManager:
                 self.is_mod or self in area.owners or self.char_id == -1
             ) and not area.is_char_available(self.char_id):
                 self.check_char_taken(area)
-
+                
             old_area = self.area
             self.set_area(area, target_pos)
             self.last_move_time = round(time.time() * 1000.0)
@@ -1315,7 +1423,7 @@ class ClientManager:
                 msg += f'\n{self.get_area_info(area.id, highlight_self=True)}'
             self.send_ooc(msg)
 
-        def get_area_info(self, area_id, highlight_self=False):
+        def get_area_info(self, area_id, highlight_self=False, hub=None):
             """
             Get information about a specific area.
             :param area_id: area ID
@@ -1323,7 +1431,10 @@ class ClientManager:
             :highlight_self: highlight the area where we're located
             """
             info = ""
-            area = self.area.area_manager.get_area_by_id(area_id)
+            if hub is None:
+                area = self.area.area_manager.get_area_by_id(area_id)
+            else:
+                area = hub.areas[area_id]
             status = ""
             if self.area.area_manager.arup_enabled:
                 status = f" [{area.status}]"
@@ -1364,9 +1475,12 @@ class ClientManager:
             info += f"[{area.id}] {area.name}{users}{status}{owner}{hidden}{locked}{pathlocked}{passworded}{muted}{dark}"
             return info
 
-        def get_area_clients(self, area_id, mods=False, afk_check=False, show_links=False):
+        def get_area_clients(self, area_id, mods=False, afk_check=False, show_links=False, hub=None):
             info = ""
-            area = self.area.area_manager.get_area_by_id(area_id)
+            if hub is None:
+                area = self.area.area_manager.get_area_by_id(area_id)
+            else:
+                area = hub.areas[area_id]
             if afk_check:
                 player_list = area.afkers
             else:
@@ -1487,6 +1601,76 @@ class ClientManager:
                 ):
                     cnt += len(client_list)
                     info += f"{area_info}\n"
+            if afk_check:
+                info += f"Current AFK-ers: {cnt}"
+            else:
+                info += f"Current online: {cnt}"
+            self.send_ooc(info)
+
+        def send_hubs_clients(self, mods=False, afk_check=False, show_links=False):
+            """
+            Send information over OOC about all hubs.
+            """
+            if (
+                not self.is_mod
+                and self not in self.area.area_manager.owners
+                and self.char_id != -1
+            ):
+                if self.blinded:
+                    raise ClientError("You are blinded!")
+                if "can_gethubs" not in self.server.config or not self.server.config["can_gethubs"]:
+                    raise ClientError(
+                        "You are not permitted to use the /gethubs command in this server!"
+                    )
+            cnt = 0
+            info = "\n🗺️ Clients in Hubs 🗺️\n"
+            for hub in self.server.hub_manager.hubs:
+                hub_info = ""
+                if (
+                    (not hub.can_getareas or hub.hide_clients)
+                    and not self.is_mod
+                    and self not in hub.owners
+                ):
+                    info += f"\n⛩[{hub.id}]{hub.name}⛩: ❌\n"
+                else:
+                    for i in range(len(hub.areas)):
+                        area = hub.areas[i]
+                        if afk_check:
+                            client_list = area.afkers
+                        else:
+                            client_list = area.clients
+                        if not self.is_mod and self not in area.owners:
+                            # We exclude hidden players here because we don't want them to count for the user count
+                            client_list = [c for c in client_list if not c.hidden]
+
+                        area_info = f"{self.get_area_info(i, hub=hub)}:"
+                        if area_info == "":
+                            continue
+
+                        try:
+                            area_info += self.get_area_clients(
+                                i, mods, afk_check, show_links, hub=hub
+                            )
+                        except ClientError:
+                            area_info = ""
+                        if area_info == "":
+                            continue
+
+                        if len(client_list) > 0 or len(area.owners) > 0:
+                            cnt += len(client_list)
+                            hub_info += f"{area_info}\n"
+                if not hub_info == "" and (
+                    hub.can_getareas or self.is_mod or self in hub.owners
+                ):
+                    if not self.is_mod and self not in hub.owners:
+                        hub_count = 0
+                        for area in hub.areas:
+                            if not area.hide_clients and not area.dark:
+                                player_list = [c for c in area.clients if not c.hidden]
+                                hub_count += len(player_list)
+                        info += f"\n⛩[{hub.id}]{hub.name} (users: {hub_count})⛩:\n{hub_info}\n"
+                    else:
+                        info += f"\n⛩[{hub.id}]{hub.name} (users: {len(hub.clients)})⛩:\n{hub_info}\n"
             if afk_check:
                 info += f"Current AFK-ers: {cnt}"
             else:
@@ -1821,9 +2005,23 @@ class ClientManager:
             """Begin the case announcement cooldown."""
             self.case_call_time = round(time.time() * 1000.0 + 60000)
 
+        def set_need_call_delay(self):
+            """Begin the need cooldown."""
+            try:
+                self.need_call_time = round(
+                    time.time() * 1000.0
+                    + int(self.server.config["need_webhook"]["delay"]) * 1000.0
+                )
+            except:
+                self.need_call_time = round(time.time() * 1000 + 60000)
+
         def can_call_case(self):
             """Whether or not the client can currently announce a case."""
             return (time.time() * 1000.0 - self.case_call_time) > 0
+
+        def can_call_need(self):
+            """Whether or not the client can currently call a need."""
+            return (time.time() * 1000.0 - self.need_call_time) > 0
 
         def disemvowel_message(self, message):
             """Disemvowel a chat message."""
@@ -2035,7 +2233,7 @@ class ClientManager:
             client.send_ooc("You are now AFK. Have a good day!")
             client.area.afkers.append(client)
 
-    def refresh_music(self, clients=None):
+    def refresh_music(self, clients=None, reload=False):
         """
         Refresh the listed clients' music lists.
         :param clients: list of clients whose music lists should be regenerated.
@@ -2044,7 +2242,7 @@ class ClientManager:
         if clients is None:
             clients = self.clients
         for client in clients:
-            client.refresh_music()
+            client.refresh_music(reload)
 
     def get_multiclients(self, ipid=-1, hdid=""):
         return [c for c in self.clients if c.ipid == ipid or c.hdid == hdid]
@@ -2110,3 +2308,30 @@ class ClientManager:
 
         with open("config/iprange_ban.txt", "r", encoding="utf-8") as f:
             self.ipRange_bans.extend(f.read().splitlines())
+
+    class BattleChar:
+        def __init__(self, client, fighter_name, fighter):
+            self.fighter = fighter_name
+            self.hp = float(fighter["HP"])
+            self.maxhp = self.hp
+            self.atk = float(fighter["ATK"])
+            self.mana = float(fighter["MANA"])
+            self.defe = float(fighter["DEF"])
+            self.spa = float(fighter["SPA"])
+            self.spd = float(fighter["SPD"])
+            self.spe = float(fighter["SPE"])
+            self.target = None
+            self.selected_move = -1
+            self.status = None
+            self.current_client = client
+            self.guild = None
+            self.moves = [ClientManager.Move(move) for move in fighter["Moves"]]
+
+    class Move:
+        def __init__(self, move):
+            self.name = move["Name"]
+            self.cost = move["ManaCost"]
+            self.type = move["MovesType"]
+            self.power = float(move["Power"])
+            self.effect = move["Effects"]
+            self.accuracy = float(move["Accuracy"])

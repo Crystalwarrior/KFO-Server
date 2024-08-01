@@ -17,7 +17,8 @@ area_spectate: area_mute
 area_unlink: unlink
 areakick: area_kick
 areavisible: area_visible
-autopass: sneak
+autopass: unsneak
+unautopass: sneak
 av: area_visible
 biconnect: link
 bidisconnect: unlink
@@ -48,6 +49,7 @@ fp: firstperson
 fps: firstperson
 ga: getarea
 gas: getareas
+gh: gethubs
 hmovedelay: hub_move_delay
 hmusiclist: hub_musiclist
 hub_clear: clear_hub
@@ -107,3 +109,6 @@ seturl: set_url
 surl: set_url
 get_link: getlink
 get_links: getlinks
+remove_musiclist: musiclist_remove
+add_musiclist: musiclist_add
+save_musiclist: musiclist_save

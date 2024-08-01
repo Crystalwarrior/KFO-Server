@@ -125,6 +125,15 @@ class AreaManager:
         self.subtheme = ""
 
         self.timer = self.Timer()
+        
+        # RPS-5 rules as default
+        self.rps_rules = [
+            ["rock", "scissors", "lizard"],
+            ["paper", "rock", "spock"],
+            ["scissors", "paper", "lizard"],
+            ["lizard", "paper", "spock"],
+            ["spock", "scissors", "rock"],
+        ]
 
     @property
     def name(self):
@@ -205,8 +214,10 @@ class AreaManager:
                     if hub[entry] == "":
                         self.clear_music()
                     else:
-                        self.load_music(
-                            f"storage/musiclists/{hub[entry]}.yaml")
+                        if os.path.isfile(f"storage/musiclists/read_only/{hub[entry]}.yaml"):
+                            self.load_music(f"storage/musiclists/read_only/{hub[entry]}.yaml")
+                        else:
+                            self.load_music(f"storage/musiclists/{hub[entry]}.yaml")
                 if entry == "char_list_ref":
                     self.load_characters(hub[entry])
 
@@ -587,6 +598,11 @@ class AreaManager:
         for a in area_list:
             a.send_command(cmd, *args)
             a.send_owner_command(cmd, *args)
+
+    def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+        """Broadcast a timer to all areas in this hub."""
+        for area in self.areas:
+            area.send_timer_set_time(timer_id, new_time, start)
 
     def broadcast_area_list(self, refresh=False):
         """Global update of all areas for the client music lists in the hub."""
