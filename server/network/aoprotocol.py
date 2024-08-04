@@ -374,6 +374,8 @@ class AOProtocol(asyncio.Protocol):
         effect = ""
         pair_order = 0
         third_charid = -1
+        blipname = ""
+        slide = 0
         if self.validate_net_cmd(
             args,
             self.ArgType.STR,  # msg_type
@@ -565,6 +567,77 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_ooc(
                     "Something went wrong! Please report the issue to the developers.")
                 return
+        elif self.validate_net_cmd(
+            args,
+            self.ArgType.STR, # 0 # msg_type
+            self.ArgType.STR_OR_EMPTY, # 1  # pre
+            self.ArgType.STR, # 2 # folder
+            self.ArgType.STR_OR_EMPTY, # 3 # anim
+            self.ArgType.STR_OR_EMPTY, # 4  # text
+            self.ArgType.STR, # 5 # pos
+            self.ArgType.STR, # 6 # sfx
+            self.ArgType.INT, # 7 # emote_mod
+            self.ArgType.INT, # 8 # cid
+            self.ArgType.INT, # 9 # sfx_delay
+            self.ArgType.INT_OR_STR, # 10 # button
+            self.ArgType.INT, # 11 # evidence
+            self.ArgType.INT, # 12 # flip
+            self.ArgType.INT, # 13 # ding
+            self.ArgType.INT, # 14 # color
+            self.ArgType.STR_OR_EMPTY, # 15 # showname
+            self.ArgType.STR, # 16 # charid_pair
+            self.ArgType.STR, # 17 # offset_pair
+            self.ArgType.INT, # 18 # nonint_pre
+            self.ArgType.STR, # 19 # sfx_looping
+            self.ArgType.INT, # 20 # screenshake
+            self.ArgType.STR, # 21 # frames_shake
+            self.ArgType.STR, # 22 # frames_realization
+            self.ArgType.STR, # 23 # frames_sfx
+            self.ArgType.INT, # 24 # additive
+            self.ArgType.STR, # 25 # effect
+            self.ArgType.STR, # 26 # blipname
+            self.ArgType.INT, # 27 # slide
+        ):
+            # 2.11 validation monstrosity. (Woe, pain be upon ye)
+            (
+                msg_type,
+                pre,
+                folder,
+                anim,
+                text,
+                pos,
+                sfx,
+                emote_mod,
+                cid,
+                sfx_delay,
+                button,
+                evidence,
+                flip,
+                ding,
+                color,
+                showname,
+                charid_pair,
+                offset_pair,
+                nonint_pre,
+                sfx_looping,
+                screenshake,
+                frames_shake,
+                frames_realization,
+                frames_sfx,
+                additive,
+                effect,
+                blipname,
+                slide,
+            ) = args
+            try:
+                pair_args = charid_pair.split("^")
+                charid_pair = int(pair_args[0])
+                if len(pair_args) > 1:
+                    pair_order = pair_args[1]
+            except ValueError:
+                self.client.send_ooc(
+                    "Something went wrong! Please report the issue to the developers.")
+                return
         else:
             return
 
@@ -612,6 +685,7 @@ class AOProtocol(asyncio.Protocol):
             frames_realization = derelative(frames_realization)
             frames_sfx = derelative(frames_sfx)
             effect = derelative(effect)
+            blipname = derelative(blipname)
 
         if not self.client.is_mod and not (self.client in self.client.area.owners):
             if not self.client.area.blankposting_allowed:
@@ -1125,6 +1199,8 @@ class AOProtocol(asyncio.Protocol):
                         third_emote, # 32
                         third_offset, # 33
                         third_flip, # 33
+                        blipname, #34
+                        slide, #35
                     )
                 a_list = ", ".join([str(a.id) for a in target_area])
                 if not (self.client.area in target_area):
@@ -1167,6 +1243,8 @@ class AOProtocol(asyncio.Protocol):
                         third_emote,
                         third_offset,
                         third_flip,
+                        blipname,
+                        slide,
                     )
                 self.client.send_ooc(f"Broadcasting to areas {a_list}")
             except (AreaError, ValueError):
@@ -1294,6 +1372,8 @@ class AOProtocol(asyncio.Protocol):
                         third_emote,
                         third_offset,
                         third_flip,
+                        blipname,
+                        slide,
                     )
 
             return
@@ -1341,6 +1421,8 @@ class AOProtocol(asyncio.Protocol):
             frames_sfx=frames_sfx,
             additive=additive,
             effect=effect,
+            blipname=blipname,
+            slide=slide,
             targets=whisper_clients,
             third_charid=third_charid,
             third_folder=third_folder,
@@ -1386,6 +1468,8 @@ class AOProtocol(asyncio.Protocol):
             third_emote,
             third_offset,
             third_flip,
+            blipname,
+            slide,
         )
 
         # DRO client support
