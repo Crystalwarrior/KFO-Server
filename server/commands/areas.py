@@ -853,3 +853,7 @@ def ooc_cmd_auto_pair(client, arg):
         client.send_ooc("Argument Error!\nUsage: /auto_pair <double/triple>")
         return
     client.area.auto_pair_max = arg.lower()
+    if arg.lower() == "triple":
+        client.send_ooc("Pairing will show a maximum of 3 characters on screen now")
+    else:
+        client.send_ooc("Pairing will show a maximum of 2 characters on screen now")
