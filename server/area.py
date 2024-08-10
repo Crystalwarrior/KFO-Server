@@ -283,6 +283,8 @@ class Area:
 
         # multiple pair
         self.auto_pair = False
+        self.auto_pair_max = "triple"
+        self.auto_pair_cycle = False
 
     @property
     def name(self):
@@ -594,6 +596,10 @@ class Area:
 
         if "auto_pair" in area:
             self.auto_pair = area["auto_pair"]
+        if "auto_pair_max" in area:
+            self.auto_pair_max = area["auto_pair_max"]
+        if "auto_pair_cycle" in area:
+            self.auto_pair_cycle = area["auto_pair_cycle"]
 
     def save(self):
         area = OrderedDict()
@@ -670,6 +676,8 @@ class Area:
             area["links"] = self.links
         area["can_battle"] = self.can_battle
         area["auto_pair"] = self.auto_pair
+        area["auto_pair_max"] = self.auto_pair_max
+        area["auto_pair_cycle"] = self.auto_pair_cycle
         return area
 
     def new_client(self, client):

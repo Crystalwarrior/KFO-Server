@@ -31,6 +31,7 @@ __all__ = [
     "ooc_cmd_desc",
     "ooc_cmd_edit_ambience",
     "ooc_cmd_lights",
+    "ooc_cmd_auto_pair",
 ]
 
 def ooc_cmd_overlay(client, arg):
@@ -841,3 +842,18 @@ def ooc_cmd_lights(client, arg):
             pos = client.area.pos_dark
         c.send_command("BN", bg, pos)
     client.send_ooc(f"This area is {stat} dark.")
+
+
+def ooc_cmd_auto_pair(client, arg):
+    """
+    Set the max of players displayed on the screen.
+    Usage: /auto_pair <double/triple>
+    """
+    if arg.lower() not in ["double", "triple"]:
+        client.send_ooc("Argument Error!\nUsage: /auto_pair <double/triple>")
+        return
+    client.area.auto_pair_max = arg.lower()
+    if arg.lower() == "triple":
+        client.send_ooc("Pairing will show a maximum of 3 characters on screen now")
+    else:
+        client.send_ooc("Pairing will show a maximum of 2 characters on screen now")
