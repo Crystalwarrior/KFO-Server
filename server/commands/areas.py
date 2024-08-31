@@ -403,7 +403,7 @@ def ooc_cmd_area_kick(client, arg):
                     not client.is_mod
                     and client not in client.area.area_manager.owners
                     and client not in area.owners
-                    and area.max_players = 0
+                    and area.max_players == 0
                 ):
                     raise ArgumentError(
                         "You can't kick someone to a room that has a max players of 0!"
