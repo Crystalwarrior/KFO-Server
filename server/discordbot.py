@@ -66,7 +66,7 @@ class Bridgebot(commands.Bot):
             else:
                 await channel.send(embed=embed)
 
-        @self.command()
+        @self.tree.command()
         async def gethubs(ctx):
             msg = ""
             number_players = int(self.server.player_count)
