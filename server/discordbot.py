@@ -169,6 +169,11 @@ class Bridgebot(commands.Bot):
         print("Discord Bridge Successfully logged in.")
         print("Username -> " + self.user.name)
         print("ID -> " + str(self.user.id))
+        try:
+            await self.tree.sync()
+            print("Synced commands!")
+        except Exception as e:
+            print(e)
         self.guild = self.guilds[0]
         self.channel = discord.utils.get(
             self.guild.text_channels, name=self.target_channel
