@@ -67,7 +67,7 @@ class Bridgebot(commands.Bot):
                 await channel.send(embed=embed)
 
         @self.tree.command()
-        async def gethubs(ctx):
+        async def gethubs(interaction: discord.Interaction):
             msg = ""
             number_players = int(self.server.player_count)
             msg += f"**Clients in Areas**\n"
@@ -114,9 +114,9 @@ class Bridgebot(commands.Bot):
             if len(msg) > 2000:
                 msgchunks = [msg[i:i+2000] for i in range(0, len(msg), 2000)]
                 for chunk in msgchunks:
-                    await ctx.send(chunk)
+                    await interaction.response.send_message(chunk)
             else:
-                await ctx.send(msg)
+                await interaction.response.send_message(msg)
 
         @self.event
         async def on_message(message):
