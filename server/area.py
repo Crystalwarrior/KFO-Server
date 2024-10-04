@@ -200,6 +200,10 @@ class Area:
         # Who's debating who
         self.red_team = set()
         self.blue_team = set()
+        # Clients who cast votes
+        self.votes_cast = set()      
+        # What percentage of valid voters needs to vote to force-end the minigame, rounded
+        self.votes_percentage = 0.7
         # Minigame name
         self.minigame = ""
         # Minigame schedule
@@ -1980,6 +1984,36 @@ class Area:
                 0,
             )
         self.minigame = ""
+
+    def vote_end_minigame(self, client):
+        if client.area.minigame == "":
+            client.send_ooc("There is no minigame running right now.")
+            return
+
+        valid_voters = [
+            c for c in self.clients if
+                not c.hidden and
+                not c in self.afkers and
+                not c in self.owners and
+                c.char_id not in client.area.blue_team and
+                c.char_id not in client.area.red_team
+        ]
+        if client not in valid_voters:
+            client.send_ooc("You're not qualified to vote-end this minigame! (You're a Spectator, Hidden or the area owner)")
+            return
+        self.votes_cast.add(client)
+        votes_casted = len(self.votes_cast)
+        votes_needed = round(len(valid_voters) * self.votes_percentage)
+
+        info = f'[{client.id}] {client.showname} is voting to end the minigame!'
+
+        if votes_casted >= votes_needed:
+            client.area.end_minigame("Voted to end.")
+            info += f'\nSuccessfully voted to end with ({votes_casted}/{votes_needed}) votes.'
+        else:
+            info += f'({votes_casted}/{votes_needed}) votes left.'
+        
+        self.broadcast_ooc(info)
 
     def start_debate(self, client, target, pta=False):
         if (client.char_id in self.red_team and target.char_id in self.blue_team) or (
