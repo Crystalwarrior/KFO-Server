@@ -2113,6 +2113,8 @@ class Area:
             self.blue_team.clear()
             self.red_team.add(client.char_id)
             self.blue_team.add(target.char_id)
+            
+            self.votes_cast.clear()
             if pta:
                 self.minigame = "Panic Talk Action"
                 timer = self.panic_talk_action_timer
