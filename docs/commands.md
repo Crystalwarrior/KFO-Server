@@ -522,7 +522,7 @@
     - Format the timer in the current area or hub.
     - Example of format: `Time Left: hh:mm`
     - Default: `hh:mm:ss.zzz`
-    - For the proper notation check this [segment here]([url](https://doc.qt.io/qt-5/qtime.html#toString-2))
+    - For the proper notation check this [segment here](https://doc.qt.io/qt-5/qtime.html#toString-2)
 ## Musiclists
 * **musiclist\_add** `<local/area/hub>` `<Category>` `<MusicName>` `[Length]` `[Path]`
     - Allow you to add a song in a loaded musiclist!
