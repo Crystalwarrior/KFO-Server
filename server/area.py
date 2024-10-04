@@ -1949,6 +1949,7 @@ class Area:
         self.invite_list = self.old_invite_list
         self.red_team.clear()
         self.blue_team.clear()
+        self.votes_cast.clear()
         self.send_timer_set_time(2, None)
         self.send_ic(
             msg=f"~~}}}}`{self.minigame} END!`\\n{reason}",
