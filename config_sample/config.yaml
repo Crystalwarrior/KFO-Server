@@ -7,6 +7,10 @@
 # be used by other players.
 hostname: <dollar>H
 
+# Choose the default languages for your server
+# Available Languages: eng, it
+language: eng
+
 # Max number of player slots to be made. The player limit is not actually
 # enforced, but bad things are supposed to happen if this is exceeded.
 playerlimit: 100
