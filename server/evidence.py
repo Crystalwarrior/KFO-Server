@@ -275,7 +275,7 @@ class EvidenceList:
 
     def import_evidence(self, data):
         for evi in data:
-            name, desc, image, pos, can_hide_in = "<name>", "<desc>", "", "all", False
+            name, desc, image, pos, can_hide_in, show_in_dark = "<name>", "<desc>", "", "all", False, False
             if "name" in evi:
                 name = evi["name"]
             if "desc" in evi:
