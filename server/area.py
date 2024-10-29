@@ -331,14 +331,8 @@ class Area:
             return
 
         # Sort through all the owners, with GMs coming first and CMs coming second
-        sorted_owners = sorted(
-            self.owners,
-            key=lambda x: 0
-            if (x in self.area_manager.owners)
-            else 1
-            if (x in self._owners)
-            else 2,
-        )
+        sorted_owners = list(self._owners) + list(self.area_manager.owners)
+
         # Pick the owner with highest permission - game master, if one exists.
         # This permission system may be out of wack, but it *should* be good for now
         owner = sorted_owners[0]
