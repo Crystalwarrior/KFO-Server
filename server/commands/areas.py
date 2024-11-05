@@ -842,6 +842,7 @@ def ooc_cmd_lights(client, arg):
             pos = client.area.pos_dark
         c.send_command("BN", bg, pos)
     client.send_ooc(f"This area is {stat} dark.")
+    client.area.broadcast_evidence_list()
 
 
 def ooc_cmd_auto_pair(client, arg):
