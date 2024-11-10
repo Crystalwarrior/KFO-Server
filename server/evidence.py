@@ -140,22 +140,34 @@ class EvidenceList:
         return False
 
     def parse_desc(self, desc):
-        for match in re.findall(r"<.*?=.*?>", desc):
-            args = match.strip("<>").split("=")
-            if len(args) < 2:
-                continue
-            key, value = args
-            if key == "owner":
-                if value == "":
-                    value = "hidden"
-                poses = value
-            if key == "can_hide_in":
-                can_hide_in = value == "1"
-            if key == "show_in_dark":
-                print(value)
-                show_in_dark = int(value)
-
-        desc = re.sub(r"<.*?=.*?>\n?", '', desc)
+        lines = desc.split("\n", 3)
+        poses = "hidden"
+        can_hide_in = 0
+        show_in_dark = 0
+        matches = 0
+        for line in lines:
+            cmd = line.strip(" ") # remove all whitespace
+            if cmd.startswith("<") and cmd.endswith(">"):
+                args = cmd.strip("<>").split("=")
+                if len(args) < 2:
+                    break
+                key, value = args
+                if key == "owner":
+                    if value == "":
+                        value = "hidden"
+                    poses = value
+                    matches += 1
+                if key == "can_hide_in":
+                    can_hide_in = value == "1"
+                    matches += 1
+                if key == "show_in_dark":
+                    show_in_dark = int(value)
+                    matches += 1
+        # Remvoes N lines, where N is how many <> we matched. Can't be more than 3.
+        while matches > 0:
+            # Truncates from the start of newline
+            desc = desc[desc.find("\n")+1:]
+            matches -= 1
         return desc, poses, can_hide_in, show_in_dark
 
     def add_evidence(self, client, name, desc, image, pos="all"):
