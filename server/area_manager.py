@@ -34,6 +34,8 @@ class AreaManager:
             self.caller = caller
             self.schedule = None
             self.commands = []
+            self.format = "hh:mm:ss.zzz"
+            self.interval = 1000 / 60
 
         def timer_expired(self):
             if self.schedule:
