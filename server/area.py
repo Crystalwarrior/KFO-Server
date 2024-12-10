@@ -1734,7 +1734,7 @@ class Area:
         )
         if value.lower() == "hub":
             raise AreaError(
-                f'Invalid status. Possible values: {", ".join(possible_values)}'
+                'Hub Status is a restricted value.'
             )
         if value.lower() == "lfp":
             value = "looking-for-players"
