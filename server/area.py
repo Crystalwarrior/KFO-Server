@@ -1711,15 +1711,6 @@ class Area:
         Set the status of the area.
         :param value: status code
         """
-        possible_values = (
-            "idle",
-            "rp",
-            "casing",
-            "looking-for-players",
-            "lfp",
-            "recess",
-            "gaming",
-        )
         value = censor(
             value,
             self.server.censors["whole"],
