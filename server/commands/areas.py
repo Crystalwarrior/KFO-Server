@@ -32,6 +32,7 @@ __all__ = [
     "ooc_cmd_edit_ambience",
     "ooc_cmd_lights",
     "ooc_cmd_auto_pair",
+    "ooc_cmd_area_message",
 ]
 
 def ooc_cmd_overlay(client, arg):
@@ -858,3 +859,40 @@ def ooc_cmd_auto_pair(client, arg):
         client.send_ooc("Pairing will show a maximum of 3 characters on screen now")
     else:
         client.send_ooc("Pairing will show a maximum of 2 characters on screen now")
+
+
+def ooc_cmd_area_message(client, arg):
+    """
+    Set a fixed message for an area.
+    To disable just do /area_message.
+    {areaname} in the message will show area's name
+    {playercount} will show the number of the players in the area
+    {playerlist} will show the list of the players in the area
+    {desc} will show area desc
+    Usage: /area_message <message>
+    """
+    if client not in client.area.owners and not client.is_mod:
+        raise AreaError("You cannot modify area message unless you are at least CM!")
+    if not client.area.can_area_message:
+        raise AreaError("You cannot modify area message in this area!")
+    if len(arg) == 0:
+        client.area.area_message = ""
+        for c in client.area.clients:
+            c.send_command("AD", "")
+            c.send_ooc("Area message has been disabled!")
+    else:
+        client.area.area_message = arg
+        if "{areaname}" in arg:
+            arg = arg.replace("{areaname}", client.area.name)
+        if "{desc}" in arg:
+            arg = arg.replace("{desc}", client.area.desc)
+        if "{playercount}" in arg:
+            arg = arg.replace("{playercount}", str(len(client.area.clients)))
+        if "{playerlist}" in arg:
+            playerlist = ", ".join(
+                f"[{c.id}] {c.showname}" for c in client.area.clients
+            )
+            arg = arg.replace("{playerlist}", playerlist)
+        for c in client.area.clients:
+            c.send_command("AD", arg)
+            c.send_ooc("Area message has been changed!")
