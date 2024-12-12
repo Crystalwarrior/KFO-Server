@@ -685,6 +685,7 @@ class Area:
         area["auto_pair_max"] = self.auto_pair_max
         area["auto_pair_cycle"] = self.auto_pair_cycle
         area["can_area_message"] = self.can_area_message
+        area["area_message"] = self.area_message
         return area
 
     def new_client(self, client):
