@@ -972,6 +972,27 @@ class ClientManager:
 
             self.area.trigger("join", self)
 
+            if self.area.area_message == "":
+                self.send_command("AD", "")
+            else:
+                msg = self.area.area_message
+                if "{areaname}" in msg:
+                    msg = msg.replace("{areaname}", self.area.name)
+                if "{desc}" in msg:
+                    msg = msg.replace("{desc}", self.area.desc)
+                if "{playercount}" in msg or "{playerlist}" in msg:
+                    if "{playercount}" in msg:
+                        msg = msg.replace("{playercount}", str(len(self.area.clients)))
+                    if "{playerlist}" in msg:
+                        playerlist = ", ".join(
+                            f"[{c.id}] {c.showname}" for c in self.area.clients
+                        )
+                        msg = msg.replace("{playerlist}", playerlist)
+                    for c in self.area.clients:
+                        c.send_command("AD", msg)
+                else:
+                    self.send_command("AD", msg)
+
         def can_access_area(self, area):
             return (
                 self.area == area
@@ -2132,6 +2153,25 @@ class ClientManager:
                         ],
                     ],
                 )
+
+            if client.area.area_message != "":
+                msg = client.area.area_message
+                if "{playerlist}" in msg or "{playercount}" in msg:
+                    if "{areaname}" in msg:
+                        msg = msg.replace("{areaname}", client.area.name)
+                    if "{desc}" in msg:
+                        msg = msg.replace("{desc}", client.area.desc)
+                    if "{playercount}" in msg:
+                        msg = msg.replace(
+                            "{playercount}", str(len(client.area.clients))
+                        )
+                    if "{playerlist}" in msg:
+                        playerlist = ", ".join(
+                            f"[{c.id}] {c.showname}" for c in self.area.clients
+                        )
+                        msg = msg.replace("{playerlist}", playerlist)
+                    for c in self.area.clients:
+                        c.send_command("AD", msg)
 
     def get_targets(self, client, key, value, local=False, single=False, all_hub=False):
         """
