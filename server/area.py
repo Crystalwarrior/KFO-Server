@@ -43,7 +43,7 @@ class Area:
             self.schedule = None
             self.commands = []
             self.format = "hh:mm:ss.zzz"
-            self.interval = 1000 / 60
+            self.interval = 16
 
         def timer_expired(self):
             if self.schedule:
