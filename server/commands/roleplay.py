@@ -974,7 +974,7 @@ def ooc_cmd_format_timer(client, arg):
         else:
             client.send_ooc("You cannot change timer format if you are at least CM")
             return
-    timer.format = args[1]
+    timer.format = args[1:]
     if timer.set:
         if timer.started:
             current_time = timer.target - arrow.get()
