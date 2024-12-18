@@ -401,6 +401,8 @@ class Area:
         if "background" in area:
             self.background = area["background"]
             self.o_background = self.background
+        if "overlay" in area:
+            self.overlay = area["overlay"]
         if "bg_lock" in area:
             self.bg_lock = area["bg_lock"]
         if "overlay_lock" in area:
@@ -603,6 +605,7 @@ class Area:
         area = OrderedDict()
         area["area"] = self.name
         area["background"] = self.background
+        area["overlay"] = self.overlay
         area["pos_lock"] = "none"
         if len(self.pos_lock) > 0:
             area["pos_lock"] = " ".join(map(str, self.pos_lock))
@@ -1673,7 +1676,7 @@ class Area:
             self.hp_pro = val
         self.send_command("HP", side, val)
 
-    def change_background(self, bg, silent=False, overlay="", mode=-1):
+    def change_background(self, bg, overlay="", mode=2):
         """
         Set the background and/or overlay.
         
@@ -1727,23 +1730,10 @@ class Area:
                     client.change_position(self.pos_lock[0])
 
         if overlay != "":
-            # In case "mode" is unspecified
-            if mode == -1:
-                if silent:
-                    mode = 0
-                else:
-                    mode = 1
-            for client in self.clients:
-                client.send_command("BN", bg, client.pos, overlay, mode)
+            self.overlay = overlay
 
-        # Pre AOG packet fallback
-        # In case overlay wasn't specified
-        elif silent:
-            for client in self.clients:
-                client.send_command("BN", bg)
-        else:
-            for client in self.clients:
-                client.send_command("BN", bg, client.pos)
+        for client in self.clients:
+            client.send_command("BN", bg, client.pos, self.overlay, mode)
 
     def change_status(self, value):
         """
