@@ -1016,7 +1016,10 @@ def ooc_cmd_timer_interval(client, arg):
             client.send_ooc("You cannot change timer interval if you are at least CM")
             return
     try:
-        timer.interval = pytimeparse.parse(args[1])*1000*60
+        if len(args) == 1:
+            timer.interval = 16 * 1000
+        else:
+            timer.interval = pytimeparse.parse(args[1]) * 1000
     except:
         raise ArgumentError("Interval value not valid!")
     if timer.set:
