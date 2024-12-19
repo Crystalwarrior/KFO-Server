@@ -3,6 +3,7 @@ import string
 import time
 import math
 import os
+import arrow
 from heapq import heappop, heappush
 
 
@@ -306,6 +307,17 @@ class ClientManager:
                         timer = self.area.timers[timer_id-1]
                     self.send_command("TF", timer_id, timer.format, new_time)
                     self.send_command("TIN", timer_id, timer.interval)
+
+        def send_timer_set_interval(self, timer_id, timer):
+            if timer.started:
+                current_time = timer.target - arrow.get()
+                current_time = int(current_time.total_seconds()) * 1000
+            else:
+                current_time = int(timer.static.total_seconds()) * 1000
+            if timer_id == 0:
+                    self.area.area_manager.send_timer_set_time(timer_id, current_time, timer.started)
+            else:
+                    self.area.send_timer_set_time(timer_id, current_time, timer.started)
 
         def send_timer_set_step_length(self, timer_id=None, new_step_length=None):
             if self.software == "DRO":
