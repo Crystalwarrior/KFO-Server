@@ -1676,7 +1676,7 @@ class Area:
             self.hp_pro = val
         self.send_command("HP", side, val)
 
-    def change_background(self, bg, overlay="", mode=2):
+    def change_background(self, bg, overlay="", mode=1):
         """
         Set the background and/or overlay.
         
@@ -1729,8 +1729,7 @@ class Area:
                 if client.pos not in self.pos_lock:
                     client.change_position(self.pos_lock[0])
 
-        if overlay != "":
-            self.overlay = overlay
+        self.overlay = overlay
 
         for client in self.clients:
             client.send_command("BN", bg, client.pos, self.overlay, mode)
