@@ -1017,7 +1017,7 @@ def ooc_cmd_timer_interval(client, arg):
             return
     try:
         if len(args) == 1:
-            timer.interval = 16 * 1000
+            timer.interval = 16 
         else:
             timer.interval = pytimeparse.parse(args[1]) * 1000
     except:
