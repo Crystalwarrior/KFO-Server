@@ -991,6 +991,7 @@ def ooc_cmd_format_timer(client, arg):
 def ooc_cmd_timer_interval(client, arg):
     """
     Set timer interval
+    If timer interval is not written than will show default timer interval (16ms)
     Example: /timer_interval 1 15m
     Usage: /timer_interval <Timer_ID> <Interval>
     """
@@ -1023,13 +1024,5 @@ def ooc_cmd_timer_interval(client, arg):
     except:
         raise ArgumentError("Interval value not valid!")
     if timer.set:
-        if timer.started:
-            current_time = timer.target - arrow.get()
-            current_time = int(current_time.total_seconds()) * 1000
-        else:
-            current_time = int(timer.static.total_seconds()) * 1000
-        if args[0] == 0:
-                client.area.area_manager.send_timer_set_time(args[0], current_time, timer.started)
-        else:
-                client.area.send_timer_set_time(args[0], current_time, timer.started)
+        client.send_timer_set_interval(args[0], timer)
     client.send_ooc(f"Timer {args[0]} interval is set to '{args[1]}'")
