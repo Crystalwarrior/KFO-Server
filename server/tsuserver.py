@@ -67,6 +67,9 @@ class TsuServer3:
             "effects",
             "expanded_desk_mods",
             "y_offset",
+            "triplex",
+            "typing_timer",
+            "video_support",
         ]
         self.command_aliases = {}
 
