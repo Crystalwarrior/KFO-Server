@@ -977,7 +977,8 @@ class Area:
                 third_folder="",
                 third_emote=0,
                 third_offset="",
-                third_flip=0):
+                third_flip=0,
+                video=""):
         """
         Send an IC message from a client to all applicable clients in the area.
         :param client: speaker
@@ -1214,7 +1215,8 @@ class Area:
                            third_folder,
                            third_emote,
                            third_offset,
-                           third_flip)
+                           third_flip,
+                           video)
         if self.recording:
             # See if the testimony is supposed to end here.
             scrunched = "".join(e for e in msg if e.isalnum())
@@ -1269,6 +1271,7 @@ class Area:
             third_emote, # 32
             third_offset, # 33
             third_flip, # 34
+            video, #35
         )
         self.last_ic_message = args
 
@@ -1328,6 +1331,7 @@ class Area:
                 third_emote, # 32
                 third_offset, # 33
                 third_flip, # 34
+                video, # 35
             )
             if idx == -1:
                 # Add one statement at the very end.
