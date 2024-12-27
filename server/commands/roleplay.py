@@ -35,6 +35,8 @@ __all__ = [
     "ooc_cmd_timer",
     "ooc_cmd_demo",
     "ooc_cmd_trigger",
+    "ooc_cmd_format_timer",
+    "ooc_cmd_timer_interval",
 ]
 
 
@@ -950,3 +952,83 @@ def ooc_cmd_trigger(client, arg):
         val = args[1]
         client.area.triggers[trig] = val
         client.send_ooc(f'Changed to Call "{val}" on trigger "{trig}"')
+
+
+def ooc_cmd_format_timer(client, arg):
+    """
+    Format the timer
+    Usage: /format_timer <Timer_iD> <Format>
+    """
+    args = shlex.split(arg)
+    try:
+        args[0] = int(args[0])
+    except:
+        raise ArgumentError("Timer ID should be an integer")
+    if args[0] == 0:
+        if client.is_mod or client in client.area.area_manager.owners:
+            timer = client.area.area_manager.timer
+        else:
+            client.send_ooc("You cannot change timer 0 format if you are not GM")
+            return
+    else:
+        if (
+            client.is_mod
+            or client in client.area.area_manager.owners
+            or client in client.area.owners
+        ):
+            timer = client.area.timers[args[0] - 1]
+        else:
+            client.send_ooc("You cannot change timer format if you are at least CM")
+            return
+    timer.format = args[1:]
+    if timer.set:
+        if timer.started:
+            current_time = timer.target - arrow.get()
+            current_time = int(current_time.total_seconds()) * 1000
+        else:
+            current_time = int(timer.static.total_seconds()) * 1000
+        if args[0] == 0:
+            client.area.area_manager.send_timer_set_time(args[0], current_time, timer.started)
+        else:
+            client.area.send_timer_set_time(args[0], current_time, timer.started)
+    client.send_ooc(f"Timer {args[0]} format: '{args[1]}'")
+
+
+def ooc_cmd_timer_interval(client, arg):
+    """
+    Set timer interval
+    If timer interval is not written than will show default timer interval (16ms)
+    Example: /timer_interval 1 15m
+    Usage: /timer_interval <Timer_ID> <Interval>
+    """
+    args = shlex.split(arg)
+    try:
+        args[0] = int(args[0])
+    except:
+        raise ArgumentError("Timer ID should be an integer")
+    if args[0] == 0:
+        if client.is_mod or client in client.area.area_manager.owners:
+            timer = client.area.area_manager.timer
+        else:
+            client.send_ooc("You cannot change timer 0 interval if you are not GM")
+            return
+    else:
+        if (
+            client.is_mod
+            or client in client.area.area_manager.owners
+            or client in client.area.owners
+        ):
+            timer = client.area.timers[args[0] - 1]
+        else:
+            client.send_ooc("You cannot change timer interval if you are at least CM")
+            return
+    try:
+        if len(args) == 1:
+            timer.interval = 16 
+        else:
+            timer.interval = pytimeparse.parse(args[1]) * 1000
+    except:
+        raise ArgumentError("Interval value not valid!")
+    if timer.set:
+        client.send_timer_set_interval(args[0], timer)
+    client.send_ooc(f"Timer {args[0]} interval is set to '{args[1]}'")
