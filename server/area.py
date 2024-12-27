@@ -2,7 +2,7 @@ from server import database
 from server import commands
 from server.evidence import EvidenceList
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import MusicEffect, derelative
+from server.constants import MusicEffect, derelative, censor
 
 from collections import OrderedDict
 
@@ -1745,18 +1745,21 @@ class Area:
         Set the status of the area.
         :param value: status code
         """
-        allowed_values = (
-            "idle",
-            "rp",
-            "casing",
-            "looking-for-players",
-            "lfp",
-            "recess",
-            "gaming",
+        value = censor(
+            value,
+            self.server.censors["whole"],
+            self.server.censors["replace"],
+            True,
         )
-        if value.lower() not in allowed_values:
+        value = censor(
+            value,
+            self.server.censors["partial"],
+            self.server.censors["replace"],
+            False,
+        )
+        if value.lower() == "hub":
             raise AreaError(
-                f'Invalid status. Possible values: {", ".join(allowed_values)}'
+                'Hub Status is a restricted value.'
             )
         if value.lower() == "lfp":
             value = "looking-for-players"
