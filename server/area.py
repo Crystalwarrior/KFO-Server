@@ -742,7 +742,7 @@ class Area:
             if timer.started:
                 current_time = timer.target - arrow.get()
             int_time = int(current_time.total_seconds()) * 1000
-            client.send_timer_set_time(0, int_time, timer.started)
+            client.send_timer_set_time(0, int_time, timer.started, timer.format, timer.interval)
         elif not running_only:
             client.send_timer_set_time(0, None, False)
 
@@ -754,7 +754,7 @@ class Area:
                 if timer.started:
                     current_time = timer.target - arrow.get()
                 int_time = int(current_time.total_seconds()) * 1000
-                client.send_timer_set_time(timer_id + 1, int_time, timer.started)
+                client.send_timer_set_time(timer_id + 1, int_time, timer.started, timer.format, timer.interval)
             elif not running_only:
                 client.send_timer_set_time(timer_id + 1, None, False)
 
@@ -927,10 +927,10 @@ class Area:
                 if c.area.background != bg:
                     c.send_command("BN", c.area.background)
 
-    def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+    def send_timer_set_time(self, timer_id=None, new_time=None, start=False, format=None, interval=None):
         """Broadcast a timer to all clients in this area."""
         for c in self.clients:
-            c.send_timer_set_time(timer_id, new_time, start)
+            c.send_timer_set_time(timer_id, new_time, start, format, interval)
 
     def broadcast_ooc(self, msg):
         """
