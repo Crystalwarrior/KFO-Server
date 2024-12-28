@@ -524,13 +524,14 @@
     - `unset` OR `hide` hides the timer for it to no longer show up, so `/timer 0 hide`.
 * **timer\_format** `<id> <format>`
     - Format the timer in the current area or hub.
-    - Example of format: `'Time Left:' hh:mm`
-    - Default format: `hh:mm:ss.zzz`
+    - Example of format: `'Time Left:' hh:mm`, where 'Time Left:' is surrounded by single quotes so it's not affected by the formatting, hh stands for hours and mm stands for minutes.
+    - Default format: `hh:mm:ss.zzz` where hh stands for hours, mm stands for minutes, ss stands for seconds, and zzz stands for milliseconds.
     - For more information on how to implement your format, [go here!](https://doc.qt.io/qt-6/qtime.html#toString)
 * **timer\_interval** `<id> <interval>`
-    - Set timer interval in the current area or hub.
-    - Example: `/timer_interval 1 15m`
-    - Default interval: `/timer_interval 1 16ms`
+    - Set the timer's interval, which is how often it fires in milliseconds.
+    - If timer interval is not written, it will reset the interval to the default value, which is 16.
+    - Example: `/timer_interval 1 16`
+    - Default interval: `/timer_interval 1 16`
 ## Musiclists
 * **musiclist\_add** `<local/area/hub>` `<Category>` `<MusicName>` `[Length]` `[Path]`
     - Allow you to add a song in a loaded musiclist!
