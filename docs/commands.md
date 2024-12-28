@@ -522,12 +522,12 @@
     - `start` starts the previously set timer, so `/timer 0 start`.
     - `pause` OR `stop` pauses the timer that's currently running, so `/timer 0 pause`.
     - `unset` OR `hide` hides the timer for it to no longer show up, so `/timer 0 hide`.
-* **format_timer** `<id> <format>`
+* **timer\_format** `<id> <format>`
     - Format the timer in the current area or hub.
-    - Example of format: `Time Left: hh:mm`
+    - Example of format: `'Time Left:' hh:mm`
     - Default format: `hh:mm:ss.zzz`
     - For more information on how to implement your format, [go here!](https://doc.qt.io/qt-6/qtime.html#toString)
-* **timer_interval** `<id> <interval>`
+* **timer\_interval** `<id> <interval>`
     - Set timer interval in the current area or hub.
     - Example: `/timer_interval 1 15m`
     - Default interval: `/timer_interval 1 16ms`

@@ -344,11 +344,11 @@ class ClientManager:
             limit = self.server.config["playerlimit"]
             self.send_ooc(f"👥{players}/{limit} players online.")
 
-        def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+        def send_timer_set_time(self, timer_id=None, new_time=None, start=False, format=None, interval=None):
             if self.software == "DRO":
                 # configuration. There's no situation where these values are different on KFO-Server
-                self.send_timer_set_step_length(timer_id, -16) # 16 milliseconds, matches AO
-                self.send_timer_set_firing_interval(timer_id, 16) # 16 milliseconds, matches AO
+                self.send_timer_set_step_length(timer_id, -timer.interval) # 16 milliseconds, matches AO
+                self.send_timer_set_firing_interval(timer_id, timer.interval) # 16 milliseconds, matches AO
                 
                 self.send_command("TST", timer_id, new_time) # set time
                 if start:
@@ -366,19 +366,10 @@ class ClientManager:
                         timer = self.area.area_manager.timer
                     else:
                         timer = self.area.timers[timer_id-1]
-                    self.send_command("TF", timer_id, timer.format, new_time)
-                    self.send_command("TIN", timer_id, timer.interval)
-
-        def send_timer_set_interval(self, timer_id, timer):
-            if timer.started:
-                current_time = timer.target - arrow.get()
-                current_time = int(current_time.total_seconds()) * 1000
-            else:
-                current_time = int(timer.static.total_seconds()) * 1000
-            if timer_id == 0:
-                    self.area.area_manager.send_timer_set_time(timer_id, current_time, timer.started)
-            else:
-                    self.area.send_timer_set_time(timer_id, current_time, timer.started)
+                    if format:
+                        self.send_command("TF", timer_id, format, new_time)
+                    if interval:
+                        self.send_command("TIN", timer_id, interval)
 
         def send_timer_set_step_length(self, timer_id=None, new_step_length=None):
             if self.software == "DRO":
@@ -390,7 +381,7 @@ class ClientManager:
             if self.software == "DRO":
                 self.send_command("TSF", timer_id, new_firing_interval) #set firing
             else:
-                pass # no ao equivalent
+                self.send_command("TIN", timer_id, new_firing_interval)
 
         def is_valid_name(self, name):
             """
