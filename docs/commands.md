@@ -166,6 +166,9 @@
     - Players will also be unable to see area movement messages or use `/chardesc`.
     - You can change `/bg`, `/desc` and `/pos_lock` of the area when its dark and it will remember it next time you turn the lights off.
     - tog can be `on`, `off` or empty.
+* **auto\_pair** `<double/triple>`
+    - Set the max of players displayed on the screen.
+    - Depends on the /area_pref auto_pair setting
 ## Casing
 * **doc** `[url]`
     - Show or change the link for the current case document.
@@ -519,6 +522,15 @@
     - `start` starts the previously set timer, so `/timer 0 start`.
     - `pause` OR `stop` pauses the timer that's currently running, so `/timer 0 pause`.
     - `unset` OR `hide` hides the timer for it to no longer show up, so `/timer 0 hide`.
+* **format_timer** `<id> <format>`
+    - Format the timer in the current area or hub.
+    - Example of format: `Time Left: hh:mm`
+    - Default format: `hh:mm:ss.zzz`
+    - For more information on how to implement your format, [go here!](https://doc.qt.io/qt-6/qtime.html#toString)
+* **timer_interval** `<id> <interval>`
+    - Set timer interval in the current area or hub.
+    - Example: `/timer_interval 1 15m`
+    - Default interval: `/timer_interval 1 16ms`
 ## Musiclists
 * **musiclist\_add** `<local/area/hub>` `<Category>` `<MusicName>` `[Length]` `[Path]`
     - Allow you to add a song in a loaded musiclist!

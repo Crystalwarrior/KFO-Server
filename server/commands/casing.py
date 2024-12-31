@@ -985,6 +985,9 @@ def ooc_cmd_concede(client, arg):
                 client.area.broadcast_ooc(
                     "The minigame has been forcibly ended.")
                 return
+            if client.char_id not in client.area.blue_team and client.char_id not in client.area.red_team:
+                client.area.vote_end_minigame(client)
+                return
             client.area.start_debate(
                 client, client
             )  # starting a debate against yourself is a concede

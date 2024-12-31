@@ -376,6 +376,7 @@ class AOProtocol(asyncio.Protocol):
         third_charid = -1
         blipname = ""
         slide = 0
+        video = ""
         if self.validate_net_cmd(
             args,
             self.ArgType.STR,  # msg_type
@@ -595,10 +596,11 @@ class AOProtocol(asyncio.Protocol):
             self.ArgType.STR, # 23 # frames_sfx
             self.ArgType.INT, # 24 # additive
             self.ArgType.STR, # 25 # effect
-            self.ArgType.STR, # 26 # blipname
-            self.ArgType.INT, # 27 # slide
+            self.ArgType.INT, # 26 # third_charid
+            self.ArgType.STR, # 27 # blipname
+            self.ArgType.INT, # 28 # slide
         ):
-            # 2.11 validation monstrosity. (Woe, pain be upon ye)
+            # AO Golden validation monstrosity
             (
                 msg_type,
                 pre,
@@ -626,6 +628,7 @@ class AOProtocol(asyncio.Protocol):
                 frames_sfx,
                 additive,
                 effect,
+                third_charid,
                 blipname,
                 slide,
             ) = args
@@ -638,9 +641,85 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_ooc(
                     "Something went wrong! Please report the issue to the developers.")
                 return
+        elif self.validate_net_cmd(
+            args,
+            self.ArgType.STR, # 0 # msg_type
+            self.ArgType.STR_OR_EMPTY, # 1  # pre
+            self.ArgType.STR, # 2 # folder
+            self.ArgType.STR_OR_EMPTY, # 3 # anim
+            self.ArgType.STR_OR_EMPTY, # 4  # text
+            self.ArgType.STR, # 5 # pos
+            self.ArgType.STR, # 6 # sfx
+            self.ArgType.INT, # 7 # emote_mod
+            self.ArgType.INT, # 8 # cid
+            self.ArgType.INT, # 9 # sfx_delay
+            self.ArgType.INT_OR_STR, # 10 # button
+            self.ArgType.INT, # 11 # evidence
+            self.ArgType.INT, # 12 # flip
+            self.ArgType.INT, # 13 # ding
+            self.ArgType.INT, # 14 # color
+            self.ArgType.STR_OR_EMPTY, # 15 # showname
+            self.ArgType.STR, # 16 # charid_pair
+            self.ArgType.STR, # 17 # offset_pair
+            self.ArgType.INT, # 18 # nonint_pre
+            self.ArgType.STR, # 19 # sfx_looping
+            self.ArgType.INT, # 20 # screenshake
+            self.ArgType.STR, # 21 # frames_shake
+            self.ArgType.STR, # 22 # frames_realization
+            self.ArgType.STR, # 23 # frames_sfx
+            self.ArgType.INT, # 24 # additive
+            self.ArgType.STR, # 25 # effect
+            self.ArgType.INT, # 26 # third_charid
+            self.ArgType.STR, # 27 # blipname
+            self.ArgType.INT, # 28 # slide
+            self.ArgType.STR_OR_EMPTY, # 29 # video
+        ):
+            # KFO Client validation monstrosity
+            (
+                msg_type,
+                pre,
+                folder,
+                anim,
+                text,
+                pos,
+                sfx,
+                emote_mod,
+                cid,
+                sfx_delay,
+                button,
+                evidence,
+                flip,
+                ding,
+                color,
+                showname,
+                charid_pair,
+                offset_pair,
+                nonint_pre,
+                sfx_looping,
+                screenshake,
+                frames_shake,
+                frames_realization,
+                frames_sfx,
+                additive,
+                effect,
+                third_charid,
+                blipname,
+                slide,
+                video,
+            ) = args
+            try:
+                pair_args = charid_pair.split("^")
+                charid_pair = int(pair_args[0])
+                if len(pair_args) > 1:
+                    pair_order = pair_args[1]
+            except ValueError:
+                self.client.send_ooc(
+                    "Something went wrong! Please report the issue to the developers.")
+                return
         else:
+            self.client.send_ooc(
+                f"Something went wrong! Please report this to the developers:\n{args}")
             return
-
         # Targets for whispering
         whisper_clients = None
 
@@ -1075,7 +1154,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.area.auto_pair:
             clients_pos = [c for c in self.client.area.clients if c.pos == self.client.pos]
             clients_pos.sort(key=lambda x: x.id)
-            if len(clients_pos) >= 3:
+            if len(clients_pos) >= 3 and self.client.area.auto_pair_max == "triple":
                 position = clients_pos.index(self.client)
                 if len(clients_pos) >= position+2:
                     if position > 0:
@@ -1088,34 +1167,52 @@ class AOProtocol(asyncio.Protocol):
                     client_pair = clients_pos[position-1]
                     third_client = clients_pos[position-2]
                     
-                offset_pair = 0
-                charid_pair = f"{client_pair.id}^0"
-                other_offset = -33
+
+                charid_pair = f"{client_pair.char_id}^0"
                 other_emote = client_pair.last_sprite
                 other_flip = client_pair.flip
                 other_folder = client_pair.claimed_folder
-                third_charid = third_client.id
-                third_offset = 33
+                third_charid = f"{third_client.char_id}^0"
                 third_emote = third_client.last_sprite
-                third_flip = f"{third_client.id}^0"
+                third_flip = third_client.flip
                 third_folder = third_client.claimed_folder
+
+                if (
+                    self.client.last_offset in [-33, 33, 0]
+                    and client_pair.last_offset in [-33, 33, 0]
+                    and third_client.last_offset in [-33, 33, 0]
+                    and self.client.last_offset != client_pair.last_offset
+                    and self.client.last_offset != third_client.last_offset
+                    and client_pair.last_offset != third_client.last_offset
+                    and not self.client.area.auto_pair_cycle
+                ):
+                    offset_pair = self.client.last_offset
+                    other_offset = client_pair.last_offset
+                    third_offset = third_client.last_offset
+                else:
+                    offset_pair = 0
+                    other_offset = -33
+                    third_offset = 33
+                    self.client.last_offset = 0
+                    client_pair.last_offset = -33
+                    third_client.last_offset = 33
                    
             else:
                 offset_pair = 0
-                if len(clients_pos) == 2:
-                    clients_pos.remove(self.client)
-                    client_pair = clients_pos[0]
+                if len(clients_pos) >= 2:
+                    if clients_pos.index(self.client) == 0:
+                        client_pair = clients_pos[1]
+                    else:
+                        client_pair = clients_pos[clients_pos.index(self.client) - 1]
                     if self.client.last_offset == -25 or client_pair.last_offset == 25:
                         offset_pair = -25
                         other_offset = 25
-                        self.client.last_offset = -25
-                        client_pair.last_offset = 25
                     else:
                         offset_pair = 25
                         other_offset = -25
                         self.client.last_offset = 25
                         client_pair.last_offset = -25
-                    charid_pair = client_pair.id
+                    charid_pair = client_pair.char_id
                     other_emote = client_pair.last_sprite
                     other_flip = client_pair.flip
                     other_folder = client_pair.claimed_folder
@@ -1201,6 +1298,7 @@ class AOProtocol(asyncio.Protocol):
                         third_flip, # 33
                         blipname, #34
                         slide, #35
+                        video, # 36
                     )
                 a_list = ", ".join([str(a.id) for a in target_area])
                 if not (self.client.area in target_area):
@@ -1245,6 +1343,7 @@ class AOProtocol(asyncio.Protocol):
                         third_flip,
                         blipname,
                         slide,
+                        video,
                     )
                 self.client.send_ooc(f"Broadcasting to areas {a_list}")
             except (AreaError, ValueError):
@@ -1374,6 +1473,7 @@ class AOProtocol(asyncio.Protocol):
                         third_flip,
                         blipname,
                         slide,
+                        video,
                     )
 
             return
@@ -1429,6 +1529,7 @@ class AOProtocol(asyncio.Protocol):
             third_emote=third_emote,
             third_offset=third_offset,
             third_flip=third_flip,
+            video=video,
         )
         self.client.area.send_owner_ic(
             self.client.area.background,
@@ -1470,6 +1571,7 @@ class AOProtocol(asyncio.Protocol):
             third_flip,
             blipname,
             slide,
+            video,
         )
 
         # DRO client support
