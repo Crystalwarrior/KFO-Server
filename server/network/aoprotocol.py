@@ -1854,22 +1854,19 @@ class AOProtocol(asyncio.Protocol):
                     .replace("`", "")
                     .strip()
                 )
-                if (msg.startswith("-") and msg.endswith("-")) or (
-                    msg.startswith("=") and msg.endswith("=")
-                ):
-                    msg = msg.replace("-", "")
-                    msg = msg.replace("=", "")
-                    msg = msg.strip()
-                    # actual title possible lol!
-                    if len(msg) > 0:
-                        self.client.area.testimony.clear()
-                        self.client.area.testimony_index = -1
-                        self.client.area.testimony_title = msg
-                        self.client.area.recording = True
-                        self.client.area.broadcast_ooc(
-                            f'-- {self.client.area.testimony_title} --\nTestimony recording started! All new messages will be recorded as testimony lines. Say "End" to stop recording.'
-                        )
-                        return
+                msg = msg.replace("-", "")
+                msg = msg.replace("=", "")
+                msg = msg.strip()
+                # actual title possible lol!
+                if len(msg) > 0:
+                    self.client.area.testimony.clear()
+                    self.client.area.testimony_index = -1
+                    self.client.area.testimony_title = msg
+                    self.client.area.recording = True
+                    self.client.area.broadcast_ooc(
+                        f'-- {self.client.area.testimony_title} --\nTestimony recording started! All new messages will be recorded as testimony lines. Say "End" to stop recording.'
+                    )
+                    return
             if sign == "CE":
                 if self.client.area.recording:
                     self.client.area.recording = False
