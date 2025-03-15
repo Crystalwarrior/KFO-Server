@@ -3,7 +3,6 @@ import string
 import time
 import math
 import os
-import arrow
 from heapq import heappop, heappush
 
 
@@ -50,6 +49,7 @@ class ClientManager:
             self.pm_mute = False
             self.mod_call_time = 0
             self.ipid = ipid
+            self.lockdown_ipid_roof = 0
             self.version = ""
             self.software = ""
 
@@ -78,6 +78,7 @@ class ClientManager:
             self.casing_jur = False
             self.casing_steno = False
             self.case_call_time = 0
+            self.global_send_time = 0
 
             # Need command
             self.need_call_time = 0
@@ -362,23 +363,6 @@ class ClientManager:
                 else:
                     self.send_command("TI", timer_id, 2, new_time) # Show timer
                     self.send_command("TI", timer_id, int(not start), new_time) # Set timer with value and start
-                    if timer_id == 0:
-                        timer = self.area.area_manager.timer
-                    else:
-                        timer = self.area.timers[timer_id-1]
-                    self.send_command("TF", timer_id, timer.format, new_time)
-                    self.send_command("TIN", timer_id, timer.interval)
-
-        def send_timer_set_interval(self, timer_id, timer):
-            if timer.started:
-                current_time = timer.target - arrow.get()
-                current_time = int(current_time.total_seconds()) * 1000
-            else:
-                current_time = int(timer.static.total_seconds()) * 1000
-            if timer_id == 0:
-                    self.area.area_manager.send_timer_set_time(timer_id, current_time, timer.started)
-            else:
-                    self.area.send_timer_set_time(timer_id, current_time, timer.started)
 
         def send_timer_set_step_length(self, timer_id=None, new_step_length=None):
             if self.software == "DRO":
@@ -957,10 +941,9 @@ class ClientManager:
 
             # Send the background information
             if self.area.dark:
-                # TODO: separate dark area overlays
-                self.send_command("BN", self.area.background_dark, self.pos, self.area.overlay, 1)
+                self.send_command("BN", self.area.background_dark, self.pos)
             else:
-                self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
+                self.send_command("BN", self.area.background, self.pos)
 
             if len(self.area.pos_lock) > 0:
                 # set that juicy pos dropdown
@@ -1733,9 +1716,9 @@ class ClientManager:
             self.send_command("HP", 2, self.area.hp_pro)
             if self.area.dark:
                 self.send_command(
-                    "BN", self.area.background_dark, self.area.pos_dark, self.area.overlay, 1)
+                    "BN", self.area.background_dark, self.area.pos_dark)
             else:
-                self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
+                self.send_command("BN", self.area.background, self.pos)
             self.send_command("LE", *self.area.get_evidence_list(self))
             self.send_command("MM", 1)
 
@@ -2034,6 +2017,14 @@ class ClientManager:
         def can_call_case(self):
             """Whether or not the client can currently announce a case."""
             return (time.time() * 1000.0 - self.case_call_time) > 0
+
+        def set_global_send_delay(self):
+            """Begin the global message cooldown."""
+            self.global_send_time = round(time.time() * 1000.0 + 5000)
+
+        def can_send_global(self):
+            """Whether or not the client can send a global message."""
+            return (time.time() * 1000.0 - self.global_send_time) > 0
 
         def can_call_need(self):
             """Whether or not the client can currently call a need."""

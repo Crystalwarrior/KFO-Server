@@ -2,7 +2,7 @@ from server import database
 from server import commands
 from server.evidence import EvidenceList
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import MusicEffect, derelative, censor
+from server.constants import MusicEffect, derelative
 
 from collections import OrderedDict
 
@@ -43,8 +43,6 @@ class Area:
             self.caller = caller
             self.schedule = None
             self.commands = []
-            self.format = "hh:mm:ss.zzz"
-            self.interval = 16
 
         def timer_expired(self):
             if self.schedule:
@@ -161,7 +159,11 @@ class Area:
         # Sends a message to the IC when changing areas
         self.passing_msg = False
         # Minimum time that has to pass before you can send another message
-        self.msg_delay = 200
+        #self.msg_delay = 200
+        # Minimum time that has to pass before you can send another message
+        self.min_msg_delay = 200
+        # Maximum delay before you are allowed to send another message
+        self.max_msg_delay = 5000
         # Whether to reveal evidence in all pos if it is presented
         self.present_reveals_evidence = True
         # /prefs end
@@ -202,10 +204,6 @@ class Area:
         # Who's debating who
         self.red_team = set()
         self.blue_team = set()
-        # Clients who cast votes
-        self.votes_cast = set()      
-        # What percentage of valid voters needs to vote to force-end the minigame, rounded
-        self.votes_percentage = 0.7
         # Minigame name
         self.minigame = ""
         # Minigame schedule
@@ -224,6 +222,7 @@ class Area:
 
         self.music_looper = None
         self.next_message_time = 0
+        self.next_message_delay = 100
         self.judgelog = []
         self.music = ""
         self.music_player = ""
@@ -292,6 +291,10 @@ class Area:
         self.auto_pair_max = "triple"
         self.auto_pair_cycle = False
 
+        # rpsrig command
+        self.rpsrig_in_progress = False
+        self.rpsrigger = None
+
     @property
     def name(self):
         """Area's name string. Abbreviation is also updated according to this."""
@@ -333,8 +336,14 @@ class Area:
             return
 
         # Sort through all the owners, with GMs coming first and CMs coming second
-        sorted_owners = list(self._owners) + list(self.area_manager.owners)
-
+        sorted_owners = sorted(
+            self.owners,
+            key=lambda x: 0
+            if (x in self.area_manager.owners)
+            else 1
+            if (x in self._owners)
+            else 2,
+        )
         # Pick the owner with highest permission - game master, if one exists.
         # This permission system may be out of wack, but it *should* be good for now
         owner = sorted_owners[0]
@@ -403,8 +412,6 @@ class Area:
         if "background" in area:
             self.background = area["background"]
             self.o_background = self.background
-        if "overlay" in area:
-            self.overlay = area["overlay"]
         if "bg_lock" in area:
             self.bg_lock = area["bg_lock"]
         if "overlay_lock" in area:
@@ -541,8 +548,12 @@ class Area:
             self.desc_dark = area["desc_dark"]
         if 'passing_msg' in area:
             self.passing_msg = area['passing_msg']
-        if 'msg_delay' in area:
-            self.msg_delay = area['msg_delay']
+        #if 'msg_delay' in area:
+        #    self.msg_delay = area['msg_delay']
+        if 'min_msg_delay' in area:
+            self.min_msg_delay = area['min_msg_delay']
+        if 'max_msg_delay' in area:
+            self.max_msg_delay = area['max_msg_delay']
         if 'present_reveals_evidence' in area:
             self.present_reveals_evidence = area['present_reveals_evidence']
 
@@ -607,7 +618,6 @@ class Area:
         area = OrderedDict()
         area["area"] = self.name
         area["background"] = self.background
-        area["overlay"] = self.overlay
         area["pos_lock"] = "none"
         if len(self.pos_lock) > 0:
             area["pos_lock"] = " ".join(map(str, self.pos_lock))
@@ -671,7 +681,8 @@ class Area:
         area["pos_dark"] = self.pos_dark
         area["desc_dark"] = self.desc_dark
         area["passing_msg"] = self.passing_msg
-        area["msg_delay"] = self.msg_delay
+        #area["msg_delay"] = self.msg_delay
+        area["min_msg_delay"] = self.min_msg_delay
         area["present_reveals_evidence"] = self.present_reveals_evidence
         if len(self.evi_list.evidences) > 0:
             area["evidence"] = self.evi_list.export_evidence()
@@ -927,6 +938,15 @@ class Area:
                 if c.area.background != bg:
                     c.send_command("BN", c.area.background)
 
+    def set_next_msg_delay(self, msg_length: int):
+        """Set the delay when the next IC message can be send by any client.
+        Args:
+            msg_length (int): estimated length of message (ms)
+        """
+
+        delay = min(2900, 60 * msg_length)
+        self.next_message_time = round(time.time() * 1000.0 + delay + self.next_message_delay)
+
     def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
         """Broadcast a timer to all clients in this area."""
         for c in self.clients:
@@ -979,8 +999,7 @@ class Area:
                 third_folder="",
                 third_emote=0,
                 third_offset="",
-                third_flip=0,
-                video=""):
+                third_flip=0):
         """
         Send an IC message from a client to all applicable clients in the area.
         :param client: speaker
@@ -1217,8 +1236,7 @@ class Area:
                            third_folder,
                            third_emote,
                            third_offset,
-                           third_flip,
-                           video)
+                           third_flip)
         if self.recording:
             # See if the testimony is supposed to end here.
             scrunched = "".join(e for e in msg if e.isalnum())
@@ -1273,7 +1291,6 @@ class Area:
             third_emote, # 32
             third_offset, # 33
             third_flip, # 34
-            video, #35
         )
         self.last_ic_message = args
 
@@ -1333,7 +1350,6 @@ class Area:
                 third_emote, # 32
                 third_offset, # 33
                 third_flip, # 34
-                video, # 35
             )
             if idx == -1:
                 # Add one statement at the very end.
@@ -1367,7 +1383,17 @@ class Area:
         :param msg: the string
         :return: delay integer in ms
         """
-        return self.msg_delay
+        # Strip formatting chars
+        for char in "@$`|_~%\\}{":
+            msg = msg.replace(char, "")
+        # Very basic approximation of text length
+        delay = len(msg) * 40 + 40
+        # Minimum area msg delay
+        delay = max(self.min_msg_delay, delay)
+        # Maximum area msg delay
+        delay = min(self.max_msg_delay, delay)
+        return delay
+        #return self.msg_delay
 
     def is_iniswap(self, client, preanim, anim, char, sfx):
         """
@@ -1682,7 +1708,7 @@ class Area:
             self.hp_pro = val
         self.send_command("HP", side, val)
 
-    def change_background(self, bg, overlay="", mode=1):
+    def change_background(self, bg, silent=False, overlay="", mode=-1):
         """
         Set the background and/or overlay.
         
@@ -1735,31 +1761,42 @@ class Area:
                 if client.pos not in self.pos_lock:
                     client.change_position(self.pos_lock[0])
 
-        self.overlay = overlay
+        if overlay != "":
+            # In case "mode" is unspecified
+            if mode == -1:
+                if silent:
+                    mode = 0
+                else:
+                    mode = 1
+            for client in self.clients:
+                client.send_command("BN", bg, client.pos, overlay, mode)
 
-        for client in self.clients:
-            client.send_command("BN", bg, client.pos, self.overlay, mode)
+        # Pre AOG packet fallback
+        # In case overlay wasn't specified
+        elif silent:
+            for client in self.clients:
+                client.send_command("BN", bg)
+        else:
+            for client in self.clients:
+                client.send_command("BN", bg, client.pos)
 
     def change_status(self, value):
         """
         Set the status of the area.
         :param value: status code
         """
-        value = censor(
-            value,
-            self.server.censors["whole"],
-            self.server.censors["replace"],
-            True,
+        allowed_values = (
+            "idle",
+            "rp",
+            "casing",
+            "looking-for-players",
+            "lfp",
+            "recess",
+            "gaming",
         )
-        value = censor(
-            value,
-            self.server.censors["partial"],
-            self.server.censors["replace"],
-            False,
-        )
-        if value.lower() == "hub":
+        if value.lower() not in allowed_values:
             raise AreaError(
-                'Hub Status is a restricted value.'
+                f'Invalid status. Possible values: {", ".join(allowed_values)}'
             )
         if value.lower() == "lfp":
             value = "looking-for-players"
@@ -1941,7 +1978,6 @@ class Area:
         self.invite_list = self.old_invite_list
         self.red_team.clear()
         self.blue_team.clear()
-        self.votes_cast.clear()
         self.send_timer_set_time(2, None)
         self.send_ic(
             msg=f"~~}}}}`{self.minigame} END!`\\n{reason}",
@@ -1977,36 +2013,6 @@ class Area:
                 0,
             )
         self.minigame = ""
-
-    def vote_end_minigame(self, client):
-        if client.area.minigame == "":
-            client.send_ooc("There is no minigame running right now.")
-            return
-
-        valid_voters = [
-            c for c in self.clients if
-                not c.hidden and
-                not c in self.afkers and
-                not c in self.owners and
-                c.char_id not in client.area.blue_team and
-                c.char_id not in client.area.red_team
-        ]
-        if client not in valid_voters:
-            client.send_ooc("You're not qualified to vote-end this minigame! (You're a Spectator, Hidden or the area owner)")
-            return
-        self.votes_cast.add(client)
-        votes_casted = len(self.votes_cast)
-        votes_needed = round(len(valid_voters) * self.votes_percentage)
-
-        info = f'[{client.id}] {client.showname} is voting to end the minigame!'
-
-        if votes_casted >= votes_needed:
-            client.area.end_minigame("Voted to end.")
-            info += f'\nSuccessfully voted to end with ({votes_casted}/{votes_needed}) votes.'
-        else:
-            info += f'({votes_casted}/{votes_needed}) votes left.'
-        
-        self.broadcast_ooc(info)
 
     def start_debate(self, client, target, pta=False):
         if (client.char_id in self.red_team and target.char_id in self.blue_team) or (
@@ -2105,8 +2111,6 @@ class Area:
             self.blue_team.clear()
             self.red_team.add(client.char_id)
             self.blue_team.add(target.char_id)
-            
-            self.votes_cast.clear()
             if pta:
                 self.minigame = "Panic Talk Action"
                 timer = self.panic_talk_action_timer

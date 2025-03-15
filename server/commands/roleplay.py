@@ -31,12 +31,12 @@ __all__ = [
     "ooc_cmd_coinflip",
     "ooc_cmd_8ball",
     "ooc_cmd_rps",
+    "ooc_cmd_rpsrig",
+    "ooc_cmd_rpss",
     "ooc_cmd_rps_rules",
     "ooc_cmd_timer",
     "ooc_cmd_demo",
     "ooc_cmd_trigger",
-    "ooc_cmd_format_timer",
-    "ooc_cmd_timer_interval",
 ]
 
 
@@ -178,7 +178,7 @@ def rtd(arg):
 
 def ooc_cmd_roll(client, arg):
     """
-    Roll a die. The result is shown publicly.
+    Roll a dice. The result is shown publicly.
     Example: /roll 2d6 +5 would roll two 6-sided die and add 5 to every result.
     Rolls a 1d6 if blank
     X is the number of dice, Y is the maximum value on the die.
@@ -499,36 +499,115 @@ def ooc_cmd_8ball(client, arg):
     )
 
 
+@mod_only()
+def ooc_cmd_rpss(client, arg):
+    """
+    This does something.
+    Usage: /rpsrig
+    """
+
+    # Find a target who already picked a choice with /rps
+    target = None
+    for c in client.area.clients:
+        if c != client and c.rps_choice:
+            target = c
+            break
+
+    if not target:
+        raise ArgumentError("No one has chosen an option to play against!")
+
+    # Reveal the opponent's choice to the rigger
+    client.send_ooc(f'Psst, [{target.id}] {target.showname} picked {target.rps_choice}. uwu')
+    return
+
+@mod_only()
+def ooc_cmd_rpsrig(client, arg):
+    """
+    Initiates a Rock Paper Scissors match.
+    Usage: /rpsrig
+    """
+
+    # Check if a rigged game is already in progress
+    if not client.area.rpsrig_in_progress:
+        client.area.rpsrig_in_progress = True  # Mark that the player initiated rpsrig
+
+        # Store the issuer of the rpsrig command
+        client.area.rpsrigger = client
+
+        msg = f'[{client.id}] {client.showname} wants to play 🎲Rock Paper Scissors🎲!\n❕ Do /rps [choice] to challenge them! ❕'
+
+        # Broadcast the message to all clients in the area
+        client.area.broadcast_ooc(msg)
+
+        # Send a confirmation message to the initiator
+        client.area.rpsrigger.send_ooc("You've rigged the game! Waiting for an opponent to make a choice.")
+
+        return
+
+    # If a rigged game is already in progress, inform the user
+    client.send_ooc("A rigged RPS match is already in progress. Please wait for it to finish before starting a new one.")
+
+
+
 def ooc_cmd_rps(client, arg):
     """
     Starts a match of Rock Paper Scissors.
     If [choice] is not provided, view current RPS rules.
     Usage: /rps [choice]
-    To abandon the match, use /rps cancel
     """
-    # format:
-    # [
-    #   [a, b, c, ...] where 'a' beats 'b', 'c', ...
-    # ]
-
     rps_rules = client.area.area_manager.rps_rules
 
-    # Strip the input of blank spaces on edges 
+    # If a rigged game is in progress, join that game
+    if client.area.rpsrig_in_progress:
+        arg = arg.strip().lower()
+
+        # Validate the issuer's choice
+        if arg not in [rule[0].lower() for rule in rps_rules]:
+            raise ArgumentError(f"Invalid choice! Available choices are: {', '.join([rule[0] for rule in rps_rules])}")
+
+        # Set the issuer's choice
+        client.rps_choice = arg
+
+        # Calculate the winner (rigged player always wins)
+        winning_choice = None
+        for rule in rps_rules:
+            rule_lower = [r.lower() for r in rule]
+            if client.rps_choice in rule_lower[1:]:
+                winning_choice = rule_lower[0]
+                break
+
+        if not winning_choice:
+            client.send_ooc("Couldn't determine a valid winning choice.")
+            return
+
+        # Construct the result message
+        msg = '🎲Rock Paper Scissors🎲'
+        msg += f'\n  ◽ [{client.id}] {client.showname} picks {client.rps_choice}!'
+        msg += f'\n  ◽ [{client.area.rpsrigger.id}] {client.area.rpsrigger.showname} picks {winning_choice}!'
+        msg += f"\n  🏆[{client.area.rpsrigger.id}] {client.area.rpsrigger.showname} WINS!!!🏆"
+
+        # Broadcast the result and clear choices
+        client.area.broadcast_ooc(msg)
+        client.area.rpsrigger = None
+        client.rps_choice = ""
+        client.area.rpsrig_in_progress = False  # End the rigged game
+        return
+
+    # Handle standard RPS game
     arg = arg.strip()
-    
+
     # If doing /rps by itself, simply tell the user the rules.
     if not arg:
         msg = "RPS rules:"
         for i, rule in enumerate(rps_rules):
-            msg += f"\n  {i+1}) "
-            choice = rule[0]
-            msg += choice
-            if len(choice) > 1:
+            msg += f"\n  {i+1}) {rule[0]}"
+            if len(rule) > 1:
                 losers = ', '.join(rule[1:])
                 msg += f" beats {losers}"
         client.send_ooc(msg)
         return
 
+    # Handle "clear" or "cancel" command
     if arg.lower() in ["clear", "cancel"]:
         if client.rps_choice:
             client.area.broadcast_ooc(f'[{client.id}] {client.showname} no longer wants to play 🎲Rock Paper Scissors🎲... 🙁')
@@ -536,36 +615,29 @@ def ooc_cmd_rps(client, arg):
         client.send_ooc('You cleared your choice.')
         return
 
-    # List of our available choices
-    choices = []
-    for rule in rps_rules:
-        rule = rule[0].lower()
-        if rule not in choices:
-            choices.append(rule)
+    # List available choices
+    choices = [rule[0].lower() for rule in rps_rules]
+
     picked = ""
     for choice in choices:
-        # Exact match, can't get better than this. Break out of the loop
         if arg.lower() == choice:
             picked = choice
             break
-        # Fuzzy match, queue up our pick but look if we can get something better
         if arg.lower() in choice:
             picked = choice
-    
+
     if picked not in choices:
         raise ArgumentError(f"Invalid choice! Available choices are: {', '.join(choices)}")
-    
-    # If we already have made a rps choice before, simply silently swap our choice.
+
     if client.rps_choice:
         client.rps_choice = picked
         client.send_ooc(f'Swapped your choice to {client.rps_choice}!')
         return
-        
-    # Set our Rock Paper Scissors choice
+
+    # Set the player's choice
     client.rps_choice = picked
 
-    # Loop through clients in area to see if they're waiting on the challenge
-    # TODO: this method is gonna be bug-prone, please fix.
+    # Loop through clients in area to find an opponent
     target = None
     for c in client.area.clients:
         if c == client:
@@ -574,28 +646,26 @@ def ooc_cmd_rps(client, arg):
             target = c
             break
 
-    # Look for our opponent if none is present
+    # If no opponent is found
     if not target:
         msg = f'[{client.id}] {client.showname} wants to play 🎲Rock Paper Scissors🎲!\n❕ Do /rps [choice] to challenge them! ❕'
         client.area.broadcast_ooc(msg)
         client.send_ooc(f'You picked {client.rps_choice}!')
         return
 
-    # Start constructing our output message
+    # Start constructing output message
     msg = '🎲Rock Paper Scissors🎲'
     msg += f'\n  ◽ [{target.id}] {target.showname} picks {target.rps_choice}!'
     msg += f'\n  ◽ [{client.id}] {client.showname} picks {client.rps_choice}!'
-    
-    # Calculate our winner
+
+    # Calculate the winner
     a = target.rps_choice.lower()
     b = client.rps_choice.lower()
     winner = None
     for rule in rps_rules:
         rule = [r.lower() for r in rule]
         choice = rule[0]
-        losers = []
-        if len(rule) > 1:
-            losers = rule[1:]
+        losers = rule[1:] if len(rule) > 1 else []
         if a in choice and b in losers:
             winner = target
             break
@@ -603,16 +673,16 @@ def ooc_cmd_rps(client, arg):
             winner = client
             break
 
-    # Congratulate our winner or announce a tie
+    # Congratulate the winner or announce a tie
     if winner:
         msg += f"\n  🏆[{winner.id}] {winner.showname} WINS!!!🏆"
     else:
         msg += f"\n  👔It's a tie!👔"
 
-    # Announce the message!
+    # Broadcast the message
     client.area.broadcast_ooc(msg)
 
-    # Clear the game for our 2 contestants
+    # Clear choices for both players
     target.rps_choice = ""
     client.rps_choice = ""
 
@@ -910,12 +980,6 @@ def ooc_cmd_trigger(client, arg):
         msg = "This area's triggers are:"
         for key, value in client.area.triggers.items():
             msg += f'\nCall "{value}" on {key}'
-        msg = "\nEvidence triggers:"
-        for evidence in client.area.evi_list.evidences:
-            # TODO: figure out why triggers.items() doesn't work here
-            value = evidence.triggers["present"]
-            if value != "":
-                msg += f'\n💼{evidence.name}: Call "{value}" on present'
         client.send_ooc(msg)
         return
     if arg.lower().startswith("present "):
@@ -952,83 +1016,3 @@ def ooc_cmd_trigger(client, arg):
         val = args[1]
         client.area.triggers[trig] = val
         client.send_ooc(f'Changed to Call "{val}" on trigger "{trig}"')
-
-
-def ooc_cmd_format_timer(client, arg):
-    """
-    Format the timer
-    Usage: /format_timer <Timer_iD> <Format>
-    """
-    args = shlex.split(arg)
-    try:
-        args[0] = int(args[0])
-    except:
-        raise ArgumentError("Timer ID should be an integer")
-    if args[0] == 0:
-        if client.is_mod or client in client.area.area_manager.owners:
-            timer = client.area.area_manager.timer
-        else:
-            client.send_ooc("You cannot change timer 0 format if you are not GM")
-            return
-    else:
-        if (
-            client.is_mod
-            or client in client.area.area_manager.owners
-            or client in client.area.owners
-        ):
-            timer = client.area.timers[args[0] - 1]
-        else:
-            client.send_ooc("You cannot change timer format if you are at least CM")
-            return
-    timer.format = args[1:]
-    if timer.set:
-        if timer.started:
-            current_time = timer.target - arrow.get()
-            current_time = int(current_time.total_seconds()) * 1000
-        else:
-            current_time = int(timer.static.total_seconds()) * 1000
-        if args[0] == 0:
-            client.area.area_manager.send_timer_set_time(args[0], current_time, timer.started)
-        else:
-            client.area.send_timer_set_time(args[0], current_time, timer.started)
-    client.send_ooc(f"Timer {args[0]} format: '{args[1]}'")
-
-
-def ooc_cmd_timer_interval(client, arg):
-    """
-    Set timer interval
-    If timer interval is not written than will show default timer interval (16ms)
-    Example: /timer_interval 1 15m
-    Usage: /timer_interval <Timer_ID> <Interval>
-    """
-    args = shlex.split(arg)
-    try:
-        args[0] = int(args[0])
-    except:
-        raise ArgumentError("Timer ID should be an integer")
-    if args[0] == 0:
-        if client.is_mod or client in client.area.area_manager.owners:
-            timer = client.area.area_manager.timer
-        else:
-            client.send_ooc("You cannot change timer 0 interval if you are not GM")
-            return
-    else:
-        if (
-            client.is_mod
-            or client in client.area.area_manager.owners
-            or client in client.area.owners
-        ):
-            timer = client.area.timers[args[0] - 1]
-        else:
-            client.send_ooc("You cannot change timer interval if you are at least CM")
-            return
-    try:
-        if len(args) == 1:
-            timer.interval = 16 
-        else:
-            timer.interval = pytimeparse.parse(args[1]) * 1000
-    except:
-        raise ArgumentError("Interval value not valid!")
-    if timer.set:
-        client.send_timer_set_interval(args[0], timer)
-    client.send_ooc(f"Timer {args[0]} interval is set to '{args[1]}'")

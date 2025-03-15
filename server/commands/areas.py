@@ -8,7 +8,6 @@ from . import mod_only
 
 __all__ = [
     "ooc_cmd_overlay",
-    "ooc_cmd_overlay_clear",
     "ooc_cmd_bg",
     "ooc_cmd_bgs",
     "ooc_cmd_status",
@@ -24,6 +23,7 @@ __all__ = [
     "ooc_cmd_invite",
     "ooc_cmd_uninvite",
     "ooc_cmd_area_kick",
+    "ooc_cmd_cm_kick",
     "ooc_cmd_pos_lock",
     "ooc_cmd_pos_lock_clear",
     "ooc_cmd_knock",
@@ -41,13 +41,15 @@ def ooc_cmd_overlay(client, arg):
     Usage: /overlay <background>
     """
     if len(arg) == 0:
+        pos_lock = ""
+        if len(client.area.pos_lock) > 0:
+            pos = ", ".join(str(lpos) for lpos in client.area.pos_lock)
+            pos_lock = f"\nAvailable positions: {pos}."
         client.send_ooc(
-            f"Current overlay is {client.area.overlay}. Use /overlay_clear to clear it.")
+            f"Current overlay is {client.area.overlay}.{pos_lock}")
         return
     if client not in client.area.owners and not client.is_mod and client.area.overlay_lock:
         raise AreaError("This area's overlay system is locked!")
-    if client not in client.area.owners and not client.is_mod and client.area.bg_lock:
-        raise AreaError("This area's background is locked!")
     if client.area.cannot_ic_interact(client):
         raise AreaError("You are not on the area's invite list!")
     if (
@@ -66,33 +68,6 @@ def ooc_cmd_overlay(client, arg):
         f"{client.showname} changed the overlay to {arg}.")
     database.log_area("overlay", client, client.area, message=arg)
 
-def ooc_cmd_overlay_clear(client, arg):
-    """
-    Clear the overlay of an area.
-    Usage: /overlay_clear
-    """
-    if client not in client.area.owners and not client.is_mod and client.area.overlay_lock:
-        raise AreaError("This area's overlay system is locked!")
-    if client not in client.area.owners and not client.is_mod and client.area.bg_lock:
-        raise AreaError("This area's background is locked!")
-    if client.area.cannot_ic_interact(client):
-        raise AreaError("You are not on the area's invite list!")
-    if (
-        not client.is_mod
-        and not (client in client.area.owners)
-        and client.char_id == -1
-    ):
-        raise ClientError("You may not do that while spectating!")
-    if client.area.dark and not client.is_mod and not (client in client.area.owners):
-        raise ClientError("You must be authorized to do that.")
-    try:
-        client.area.change_background(client.area.background, overlay="")
-    except AreaError:
-        raise
-    client.area.broadcast_ooc(
-        f"{client.showname} cleared the overlay.")
-    database.log_area("overlay_clear", client, client.area)
-
 def ooc_cmd_bg(client, arg):
     """
     Set the background of an area.
@@ -104,7 +79,7 @@ def ooc_cmd_bg(client, arg):
             pos = ", ".join(str(lpos) for lpos in client.area.pos_lock)
             pos_lock = f"\nAvailable positions: {pos}."
         client.send_ooc(
-            f"Current background is {client.area.background}.{pos_lock}")
+            f"Current background is {client.area.background}.{pos_lock}\nFor a list of backgrounds and their downloads, visit http://www.paradiseofdespots.com/database/")
         return
     if client not in client.area.owners and not client.is_mod and client.area.bg_lock:
         raise AreaError("This area's background is locked!")
@@ -513,6 +488,84 @@ def ooc_cmd_area_kick(client, arg):
         raise
 
 
+@mod_only(area_owners=True)
+def ooc_cmd_cm_kick(client, arg):
+    """
+    Kick a user to the Main Hall.
+    This command takes one argument: the ID of the target.
+    Usage: /cm_kick <id>
+    """
+    if not arg:
+        raise ClientError(
+            "You must specify a target. Use /cm_kick <id>"
+        )
+
+    args = shlex.split(arg)
+
+    # Try to find by char name first
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.CHAR_NAME, args[0]
+    )
+    
+    # If that doesn't work, find by client ID
+    if len(targets) == 0 and args[0].isdigit():
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(args[0])
+        )
+    
+    # If that doesn't work, find by OOC Name
+    if len(targets) == 0:
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.OOC_NAME, args[0]
+        )
+
+    if len(targets) == 0:
+        client.send_ooc(
+            f"No targets found by search term '{args[0]}'."
+        )
+        return
+
+    try:
+        # Area ID is always 0 (unmodifiable)
+        area = client.area.area_manager.get_area_by_id(0)
+        
+        for c in targets:
+            # Prevents people from kicking the almighty mods.
+            if c.is_mod:
+                client.send_ooc(
+                    f"You can't kick mods."
+                )
+                return
+            # We're a puny CM, we can't do this.
+            if (
+                not client.is_mod
+                and client not in client.area.area_manager.owners
+                and c not in client.area.clients
+            ):
+                raise ArgumentError(
+                    "You can't kick someone from another area as a CM!"
+                )
+
+            old_area = c.area
+            client.send_ooc(
+                f"Attempting to kick [{c.id}] {c.showname} to [{area.id}] {area.name}."
+            )
+            c.set_area(area)
+            c.send_ooc(
+                f"You were kicked from [{old_area.id}] {old_area.name}."
+            )
+            database.log_area(
+                "cm_kick", client, client.area, target=c, message=area.id
+            )
+            client.area.invite_list.discard(c.id)
+
+    except ValueError:
+        raise ArgumentError("Area ID must be a number.")
+    except AreaError:
+        raise
+    except ClientError:
+        raise
+
 # TODO: actually finish this command
 @mod_only(area_owners=True)
 def ooc_cmd_shuffle_pos(client, arg):
@@ -588,6 +641,7 @@ def ooc_cmd_pos_lock_clear(client, arg):
     client.area.broadcast_ooc("Position lock cleared.")
 
 
+@mod_only()
 def ooc_cmd_knock(client, arg):
     """
     Knock on the target area ID to call on their attention to your area.
@@ -745,7 +799,7 @@ def ooc_cmd_peek(client, arg):
         raise
 
 
-@mod_only(area_owners=True)
+@mod_only()
 def ooc_cmd_max_players(client, arg):
     """
     Set a max amount of players for current area between -1 and 99.
@@ -868,7 +922,6 @@ def ooc_cmd_lights(client, arg):
             pos = client.area.pos_dark
         c.send_command("BN", bg, pos)
     client.send_ooc(f"This area is {stat} dark.")
-    client.area.broadcast_evidence_list()
 
 
 def ooc_cmd_auto_pair(client, arg):

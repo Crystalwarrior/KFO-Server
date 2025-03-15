@@ -4,6 +4,7 @@ import arrow
 import pytimeparse
 
 from server import database
+from server.commands.roleplay import rtd
 from server.constants import TargetType
 from server.exceptions import ClientError, ServerError, ArgumentError
 import asyncio
@@ -32,7 +33,10 @@ __all__ = [
     "ooc_cmd_whois",
     "ooc_cmd_restart",
     "ooc_cmd_myid",
+    "ooc_cmd_icfake",
     "ooc_cmd_multiclients",
+    "ooc_cmd_lockdown",
+    "ooc_cmd_rigroll",
 ]
 
 
@@ -89,6 +93,107 @@ def ooc_cmd_help(client, arg):
 
 
 @mod_only()
+def ooc_cmd_lockdown(client, arg):
+    """
+    Set the lockdown IPID or disable the lockdown.
+    Usage: /lockdown <ipid> or /lockdown off
+    """
+    # Check if the argument is "off" to disable the lockdown
+    if arg.lower() == "off":
+        client.server.lockdown_active = False
+        client.server.lockdown_ipid_roof = 0
+        client.send_ooc("Lockdown has been deactivated.")
+        client.server.webhooks.send_lockdownwebhook(
+        client=client,
+        ipidroof=client.server.lockdown_ipid_roof
+    )
+        return
+
+    # Ensure the argument is a valid digit for setting the IPID threshold
+    if not arg.isdigit():
+        client.send_ooc("Invalid IPID. Please provide a numeric value or 'off' to disable lockdown.")
+        return
+
+    # Set the lockdown IPID and activate lockdown
+    client.server.lockdown_ipid_roof = int(arg)
+    client.server.lockdown_active = True
+    client.send_ooc(f"Lockdown has been activated for IPID {client.server.lockdown_ipid_roof}.")
+    client.server.webhooks.send_lockdownwebhook(
+        client=client,
+        ipidroof=client.server.lockdown_ipid_roof
+    )
+
+@mod_only()
+def ooc_cmd_icfake(client, arg):
+    """
+    We do a little trolling.
+    Usage: /icfake <ID> <message>
+    """
+    args = arg.split()
+    if len(args) < 2:
+        raise ArgumentError(
+            "Not enough arguments. Use /icfake <ID> <message>. Target should be an ID."
+        )
+
+    try:
+        target_id = int(args[0])
+    except ValueError:
+        raise ArgumentError("Invalid ID format. ID must be a number.")
+    
+    fake_message = " ".join(args[1:])
+
+    targets = client.server.client_manager.get_targets(
+        client, TargetType.ID, target_id, all_hub=True
+    )
+    if len(targets) == 0:
+        raise ArgumentError("Target with the given ID not found.")
+
+    target = targets[0]
+
+    fake_showname = target.showname
+    fake_character = target.claimed_folder
+    fake_emote = target.last_sprite
+    fake_pos = target.pos
+
+    target_area = target.area
+    if not target_area:
+        raise ArgumentError("Could not retrieve the target's area.")
+
+    target_area_id = target_area.id
+
+    client.server.send_fake_chat(
+        fake_showname=fake_showname,
+        fake_character=fake_character,
+        fake_emote=fake_emote,
+        fake_pos=fake_pos,
+        message=fake_message,
+        hub_id=0,
+        area_id=target_area_id,
+    )
+    
+    client.send_ooc(
+        f"✅Fake IC message sent as {target.showname} (ID: {target_id}): {fake_message}"
+    )
+
+
+@mod_only()
+def ooc_cmd_rigroll(client, arg):
+    """
+    Roll a dice. What do you think will happen next?
+    Usage: /rigroll [Value]
+    """
+    roll, num_dice, chosen_max, _modifiers, Sum = rtd(arg)
+
+    client.area.broadcast_ooc(
+        f"{client.showname} rolled {chosen_max} out of {chosen_max}."
+        + (f"\nThe total sum is {Sum}." if num_dice > 1 else "")
+    )
+    database.log_area(
+        "roll", client, client.area, message=f"{roll} out of {chosen_max}"
+    )
+
+
+@mod_only()
 def ooc_cmd_kick(client, arg):
     """
     Kick a player.
@@ -99,7 +204,8 @@ def ooc_cmd_kick(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError(
-            "You must specify a target. Use /kick <ipid> [reason]")
+            "You must specify a target. Use /kick <ipid> [reason]"
+        )
     elif arg[0] == "*":
         targets = [c for c in client.area.clients if c != client]
     elif arg[0] == "**":
@@ -121,12 +227,24 @@ def ooc_cmd_kick(client, arg):
     if targets:
         reason = " ".join(args[1:])
         for c in targets:
+            if c.is_mod:
+                if c.mod_profile_name == "Psyra":
+                    client.send_ooc("Nice try dumbass.")
+                    return
+                elif c.mod_profile_name == "Twilight Sky":
+                    client.send_ooc(
+                        "Go play baby shark instead.")
+                    return
+                else:
+                    client.send_ooc(
+                        f"{c.showname} is a moderator, but you have sufficient permissions to proceed lmao.")
+
             database.log_misc("kick", client, target=c,
                               data={"reason": reason})
             client.send_ooc(f"{c.showname} was kicked.")
             c.send_command("KK", reason)
             c.disconnect()
-        client.server.webhooks.kick(c.ipid, reason, client, c.char_name)
+            client.server.webhooks.kick(c.ipid, reason, client, c.char_name)
     else:
         client.send_ooc(f"No targets with the IPID {ipid} were found.")
 
@@ -202,6 +320,17 @@ def kickban(client, arg, ban_hdid):
         )
         if targets:
             for c in targets:
+                if c.is_mod:
+                    if c.mod_profile_name == "Psyra":
+                        client.send_ooc("Not happening, lmfao.")
+                        return
+                    elif c.mod_profile_name == "Twilight Sky":
+                        client.send_ooc("??????")
+                        return
+                    else:
+                        client.send_ooc(
+                            f"{c.showname} is a moderator, but you have permission to proceed ig.")
+
                 if ban_hdid:
                     database.ban(c.hdid, reason,
                                  ban_type="hdid", ban_id=ban_id)
@@ -211,10 +340,13 @@ def kickban(client, arg, ban_hdid):
                 char = c.char_name
                 database.log_misc("ban", client, target=c,
                                   data={"reason": reason})
+
             client.send_ooc(f"{len(targets)} clients were kicked.")
         client.send_ooc(f"{ipid} was banned. Ban ID: {ban_id}")
+
     client.server.webhooks.ban(
-        ipid, ban_id, reason, client, hdid, char, unban_date)
+        ipid, ban_id, reason, client, hdid, char, unban_date
+    )
 
 
 @mod_only()
@@ -245,20 +377,35 @@ def ooc_cmd_mute(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError("You must specify a target. Use /mute <ipid>.")
+
     args = list(arg.split(" "))
     client.send_ooc(f"Attempting to mute {len(args)} IPIDs.")
+
     for raw_ipid in args:
         if raw_ipid.isdigit():
             ipid = int(raw_ipid)
             clients = client.server.client_manager.get_targets(
                 client, TargetType.IPID, ipid, False
             )
+
             if clients:
                 msg = "Muted the IPID " + str(ipid) + "'s following clients:"
                 for c in clients:
+                    if c.is_mod:
+                        if c.mod_profile_name == "Psyra":
+                            client.send_ooc("You can't silence the almighty.")
+                            return
+                        elif c.mod_profile_name == "Twilight Sky":
+                            client.send_ooc("LMAO, no.")
+                            return
+                        else:
+                            client.send_ooc(
+                                f"{c.showname} is a moderator... anyways.")
+
                     c.is_muted = True
                     database.log_misc("mute", client, target=c)
                     msg += " " + c.showname + " [" + str(c.id) + "],"
+
                 msg = msg[:-1]
                 msg += "."
                 client.send_ooc(msg)
@@ -322,6 +469,7 @@ def ooc_cmd_login(client, arg):
 
     client.area.broadcast_evidence_list()
     client.send_ooc("Logged in as a moderator.")
+    client.server.broadcast_login(client)
     client.server.webhooks.login(client, login_name)
     database.log_misc("login", client, data={"profile": login_name})
 
@@ -383,15 +531,30 @@ def ooc_cmd_ooc_mute(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError(
-            "You must specify a target. Use /ooc_mute <OOC-name>.")
+            "You must specify a target. Use /ooc_mute <OOC-name>."
+        )
+    
     targets = client.server.client_manager.get_targets(
         client, TargetType.OOC_NAME, arg, False
     )
+    
     if not targets:
         raise ArgumentError("Targets not found. Use /ooc_mute <OOC-name>.")
+    
     for target in targets:
+        if target.is_mod:
+            if target.mod_profile_name == "Psyra":
+                client.send_ooc("Normal mute doesn't work so you go for ooc mute? Nice try.")
+                return
+            elif target.mod_profile_name == "Twilight Sky":
+                client.send_ooc("Did you really think this would work?")
+                return
+            else:
+                client.send_ooc(f"We muted {target.showname}!! *victory theme*")
+
         target.is_ooc_muted = True
         database.log_area("ooc_mute", client, client.area, target=target)
+    
     client.send_ooc("Muted {} existing client(s).".format(len(targets)))
 
 

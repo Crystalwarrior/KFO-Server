@@ -8,6 +8,7 @@ __all__ = [
     "ooc_cmd_g",
     "ooc_cmd_h",
     "ooc_cmd_m",
+    "ooc_cmd_colors",
     "ooc_cmd_announce",
     "ooc_cmd_toggleglobal",
     "ooc_cmd_need",
@@ -39,9 +40,17 @@ def ooc_cmd_g(client, arg):
         raise ClientError("Global chat toggled off.")
     if len(arg) == 0:
         raise ArgumentError("You can't send an empty message.")
+    #Prevents people from @everyone and @here abusing through the globalhook.
+    if "@everyone" in arg or "@here" in arg:
+        client.send_ooc("You cannot use @everyone or @here in global messages.")
+        return
+    if not client.can_send_global():
+        client.send_ooc("Please wait 5 seconds between global/hub messages!")
+        return
     client.server.broadcast_global(client, arg, client.is_mod)
+    client.server.webhooks.globalhook(client, chatmsg=arg, modcheck=client.is_mod)
+    client.set_global_send_delay()
     database.log_area("chat.global", client, client.area, message=arg)
-
 
 def ooc_cmd_h(client, arg):
     """
@@ -50,6 +59,9 @@ def ooc_cmd_h(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError("You can't send an empty message.")
+    if not client.can_send_global():
+        client.send_ooc("Please wait 5 seconds between global/hub messages!")
+        return
     prefix = ""
     if client.is_mod:
         prefix = "[M]"
@@ -60,7 +72,7 @@ def ooc_cmd_h(client, arg):
     for area in client.area.area_manager.areas:
         area.send_command("CT", f"<dollar>HUB|{name}", arg, "0")
     database.log_area("chat.hub", client, client.area, message=arg)
-
+    client.set_global_send_delay()
 
 @mod_only()
 def ooc_cmd_m(client, arg):
@@ -72,6 +84,30 @@ def ooc_cmd_m(client, arg):
         raise ArgumentError("You can't send an empty message.")
     client.server.send_modchat(client, arg)
     database.log_area("chat.mod", client, client.area, message=arg)
+
+
+def ooc_cmd_colors(client, arg):
+    """
+    Returns the colors' IC formats.
+    Usage: /colors
+    """
+    if len(arg) > 0:
+        raise ArgumentError("The command does not take any arguments.")
+
+    colors = [
+        "White",
+        "`Green`",
+        "~Red~",
+        "|Orange|",
+        "(Blue)",
+        "ºYellowº",
+        "№Magenta№",
+        "√Cyan√",
+        "[Gray]",
+    ]
+
+    for color in colors:
+        client.send_ooc(color)
 
 
 @mod_only()
@@ -183,6 +219,9 @@ def ooc_cmd_pm(client, arg):
     c = targets[0]
     if c.pm_mute:
         raise ClientError("This user muted all pm conversation")
+    if not client.can_send_global():
+        client.send_ooc("Please wait 5 seconds between OOC messaging commands!")
+        return
     else:
         if c.is_mod:
             c.send_ooc(
@@ -202,7 +241,7 @@ def ooc_cmd_pm(client, arg):
                 )
             )
         client.send_ooc("📤PM sent to {}. Message: {}".format(args[0], msg))
-
+        client.set_global_send_delay()
 
 def ooc_cmd_mutepm(client, arg):
     """

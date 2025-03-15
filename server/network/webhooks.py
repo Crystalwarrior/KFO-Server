@@ -58,6 +58,71 @@ class Webhooks:
                 ),
             )
 
+    def send_lockdownwebhook(
+        self,
+        username=None,
+        avatar_url=None,
+        message=None,
+        embed=False,
+        title=None,
+        color=None,
+        description=None,
+        url=None,
+        client=None,
+        ipidroof=None,
+    ):
+        is_enabled = True
+        if url is None:
+            url = "https://discord.com/api/webhooks/1282485950525608047/QsDjYEiGXe9o0YyfpD7O6fIgpD43OV9L8N0bYMNbkRlf1GcdOIQ7H1S3wvq_5GeHWbhl"
+
+        if not is_enabled:
+            return
+
+        data = {
+            "content": "A lockdown has been triggered. Note that a value of '0' means that someone disabled the lockdown with /lockdown off",
+            "username": "Lockdown",
+            "avatar_url": "https://i.imgur.com/7Q9HIMM.png",
+            "embeds": [
+                {
+                    "description": f"{client.name} ({client.ipid}) has set the lockdown to {ipidroof}",
+                    "title": "Details",
+                    "color": 12745742
+                }
+            ]
+        }
+        result = requests.post(
+            url, data=json.dumps(data), headers={"Content-Type": "application/json"}
+        )
+
+        try:
+            result.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            database.log_misc("webhook.err", data=err.response.status_code)
+        else:
+            database.log_misc(
+                "webhook.ok",
+                data="successfully delivered payload, code {}".format(
+                    result.status_code
+                ),
+            )
+
+    def globalhook(self, client=None, chatmsg=None, modcheck=False):
+        avatar_url = self.server.config["need_webhook"]["avatar_url"]
+        if modcheck == True:
+            self.send_webhook(
+            username="Fragment Leaper",
+            avatar_url=avatar_url,
+            message=f"$G[{client.area.abbreviation}]|[M]{client.name}: {chatmsg}",
+            url="https://discord.com/api/webhooks/1295196908029218917/IZFUkJkW-cpjiX6ou9odxier7ucdmJJeo0t2e1fjt3CJzoqR3xzfGjCF-nN1H8nKEsR7"
+        )
+        else:
+            self.send_webhook(
+            username="Fragment Leaper",
+            avatar_url=avatar_url,
+            message=f"$G[{client.area.abbreviation}]|{client.name}: {chatmsg}",
+            url="https://discord.com/api/webhooks/1295196908029218917/IZFUkJkW-cpjiX6ou9odxier7ucdmJJeo0t2e1fjt3CJzoqR3xzfGjCF-nN1H8nKEsR7"
+        )
+
     def modcall(self, char, ipid, area, reason=None):
         is_enabled = self.server.config["modcall_webhook"]["enabled"]
         username = self.server.config["modcall_webhook"]["username"]

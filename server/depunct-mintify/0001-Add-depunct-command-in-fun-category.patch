@@ -1,0 +1,131 @@
+From 8f3a112e7d1b52b43ffba6d25376d45918225ebb Mon Sep 17 00:00:00 2001
+From: Kai Vlieg <@49efbcc76769b0fd@wire.com>
+Date: Sun, 15 Dec 2024 19:44:49 +0000
+Subject: [PATCH 1/2] Add /depunct command in "fun" category
+
+This command is implemented similarly to shake and disemvowel. In order
+to remove punctuation, every character in the string.punctuation
+constant is escaped before substitution.
+
+Due to quirks with AO encoding, removal of angle brackets causes some
+characters (#, $, %, &) to turn into spelled-out forms (num, dollar,
+percent, and). I decided to leave it at that.
+---
+ server/client_manager.py     |  7 ++++++
+ server/commands/fun.py       | 48 ++++++++++++++++++++++++++++++++++++
+ server/network/aoprotocol.py |  4 +++
+ 3 files changed, 59 insertions(+)
+
+diff --git a/server/client_manager.py b/server/client_manager.py
+index 36f658b..358956a 100644
+--- a/server/client_manager.py
++++ b/server/client_manager.py
+@@ -41,6 +41,7 @@ class ClientManager:
+             self.evi_list = []
+             self.disemvowel = False
+             self.shaken = False
++            self.depunct = False
+             self.charcurse = []
+             self.muted_global = False
+             self.muted_adverts = False
+@@ -2033,6 +2034,12 @@ class ClientManager:
+             random.shuffle(parts)
+             return " ".join(parts)
+ 
++        def depunct_message(self, message):
++            """Remove punctuation and capitalization from chat messages."""
++            return re.sub(
++                f"[{re.escape(string.punctuation)}]", "", message
++            ).lower()
++
+         def rainbow_message(self, message):
+             """Turn the message into rainbows (base color assumed to be blue)"""
+             # red orange yellow green cyan blue magenta
+diff --git a/server/commands/fun.py b/server/commands/fun.py
+index e5ae955..d0b7bdc 100644
+--- a/server/commands/fun.py
++++ b/server/commands/fun.py
+@@ -10,6 +10,8 @@ __all__ = [
+     "ooc_cmd_shake",
+     "ooc_cmd_unshake",
+     "ooc_cmd_rainbow",
++    "ooc_cmd_depunct",
++    "ooc_cmd_undepunct",
+ ]
+ 
+ 
+@@ -116,3 +118,49 @@ def ooc_cmd_rainbow(client, arg):
+     client.send_ooc(
+         f"You will {toggle} have rainbowtext."
+     )
++
++
++@mod_only()
++def ooc_cmd_depunct(client, arg):
++    """
++    Remove punctuation and force lowercase in user's messages.
++    Usage: /depunct <id>
++    """
++    if len(arg) == 0:
++        raise ArgumentError("You must specify a target.")
++    try:
++        targets = client.server.client_manager.get_targets(
++            client, TargetType.ID, int(arg), False
++        )
++    except Exception:
++        raise ArgumentError("You must specify a target. Use /depunct <id>.")
++    if targets:
++        for c in targets:
++            database.log_area("depunct", client, client.area, target=c)
++            c.depunct = True
++        client.send_ooc(f"Depuncted {len(targets)} existing client(s).")
++    else:
++        client.send_ooc("No targets found.")
++
++
++@mod_only()
++def ooc_cmd_undepunct(client, arg):
++    """
++    Give back the user's punctuation.
++    Usage: /undepunct <id>
++    """
++    if len(arg) == 0:
++        raise ArgumentError("You must specify a target.")
++    try:
++        targets = client.server.client_manager.get_targets(
++            client, TargetType.ID, int(arg), False
++        )
++    except Exception:
++        raise ArgumentError("You must specify a target. Use /undepunct <id>.")
++    if targets:
++        for c in targets:
++            database.log_area("undepunct", client, client.area, target=c)
++            c.depunct = False
++        client.send_ooc(f"Undepuncted {len(targets)} existing client(s).")
++    else:
++        client.send_ooc("No targets found.")
+diff --git a/server/network/aoprotocol.py b/server/network/aoprotocol.py
+index 9e6d963..1831291 100644
+--- a/server/network/aoprotocol.py
++++ b/server/network/aoprotocol.py
+@@ -893,6 +893,8 @@ class AOProtocol(asyncio.Protocol):
+             msg = self.client.shake_message(msg)
+         if self.client.disemvowel:
+             msg = self.client.disemvowel_message(msg)
++        if self.client.depunct:
++            msg = self.client.depunct_message(msg)
+         if evidence:
+             area = self.client.area
+             try:
+@@ -1545,6 +1547,8 @@ class AOProtocol(asyncio.Protocol):
+             args[1] = self.client.shake_message(args[1])
+         if self.client.disemvowel:
+             args[1] = self.client.disemvowel_message(args[1])
++        if self.client.depunct:
++            args[1] = self.client.depunct_message(args[1])
+         self.client.area.send_command("CT", name, args[1])
+         self.client.area.send_owner_command(
+             "CT", f"[{self.client.area.id}]{name}", args[1]
+-- 
+2.47.1
+

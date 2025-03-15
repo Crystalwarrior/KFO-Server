@@ -1,0 +1,153 @@
+From e11ae42aedf614d60061b56d7f1526a91193de9b Mon Sep 17 00:00:00 2001
+From: Kai Vlieg <@49efbcc76769b0fd@wire.com>
+Date: Sun, 15 Dec 2024 20:16:30 +0000
+Subject: [PATCH 2/2] Add /mintify command in "fun" category
+
+As with /depunct, implementation is similar to other curses.
+
+Mintification involves a three-part message manipulation.
+
+1. A random prefix is chosen from the list.
+
+2. Punctuation is removed from the message (same as /depunct), and it's
+   forced into uppercase.
+
+3. A random index and length is chosen from the "keyboard mashing"
+   string, looping around if it exceeds the bounds. This string is then
+   appended to the message, making it appear randomized every time.
+   This string is accumulated via append and join for performance
+   reasons.
+
+Any blankpost is replaced with ">_<".
+---
+ server/client_manager.py     | 20 +++++++++++++++
+ server/commands/fun.py       | 48 ++++++++++++++++++++++++++++++++++++
+ server/network/aoprotocol.py |  4 +++
+ 3 files changed, 72 insertions(+)
+
+diff --git a/server/client_manager.py b/server/client_manager.py
+index 358956a..6cb358f 100644
+--- a/server/client_manager.py
++++ b/server/client_manager.py
+@@ -42,6 +42,7 @@ class ClientManager:
+             self.disemvowel = False
+             self.shaken = False
+             self.depunct = False
++            self.mintified = False
+             self.charcurse = []
+             self.muted_global = False
+             self.muted_adverts = False
+@@ -2040,6 +2041,25 @@ class ClientManager:
+                 f"[{re.escape(string.punctuation)}]", "", message
+             ).lower()
+ 
++        def mintify_message(self, message):
++            """Remove punctuation, force uppercase, and add random elements of mintspeak."""
++            import random
++
++            prefices = ["", "NO", "STOOP", "HELP", "DAWG", "FUKC", "ERM"]
++            kb_mash = "WLKFLKDSAJFSDAKJLFDSFALKDSAFDLKASFJASDFLKJFDASKLDSAFLKJDSFLKJDFKLSADFKLJ"
++            if message:
++                idx = random.randrange(0, len(kb_mash))
++                rand_mash = []
++                for i in range(random.randrange(5, 16)):
++                    rand_mash.append(kb_mash[(idx + i) % len(kb_mash)])
++                msg = re.sub(
++                    f"[{re.escape(string.punctuation)}]", "", message
++                ).upper()
++                msg = f"{random.choice(prefices)} {msg} {"".join(rand_mash)}"
++            else:  # Blankpost.
++                msg = ">_<"
++            return msg
++
+         def rainbow_message(self, message):
+             """Turn the message into rainbows (base color assumed to be blue)"""
+             # red orange yellow green cyan blue magenta
+diff --git a/server/commands/fun.py b/server/commands/fun.py
+index d0b7bdc..0b44f19 100644
+--- a/server/commands/fun.py
++++ b/server/commands/fun.py
+@@ -12,6 +12,8 @@ __all__ = [
+     "ooc_cmd_rainbow",
+     "ooc_cmd_depunct",
+     "ooc_cmd_undepunct",
++    "ooc_cmd_mintify",
++    "ooc_cmd_unmintify",
+ ]
+ 
+ 
+@@ -164,3 +166,49 @@ def ooc_cmd_undepunct(client, arg):
+         client.send_ooc(f"Undepuncted {len(targets)} existing client(s).")
+     else:
+         client.send_ooc("No targets found.")
++
++
++@mod_only()
++def ooc_cmd_mintify(client, arg):
++    """
++    Remove punctuation, force uppercase, and add random elements of mintspeak.
++    Usage: /mintify <id>
++    """
++    if len(arg) == 0:
++        raise ArgumentError("You must specify a target.")
++    try:
++        targets = client.server.client_manager.get_targets(
++            client, TargetType.ID, int(arg), False
++        )
++    except Exception:
++        raise ArgumentError("You must specify a target. Use /mintify <id>.")
++    if targets:
++        for c in targets:
++            database.log_area("mintify", client, client.area, target=c)
++            c.mintified = True
++        client.send_ooc(f"Mintified {len(targets)} existing client(s).")
++    else:
++        client.send_ooc("No targets found.")
++
++
++@mod_only()
++def ooc_cmd_unmintify(client, arg):
++    """
++    Liberate the user from the curse of mintspeak.
++    Usage: /unmintify <id>
++    """
++    if len(arg) == 0:
++        raise ArgumentError("You must specify a target.")
++    try:
++        targets = client.server.client_manager.get_targets(
++            client, TargetType.ID, int(arg), False
++        )
++    except Exception:
++        raise ArgumentError("You must specify a target. Use /unmintify <id>.")
++    if targets:
++        for c in targets:
++            database.log_area("unmintify", client, client.area, target=c)
++            c.mintified = False
++        client.send_ooc(f"Unmintified {len(targets)} existing client(s).")
++    else:
++        client.send_ooc("No targets found.")
+diff --git a/server/network/aoprotocol.py b/server/network/aoprotocol.py
+index 1831291..872cc51 100644
+--- a/server/network/aoprotocol.py
++++ b/server/network/aoprotocol.py
+@@ -895,6 +895,8 @@ class AOProtocol(asyncio.Protocol):
+             msg = self.client.disemvowel_message(msg)
+         if self.client.depunct:
+             msg = self.client.depunct_message(msg)
++        if self.client.mintified:
++            msg = self.client.mintify_message(msg)
+         if evidence:
+             area = self.client.area
+             try:
+@@ -1549,6 +1551,8 @@ class AOProtocol(asyncio.Protocol):
+             args[1] = self.client.disemvowel_message(args[1])
+         if self.client.depunct:
+             args[1] = self.client.depunct_message(args[1])
++        if self.client.mintified:
++            args[1] = self.client.mintify_message(args[1])
+         self.client.area.send_command("CT", name, args[1])
+         self.client.area.send_owner_command(
+             "CT", f"[{self.client.area.id}]{name}", args[1]
+-- 
+2.47.1
+

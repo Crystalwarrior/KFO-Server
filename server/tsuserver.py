@@ -48,6 +48,7 @@ class TsuServer3:
         self.ipRange_bans = []
         self.geoIpReader = None
         self.useGeoIp = False
+        self.lockdown_active = False
         self.need_webhook = False
         self.supported_features = [
             "yellowtext",
@@ -67,9 +68,6 @@ class TsuServer3:
             "effects",
             "expanded_desk_mods",
             "y_offset",
-            "triplex",
-            "typing_timer",
-            "video_support",
         ]
         self.command_aliases = {}
 
@@ -448,8 +446,19 @@ class TsuServer3:
         else:
             as_mod = ""
         ooc_name = (
-            f"<dollar>G[{client.area.area_manager.abbreviation}]|{as_mod}{client.name}"
+            f"<dollar>G[{client.area.abbreviation}]|{as_mod}{client.name}"
         )
+        self.send_all_cmd_pred("CT", ooc_name, msg,
+                               pred=lambda x: not x.muted_global)
+
+    def discord_global(self, discord_name, msg):
+        """
+        Broadcast an OOC message from Discord to all clients that do not have
+        global chat muted.
+        :param msg: message
+
+        """
+        ooc_name = (f"<dollar>G[DISCORD]|{discord_name}")
         self.send_all_cmd_pred("CT", ooc_name, msg,
                                pred=lambda x: not x.muted_global)
 
@@ -476,6 +485,21 @@ class TsuServer3:
             "CT",
             self.config["hostname"],
             f"=== Advert ===\r\n{client.name} in {client.area.name} [{client.area.id}] (Hub {client.area.area_manager.id}) needs {msg}\r\n===============",
+            "1",
+            pred=lambda x: not x.muted_adverts,
+        )
+
+    def broadcast_login(self, client):
+        """
+        Broadcast an OOC "login" message to all clients.
+        :param client: sender
+        :param msg: message
+
+        """
+        self.send_all_cmd_pred(
+            "CT",
+            self.config["hostname"],
+            f"\r\n=== Staff Alert ===\r\nModerator {client.mod_profile_name} (ID {client.id}) is now available.\r\n===============",
             "1",
             pred=lambda x: not x.muted_adverts,
         )
@@ -543,6 +567,49 @@ class TsuServer3:
             showname=name,
             msg=message,
             pos=self.config["bridgebot"]["pos"],
+        )
+
+    def send_privileged_chat(self, dc_showname, dc_character, dc_emote, message, hub_id=0, area_id=0):
+        area = self.hub_manager.get_hub_by_id(hub_id).get_area_by_id(area_id)
+        cid = area.area_manager.get_char_id_by_name(dc_character)
+        
+        message = dezalgo(message)
+        message = remove_URL(message)
+        message = (
+            message.replace("}", "\\}")
+            .replace("{", "\\{")
+            .replace("`", "\\`")
+            .replace("|", "\\|")
+            .replace("~", "\\~")
+            .replace("º", "\\º")
+            .replace("№", "\\№")
+            .replace("√", "\\√")
+            .replace("\\s", "")
+            .replace("\\f", "")
+        )
+        message = self.config["bridgebot"]["prefix"] + message
+
+        if len(dc_showname) > 14:
+            dc_showname = dc_showname[:14].rstrip() + "."
+
+        area.send_ic(
+            folder=dc_character,
+            anim=dc_emote,
+            showname=dc_showname,
+            msg=message,
+            pos=self.config["bridgebot"]["pos"]
+        )
+
+    def send_fake_chat(self, fake_showname, fake_character, fake_emote, fake_pos, message, hub_id, area_id):
+        area = self.hub_manager.get_hub_by_id(hub_id).get_area_by_id(area_id)
+        cid = area.area_manager.get_char_id_by_name(fake_character)
+
+        area.send_ic(
+            folder=fake_character,
+            anim=fake_emote,
+            showname=fake_showname,
+            msg=message,
+            pos=fake_pos
         )
 
     def refresh(self):

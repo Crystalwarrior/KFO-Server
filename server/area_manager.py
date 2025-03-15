@@ -34,8 +34,6 @@ class AreaManager:
             self.caller = caller
             self.schedule = None
             self.commands = []
-            self.format = "hh:mm:ss.zzz"
-            self.interval = 16
 
         def timer_expired(self):
             if self.schedule:
@@ -651,7 +649,7 @@ class AreaManager:
             return
         status_list = [1]
         if len(self.server.hub_manager.hubs) > 1:
-            status_list = [1, "HUB"]
+            status_list = [1, "GAMING"]
         if clients is None:
             clients = self.clients
         for client in clients:
