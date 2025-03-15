@@ -1,4 +1,5 @@
 import os
+import shlex
 
 import oyaml as yaml  # ordered yaml
 
@@ -15,6 +16,21 @@ __all__ = [
     # Saving/loading
 
     # Area Creation system
+    '''
+    "ooc_cmd_area_create",
+    "ooc_cmd_area_remove",
+    "ooc_cmd_area_duplicate",
+    "ooc_cmd_area_rename",
+    "ooc_cmd_area_swap",
+    "ooc_cmd_area_switch",
+    "ooc_cmd_area_pref",
+    "ooc_cmd_area_move_delay",
+    "ooc_cmd_hub_move_delay",
+    "ooc_cmd_toggle_replace_music",
+    "ooc_cmd_arup_enable",
+    "ooc_cmd_arup_disable",
+    '''
+
 
     "ooc_cmd_toggle_getareas",
     "ooc_cmd_toggle_spectate",
@@ -82,17 +98,22 @@ def ooc_cmd_save_hub(client, arg):
     """
     Save the current Hub in the server's storage/hubs/<name>.yaml file.
     If blank and you're a mod, it will save to server's config/areas_new.yaml for the server owner to approve.
-    Usage: /save_hub <name>
+    Usage: /save_hub <name> <read_only>
     """
+    args = shlex.split(arg)
     if not client.is_mod:
-        if arg == "":
+        if args[0] == "":
             raise ArgumentError(
                 "You must be authorized to save the default hub!")
-        if len(arg) < 3:
+        if len(args[0]) < 3:
             raise ArgumentError("Filename must be at least 3 symbols long!")
     try:
-        if arg != "":
-            path = "storage/hubs"
+        if args[0] != "":
+            name = derelative(args[0]).replace("/", "")
+            if len(args) > 2 and args[1].lower() == "read_only":
+                path = "storage/hubs/read_only"
+            else:
+                path = "storage/hubs"
             num_files = len(
                 [f for f in os.listdir(path) if os.path.isfile(
                     os.path.join(path, f))]
@@ -102,26 +123,33 @@ def ooc_cmd_save_hub(client, arg):
                     "Server storage full! Please contact the server host to resolve this issue."
                 )
             try:
-                arg = f"{path}/{derelative(arg)}.yaml"
-                if os.path.isfile(arg):
-                    with open(arg, "r", encoding="utf-8") as stream:
-                        hub = yaml.safe_load(stream)
-                    if "read_only" in hub and hub["read_only"] is True:
-                        raise ArgumentError(
-                            f"Hub {arg} already exists and it is read-only!"
-                        )
-                with open(arg, "w", encoding="utf-8") as stream:
+                if os.path.isfile(f"storage/hubs/read_only/{name}.yaml"):
+                    raise ArgumentError(f"Hub {name} already exists and it is read-only!")
+                if os.path.isfile(f"storage/hubs/{name}.yaml") and len(args) > 2 and args[1].lower() == "read_only":
+                    try:
+                        os.remove(f"storage/hubs/{name}.yaml")
+                    except:
+                        raise AreaError(f"{name} hasn't been removed from write and read folder!")
+                name = f"{path}/{name}.yaml"
+                hub = client.area.area_manager.save(ignore=["can_gm", "max_areas"])
+                if len(args) == 2 and args[1] == "read_only":
+                    hub["read_only"] = True
+                if "music_ref" in hub and hub["music_ref"] == "unsaved":
+                    del hub["music_ref"]
+                for i in range(0, len(hub["areas"])):
+                    if "music_ref" in hub["areas"][i] and hub["areas"][i]["music_ref"] == "unsaved":
+                        del hub["areas"][i]["music_ref"]
+                with open(name, "w", encoding="utf-8") as stream:
                     yaml.dump(
-                        client.area.area_manager.save(
-                            ignore=["can_gm", "max_areas"]),
+                        hub,
                         stream,
                         default_flow_style=False,
                     )
             except ArgumentError:
                 raise
             except Exception:
-                raise AreaError(f"File path {arg} is invalid!")
-            client.send_ooc(f"Saving as {arg}...")
+                raise AreaError(f"File path {name} is invalid!")
+            client.send_ooc(f"Saving as {name}...")
         else:
             client.server.hub_manager.save("config/areas_new.yaml")
             client.send_ooc(
@@ -141,8 +169,11 @@ def ooc_cmd_load_hub(client, arg):
         raise ArgumentError("You must be authorized to load the default hub!")
 
     if arg != "":
-        path = "storage/hubs"
-        arg = f"{path}/{derelative(arg)}.yaml"
+        if os.path.isfile(f"storage/hubs/read_only/{arg}.yaml"):
+            path = "storage/hubs/read_only"
+        else:
+            path = "storage/hubs"
+        arg = f"{path}/{derelative(arg).replace('/', '')}.yaml"
         if not os.path.isfile(arg):
             raise ArgumentError(f"File not found: {arg}")
         with open(arg, "r", encoding="utf-8") as stream:
@@ -209,18 +240,39 @@ def ooc_cmd_overlay_hub(client, arg):
         client.send_ooc("Success, sending ARUP and refreshing music...")
 
 
-@mod_only()
 def ooc_cmd_list_hubs(client, arg):
     """
     Show all the available hubs for loading in the storage/hubs/ folder.
     Usage: /list_hubs
     """
-    text = "Available hubs:"
-    for F in os.listdir("storage/hubs/"):
-        if F.lower().endswith(".yaml"):
-            text += "\n- {}".format(F[:-5])
+    hubs_editable = []
+    hubs_read_only = []
+    for F in os.listdir("storage/hubs/read_only/"):
+        try:
+            if F.lower().endswith(".yaml"):
+                hubs_read_only.append(F[:-5])
+        except:
+            continue
 
-    client.send_ooc(text)
+    for F in os.listdir("storage/hubs/"):
+        try:
+            if F.lower().endswith(".yaml"):
+                hubs_editable.append(F[:-5])
+        except:
+            continue
+
+    hubs_read_only.sort()
+    msg = "\n⛩️ Available Read Only Hubs: ⛩️\n"
+    for hub in hubs_read_only:
+        msg += f"\n🌎 [👀]{hub}"
+
+    if client.is_mod:
+        hubs_editable.sort()
+        msg += "\n\n⛩️ Available Editable Hubs: ⛩️\n"
+        for hub in hubs_editable:
+            msg += f"\n🌎 {hub}"
+
+    client.send_ooc(msg)
 
 
 @mod_only(hub_owners=True)
@@ -303,8 +355,34 @@ def ooc_cmd_area_remove(client, arg):
         raise ArgumentError(
             "Invalid number of arguments. Use /area_remove <aid>.")
 
-
+'''
 @mod_only(hub_owners=True)
+def ooc_cmd_area_duplicate(client, arg):
+    """
+    Duplicate an area, copying all of its properties and evidence.
+    Usage: /area_duplicate <aid>
+    """
+    args = arg.split()
+
+    if len(args) == 1:
+        try:
+            area = client.area.area_manager.get_area_by_id(int(args[0]))
+            name = area.name
+            data = area.save()
+            new_area = client.area.area_manager.create_area()
+            new_area.load(data)
+            client.area.area_manager.broadcast_area_list()
+            client.send_ooc(f"Area {name} duplicated!")
+        except ValueError:
+            raise ArgumentError("Area ID must be a number.")
+        except (AreaError, ClientError):
+            raise
+    else:
+        raise ArgumentError(
+            "Invalid number of arguments. Use /area_duplicate <aid>.")
+
+'''
+@mod_only(area_owners=True)
 def ooc_cmd_area_rename(client, arg):
     """
     Rename the area to <name>. The area is the one you're currently in
@@ -608,7 +686,7 @@ def ooc_cmd_toggle_getareas(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_toggle_spectate(client, arg):
     """
-    Disable the ARea UPdate system for this hub.
+    Disable the ability to use a spectator character for non-GMs for this hub.
     Usage: /toggle_spectate
     """
     client.area.area_manager.can_spectate = not client.area.area_manager.can_spectate

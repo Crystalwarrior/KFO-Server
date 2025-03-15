@@ -30,9 +30,13 @@ __all__ = [
     "ooc_cmd_rolla",
     "ooc_cmd_coinflip",
     "ooc_cmd_8ball",
+    "ooc_cmd_rps",
+    "ooc_cmd_rps_rules",
     "ooc_cmd_timer",
     "ooc_cmd_demo",
     "ooc_cmd_trigger",
+    "ooc_cmd_format_timer",
+    "ooc_cmd_timer_interval",
 ]
 
 
@@ -229,7 +233,7 @@ def ooc_cmd_notecard(client, arg):
             client.send_ooc("No notecard found. Usage: /notecard <message>")
         return
     client.area.cards[client.char_name] = arg
-    client.area.broadcast_ooc("{} wrote a note card.".format(client.showname))
+    client.area.broadcast_ooc(f"[{client.id}] {client.showname} wrote a note card.")
     database.log_area("notecard", client, client.area)
 
 
@@ -455,9 +459,7 @@ def ooc_cmd_rolla(client, arg):
     ability_dice = client.area.ability_dice[client.ability_dice_set]
     roll, max_roll, ability = rolla(ability_dice)
     client.area.broadcast_ooc(
-        "{} rolled a {} (out of {}): {}.".format(
-            client.showname, roll, max_roll, ability
-        )
+        f"[{client.id}] {client.showname} rolled a {roll} (out of {max_roll}): {ability}."
     )
     database.log_area(
         "rolla", client, client.area, message=f"{roll} out of {max_roll}: {ability}"
@@ -474,7 +476,7 @@ def ooc_cmd_coinflip(client, arg):
     coin = ["heads", "tails"]
     flip = random.choice(coin)
     client.area.broadcast_ooc(
-        "{} flipped a coin and got {}.".format(client.showname, flip)
+        f"[{client.id}] {client.showname} flipped a coin and got {flip}."
     )
     database.log_area("coinflip", client, client.area, message=flip)
 
@@ -495,6 +497,178 @@ def ooc_cmd_8ball(client, arg):
     client.area.broadcast_ooc(
         f'{client.showname} asked the 8ball - "{arg}", and it responded: "{rolla(ability_dice)[2]}".'
     )
+
+
+def ooc_cmd_rps(client, arg):
+    """
+    Starts a match of Rock Paper Scissors.
+    If [choice] is not provided, view current RPS rules.
+    Usage: /rps [choice]
+    To abandon the match, use /rps cancel
+    """
+    # format:
+    # [
+    #   [a, b, c, ...] where 'a' beats 'b', 'c', ...
+    # ]
+
+    rps_rules = client.area.area_manager.rps_rules
+
+    # Strip the input of blank spaces on edges 
+    arg = arg.strip()
+    
+    # If doing /rps by itself, simply tell the user the rules.
+    if not arg:
+        msg = "RPS rules:"
+        for i, rule in enumerate(rps_rules):
+            msg += f"\n  {i+1}) "
+            choice = rule[0]
+            msg += choice
+            if len(choice) > 1:
+                losers = ', '.join(rule[1:])
+                msg += f" beats {losers}"
+        client.send_ooc(msg)
+        return
+
+    if arg.lower() in ["clear", "cancel"]:
+        if client.rps_choice:
+            client.area.broadcast_ooc(f'[{client.id}] {client.showname} no longer wants to play 🎲Rock Paper Scissors🎲... 🙁')
+        client.rps_choice = ""
+        client.send_ooc('You cleared your choice.')
+        return
+
+    # List of our available choices
+    choices = []
+    for rule in rps_rules:
+        rule = rule[0].lower()
+        if rule not in choices:
+            choices.append(rule)
+    picked = ""
+    for choice in choices:
+        # Exact match, can't get better than this. Break out of the loop
+        if arg.lower() == choice:
+            picked = choice
+            break
+        # Fuzzy match, queue up our pick but look if we can get something better
+        if arg.lower() in choice:
+            picked = choice
+    
+    if picked not in choices:
+        raise ArgumentError(f"Invalid choice! Available choices are: {', '.join(choices)}")
+    
+    # If we already have made a rps choice before, simply silently swap our choice.
+    if client.rps_choice:
+        client.rps_choice = picked
+        client.send_ooc(f'Swapped your choice to {client.rps_choice}!')
+        return
+        
+    # Set our Rock Paper Scissors choice
+    client.rps_choice = picked
+
+    # Loop through clients in area to see if they're waiting on the challenge
+    # TODO: this method is gonna be bug-prone, please fix.
+    target = None
+    for c in client.area.clients:
+        if c == client:
+            continue
+        if c.rps_choice:
+            target = c
+            break
+
+    # Look for our opponent if none is present
+    if not target:
+        msg = f'[{client.id}] {client.showname} wants to play 🎲Rock Paper Scissors🎲!\n❕ Do /rps [choice] to challenge them! ❕'
+        client.area.broadcast_ooc(msg)
+        client.send_ooc(f'You picked {client.rps_choice}!')
+        return
+
+    # Start constructing our output message
+    msg = '🎲Rock Paper Scissors🎲'
+    msg += f'\n  ◽ [{target.id}] {target.showname} picks {target.rps_choice}!'
+    msg += f'\n  ◽ [{client.id}] {client.showname} picks {client.rps_choice}!'
+    
+    # Calculate our winner
+    a = target.rps_choice.lower()
+    b = client.rps_choice.lower()
+    winner = None
+    for rule in rps_rules:
+        rule = [r.lower() for r in rule]
+        choice = rule[0]
+        losers = []
+        if len(rule) > 1:
+            losers = rule[1:]
+        if a in choice and b in losers:
+            winner = target
+            break
+        elif b in choice and a in losers:
+            winner = client
+            break
+
+    # Congratulate our winner or announce a tie
+    if winner:
+        msg += f"\n  🏆[{winner.id}] {winner.showname} WINS!!!🏆"
+    else:
+        msg += f"\n  👔It's a tie!👔"
+
+    # Announce the message!
+    client.area.broadcast_ooc(msg)
+
+    # Clear the game for our 2 contestants
+    target.rps_choice = ""
+    client.rps_choice = ""
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_rps_rules(client, arg):
+    """
+    Review or change rps rules
+    Usage:  /rps_rules - review current rules, indexed
+            /rps_rules <add|new|+> [a beats b, c, d, ...] - add a new rule, or rules if the param is split by line break
+            /rps_rules <del|remove|-> [index] - delete a rule at index
+            /rps_rules <clear|clean|reset|wipe> - wipe all current rules
+    """
+    #client.area.area_manager.rps_rules
+
+    # Strip the input of blank spaces on edges 
+    arg = arg.strip()
+    
+    # If doing /rps_rules by itself, simply tell the user the rules.
+    if not arg:
+        ooc_cmd_rps(client, "")
+        return
+    
+    try:
+        args = arg.split(maxsplit=1)
+        action = args[0]
+        param = ""
+        if len(args) > 1:
+            param = args[1]
+        if action.lower() in ["add", "new", "+"]:
+            rules = param.splitlines()
+            for rule in rules:
+                newrule = rule.split("beats")
+                newrule = [newrule[0].strip()] + newrule[1].strip().split(",")
+                newrule = [a.strip() for a in newrule]
+                client.area.area_manager.rps_rules.append(newrule)
+                client.send_ooc(f"Added a new rule: {rule}")
+        elif action.lower() in ["del", "remove", "-"]:
+            index = int(param)-1
+            if index < 0 or index >= len(client.area.area_manager.rps_rules):
+                raise ArgumentError(
+                    "Invalid index!"
+                )
+            client.send_ooc(f"Deleted a rule: {client.area.area_manager.rps_rules[index]}")
+            client.area.area_manager.rps_rules.pop(index)
+        elif action.lower() in ["clear", "clean", "reset", "wipe"]:
+            client.send_ooc("Deleted all rules.")
+            client.area.area_manager.rps_rules.clear()
+        else:
+            raise ArgumentError(
+                "Invalid action!"
+            )
+    except ValueError:
+        raise ArgumentError(
+            "Invalid parameter!"
+        )
 
 
 def ooc_cmd_timer(client, arg):
@@ -588,10 +762,6 @@ def ooc_cmd_timer(client, arg):
         else:
             timer.static = datetime.timedelta(seconds=abs(duration))
             timer.set = True
-            if timer_id == 0:
-                client.area.area_manager.send_command("TI", timer_id, 2)
-            else:
-                client.area.send_command("TI", timer_id, 2)
         if len(args) > 2:
             command_arg = args[2]
 
@@ -617,9 +787,9 @@ def ooc_cmd_timer(client, arg):
             timer.schedule.cancel()
         client.send_ooc(f"Timer {timer_id} unset and hidden.")
         if timer_id == 0:
-            client.area.area_manager.send_command("TI", timer_id, 3)
+            client.area.area_manager.send_timer_set_time(timer_id, None)
         else:
-            client.area.send_command("TI", timer_id, 3)
+            client.area.send_timer_set_time(timer_id, None)
     elif args[1][0] == "/":
         full = " ".join(args[1:])[1:]
         if full == "":
@@ -655,10 +825,9 @@ def ooc_cmd_timer(client, arg):
         s = int(not timer.started)
         static_time = int(timer.static.total_seconds()) * 1000
         if timer_id == 0:
-            client.area.area_manager.send_command(
-                "TI", timer_id, s, static_time)
+            client.area.area_manager.send_timer_set_time(timer_id, static_time, timer.started)
         else:
-            client.area.send_command("TI", timer_id, s, static_time)
+            client.area.send_timer_set_time(timer_id, static_time, timer.started)
         client.send_ooc(f"Timer {timer_id} is at {timer.static}")
 
         if timer_id == 0:
@@ -712,7 +881,7 @@ def ooc_cmd_demo(client, arg):
     for packet in packets:
         p_args = packet.split("#")
         p_args[0] = p_args[0].strip()
-        if p_args[0] in ["MS", "CT", "MC", "BN", "HP", "RT", "wait"]:
+        if p_args[0] in ["MS", "CT", "MC", "BN", "HP", "RT", "wait", "GM", "ST"]:
             client.area.demo += [p_args]
         elif p_args[0].startswith("/"):  # It's a command!
             p_args = packet.split(" ")
@@ -726,6 +895,7 @@ def ooc_cmd_demo(client, arg):
     client.area.play_demo(client)
 
 
+@mod_only(area_owners=True)
 def ooc_cmd_trigger(client, arg):
     """
     Set up a trigger for this area which, when fulfilled, will call the command.
@@ -740,6 +910,12 @@ def ooc_cmd_trigger(client, arg):
         msg = "This area's triggers are:"
         for key, value in client.area.triggers.items():
             msg += f'\nCall "{value}" on {key}'
+        msg = "\nEvidence triggers:"
+        for evidence in client.area.evi_list.evidences:
+            # TODO: figure out why triggers.items() doesn't work here
+            value = evidence.triggers["present"]
+            if value != "":
+                msg += f'\n💼{evidence.name}: Call "{value}" on present'
         client.send_ooc(msg)
         return
     if arg.lower().startswith("present "):
@@ -776,3 +952,83 @@ def ooc_cmd_trigger(client, arg):
         val = args[1]
         client.area.triggers[trig] = val
         client.send_ooc(f'Changed to Call "{val}" on trigger "{trig}"')
+
+
+def ooc_cmd_format_timer(client, arg):
+    """
+    Format the timer
+    Usage: /format_timer <Timer_iD> <Format>
+    """
+    args = shlex.split(arg)
+    try:
+        args[0] = int(args[0])
+    except:
+        raise ArgumentError("Timer ID should be an integer")
+    if args[0] == 0:
+        if client.is_mod or client in client.area.area_manager.owners:
+            timer = client.area.area_manager.timer
+        else:
+            client.send_ooc("You cannot change timer 0 format if you are not GM")
+            return
+    else:
+        if (
+            client.is_mod
+            or client in client.area.area_manager.owners
+            or client in client.area.owners
+        ):
+            timer = client.area.timers[args[0] - 1]
+        else:
+            client.send_ooc("You cannot change timer format if you are at least CM")
+            return
+    timer.format = args[1:]
+    if timer.set:
+        if timer.started:
+            current_time = timer.target - arrow.get()
+            current_time = int(current_time.total_seconds()) * 1000
+        else:
+            current_time = int(timer.static.total_seconds()) * 1000
+        if args[0] == 0:
+            client.area.area_manager.send_timer_set_time(args[0], current_time, timer.started)
+        else:
+            client.area.send_timer_set_time(args[0], current_time, timer.started)
+    client.send_ooc(f"Timer {args[0]} format: '{args[1]}'")
+
+
+def ooc_cmd_timer_interval(client, arg):
+    """
+    Set timer interval
+    If timer interval is not written than will show default timer interval (16ms)
+    Example: /timer_interval 1 15m
+    Usage: /timer_interval <Timer_ID> <Interval>
+    """
+    args = shlex.split(arg)
+    try:
+        args[0] = int(args[0])
+    except:
+        raise ArgumentError("Timer ID should be an integer")
+    if args[0] == 0:
+        if client.is_mod or client in client.area.area_manager.owners:
+            timer = client.area.area_manager.timer
+        else:
+            client.send_ooc("You cannot change timer 0 interval if you are not GM")
+            return
+    else:
+        if (
+            client.is_mod
+            or client in client.area.area_manager.owners
+            or client in client.area.owners
+        ):
+            timer = client.area.timers[args[0] - 1]
+        else:
+            client.send_ooc("You cannot change timer interval if you are at least CM")
+            return
+    try:
+        if len(args) == 1:
+            timer.interval = 16 
+        else:
+            timer.interval = pytimeparse.parse(args[1]) * 1000
+    except:
+        raise ArgumentError("Interval value not valid!")
+    if timer.set:
+        client.send_timer_set_interval(args[0], timer)
+    client.send_ooc(f"Timer {args[0]} interval is set to '{args[1]}'")

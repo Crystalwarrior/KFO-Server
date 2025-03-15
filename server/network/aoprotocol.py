@@ -1,22 +1,3 @@
-# KFO-Server, an Attorney Online server
-#
-# Copyright (C) 2020 Crystalwarrior <varsash@gmail.com>
-#
-# Derivative of tsuserver3, an Attorney Online server. Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 from .. import commands
 from server.constants import dezalgo, censor, contains_URL, derelative
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
@@ -30,8 +11,7 @@ import unicodedata
 import traceback
 import logging
 
-logger_debug = logging.getLogger("debug")
-logger = logging.getLogger("events")
+logger = logging.getLogger("aoprotocol")
 
 
 class AOProtocol(asyncio.Protocol):
@@ -81,7 +61,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc(
                 "Your last action was dropped because it was too big! Contact the server administrator for more information."
             )
-            logger_debug.debug(f"Buffer overflow from {ipid} with {len(buf)}")
+            logger.debug("Buffer overflow from %s with %s", ipid, len(buf))
             return
         self.buffer = buf
         for msg in self.get_messages():
@@ -91,8 +71,8 @@ class AOProtocol(asyncio.Protocol):
                 cmd, *args = msg.split("#")
                 self.net_cmd_dispatcher[cmd](self, args)
             except KeyError:
-                logger_debug.debug(
-                    f"Unknown incoming message from {ipid}: {msg}")
+                logger.debug(
+                    "Unknown incoming message from %s: %s", ipid, msg)
             except Exception:
                 print(traceback.format_exc())
                 self.client.disconnect()
@@ -133,7 +113,7 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if self.client is not None:
-            logger.debug(f"{self.client.ipid} disconnected.")
+            logger.debug("%s disconnected.", self.client.ipid)
             self.server.remove_client(self.client)
         if self.ping_timeout is not None:
             self.ping_timeout.cancel()
@@ -233,7 +213,9 @@ class AOProtocol(asyncio.Protocol):
                 "KB", "Your client version was sent a second time by your client.")
             self.client.disconnect()
             return
-        self.client.version = args[1]
+        software, version = args[0], args[1]
+        self.client.version = version
+        self.client.software = software
         preflist = self.client.server.supported_features.copy()
         if not self.client.area.area_manager.arup_enabled and "arup" in preflist:
             preflist.remove("arup")
@@ -241,6 +223,12 @@ class AOProtocol(asyncio.Protocol):
 
         # Get the list of version vars, making sure the size of the least is at least 3 args
         verlist = self.client.version.split('.')
+
+        # DRO client connected, partial DRO support
+        if self.client.software == "DRO":
+            # send it back to the client
+            self.client.send_command("client_version", *verlist)
+
         if len(verlist) == 3:
             # Get the version string
             release, major, minor = verlist
@@ -250,11 +238,6 @@ class AOProtocol(asyncio.Protocol):
                 # Let them hear ambience
                 self.client.has_multilayer_audio = True
 
-        # If we have someone using the DRO 1.1.0 Client joining
-        # if self.client.version.startswith("1.1.0"):
-        # DRO Client partial support.
-        # For some reason, if DRO Client doesn't receive this back it just never clears the IC input box even if we send back the correct MS# packet.
-        #    self.client.send_command("client_version", 1, 1, 0)
         # Send Asset packet if asset_url is defined
         if self.server.config["asset_url"] != "":
             self.client.send_command("ASS", self.server.config["asset_url"])
@@ -390,6 +373,8 @@ class AOProtocol(asyncio.Protocol):
         additive = 0
         effect = ""
         pair_order = 0
+        third_charid = -1
+        video = ""
         if self.validate_net_cmd(
             args,
             self.ArgType.STR,  # msg_type
@@ -449,24 +434,24 @@ class AOProtocol(asyncio.Protocol):
         ):
             # DRO1.1.0 validation monstrosity.
             (
-                msg_type,
-                pre,
-                folder,
-                anim,
-                text,
-                pos,
-                sfx,
-                emote_mod,
-                cid,
-                sfx_delay,
-                button,
-                evidence,
-                flip,
-                ding,
-                color,
-                showname,
-                video,
-                blankpost,
+                msg_type, # 0
+                pre, # 1
+                folder, # 2
+                anim, # 3
+                text, # 4
+                pos, # 5
+                sfx, # 6
+                emote_mod, # 7
+                cid, # 8
+                sfx_delay, # 9
+                button, # 10
+                evidence, # 11
+                flip, # 12
+                ding, # 13
+                color, # 14
+                showname, # 15
+                video, # 16
+                blankpost, # 17
             ) = args
             if ding != 1:
                 ding = 0
@@ -516,32 +501,32 @@ class AOProtocol(asyncio.Protocol):
             ) = args
         elif self.validate_net_cmd(
             args,
-            self.ArgType.STR,
-            self.ArgType.STR_OR_EMPTY,  # msg_type, pre
-            self.ArgType.STR,
-            self.ArgType.STR_OR_EMPTY,
-            self.ArgType.STR_OR_EMPTY,  # folder, anim, text
-            self.ArgType.STR,
-            self.ArgType.STR,
-            self.ArgType.INT,  # pos, sfx, emote_mod
-            self.ArgType.INT,
-            self.ArgType.INT,
-            self.ArgType.INT_OR_STR,  # cid, sfx_delay, button
-            self.ArgType.INT,
-            self.ArgType.INT,
-            self.ArgType.INT,  # evidence, flip, ding
-            self.ArgType.INT,
-            self.ArgType.STR_OR_EMPTY,
-            self.ArgType.STR,  # color, showname, charid_pair
-            self.ArgType.STR,
-            self.ArgType.INT,
-            self.ArgType.STR,  # offset_pair, nonint_pre, sfx_looping
-            self.ArgType.INT,
-            self.ArgType.STR,
-            self.ArgType.STR,  # screenshake, frames_shake, frames_realization
-            self.ArgType.STR,
-            self.ArgType.INT,
-            self.ArgType.STR,  # frames_sfx, additive, effect
+            self.ArgType.STR, # 0 # msg_type
+            self.ArgType.STR_OR_EMPTY, # 1  # pre
+            self.ArgType.STR, # 2 # folder
+            self.ArgType.STR_OR_EMPTY, # 3 # anim
+            self.ArgType.STR_OR_EMPTY, # 4  # text
+            self.ArgType.STR, # 5 # pos
+            self.ArgType.STR, # 6 # sfx
+            self.ArgType.INT, # 7 # emote_mod
+            self.ArgType.INT, # 8 # cid
+            self.ArgType.INT, # 9 # sfx_delay
+            self.ArgType.INT_OR_STR, # 10 # button
+            self.ArgType.INT, # 11 # evidence
+            self.ArgType.INT, # 12 # flip
+            self.ArgType.INT, # 13 # ding
+            self.ArgType.INT, # 14 # color
+            self.ArgType.STR_OR_EMPTY, # 15 # showname
+            self.ArgType.STR, # 16 # charid_pair
+            self.ArgType.STR, # 17 # offset_pair
+            self.ArgType.INT, # 18 # nonint_pre
+            self.ArgType.STR, # 19 # sfx_looping
+            self.ArgType.INT, # 20 # screenshake
+            self.ArgType.STR, # 21 # frames_shake
+            self.ArgType.STR, # 22 # frames_realization
+            self.ArgType.STR, # 23 # frames_sfx
+            self.ArgType.INT, # 24 # additive
+            self.ArgType.STR, # 25  # effect
         ):
             # 2.8 validation monstrosity. (rip 2.7)
             (
@@ -581,9 +566,150 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_ooc(
                     "Something went wrong! Please report the issue to the developers.")
                 return
+        elif self.validate_net_cmd(
+            args,
+            self.ArgType.STR, # 0 # msg_type
+            self.ArgType.STR_OR_EMPTY, # 1  # pre
+            self.ArgType.STR, # 2 # folder
+            self.ArgType.STR_OR_EMPTY, # 3 # anim
+            self.ArgType.STR_OR_EMPTY, # 4  # text
+            self.ArgType.STR, # 5 # pos
+            self.ArgType.STR, # 6 # sfx
+            self.ArgType.INT, # 7 # emote_mod
+            self.ArgType.INT, # 8 # cid
+            self.ArgType.INT, # 9 # sfx_delay
+            self.ArgType.INT_OR_STR, # 10 # button
+            self.ArgType.INT, # 11 # evidence
+            self.ArgType.INT, # 12 # flip
+            self.ArgType.INT, # 13 # ding
+            self.ArgType.INT, # 14 # color
+            self.ArgType.STR_OR_EMPTY, # 15 # showname
+            self.ArgType.STR, # 16 # charid_pair
+            self.ArgType.STR, # 17 # offset_pair
+            self.ArgType.INT, # 18 # nonint_pre
+            self.ArgType.STR, # 19 # sfx_looping
+            self.ArgType.INT, # 20 # screenshake
+            self.ArgType.STR, # 21 # frames_shake
+            self.ArgType.STR, # 22 # frames_realization
+            self.ArgType.STR, # 23 # frames_sfx
+            self.ArgType.INT, # 24 # additive
+            self.ArgType.STR, # 25 # effect
+            self.ArgType.INT, # 26 # third_charid
+        ):
+            # AO Golden validation monstrosity
+            (
+                msg_type,
+                pre,
+                folder,
+                anim,
+                text,
+                pos,
+                sfx,
+                emote_mod,
+                cid,
+                sfx_delay,
+                button,
+                evidence,
+                flip,
+                ding,
+                color,
+                showname,
+                charid_pair,
+                offset_pair,
+                nonint_pre,
+                sfx_looping,
+                screenshake,
+                frames_shake,
+                frames_realization,
+                frames_sfx,
+                additive,
+                effect,
+                third_charid,
+            ) = args
+            try:
+                pair_args = charid_pair.split("^")
+                charid_pair = int(pair_args[0])
+                if len(pair_args) > 1:
+                    pair_order = pair_args[1]
+            except ValueError:
+                self.client.send_ooc(
+                    "Something went wrong! Please report the issue to the developers.")
+                return
+        elif self.validate_net_cmd(
+            args,
+            self.ArgType.STR, # 0 # msg_type
+            self.ArgType.STR_OR_EMPTY, # 1  # pre
+            self.ArgType.STR, # 2 # folder
+            self.ArgType.STR_OR_EMPTY, # 3 # anim
+            self.ArgType.STR_OR_EMPTY, # 4  # text
+            self.ArgType.STR, # 5 # pos
+            self.ArgType.STR, # 6 # sfx
+            self.ArgType.INT, # 7 # emote_mod
+            self.ArgType.INT, # 8 # cid
+            self.ArgType.INT, # 9 # sfx_delay
+            self.ArgType.INT_OR_STR, # 10 # button
+            self.ArgType.INT, # 11 # evidence
+            self.ArgType.INT, # 12 # flip
+            self.ArgType.INT, # 13 # ding
+            self.ArgType.INT, # 14 # color
+            self.ArgType.STR_OR_EMPTY, # 15 # showname
+            self.ArgType.STR, # 16 # charid_pair
+            self.ArgType.STR, # 17 # offset_pair
+            self.ArgType.INT, # 18 # nonint_pre
+            self.ArgType.STR, # 19 # sfx_looping
+            self.ArgType.INT, # 20 # screenshake
+            self.ArgType.STR, # 21 # frames_shake
+            self.ArgType.STR, # 22 # frames_realization
+            self.ArgType.STR, # 23 # frames_sfx
+            self.ArgType.INT, # 24 # additive
+            self.ArgType.STR, # 25 # effect
+            self.ArgType.INT, # 26 # third_charid
+            self.ArgType.STR_OR_EMPTY, # 27 # video
+        ):
+            # KFO Client validation monstrosity
+            (
+                msg_type,
+                pre,
+                folder,
+                anim,
+                text,
+                pos,
+                sfx,
+                emote_mod,
+                cid,
+                sfx_delay,
+                button,
+                evidence,
+                flip,
+                ding,
+                color,
+                showname,
+                charid_pair,
+                offset_pair,
+                nonint_pre,
+                sfx_looping,
+                screenshake,
+                frames_shake,
+                frames_realization,
+                frames_sfx,
+                additive,
+                effect,
+                third_charid,
+                video,
+            ) = args
+            try:
+                pair_args = charid_pair.split("^")
+                charid_pair = int(pair_args[0])
+                if len(pair_args) > 1:
+                    pair_order = pair_args[1]
+            except ValueError:
+                self.client.send_ooc(
+                    "Something went wrong! Please report the issue to the developers.")
+                return
         else:
+            self.client.send_ooc(
+                f"Something went wrong! Please report this to the developers:\n{args}")
             return
-
         # Targets for whispering
         whisper_clients = None
 
@@ -611,7 +737,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.area.is_iniswap(self.client, pre, anim, folder, sfx):
             folder = self.client.char_name
             self.client.send_ooc(
-                f"Iniswap/custom emotes are blocked in this area for character {folder}, pre {pre} anim {anim}."
+                f"Iniswap/custom emotes are blocked in this area for character '{folder}', pre '{pre}' anim '{anim}'."
             )
             return
         if len(self.client.charcurse) > 0 and folder != self.client.char_name:
@@ -636,6 +762,7 @@ class AOProtocol(asyncio.Protocol):
                     len(re.sub(r"[{}\\`|(~~)]", "", text).replace(" ", "")) < 3
                     and not text.startswith("<")
                     and not text.startswith(">")
+                    and not text.startswith("=")
                 ):
                     self.client.send_ooc(
                         "Blankposting is forbidden in this area!"
@@ -712,7 +839,7 @@ class AOProtocol(asyncio.Protocol):
                     "That does not look like a valid area ID!")
                 return
         if len(self.client.area.testimony) > 0 and (
-            text.lstrip().startswith(">") or text.lstrip().startswith("<")
+            text.lstrip().startswith(">") or text.lstrip().startswith("<") or text.lstrip().startswith("=")
         ):
             if self.client.area.recording is True:
                 self.client.send_ooc("It is not cross-examination yet!")
@@ -732,6 +859,8 @@ class AOProtocol(asyncio.Protocol):
                     idx += 1
                 if cmd == "<":
                     idx -= 1
+                if cmd == "=":
+                    idx = idx
                 idx = idx % len(self.client.area.testimony)
             try:
                 self.client.area.testimony_send(idx)
@@ -946,15 +1075,21 @@ class AOProtocol(asyncio.Protocol):
             self.client.pair_order = pair_order
         charid_pair = self.client.charid_pair
         pair_order = self.client.pair_order
+        third_charid = self.client.third_charid
         self.client.offset_pair = offset_pair
         if emote_mod not in (5, 6):
             self.client.last_sprite = anim
+            self.client.last_pre = pre
         self.client.flip = flip
         self.client.claimed_folder = folder
         other_offset = 0
         other_emote = ""
         other_flip = 0
         other_folder = ""
+        third_offset = 0
+        third_emote = ""
+        third_flip = 0
+        third_folder = ""
 
         confirmed = False
         if charid_pair > -1:
@@ -962,7 +1097,10 @@ class AOProtocol(asyncio.Protocol):
                 if (
                     not confirmed
                     and target.char_id == self.client.charid_pair
-                    and target.charid_pair == self.client.char_id
+                    and (
+                        target.charid_pair == self.client.char_id
+                        or target.third_charid == self.client.char_id
+                    )
                     and target != self.client
                     and target.pos == self.client.pos
                 ):
@@ -977,6 +1115,96 @@ class AOProtocol(asyncio.Protocol):
 
         if not confirmed:
             charid_pair = -1
+
+        third_confirmed = False
+        if third_charid > -1:
+            for target in self.client.area.clients:
+                if (
+                    not third_confirmed
+                    and target.char_id == self.client.third_charid
+                    and (
+                        target.charid_pair == self.client.char_id
+                        or target.third_charid == self.client.char_id
+                    )
+                    and target != self.client
+                    and target.pos == self.client.pos
+                    and self.client.charid_pair != self.client.third_charid
+                ):
+                    third_confirmed = True
+                    third_offset = target.offset_pair
+                    third_emote = target.last_sprite
+                    third_flip = target.flip
+                    third_folder = target.claimed_folder
+                    third_charid = "{}^{}".format(third_charid, 0)
+
+        if not third_confirmed:
+            third_charid = -1
+
+        if self.client.area.auto_pair:
+            clients_pos = [c for c in self.client.area.clients if c.pos == self.client.pos]
+            clients_pos.sort(key=lambda x: x.id)
+            if len(clients_pos) >= 3 and self.client.area.auto_pair_max == "triple":
+                position = clients_pos.index(self.client)
+                if len(clients_pos) >= position+2:
+                    if position > 0:
+                        client_pair = clients_pos[position-1]
+                        third_client = clients_pos[position+1]
+                    else:
+                        client_pair = clients_pos[position+1]
+                        third_client = clients_pos[position+2]
+                else:
+                    client_pair = clients_pos[position-1]
+                    third_client = clients_pos[position-2]
+                    
+
+                charid_pair = f"{client_pair.char_id}^0"
+                other_emote = client_pair.last_sprite
+                other_flip = client_pair.flip
+                other_folder = client_pair.claimed_folder
+                third_charid = f"{third_client.char_id}^0"
+                third_emote = third_client.last_sprite
+                third_flip = third_client.flip
+                third_folder = third_client.claimed_folder
+
+                if (
+                    self.client.last_offset in [-33, 33, 0]
+                    and client_pair.last_offset in [-33, 33, 0]
+                    and third_client.last_offset in [-33, 33, 0]
+                    and self.client.last_offset != client_pair.last_offset
+                    and self.client.last_offset != third_client.last_offset
+                    and client_pair.last_offset != third_client.last_offset
+                    and not self.client.area.auto_pair_cycle
+                ):
+                    offset_pair = self.client.last_offset
+                    other_offset = client_pair.last_offset
+                    third_offset = third_client.last_offset
+                else:
+                    offset_pair = 0
+                    other_offset = -33
+                    third_offset = 33
+                    self.client.last_offset = 0
+                    client_pair.last_offset = -33
+                    third_client.last_offset = 33
+                   
+            else:
+                offset_pair = 0
+                if len(clients_pos) >= 2:
+                    if clients_pos.index(self.client) == 0:
+                        client_pair = clients_pos[1]
+                    else:
+                        client_pair = clients_pos[clients_pos.index(self.client) - 1]
+                    if self.client.last_offset == -25 or client_pair.last_offset == 25:
+                        offset_pair = -25
+                        other_offset = 25
+                    else:
+                        offset_pair = 25
+                        other_offset = -25
+                        self.client.last_offset = 25
+                        client_pair.last_offset = -25
+                    charid_pair = client_pair.char_id
+                    other_emote = client_pair.last_sprite
+                    other_flip = client_pair.flip
+                    other_folder = client_pair.claimed_folder
 
         ver = self.client.version.split('.')
         if len(ver) >= 2:
@@ -1022,36 +1250,42 @@ class AOProtocol(asyncio.Protocol):
                         tempdeskmod = a.last_ic_message[0]
                     a.send_command(
                         "MS",
-                        tempdeskmod,
-                        pre,
-                        folder,
-                        anim,
-                        msg,
-                        tempos,
-                        sfx,
-                        emote_mod,
-                        cid,
-                        sfx_delay,
-                        button,
-                        self.client.evi_list[evidence],
-                        flip,
-                        ding,
-                        color,
-                        showname,
-                        charid_pair,
-                        other_folder,
-                        other_emote,
-                        offset_pair,
-                        other_offset,
-                        other_flip,
-                        nonint_pre,
-                        sfx_looping,
-                        screenshake,
-                        frames_shake,
-                        frames_realization,
-                        frames_sfx,
-                        add,
-                        effect,
+                        tempdeskmod, # 0
+                        pre, # 1
+                        folder, # 2
+                        anim, # 3
+                        msg, # 4
+                        tempos, # 5
+                        sfx, # 6
+                        emote_mod, # 7
+                        cid, # 8
+                        sfx_delay, # 9
+                        button, # 10
+                        self.client.evi_list[evidence], # 11
+                        flip, # 12
+                        ding, # 13
+                        color, # 14
+                        showname, # 15
+                        charid_pair, # 16
+                        other_folder, # 17
+                        other_emote, # 18
+                        offset_pair, # 19
+                        other_offset, # 20
+                        other_flip, # 21
+                        nonint_pre, # 22
+                        sfx_looping, # 23
+                        screenshake, # 24
+                        frames_shake, # 25
+                        frames_realization, # 26
+                        frames_sfx, # 27
+                        add, # 28
+                        effect, # 29
+                        third_charid, # 30
+                        third_folder, # 31
+                        third_emote, # 32
+                        third_offset, # 33
+                        third_flip, # 33
+                        video, # 34
                     )
                 a_list = ", ".join([str(a.id) for a in target_area])
                 if not (self.client.area in target_area):
@@ -1089,6 +1323,12 @@ class AOProtocol(asyncio.Protocol):
                         frames_sfx,
                         add,
                         effect,
+                        third_charid,
+                        third_folder,
+                        third_emote,
+                        third_offset,
+                        third_flip,
+                        video,
                     )
                 self.client.send_ooc(f"Broadcasting to areas {a_list}")
             except (AreaError, ValueError):
@@ -1100,7 +1340,7 @@ class AOProtocol(asyncio.Protocol):
         # If we are not whispering...
         if whisper_clients is None:
             # Enforce the area msg delay
-            delay = 200 + self.client.area.parse_msg_delay(msg)
+            delay = self.client.area.parse_msg_delay(msg)
             self.client.area.next_message_time = round(
                 time.time() * 1000.0 + delay)
             if (
@@ -1153,7 +1393,7 @@ class AOProtocol(asyncio.Protocol):
         if "¨" in text:
             emote = anim  # We'll use this variable for storing each new emote in our message
             messages = text.split("¨")
-            separator = "\p\p\p" + " " 
+            separator = " "
 
             # Iterate through the split message
             for index, message in enumerate(messages):
@@ -1210,10 +1450,17 @@ class AOProtocol(asyncio.Protocol):
                         frames_sfx,
                         additive_value,
                         effect,
+                        None,
+                        third_charid,
+                        third_folder,
+                        third_emote,
+                        third_offset,
+                        third_flip,
+                        video,
                     )
 
             return
-                   
+
         # Additive only works on same-char messages
         if additive and (
             self.client.area.last_ic_message is None
@@ -1258,6 +1505,12 @@ class AOProtocol(asyncio.Protocol):
             additive=additive,
             effect=effect,
             targets=whisper_clients,
+            third_charid=third_charid,
+            third_folder=third_folder,
+            third_emote=third_emote,
+            third_offset=third_offset,
+            third_flip=third_flip,
+            video=video,
         )
         self.client.area.send_owner_ic(
             self.client.area.background,
@@ -1292,7 +1545,18 @@ class AOProtocol(asyncio.Protocol):
             frames_sfx,
             additive,
             effect,
+            third_charid,
+            third_folder,
+            third_emote,
+            third_offset,
+            third_flip,
+            video,
         )
+
+        # DRO client support
+        if self.client.software == "DRO":
+            # send it back to the client
+            self.client.send_command("ackMS")
 
     def net_cmd_ct(self, args):
         """OOC Message
@@ -1441,6 +1705,9 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.client.is_checked:
             return
+        
+        if len(args) <= 0:
+            return
 
         if args[0].split()[0].startswith("🌍["):
             # self.client.send_ooc('Switching to the list of Hubs...')
@@ -1587,22 +1854,19 @@ class AOProtocol(asyncio.Protocol):
                     .replace("`", "")
                     .strip()
                 )
-                if (msg.startswith("-") and msg.endswith("-")) or (
-                    msg.startswith("=") and msg.endswith("=")
-                ):
-                    msg = msg.replace("-", "")
-                    msg = msg.replace("=", "")
-                    msg = msg.strip()
-                    # actual title possible lol!
-                    if len(msg) > 0:
-                        self.client.area.testimony.clear()
-                        self.client.area.testimony_index = -1
-                        self.client.area.testimony_title = msg
-                        self.client.area.recording = True
-                        self.client.area.broadcast_ooc(
-                            f'-- {self.client.area.testimony_title} --\nTestimony recording started! All new messages will be recorded as testimony lines. Say "End" to stop recording.'
-                        )
-                        return
+                msg = msg.replace("-", "")
+                msg = msg.replace("=", "")
+                msg = msg.strip()
+                # actual title possible lol!
+                if len(msg) > 0:
+                    self.client.area.testimony.clear()
+                    self.client.area.testimony_index = -1
+                    self.client.area.testimony_title = msg
+                    self.client.area.recording = True
+                    self.client.area.broadcast_ooc(
+                        f'-- {self.client.area.testimony_title} --\nTestimony recording started! All new messages will be recorded as testimony lines. Say "End" to stop recording.'
+                    )
+                    return
             if sign == "CE":
                 if self.client.area.recording:
                     self.client.area.recording = False
@@ -1866,6 +2130,111 @@ class AOProtocol(asyncio.Protocol):
         """
         self.net_cmd_ct(["opban", "/ban {}".format(args[0])])
 
+    def net_cmd_tt(self, args):
+        """
+        Sended when the client is typing on the IC chat.
+
+        TT#<state: int>#<char_name:str>#<emote_name:str>#%
+        
+        state:      0 = stopped typing
+                |   1 = typing
+        
+        Client implementation details:
+        The state is cleared after the client sends the IC message.
+        Also cleared after 100-200ms of inactivity.
+        """
+        if not self.validate_net_cmd(args, self.ArgType.INT, self.ArgType.STR, self.ArgType.STR, needs_auth=False):
+            return
+
+        #  char_name
+        if args[1].lower() != self.client.char_name.lower():
+        #                       char_name
+            self.client.iniswap = args[1]
+        else:
+            self.client.iniswap = ""
+        # Note: Updating the last_sprite could make things like updating the pair emote by just starting to type.
+        # For example, this could be done by adding:
+        #   self.client.last_sprite = args[2]
+        # TODO: Think if it is a desired behaviour or not.
+        if args[0] in (0, 1):
+            clients = (c for c in self.client.area.clients if c.id != self.client.id)
+            for c in clients:
+                c.send_command("TT", args[0], args[1], args[2])
+
+    def net_cmd_cu(self, args):
+        """
+        
+        Sets the character_URL of the client.
+        
+        CU#<authority:int>#<action:int>#<char_name:str>#<link:str>#%
+        
+        authority:     
+                    0 = server
+                |   1 = client,
+       
+        action:     0 = Delete,
+                |   1 = Add,
+                |   2 = Clear all,
+                    
+        """
+        if not self.validate_net_cmd(args,
+                                     self.ArgType.INT,
+                                     self.ArgType.INT,
+                                     self.ArgType.STR_OR_EMPTY,
+                                     self.ArgType.STR,
+                                     needs_auth=False):
+            return
+
+        if args[0] == 0:
+            # Only the server should have access to the "server" authority
+            # or any other added authority level of the future by default.
+            # If planned to add more authority levels, this "if" should be reconsidered.
+            return
+        #                       char_name
+        #  action
+        if args[1] != 1:
+            # Only you should be able to edit your own user link
+            # Fixes a bug where you could change the character URL of another user.
+            # Or even clear all the user link entries of the area.
+            return
+
+        clients = (c for c in self.client.area.clients if c.id != self.client.id)
+
+        # Clear the char_url that the client sent on the previous CU packet.
+        if args[2] == "":
+            for c in clients:
+                #                   authority, action, char_name
+                c.send_command('CU', args[0], "1", self.client.f_char_name_raw)
+            self.client.char_url = ""
+            return
+
+        # In the case the char_url was already set, clear it.
+        if self.client.char_url != "":
+            for c in clients:
+                # Clear the old char_url
+                #                   authority, action, char_name
+                c.send_command('CU', args[0], "0", self.client.f_char_name_raw)
+
+                # Add the new char_url
+                #                   authority, action, char_name, link
+                c.send_command('CU', args[0], args[1], args[2], args[3])
+        else:
+            for c in clients:
+                # Set the char_url
+                #                   authority, action, char_name, link
+                c.send_command('CU', args[0], args[1], args[2], args[3])
+
+        #  char_name
+        if args[2].lower() != self.client.char_name.lower():
+        #                       char_name
+            self.client.iniswap = args[2]
+        else:
+            self.client.iniswap = ""
+
+        #                      link
+        self.client.char_url = args[3]
+
+
     net_cmd_dispatcher = {
         "HI": net_cmd_hi,  # handshake
         "ID": net_cmd_id,  # client version
@@ -1888,4 +2257,6 @@ class AOProtocol(asyncio.Protocol):
         "ZZ": net_cmd_zz,  # call mod button
         "opKICK": net_cmd_opKICK,  # /kick with guard on
         "opBAN": net_cmd_opBAN,  # /ban with guard on
+        "TT": net_cmd_tt,
+        "CU": net_cmd_cu,
     }

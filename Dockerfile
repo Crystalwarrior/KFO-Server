@@ -1,4 +1,4 @@
-FROM python:3.7-alpine
+FROM python:3.11-alpine
 
 RUN apk --no-cache add git
 
@@ -10,7 +10,6 @@ RUN pip install -r requirements.txt
 
 COPY server/ server/
 COPY migrations/ migrations/
-COPY characters/ characters/
+COPY storage/ storage/
 
 CMD python ./start_server.py
-

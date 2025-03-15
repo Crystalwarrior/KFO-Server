@@ -190,8 +190,17 @@ def ooc_cmd_need(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify what you need.")
 
+    if not client.can_call_need():
+        client.send_ooc("Please wait for the next need announcements!")
+        return
+
+
     addNeed((client.ipid, arg))
+
     client.server.broadcast_need(client, arg)
+    if client.server.need_webhook:
+        client.server.webhooks.needcall(client, arg)
+    client.set_need_call_delay()
     database.log_area("chat.announce.need", client, client.area, message=arg)
 
 
@@ -213,6 +222,7 @@ def ooc_cmd_pm(client, arg):
     """
     Send a private message to another online user. These messages are not
     logged by the server owner.
+    The Target Types <ooc-name> and <char-name> work only if the target is in the same area.
     Usage: /pm <id|ooc-name|char-name> <message>
     """
     args = arg.split()
@@ -223,17 +233,17 @@ def ooc_cmd_pm(client, arg):
             'Not enough arguments. use /pm <target> <message>. Target should be ID, OOC-name or char-name. Use /getarea for getting info like "[ID] char-name".'
         )
     targets = client.server.client_manager.get_targets(
-        client, TargetType.CHAR_NAME, arg, True
+        client, TargetType.CHAR_NAME, arg, local=True
     )
     key = TargetType.CHAR_NAME
     if len(targets) == 0 and args[0].isdigit():
         targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(args[0]), False
+            client, TargetType.ID, int(args[0]), all_hub=True
         )
         key = TargetType.ID
     if len(targets) == 0:
         targets = client.server.client_manager.get_targets(
-            client, TargetType.OOC_NAME, arg, True
+            client, TargetType.OOC_NAME, arg, local=True
         )
         key = TargetType.OOC_NAME
     if len(targets) == 0:

@@ -1,22 +1,3 @@
-# KFO-Server, an Attorney Online server
-#
-# Copyright (C) 2020 Crystalwarrior <varsash@gmail.com>
-#
-# Derivative of tsuserver3, an Attorney Online server. Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 from server import commands
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server.area import Area
@@ -27,7 +8,7 @@ import os
 import datetime
 import logging
 
-logger = logging.getLogger("events")
+logger = logging.getLogger("areamanager")
 
 
 class AreaManager:
@@ -53,6 +34,8 @@ class AreaManager:
             self.caller = caller
             self.schedule = None
             self.commands = []
+            self.format = "hh:mm:ss.zzz"
+            self.interval = 16
 
         def timer_expired(self):
             if self.schedule:
@@ -95,7 +78,7 @@ class AreaManager:
                     self.caller.send_ooc(
                         f"[Timer 0] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
                     )
-                    logger.exception("Exception while running a command")
+                    logger.error("Exception while running a command")
                     # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
                     self.commands.clear()
                     # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
@@ -144,6 +127,15 @@ class AreaManager:
         self.subtheme = ""
 
         self.timer = self.Timer()
+        
+        # RPS-5 rules as default
+        self.rps_rules = [
+            ["rock", "scissors", "lizard"],
+            ["paper", "rock", "spock"],
+            ["scissors", "paper", "lizard"],
+            ["lizard", "paper", "spock"],
+            ["spock", "scissors", "rock"],
+        ]
 
     @property
     def name(self):
@@ -224,8 +216,10 @@ class AreaManager:
                     if hub[entry] == "":
                         self.clear_music()
                     else:
-                        self.load_music(
-                            f"storage/musiclists/{hub[entry]}.yaml")
+                        if os.path.isfile(f"storage/musiclists/read_only/{hub[entry]}.yaml"):
+                            self.load_music(f"storage/musiclists/read_only/{hub[entry]}.yaml")
+                        else:
+                            self.load_music(f"storage/musiclists/{hub[entry]}.yaml")
                 if entry == "char_list_ref":
                     self.load_characters(hub[entry])
 
@@ -607,6 +601,11 @@ class AreaManager:
             a.send_command(cmd, *args)
             a.send_owner_command(cmd, *args)
 
+    def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+        """Broadcast a timer to all areas in this hub."""
+        for area in self.areas:
+            area.send_timer_set_time(timer_id, new_time, start)
+
     def broadcast_area_list(self, refresh=False):
         """Global update of all areas for the client music lists in the hub."""
         for area in self.areas:
@@ -652,7 +651,7 @@ class AreaManager:
             return
         status_list = [1]
         if len(self.server.hub_manager.hubs) > 1:
-            status_list = [1, "GAMING"]
+            status_list = [1, "HUB"]
         if clients is None:
             clients = self.clients
         for client in clients:
