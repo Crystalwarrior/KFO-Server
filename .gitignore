@@ -62,8 +62,14 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 
-# JetBrains stuff
+
+# JetBrains
 .idea/
 
-# VSCode
+### VSCode
 .vscode/
+
+#why?
+os
+subprocess
+sys

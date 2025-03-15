@@ -105,7 +105,7 @@ def ooc_cmd_unshake(client, arg):
     else:
         client.send_ooc("No targets found.")
 
-
+@mod_only()
 def ooc_cmd_rainbow(client, arg):
     """
     rainbow text is back baybee

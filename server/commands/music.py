@@ -1,7 +1,11 @@
 import random
+
 import shlex
 import os
 import yaml
+
+import re
+
 
 from server import database
 from server.constants import TargetType, derelative, contains_URL
@@ -29,6 +33,7 @@ __all__ = [
     "ooc_cmd_musiclist_save",
 ]
 
+YOUTUBE_RE = re.compile(r'^(https?\:\/\/)?(www\.)?(youtube\.\w*|youtu\.\w*)')
 
 def ooc_cmd_currentmusic(client, arg):
     """
@@ -177,18 +182,25 @@ def ooc_cmd_jukebox(client, arg):
 
         client.send_ooc(f"The jukebox has the following songs in it:{message}")
 
-
+@mod_only(area_owners=True)
 def ooc_cmd_play(client, arg):
     """
     Play a track and loop it. See /play_once for this command without looping.
     Usage: /play <name>
     """
+    cdns = ['cdn.discord.com', "aohdf5.mooo.com", '320ytmp3.com', 'cdn.discordapp.com', 'files.catbox.moe',
+            'catbox.moe']
     if len(arg) == 0:
         raise ArgumentError("You must specify a song.")
-    client.change_music(arg, client.char_id, "", 2,
-                        True)  # looped change music
+    if YOUTUBE_RE.search(arg):
+        raise ArgumentError('You cannot use YouTube links. You may use direct links to MP3, Ogg, or M3U streams.')
+    if not any(cdn in str(arg) for cdn in cdns) and arg.startswith('http'):
+        raise ArgumentError('Invalid Host. Please use a valid content source.')
+    client.area.play_music(arg, client.char_id, -1)  # loop it
+    client.area.add_music_playing(client, arg)
+    database.log_area('play', client, client.area, message=arg)
 
-
+@mod_only(area_owners=True)
 def ooc_cmd_play_once(client, arg):
     """
     Play a track without looping it. See /play for this command with looping.
@@ -200,7 +212,7 @@ def ooc_cmd_play_once(client, arg):
                         False)  # non-looped change music
 
 
-@mod_only()
+@mod_only(area_owners=True)
 def ooc_cmd_blockdj(client, arg):
     """
     Prevent a user from changing music.

@@ -82,25 +82,31 @@ class MasterServerClient:
             None
         """
         cfg = self.server.config
+        body = {}
 
-        # Try to get the custom hostname
-        f_ip = cfg.get('masterserver_custom_hostname')
+        if cfg['advertise_port']:
+            body = {
+                'ip': await loop.run_in_executor(None, self.get_my_ip),
+                'port': cfg['advertising_port'],
+                'name': cfg['masterserver_name'],
+                'description': cfg['masterserver_description'],
+                'players': self.server.player_count
+            }
 
-        # If fails, try to get the external IP
-        if not f_ip:
-            loop = asyncio.get_event_loop()
-            f_ip = await loop.run_in_executor(None, self.get_my_ip)
-
-        body = {
-            'ip': f_ip,
-            'port': cfg['port'],
-            'name': cfg['masterserver_name'],
-            'description': cfg['masterserver_description'],
-            'players': self.server.player_count
-        }
+        else:
+            body = {
+                'ip': await loop.run_in_executor(None, self.get_my_ip),
+                'port': cfg['port'],
+                'name': cfg['masterserver_name'],
+                'description': cfg['masterserver_description'],
+                'players': self.server.player_count
+            }
 
         if cfg['use_websockets']:
-            body['ws_port'] = cfg['websocket_port']
+            if cfg['advertise_port']:
+                body['ws_port'] = cfg['ad_websocket_port']
+            else:
+                body['ws_port'] = cfg['websocket_port']
 
         if 'use_securewebsockets' in cfg and cfg['use_securewebsockets']:
             if 'secure_websocket_port' in cfg:

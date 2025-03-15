@@ -603,6 +603,7 @@ def ooc_cmd_testimony(client, arg):
     Optionally, id can be passed to move to that statement.
     Usage: /testimony [id]
     """
+
     if len(client.area.testimony) <= 0:
         client.send_ooc("There is no testimony recorded!")
         return
@@ -1013,6 +1014,7 @@ def ooc_cmd_subtheme(client, arg):
     )
 
 
+
 @mod_only(hub_owners=True)
 def ooc_cmd_evidence_lists(client, arg):
     """
@@ -1098,3 +1100,9 @@ def ooc_cmd_evidence_save(client, arg):
     client.send_ooc(
         f"Evidence has been saved as '{arg}' on the server."
     )
+
+def _notify_testify_disabled(client):
+    """Simply an encapsulated way of telling the player the testimony
+    functionality is disabled"""
+    client.send_ooc('The Testify functionality is disabled on this server')
+

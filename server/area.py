@@ -149,7 +149,7 @@ class Area:
         self.can_cross_swords = False
         self.can_scrum_debate = False
         self.can_panic_talk_action = False
-        self.force_sneak = False
+        self.force_sneak = True
         # Whether the area is dark or not
         self.dark = False
         # The background to set when area's lights are turned off
@@ -1445,9 +1445,7 @@ class Area:
             return
         if length == 0:
             self.remove_jukebox_vote(client, False)
-            if len(self.jukebox_votes) <= 1 or (
-                not self.music_looper or self.music_looper.cancelled()
-            ):
+            if len(self.jukebox_votes) <= 1:
                 self.start_jukebox()
         else:
             self.remove_jukebox_vote(client, True)
@@ -1455,9 +1453,7 @@ class Area:
                 self.JukeboxVote(client, music_name, length, showname)
             )
             client.send_ooc("Your song was added to the jukebox.")
-            if len(self.jukebox_votes) == 1 or (
-                not self.music_looper or self.music_looper.cancelled()
-            ):
+            if len(self.jukebox_votes) == 1:
                 self.start_jukebox()
 
     def remove_jukebox_vote(self, client, silent):

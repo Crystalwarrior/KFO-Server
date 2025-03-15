@@ -6,6 +6,19 @@ from server.exceptions import ClientError, ArgumentError, AreaError
 
 from . import mod_only
 
+max_log_length = 3
+
+bg_log = []
+
+def logBGChange(entry):
+    bg_log.append(entry)
+    while len(bg_log) > max_log_length:
+        del bg_log[0]
+
+def getBGLog():
+    return bg_log
+
+
 __all__ = [
     "ooc_cmd_overlay",
     "ooc_cmd_overlay_clear",
@@ -32,7 +45,13 @@ __all__ = [
     "ooc_cmd_desc",
     "ooc_cmd_edit_ambience",
     "ooc_cmd_lights",
+
     "ooc_cmd_auto_pair",
+
+    "ooc_cmd_delay",
+    "ooc_cmd_allow_iniswap",
+    "ooc_cmd_force_nonint_pres",
+
 ]
 
 def ooc_cmd_overlay(client, arg):
@@ -435,12 +454,6 @@ def ooc_cmd_area_kick(client, arg):
             c
             for c in client.area.clients
         ]
-    # Kick everyone in hub
-    elif args[0] == "***":
-        targets = [
-            c
-            for c in client.area.area_manager.clients
-        ]
     else:
         # Try to find by char name first
         targets = client.server.client_manager.get_targets(
@@ -486,9 +499,19 @@ def ooc_cmd_area_kick(client, arg):
                     not client.is_mod
                     and client not in client.area.area_manager.owners
                     and client not in area.owners
+                    and area.locked
                 ):
                     raise ArgumentError(
-                        "You can't kick someone to an area you don't own as a CM!"
+                        "You can't kick someone to a locked area you don't own as a CM!"
+                    )
+                if (
+                    not client.is_mod
+                    and client not in client.area.area_manager.owners
+                    and client not in area.owners
+                    and area.max_players == 0
+                ):
+                    raise ArgumentError(
+                        "You can't kick someone to a room that has a max players of 0!"
                     )
             target_pos = ""
             old_area = c.area
@@ -656,7 +679,7 @@ def ooc_cmd_knock(client, arg):
     except (AreaError, ClientError):
         raise
 
-
+@mod_only()
 def ooc_cmd_peek(client, arg):
     """
     Peek into an area to see if there's people in it.
@@ -745,7 +768,7 @@ def ooc_cmd_peek(client, arg):
         raise
 
 
-@mod_only(area_owners=True)
+@mod_only()
 def ooc_cmd_max_players(client, arg):
     """
     Set a max amount of players for current area between -1 and 99.
@@ -868,8 +891,6 @@ def ooc_cmd_lights(client, arg):
             pos = client.area.pos_dark
         c.send_command("BN", bg, pos)
     client.send_ooc(f"This area is {stat} dark.")
-    client.area.broadcast_evidence_list()
-
 
 def ooc_cmd_auto_pair(client, arg):
     """
@@ -884,3 +905,45 @@ def ooc_cmd_auto_pair(client, arg):
         client.send_ooc("Pairing will show a maximum of 3 characters on screen now")
     else:
         client.send_ooc("Pairing will show a maximum of 2 characters on screen now")
+
+
+@mod_only()
+def ooc_cmd_delay(client, arg):
+    """
+    Change the minimum delay between messages, default is 100.
+    Usage: /delay [delay]
+    """
+    if len(arg) == 0:
+        client.area.next_message_delay = 100
+    else:
+        client.area.next_message_delay = int(arg)
+
+    database.log_area('delay', client, client.area, message=client.area.next_message_delay)
+
+
+@mod_only()
+def ooc_cmd_allow_iniswap(client, arg):
+    """
+    Toggle whether or not users are allowed to swap INI files in character
+    folders to allow playing as a character other than the one chosen in
+    the character list.
+    Usage: /allow_iniswap
+    """
+    client.area.iniswap_allowed = not client.area.iniswap_allowed
+    answer = 'allowed' if client.area.iniswap_allowed else 'forbidden'
+    client.send_ooc(f'Iniswap is {answer}.')
+    database.log_area('iniswap', client, client.area, message=client.area.iniswap_allowed)
+
+@mod_only(area_owners=True)
+def ooc_cmd_force_nonint_pres(client, arg):
+    """
+    Toggle whether or not all pre-animations lack a delay before a
+    character begins speaking.
+    Usage: /force_nonint_pres
+    """
+    client.area.non_int_pres_only = not client.area.non_int_pres_only
+    answer = 'non-interrupting only' if client.area.non_int_pres_only else 'non-interrupting or interrupting as you choose'
+    client.area.broadcast_ooc(
+        '{} [{}] has set pres in the area to be {}.'.format(
+            client.char_name, client.id, answer))
+    database.log_area('force_nonint_pres', client, client.area, message=client.area.non_int_pres_only)
