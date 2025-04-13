@@ -16,21 +16,7 @@ __all__ = [
     # Saving/loading
 
     # Area Creation system
-    '''
-    "ooc_cmd_area_create",
-    "ooc_cmd_area_remove",
-    "ooc_cmd_area_duplicate",
-    "ooc_cmd_area_rename",
-    "ooc_cmd_area_swap",
-    "ooc_cmd_area_switch",
-    "ooc_cmd_area_pref",
-    "ooc_cmd_area_move_delay",
-    "ooc_cmd_hub_move_delay",
-    "ooc_cmd_toggle_replace_music",
-    "ooc_cmd_arup_enable",
-    "ooc_cmd_arup_disable",
-    '''
-
+    # Removed
 
     "ooc_cmd_toggle_getareas",
     "ooc_cmd_toggle_spectate",
