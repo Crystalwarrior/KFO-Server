@@ -36,6 +36,7 @@ __all__ = [
     "ooc_cmd_toggle_getareas",
     "ooc_cmd_toggle_spectate",
     "ooc_cmd_toggle_passing_ic",
+    "ooc_cmd_toggle_character_persistance",
     "ooc_cmd_hide_clients",
     "ooc_cmd_unhide_clients",
     # General
@@ -631,6 +632,19 @@ def ooc_cmd_toggle_passing_ic(client, arg):
     toggle = "enabled" if client.area.area_manager.passing_msg else "disabled"
     client.area.area_manager.broadcast_ooc(
         f"IC area passing messages are now {toggle} for this hub."
+    )
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_toggle_character_persistance(client, arg):
+    """
+    Toggle character persistence, remembering their last known location.
+    Usage: /toggle_character_persistance
+    """
+    client.area.area_manager.character_persistance = not client.area.area_manager.character_persistance
+    toggle = "enabled" if client.area.area_manager.character_persistance else "disabled"
+    client.area.area_manager.broadcast_ooc(
+        f"Persistent Characters are now {toggle} for this hub."
     )
 
 
