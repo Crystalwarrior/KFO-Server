@@ -13,7 +13,6 @@ logger = logging.getLogger("areamanager")
 
 class AreaManager:
     """Holds the list of all areas."""
-
     class Timer:
         """Represents a single instance of a timer in the area."""
 
@@ -107,6 +106,8 @@ class AreaManager:
         self.can_spectate = True
         self.can_getareas = True
         self.passing_msg = False
+        # If the characters are persistent or not (their area is recorded)
+        self.character_persistance = False
         # /prefs
 
         # optimization memes
@@ -135,6 +136,29 @@ class AreaManager:
             ["scissors", "paper", "lizard"],
             ["lizard", "paper", "spock"],
             ["spock", "scissors", "rock"],
+        ]
+
+        # Which prefs to save/load in yaml
+        self.save_list = [
+            "name",
+            "abbreviation",
+            "move_delay",
+            "arup_enabled",
+            "hide_clients",
+            "info",
+            "can_gm",
+            "music_ref",
+            "replace_music",
+            "client_music",
+            "max_areas",
+            "single_cm",
+            "censor_ic",
+            "censor_ooc",
+            "can_spectate",
+            "can_getareas",
+            "passing_msg",
+            "char_list_ref",
+            "character_persistance",
         ]
 
     @property
@@ -189,27 +213,7 @@ class AreaManager:
         if "hub" in hub:
             hub["name"] = hub["hub"]
 
-        load_list = [
-            "name",
-            "abbreviation",
-            "move_delay",
-            "arup_enabled",
-            "hide_clients",
-            "info",
-            "can_gm",
-            "music_ref",
-            "replace_music",
-            "client_music",
-            "max_areas",
-            "single_cm",
-            "censor_ic",
-            "censor_ooc",
-            "can_spectate",
-            "can_getareas",
-            "passing_msg",
-            "char_list_ref",
-        ]
-        for entry in list(set(load_list) - set(ignore)):
+        for entry in list(set(self.save_list) - set(ignore)):
             if entry in hub:
                 setattr(self, entry, hub[entry])
                 if entry == "music_ref":
@@ -294,27 +298,7 @@ class AreaManager:
 
     def save(self, ignore=[]):
         hub = OrderedDict()
-        save_list = [
-            "name",
-            "abbreviation",
-            "move_delay",
-            "arup_enabled",
-            "hide_clients",
-            "info",
-            "can_gm",
-            "music_ref",
-            "replace_music",
-            "client_music",
-            "max_areas",
-            "single_cm",
-            "censor_ic",
-            "censor_ooc",
-            "can_spectate",
-            "can_getareas",
-            "passing_msg",
-            "char_list_ref",
-        ]
-        for entry in list(set(save_list) - set(ignore)):
+        for entry in list(set(self.save_list) - set(ignore)):
             hub[entry] = getattr(self, entry)
 
         if "areas" not in ignore:
