@@ -35,7 +35,7 @@ __all__ = [
     "ooc_cmd_timer",
     "ooc_cmd_demo",
     "ooc_cmd_trigger",
-    "ooc_cmd_format_timer",
+    "ooc_cmd_timer_format",
     "ooc_cmd_timer_interval",
 ]
 
@@ -825,9 +825,9 @@ def ooc_cmd_timer(client, arg):
         s = int(not timer.started)
         static_time = int(timer.static.total_seconds()) * 1000
         if timer_id == 0:
-            client.area.area_manager.send_timer_set_time(timer_id, static_time, timer.started)
+            client.area.area_manager.send_timer_set_time(timer_id, static_time, timer.started, timer.format, timer.interval)
         else:
-            client.area.send_timer_set_time(timer_id, static_time, timer.started)
+            client.area.send_timer_set_time(timer_id, static_time, timer.started, timer.format, timer.interval)
         client.send_ooc(f"Timer {timer_id} is at {timer.static}")
 
         if timer_id == 0:
@@ -954,12 +954,12 @@ def ooc_cmd_trigger(client, arg):
         client.send_ooc(f'Changed to Call "{val}" on trigger "{trig}"')
 
 
-def ooc_cmd_format_timer(client, arg):
+def ooc_cmd_timer_format(client, arg):
     """
     Format the timer
-    Usage: /format_timer <Timer_iD> <Format>
+    Usage: /timer_format <Timer_iD> <Format>
     """
-    args = shlex.split(arg)
+    args = arg.split()
     try:
         args[0] = int(args[0])
     except:
@@ -980,25 +980,20 @@ def ooc_cmd_format_timer(client, arg):
         else:
             client.send_ooc("You cannot change timer format if you are at least CM")
             return
-    timer.format = args[1:]
-    if timer.set:
-        if timer.started:
-            current_time = timer.target - arrow.get()
-            current_time = int(current_time.total_seconds()) * 1000
-        else:
-            current_time = int(timer.static.total_seconds()) * 1000
-        if args[0] == 0:
-            client.area.area_manager.send_timer_set_time(args[0], current_time, timer.started)
-        else:
-            client.area.send_timer_set_time(args[0], current_time, timer.started)
+    if len(args) <= 1:
+        args.append("hh:mm:ss.zzz")
+    timer.format = ' '.join(args[1:])
+    area = client.area
+    for c in area.clients:
+        area.update_timers(c)
     client.send_ooc(f"Timer {args[0]} format: '{args[1]}'")
 
 
 def ooc_cmd_timer_interval(client, arg):
     """
-    Set timer interval
-    If timer interval is not written than will show default timer interval (16ms)
-    Example: /timer_interval 1 15m
+    Set the timer's interval, which is how often it fires in milliseconds.
+    If timer interval is not written, it will reset the interval to the default value, which is 16 .
+    Example: /timer_interval 1 16
     Usage: /timer_interval <Timer_ID> <Interval>
     """
     args = shlex.split(arg)
@@ -1026,9 +1021,9 @@ def ooc_cmd_timer_interval(client, arg):
         if len(args) == 1:
             timer.interval = 16 
         else:
-            timer.interval = pytimeparse.parse(args[1]) * 1000
+            timer.interval = int(args[1])
     except:
         raise ArgumentError("Interval value not valid!")
     if timer.set:
-        client.send_timer_set_interval(args[0], timer)
-    client.send_ooc(f"Timer {args[0]} interval is set to '{args[1]}'")
+        client.send_timer_set_firing_interval(args[0], timer)
+    client.send_ooc(f"Timer {args[0]} interval is set to '{timer.interval}'")
