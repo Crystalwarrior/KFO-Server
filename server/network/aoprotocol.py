@@ -1392,7 +1392,7 @@ class AOProtocol(asyncio.Protocol):
         # Check if the message can be considered to contain actions in it
         if "*" in text or "[" in text or "|" in text or color == 3:
             is_action = True
-            if "[" not in text and "|" not in text and color != 3 and text.count("*") == 1 and text.endswith("*"):
+            if "[" not in text and "|" not in text and color != 3 and text.count("*") == 1 and text.rstrip().endswith("*"):
                 is_action = False
 
             if is_action:
