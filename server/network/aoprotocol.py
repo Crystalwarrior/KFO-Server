@@ -1389,6 +1389,19 @@ class AOProtocol(asyncio.Protocol):
                         webname, text, self.client.char_name, anim
                     )
 
+        # Check if the message can be considered to contain actions in it
+        if "*" in text or "[" in text or "|" in text or color == 3:
+            is_action = True
+            if "[" not in text and "|" not in text and color != 3 and text.count("*") == 1 and text.rstrip().endswith("*"):
+                is_action = False
+
+            if is_action:
+                # Update the message to signify an action is being performed
+                # msg = "}}}[❗] {{{" + text
+                if whisper_clients is None:
+                    # This also sends the message across the GM clients
+                    self.client.area.broadcast_ooc(f"[❗] [{self.client.id}] {self.client.showname} action:\n" + text)
+
         # Check whether or not the reserved character for Emote Tags is in the message
         if "¨" in text:
             emote = anim  # We'll use this variable for storing each new emote in our message
