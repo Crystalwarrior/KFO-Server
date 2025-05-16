@@ -329,11 +329,16 @@ class EvidenceList:
                 return
         if id not in range(len(self.evidences)):
             return
+        word = "deleted"
         if not client.is_mod and client not in client.area.owners:
             id = client.evi_list[id + 1] - 1
             evi = self.evidences[id]
             if client.area.evidence_mod == "HiddenCM":
                 if evi.pos != "hidden":
+                    client.add_inventory_evidence(evi.name, evi.desc, evi.image)
+                    client.send_ooc(f"You take {evi.name} into your /inventory!")
+                    word = "took"
+
                     evi.name = f"🚮{evi.name}"
                     evi.desc = f"(🚮Deleted by [{client.id}] {client.showname} ({client.name}))\n{evi.desc}"
                     evi.pos = "hidden"
@@ -347,7 +352,7 @@ class EvidenceList:
         client.area.send_owner_command(
             "CT",
             client.server.config["hostname"],
-            f"[{client.id}] {client.showname} deleted evidence {id+1}: {evi.name} in area [{client.area.id}] {client.area.name}.",
+            f"[{client.id}] {client.showname} {word} evidence {id+1}: {evi.name} in area [{client.area.id}] {client.area.name}.",
             "1",
         )
         # send_owner_command does not tell CMs present in the area about evidence manipulation, so let's do that manually
@@ -356,7 +361,7 @@ class EvidenceList:
                 c.send_command(
                     "CT",
                     client.server.config["hostname"],
-                    f"[{client.id}] {client.showname} deleted evidence {id+1}: {evi.name} in this area.",
+                    f"[{client.id}] {client.showname} {word} evidence {id+1}: {evi.name} in this area.",
                     "1",
                 )
 
