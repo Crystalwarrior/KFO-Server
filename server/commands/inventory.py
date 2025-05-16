@@ -84,7 +84,7 @@ def ooc_cmd_inventory_drop(client, arg):
                 break
         if evidence is None:
             raise AreaError(
-                f"Target evidence not found! (/inventory {arg})"
+                f"Target evidence not found! (/inventory_drop {arg})"
             )
         client.area.evi_list.add_evidence(
             client, evidence[0], evidence[1], evidence[2]
