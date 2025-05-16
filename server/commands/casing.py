@@ -221,7 +221,7 @@ def ooc_cmd_evidence_edit(client, arg):
         args = shlex.split(arg)
         if len(args) > 4:
             raise ArgumentError(
-                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/evidence_add {arg})")
+                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/evidence_edit {arg})")
         # fill the rest of it with asterisk to fill to max_args
         args = args + (["*"] * (max_args - len(args)))
     except ValueError as ex:
@@ -237,7 +237,7 @@ def ooc_cmd_evidence_edit(client, arg):
                 break
         if evidence is None:
             raise AreaError(
-                f"Target evidence not found! (/evidence_remove {arg})"
+                f"Target evidence not found! (/evidence_edit {arg})"
             )
         evi_name = evidence[0]
         evi = (args[1], args[2], args[3], "all")
