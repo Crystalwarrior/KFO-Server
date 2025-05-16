@@ -165,7 +165,7 @@ def ooc_cmd_evidence_add(client, arg):
         return
 
     client.area.evi_list.add_evidence(
-        client, args[0], args[1], args[2], "all"
+        client, args[0], args[1], args[2]
     )
     database.log_area("evidence.add", client, client.area)
     client.area.broadcast_evidence_list()

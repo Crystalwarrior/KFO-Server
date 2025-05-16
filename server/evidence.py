@@ -170,7 +170,7 @@ class EvidenceList:
             matches -= 1
         return desc, poses, can_hide_in, show_in_dark
 
-    def add_evidence(self, client, name, desc, image, pos="all"):
+    def add_evidence(self, client, name, desc, image):
         """
         Add an evidence item.
         :param client: origin
