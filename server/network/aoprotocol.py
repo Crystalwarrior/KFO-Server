@@ -2029,7 +2029,7 @@ class AOProtocol(asyncio.Protocol):
             return
         # evi = Evidence(args[0], args[1], args[2], self.client.pos)
         self.client.area.evi_list.add_evidence(
-            self.client, args[0], args[1], args[2], "all"
+            self.client, args[0], args[1], args[2]
         )
         database.log_area("evidence.add", self.client, self.client.area)
         self.client.area.broadcast_evidence_list()

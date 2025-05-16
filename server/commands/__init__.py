@@ -124,3 +124,4 @@ from .messaging import *
 from .music import *
 from .roleplay import *
 from .battle import *
+from .inventory import *

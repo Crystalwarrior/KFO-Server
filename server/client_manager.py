@@ -1903,6 +1903,29 @@ class ClientManager:
             """Return if the character is hidden or not. Always True if char_id is -1 (spectator)"""
             return self.char_id is None or self.char_id == -1 or self._hidden
 
+        @property
+        def inventory(self):
+            """Get the character's inventory."""
+            return self.area.area_manager.get_character_data(
+                self.char_id, "inventory", list()
+            )
+
+        @inventory.setter
+        def inventory(self, value):
+            """Set the character's inventory."""
+            self.area.area_manager.set_character_data(
+                self.char_id, "inventory", value)
+        
+        def add_inventory_evidence(self, name, desc, image):
+            inventory = self.area.area_manager.get_character_data(self.char_id, "inventory", list())
+            inventory.append((name, desc, image))
+            self.area.area_manager.set_character_data(self.char_id, "inventory", inventory)
+        
+        def remove_inventory_evidence(self, index):
+            inventory = self.area.area_manager.get_character_data(self.char_id, "inventory", list())
+            inventory.pop(index)
+            self.area.area_manager.set_character_data(self.char_id, "inventory", inventory)
+
         def hide(self, tog=True, target=None, hidden=False):
             msg = "no longer hidden"
             if tog:
