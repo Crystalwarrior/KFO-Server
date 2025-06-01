@@ -1,21 +1,14 @@
-# KFO-Server, an Attorney Online server
-#
-# Copyright (C) 2020 Crystalwarrior <varsash@gmail.com>
-#
-# Derivative of tsuserver3, an Attorney Online server. Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import sys
+import logging
+import asyncio
+import importlib
+import traceback
+
+import websockets
+import geoip2.database
+import yaml
+
+import server.logger
 from server import database
 from server.hub_manager import HubManager
 from server.client_manager import ClientManager
@@ -28,20 +21,8 @@ from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
 from server.constants import remove_URL, dezalgo
 
-import server.logger
-import sys
-import importlib
 
-import asyncio
-import websockets
-
-import geoip2.database
-
-import yaml
-
-import logging
-
-logger = logging.getLogger("debug")
+logger = logging.getLogger("main")
 
 
 class TsuServer3:
@@ -61,10 +42,13 @@ class TsuServer3:
         self.music_list = []
         self.music_whitelist = []
         self.backgrounds = None
+        self.backgrounds_categories = None
+        self.server_links = None
         self.zalgo_tolerance = None
         self.ipRange_bans = []
         self.geoIpReader = None
         self.useGeoIp = False
+        self.need_webhook = False
         self.supported_features = [
             "yellowtext",
             "customobjections",
@@ -83,6 +67,9 @@ class TsuServer3:
             "effects",
             "expanded_desk_mods",
             "y_offset",
+            "triplex",
+            "typing_timer",
+            "video_support",
         ]
         self.command_aliases = {}
 
@@ -104,31 +91,33 @@ class TsuServer3:
             self.load_characters()
             self.load_music()
             self.load_backgrounds()
+            self.load_server_links()
             self.load_ipranges()
             self.hub_manager = HubManager(self)
-        except yaml.YAMLError as exc:
+        except yaml.YAMLError:
             print("There was a syntax error parsing a configuration file:")
-            print(exc)
+            traceback.print_exc()
             print("Please revise your syntax and restart the server.")
             sys.exit(1)
-        except OSError as exc:
+        except OSError:
             print("There was an error opening or writing to a file:")
-            print(exc)
+            traceback.print_exc()
             sys.exit(1)
-        except Exception as exc:
+        except Exception:
             print("There was a configuration error:")
-            print(exc)
+            traceback.print_exc()
             print("Please check sample config files for the correct format.")
             sys.exit(1)
 
         self.client_manager = ClientManager(self)
-        server.logger.setup_logger(debug=self.config["debug"])
+        server.logger.setup_logging(debug=self.config["debug"])
 
         self.webhooks = Webhooks(self)
         self.bridgebot = None
 
     def start(self):
         """Start the server."""
+        logger.info("Starting server")
         loop = asyncio.get_event_loop_policy().get_event_loop()
 
         bound_ip = "0.0.0.0"
@@ -165,9 +154,14 @@ class TsuServer3:
                 asyncio.ensure_future(
                     self.bridgebot.init(self.config["bridgebot"]["token"]), loop=loop
                 )
+                self.bridgebot.add_commands()
             except Exception as ex:
                 # Don't end the whole server if bridgebot destroys itself
                 print(ex)
+
+        if "need_webhook" in self.config and self.config["need_webhook"]["enabled"]:
+            self.need_webhook = True
+            
         asyncio.ensure_future(self.schedule_unbans())
 
         database.log_misc("start")
@@ -336,7 +330,23 @@ class TsuServer3:
     def load_backgrounds(self):
         """Load the backgrounds list from a YAML file."""
         with open("config/backgrounds.yaml", "r", encoding="utf-8") as bgs:
-            self.backgrounds = yaml.safe_load(bgs)
+            bg_yaml = yaml.safe_load(bgs)
+            # old style of backgrounds.yaml
+            if type(bg_yaml) is list:
+                self.backgrounds_categories = {"backgrounds": bg_yaml}
+                self.backgrounds = bg_yaml
+            # new style of categorized backgrounds.yaml
+            else:
+                self.backgrounds_categories = bg_yaml
+                self.backgrounds = sum(list(self.backgrounds_categories.values()), [])
+
+    def load_server_links(self):
+        """Load the server links list from a YAML file."""
+        try:
+            with open("config/server_links.yaml", "r", encoding="utf-8") as links:
+                self.server_links = yaml.safe_load(links)
+        except Exception as e:
+            logger.debug("Cannot find server_links.yaml, error: (%s)", e)
 
     def load_iniswaps(self):
         """Load a list of characters for which INI swapping is allowed."""
@@ -391,10 +401,14 @@ class TsuServer3:
                 return item["category"], 0
             for song in item["songs"]:
                 if song["name"] == music:
-                    try:
-                        return song["name"], song["length"]
-                    except KeyError:
-                        return song["name"], -1
+                    length = -1
+                    if "length" in song:
+                        length = song["length"]
+
+                    if "path" in song:
+                        return song["path"], length
+
+                    return song["name"], length
         raise ServerError("Music not found.")
 
     def get_song_is_category(self, music_list, music):
@@ -580,6 +594,14 @@ class TsuServer3:
         self.load_characters()
         self.load_music()
         self.load_backgrounds()
+
+        # TODO: Only do the refresh if the server link list has changed
+        # Clear the list of user links so they can be reloaded after.
+        for client in self.client_manager.clients:
+            client.refresh_server_link_list()
+        # Load the new server links
+        self.load_server_links()
+
         self.load_ipranges()
 
         import server.commands

@@ -13,12 +13,19 @@ class Bridgebot(commands.Bot):
 
     def __init__(self, server, target_chanel, hub_id, area_id):
         intents = discord.Intents.all()
-        super().__init__(command_prefix="$", intents=intents)
+        super().__init__(command_prefix="!", intents=intents)
         self.server = server
         self.pending_messages = []
         self.hub_id = hub_id
         self.area_id = area_id
         self.target_channel = target_chanel
+        self.announce_channel = server.config["bridgebot"]["announce_channel"]
+        self.announce_title = server.config["bridgebot"]["announce_title"]
+        self.announce_image = server.config["bridgebot"]["announce_image"]
+        self.announce_color = server.config["bridgebot"]["announce_color"]
+        self.announce_description = server.config["bridgebot"]["announce_description"]
+        self.announce_ping = server.config["bridgebot"]["announce_ping"]
+        self.announce_role = server.config["bridgebot"]["announce_role"]
 
     async def init(self, token):
         """Starts the actual bot"""
@@ -28,6 +35,118 @@ class Bridgebot(commands.Bot):
         except Exception as e:
             print(e)
 
+
+    def add_commands(self):
+        @self.command()
+        async def announcing(ctx, name=None, description=None, url=None, additional=None, when=None, where=None):
+            desc = f"{ctx.author}" + " " + self.announce_description
+            embed = discord.Embed(title=self.announce_title, description=desc, color=self.announce_color)
+            if name is not None:    
+                embed.add_field(name="Announce Name:", value=name, inline=False)
+            else:
+                self.channel.send("Arguments error!\n!announcing name description url additional when where")
+                return
+            if description is not None:
+                embed.add_field(name="Description:", value=description,inline=False)
+            else:
+                self.channel.send("Arguments error!\n!announcing name description url additional when where")
+                return
+            embed.set_thumbnail(url=self.announce_image)
+            if url is not None:
+                embed.add_field(name="Document Link:", value=url, inline=False)
+            if additional is not None:
+                embed.add_field(name="Additional Note:", value=additional, inline=False)
+            if when is not None:
+                embed.add_field(name="When:", value=when, inline=True)
+            if where is not None:
+                embed.add_field(name="Where:", value=where, inline=True)
+            channel = discord.utils.get( self.guild.text_channels, name=self.announce_channel)
+            if self.announce_ping:
+                await channel.send(f"<@&{self.announce_role}>", embed=embed)
+            else:
+                await channel.send(embed=embed)
+
+        @self.tree.command()
+        async def gethubs(interaction: discord.Interaction):
+            msg = ""
+            number_players = int(self.server.player_count)
+            msg += f"**Clients in Areas**\n"
+            for hub in self.server.hub_manager.hubs:
+                if len(hub.clients) == 0:
+                    continue
+                if not hub.can_getareas or hub.hide_clients:
+                    continue
+                msg += f"**[={hub.name}=]**\n"
+                for area in hub.areas:
+                    if area.hidden:
+                        continue
+                    if len(area.clients) == 0:
+                        continue
+                    msg += f"\t**[{area.id}] {area.name} (users: {len(area.clients)}) [{area.status}]"
+                    if area.locked:
+                        msg += f" [LOCKED]"
+                    elif area.muted:
+                        msg += f" [SPECTATABLE]"
+                    if area.get_owners() != "":
+                        msg += f" [CM(s): {area.get_owners()}]"
+                    msg += "**\n"
+                    for client in area.clients:
+                        if client.hidden:
+                            continue
+                        msg += "\t  ◾ "
+                        if client in area.afkers:
+                            msg += "[AFK] "
+                        if client.is_mod:
+                            msg += "[M] "
+                        elif client in area.area_manager.owners:
+                            msg += "[GM] "
+                        elif client in area._owners:
+                            msg += "[CM] "
+                        if client.showname != client.char_name:
+                            msg += f'[{client.id}] "{client.showname}" ({client.char_name})'
+                        else:
+                            msg += f"[{client.id}] {client.showname}"
+                        if client.pos != "":
+                            msg += f" <{client.pos}>"
+                        msg += "\n"
+                msg += "\n"
+            msg += f"Current online: {number_players} clients\n"
+            if len(msg) > 2000:
+                msgchunks = [msg[i:i+2000] for i in range(0, len(msg), 2000)]
+                for chunk in msgchunks:
+                    await interaction.response.send_message(chunk)
+            else:
+                await interaction.response.send_message(msg)
+
+        @self.event
+        async def on_message(message):
+            # Screw these loser bots
+            if message.author.bot or message.webhook_id is not None:
+                return
+
+            if message.channel != self.channel:
+                if message.content.startswith("!"):
+                    await self.process_commands(message)
+                    await message.delete()
+                return
+
+            if not message.content.startswith("!"):
+                try:
+                    max_char = int(self.server.config["max_chars_ic"])
+                except Exception:
+                    max_char = 256
+                if len(message.clean_content) > max_char:
+                    await self.channel.send(
+                        "Your message was too long - it was not received by the client. (The limit is 256 characters)"
+                    )
+                    return
+                self.server.send_discord_chat(
+                    message.author.name,
+                    escape_markdown(message.clean_content),
+                    self.hub_id,
+                    self.area_id,
+                )
+                
     def queue_message(self, name, message, charname, anim):
         base = None
         avatar_url = None
@@ -50,6 +169,11 @@ class Bridgebot(commands.Bot):
         print("Discord Bridge Successfully logged in.")
         print("Username -> " + self.user.name)
         print("ID -> " + str(self.user.id))
+        try:
+            await self.tree.sync()
+            print("Synced commands!")
+        except Exception as e:
+            print(e)
         self.guild = self.guilds[0]
         self.channel = discord.utils.get(
             self.guild.text_channels, name=self.target_channel
@@ -61,33 +185,6 @@ class Bridgebot(commands.Bot):
                 await self.send_char_message(*self.pending_messages.pop())
 
             await asyncio.sleep(max(0.1, self.server.config["bridgebot"]["tickspeed"]))
-
-    async def on_message(self, message):
-        # Screw these loser bots
-        if message.author.bot or message.webhook_id is not None:
-            return
-
-        if message.channel != self.channel:
-            return
-
-        if not message.content.startswith("$"):
-            try:
-                max_char = int(self.server.config["max_chars_ic"])
-            except Exception:
-                max_char = 256
-            if len(message.clean_content) > max_char:
-                await self.channel.send(
-                    "Your message was too long - it was not received by the client. (The limit is 256 characters)"
-                )
-                return
-            self.server.send_discord_chat(
-                message.author.name,
-                escape_markdown(message.clean_content),
-                self.hub_id,
-                self.area_id,
-            )
-
-        # await self.process_commands(message)
 
     async def send_char_message(self, name, message, avatar=None, image=None):
         webhook = None

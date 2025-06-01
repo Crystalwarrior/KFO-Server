@@ -20,6 +20,8 @@ def getBGLog():
 
 
 __all__ = [
+    "ooc_cmd_overlay",
+    "ooc_cmd_overlay_clear",
     "ooc_cmd_bg",
     "ooc_cmd_bgs",
     "ooc_cmd_status",
@@ -28,6 +30,9 @@ __all__ = [
     "ooc_cmd_autogetarea",
     "ooc_cmd_getarea",
     "ooc_cmd_getareas",
+    "ooc_cmd_gethubs",
+    "ooc_cmd_getlinks",
+    "ooc_cmd_getlink",
     "ooc_cmd_getafk",
     "ooc_cmd_invite",
     "ooc_cmd_uninvite",
@@ -40,12 +45,72 @@ __all__ = [
     "ooc_cmd_desc",
     "ooc_cmd_edit_ambience",
     "ooc_cmd_lights",
+
+    "ooc_cmd_auto_pair",
+
     "ooc_cmd_delay",
     "ooc_cmd_allow_iniswap",
     "ooc_cmd_force_nonint_pres",
 
 ]
 
+def ooc_cmd_overlay(client, arg):
+    """
+    Set the overlay of an area.
+    Usage: /overlay <background>
+    """
+    if len(arg) == 0:
+        client.send_ooc(
+            f"Current overlay is {client.area.overlay}. Use /overlay_clear to clear it.")
+        return
+    if client not in client.area.owners and not client.is_mod and client.area.overlay_lock:
+        raise AreaError("This area's overlay system is locked!")
+    if client not in client.area.owners and not client.is_mod and client.area.bg_lock:
+        raise AreaError("This area's background is locked!")
+    if client.area.cannot_ic_interact(client):
+        raise AreaError("You are not on the area's invite list!")
+    if (
+        not client.is_mod
+        and not (client in client.area.owners)
+        and client.char_id == -1
+    ):
+        raise ClientError("You may not do that while spectating!")
+    if client.area.dark and not client.is_mod and not (client in client.area.owners):
+        raise ClientError("You must be authorized to do that.")
+    try:
+        client.area.change_background(client.area.background, overlay=arg)
+    except AreaError:
+        raise
+    client.area.broadcast_ooc(
+        f"{client.showname} changed the overlay to {arg}.")
+    database.log_area("overlay", client, client.area, message=arg)
+
+def ooc_cmd_overlay_clear(client, arg):
+    """
+    Clear the overlay of an area.
+    Usage: /overlay_clear
+    """
+    if client not in client.area.owners and not client.is_mod and client.area.overlay_lock:
+        raise AreaError("This area's overlay system is locked!")
+    if client not in client.area.owners and not client.is_mod and client.area.bg_lock:
+        raise AreaError("This area's background is locked!")
+    if client.area.cannot_ic_interact(client):
+        raise AreaError("You are not on the area's invite list!")
+    if (
+        not client.is_mod
+        and not (client in client.area.owners)
+        and client.char_id == -1
+    ):
+        raise ClientError("You may not do that while spectating!")
+    if client.area.dark and not client.is_mod and not (client in client.area.owners):
+        raise ClientError("You must be authorized to do that.")
+    try:
+        client.area.change_background(client.area.background, overlay="")
+    except AreaError:
+        raise
+    client.area.broadcast_ooc(
+        f"{client.showname} cleared the overlay.")
+    database.log_area("overlay_clear", client, client.area)
 
 def ooc_cmd_bg(client, arg):
     """
@@ -84,11 +149,20 @@ def ooc_cmd_bg(client, arg):
 def ooc_cmd_bgs(client, arg):
     """
     Display the server's available backgrounds.
-    Usage: /bgs
+    Usage: /bgs category
     """
-    msg = "Available backgrounds:"
-    msg += "\n" + "; ".join(client.server.backgrounds)
-    client.send_ooc(msg)
+    if arg == "":
+        msg = "Available Categories:"
+        for category in client.area.server.backgrounds_categories:
+            msg += f"\n{category}"
+        client.send_ooc(msg)
+    elif arg in client.server.backgrounds_categories:
+        msg = f"Backgrounds in Category '{arg}':"
+        for bg in client.server.backgrounds_categories[arg]:
+            msg += f"\n{bg}"
+        client.send_ooc(msg)
+    else:
+        client.send_ooc("There is no category with this name in server background list.")
 
 
 def ooc_cmd_status(client, arg):
@@ -208,6 +282,37 @@ def ooc_cmd_getareas(client, arg):
     """
     client.send_areas_clients()
 
+def ooc_cmd_gethubs(client, arg):
+    """
+    Show information about all hubs.
+    Usage: /gethubs
+    """
+    client.send_hubs_clients()
+
+def ooc_cmd_getlink(client, arg):
+    """
+    Show information about the current area, or target area id with sufficient permissions.
+    Including the client's link.
+    Usage: /getlink [id]
+    """
+    aid = client.area.id
+    if arg.strip().isnumeric():
+        area = client.area.area_manager.get_area_by_id(int(arg))
+        if area.id == client.area.id or (client.is_mod or client in area.owners):
+            aid = int(arg)
+        else:
+            raise ClientError(
+                "Can't see that area - insufficient permissions!")
+    client.send_area_info(aid, show_links=True)
+
+
+def ooc_cmd_getlinks(client, arg):
+    """
+    Show information about all areas.
+    Including the client's link.
+    Usage: /getlinks
+    """
+    client.send_areas_clients(show_links=True)
 
 def ooc_cmd_getafk(client, arg):
     """
@@ -787,6 +892,20 @@ def ooc_cmd_lights(client, arg):
         c.send_command("BN", bg, pos)
     client.send_ooc(f"This area is {stat} dark.")
 
+def ooc_cmd_auto_pair(client, arg):
+    """
+    Set the max of players displayed on the screen.
+    Usage: /auto_pair <double/triple>
+    """
+    if arg.lower() not in ["double", "triple"]:
+        client.send_ooc("Argument Error!\nUsage: /auto_pair <double/triple>")
+        return
+    client.area.auto_pair_max = arg.lower()
+    if arg.lower() == "triple":
+        client.send_ooc("Pairing will show a maximum of 3 characters on screen now")
+    else:
+        client.send_ooc("Pairing will show a maximum of 2 characters on screen now")
+
 
 @mod_only()
 def ooc_cmd_delay(client, arg):
@@ -828,4 +947,3 @@ def ooc_cmd_force_nonint_pres(client, arg):
         '{} [{}] has set pres in the area to be {}.'.format(
             client.char_name, client.id, answer))
     database.log_area('force_nonint_pres', client, client.area, message=client.area.non_int_pres_only)
-

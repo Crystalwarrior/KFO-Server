@@ -1,70 +1,35 @@
-# KFO-Server, an Attorney Online server
-#
-# Copyright (C) 2020 Crystalwarrior <varsash@gmail.com>
-#
-# Derivative of tsuserver3, an Attorney Online server. Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 import sys
-
 import logging
 import logging.handlers
-import time
 
 
-def setup_logger(debug):
-    """
-    Set up all loggers.
-    :param debug: whether debug mode should be enabled
-
-    """
-    logging.Formatter.converter = time.gmtime
-    debug_formatter = logging.Formatter("[%(asctime)s UTC] %(message)s")
-
-    stdoutHandler = logging.StreamHandler(sys.stdout)
-    stdoutHandler.setLevel(logging.DEBUG)
+def setup_logging(debug: bool = False):
     formatter = logging.Formatter(
-        "[%(name)s] %(module)s@%(lineno)d : %(message)s")
-    stdoutHandler.setFormatter(formatter)
-    logging.getLogger().addHandler(stdoutHandler)
+        "[%(asctime)s][%(name)s][%(levelname)s] %(message)s")
 
-    debug_log = logging.getLogger("debug")
-    debug_log.setLevel(logging.DEBUG)
+    # Log to terminal (stdout)
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setFormatter(formatter)
+    logging.getLogger().addHandler(stdout_handler)
 
-    debug_handler = logging.handlers.RotatingFileHandler(
-        "logs/debug.log", encoding="utf-8", maxBytes=1024 * 1024 * 4
-    )
-    debug_handler.setLevel(logging.DEBUG)
-    debug_handler.setFormatter(debug_formatter)
-    debug_log.addHandler(debug_handler)
-
-    # Intended to be a brief log for `tail -f`. To search through events,
-    # use the database.
-    info_log = logging.getLogger("events")
-    info_log.setLevel(logging.INFO)
-    file_handler = logging.handlers.RotatingFileHandler(
+    # Log to server.log
+    serverlog_handler = logging.handlers.RotatingFileHandler(
         "logs/server.log", encoding="utf-8", maxBytes=1024 * 512
     )
-    file_handler.setFormatter(logging.Formatter(
-        "[%(asctime)s UTC] %(message)s"))
-    info_log.addHandler(file_handler)
+    # The serverlog should never log debug messages
+    serverlog_handler.setLevel(logging.INFO)
+    serverlog_handler.setFormatter(formatter)
+    logging.getLogger().addHandler(serverlog_handler)
 
-    if not debug:
-        debug_log.disabled = True
-    else:
-        debug_log.debug("Logger started")
+    if debug:
+        # Log to debug.log
+        debuglog_handler = logging.handlers.RotatingFileHandler(
+            "logs/debug.log", encoding="utf-8", maxBytes=1024 * 1024 * 4
+        )
+        debuglog_handler.setFormatter(formatter)
+        logging.getLogger().addHandler(debuglog_handler)
+
+    logging.getLogger().setLevel(logging.DEBUG if debug else logging.INFO)
 
 
 def parse_client_info(client):

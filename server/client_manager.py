@@ -1,35 +1,18 @@
-# KFO-Server, an Attorney Online server
-#
-# Copyright (C) 2020 Crystalwarrior <varsash@gmail.com>
-#
-# Derivative of tsuserver3, an Attorney Online server. Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 import re
 import string
 import time
 import math
 import os
+import arrow
 from heapq import heappop, heappush
 
 
 from server import database
-from server.constants import TargetType, encode_ao_packet, contains_URL
+from server.constants import TargetType, encode_ao_packet, contains_URL, derelative
 from server.exceptions import ClientError, AreaError, ServerError
 
 import oyaml as yaml  # ordered yaml
+import json
 
 
 class ClientManager:
@@ -68,17 +51,21 @@ class ClientManager:
             self.mod_call_time = 0
             self.ipid = ipid
             self.version = ""
+            self.software = ""
 
             # Pairing character ID
             self.charid_pair = -1
+            self.third_charid = -1
             # Override if using the /pair command will lock "charid_pair" from being changed by MS packet
             self.charid_pair_override = False
             # Pairing order, either 0 (in front) or 1 (behind)
             self.pair_order = 0
             # Pairing offset
             self.offset_pair = 0
+            self.last_offset = 0
 
             self.last_sprite = ""
+            self.last_pre = ""
             self.flip = 0
             self.claimed_folder = ""
 
@@ -91,6 +78,9 @@ class ClientManager:
             self.casing_jur = False
             self.casing_steno = False
             self.case_call_time = 0
+
+            # Need command
+            self.need_call_time = 0
 
             # flood-guard stuff
             self.mus_counter = 0
@@ -180,6 +170,9 @@ class ClientManager:
             # Currently requested subtheme of this client
             self.subtheme = ""
 
+            # The last char_url set by this client.
+            self.char_url = ""
+
             # Compatibility stuff
             # Determine if this client can support multi-layered audio (such as ambience)
             self.has_multilayer_audio = False
@@ -190,6 +183,12 @@ class ClientManager:
             
             # rainbowtext hell
             self.rainbow = False
+            
+            # rock paper scissors choice
+            self.rps_choice = ""
+
+            # Battle system stuff
+            self.battle = None
 
         def send_raw_message(self, msg):
             """
@@ -208,16 +207,18 @@ class ClientManager:
             if args:
                 # Music packet
                 if command == "MC":
+                    channel = int(args[4])
                     # If this MC packet is using multilayer audio and the client doesn't support it
-                    if args[4] != "" and int(args[4]) > 0 and not self.has_multilayer_audio:
+                    # ...or we got an invalid channel
+                    if channel < 0 or (channel > 0 and not self.has_multilayer_audio):
                         # Ignore the packet, don't send the music
                         return
-                    self.playing_audio[args[4]] = args[0]
+                    if channel in [0, 1]:
+                        self.playing_audio[channel] = args[0]
                 # IC Message packet
                 if command == "MS":
-                    # Anim is blank, we're narrating.
-                    # Or the pos is blank, we're using last pos.
-                    if args[3] == "" or args[5] == "":
+                    # The pos is blank, we're using last pos.
+                    if args[5] == "":
                         lst = list(args)
                         if self.area.last_ic_message is not None:
                             # Set the pos to last message's pos
@@ -233,13 +234,76 @@ class ClientManager:
                             lst[11] = evi_num
                             args = tuple(lst)
                             break
-                    # If we have someone using the DRO 1.1.0 Client
-                    if self.version.startswith("1.1.0"):
+                    # If we have someone using the DRO Client
+                    if self.software == "DRO":
+                        anim = args[3]
+                        hide_char = 0
+                        # We are blankposting.
+                        if self.blankpost or derelative(anim) == "misc/blank":
+                            hide_char = 1
+                        # We're narrating, or we're hidden in some evidence.
+                        if anim == "" or self.narrator or self.hidden_in is not None:
+                            hide_char = 1
+
+                        # On KFO, self_offset can be set even without a pairing partner
+                        charid_pair = "-1"
+                        if len(args) > 16 and args[16]:
+                            charid_pair = str(args[16])
+                        self_offset_x = 0
+                        if len(args) > 19 and args[19]:
+                            self_offset_x = str(args[19]).replace('<and>', '&').split('&')[0]
+                        offset_pair_x = 0
+                        if len(args) > 20 and args[20]:
+                            offset_pair_x = str(args[20]).replace('<and>', '&').split('&')[0]
+
+                        # Pair data detected!
+                        if (charid_pair and charid_pair != "-1") or (self_offset_x and self_offset_x != "0"):
+                            pair_jsn_packet = {}
+                            pair_jsn_packet['packet'] = 'pair_data'
+                            pair_jsn_packet['data'] = {}
+                            other_emote = ""
+                            other_folder = ""
+                            other_flip = False
+                            if len(args) > 17:
+                                other_folder = args[17]
+                            if len(args) > 18:
+                                other_emote = args[18]
+                            if len(args) > 21:
+                                other_flip = bool(int(args[21]))
+                            pair_jsn_packet['data']['character'] = other_folder
+                            pair_jsn_packet['data']['last_sprite'] = other_emote
+                            pair_jsn_packet['data']['flipped'] = other_flip
+                            
+                            # no y offset is supported and on DRO Client, the pairing offsets are measured in pixels rather than percentage
+                            if self_offset_x:
+                                self_offset_x = int((float(self_offset_x) / 100) * 960 + 480) # offset_pair
+                            if offset_pair_x:
+                                offset_pair_x = int((float(offset_pair_x) / 100) * 960 + 480) # other_offset
+                            pair_jsn_packet['data']['self_offset'] = self_offset_x
+                            pair_jsn_packet['data']['offset_pair'] = offset_pair_x
+                            
+                            # Send the result!
+                            json_data = json.dumps(pair_jsn_packet)
+                            self.send_command('JSN', json_data)
+                        # No pair :(
+                        else:
+                            pair_jsn_packet = {}
+                            pair_jsn_packet['packet'] = 'pair'
+                            pair_jsn_packet['data'] = {}
+                            pair_jsn_packet['data']['pair_left'] = -1
+                            pair_jsn_packet['data']['pair_right'] = -1
+                            pair_jsn_packet['data']['offset_left'] = 0
+                            pair_jsn_packet['data']['offset_right'] = 0
+                            json_data = json.dumps(pair_jsn_packet)
+                            self.send_command('JSN', json_data)
+
+                        # Now, modify the packet
                         lst = list(args)
                         lst[16] = ""  # No video support :(
-                        lst[17] = 0  # no hiding character
-                        lst[18] = self.id  # sender character id
+                        lst[17] = hide_char # hide character if we're blankposting or narrating
+                        lst[18] = -1  # would be target id, but we dunno who
                         args = tuple(lst)
+                        # Packet modified!
             command, *args = encode_ao_packet([command] + list(args))
             message = f"{command}#"
             for arg in args:
@@ -279,6 +343,54 @@ class ClientManager:
             players = self.server.player_count
             limit = self.server.config["playerlimit"]
             self.send_ooc(f"👥{players}/{limit} players online.")
+
+        def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+            if self.software == "DRO":
+                # configuration. There's no situation where these values are different on KFO-Server
+                self.send_timer_set_step_length(timer_id, -16) # 16 milliseconds, matches AO
+                self.send_timer_set_firing_interval(timer_id, 16) # 16 milliseconds, matches AO
+                
+                self.send_command("TST", timer_id, new_time) # set time
+                if start:
+                    self.send_command("TR", timer_id) # resume
+                else:
+                    self.send_command("TP", timer_id) # pause
+            else:
+                if new_time == None:
+                    self.send_command("TI", timer_id, 1, 0) # Stop timer
+                    self.send_command("TI", timer_id, 3, 0) # Hide timer
+                else:
+                    self.send_command("TI", timer_id, 2, new_time) # Show timer
+                    self.send_command("TI", timer_id, int(not start), new_time) # Set timer with value and start
+                    if timer_id == 0:
+                        timer = self.area.area_manager.timer
+                    else:
+                        timer = self.area.timers[timer_id-1]
+                    self.send_command("TF", timer_id, timer.format, new_time)
+                    self.send_command("TIN", timer_id, timer.interval)
+
+        def send_timer_set_interval(self, timer_id, timer):
+            if timer.started:
+                current_time = timer.target - arrow.get()
+                current_time = int(current_time.total_seconds()) * 1000
+            else:
+                current_time = int(timer.static.total_seconds()) * 1000
+            if timer_id == 0:
+                    self.area.area_manager.send_timer_set_time(timer_id, current_time, timer.started)
+            else:
+                    self.area.send_timer_set_time(timer_id, current_time, timer.started)
+
+        def send_timer_set_step_length(self, timer_id=None, new_step_length=None):
+            if self.software == "DRO":
+                self.send_command("TSS", timer_id, new_step_length) # set step
+            else:
+                pass # no ao equivalent
+
+        def send_timer_set_firing_interval(self, timer_id=None, new_firing_interval=None):
+            if self.software == "DRO":
+                self.send_command("TSF", timer_id, new_firing_interval) #set firing
+            else:
+                pass # no ao equivalent
 
         def is_valid_name(self, name):
             """
@@ -716,12 +828,12 @@ class ClientManager:
 
             return song_list
 
-        def refresh_music(self):
+        def refresh_music(self, reload=False):
             """
             Rebuild the client's music list, updating the local music list if there was a change.
             """
             song_list = self.construct_music_list()
-            if self.local_music_list != song_list:
+            if self.local_music_list != song_list or reload:
                 self.reload_music_list(song_list)
 
         def reload_music_list(self, music=[]):
@@ -845,9 +957,10 @@ class ClientManager:
 
             # Send the background information
             if self.area.dark:
-                self.send_command("BN", self.area.background_dark, self.pos)
+                # TODO: separate dark area overlays
+                self.send_command("BN", self.area.background_dark, self.pos, self.area.overlay, 1)
             else:
-                self.send_command("BN", self.area.background, self.pos)
+                self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
 
             if len(self.area.pos_lock) > 0:
                 # set that juicy pos dropdown
@@ -1013,7 +1126,7 @@ class ClientManager:
                 self.is_mod or self in area.owners or self.char_id == -1
             ) and not area.is_char_available(self.char_id):
                 self.check_char_taken(area)
-
+                
             old_area = self.area
             self.set_area(area, target_pos)
             self.last_move_time = round(time.time() * 1000.0)
@@ -1040,6 +1153,9 @@ class ClientManager:
                         c.send_ooc(ex)
                         c.unfollow()
                         return
+            # Last error check got done above.
+
+            self.refresh_area_char_links(old_area)
 
             reason = ""
             if (
@@ -1157,6 +1273,114 @@ class ClientManager:
                     "This area is muted - you cannot talk in-character unless invited."
                 )
 
+        # CU Packet
+        # CU#<authority:int>#<action:int>#<char_name:str>#<link:str>#%
+        # Sets the character_URL of the client.
+
+        # authority:
+        #             0 = server
+        #         |   1 = client,
+
+        # action:     0 = Delete,
+        #         |   1 = Add,
+        #         |   2 = Clear all,
+
+        def remove_server_link(self, name):
+            """Removes an server link on this client."""
+            #                     server, delete, name
+            self.send_command("CU", "0", "0", name)
+
+        def add_server_link(self, name, url):
+            """Adds an server link on this client."""
+            #                     server, add, name, url
+            self.send_command("CU", "0", "1", name, url)
+
+        def clear_server_links(self):
+            """Clear all server links of this client."""
+            #                      server, clear
+            self.send_command("CU", "0", "2")
+
+        def remove_user_link(self, char_name):
+            """Removes an user link on this client."""
+            #                      client, delete, char_name
+            self.send_command("CU", "1", "0", char_name)
+
+        def add_user_link(self, char_name, char_url):
+            """Adds an user link on this client."""
+            #                      client, add, char_name, char_url
+            self.send_command("CU", "1", "1", char_name, char_url)
+
+        def clear_user_links(self):
+            """Clear all user links of this client."""
+            #                      client, clear
+            self.send_command("CU", "1", "2")
+
+        def get_new_area_user_links(self):
+            """"
+            Get the char_urls of the new area that the client changed to.
+            And applying the changes.
+            """
+
+            # Clear existing user links on this client
+            self.clear_user_links()
+
+            # Get all the clients in the current area, if they have their user link declared.
+            # While also not including ourselves.
+            clients = (c for c in self.area.clients if c.char_url != "" and c.id != self.id)
+
+            # Get the char_urls of the new area for this client.
+            for client in clients:
+                self.add_user_link(client.char_name, client.char_url)
+
+
+
+        def refresh_area_char_links(self, old_area):
+            """
+            Clears all user links in the old area.
+            And declare them in the new area.
+            The client should be already in the new area for this to be called
+            """
+
+            # Removes the client's user link from the old area
+            # TODO: Maybe take into account than sending the "CU" packet can reveal your cover.
+            # So you could simply treat the hidden client as if they didn't declare their char_url.
+            # Probably using a bool for it.
+            if self.char_url != "":
+                for client in old_area.clients:
+                    client.remove_user_link(self.char_name)
+
+            # Fetch the user links of the new area
+            self.get_new_area_user_links()
+
+            # TODO: Maybe take into account than sending the "CU" packet can reveal your cover.
+            # So you could simply treat the hidden client as if they didn't declare their char_url.
+            # Probably using a bool for it.
+
+            # Declare your user link in the new area for everyone to see
+            if self.char_url != "":
+                for client in self.area.clients:
+                    client.add_user_link(self.char_name, self.char_url)
+
+        def send_server_link_list(self):
+            """
+            Sends the list of server links declared by the server to the client.
+            """
+            if self.server.server_links is None:
+                return
+            for name, url in self.server.server_links.items():
+                self.add_server_link(name, url)
+
+        def refresh_server_link_list(self):
+            """
+            Refreshs the list of server links for this client.
+            Called when the command /refresh is used.
+            """
+            if self.server.server_links is None:
+                return
+            self.clear_server_links()
+            for name, url in self.server.server_links.items():
+                self.add_server_link(name, url)
+
         def get_area_list(self, hidden=False, unlinked=False):
             area_list = []
             for area in self.area.area_manager.areas:
@@ -1204,7 +1428,7 @@ class ClientManager:
                 msg += f'\n{self.get_area_info(area.id, highlight_self=True)}'
             self.send_ooc(msg)
 
-        def get_area_info(self, area_id, highlight_self=False):
+        def get_area_info(self, area_id, highlight_self=False, hub=None):
             """
             Get information about a specific area.
             :param area_id: area ID
@@ -1212,7 +1436,10 @@ class ClientManager:
             :highlight_self: highlight the area where we're located
             """
             info = ""
-            area = self.area.area_manager.get_area_by_id(area_id)
+            if hub is None:
+                area = self.area.area_manager.get_area_by_id(area_id)
+            else:
+                area = hub.areas[area_id]
             status = ""
             if self.area.area_manager.arup_enabled:
                 status = f" [{area.status}]"
@@ -1253,9 +1480,12 @@ class ClientManager:
             info += f"[{area.id}] {area.name}{users}{status}{owner}{hidden}{locked}{pathlocked}{passworded}{muted}{dark}"
             return info
 
-        def get_area_clients(self, area_id, mods=False, afk_check=False):
+        def get_area_clients(self, area_id, mods=False, afk_check=False, show_links=False, hub=None):
             info = ""
-            area = self.area.area_manager.get_area_by_id(area_id)
+            if hub is None:
+                area = self.area.area_manager.get_area_by_id(area_id)
+            else:
+                area = hub.areas[area_id]
             if afk_check:
                 player_list = area.afkers
             else:
@@ -1328,9 +1558,11 @@ class ClientManager:
                     info += f" ({c.ipid})"
                 if c.name != "" and self.is_mod:
                     info += f": {c.name}"
+                if show_links and c.char_url != "":
+                    info += f" < {c.char_url} >"
             return info
 
-        def send_areas_clients(self, mods=False, afk_check=False):
+        def send_areas_clients(self, mods=False, afk_check=False, show_links=False):
             """
             Send information over OOC about all areas of the client's hub.
             :param area_id: area ID
@@ -1365,7 +1597,7 @@ class ClientManager:
                     continue
 
                 try:
-                    area_info += self.get_area_clients(i, mods, afk_check)
+                    area_info += self.get_area_clients(i, mods, afk_check, show_links)
                 except ClientError:
                     area_info = ""
                 if area_info == "":
@@ -1383,7 +1615,77 @@ class ClientManager:
                 info += f"Current online: {cnt}"
             self.send_ooc(info)
 
-        def send_area_info(self, area_id, mods=False, afk_check=False):
+        def send_hubs_clients(self, mods=False, afk_check=False, show_links=False):
+            """
+            Send information over OOC about all hubs.
+            """
+            if (
+                not self.is_mod
+                and self not in self.area.area_manager.owners
+                and self.char_id != -1
+            ):
+                if self.blinded:
+                    raise ClientError("You are blinded!")
+                if "can_gethubs" not in self.server.config or not self.server.config["can_gethubs"]:
+                    raise ClientError(
+                        "You are not permitted to use the /gethubs command in this server!"
+                    )
+            cnt = 0
+            info = "\n🗺️ Clients in Hubs 🗺️\n"
+            for hub in self.server.hub_manager.hubs:
+                hub_info = ""
+                if (
+                    (not hub.can_getareas or hub.hide_clients)
+                    and not self.is_mod
+                    and self not in hub.owners
+                ):
+                    info += f"\n⛩[{hub.id}]{hub.name}⛩: ❌\n"
+                else:
+                    for i in range(len(hub.areas)):
+                        area = hub.areas[i]
+                        if afk_check:
+                            client_list = area.afkers
+                        else:
+                            client_list = area.clients
+                        if not self.is_mod and self not in area.owners:
+                            # We exclude hidden players here because we don't want them to count for the user count
+                            client_list = [c for c in client_list if not c.hidden]
+
+                        area_info = f"{self.get_area_info(i, hub=hub)}:"
+                        if area_info == "":
+                            continue
+
+                        try:
+                            area_info += self.get_area_clients(
+                                i, mods, afk_check, show_links, hub=hub
+                            )
+                        except ClientError:
+                            area_info = ""
+                        if area_info == "":
+                            continue
+
+                        if len(client_list) > 0 or len(area.owners) > 0:
+                            cnt += len(client_list)
+                            hub_info += f"{area_info}\n"
+                if not hub_info == "" and (
+                    hub.can_getareas or self.is_mod or self in hub.owners
+                ):
+                    if not self.is_mod and self not in hub.owners:
+                        hub_count = 0
+                        for area in hub.areas:
+                            if not area.hide_clients and not area.dark:
+                                player_list = [c for c in area.clients if not c.hidden]
+                                hub_count += len(player_list)
+                        info += f"\n⛩[{hub.id}]{hub.name} (users: {hub_count})⛩:\n{hub_info}\n"
+                    else:
+                        info += f"\n⛩[{hub.id}]{hub.name} (users: {len(hub.clients)})⛩:\n{hub_info}\n"
+            if afk_check:
+                info += f"Current AFK-ers: {cnt}"
+            else:
+                info += f"Current online: {cnt}"
+            self.send_ooc(info)
+
+        def send_area_info(self, area_id, mods=False, afk_check=False, show_links=False):
             """
             Send information over OOC about a specific area.
             :param area_id: area ID
@@ -1396,7 +1698,7 @@ class ClientManager:
                     raise ClientError("You are blinded!")
             area_info = f'📍 Clients in {self.get_area_info(area_id)} 📍'
             try:
-                area_info += self.get_area_clients(area_id, mods, afk_check)
+                area_info += self.get_area_clients(area_id, mods, afk_check, show_links)
             except ClientError as ex:
                 area_info += f'\n{ex}'
             info += area_info
@@ -1428,9 +1730,9 @@ class ClientManager:
             self.send_command("HP", 2, self.area.hp_pro)
             if self.area.dark:
                 self.send_command(
-                    "BN", self.area.background_dark, self.area.pos_dark)
+                    "BN", self.area.background_dark, self.area.pos_dark, self.area.overlay, 1)
             else:
-                self.send_command("BN", self.area.background, self.pos)
+                self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
             self.send_command("LE", *self.area.get_evidence_list(self))
             self.send_command("MM", 1)
 
@@ -1440,6 +1742,19 @@ class ClientManager:
             self.area.area_manager.send_arup_status([self])
             self.area.area_manager.send_arup_cms([self])
             self.area.area_manager.send_arup_lock([self])
+
+            # Send user links of the lobby.
+
+            # Get all the clients in the current area, if they have their user link declared.
+            # While also not including ourselves.
+            clients = (c for c in self.area.clients if c.char_url != "" and c.id != self.id)
+
+            # Get the char_urls of the new area for this client.
+            for client in clients:
+                self.add_user_link(client.char_name, client.char_url)
+
+            # Send the server's declared links to the client.
+            self.send_server_link_list()
 
             self.send_command("DONE")
 
@@ -1502,6 +1817,33 @@ class ClientManager:
                 return "Spectator"
             if self.char_id >= len(self.area.area_manager.char_list):
                 return "Unknown"
+            return self.area.area_manager.char_list[self.char_id]
+
+        @property
+        def f_char_name_raw(self):
+            """Get the name of either the character that the client is using or the iniswap."""
+            if self.iniswap != "":
+                return self.iniswap
+
+            if (    self.char_id is None
+                or  self.char_id <= -1
+                or  self.char_id >= len(self.area.area_manager.char_list)):
+                return ""
+
+            return self.area.area_manager.char_list[self.char_id]
+        @property
+        def f_char_name(self):
+            """Get the name of either the character that the client is using or the iniswap."""
+            if self.iniswap != "":
+                return self.iniswap
+
+            if self.char_id is None:
+                return "Connection"
+            if self.char_id == -1:
+                return "Spectator"
+            if self.char_id >= len(self.area.area_manager.char_list):
+                return "Unknown"
+
             return self.area.area_manager.char_list[self.char_id]
 
         @property
@@ -1676,9 +2018,23 @@ class ClientManager:
             """Begin the case announcement cooldown."""
             self.case_call_time = round(time.time() * 1000.0 + 60000)
 
+        def set_need_call_delay(self):
+            """Begin the need cooldown."""
+            try:
+                self.need_call_time = round(
+                    time.time() * 1000.0
+                    + int(self.server.config["need_webhook"]["delay"]) * 1000.0
+                )
+            except:
+                self.need_call_time = round(time.time() * 1000 + 60000)
+
         def can_call_case(self):
             """Whether or not the client can currently announce a case."""
             return (time.time() * 1000.0 - self.case_call_time) > 0
+
+        def can_call_need(self):
+            """Whether or not the client can currently call a need."""
+            return (time.time() * 1000.0 - self.need_call_time) > 0
 
         def disemvowel_message(self, message):
             """Disemvowel a chat message."""
@@ -1764,6 +2120,16 @@ class ClientManager:
             if c.following == client:
                 c.unfollow()
         self.clients.remove(client)
+
+        # TODO: Maybe take into account than sending the "CU" packet can reveal your cover.
+        # So you could simply treat the hidden client as if they didn't declare their char_url.
+        # Probably using a bool for it.
+
+        # Removes the client's user link from the area it was.
+        if client.char_url != "":
+            clients = (c for c in client.area.clients if c.id != client.id)
+            for c in clients:
+                c.remove_user_link(client.char_name)
         for hub in self.server.hub_manager.hubs:
             count = 0
             for c in hub.clients:
@@ -1783,7 +2149,7 @@ class ClientManager:
                     ],
                 )
 
-    def get_targets(self, client, key, value, local=False, single=False):
+    def get_targets(self, client, key, value, local=False, single=False, all_hub=False):
         """
         Find players by a combination of identifying data.
         Possible keys: player ID, OOC name, character name, HDID, IPID,
@@ -1794,36 +2160,41 @@ class ClientManager:
         :param value: data identifying a client
         :param local: search in current area only (Default value = False)
         :param single: search only a single user (Default value = False)
+        :param all_hub: search in all hubs (Default value = False)
         """
-        areas = None
-        if local:
-            areas = [client.area]
-        else:
-            areas = client.area.area_manager.areas
         targets = []
         if key == TargetType.ALL:
             for nkey in range(6):
                 targets += self.get_targets(client, nkey, value, local)
-        for area in areas:
-            for client in area.clients:
-                if key == TargetType.IP:
-                    if value.lower().startswith(client.ip.lower()):
-                        targets.append(client)
-                elif key == TargetType.OOC_NAME:
-                    if value.lower().startswith(client.name.lower()) and client.name:
-                        targets.append(client)
-                elif key == TargetType.CHAR_NAME:
-                    if value.lower().startswith(client.char_name.lower()):
-                        targets.append(client)
-                elif key == TargetType.ID:
-                    if client.id == value:
-                        targets.append(client)
-                elif key == TargetType.IPID:
-                    if client.ipid == value:
-                        targets.append(client)
-                elif key == TargetType.AFK:
-                    if client in area.afkers:
-                        targets.append(client)
+        if all_hub and not local:
+            hubs = self.server.hub_manager.hubs
+        else:
+            hubs = [client.area.area_manager]
+        for hub in hubs:
+            if local:
+                areas = [client.area]
+            else:
+                areas = hub.areas
+            for area in areas:
+                for client in area.clients:
+                    if key == TargetType.IP:
+                        if value.lower().startswith(client.ip.lower()):
+                            targets.append(client)
+                    elif key == TargetType.OOC_NAME:
+                        if value.lower().startswith(client.name.lower()) and client.name:
+                            targets.append(client)
+                    elif key == TargetType.CHAR_NAME:
+                        if value.lower().startswith(client.char_name.lower()):
+                            targets.append(client)
+                    elif key == TargetType.ID:
+                        if client.id == value:
+                             targets.append(client)
+                    elif key == TargetType.IPID:
+                        if client.ipid == value:
+                            targets.append(client)
+                    elif key == TargetType.AFK:
+                        if client in area.afkers:
+                            targets.append(client)
         return targets
 
     def get_muted_clients(self):
@@ -1855,7 +2226,7 @@ class ClientManager:
             client.send_ooc("You are now AFK. Have a good day!")
             client.area.afkers.append(client)
 
-    def refresh_music(self, clients=None):
+    def refresh_music(self, clients=None, reload=False):
         """
         Refresh the listed clients' music lists.
         :param clients: list of clients whose music lists should be regenerated.
@@ -1864,10 +2235,37 @@ class ClientManager:
         if clients is None:
             clients = self.clients
         for client in clients:
-            client.refresh_music()
+            client.refresh_music(reload)
 
     def get_multiclients(self, ipid=-1, hdid=""):
         return [c for c in self.clients if c.ipid == ipid or c.hdid == hdid]
 
     def get_mods(self):
         return [c for c in self.clients if c.is_mod]
+        
+    class BattleChar:
+        def __init__(self, client, fighter_name, fighter):
+            self.fighter = fighter_name
+            self.hp = float(fighter["HP"])
+            self.maxhp = self.hp
+            self.atk = float(fighter["ATK"])
+            self.mana = float(fighter["MANA"])
+            self.defe = float(fighter["DEF"])
+            self.spa = float(fighter["SPA"])
+            self.spd = float(fighter["SPD"])
+            self.spe = float(fighter["SPE"])
+            self.target = None
+            self.selected_move = -1
+            self.status = None
+            self.current_client = client
+            self.guild = None
+            self.moves = [ClientManager.Move(move) for move in fighter["Moves"]]
+
+    class Move:
+        def __init__(self, move):
+            self.name = move["Name"]
+            self.cost = move["ManaCost"]
+            self.type = move["MovesType"]
+            self.power = float(move["Power"])
+            self.effect = move["Effects"]
+            self.accuracy = float(move["Accuracy"])

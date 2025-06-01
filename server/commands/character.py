@@ -12,6 +12,7 @@ __all__ = [
     "ooc_cmd_switch",
     "ooc_cmd_pos",
     "ooc_cmd_pair",
+    "ooc_cmd_triple_pair",
     "ooc_cmd_unpair",
     "ooc_cmd_pair_order",
     "ooc_cmd_forcepos",
@@ -49,9 +50,36 @@ __all__ = [
     "ooc_cmd_showname",
     "ooc_cmd_charlists",
     "ooc_cmd_charlist",
-    "ooc_cmd_webfiles"
+    "ooc_cmd_webfiles",
+    "ooc_cmd_set_url",
+    "ooc_cmd_get_urls",
 ]
 
+
+def ooc_cmd_set_url(client, arg):
+    """
+    This command sets the URL of the current character.
+    That URL is used client-side on AOG and server-side with the /get_link and /get_links commands.
+    Usage: /set_url <url>
+    """
+
+    arg_strip = arg.strip()
+
+    if arg_strip == "":
+        client.send_ooc("URL has been reset successfully.")
+    else:
+        client.send_ooc(f"URL set to {arg_strip}")
+    client.char_url = arg_strip
+
+def ooc_cmd_get_urls(client, arg):
+    """
+    This command returns the server's URL List.
+    Usage: /get_urls
+    """
+    f_server_links = "Server URLs:\n"
+    for name, url in client.server.server_links.items():
+        f_server_links += f"{name}: {url} \n"
+    client.send_ooc(f_server_links)
 
 def ooc_cmd_switch(client, arg):
     """
@@ -1199,3 +1227,33 @@ def ooc_cmd_charlist(client, arg):
         raise
     except Exception:
         client.send_ooc("File not found!")
+
+
+def ooc_cmd_triple_pair(client, arg):
+    """
+    Triple Pair with someone.
+    Run by itself to check your current (last?) pairing partner.
+    Usage: /triple_pair [cid|charname]
+    """
+    if len(arg) == 0:
+        char = client.third_charid
+        if client.third_charid in range(0, len(client.area.area_manager.char_list)):
+            char = client.area.area_manager.char_list[client.third_charid]
+        client.send_ooc(f"Your current triple pair character is '{char}'.")
+        return
+
+    if arg.isdigit():
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(arg), True
+        )
+        if len(targets) > 0:
+            client.third_charid = targets[0].char_id
+    else:
+        for i in range(0, len(client.area.area_manager.char_list)):
+            if arg.lower() == client.area.area_manager.char_list[i].lower():
+                client.third_charid = i
+
+    char = client.third_charid
+    if client.third_charid in range(0, len(client.area.area_manager.char_list)):
+        char = client.area.area_manager.char_list[client.third_charid]
+    client.send_ooc(f"Successfully paired with '{char}'! Ask them to pair with you back, and show up on the same /pos for it to work.")

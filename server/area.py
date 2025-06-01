@@ -1,27 +1,8 @@
-# KFO-Server, an Attorney Online server
-#
-# Copyright (C) 2020 Crystalwarrior <varsash@gmail.com>
-#
-# Derivative of tsuserver3, an Attorney Online server. Copyright (C) 2016 argoneus <argoneuscze@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as
-# published by the Free Software Foundation, either version 3 of the
-# License, or (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
 from server import database
 from server import commands
 from server.evidence import EvidenceList
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import MusicEffect
+from server.constants import MusicEffect, derelative, censor
 
 from collections import OrderedDict
 
@@ -34,8 +15,9 @@ import oyaml as yaml  # ordered yaml
 import os
 import datetime
 import logging
+import traceback
 
-logger = logging.getLogger("events")
+logger = logging.getLogger("area")
 
 
 class Area:
@@ -61,6 +43,8 @@ class Area:
             self.caller = caller
             self.schedule = None
             self.commands = []
+            self.format = "hh:mm:ss.zzz"
+            self.interval = 16
 
         def timer_expired(self):
             if self.schedule:
@@ -108,7 +92,7 @@ class Area:
                     self.caller.send_ooc(
                         f"[Timer {self.id}] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
                     )
-                    logger.exception("Exception while running a command")
+                    logger.error("Exception while running a command")
                     # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
                     self.commands.clear()
                     # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
@@ -124,8 +108,10 @@ class Area:
 
         # Initialize prefs
         self.background = "default"
+        self.overlay = ""
         self.pos_lock = []
         self.bg_lock = False
+        self.overlay_lock = False
         self.evidence_mod = "FFA"
         self.can_cm = False
         self.locking_allowed = False
@@ -216,6 +202,10 @@ class Area:
         # Who's debating who
         self.red_team = set()
         self.blue_team = set()
+        # Clients who cast votes
+        self.votes_cast = set()      
+        # What percentage of valid voters needs to vote to force-end the minigame, rounded
+        self.votes_percentage = 0.7
         # Minigame name
         self.minigame = ""
         # Minigame schedule
@@ -275,6 +265,33 @@ class Area:
             "leave": "",  # User leaves the area.
         }
 
+        # Battle system stuff
+        self.can_battle = True
+        self.battle_started = False
+        self.fighters = []
+        self.num_selected_move = 0
+        self.battle_guilds = {}
+
+        # Battle system customization
+        self.battle_paralysis_rate = 3
+        self.battle_critical_rate = 15
+        self.battle_critical_bonus = 1.5
+        self.battle_bonus_malus = 1.5
+        self.battle_poison_damage = 16
+        self.battle_show_hp = True
+        self.battle_min_multishot = 2
+        self.battle_max_multishot = 5
+        self.battle_burn_damage = 8
+        self.battle_freeze_damage = 8
+        self.battle_confusion_rate = 3
+        self.battle_enraged_bonus = 2.25
+        self.battle_stolen_stat = 10
+
+        # multiple pair
+        self.auto_pair = False
+        self.auto_pair_max = "triple"
+        self.auto_pair_cycle = False
+
     @property
     def name(self):
         """Area's name string. Abbreviation is also updated according to this."""
@@ -316,14 +333,8 @@ class Area:
             return
 
         # Sort through all the owners, with GMs coming first and CMs coming second
-        sorted_owners = sorted(
-            self.owners,
-            key=lambda x: 0
-            if (x in self.area_manager.owners)
-            else 1
-            if (x in self._owners)
-            else 2,
-        )
+        sorted_owners = list(self._owners) + list(self.area_manager.owners)
+
         # Pick the owner with highest permission - game master, if one exists.
         # This permission system may be out of wack, but it *should* be good for now
         owner = sorted_owners[0]
@@ -350,7 +361,7 @@ class Area:
             owner.send_ooc(
                 f"[Area {self.id}] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
             )
-            logger.exception("Exception while running a command")
+            logger.error("Exception while running a command")
 
     def abbreviate(self):
         """Abbreviate our name."""
@@ -392,8 +403,12 @@ class Area:
         if "background" in area:
             self.background = area["background"]
             self.o_background = self.background
+        if "overlay" in area:
+            self.overlay = area["overlay"]
         if "bg_lock" in area:
             self.bg_lock = area["bg_lock"]
+        if "overlay_lock" in area:
+            self.overlay_lock = area["overlay_lock"]
         if "pos_lock" in area:
             _pos_lock = area["pos_lock"].split(" ")
 
@@ -461,7 +476,10 @@ class Area:
             if self.music_ref == "":
                 self.clear_music()
         if self.music_ref != "":
-            self.load_music(f"storage/musiclists/{self.music_ref}.yaml")
+            if os.path.isfile(f"storage/musiclists/read_only/{self.music_ref}.yaml"):
+                self.load_music(f"storage/musiclists/read_only/{self.music_ref}.yaml")
+            else:
+                self.load_music(f"storage/musiclists/{self.music_ref}.yaml")
 
         if "client_music" in area:
             self.client_music = area["client_music"]
@@ -575,14 +593,26 @@ class Area:
                         "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
                     )
 
+        if "can_battle" in area:
+            self.can_battle = area["can_battle"]
+
+        if "auto_pair" in area:
+            self.auto_pair = area["auto_pair"]
+        if "auto_pair_max" in area:
+            self.auto_pair_max = area["auto_pair_max"]
+        if "auto_pair_cycle" in area:
+            self.auto_pair_cycle = area["auto_pair_cycle"]
+
     def save(self):
         area = OrderedDict()
         area["area"] = self.name
         area["background"] = self.background
+        area["overlay"] = self.overlay
         area["pos_lock"] = "none"
         if len(self.pos_lock) > 0:
             area["pos_lock"] = " ".join(map(str, self.pos_lock))
         area["bg_lock"] = self.bg_lock
+        area["overlay_lock"] = self.overlay_lock
         area["evidence_mod"] = self.evidence_mod
         area["can_cm"] = self.can_cm
         area["locking_allowed"] = self.locking_allowed
@@ -644,9 +674,13 @@ class Area:
         area["msg_delay"] = self.msg_delay
         area["present_reveals_evidence"] = self.present_reveals_evidence
         if len(self.evi_list.evidences) > 0:
-            area["evidence"] = [e.to_dict() for e in self.evi_list.evidences]
+            area["evidence"] = self.evi_list.export_evidence()
         if len(self.links) > 0:
             area["links"] = self.links
+        area["can_battle"] = self.can_battle
+        area["auto_pair"] = self.auto_pair
+        area["auto_pair_max"] = self.auto_pair_max
+        area["auto_pair_cycle"] = self.auto_pair_cycle
         return area
 
     def new_client(self, client):
@@ -704,40 +738,25 @@ class Area:
         # Hub timers
         timer = client.area.area_manager.timer
         if timer.set:
-            s = int(not timer.started)
             current_time = timer.static
             if timer.started:
                 current_time = timer.target - arrow.get()
             int_time = int(current_time.total_seconds()) * 1000
-            # Unhide the timer
-            client.send_command("TI", 0, 2, int_time)
-            # Start the timer
-            client.send_command("TI", 0, s, int_time)
+            client.send_timer_set_time(0, int_time, timer.started)
         elif not running_only:
-            # Stop the timer
-            client.send_command("TI", 0, 3, 0)
-            # Hide the timer
-            client.send_command("TI", 0, 1, 0)
+            client.send_timer_set_time(0, None, False)
 
         # Area timers
         for timer_id, timer in enumerate(self.timers):
             # Send static time if applicable
             if timer.set:
-                s = int(not timer.started)
                 current_time = timer.static
                 if timer.started:
                     current_time = timer.target - arrow.get()
                 int_time = int(current_time.total_seconds()) * 1000
-                # Start the timer
-                client.send_command("TI", timer_id + 1, s, int_time)
-                # Unhide the timer
-                client.send_command("TI", timer_id + 1, 2, int_time)
-                # client.send_ooc(f"Timer {timer_id+1} is at {current_time}")
+                client.send_timer_set_time(timer_id + 1, int_time, timer.started)
             elif not running_only:
-                # Stop the timer
-                client.send_command("TI", timer_id + 1, 1, 0)
-                # Hide the timer
-                client.send_command("TI", timer_id + 1, 3, 0)
+                client.send_timer_set_time(timer_id + 1, None, False)
 
     def remove_client(self, client):
         """Remove a disconnected client from the area."""
@@ -768,6 +787,25 @@ class Area:
             database.log_area("area.leave", client, self)
         if not client.hidden:
             self.area_manager.send_arup_players()
+
+        #Battle system
+        if client in client.area.fighters:
+            if client.area.battle_started:
+                client.battle.current_client = None
+            else:
+                client.area.fighters.remove(client)
+                if client.battle.guild is not None:
+                    guild = client.battle.guild
+                    client.battle.guild = None
+                    client.area.battle_guilds[guild].remove(client)
+                if client.battle.selected_move != -1:
+                    client.area.num_selected_move += -1
+            client.area.send_ic(
+                msg=f"~{client.battle.fighter}~ disconnected",
+                anim=client.last_sprite,
+                color=3,
+                offset_pair=100,
+            )
 
         # Update everyone's available characters list
         # Commented out due to potentially causing clientside lag...
@@ -889,6 +927,11 @@ class Area:
                 if c.area.background != bg:
                     c.send_command("BN", c.area.background)
 
+    def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+        """Broadcast a timer to all clients in this area."""
+        for c in self.clients:
+            c.send_timer_set_time(timer_id, new_time, start)
+
     def broadcast_ooc(self, msg):
         """
         Broadcast an OOC message to all clients in the area.
@@ -930,7 +973,14 @@ class Area:
                 frames_realization="",
                 frames_sfx="",
                 additive=0,
-                effect="", targets=None):
+                effect="", 
+                targets=None,
+                third_charid=-1,
+                third_folder="",
+                third_emote=0,
+                third_offset="",
+                third_flip=0,
+                video=""):
         """
         Send an IC message from a client to all applicable clients in the area.
         :param client: speaker
@@ -1055,6 +1105,7 @@ class Area:
             # We're in a minigame w/ team setups
             if opposing_team is not None:
                 charid_pair = -1
+                third_charid = -1
                 # Last speaker is us and our message already paired us with someone, and that someone is on the opposing team
                 if (
                     client.area.last_ic_message is not None
@@ -1161,7 +1212,13 @@ class Area:
                            frames_realization,
                            frames_sfx,
                            additive,
-                           effect)
+                           effect,
+                           third_charid,
+                           third_folder,
+                           third_emote,
+                           third_offset,
+                           third_flip,
+                           video)
         if self.recording:
             # See if the testimony is supposed to end here.
             scrunched = "".join(e for e in msg if e.isalnum())
@@ -1211,6 +1268,12 @@ class Area:
             frames_sfx,  # 27
             additive,  # 28
             effect,  # 29
+            third_charid, # 30
+            third_folder, # 31
+            third_emote, # 32
+            third_offset, # 33
+            third_flip, # 34
+            video, #35
         )
         self.last_ic_message = args
 
@@ -1265,6 +1328,12 @@ class Area:
                 frames_sfx,  # 27
                 additive,  # 28
                 effect,  # 29
+                third_charid, # 30
+                third_folder, # 31
+                third_emote, # 32
+                third_offset, # 33
+                third_flip, # 34
+                video, # 35
             )
             if idx == -1:
                 # Add one statement at the very end.
@@ -1318,6 +1387,9 @@ class Area:
             return False
         # Our client is narrating or blankposting via slash command
         if client.narrator or client.blankpost:
+            return False
+        # Our client is narrating or blankposting via ini editing
+        if anim == "" or derelative(anim) == "misc/blank":
             return False
         if char.lower() != client.char_name.lower():
             for char_link in self.server.allowed_iniswaps:
@@ -1437,7 +1509,8 @@ class Area:
                             b["name"] for b in c["songs"]
                         ]:
                             for s in c["songs"]:
-                                if s["length"] == 0 or s["name"] == self.music:
+                                looping = ("length" not in s or s["length"] == -1)
+                                if not looping or s["name"] == self.music:
                                     continue
                                 songs = songs + [s]
             song = random.choice(songs)
@@ -1605,11 +1678,36 @@ class Area:
             self.hp_pro = val
         self.send_command("HP", side, val)
 
-    def change_background(self, bg, silent=False):
+    def change_background(self, bg, overlay="", mode=1):
         """
-        Set the background.
-        :param bg: background name
+        Set the background and/or overlay.
+        
+        parameters:
+        bg:      background name
+        silent:  should send the pre 2.8 packet or the new one?
+        overlay: overlay name (optional)
+        
         :raises: AreaError if `bg` is not in background list
+        
+        BN packet implementation:
+        
+        Before 2.8 (Changes after sending a IC message):
+        BN # <background name>
+        
+        AO 2.8 (Clear viewport and update/change background position):
+        BN # <background name> # <pos>
+        
+        AOG 1.0 (Put a additional image on top of the character):
+        BN # <background name> # <pos> # <overlay:str> # <mode:int>
+        
+        mode: 0 = pre 2.8 version (change background after IC message)
+              1 = 2.8 version (Change background immediately, clearing the viewport)
+              2 = Change background without clearing the viewport
+              3 = Change the overlay immediately and the background in the next IC message
+
+        The client should be expected to implement at least the first two.
+
+        
         """
         if self.use_backgrounds_yaml:
             if len(self.server.backgrounds) <= 0:
@@ -1620,36 +1718,44 @@ class Area:
                 raise AreaError(
                     f'Invalid background name {bg}.\nPlease add it to the "backgrounds.yaml" or change the background name for area [{self.id}] {self.name}.'
                 )
+        # TODO: Make overlay use  "self.use_overlay_yaml". For now it guessses that it is always disabled.
+
         if self.dark:
             self.background_dark = bg
         else:
             self.background = bg
+
+        if len(self.pos_lock) > 0:
+            for client in self.clients:
+                # Update all clients to the pos lock
+                if client.pos not in self.pos_lock:
+                    client.change_position(self.pos_lock[0])
+
+        self.overlay = overlay
+
         for client in self.clients:
-            # Update all clients to the pos lock
-            if len(self.pos_lock) > 0 and client.pos not in self.pos_lock:
-                client.change_position(self.pos_lock[0])
-            if silent:
-                client.send_command("BN", bg)
-            else:
-                client.send_command("BN", bg, client.pos)
+            client.send_command("BN", bg, client.pos, self.overlay, mode)
 
     def change_status(self, value):
         """
         Set the status of the area.
         :param value: status code
         """
-        allowed_values = (
-            "idle",
-            "rp",
-            "casing",
-            "looking-for-players",
-            "lfp",
-            "recess",
-            "gaming",
+        value = censor(
+            value,
+            self.server.censors["whole"],
+            self.server.censors["replace"],
+            True,
         )
-        if value.lower() not in allowed_values:
+        value = censor(
+            value,
+            self.server.censors["partial"],
+            self.server.censors["replace"],
+            False,
+        )
+        if value.lower() == "hub":
             raise AreaError(
-                f'Invalid status. Possible values: {", ".join(allowed_values)}'
+                'Hub Status is a restricted value.'
             )
         if value.lower() == "lfp":
             value = "looking-for-players"
@@ -1831,9 +1937,8 @@ class Area:
         self.invite_list = self.old_invite_list
         self.red_team.clear()
         self.blue_team.clear()
-        # Timer ID 2 is used for minigames
-        # 3 stands for unset and hide
-        self.send_command("TI", 2, 3)
+        self.votes_cast.clear()
+        self.send_timer_set_time(2, None)
         self.send_ic(
             msg=f"~~}}}}`{self.minigame} END!`\\n{reason}",
             showname="System",
@@ -1868,6 +1973,36 @@ class Area:
                 0,
             )
         self.minigame = ""
+
+    def vote_end_minigame(self, client):
+        if client.area.minigame == "":
+            client.send_ooc("There is no minigame running right now.")
+            return
+
+        valid_voters = [
+            c for c in self.clients if
+                not c.hidden and
+                not c in self.afkers and
+                not c in self.owners and
+                c.char_id not in client.area.blue_team and
+                c.char_id not in client.area.red_team
+        ]
+        if client not in valid_voters:
+            client.send_ooc("You're not qualified to vote-end this minigame! (You're a Spectator, Hidden or the area owner)")
+            return
+        self.votes_cast.add(client)
+        votes_casted = len(self.votes_cast)
+        votes_needed = round(len(valid_voters) * self.votes_percentage)
+
+        info = f'[{client.id}] {client.showname} is voting to end the minigame!'
+
+        if votes_casted >= votes_needed:
+            client.area.end_minigame("Voted to end.")
+            info += f'\nSuccessfully voted to end with ({votes_casted}/{votes_needed}) votes.'
+        else:
+            info += f'({votes_casted}/{votes_needed}) votes left.'
+        
+        self.broadcast_ooc(info)
 
     def start_debate(self, client, target, pta=False):
         if (client.char_id in self.red_team and target.char_id in self.blue_team) or (
@@ -1966,6 +2101,8 @@ class Area:
             self.blue_team.clear()
             self.red_team.add(client.char_id)
             self.blue_team.add(target.char_id)
+            
+            self.votes_cast.clear()
             if pta:
                 self.minigame = "Panic Talk Action"
                 timer = self.panic_talk_action_timer
@@ -1998,9 +2135,8 @@ class Area:
                 f"{self.minigame} is happening! You cannot interrupt it.")
 
         timer = max(5, int(timer))
-        # Timer ID 2 is used
-        self.send_command("TI", 2, 2)
-        self.send_command("TI", 2, 0, timer * 1000)
+        # Timer ID 2 is used, start it
+        self.send_timer_set_time(2, timer * 1000, True)
         self.minigame_schedule = asyncio.get_running_loop().call_later(
             timer, lambda: self.end_minigame("Timer expired!")
         )
@@ -2086,13 +2222,35 @@ class Area:
                 client.send_ooc(
                     f"[Demo] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
                 )
-                logger.exception("Exception while running a command")
+                logger.error("Exception while running a Demo command:")
+                traceback.print_exc()
+                print(ex)
                 self.stop_demo()
                 return
         elif len(client.broadcast_list) > 0:
             for area in client.broadcast_list:
+                if header == "MS":
+                    # If we're on narration pos
+                    if args[5] == "":
+                        if area.last_ic_message is not None:
+                            # Set the pos to last message's pos
+                            args[5] = area.last_ic_message[5]
+                        else:
+                            # Set the pos to the 0th pos-lock
+                            if len(self.pos_lock) > 0:
+                                args[5] = self.pos_lock[0]
                 area.send_command(header, *args)
         else:
+            if header == "MS":
+                # If we're on narration pos
+                if args[5] == "":
+                    if self.last_ic_message is not None:
+                        # Set the pos to last message's pos
+                        args[5] = self.last_ic_message[5]
+                    else:
+                        # Set the pos to the 0th pos-lock
+                        if len(self.pos_lock) > 0:
+                            args[5] = self.pos_lock[0]
             self.send_command(header, *args)
         # Proceed to next demo line
         self.play_demo(client)

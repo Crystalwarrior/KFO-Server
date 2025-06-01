@@ -1,9 +1,11 @@
 import shlex
+import yaml
+import os
 
 import re
 
 from server import database
-from server.constants import TargetType
+from server.constants import TargetType, derelative
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 from . import mod_only
@@ -42,8 +44,11 @@ __all__ = [
     "ooc_cmd_minigame_end_song",
     "ooc_cmd_minigame_concede_song",
     "ooc_cmd_subtheme",
+    "ooc_cmd_evidence_save",
+    "ooc_cmd_evidence_load",
+    "ooc_cmd_evidence_overlay",
+    "ooc_cmd_evidence_lists",
 ]
-
 
 def ooc_cmd_doc(client, arg):
     """
@@ -619,7 +624,7 @@ def ooc_cmd_testimony(client, arg):
             raise
         return
 
-    msg = "Use > IC to progress, < to backtrack, >3 or <3 to go to specific statements."
+    msg = "Use > IC to progress, < to backtrack, = to repeat, >3 or <3 to go to specific statements."
     msg += f"\n-- {client.area.testimony_title} --"
     for i, statement in enumerate(client.area.testimony):
         # [15] SHOWNAME
@@ -981,6 +986,9 @@ def ooc_cmd_concede(client, arg):
                 client.area.broadcast_ooc(
                     "The minigame has been forcibly ended.")
                 return
+            if client.char_id not in client.area.blue_team and client.char_id not in client.area.red_team:
+                client.area.vote_end_minigame(client)
+                return
             client.area.start_debate(
                 client, client
             )  # starting a debate against yourself is a concede
@@ -1005,7 +1013,96 @@ def ooc_cmd_subtheme(client, arg):
         f"Setting hub subtheme to {arg}."
     )
 
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_evidence_lists(client, arg):
+    """
+    Show all evidence lists available on the server.
+    Usage: /evidence_lists
+    """
+    msg = "Available Evidence Lists:"
+    for F in os.listdir("storage/evidence/"):
+        if F.lower().endswith(".yaml"):
+            msg += "\n- {}".format(F[:-5])
+
+    client.send_ooc(msg)
+
+
+def evidence_load(client, name, overlay = False):
+    if f"{name}.yaml" not in os.listdir("storage/evidence"):
+        client.send_ooc(f"Evidence List {name} not found!")
+        return
+
+    with open(f"storage/evidence/{name}.yaml", "r", encoding="utf-8") as stream:
+        evidence = yaml.safe_load(stream)
+
+        done_what = "overlay"
+        if not overlay:
+            client.area.evi_list.evidences.clear()
+            done_what = "load"
+
+        client.area.evi_list.import_evidence(evidence)
+        client.area.broadcast_evidence_list()
+        database.log_area(f"evidence.{done_what}", client, client.area, name)
+        client.send_ooc(f"You have {done_what}ed evidence from '{name}'.")
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_evidence_load(client, arg):
+    """
+    Allow you to load an evidence list from the server.
+    Usage: /evidence_load <name>
+    """
+    if arg == "":
+        client.send_ooc("Usage: /evidence_load <name>")
+        return
+    evidence_load(client, derelative(arg))
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_evidence_overlay(client, arg):
+    """
+    Allow you to load and overlay an evidence list from the server to the existing evidence.
+    Usage: /evidence_overlay <name>
+    """
+    if arg == "":
+        client.send_ooc("Usage: /evidence_overlay <name>")
+        return
+    evidence_load(client, derelative(arg), overlay = True)
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_evidence_save(client, arg):
+    """
+    Allow you to save evidence in a list stored in the server files!
+    Usage: /evidence_save <name>
+    """
+    if arg == "":
+        client.send_ooc("Usage: /evidence_save <name>")
+        return
+
+    if len(client.area.evi_list.evidences) <= 0:
+        client.send_ooc("There is no evidence in the area to save!")
+        return
+    evidence = client.area.evi_list.export_evidence()
+    arg = f"storage/evidence/{derelative(arg)}.yaml"
+    if os.path.isfile(arg):
+        with open(arg, "r", encoding="utf-8") as stream:
+            evi_list = yaml.safe_load(stream)
+        if "read_only" in evi_list and evi_list["read_only"] is True:
+            raise ArgumentError(
+                f"Evidence List {arg} already exists and it is read-only!"
+            )
+    with open(arg, "w", encoding="utf-8") as yaml_save:
+        yaml.dump(evidence, yaml_save)
+    database.log_area(f"evidence.save", client, client.area, arg)
+    client.send_ooc(
+        f"Evidence has been saved as '{arg}' on the server."
+    )
+
 def _notify_testify_disabled(client):
     """Simply an encapsulated way of telling the player the testimony
     functionality is disabled"""
     client.send_ooc('The Testify functionality is disabled on this server')
+
