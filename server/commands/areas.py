@@ -79,6 +79,7 @@ def ooc_cmd_overlay(client, arg):
         raise ClientError("You must be authorized to do that.")
     try:
         client.area.change_background(client.area.background, overlay=arg)
+        logBGChange([client.id, arg])
     except AreaError:
         raise
     client.area.broadcast_ooc(
