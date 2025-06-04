@@ -1,5 +1,6 @@
 import json
 import shlex
+import sqlite3
 
 import arrow
 import pytimeparse
@@ -752,6 +753,7 @@ def ooc_cmd_gethdids(client, arg):
         raise ClientError("You must be a moderator to use this command.")
     client.send_areas_clients(show_hdid=True)
 
+@mod_only()
 def ooc_cmd_lockdown(client, arg):
     """
     Toggle lockdown mode. In lockdown mode, only whitelisted HDIDs can join.
