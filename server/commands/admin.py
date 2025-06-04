@@ -40,7 +40,12 @@ __all__ = [
     "ooc_cmd_multiclients",
     "ooc_cmd_lastneeds",
     "ooc_cmd_lastevidence",
-    "ooc_cmd_bgchanges"
+    "ooc_cmd_bgchanges",
+    "ooc_cmd_gethdid",
+    "ooc_cmd_gethdids",
+    "ooc_cmd_lockdown",
+    "ooc_cmd_whitelist",
+    "ooc_cmd_unwhitelist"
 ]
 
 
@@ -726,3 +731,77 @@ def ooc_cmd_bgchanges(client, _):
             msg.append(f"\nIPID: {i[0]}\nChanged the background to: '{i[1]}'")
 
     client.send_ooc("\n".join(msg))
+    
+@mod_only()
+def ooc_cmd_gethdid(client, arg):
+    """
+    Show HDIDs of all users in the current area.
+    Usage: /gethdid
+    """
+    if not client.is_mod:
+        raise ClientError("You must be a moderator to use this command.")
+    client.send_area_info(client.area.id, show_hdid=True)
+
+@mod_only()
+def ooc_cmd_gethdids(client, arg):
+    """
+    Show HDIDs of all users in all areas of the current hub.
+    Usage: /gethdids
+    """
+    if not client.is_mod:
+        raise ClientError("You must be a moderator to use this command.")
+    client.send_areas_clients(show_hdid=True)
+
+@mod_only()
+def ooc_cmd_lockdown(client, arg):
+    """
+    Toggle server lockdown mode.
+    Usage: /lockdown <on|off>
+    """
+    
+    if not arg or arg.lower() not in ['on', 'off']:
+        raise ArgumentError("Usage: /lockdown <on|off>")
+        
+    if arg.lower() == 'on':
+        for c in client.server.client_manager.clients:
+            client.server.whitelist.add(c.hdid)
+        client.server.save_whitelist()
+        
+        client.server.lockdown = True
+        client.send_ooc("The server is now in lockdown mode. All current players have been whitelisted.")
+    else:
+        client.server.lockdown = False
+        client.send_ooc("The server lockdown has been lifted. Anyone can join now.")
+        
+@mod_only()
+def ooc_cmd_whitelist(client, arg):
+    """
+    Add a HDID to the whitelist.
+    Usage: /whitelist <hdid>
+    """
+        
+    if not arg:
+        raise ArgumentError("You must specify a HDID.")
+        
+    hdid = arg.strip()
+    client.server.whitelist.add(hdid)
+    client.server.save_whitelist()
+    client.send_ooc(f"HDID {hdid} has been added to the whitelist.")
+  
+@mod_only()  
+def ooc_cmd_unwhitelist(client, arg):
+    """
+    Remove a HDID from the whitelist.
+    Usage: /unwhitelist <hdid>
+    """
+        
+    if not arg:
+        raise ArgumentError("You must specify a HDID.")
+        
+    hdid = arg.strip()
+    if hdid in client.server.whitelist:
+        client.server.whitelist.remove(hdid)
+        client.server.save_whitelist()
+        client.send_ooc(f"HDID {hdid} has been removed from the whitelist.")
+    else:
+        client.send_ooc(f"HDID {hdid} is not in the whitelist.")

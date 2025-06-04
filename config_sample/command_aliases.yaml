@@ -113,3 +113,7 @@ get_links: getlinks
 remove_musiclist: musiclist_remove
 add_musiclist: musiclist_add
 save_musiclist: musiclist_save
+ghds: gethdids
+ghd: gethdid
+wl: whitelist
+uwl: unwhitelist

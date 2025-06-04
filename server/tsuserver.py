@@ -114,6 +114,25 @@ class TsuServer3:
 
         self.webhooks = Webhooks(self)
         self.bridgebot = None
+        
+        # Lockdown shenanigans
+        self.lockdown = False
+        self.whitelist = set()
+        self.load_whitelist()
+        
+    def load_whitelist(self):
+        """Load whitelist from storage."""
+        try:
+            with open('storage/whitelist.txt', 'r') as f:
+                self.whitelist = set(f.read().splitlines())
+        except FileNotFoundError:
+            with open('storage/whitelist.txt', 'w') as f:
+                pass
+                
+    def save_whitelist(self):
+        """Save whitelist to storage."""
+        with open('storage/whitelist.txt', 'w') as f:
+            f.write('\n'.join(self.whitelist))
 
     def start(self):
         """Start the server."""
