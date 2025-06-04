@@ -85,11 +85,6 @@ class AOProtocol(asyncio.Protocol):
         """
         try:
             self.client = self.server.new_client(transport)
-            if self.server.lockdown and self.client.hdid not in self.server.whitelist:
-                msg = f"Server is currently in lockdown. Your HDID is {self.client.hdid}. Please contact staff in Discord to get whitelisted."
-                self.client.send_command("CT", "Server", msg)
-                self.client.disconnect()
-                return
         except ClientError:
             transport.close()
             return
@@ -175,6 +170,12 @@ class AOProtocol(asyncio.Protocol):
             self.client.disconnect()
             return
         hdid = self.client.hdid = args[0]
+        
+        if self.server.lockdown and self.client.hdid not in self.server.whitelist:
+            msg = f"Server is currently in lockdown. Your HDID is {self.client.hdid}. Please contact staff in Discord to get whitelisted."
+            self.client.send_command("BD", msg)
+            self.client.disconnect()
+            return
         ipid = self.client.ipid
 
         database.add_hdid(ipid, hdid)
