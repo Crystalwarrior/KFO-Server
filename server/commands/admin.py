@@ -752,26 +752,60 @@ def ooc_cmd_gethdids(client, arg):
         raise ClientError("You must be a moderator to use this command.")
     client.send_areas_clients(show_hdid=True)
 
-@mod_only()
 def ooc_cmd_lockdown(client, arg):
     """
-    Toggle server lockdown mode.
-    Usage: /lockdown <on|off>
+    Toggle lockdown mode. In lockdown mode, only whitelisted HDIDs can join.
+    Usage: /lockdown [on/off/update]
     """
+        
+    if len(arg) == 0:
+        client.send_ooc("Current lockdown status: " + 
+                       ("on" if client.server.lockdown else "off") +
+                       f"\nWhitelist entries: {len(client.server.whitelist)}")
+        return
+        
+    cmd = arg.lower()
     
-    if not arg or arg.lower() not in ['on', 'off']:
-        raise ArgumentError("Usage: /lockdown <on|off>")
-        
-    if arg.lower() == 'on':
-        for c in client.server.client_manager.clients:
-            client.server.whitelist.add(c.hdid)
-        client.server.save_whitelist()
-        
+    if cmd == 'on':
         client.server.lockdown = True
-        client.send_ooc("The server is now in lockdown mode. All current players have been whitelisted.")
-    else:
+        client.send_ooc("Lockdown mode enabled.")
+    elif cmd == 'off':
         client.server.lockdown = False
-        client.send_ooc("The server lockdown has been lifted. Anyone can join now.")
+        client.send_ooc("Lockdown mode disabled.")
+    elif cmd == 'update':
+        try:
+            existing_hdids = set()
+            try:
+                with open('config/whitelist.txt', 'r') as f:
+                    existing_hdids = {line.strip() for line in f if line.strip()}
+            except FileNotFoundError:
+                pass
+                
+            with sqlite3.connect('storage/db.sqlite3') as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute('SELECT DISTINCT hdid FROM hdids')
+                db_hdids = {row['hdid'] for row in cursor.fetchall()}
+                
+            new_hdids = db_hdids - existing_hdids
+            
+            if not new_hdids:
+                client.send_ooc("No new HDIDs found to add to whitelist.")
+                return
+                
+            with open('config/whitelist.txt', 'a') as f:
+                for hdid in new_hdids:
+                    f.write(f"{hdid}\n")
+
+            client.server.whitelist = existing_hdids | new_hdids
+            
+            client.send_ooc(f"Added {len(new_hdids)} new HDIDs to whitelist. Total whitelist entries: {len(client.server.whitelist)}")
+            
+        except sqlite3.Error as e:
+            raise ClientError(f"Database error: {e}")
+        except IOError as e:
+            raise ClientError(f"Failed to write to whitelist.txt: {e}")
+    else:
+        raise ArgumentError("Invalid argument. Usage: /lockdown [on/off/update]")
         
 @mod_only()
 def ooc_cmd_whitelist(client, arg):
