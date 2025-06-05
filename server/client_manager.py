@@ -1557,6 +1557,7 @@ class ClientManager:
                 if self.is_mod:
                     if show_hdid:
                         info += f" ({c.hdid})"  # Show HDID instead of IPID
+                        info += f" ({c.ipid})"
                     else:
                         info += f" ({c.ipid})"
                 if c.name != "" and self.is_mod:
