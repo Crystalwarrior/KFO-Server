@@ -778,7 +778,7 @@ def ooc_cmd_lockdown(client, arg):
         try:
             existing_hdids = set()
             try:
-                with open('config/whitelist.txt', 'r') as f:
+                with open('storage/whitelist.txt', 'r') as f:
                     existing_hdids = {line.strip() for line in f if line.strip()}
             except FileNotFoundError:
                 pass
@@ -794,7 +794,7 @@ def ooc_cmd_lockdown(client, arg):
                 client.send_ooc("No new HDIDs found to add to whitelist.")
                 return
                 
-            with open('config/whitelist.txt', 'a') as f:
+            with open('storage/whitelist.txt', 'a') as f:
                 for hdid in new_hdids:
                     f.write(f"{hdid}\n")
 
