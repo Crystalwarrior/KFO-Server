@@ -956,14 +956,16 @@ def ooc_cmd_trigger(client, arg):
 
 def ooc_cmd_format_timer(client, arg):
     """
-    Format the timer
+    - Format the timer in the current area or hub.
+    - Example of format: Time Left: hh:mm
+    - Default format: hh:mm:ss.zzz
     Usage: /format_timer <Timer_iD> <Format>
     """
     args = shlex.split(arg)
     try:
         args[0] = int(args[0])
     except:
-        raise ArgumentError("Timer ID should be an integer")
+        return
     if args[0] == 0:
         if client.is_mod or client in client.area.area_manager.owners:
             timer = client.area.area_manager.timer
@@ -980,7 +982,10 @@ def ooc_cmd_format_timer(client, arg):
         else:
             client.send_ooc("You cannot change timer format if you are at least CM")
             return
-    timer.format = args[1:]
+    timer.format = ' '.join(args[1:])
+    if timer.format == "":
+        timer.format = "hh:mm:ss.zzz"
+        client.send_ooc("Resetting timer format to default.")
     if timer.set:
         if timer.started:
             current_time = timer.target - arrow.get()
