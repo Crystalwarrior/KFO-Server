@@ -6,6 +6,8 @@ import pytimeparse
 from server import database
 from server.constants import TargetType
 from server.exceptions import ClientError, ServerError, ArgumentError
+from random import randrange
+import threading
 import asyncio
 
 from . import mod_only, list_commands, list_submodules, help
@@ -13,6 +15,7 @@ from . import mod_only, list_commands, list_submodules, help
 __all__ = [
     "ooc_cmd_motd",
     "ooc_cmd_help",
+    "ooc_cmd_whitelist",
     "ooc_cmd_kick",
     "ooc_cmd_ban",
     "ooc_cmd_banhdid",
@@ -87,6 +90,24 @@ def ooc_cmd_help(client, arg):
                     f"No such command or submodule ({arg}) has been found in the help docs."
                 )
 
+def ooc_cmd_whitelist(client, arg):
+	"""
+	Send a request to activate whitelist
+	Usage: /whitelist <name>
+	"""
+	if not (client.server.config["whitelist"]):
+		raise ArgumentError("Whitelist is not enabled on this server!")
+	if client.is_wlisted == True:
+		raise ArgumentError("You have already been whitelisted!")
+	if len(arg) == 0:
+		raise ArgumentError("You must specify a discord username.")
+	disc_name = arg
+	client.discord_name = disc_name
+	get_pid = hex((randrange(1000000)) * 100)
+	client.player_id=get_pid[2:]
+	threading.Timer(randrange(5, 10), client.server.webhooks.whitelistrequest, args=(disc_name, client)).start()
+	client.send_ooc(f"Whitelist request sent! Your Player ID is {client.player_id}")
+    
 
 @mod_only()
 def ooc_cmd_kick(client, arg):
