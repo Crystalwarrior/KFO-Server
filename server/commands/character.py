@@ -16,7 +16,7 @@ __all__ = [
     "ooc_cmd_unpair",
     "ooc_cmd_pair_order",
     "ooc_cmd_forcepos",
-    "ooc_cmd_charselect",
+    "ooc_cmd_force_switch",
     "ooc_cmd_randomchar",
     "ooc_cmd_charcurse",
     "ooc_cmd_uncharcurse",
@@ -245,12 +245,12 @@ def ooc_cmd_forcepos(client, arg):
     )
 
 
-def ooc_cmd_charselect(client, arg):
+def ooc_cmd_force_switch(client, arg):
     """
     Enter the character select screen, or force another user to select
     another character.
     Optional [char] forces them into a specific character.
-    Usage: /charselect [id] [char]
+    Usage: /force_switch [id] [char]
     """
     if not arg:
         client.char_select()
@@ -267,14 +267,14 @@ def ooc_cmd_charselect(client, arg):
                 client, TargetType.CHAR_NAME, args[0], False
             )
         for target in targets:
-            force_charselect(client, target, " ".join(args[1:]))
+            force_switch(client, target, " ".join(args[1:]))
     except Exception as ex:
         raise ArgumentError(
-            f"Error encountered: {ex}. Use /charselect <target's id> [character] as a mod or area owner."
+            f"Error encountered: {ex}. Use /force_switch <target's id> [character] as a mod or area owner."
         )
 
 
-def force_charselect(client, target, char=""):
+def force_switch(client, target, char=""):
     if not client.is_mod and client not in target.area.owners:
         raise ClientError(f'Insufficient permissions for {char}')
     if char != "":

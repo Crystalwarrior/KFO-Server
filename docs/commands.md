@@ -255,7 +255,7 @@
     - Set the place your character resides in the area.
 * **forcepos** `<pos>` `<target>`
     - Set the place another character resides in the area.
-* **charselect** `[id]` `[char]`
+* **force_switch** `[id]` `[char]`
     - Enter the character select screen, or force another user to select another character.
     - Optional `[char]` forces them into that specific character folder/ID.
 * **randomchar**

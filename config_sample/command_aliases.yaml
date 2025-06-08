@@ -113,3 +113,5 @@ get_links: getlinks
 remove_musiclist: musiclist_remove
 add_musiclist: musiclist_add
 save_musiclist: musiclist_save
+charselect: force_switch
+forceswitch: force_switch
