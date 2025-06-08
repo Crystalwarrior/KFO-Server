@@ -49,21 +49,27 @@ def dezalgo(input, tolerance=3):
 
 
 def censor(text, censor_list=[], replace="*", whole_words=True):
-    """
-    Checks if the string contains any of the passed restricted words and replaces them with the replace char.
-    Returns a parsed string.
-    :param censor_list: list of swear words to replace
-    :param replace: what to replace every letter of the word with
-    :param whole_word: if true, we'll only match full words instead of partial matches
-    """
     if censor_list is None or len(censor_list) <= 0:
         return text
-    regex = r"%s"
-    if whole_words:
-        regex = r"\b%s\b"
+    
     for word in censor_list:
-        text = re.sub(regex % word, len(word) * replace,
-                      text, flags=re.IGNORECASE)
+        if not word:
+            continue
+
+        escaped_word = re.escape(word)
+        
+        if whole_words:
+            pattern = fr'\b{escaped_word}\b'
+        else:
+            pattern = escaped_word
+            
+        replacement = replace * len(word)
+        
+        try:
+            text = re.sub(pattern, replacement, text, flags=re.IGNORECASE | re.UNICODE)
+        except re.error:
+            text = text.replace(word, replacement)
+    
     return text
 
 
