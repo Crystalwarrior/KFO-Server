@@ -79,6 +79,11 @@ class ClientManager:
             self.casing_steno = False
             self.case_call_time = 0
 
+            # whitelist related
+            self.discord_name = ''
+            self.is_wlisted = False
+            self.player_id = -1
+
             # Need command
             self.need_call_time = 0
 
