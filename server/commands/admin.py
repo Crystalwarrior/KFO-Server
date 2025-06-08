@@ -123,8 +123,8 @@ def ooc_cmd_whitelistself(client, arg):
         if client.ipid == targetc.ipid:
             if targetc.is_wlisted == True:
                 continue
-            targetc.is_wlisted == True
-            targetc.discord_name == client.discord_name
+            targetc.is_wlisted = True
+            targetc.discord_name = client.discord_name
             targetc.send_ooc("You have been whitelisted by the parent client!")
             clientcount += 1
     if clientcount == 0:
