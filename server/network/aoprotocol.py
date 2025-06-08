@@ -139,7 +139,7 @@ class AOProtocol(asyncio.Protocol):
         :returns: returns True if message was validated
 
         """
-        if needs_auth and (self.client.char_id is None or self.client.char_id == -1):
+        if needs_auth and (self.client.char_id is None or self.client.char_id == -1) and not self.client.is_mod and self.client not in self.client.area.owners:
             return False
         if len(args) != len(types):
             return False
