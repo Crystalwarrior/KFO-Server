@@ -771,7 +771,7 @@ def ooc_cmd_force_follow(client, arg):
             if c.area != client.area:
                 c.set_area(client.area)
         client.send_ooc(
-            f"Forced {len(victims)} client(s) to follow [{target.id}] {target.showname}.")
+            f"Forced {len(victims)} client(s) to follow [{target.id}] {target.showname}. Use /unfollow {target.id} to free them.")
     else:
         client.send_ooc("No targets found.")
 

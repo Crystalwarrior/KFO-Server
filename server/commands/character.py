@@ -483,7 +483,7 @@ def ooc_cmd_blind(client, arg):
     if targets:
         for c in targets:
             if c.blinded:
-                client.send_ooc(f"Client [{c.id}] {c.name} already blinded!")
+                client.send_ooc(f"Client [{c.id}] {c.name} already blinded! Use /unblind {c.id} to undo.")
                 continue
             c.blind(True)
             client.send_ooc(
@@ -516,7 +516,7 @@ def ooc_cmd_unblind(client, arg):
     if targets:
         for c in targets:
             if not c.blinded:
-                client.send_ooc(f"Client [{c.id}] {c.name} already unblinded!")
+                client.send_ooc(f"Client [{c.id}] {c.name} already unblinded! Use /blind {c.id} to blind them.")
                 continue
             c.blind(False)
             client.send_ooc(f"You have unblinded [{c.id}] {c.name}.")
