@@ -247,15 +247,13 @@ def ooc_cmd_forcepos(client, arg):
 
 def ooc_cmd_force_switch(client, arg):
     """
-    Enter the character select screen, or force another user to select
-    another character.
+    Force another user to select another character.
     Optional [char] forces them into a specific character.
-    Usage: /force_switch [id] [char]
+    Usage: /force_switch <id> [char]
     """
     if not arg:
-        client.char_select()
-        return
-
+        raise ArgumentError(
+            'Not enough arguments. Usage: /force_switch <id> [char]')
     args = shlex.split(arg)
     try:
         if args[0].isnumeric():
