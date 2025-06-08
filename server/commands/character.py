@@ -32,6 +32,8 @@ __all__ = [
     "ooc_cmd_unhide",
     "ooc_cmd_sneak",
     "ooc_cmd_unsneak",
+    "ooc_cmd_freeze",
+    "ooc_cmd_unfreeze",
     "ooc_cmd_listen_pos",
     "ooc_cmd_unlisten_pos",
     "ooc_cmd_save_character_data",
@@ -737,6 +739,70 @@ def force_sneak(client, arg):
 @mod_only(area_owners=True)
 def force_unsneak(client, arg):
     arg.sneak(False)
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_freeze(client, arg):
+    """
+    Freeze targeted player(s) from being able to move between areas.
+    Usage: /freeze <id(s)>
+    """
+    if len(arg) == 0:
+        raise ArgumentError("You must specify a target.")
+    try:
+        targets = []
+        ids = [int(s) for s in arg.split(" ")]
+        for targ_id in ids:
+            c = client.server.client_manager.get_targets(
+                client, TargetType.ID, targ_id, False
+            )
+            if c:
+                targets = targets + c
+    except Exception:
+        raise ArgumentError("You must specify a target. Use /freeze <id>.")
+
+    if targets:
+        for c in targets:
+            if c.frozen:
+                client.send_ooc(f"Client [{c.id}] {c.name} already frozen! Use /unfreeze {c.id} to undo.")
+                continue
+            c.freeze(True)
+            client.send_ooc(
+                f"You have frozen [{c.id}] {c.name} from being able to move between areas."
+            )
+    else:
+        raise ArgumentError("No targets found.")
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_unfreeze(client, arg):
+    """
+    Undo effects of the /freeze command.
+    Usage: /unfreeze <id(s)>
+    """
+    if len(arg) == 0:
+        raise ArgumentError("You must specify a target.")
+    try:
+        targets = []
+        ids = [int(s) for s in arg.split(" ")]
+        for targ_id in ids:
+            c = client.server.client_manager.get_targets(
+                client, TargetType.ID, targ_id, False
+            )
+            if c:
+                targets = targets + c
+    except Exception:
+        raise ArgumentError("You must specify a target. Use /unfreeze <id>.")
+
+    if targets:
+        for c in targets:
+            if not c.frozen:
+                client.send_ooc(f"Client [{c.id}] {c.name} already unfrozen! Use /freeze {c.id} to freeze them.")
+                continue
+            c.freeze(False)
+            client.send_ooc(f"You have unfrozen [{c.id}] {c.name}.")
+    else:
+        raise ArgumentError("No targets found.")
 
 
 def ooc_cmd_listen_pos(client, arg):

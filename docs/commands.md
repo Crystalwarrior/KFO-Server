@@ -292,6 +292,10 @@
     - Begin sneaking a.k.a. hide your area moving messages from the OOC.
 * **unsneak**
     - Stop sneaking a.k.a. show your area moving messages in the OOC.
+* **freeze** `<id>(s)`
+    - Freeze targeted player(s) from being able to move between areas.
+* **unfreeze** `<id>(s)`
+    - Undo the effects of `/freeze`.
 * **listen\_pos** `[pos(s)]`
     - Start only listening to your currently occupied pos.
     - All messages outside of that pos will be reflected in the OOC.

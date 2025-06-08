@@ -128,6 +128,8 @@ class ClientManager:
             self.following = None
             self.forced_to_follow = False
             self.edit_ambience = False
+            # If we're allowed to move or not
+            self.frozen = False
             # if we're currently trying to set a song for the minigame
             self.editing_minigame_song = ""
             # 0 = start
@@ -1005,6 +1007,8 @@ class ClientManager:
             )
 
         def try_access_area(self, area, peek=False):
+            if self.frozen:
+                raise ClientError("You are frozen in place so you can't move!")
             if (
                 self.area.locked
                 and self not in self.area.owners
@@ -1981,6 +1985,15 @@ class ClientManager:
                 f"You are {msg} blinded from the area and seeing non-broadcasted IC messages."
             )
             self.send_command("LE", *self.area.get_evidence_list(self))
+
+        def freeze(self, tog=True):
+            self.frozen = tog
+            msg = "no longer"
+            if tog:
+                msg = "now"
+            self.send_ooc(
+                f"You are {msg} frozen from moving between areas."
+            )
 
         def sneak(self, tog=True):
             self.sneaking = tog
