@@ -67,6 +67,40 @@ class Bridgebot(commands.Bot):
                 await channel.send(embed=embed)
 
         @self.tree.command()
+        async def whitelist(interaction: discord.Interaction, pid: str):
+            if not interaction.guild:
+                await interaction.response.send_message("Command may not be sent in direct messages!")
+                return
+            if not self.server.config["whitelist"]:
+                await interaction.response.send_message("Whitelisting is disabled on the AO server.")
+            player_id = pid.strip()
+            player_name = interaction.user.name
+            if player_id == "-1":
+                await interaction.response.send_message("Something went wrong...")
+                return
+            for c in self.server.client_manager.clients:
+                if c.player_id == player_id:
+                    if c.is_wlisted == True:
+                        emb=discord.Embed(title="WHITELIST FAILURE", description=f"This user is already whitelisted, {interaction.user.name}!", color=discord.Color.red())
+                        await interaction.response.send_message(embed=emb, ephemeral=True)
+                        return
+                    if player_name != c.discord_name:
+                        emb=discord.Embed(title="WHITELIST FAILURE", description=f"The user's discord username does not match yours, {interaction.user.name}!", color=discord.Color.red())
+                        await interaction.response.send_message(embed=emb, ephemeral=True)
+                        return
+                    c.is_wlisted = True
+                    c.discord_name = player_name
+
+                    c.send_ooc(f"Whitelisted as {player_name}.")
+                    emb=discord.Embed(title="WHITELIST SUCCESS", description=f"The user with PID: {player_id} has been whitelisted, {interaction.user.name}!", color=discord.Color.green())
+                    await interaction.response.send_message(embed=emb, ephemeral=False)
+                    return
+                    
+            emb=discord.Embed(title="WHITELIST FAILURE", description=f"A client with that Player ID cannot be found, {interaction.user.name}!", color=discord.Color.red())
+            await interaction.response.send_message(embed=emb, ephemeral=False)
+            return
+
+        @self.tree.command()
         async def gethubs(interaction: discord.Interaction):
             msg = ""
             number_players = int(self.server.player_count)
