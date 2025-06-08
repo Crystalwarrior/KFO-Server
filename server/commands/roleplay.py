@@ -996,7 +996,7 @@ def ooc_cmd_format_timer(client, arg):
             client.area.area_manager.send_timer_set_time(args[0], current_time, timer.started)
         else:
             client.area.send_timer_set_time(args[0], current_time, timer.started)
-    client.send_ooc(f"Timer {args[0]} format: '{args[1]}'")
+    client.send_ooc(f"Timer {args[0]} format: '{timer.format}'")
 
 
 def ooc_cmd_timer_interval(client, arg):
