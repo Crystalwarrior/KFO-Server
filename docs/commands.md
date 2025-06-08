@@ -258,6 +258,8 @@
 * **force_switch** `[id]` `[char]`
     - Enter the character select screen, or force another user to select another character.
     - Optional `[char]` forces them into that specific character folder/ID.
+* **kill** `<id>`
+    - Force the character into spectator mode with a message that they have died.
 * **randomchar**
     - Select a random character.
 * **charcurse** `<id>` `[charids...]`

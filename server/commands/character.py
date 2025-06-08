@@ -17,6 +17,7 @@ __all__ = [
     "ooc_cmd_pair_order",
     "ooc_cmd_forcepos",
     "ooc_cmd_force_switch",
+    "ooc_cmd_kill",
     "ooc_cmd_randomchar",
     "ooc_cmd_charcurse",
     "ooc_cmd_uncharcurse",
@@ -293,6 +294,34 @@ def force_switch(client, target, char=""):
     else:
         target.char_select()
 
+
+@mod_only(area_owners=True)
+def ooc_cmd_kill(client, arg):
+    """
+    Force the character into spectator mode with a message that they have died.
+    Usage: /kill <id>
+    """
+    if not arg:
+        raise ArgumentError(
+            'Not enough arguments. Usage: /kill <id>')
+
+    args = shlex.split(arg)
+    try:
+        if args[0].isnumeric():
+            targets = client.server.client_manager.get_targets(
+                client, TargetType.ID, int(args[0]), False
+            )
+        else:
+            targets = client.server.client_manager.get_targets(
+                client, TargetType.CHAR_NAME, args[0], False
+            )
+        for target in targets:
+            force_switch(client, target, "-1")
+            target.send_ooc(f"💀You are dead!💀\nYou've been forcibly swapped to Spectator character.")
+    except Exception as ex:
+        raise ArgumentError(
+            f"Error encountered: {ex}. Use /kill <target's id> as a mod or area owner."
+        )
 
 def ooc_cmd_randomchar(client, arg):
     """
