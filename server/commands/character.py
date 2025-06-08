@@ -89,7 +89,8 @@ def ooc_cmd_switch(client, arg):
     Usage: /switch <name>
     """
     if len(arg) == 0:
-        raise ArgumentError("You must specify a character name.")
+        client.char_select()
+        return
     try:
         # loser wants to spectate
         if arg == "-1" or arg.lower() == "spectator":
