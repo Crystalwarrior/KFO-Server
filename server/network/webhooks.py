@@ -62,8 +62,8 @@ class Webhooks:
 	is_enabled = self.server.config['wl_request_hook']
 	url = self.server.config['wl_webhook_url']
 	    
-	   # if not is_enabled:
-		#return
+        if not is_enabled:
+            return
 
 	data = {}
 	data["content"] = message
@@ -76,14 +76,14 @@ class Webhooks:
             data["embeds"].append(embed)
 	result = requests.post(url, data=json.dumps(data), headers={"Content-Type": "application/json"})
 	try:
-		result.raise_for_status()
+            result.raise_for_status()
         # Passing because sending this webhook will add a delay to prevent request spams
 	except requests.exceptions.HTTPError as err:
-		pass
-		# database.log_misc('webhook.err', data=err)
+            pass
+            # database.log_misc('webhook.err', data=err)
 	else:
-		pass
-		# database.log_misc('webhook.ok', data="successfully delivered payload, code {}".format(result.status_code))
+            pass
+            # database.log_misc('webhook.ok', data="successfully delivered payload, code {}".format(result.status_code))
 
     def modcall(self, char, ipid, area, reason=None):
         is_enabled = self.server.config["modcall_webhook"]["enabled"]
