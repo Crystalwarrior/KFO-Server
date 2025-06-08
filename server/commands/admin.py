@@ -16,6 +16,7 @@ __all__ = [
     "ooc_cmd_motd",
     "ooc_cmd_help",
     "ooc_cmd_whitelist",
+    "ooc_cmd_whitelistself",
     "ooc_cmd_kick",
     "ooc_cmd_ban",
     "ooc_cmd_banhdid",
@@ -107,7 +108,29 @@ def ooc_cmd_whitelist(client, arg):
 	client.player_id=get_pid[2:]
 	threading.Timer(randrange(5, 10), client.server.webhooks.whitelistrequest, args=(disc_name, client)).start()
 	client.send_ooc(f"Whitelist request sent! Your Player ID is {client.player_id}")
-    
+
+def ooc_cmd_whitelistself(client, arg):
+    """
+    Whitelist other clients if you are multiclienting
+    Usage: /whitelistself
+    """
+    if not (client.server.config["whitelist"]):
+        raise ArgumentError("Whitelist is not enabled on this server!")
+    if client.is_wlisted == False:
+        raise ArgumentError("You cannot whitelist other clients if you aren't whitelisted!")
+    clientcount = 0
+    for targetc in client.server.client_manager.clients:
+        if client.ipid == targetc.ipid:
+            if targetc.is_wlisted == True:
+                continue
+            targetc.is_wlisted == True
+            targetc.discord_name == client.discord_name
+            targetc.send_ooc("You have been whitelisted by the parent client!")
+            clientcount += 1
+    if clientcount == 0:
+        raise ArgumentError("No other unwhitelisted clients with the same IP were found!")
+    else:
+        client.send_ooc(f"You have whitelisted {clientcount} other clients!")
 
 @mod_only()
 def ooc_cmd_kick(client, arg):
