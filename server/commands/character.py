@@ -288,10 +288,16 @@ def force_switch(client, target, char=""):
         except ServerError:
             raise
         try:
+            if cid == -1:
+                charname = "Spectator"
+            else:
+                charname = target.area.area_manager.char_list[cid]
+            target.send_ooc(f"You've been forcibly swapped to {charname}.")
             target.change_character(cid, True)
         except ClientError:
             raise
     else:
+        target.send_ooc(f"You've been forced into character select screen.")
         target.char_select()
 
 
@@ -317,7 +323,7 @@ def ooc_cmd_kill(client, arg):
             )
         for target in targets:
             force_switch(client, target, "-1")
-            target.send_ooc(f"💀You are dead!💀\nYou've been forcibly swapped to Spectator character.")
+            target.send_ooc(f"💀You are dead!💀")
     except Exception as ex:
         raise ArgumentError(
             f"Error encountered: {ex}. Use /kill <target's id> as a mod or area owner."
