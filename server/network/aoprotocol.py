@@ -360,6 +360,9 @@ class AOProtocol(asyncio.Protocol):
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You are muted by a moderator.")
             return
+        if self.client.server.config["whitelist"] and not self.client.is_wlisted:
+            self.client.send_ooc('You must be whitelisted from discord!')
+            return
 
         showname = ""
         charid_pair = -1
@@ -1580,6 +1583,12 @@ class AOProtocol(asyncio.Protocol):
 
         if not self.client.is_checked:
             return
+        if self.client.server.config["whitelist"] and not self.client.is_wlisted:
+            if args[1].startswith('/whitelist'):
+                pass
+            else:
+                self.client.send_ooc('You must be whitelisted from discord!')
+                return
         if (
             self.client.is_ooc_muted
         ):  # Checks to see if the client has been muted by a mod
@@ -1718,7 +1727,11 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.client.is_checked:
             return
-        
+
+        if self.client.server.config["whitelist"] and not self.client.is_wlisted:
+            self.client.send_ooc('You must be whitelisted from discord!')
+            return
+
         if len(args) <= 0:
             return
 
@@ -1790,6 +1803,9 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if not self.client.is_checked:
+            return
+        if self.client.server.config["whitelist"] and not self.client.is_wlisted:
+            self.client.send_ooc('You must be whitelisted from discord!')
             return
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You are muted by a moderator.")
@@ -2018,6 +2034,9 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.client.is_checked:
             return
+        if self.client.server.config["whitelist"] and not self.client.is_wlisted:
+            self.client.send_ooc('You must be whitelisted from discord!')
+            return
         if not self.validate_net_cmd(
             args,
             self.ArgType.STR_OR_EMPTY,
@@ -2042,6 +2061,9 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.client.is_checked:
             return
+        if self.client.server.config["whitelist"] and not self.client.is_wlisted:
+            self.client.send_ooc('You must be whitelisted from discord!')
+            return
         if not self.validate_net_cmd(args, self.ArgType.INT):
             return
         self.client.area.evi_list.del_evidence(self.client, int(args[0]))
@@ -2055,6 +2077,9 @@ class AOProtocol(asyncio.Protocol):
 
         """
         if not self.client.is_checked:
+            return
+        if self.client.server.config["whitelist"] and not self.client.is_wlisted:
+            self.client.send_ooc('You must be whitelisted from discord!')
             return
         if not self.validate_net_cmd(
             args,
@@ -2076,6 +2101,10 @@ class AOProtocol(asyncio.Protocol):
     def net_cmd_zz(self, args):
         """Sent on mod call."""
         if not self.client.is_checked:
+            return
+
+        if self.client.server.config["whitelist"] and not self.client.is_wlisted:
+            self.client.send_ooc('You must be whitelisted from discord!')
             return
 
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
