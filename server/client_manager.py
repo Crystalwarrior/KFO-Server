@@ -79,6 +79,11 @@ class ClientManager:
             self.casing_steno = False
             self.case_call_time = 0
 
+            # whitelist related
+            self.discord_name = ''
+            self.is_wlisted = False
+            self.player_id = -1
+
             # Need command
             self.need_call_time = 0
 
@@ -1559,6 +1564,8 @@ class ClientManager:
                     info += f'"{c.showname}" ({c.char_name})'
                 else:
                     info += f"{c.showname}"
+                if c.is_wlisted and c.server.config["whitelist"]:
+                    info += f' [Disc: {c.discord_name}]'
                 if c.pos != "":
                     info += f" <{c.pos}>"
                 if self.is_mod:
