@@ -305,28 +305,29 @@ def force_switch(client, target, char=""):
 def ooc_cmd_kill(client, arg):
     """
     Force the character into spectator mode with a message that they have died.
-    Usage: /kill <id>
+    Usage: /kill <id(s)>
     """
-    if not arg:
-        raise ArgumentError(
-            'Not enough arguments. Usage: /kill <id>')
-
-    args = shlex.split(arg)
+    if len(arg) == 0:
+        raise ArgumentError("You must specify a target.")
     try:
-        if args[0].isnumeric():
-            targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
+        targets = []
+        ids = [int(s) for s in arg.split(" ")]
+        for targ_id in ids:
+            c = client.server.client_manager.get_targets(
+                client, TargetType.ID, targ_id, False
             )
-        else:
-            targets = client.server.client_manager.get_targets(
-                client, TargetType.CHAR_NAME, args[0], False
-            )
+            if c:
+                targets = targets + c
+    except Exception:
+        raise ArgumentError("You must specify a target. Use /kill <id(s)>.")
+
+    try:
         for target in targets:
             force_switch(client, target, "-1")
             target.send_ooc(f"💀You are dead!💀")
     except Exception as ex:
         raise ArgumentError(
-            f"Error encountered: {ex}. Use /kill <target's id> as a mod or area owner."
+            f"Error encountered: {ex}. Use /kill <id(s)> as a mod or area owner."
         )
 
 def ooc_cmd_randomchar(client, arg):
