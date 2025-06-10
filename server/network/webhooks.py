@@ -127,7 +127,7 @@ class Webhooks:
         if pingoption:
             message += f"<@&{self.server.config['need_webhook']['role_id']}> \n"
         message += self.server.config["need_webhook"]["message"]
-        description = f"[{client.id}] {client.name} ({client.showname}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name} {'without reason (using <2.6?)' if reason is None else f'needs: {reason}'}"
+                description = f"{client.name} ({client.ipid}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name} {'without reason (using <2.6?)' if reason is None else f'needs: {reason}'}"
 
         self.send_webhook(
             username=username,
