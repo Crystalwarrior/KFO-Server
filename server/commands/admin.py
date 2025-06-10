@@ -19,6 +19,7 @@ __all__ = [
     "ooc_cmd_motd",
     "ooc_cmd_help",
     "ooc_cmd_kick",
+    "ooc_cmd_about",
     "ooc_cmd_ban",
     "ooc_cmd_banhdid",
     "ooc_cmd_areacurse",
@@ -101,6 +102,11 @@ def ooc_cmd_help(client, arg):
                     f"No such command or submodule ({arg}) has been found in the help docs."
                 )
 
+def ooc_cmd_about(client, _):
+    """
+    Info about the server
+    """
+    client.send_ooc("Welcome to AO running on TsuserverValley 1.0 - Anti Raid Update. please visit our github at (insert link here) to learn more. Software maintained by Penix and Witch Athena.")
 
 @mod_only()
 def ooc_cmd_kick(client, arg):
