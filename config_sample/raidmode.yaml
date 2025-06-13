@@ -1,0 +1,30 @@
+levels:
+  "0":  # Level 0 is always disabled
+    enabled: false
+    description: "normal"
+
+  "1":
+    enabled: true
+    description: "oh dear"
+    warnings:
+      enabled: true
+      amount: 5
+      ban_enabled: true
+      duration: "2h"
+    limit_modcalls:
+      amount: 3
+      duration: "1m"
+      cooldown: "5s"
+    limit_connections:
+      amount: 2
+      duration: "1m"
+      hdid_exclusive: false
+    limit_ic:
+      amount: 10
+      duration: "2m"
+    ic_delay: "3s"
+    ooc_delay: "2s"
+    area_delay: "5s"
+    racism_mode: true
+    no_evidence: true
+    delay: "30s"

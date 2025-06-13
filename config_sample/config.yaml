@@ -181,3 +181,6 @@ need_webhook:
   title: "AO NEED CALL"  
   message: "A user has used the /need command for players in the Attorney Online server!"  
   url:
+  
+lockdown:
+  min_playtime: 600

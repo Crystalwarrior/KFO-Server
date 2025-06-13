@@ -147,8 +147,46 @@ class Database:
 
             logger.debug("Migration to v1 complete")
 
+    def add_hdid_time(self, hdid, duration):
+        """Add time duration to an HDID's total time."""
+        try:
+            cur = self.db.cursor()
+            cur.execute('SELECT total_time FROM hdids WHERE hdid = ?', (hdid,))
+            result = cur.fetchone()
+            if result:
+                current_time = result[0] or 0
+                cur.execute('UPDATE hdids SET total_time = ? WHERE hdid = ?', 
+                           (current_time + duration, hdid))
+            else:
+                cur.execute('INSERT INTO hdids (hdid, total_time) VALUES (?, ?)', 
+                           (hdid, duration))
+            self.db.commit()
+        except:
+            logger.exception("Error adding time to HDID %s", hdid)
+            
+    def get_hdid_time(self, hdid):
+        """Get total playtime for an HDID."""
+        try:
+            cur = self.db.cursor()
+            cur.execute('SELECT total_time FROM hdids WHERE hdid = ?', (hdid,))
+            result = cur.fetchone()
+            return result[0] if result else None
+        except:
+            logger.exception("Error getting HDID time for %s", hdid)
+            return None
+  
+    def get_trusted_hdids(self, min_time):
+        """Get all HDIDs that have played longer than min_time seconds."""
+        try:
+            cur = self.db.cursor()
+            cur.execute('SELECT hdid FROM hdids WHERE total_time >= ?', (min_time,))
+            return [row[0] for row in cur.fetchall()]
+        except:
+            logger.exception("Error getting trusted HDIDs")
+            return []
+
     def migrate(self):
-        for version in [2, 3, 4]:
+        for version in [2, 3, 4, 5]:
             self.migrate_to_version(version)
 
     def migrate_to_version(self, version):
