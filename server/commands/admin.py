@@ -47,7 +47,12 @@ __all__ = [
     "ooc_cmd_gethdids",
     "ooc_cmd_lockdown",
     "ooc_cmd_whitelist",
-    "ooc_cmd_unwhitelist"
+    "ooc_cmd_unwhitelist",
+    "ooc_cmd_togglejoins",
+    "ooc_cmd_toggleshownames",
+    "ooc_cmd_togglechars",
+    "ooc_cmd_playtime",
+    "ooc_cmd_raidcon"
 ]
 
 
@@ -776,7 +781,18 @@ def ooc_cmd_lockdown(client, arg):
     
     if cmd == 'on':
         client.server.lockdown = True
-        client.send_ooc("Lockdown mode enabled.")
+        min_time = client.server.config['lockdown']['min_playtime']
+        trusted_hdids = client.server.database.get_trusted_hdids(min_time)
+        client.server.whitelist.update(trusted_hdids)
+        
+        kicked = 0
+        for c in client.server.client_manager.clients:
+            if c.hdid not in client.server.whitelist:
+                c.send_ooc('You have been kicked: Server entering lockdown mode.')
+                c.disconnect()
+                kicked += 1
+
+        client.send_ooc(f'Lockdown mode enabled. {len(trusted_hdids)} HDIDs whitelisted. {kicked} players kicked.')
     elif cmd == 'off':
         client.server.lockdown = False
         client.send_ooc("Lockdown mode disabled.")
@@ -830,7 +846,7 @@ def ooc_cmd_whitelist(client, arg):
     client.server.save_whitelist()
     client.send_ooc(f"HDID {hdid} has been added to the whitelist.")
   
-@mod_only()  
+@mod_only()
 def ooc_cmd_unwhitelist(client, arg):
     """
     Remove a HDID from the whitelist.
@@ -844,6 +860,140 @@ def ooc_cmd_unwhitelist(client, arg):
     if hdid in client.server.whitelist:
         client.server.whitelist.remove(hdid)
         client.server.save_whitelist()
-        client.send_ooc(f"HDID {hdid} has been removed from the whitelist.")
+
+        if client.server.lockdown:
+            kicked_clients = []
+            for c in client.server.client_manager.clients:
+                if c.hdid == hdid:
+                    kicked_clients.append(c)
+                    c.send_ooc("You have been kicked: Unwhitelisted during lockdown.")
+                    c.disconnect()
+                    
+            if kicked_clients:
+                client.send_ooc(f"HDID {hdid} has been removed from the whitelist and {len(kicked_clients)} client(s) were kicked.")
+            else:
+                client.send_ooc(f"HDID {hdid} has been removed from the whitelist. No clients were connected with this HDID.")
+        else:
+            client.send_ooc(f"HDID {hdid} has been removed from the whitelist.")
+    else:
+        client.send_ooc(f"HDID {hdid} is not in the whitelist.")
+        
+@mod_only()
+def ooc_cmd_togglejoins(client, arg):
+    """
+    Toggle the display of joining players' information (HDID, IPID) and track their name changes.
+    Usage: /togglejoins
+    """
+    if len(arg) != 0:
+        raise ArgumentError("This command doesn't take any arguments")
+    
+    if not hasattr(client.server, 'join_trackers'):
+        client.server.join_trackers = set()
+    
+    if client.id in client.server.join_trackers:
+        client.server.join_trackers.remove(client.id)
+        client.send_ooc('Join tracking turned OFF.')
+    else:
+        client.server.join_trackers.add(client.id)
+        client.send_ooc('Join tracking turned ON.')
+        
+@mod_only()
+def ooc_cmd_togglechars(client, arg):
+    """
+    Toggle tracking of character selections.
+    Usage: /togglechars
+    """
+    if len(arg) != 0:
+        raise ArgumentError("This command doesn't take any arguments")
+    
+    if not hasattr(client.server, 'char_trackers'):
+        client.server.char_trackers = set()
+    
+    if client.id in client.server.char_trackers:
+        client.server.char_trackers.remove(client.id)
+        client.send_ooc('Character tracking turned OFF.')
+    else:
+        client.server.char_trackers.add(client.id)
+        client.send_ooc('Character tracking turned ON.')
+        
+@mod_only()
+def ooc_cmd_toggleshownames(client, arg):
+    """
+    Toggle tracking of showname changes.
+    Usage: /toggleshownames
+    """
+    if len(arg) != 0:
+        raise ArgumentError("This command doesn't take any arguments")
+    
+    if not hasattr(client.server, 'showname_trackers'):
+        client.server.showname_trackers = set()
+    
+    if client.id in client.server.showname_trackers:
+        client.server.showname_trackers.remove(client.id)
+        client.send_ooc('Showname tracking turned OFF.')
+    else:
+        client.server.showname_trackers.add(client.id)
+        client.send_ooc('Showname tracking turned ON.')
+        
+@mod_only()
+def ooc_cmd_playtime(client, arg):
+    """
+    Check total playtime for an HDID.
+    Usage: /playtime <hdid>
+    """
+    if not arg:
+        raise ArgumentError("You must specify an HDID.")
+        
+    hdid = arg.strip()
+    total_time = client.server.database.get_hdid_time(hdid)
+    
+    if total_time is None:
+        client.send_ooc(f"No playtime recorded for HDID {hdid}")
+    else:
+        formatted_time = client.format_time_interval(total_time)
+        client.send_ooc(f"Total playtime for HDID {hdid}: {formatted_time}")
+    
+@mod_only()    
+def ooc_cmd_raidcon(client, arg):
+    """
+    Change or view raid control level.
+    Usage: /raidcon [0-3]
+           /raidcon whitelist [on/off]
+    """
+    if not client.is_mod:
+        raise ClientError("You must be a moderator to use this command.")
+        
+    if not arg:
+        client.send_ooc(client.server.raidmode.get_status_message())
+        return
+
+    args = arg.split()
+    
+    # Check for whitelist command first
+    if args[0].lower() == "whitelist":
+        if len(args) != 2:
+            raise ArgumentError("Usage: /raidcon whitelist [on/off]")
+            
+        if args[1].lower() == "on":
+            client.server.raidmode.whitelist_enabled = True
+            client.send_ooc("Raidmode whitelist exemptions enabled.")
+        elif args[1].lower() == "off":
+            client.server.raidmode.whitelist_enabled = False
+            client.send_ooc("Raidmode whitelist exemptions disabled.")
+        else:
+            raise ArgumentError("Options are 'on' or 'off'")
+            
+        client.send_ooc(client.server.raidmode.get_status_message())
+        return
+        
+    # If not whitelist command, try to parse level
+    try:
+        level = int(args[0])
+    except ValueError:
+        raise ArgumentError("Level must be a number. For whitelist, use '/raidcon whitelist [on/off]'")
+        
+    if client.server.raidmode.set_level(level):
+        client.send_ooc(f"Raid control level set to {level}")
+        client.send_ooc(client.server.raidmode.get_status_message())
     else:
         client.send_ooc(f"HDID {hdid} is not in the whitelist.")

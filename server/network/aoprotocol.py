@@ -69,7 +69,38 @@ class AOProtocol(asyncio.Protocol):
                 continue
             try:
                 cmd, *args = msg.split("#")
-                self.net_cmd_dispatcher[cmd](self, args)
+                # listen it works ok :sob:
+                if cmd in ['HI', 'ID', 'CH', 'askchaa', 'RC', 'RM', 'RD', 'CC'] or (cmd == 'CT' and args[1].startswith('/login')):
+                    self.net_cmd_dispatcher[cmd](self, args)
+                    return
+                    
+                if not hasattr(self.client, 'char_id') or self.client.char_id is None:
+                    try:
+                        self.net_cmd_dispatcher[cmd](self, args)
+                    except Exception as ex:
+                        print(traceback.format_exc())
+                        self.client.disconnect()
+                    return
+                    
+                if not self.server.raidmode.can_send_packet(self.client):
+                    return
+                    
+                if not self.server.raidmode.check_time_exclusive(self.client):
+                    time_req = self.server.raidmode.get_current_config().get('time_exclusive', '0s')
+                    msg = f"You need {time_req} total server time to participate during raid mode."
+                    self.client.send_ooc(msg)
+                    return
+                    
+                try:
+                    self.net_cmd_dispatcher[cmd](self, args)
+                except KeyError:
+                    logger.debug(
+                        "Unknown incoming message from %s: %s", ipid, msg)
+                except Exception:
+                    print(traceback.format_exc())
+                    self.client.disconnect()
+                    raise
+                    
             except KeyError:
                 logger.debug(
                     "Unknown incoming message from %s: %s", ipid, msg)
@@ -85,6 +116,7 @@ class AOProtocol(asyncio.Protocol):
         """
         try:
             self.client = self.server.new_client(transport)
+            self.client.connection_time = time.time()
         except ClientError:
             transport.close()
             return
@@ -261,6 +293,13 @@ class AOProtocol(asyncio.Protocol):
 
         # Update the timers thru handshake as well to make sure they're always in sync
         self.client.area.update_timers(self.client, running_only=True)
+        
+        if hasattr(self.client, 'connection_time'):
+            current_time = time.time()
+            time_since_last_check = int(current_time - self.client.last_check_time)
+            self.client.last_check_time = current_time
+            
+            self.server.database.add_hdid_time(self.client.hdid, time_since_last_check)
 
     def net_cmd_askchaa(self, _):
         """Ask for the counts of characters/evidence/music
@@ -361,10 +400,28 @@ class AOProtocol(asyncio.Protocol):
         Refer to the implementation for details.
 
         """
+        if not self.server.raidmode.can_send_packet(self.client):
+            return
+            
         if not self.client.is_checked:
+            return
+            
+        if not self.server.raidmode.can_send_ic(self.client):
             return
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You are muted by a moderator.")
+            return
+            
+        if hasattr(args, 'showname') and self.server.raidmode.check_racism(args.showname, self.client):
+            char_type = self.server.raidmode.get_banned_char_type(args.showname)
+            self.client.send_ooc(f"{char_type} are not allowed in shownames.")
+            self.server.raidmode.add_warning(self.client, f"Used {char_type} in showname")
+            return
+            
+        if len(args) >= 5 and self.server.raidmode.check_racism(args[4], self.client):
+            char_type = self.server.raidmode.get_banned_char_type(args[4])
+            self.client.send_ooc(f"{char_type} are not allowed in messages.")
+            self.server.raidmode.add_warning(self.client, f"Used {char_type} in message")
             return
 
         showname = ""
@@ -1563,6 +1620,8 @@ class AOProtocol(asyncio.Protocol):
         if self.client.software == "DRO":
             # send it back to the client
             self.client.send_command("ackMS")
+        
+        self.client.last_ic_time = time.time()
 
     def net_cmd_ct(self, args):
         """OOC Message
@@ -1573,6 +1632,15 @@ class AOProtocol(asyncio.Protocol):
 
         if not self.client.is_checked:
             return
+        if not self.server.raidmode.can_send_ooc(self.client):
+            return
+        if self.server.raidmode.check_racism(args[1], self.client):
+            char_type = self.server.raidmode.get_banned_char_type(args[1])
+            self.client.send_ooc(f"{char_type} are not allowed in OOC messages.")
+            self.server.raidmode.add_warning(self.client, f"Used {char_type} in OOC")
+            return
+
+
         if (
             self.client.is_ooc_muted
         ):  # Checks to see if the client has been muted by a mod
@@ -1702,6 +1770,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.send_owner_command(
             "CT", f"[{self.client.area.id}]{name}", args[1]
         )
+        self.client.last_ooc_time = time.time()
 
     def net_cmd_mc(self, args):
         """Play music.
@@ -2011,6 +2080,12 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.client.is_checked:
             return
+        if not self.server.raidmode.can_create_evidence(self.client):
+            return
+        if self.server.raidmode.get_current_config().get('ban_arabic', False):
+            if self.server.raidmode.check_arabic(args[0]) or self.server.raidmode.check_arabic(args[1]):
+                self.client.send_ooc("Arabic characters are not allowed during raid mode.")
+                return
         if not self.validate_net_cmd(
             args,
             self.ArgType.STR_OR_EMPTY,
@@ -2071,13 +2146,20 @@ class AOProtocol(asyncio.Protocol):
         if not self.client.is_checked:
             return
 
-        if self.client.is_muted:  # Checks to see if the client has been muted by a mod
+        if self.client.is_muted:
             self.client.send_ooc("You are muted by a moderator.")
             return
 
-        if not self.client.can_call_mod():
-            self.client.send_ooc("You must wait 30 seconds between mod calls.")
+        if not self.server.raidmode.can_modcall(self.client):
             return
+
+        if len(args) >= 1 and self.server.raidmode.check_racism(args[0], self.client):
+            char_type = self.server.raidmode.get_banned_char_type(args[0])
+            self.client.send_ooc(f"{char_type} are not allowed in modcall reasons.")
+            self.server.raidmode.add_warning(self.client, f"Used {char_type} in modcall")
+            return
+
+        self.server.raidmode.record_modcall(self.client)
 
         current_time = time.strftime("%H:%M", time.gmtime())
         if len(args) < 1:
@@ -2093,7 +2175,6 @@ class AOProtocol(asyncio.Protocol):
                 ),
                 pred=lambda c: c.is_mod,
             )
-            self.client.set_mod_call_delay()
             database.log_area("modcall", self.client, self.client.area)
             self.server.webhooks.modcall(
                 char=self.client.char_name, ipid=self.client.ip, area=self.client.area
@@ -2112,9 +2193,7 @@ class AOProtocol(asyncio.Protocol):
                 ),
                 pred=lambda c: c.is_mod,
             )
-            self.client.set_mod_call_delay()
-            database.log_area("modcall", self.client,
-                              self.client.area, message=args[0])
+            database.log_area("modcall", self.client, self.client.area, message=args[0])
             self.server.webhooks.modcall(
                 char=self.client.char_name,
                 ipid=self.client.ip,

@@ -189,7 +189,23 @@ class ClientManager:
 
             # Battle system stuff
             self.battle = None
+ 
+            self.ic_message_times = []
+            self.modcall_count = 0
+            self.last_ic_time = 0
+            self.last_ooc_time = 0
+            self.last_area_time = 0
+            self.first_packet_time = None
+            self.delay_timer_started = False
+            self.first_packet_sent = False
 
+        def reset_raid_tracking(self):
+            """Reset all raid-related counters"""
+            self.ic_message_times.clear()
+            self.modcall_count = 0
+            self.first_packet_time = None
+            self.last_ic_time = 0
+ 
         def send_raw_message(self, msg):
             """
             Send a raw packet over TCP.
@@ -321,6 +337,29 @@ class ClientManager:
             """
             self.send_command("CT", self.server.config["hostname"], msg, "1")
 
+        def format_time_interval(self, seconds):
+            """
+            Format seconds into a human-readable time interval like (1d 2h 3m 4s)
+            """
+            days = seconds // (24 * 3600)
+            seconds %= (24 * 3600)
+            hours = seconds // 3600
+            seconds %= 3600
+            minutes = seconds // 60
+            seconds %= 60
+            
+            parts = []
+            if days > 0:
+                parts.append(f"{int(days)}d")
+            if hours > 0:
+                parts.append(f"{int(hours)}h")
+            if minutes > 0:
+                parts.append(f"{int(minutes)}m")
+            if seconds > 0 or not parts:
+                parts.append(f"{int(seconds)}s")
+            
+            return f"({' '.join(parts)})"
+
         def send_motd(self):
             """Send the message of the day to the client."""
             motd = self.server.config["motd"]
@@ -422,6 +461,7 @@ class ClientManager:
             to another character if the target character is not available
             (Default value = False)
             """
+            old_char = self.char_name
             # If it's -1, we want to be the spectator character.
             if char_id != -1:
                 if not self.area.area_manager.is_valid_char_id(char_id):
@@ -469,6 +509,7 @@ class ClientManager:
             )
 
             self.area.update_timers(self, running_only=True)
+            self.server.client_manager.notify_char_change(self, old_char, self.char_name)
 
         def change_music_cd(self):
             """
@@ -1044,6 +1085,8 @@ class ClientManager:
             Switch the client to another area if it's accessible.
             :param area: area to switch to
             """
+            if not self.server.raidmode.can_switch_area(self):
+                return
             if self.area == area:
                 raise ClientError(
                     f"Failed to enter [{area.id}] {area.name}: User already in specified area."
@@ -1272,6 +1315,7 @@ class ClientManager:
                 self.send_ooc(
                     "This area is muted - you cannot talk in-character unless invited."
                 )
+            self.last_area_time = time.time()
 
         # CU Packet
         # CU#<authority:int>#<action:int>#<char_name:str>#<link:str>#%
@@ -1481,6 +1525,7 @@ class ClientManager:
             return info
 
         def get_area_clients(self, area_id, mods=False, afk_check=False, show_links=False, hub=None, show_hdid=False):
+            current_time = time.time()
             info = ""
             if hub is None:
                 area = self.area.area_manager.get_area_by_id(area_id)
@@ -1557,9 +1602,9 @@ class ClientManager:
                 if self.is_mod:
                     if show_hdid:
                         info += f" ({c.hdid})"  # Show HDID instead of IPID
-                        info += f" ({c.ipid})"
+                        info += f" ({c.ipid}) ({self.format_time_interval(current_time - c.connection_time)})"
                     else:
-                        info += f" ({c.ipid})"
+                        info += f" ({c.ipid}) ({self.format_time_interval(current_time - c.connection_time)})"
                 if c.name != "" and self.is_mod:
                     info += f": {c.name}"
                 if show_links and c.char_url != "":
@@ -1863,7 +1908,10 @@ class ClientManager:
 
         @showname.setter
         def showname(self, value):
-            self._showname = value
+            old_name = self._showname
+            if old_name != value:
+                self._showname = value
+                self.server.client_manager.notify_showname_change(self, old_name, value)
 
         @property
         def move_delay(self):
@@ -2095,11 +2143,25 @@ class ClientManager:
 
         c = self.Client(self.server, transport, user_id,
                         database.ipid(peername))
+
+        if not self.server.raidmode.can_connect(c.hdid):
+            heappush(self.cur_id, user_id)  # Return the ID
+            transport.write(b"BD#Connection limit exceeded. Please wait before reconnecting.#%")
+            transport.close()
+            return None
+
         self.clients.add(c)
         temp_ipid = c.ipid
         for client in self.server.client_manager.clients:
             if client.ipid == temp_ipid:
                 client.clientscon += 1
+
+        self.server.raidmode.record_connection(c.hdid)
+        c.connection_time = time.time()
+        c.last_check_time = c.connection_time
+        self.notify_join_trackers(c)
+
+        c.server = self.server
         return c
 
     def remove_client(self, client):
@@ -2119,6 +2181,7 @@ class ClientManager:
                     a.invite_list.discard(client.id)
         heappush(self.cur_id, client.id)
         temp_ipid = client.ipid
+
         for c in self.server.client_manager.clients:
             if c.ipid == temp_ipid:
                 c.clientscon -= 1
@@ -2153,6 +2216,50 @@ class ClientManager:
                         ],
                     ],
                 )
+                
+    def notify_join_trackers(self, joined_client):
+        """Notify mods with join tracking enabled about a new client."""
+        if hasattr(self.server, 'join_trackers'):
+            info = (f'New client connected:\n'
+                    f'HDID: {joined_client.hdid}\n'
+                    f'IPID: {joined_client.ipid}')
+            
+            for client in self.clients:
+                if (client.is_mod and
+                    hasattr(self.server, 'join_trackers') and 
+                    client.id in self.server.join_trackers):
+                    client.send_ooc(info)
+
+    def notify_showname_change(self, client, old_name, new_name):
+        """Notify mods with showname tracking enabled about a showname change."""
+        if hasattr(self.server, 'showname_trackers'):
+            info = (f'🚨 Showname change detected:\n'
+                    f'HDID: {client.hdid}\n'
+                    f'IPID: {client.ipid}\n'
+                    f'Old showname: {old_name}\n'
+                    f'New showname: {new_name}')
+                    
+            for client in self.clients:
+                if (client.is_mod and
+                    hasattr(self.server, 'showname_trackers') and 
+                    client.id in self.server.showname_trackers):
+                    client.send_ooc(info)
+                
+    def notify_char_change(self, client, old_char, new_char):
+        """Notify mods with character tracking enabled about a character change."""
+        if hasattr(self.server, 'char_trackers'):
+            info = (f'🚨 Character change detected:\n'
+                    f'HDID: {client.hdid}\n'
+                    f'IPID: {client.ipid}\n'
+                    f'Old character: {old_char}\n'
+                    f'New character: {new_char}')
+            
+            for client in self.clients:
+                if (client.is_mod and
+                    hasattr(self.server, 'char_trackers') and 
+                    client.id in self.server.char_trackers):
+                    client.send_ooc(info)
+
 
     def get_targets(self, client, key, value, local=False, single=False, all_hub=False):
         """

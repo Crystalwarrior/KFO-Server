@@ -20,6 +20,7 @@ from server.network.aoprotocol_ws import new_websocket_client
 from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
 from server.constants import remove_URL, dezalgo
+from server.raidmode import RaidManager
 
 
 logger = logging.getLogger("main")
@@ -33,6 +34,7 @@ class TsuServer3:
         self.release = 3
         self.major_version = 3
         self.minor_version = 0
+        self.database = database
 
         self.config = None
         self.censors = None
@@ -48,6 +50,7 @@ class TsuServer3:
         self.ipRange_bans = []
         self.geoIpReader = None
         self.useGeoIp = False
+        self.raidmode = RaidManager(self)
         self.need_webhook = False
         self.supported_features = [
             "yellowtext",
