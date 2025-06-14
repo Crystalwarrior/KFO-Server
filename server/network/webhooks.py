@@ -72,14 +72,14 @@ class Webhooks:
 
         if mods == 0 and no_mods_ping:
             modcall = f"<&@{mod_role_id}>"
-            message = f"{modcall if mod_role_id is not None else '@here'} A user called for a moderator, but there are none online!"
+            message = f"{modcall if mod_role_id is not None else '@everyone'} A user called for a moderator, but there are none online!"
         else:
             if mods == 1:
                 s = ""
             else:
                 s = "s"
-            message = f"New modcall received ({mods} moderator{s} online)"
-
+            message = f"New modcall received '@everyone' ({mods} moderator{s} online)"
+        
         description = f"[{current_time} UTC] {char} ({ipid}) in hub [{area.area_manager.id}] {area.area_manager.name} [{area.id}] {area.name} {'without reason (using <2.6?)' if reason is None else f'with reason: {reason}'}"
 
         self.send_webhook(
@@ -127,7 +127,7 @@ class Webhooks:
         if pingoption:
             message += f"<@&{self.server.config['need_webhook']['role_id']}> \n"
         message += self.server.config["need_webhook"]["message"]
-        description = f"[{client.id}] {client.name} ({client.showname}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name} {'without reason (using <2.6?)' if reason is None else f'needs: {reason}'}"
+        description = f"{client.name} ({client.ipid}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name} {'without reason (using <2.6?)' if reason is None else f'needs: {reason}'}"
 
         self.send_webhook(
             username=username,
