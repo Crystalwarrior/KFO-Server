@@ -214,93 +214,35 @@ class RaidManager:
         return True
 
     def can_modcall(self, client):
-        """Check if client can make a modcall"""
-        if self.current_level == 0:
-            print("Level 0 - Modcall allowed")
+        if self.is_exempt(client):
             return True
-                
+                    
         config = self.get_current_config()
         if not config.get('enabled', False):
-            print("Raidmode disabled - Modcall allowed")
             return True
 
-        if self.is_exempt(client):
-            print("Client exempt - Modcall allowed")
-            return True
-                
         modcall_config = config.get('limit_modcalls', {})
-        print(f"Modcall config: {modcall_config}")
-        
         if isinstance(modcall_config, dict):
             current_time = time.time()
-            print(f"Current time: {current_time}")
-            
-            print(f"Client HDID: {client.hdid}")
-            print(f"Stored modcall times: {self.modcall_times[client.hdid]}")
-            print(f"Last modcall time: {self.last_modcall_time[client.hdid]}")
-            
             cooldown = self.parse_time(modcall_config.get('cooldown', '0s'))
-            print(f"Cooldown setting: {cooldown}s")
             
             last_time = self.last_modcall_time[client.hdid]
-            print(f"Last modcall absolute time: {last_time}")
-            
             if last_time > 0:
                 time_since_last = current_time - last_time
-                print(f"Time since last modcall: {time_since_last}s")
                 
                 if time_since_last < cooldown:
-                    remaining = round(cooldown - time_since_last, 1)
+                    remaining = round(cooldown - time_since_last, 1))
                     client.send_ooc(f"Please wait {remaining}s between modcalls.")
-                    print(f"Modcall rejected: {remaining}s remaining")
                     return False
-                else:
-                    print(f"Cooldown passed: {time_since_last}s > {cooldown}s")
-            else:
-                print("First modcall for this client")
-            
-            limit = modcall_config.get('amount', 0)
-            duration = self.parse_time(modcall_config.get('duration', '0s'))
-            
-            if duration > 0:
-                old_count = len(self.modcall_times[client.hdid])
-                recent_calls = [t for t in self.modcall_times[client.hdid] 
-                              if (current_time - t) < duration]
-                self.modcall_times[client.hdid] = recent_calls
-                new_count = len(recent_calls)
                 
-                print(f"Cleaned modcall list: {old_count} -> {new_count} calls")
-                print(f"Recent calls: {recent_calls}")
-                
-                if len(recent_calls) >= limit:
-                    client.send_ooc(f"You have exceeded the modcall limit ({limit} per {modcall_config['duration']}).")
-                    print(f"Modcall rejected: {len(recent_calls)} >= limit {limit}")
-                    return False
-                else:
-                    print(f"Under limit: {len(recent_calls)} < {limit}")
-        
-        print("All checks passed - Modcall allowed")
+            return True
+                 
         return True
 
-
     def record_modcall(self, client):
-        """Record a modcall attempt"""
         current_time = time.time()
-        print(f"\nRecording modcall:")
-        print(f"Client HDID: {client.hdid}")
-        print(f"Current time: {current_time}")
-        
-        print(f"Before recording:")
-        print(f"Modcall times: {self.modcall_times[client.hdid]}")
-        print(f"Last modcall time: {self.last_modcall_time[client.hdid]}")
-        
         self.modcall_times[client.hdid].append(current_time)
         self.last_modcall_time[client.hdid] = current_time
-        
-        print(f"After recording:")
-        print(f"Modcall times: {self.modcall_times[client.hdid]}")
-        print(f"Last modcall time: {self.last_modcall_time[client.hdid]}")
-        print(f"Total modcalls in tracking: {len(self.modcall_times[client.hdid])}")
 
     def can_send_ic(self, client, config=None):
         """Check if client can send IC message"""
@@ -341,11 +283,6 @@ class RaidManager:
                     return False
                     
         return True
-
-
-    def record_modcall(self, client):
-        """Record a modcall for this client"""
-        client.modcall_count += 1
 
     def record_ic(self, client):
         """Record an IC message for this client"""

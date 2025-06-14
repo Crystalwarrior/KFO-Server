@@ -2158,7 +2158,7 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc(f"{char_type} are not allowed in modcall reasons.")
             self.server.raidmode.add_warning(self.client, f"Used {char_type} in modcall")
             return
-
+            
         self.server.raidmode.record_modcall(self.client)
 
         current_time = time.strftime("%H:%M", time.gmtime())
