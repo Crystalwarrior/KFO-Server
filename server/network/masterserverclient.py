@@ -86,7 +86,7 @@ class MasterServerClient:
 
         if cfg['advertise_port']:
             body = {
-                'ip': await loop.run_in_executor(None, self.get_my_ip),
+                'ip': await asyncio.get_event_loop().run_in_executor(None, self.get_my_ip),
                 'port': cfg['advertising_port'],
                 'name': cfg['masterserver_name'],
                 'description': cfg['masterserver_description'],
