@@ -1,5 +1,6 @@
 import yaml
 import time
+import logging
 from collections import defaultdict
 
 class RaidManager:
@@ -16,19 +17,21 @@ class RaidManager:
         self.whitelist_enabled = True
         self.last_check = time.time()
     
+    logger = logging.getLogger("raidmode")
+    
     def add_warning(self, client, reason):
         """Add a warning to a client."""
         if self.is_exempt(client):
             return False
-                
+            
         config = self.get_current_config()
         if not config.get('enabled', False):
             return False
-                
+            
         warning_config = config.get('warnings', {})
         if not warning_config.get('enabled', False):
             return False
-                
+            
         self.client_warnings[client.hdid] += 1
         current_warnings = self.client_warnings[client.hdid]
         max_warnings = warning_config.get('amount', 5)
@@ -46,9 +49,14 @@ class RaidManager:
 
                 class SystemBanner:
                     name = "RaidControl"
-                    ipid = "SYSTEM"
+                    ipid = None
                 
                 try:
+                    if not client.ipid:
+                        logger.error(f"Client {client.hdid} has no IPID. Cannot ban.")
+                        client.disconnect()
+                        return True
+                    
                     ban_id = self.server.database.ban(
                         target_id=client.ipid,
                         reason="[SYSTEM] Exceeded warning limit",
@@ -56,6 +64,18 @@ class RaidManager:
                         banned_by=SystemBanner(),
                         unban_date=unban_date
                     )
+                    
+                    try:
+                        self.server.database.add_hdid(client.ipid, client.hdid)
+                        with self.server.database.db as conn:
+                            cur = conn.cursor()
+                            cur.execute('SELECT hdid FROM hdids WHERE hdid = ?', (client.hdid,))
+                            if not cur.fetchone():
+                                logger.error(f"Failed to add HDID {client.hdid} to hdids table.")
+                                raise ServerError(f"HDID {client.hdid} not found in hdids table.")
+                    except Exception as e:
+                        logger.error(f"Error adding HDID {client.hdid}: {e}")
+                        raise
                     
                     self.server.database.ban(
                         target_id=client.hdid,
@@ -69,8 +89,9 @@ class RaidManager:
                     client.disconnect()
                     
                 except Exception as e:
-                    print(f"Failed to ban {client.hdid}: {e}")
+                    logger.error(f"Failed to ban IPID {client.ipid} or HDID {client.hdid}: {e}")
                     client.disconnect()
+                return True
             else:
                 client.disconnect()
             return True
@@ -231,7 +252,7 @@ class RaidManager:
                 time_since_last = current_time - last_time
                 
                 if time_since_last < cooldown:
-                    remaining = round(cooldown - time_since_last, 1))
+                    remaining = round(cooldown - time_since_last, 1)
                     client.send_ooc(f"Please wait {remaining}s between modcalls.")
                     return False
                 
