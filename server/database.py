@@ -176,10 +176,13 @@ class Database:
             return None
   
     def get_trusted_hdids(self, min_time):
-        """Get all HDIDs that have played longer than min_time seconds."""
+        """Get all HDIDs that have played longer than min_time seconds and have total_time tracked."""
         try:
             cur = self.db.cursor()
-            cur.execute('SELECT hdid FROM hdids WHERE total_time >= ?', (min_time,))
+            cur.execute(
+                'SELECT hdid FROM hdids WHERE total_time IS NOT NULL AND total_time >= ?', 
+                (min_time,)
+            )
             return [row[0] for row in cur.fetchall()]
         except:
             logger.exception("Error getting trusted HDIDs")
