@@ -768,7 +768,7 @@ def ooc_cmd_gethdids(client, arg):
 def ooc_cmd_lockdown(client, arg):
     """
     Toggle lockdown mode. In lockdown mode, only whitelisted HDIDs can join.
-    Usage: /lockdown [on/off/update]
+    Usage: /lockdown [on/off/update/legacy <password>]
     """
         
     if len(arg) == 0:
@@ -777,9 +777,49 @@ def ooc_cmd_lockdown(client, arg):
                        f"\nWhitelist entries: {len(client.server.whitelist)}")
         return
         
-    cmd = arg.lower()
+    args = arg.lower().split()
+    cmd = args[0]
     
-    if cmd == 'on':
+    if cmd == 'legacy':
+        if len(args) != 2:
+            raise ArgumentError("Usage: /lockdown legacy <password>")
+            
+        if args[1] != client.server.config['lockdown']['legacy_password']:
+            raise ClientError("Invalid password.")
+            
+        try:
+            existing_hdids = set()
+            try:
+                with open('storage/whitelist.txt', 'r') as f:
+                    existing_hdids = {line.strip() for line in f if line.strip()}
+            except FileNotFoundError:
+                pass
+                
+            with sqlite3.connect('storage/db.sqlite3') as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute('SELECT DISTINCT hdid FROM hdids')
+                all_hdids = {row['hdid'] for row in cursor.fetchall()}
+                
+            new_hdids = all_hdids - existing_hdids
+            
+            if not new_hdids:
+                client.send_ooc("No new HDIDs found to add to whitelist.")
+                return
+                
+            with open('storage/whitelist.txt', 'a') as f:
+                for hdid in new_hdids:
+                    f.write(f"{hdid}\n")
+
+            client.server.whitelist = existing_hdids | new_hdids
+            
+            client.send_ooc(f"Added {len(new_hdids)} new HDIDs to whitelist. Total whitelist entries: {len(client.server.whitelist)}")
+            
+        except sqlite3.Error as e:
+            raise ClientError(f"Database error: {e}")
+        except IOError as e:
+            raise ClientError(f"Failed to write to whitelist.txt: {e}")
+            
+    elif cmd == 'on':
         client.server.lockdown = True
         min_time = client.server.config['lockdown']['min_playtime']
         trusted_hdids = client.server.database.get_trusted_hdids(min_time)
@@ -829,7 +869,7 @@ def ooc_cmd_lockdown(client, arg):
         except IOError as e:
             raise ClientError(f"Failed to write to whitelist.txt: {e}")
     else:
-        raise ArgumentError("Invalid argument. Usage: /lockdown [on/off/update]")
+        raise ArgumentError("Invalid argument. Usage: /lockdown [on/off/update/legacy <password>]")
         
 @mod_only()
 def ooc_cmd_whitelist(client, arg):

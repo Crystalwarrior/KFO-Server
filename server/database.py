@@ -187,6 +187,16 @@ class Database:
         except:
             logger.exception("Error getting trusted HDIDs")
             return []
+            
+    def get_all_hdids(self):
+        """Get all HDIDs from the database regardless of play time."""
+        try:
+            cur = self.db.cursor()
+            cur.execute('SELECT hdid FROM hdids')
+            return [row[0] for row in cur.fetchall()]
+        except:
+            logger.exception("Error getting all HDIDs")
+            return []
 
     def migrate(self):
         for version in [2, 3, 4, 5]:
