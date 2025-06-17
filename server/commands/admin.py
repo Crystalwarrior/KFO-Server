@@ -884,6 +884,11 @@ def ooc_cmd_whitelist(client, arg):
     hdid = arg.strip()
     client.server.whitelist.add(hdid)
     client.server.save_whitelist()
+    
+    for c in client.server.client_manager.clients:
+        if c.hdid == hdid:
+            c.connection_time = time.time()
+            c.first_packet_sent = False 
     client.send_ooc(f"HDID {hdid} has been added to the whitelist.")
   
 @mod_only()
