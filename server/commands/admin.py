@@ -1,6 +1,7 @@
 import json
 import shlex
 import sqlite3
+import time
 
 import arrow
 import pytimeparse
@@ -883,6 +884,7 @@ def ooc_cmd_whitelist(client, arg):
         
     hdid = arg.strip()
     client.server.whitelist.add(hdid)
+    client.server.raidmode.whitelisted_hdids.add(hdid)
     client.server.save_whitelist()
     
     for c in client.server.client_manager.clients:
@@ -904,6 +906,7 @@ def ooc_cmd_unwhitelist(client, arg):
     hdid = arg.strip()
     if hdid in client.server.whitelist:
         client.server.whitelist.remove(hdid)
+        client.server.raidmode.whitelisted_hdids.remove(hdid)
         client.server.save_whitelist()
 
         if client.server.lockdown:
@@ -919,7 +922,18 @@ def ooc_cmd_unwhitelist(client, arg):
             else:
                 client.send_ooc(f"HDID {hdid} has been removed from the whitelist. No clients were connected with this HDID.")
         else:
-            client.send_ooc(f"HDID {hdid} has been removed from the whitelist.")
+            affected_clients = []
+            for c in client.server.client_manager.clients:
+                if c.hdid == hdid:
+                    affected_clients.append(c)
+                    c.connection_time = time.time()
+                    c.first_packet_sent = False
+                    c.send_ooc("You have been removed from the whitelist. Raid mode restrictions now apply.")
+            
+            if affected_clients:
+                client.send_ooc(f"HDID {hdid} has been removed from the whitelist and restrictions applied to {len(affected_clients)} client(s).")
+            else:
+                client.send_ooc(f"HDID {hdid} has been removed from the whitelist.")
     else:
         client.send_ooc(f"HDID {hdid} is not in the whitelist.")
         

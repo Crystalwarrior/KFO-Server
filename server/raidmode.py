@@ -428,7 +428,7 @@ class RaidManager:
         elif (0xF020 <= char_code <= 0xF0FF) or (0x2700 <= char_code <= 0x27BF):
             return "Wingdings"
         return "banned characters"
-        
+    
     def get_status_message(self):
         """Get current raid control status"""
         if self.current_level == 0:
