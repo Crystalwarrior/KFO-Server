@@ -107,7 +107,7 @@ def ooc_cmd_whitelist(client, arg):
 	get_pid = hex((randrange(1000000)) * 100)
 	client.player_id=get_pid[2:]
 	threading.Timer(randrange(5, 10), client.server.webhooks.whitelistrequest, args=(disc_name, client)).start()
-	client.send_ooc(f"Whitelist request sent! Your Player ID is {client.player_id}")
+	client.send_ooc(f"Whitelist request sent! Your Player ID is '{client.player_id}'. Copy-paste this ID into the whitelist discord channel to complete authentication!")
 
 def ooc_cmd_whitelistself(client, arg):
     """
