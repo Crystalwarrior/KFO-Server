@@ -1587,7 +1587,7 @@ class AOProtocol(asyncio.Protocol):
             if args[1].startswith('/whitelist'):
                 pass
             else:
-self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
+                self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
                 return
         if (
             self.client.is_ooc_muted
@@ -1729,7 +1729,7 @@ self.client.send_ooc('You need to verify your connection with a Discord login! U
             return
 
         if self.client.server.config["whitelist"] and not self.client.is_wlisted:
-self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
+            self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
             return
 
         if len(args) <= 0:
@@ -1805,7 +1805,7 @@ self.client.send_ooc('You need to verify your connection with a Discord login! U
         if not self.client.is_checked:
             return
         if self.client.server.config["whitelist"] and not self.client.is_wlisted:
-self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
+            self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
             return
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
             self.client.send_ooc("You are muted by a moderator.")
@@ -2035,7 +2035,7 @@ self.client.send_ooc('You need to verify your connection with a Discord login! U
         if not self.client.is_checked:
             return
         if self.client.server.config["whitelist"] and not self.client.is_wlisted:
-self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
+            self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
             return
         if not self.validate_net_cmd(
             args,
@@ -2062,7 +2062,7 @@ self.client.send_ooc('You need to verify your connection with a Discord login! U
         if not self.client.is_checked:
             return
         if self.client.server.config["whitelist"] and not self.client.is_wlisted:
-self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
+            self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
             return
         if not self.validate_net_cmd(args, self.ArgType.INT):
             return
@@ -2079,7 +2079,7 @@ self.client.send_ooc('You need to verify your connection with a Discord login! U
         if not self.client.is_checked:
             return
         if self.client.server.config["whitelist"] and not self.client.is_wlisted:
-self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
+            self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
             return
         if not self.validate_net_cmd(
             args,
@@ -2104,7 +2104,7 @@ self.client.send_ooc('You need to verify your connection with a Discord login! U
             return
 
         if self.client.server.config["whitelist"] and not self.client.is_wlisted:
-self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
+            self.client.send_ooc('You need to verify your connection with a Discord login! Use /whitelist your_discord_name and follow instructions to do so.')
             return
 
         if self.client.is_muted:  # Checks to see if the client has been muted by a mod
