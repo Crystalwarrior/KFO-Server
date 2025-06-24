@@ -195,20 +195,53 @@ class AOProtocol(asyncio.Protocol):
         """
         if not self.validate_net_cmd(args, self.ArgType.STR, needs_auth=False):
             return
-        # We already got an assigned hdid by the server
         if self.client.hdid != "":
             self.client.send_command(
                 "KB", "Your HDID was sent a second time by your client.")
             self.client.disconnect()
             return
         hdid = self.client.hdid = args[0]
-        
-        if self.server.lockdown and self.client.hdid not in self.server.whitelist:
-            msg = f"Server is currently in lockdown. Your HDID is {self.client.hdid}. Please contact staff in Discord to get whitelisted."
-            self.client.send_command("BD", msg)
-            self.client.disconnect()
-            return
         ipid = self.client.ipid
+        
+        with database.db as conn:
+            row = conn.execute(
+                "SELECT ip_address FROM ipids WHERE ipid = ?",
+                (ipid,)
+            ).fetchone()
+            ip_address = row["ip_address"] if row else None
+        
+        if self.server.lockdown or self.server.raidmode.current_level > 0:
+            if self.server.config["strict_mode"]["enabled"]:
+                current_valleyid = self.server.valleyid.generate_valleyid(hdid, ip_address)
+                
+                try:
+                    with open("storage/strictmode.txt", "r") as f:
+                        allowed_valleyids = [line.strip() for line in f.readlines()]
+                except:
+                    allowed_valleyids = []
+
+                if self.server.valleyid.verify_hdid_spoofing(hdid, ip_address, allowed_valleyids):
+                    self.client.send_command("BD", "don't spoof idiot")
+                    self.client.disconnect()
+                    return
+            
+                if current_valleyid not in allowed_valleyids:
+                    msg = f"Server is in restricted mode. Your ValleyID is {current_valleyid}. Contact staff to get whitelisted."
+                    self.client.send_command("BD", msg)
+                    self.client.disconnect()
+                    return
+            else:
+                try:
+                    with open("storage/whitelist.txt", "r") as f:
+                        whitelisted_hdids = [line.strip() for line in f.readlines()]
+                except:
+                    whitelisted_hdids = []
+
+                if hdid not in whitelisted_hdids:
+                    msg = "Server is in lockdown. Contact staff to whitelist your HDID."
+                    self.client.send_command("BD", msg)
+                    self.client.disconnect()
+                    return
 
         database.add_hdid(ipid, hdid)
         ban = database.find_ban(ipid, hdid)

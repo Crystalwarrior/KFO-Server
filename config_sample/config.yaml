@@ -185,3 +185,7 @@ need_webhook:
 lockdown:
   min_playtime: 600
   legacy_password: "legacy"
+
+strict_mode:
+  enabled: false
+  seed: "PUT_PERMANENT_SEED_HERE"
