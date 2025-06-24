@@ -533,9 +533,9 @@ def ooc_cmd_area_pref(client, arg):
             raise ClientError("You need to be a GM to modify this preference.")
         tog = not attri
         if len(args) > 1:
-            if args[1].lower() in ("on", "true"):
+            if args[1].lower() in ("1", "on", "true"):
                 tog = True
-            elif args[1].lower() in ("off", "false"):
+            elif args[1].lower() in ("0", "off", "false"):
                 tog = False
             else:
                 raise ArgumentError("Invalid argument: {}".format(arg))

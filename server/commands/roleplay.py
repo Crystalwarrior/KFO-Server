@@ -225,14 +225,14 @@ def ooc_cmd_notecard(client, arg):
     Usage: /notecard <message>
     """
     if len(arg) == 0:
-        if client.char_name in client.area.cards:
+        if client.id in client.area.cards:
             client.send_ooc(
                 f"Your current notecard is {client.area.cards[client.char_name]}. Usage: /notecard <message>"
             )
         else:
             client.send_ooc("No notecard found. Usage: /notecard <message>")
         return
-    client.area.cards[client.char_name] = arg
+    client.area.cards[client.char_name] = (client.showname, arg)
     client.area.broadcast_ooc(f"[{client.id}] {client.showname} wrote a note card.")
     database.log_area("notecard", client, client.area)
 
@@ -254,15 +254,36 @@ def ooc_cmd_notecard_clear(client, arg):
 def ooc_cmd_notecard_reveal(client, arg):
     """
     Reveal all notecards and their owners.
-    Usage: /notecard_reveal
+    Set [clear] to 0 if you don't want the notecards to automatically clear after revealing.
+    Usage: /notecard_reveal [clear]
     """
     if len(client.area.cards) == 0:
         raise ClientError("There are no cards to reveal in this area.")
     msg = "Note cards have been revealed:"
-    for card_owner, card_msg in client.area.cards.items():
-        msg += f"\n{card_owner}: {card_msg}"
+    for card_charname, card_data in client.area.cards.items():
+        card_showname = card_data[0]
+        card_msg = card_data[1]
+        card_owner_display = f"[DC] {card_showname}"
+        card_owner = client.server.client_manager.get_targets(
+            client, TargetType.CHAR_NAME, card_charname, False
+        )
+        if len(card_owner) > 0:
+            card_owner = card_owner[0]
+            card_owner_display = f"[{card_owner.id}] {card_owner.showname}"
+        msg += f"\n{card_owner_display}: {card_msg}"
+    
+    # Reveal the notecards in OOC!
     client.area.broadcast_ooc(msg)
-    client.send_ooc("Use /notecard_clear for clearing.")
+
+    # Check if notecards auto-clear or not
+    if arg.strip().lower() in ("0", "off", "false"):
+        client.send_ooc("Use /notecard_clear for clearing.")
+    else:
+        client.area.cards.clear()
+        client.area.broadcast_ooc(
+            f"Notecards have been cleared."
+        )
+
     database.log_area("notecard_reveal", client, client.area)
 
 
@@ -273,13 +294,23 @@ def ooc_cmd_notecard_check(client, arg):
     Usage: /notecard_check
     """
     if len(client.area.cards) == 0:
-        raise ClientError("There are no cards to check in this area.")
+        raise ClientError("There are no notecards to check in this area.")
     client.area.broadcast_ooc(
         f"[{client.id}] {client.showname} has checked the notecards in this area."
     )
-    msg = "Note cards in this area:"
-    for card_owner, card_msg in client.area.cards.items():
-        msg += f"\n{card_owner}: {card_msg}"
+    msg = "Notecards in this area:"
+    for card_charname, card_data in client.area.cards.items():
+        card_showname = card_data[0]
+        card_msg = card_data[1]
+        card_owner_display = f"[DC] {card_showname}"
+        card_owner = client.server.client_manager.get_targets(
+            client, TargetType.CHAR_NAME, card_charname, False
+        )
+        if len(card_owner) > 0:
+            card_owner = card_owner[0]
+            card_owner_display = f"[{card_owner.id}] {card_owner.showname}"
+        msg += f"\n{card_owner_display}: {card_msg}"
+
     client.send_ooc(msg)
     client.send_ooc(
         "Use /notecard_clear for clearing, or /notecard_reveal to reveal the results publicly."
@@ -323,7 +354,7 @@ def ooc_cmd_vote_clear(client, arg):
                 )
                 return
         raise ClientError(
-            f"No vote was cast by {arg}! (This is case-sensitive - are you sure you spelt the voter character folder right?)"
+            f"No vote was cast by {arg}! (This is case-sensitive - are you sure you spelled the voter character folder right?)"
         )
     client.area.votes.clear()
     client.area.broadcast_ooc(
@@ -332,33 +363,52 @@ def ooc_cmd_vote_clear(client, arg):
     database.log_area("vote_clear", client, client.area)
 
 
-def get_vote_results(votes):
-    # Sort the votes, starting from the least votes ending with the most votes. Note that x[1] is a list of voters, hence the len().
-    votes = sorted(votes.items(), key=lambda x: len(x[1]))
-    msg = ""
-    # Iterating through the votes...
-    for key, value in votes:
-        # Create a comma-separated list of people who voted for this person
-        voters = ", ".join(value)
-        num = len(value)
-        s = "s" if num > 1 else ""
-        msg += f"\n{num} vote{s} for {key} - voted by {voters}."
+def get_vote_results(client, votes):
+    def get_showname(target_name):
+        """Helper function to convert a charname to showname format."""
+        owners = client.server.client_manager.get_targets(
+            client, TargetType.CHAR_NAME, target_name, False
+        )
+        if owners:
+            owner = owners[0]
+            return f"[{owner.id}] {owner.showname}"
+        return target_name
 
-    # Get the maximum amount of votes someone received
-    mx = len(votes[len(votes) - 1][1])
-    # Determine a list of winners - usually it's just one winner, but there's multiple if it's a tie.
-    winners = [k for k, v in votes if len(v) == mx]
-
-    # If we have a tie...
+    # Sort votes by count (ascending)
+    sorted_votes = sorted(votes.items(), key=lambda x: len(x[1]))
+    
+    msg_lines = []
+    max_votes = 0
+    
+    for candidate, voters in sorted_votes:
+        # Process voters
+        voter_names = [get_showname(voter) for voter in voters]
+        voters_str = ", ".join(voter_names)
+        
+        # Process candidate
+        candidate_name = get_showname(candidate)
+        
+        # Build vote line
+        vote_count = len(voters)
+        plural = "s" if vote_count > 1 else ""
+        msg_lines.append(
+            f"🗳️{vote_count} vote{plural} for {candidate_name}\n   ◽ Voted by {voters_str}."
+        )
+        
+        # Track max votes
+        if vote_count > max_votes:
+            max_votes = vote_count
+    
+    # Find winners
+    winners = [get_showname(k) for k, v in sorted_votes if len(v) == max_votes]
+    
+    # Add winner/tie message
     if len(winners) > 1:
-        # Create a comma-separated list of winners
-        tied = ", ".join(winners)
-        # Display.
-        msg += f"\n{tied} have tied for most votes."
+        msg_lines.append(f"{', '.join(winners)} have tied for most votes.")
     else:
-        # Display the sole winner.
-        msg += f"\n{winners[0]} has most votes."
-    return msg
+        msg_lines.append(f"{winners[0]} has most votes.")
+    
+    return "\n".join(msg_lines)
 
 
 @mod_only(area_owners=True)
@@ -370,9 +420,18 @@ def ooc_cmd_vote_reveal(client, arg):
     if len(client.area.votes) == 0:
         raise ClientError("There are no votes to reveal in this area.")
     msg = "Votes have been revealed:"
-    msg += get_vote_results(client.area.votes)
+    msg += get_vote_results(client, client.area.votes)
     client.area.broadcast_ooc(msg)
-    client.send_ooc("Use /vote_clear for clearing.")
+
+    # Check if votes auto-clear or not
+    if arg.strip().lower() in ("0", "off", "false"):
+        client.send_ooc("Use /vote_clear for clearing.")
+    else:
+        client.area.votes.clear()
+        client.area.broadcast_ooc(
+            f"Votes have been cleared."
+        )
+
     database.log_area("vote_reveal", client, client.area)
 
 
@@ -387,8 +446,8 @@ def ooc_cmd_vote_check(client, arg):
     client.area.broadcast_ooc(
         f"[{client.id}] {client.showname} has checked the votes in this area."
     )
-    msg = "Votes in this area:"
-    msg += get_vote_results(client.area.votes)
+    msg = "Votes in this area:\n"
+    msg += get_vote_results(client, client.area.votes)
     client.send_ooc(msg)
     client.send_ooc(
         "Use /vote_clear for clearing, or /vote_reveal to reveal the results publicly."
