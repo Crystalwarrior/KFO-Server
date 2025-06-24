@@ -18,10 +18,10 @@ class ValleyID:
         if not db_path.exists():
             self.download_asn_database()
         else:
-        try:
-            self.asndb = pyasn.pyasn(str(db_path))
-        except Exception as e:
-            self.asndb = None
+            try:
+                self.asndb = pyasn.pyasn(str(db_path))
+            except Exception as e:
+                self.asndb = None
 
     def get_asn(self, ip):
         """Get ASN for an IP address."""
