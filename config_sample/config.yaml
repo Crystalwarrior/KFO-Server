@@ -61,6 +61,8 @@ asset_url:
 
 # Whether or not the server should be advertised on the server list.
 use_masterserver: true
+# Your hostname if you have one
+masterserver_custom_hostname: "your.server.com"
 # How the server should be listed on the server list.
 masterserver_name: My First Server
 masterserver_description: This is my flashy new server
