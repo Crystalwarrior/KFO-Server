@@ -292,6 +292,10 @@ class Area:
         self.auto_pair_max = "triple"
         self.auto_pair_cycle = False
 
+        # Area message stuff
+        self.can_area_message = True
+        self.area_message = ""
+
     @property
     def name(self):
         """Area's name string. Abbreviation is also updated according to this."""
@@ -602,6 +606,10 @@ class Area:
             self.auto_pair_max = area["auto_pair_max"]
         if "auto_pair_cycle" in area:
             self.auto_pair_cycle = area["auto_pair_cycle"]
+        if "can_area_message" in area:
+            self.can_area_message = area["can_area_message"]
+        if "area_message" in area:
+            self.area_message = area["area_message"]
 
     def save(self):
         area = OrderedDict()
@@ -681,6 +689,8 @@ class Area:
         area["auto_pair"] = self.auto_pair
         area["auto_pair_max"] = self.auto_pair_max
         area["auto_pair_cycle"] = self.auto_pair_cycle
+        area["can_area_message"] = self.can_area_message
+        area["area_message"] = self.area_message
         return area
 
     def new_client(self, client):

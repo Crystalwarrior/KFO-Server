@@ -169,6 +169,13 @@
 * **auto\_pair** `<double/triple>`
     - Set the max of players displayed on the screen.
     - Depends on the /area_pref auto_pair setting
+* **area\_message** `<message>`
+    - Set a fixed message for an area.
+    - To disable just do /area_message.
+    - {areaname} in the message will show area's name
+    - {playercount} will show the number of the players in the area
+    - {playerlist} will show the list of the players in the area
+    - {desc} will show area desc
 ## Casing
 * **doc** `[url]`
     - Show or change the link for the current case document.
