@@ -1,0 +1,80 @@
+admin.py:
+  ooc_cmd_motd:
+    This command doesn't take any arguments: "Questo comando non ha bisogno di argomenti"
+  ooc_cmd_help:
+    No such command or submodule ({arg}) has been found in the help docs.: "Nessun commando o sottomodulo ({arg}) e' stato trovato nel documento 'help'"
+  ooc_cmd_kick:
+    You must specify a target. Use /kick <ipid> [reason]: "Devi specificare il target. Usa /kick <ipid> [motivo]"
+    "{raw_ipid} does not look like a valid IPID.": "{raw_ipid} non sembra un valido IPID."
+    "{c.showname} was kicked.": "{c.showname} e' stato kickato"
+    No targets with the IPID {ipid} were found.: "Nessun target con l'IPID {ipid} e' stato trovato"
+  kickban:
+    Not enough arguments.: "Non ci sono abbastanza argomenti."
+    Invalid ban duration.: "Durata del ban non valida."
+    'Ambiguous input: {arg}\nPlease wrap your arguments " " in quotes.': "L'input e' ambiguo: {arg}\nProva a scrivere il tuo argomento usando le '' virgolette."
+    "{raw_ipid} does not look like a valid IPID.": "{raw_ipid} non sembra un valido IPID"
+    "{num} clients were kicked.": "{num} giocatori sono stati kickati."
+    "{ipid} was banned. Ban ID: {ban_id}": "{ipid} e' stato bannato. Ban ID: {ban_id}"
+  ooc_cmd_unban:
+    You must specify a target. Use /unban <ban_id...>: "Devi specificare il target. Usa /unban <ban_id...>"
+    Attempting to lift {num} ban(s)...: "Revocando {num} ban..."
+    Removed ban ID {ban_id}.: "Rimuovendo ban ID {ban_id}"
+    "{ban_id} is not on the ban list.": "{ban_id} non e' nella ban list."
+  ooc_cmd_mute:
+    You must specify a target. Use /mute <ipid>.: "Devi specificare il target. Usa /mute <ipid>"
+    Attempting to mute {num} IPIDs.: "Mutando {num} IPID"
+    Muted the IPID : "Mutato l'IPID"
+    "'s following clients:": "Dei seguenti giocatori"
+    No targets found. Use /mute <ipid> <ipid> ... for mute.: "Nessun target trovato. Usa /mute <ipid> <ipid> ... per mutare."
+    "{raw_ipid} does not look like a valid IPID.": "{raw_ipid} non sembra un valido IPID."
+  ooc_cmd_unmute:
+    You must specify a target.: "Devi specificare il target."
+    Attempting to unmute {num} IPIDs.: "Smutando {num} IPID"
+    "Unmuted the IPID ${ipid}'s following clients:": "Smutando l'IPID {ipid} dei seguenti giocatori"
+    No targets found. Use /unmute <ipid> <ipid> ... for unmute.: "Nessun target trovato. Usa /unmute <ipid> <ipid> ... per smutare"
+    "{raw_ipid} does not look like a valid IPID.": "{raw_ipid} non sembra un valido IPID"
+  ooc_cmd_login:
+    You must specify the password.: "Devi specificare la password."
+    Logged in as a moderator.: "Loggato come moderatore."
+  ooc_cmd_refresh:
+    This command does not take in any arguments!: "Questo comando non ha bisogno di argomenti!"
+    You have reloaded the server.: "Hai ricaricato il server."
+  ooc_cmd_unmod:
+    You're no longer a mod.: "Non sei più moderatore."
+  ooc_cmd_ooc_mute:
+    You must specify a target. Use /ooc_mute <OOC-name>.: "Devi specificare il target. Usa /ooc_mute <OOC-name>."
+    Targets not found. Use /ooc_mute <OOC-name>.: "Target non trovato. Usa /ooc_mute <OOC-name>."
+    Muted {num} existing client(s).: "Mutati {num} giocatori esistenti."
+  ooc_cmd_ooc_unmute:
+    You must specify a target. Use /ooc_unmute <OOC-name>.: "Devi specificare il target. Usa /ooc_unmute <OOC-name>."
+    Targets not found. Use /ooc_unmute <OOC-name>.: "Target non trovato. Usa /ooc_unmute <OOC-name>."
+    Unmuted {num} existing client(s).: "Smutati {num} giocatori esistenti."
+  ooc_cmd_bans:
+    "Last 5 bans:\n": "Ultimi 5 ban\n"
+    "{time}: {ban.banned_by_name} ({ban.banned_by}) issued ban ": "{time}: {ban.banned_by_name} ({ban.banned_by}) ha messo il seguente ban"
+  ooc_cmd_baninfo:
+    You must specify an ID.: "Devi specificare un ID."
+    Incorrect lookup type.: "Hai sbagliato il tipo di ricerca."
+    No ban found for this ID.: "Nessun ban trovato per questo ID."
+    "Affected IPIDs: ": "IPID interessati: "
+    "Affected HDIDs: ": "HDID interessati: "
+    'Reason: "{reason}"\n': 'Motivo: "{reason}"\n'
+    "Banned by: {banned_by_name} ({banned_by})\n": "Bannato da: {banned_by_name} ({banned_by})\n"
+    "Banned on: {ban_date_format} ({ban_date})\n": "Bannato nella data: {ban_date_format} ({ban_date})\n"
+    "Unban date: {unban_date_format} ({unban_date})": "Data Sban: {unban_date_format} ({unban_date})"
+    "Unban date: N/A": "Data Sban: N/A"
+  ooc_cmd_time:
+    This command takes no arguments: "Questo comando non ha bisogno di argomenti"
+    "The current time in UTC (aka GMT) is:\n[": "L'ora esatta in UTC (aka GMT) e':\n["
+  ooc_cmd_whois:
+    "WHOIS lookup for {arg}:": "ChiE' ricerca per {arg}:"
+    "\nMatched {num} online clients.": "\n{num} giocatori online abbinati."
+  ooc_cmd_restart:
+    no: "no"
+    Restarting the server...: "Il server sta restartando..."
+  ooc_cmd_myid:
+    This command takes no arguments: "Questo comando non ha bisogno di argomenti"
+    "You are: [{id}] " : "Tu sei [{id}] "
+  ooc_cmd_multiclients:
+    "Clients belonging to {arg}:": "Giocatori che appartengo a {arg}"
+    \nMatched {num} online clients.: "\n{num} giocatori online abbinati."
