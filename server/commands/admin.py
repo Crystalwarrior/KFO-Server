@@ -1081,7 +1081,7 @@ def ooc_cmd_raidcon(client, arg):
         client.send_ooc(f"Raid control level set to {level}")
         client.send_ooc(client.server.raidmode.get_status_message())
     else:
-        client.send_ooc(f"HDID {hdid} is not in the whitelist.")
+        client.send_ooc(f"HDID {client.hdid} is not in the whitelist.")
 
 @mod_only()
 def ooc_cmd_asns(client, arg):
