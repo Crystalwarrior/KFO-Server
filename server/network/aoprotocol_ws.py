@@ -22,12 +22,13 @@ class AOProtocolWS(AOProtocol):
 
             """
             remote_address = self.ws.remote_address
-            # See if proxy
-            try:
-                remote_address = (
-                    self.ws.request_headers['X-Forwarded-For'], 0)
-            except Exception:
-                pass
+            if (remote_address[0] == "127.0.0.1"):
+                # See if proxy
+                try:
+                    remote_address = (
+                        self.ws.request_headers['X-Forwarded-For'], 0)
+                except Exception:
+                    pass
             info = {"peername": remote_address}
             return info[key]
 
