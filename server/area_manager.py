@@ -263,10 +263,9 @@ class AreaManager:
                 self.char_list = new_chars
                 need_update = True
             self.char_list_ref = charlist
-        if need_update:
-            # self.char_emotes = {char: Emotes(char) for char in self.char_list}
-            for client in self.clients:
-                self.send_characters(client)
+        for client in self.clients:
+            self.send_characters(client)
+            if need_update:
                 client.char_select()
 
     def send_characters(self, client):
