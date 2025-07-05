@@ -251,7 +251,7 @@ class AreaManager:
         """Load the character list from a YAML file."""
         if self.char_list_ref == charlist:
             return
-
+        self.char_list_ref = charlist
         if charlist != "":
             new_chars = None
             with open(f"storage/charlists/{charlist}.yaml", "r", encoding="utf-8") as chars:
