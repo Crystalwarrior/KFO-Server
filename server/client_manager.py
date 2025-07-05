@@ -958,11 +958,7 @@ class ClientManager:
             self.send_command("HP", 2, self.area.hp_pro)
 
             # Send the background information
-            if self.area.dark:
-                # TODO: separate dark area overlays
-                self.send_command("BN", self.area.background_dark, self.pos, self.area.overlay, 1)
-            else:
-                self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
+            self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
 
             if len(self.area.pos_lock) > 0:
                 # set that juicy pos dropdown
@@ -1735,11 +1731,7 @@ class ClientManager:
             self.send_command("CharsCheck", *self.get_available_char_list())
             self.send_command("HP", 1, self.area.hp_def)
             self.send_command("HP", 2, self.area.hp_pro)
-            if self.area.dark:
-                self.send_command(
-                    "BN", self.area.background_dark, self.area.pos_dark, self.area.overlay, 1)
-            else:
-                self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
+            self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
             self.send_command("LE", *self.area.get_evidence_list(self))
             self.send_command("MM", 1)
 

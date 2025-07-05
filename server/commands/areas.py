@@ -10,6 +10,7 @@ __all__ = [
     "ooc_cmd_overlay",
     "ooc_cmd_overlay_clear",
     "ooc_cmd_bg",
+    "ooc_cmd_bg_suffix",
     "ooc_cmd_bgs",
     "ooc_cmd_status",
     "ooc_cmd_area",
@@ -59,7 +60,7 @@ def ooc_cmd_overlay(client, arg):
     if client.area.dark and not client.is_mod and not (client in client.area.owners):
         raise ClientError("You must be authorized to do that.")
     try:
-        client.area.change_background(client.area.background, overlay=arg)
+        client.area.change_background(client.area._background, overlay=arg)
     except AreaError:
         raise
     client.area.broadcast_ooc(
@@ -86,7 +87,7 @@ def ooc_cmd_overlay_clear(client, arg):
     if client.area.dark and not client.is_mod and not (client in client.area.owners):
         raise ClientError("You must be authorized to do that.")
     try:
-        client.area.change_background(client.area.background, overlay="")
+        client.area.change_background(client.area._background, overlay="")
     except AreaError:
         raise
     client.area.broadcast_ooc(
@@ -103,8 +104,11 @@ def ooc_cmd_bg(client, arg):
         if len(client.area.pos_lock) > 0:
             pos = ", ".join(str(lpos) for lpos in client.area.pos_lock)
             pos_lock = f"\nAvailable positions: {pos}."
+        suffix = ""
+        if client.area.background_suffix:
+            suffix = client.area.background_suffix
         client.send_ooc(
-            f"Current background is {client.area.background}.{pos_lock}")
+            f"Current background is '{client.area._background}' + '{suffix}'.{pos_lock}")
         return
     if client not in client.area.owners and not client.is_mod and client.area.bg_lock:
         raise AreaError("This area's background is locked!")
@@ -124,6 +128,23 @@ def ooc_cmd_bg(client, arg):
         raise
     client.area.broadcast_ooc(
         f"{client.showname} changed the background to {arg}.")
+    database.log_area("bg", client, client.area, message=arg)
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_bg_suffix(client, arg):
+    """
+    Set the background suffix of an area, which is what will be appended at the end of the area's /bg.
+    Usage: /bg_suffix <background>
+    """
+    if len(arg) == 0:
+        arg = ""
+    try:
+        client.area.change_background_suffix(arg)
+    except AreaError:
+        raise
+    client.send_ooc(
+        f"You changed the background suffix to {arg}.")
     database.log_area("bg", client, client.area, message=arg)
 
 
@@ -858,15 +879,13 @@ def ooc_cmd_lights(client, arg):
     else:
         client.area.dark = not client.area.dark
     stat = "no longer"
-    bg = client.area.background
     if client.area.dark:
         stat = "now"
-        bg = client.area.background_dark
     for c in client.area.clients:
         pos = c.pos
         if c.area.dark:
             pos = client.area.pos_dark
-        c.send_command("BN", bg, pos)
+        c.send_command("BN", client.area.background, pos)
     client.send_ooc(f"This area is {stat} dark.")
     client.area.broadcast_evidence_list()
 
