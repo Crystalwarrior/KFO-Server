@@ -181,12 +181,8 @@ def ooc_cmd_load_hub(client, arg):
             raise ArgumentError(f"File not found: {arg}")
         with open(arg, "r", encoding="utf-8") as stream:
             hub = yaml.safe_load(stream)
-        char_list_ref = client.area.area_manager.char_list_ref
-        client.server.hub_manager.load(hub_id=client.area.area_manager.id)
-        client.area.area_manager.broadcast_ooc("Hub clearing initiated...")
-        client.area.area_manager.char_list_ref = char_list_ref
-        client.area.area_manager.load(hub, ignore=["can_gm", "max_areas"])
-        client.send_ooc(f"Success, loading as {arg}...")
+        client.area.area_manager.load(hub, destructive=True, ignore=["can_gm", "max_areas"])
+        client.send_ooc(f"Loading as {arg}...")
         client.area.area_manager.send_arup_status()
         client.area.area_manager.send_arup_cms()
         client.area.area_manager.send_arup_lock()
