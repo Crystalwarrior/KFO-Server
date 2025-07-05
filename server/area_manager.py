@@ -254,6 +254,7 @@ class AreaManager:
             if self.char_list_ref != "":
                 self.char_list = self.server.char_list
                 need_update = True
+            self.char_list_ref = ""
         else:
             if self.char_list_ref != charlist:
                 new_chars = None
@@ -261,8 +262,8 @@ class AreaManager:
                     new_chars = yaml.safe_load(chars)
                 self.char_list = new_chars
                 need_update = True
-        if need_update:
             self.char_list_ref = charlist
+        if need_update:
             # self.char_emotes = {char: Emotes(char) for char in self.char_list}
             for client in self.clients:
                 self.send_characters(client)
