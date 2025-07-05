@@ -211,6 +211,8 @@ class AreaManager:
         ]
         for entry in list(set(load_list) - set(ignore)):
             if entry in hub:
+                if entry == "char_list_ref":
+                    self.load_characters(hub[entry])
                 setattr(self, entry, hub[entry])
                 if entry == "music_ref":
                     if hub[entry] == "":
@@ -220,8 +222,6 @@ class AreaManager:
                             self.load_music(f"storage/musiclists/read_only/{hub[entry]}.yaml")
                         else:
                             self.load_music(f"storage/musiclists/{hub[entry]}.yaml")
-                if entry == "char_list_ref":
-                    self.load_characters(hub[entry])
 
         if not ("character_data" in ignore) and "character_data" in hub:
             try:
