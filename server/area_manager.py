@@ -251,18 +251,18 @@ class AreaManager:
         """Load the character list from a YAML file."""
         need_update = False
         if charlist == "":
-            if self.char_list != self.server.char_list:
+            if self.char_list_ref != "":
                 self.char_list = self.server.char_list
                 need_update = True
         else:
-            new_chars = None
-            with open(f"storage/charlists/{charlist}.yaml", "r", encoding="utf-8") as chars:
-                new_chars = yaml.safe_load(chars)
-
-            if self.char_list != new_chars:
+            if self.char_list_ref != charlist:
+                new_chars = None
+                with open(f"storage/charlists/{charlist}.yaml", "r", encoding="utf-8") as chars:
+                    new_chars = yaml.safe_load(chars)
                 self.char_list = new_chars
                 need_update = True
         if need_update:
+            self.char_list_ref = charlist
             # self.char_emotes = {char: Emotes(char) for char in self.char_list}
             for client in self.clients:
                 self.send_characters(client)
