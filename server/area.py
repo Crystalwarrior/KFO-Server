@@ -107,7 +107,8 @@ class Area:
         self._name = name
 
         # Initialize prefs
-        self.background = "default"
+        self._background = "default"
+        self.background_suffix = ""
         self.overlay = ""
         self.pos_lock = []
         self.bg_lock = False
@@ -220,7 +221,7 @@ class Area:
         self.o_abbreviation = self.abbreviation
         self.o_doc = self.doc
         self.o_desc = self.desc
-        self.o_background = self.background
+        self.o_background = self._background
 
         self.music_looper = None
         self.next_message_time = 0
@@ -320,6 +321,14 @@ class Area:
         """Area's owners. Also appends Game Masters (Hub Managers)."""
         return self.area_manager.owners | self._owners
 
+    @property
+    def background(self):
+        """Current background of the area."""
+        bg = self._background
+        if self.dark:
+            bg = self.background_dark
+        return bg + self.background_suffix
+
     def trigger(self, trig, target):
         """Call the trigger's associated command."""
         if target.hidden:
@@ -401,8 +410,10 @@ class Area:
                 self.locked = True
 
         if "background" in area:
-            self.background = area["background"]
-            self.o_background = self.background
+            self._background = area["background"]
+            self.o_background = self._background
+        if "background_suffix" in area:
+            self.background_suffix = area["background_suffix"]
         if "overlay" in area:
             self.overlay = area["overlay"]
         if "bg_lock" in area:
@@ -581,7 +592,7 @@ class Area:
         if self.dark:
             self.change_background(self.background_dark)
         else:
-            self.change_background(self.background)
+            self.change_background(self._background)
         self.change_hp(1, self.hp_def)
         self.change_hp(2, self.hp_pro)
         if self.ambience:
@@ -606,7 +617,8 @@ class Area:
     def save(self):
         area = OrderedDict()
         area["area"] = self.name
-        area["background"] = self.background
+        area["background"] = self._background
+        area["background_suffix"] = self.background_suffix
         area["overlay"] = self.overlay
         area["pos_lock"] = "none"
         if len(self.pos_lock) > 0:
@@ -1682,6 +1694,12 @@ class Area:
             self.hp_pro = val
         self.send_command("HP", side, val)
 
+    def change_background_suffix(self, bg_suffix, mode=1):
+        self.background_suffix = bg_suffix
+        for client in self.clients:
+            client.send_command("BN", self.background, client.pos, self.overlay, mode)
+
+
     def change_background(self, bg, overlay="", mode=1):
         """
         Set the background and/or overlay.
@@ -1727,7 +1745,7 @@ class Area:
         if self.dark:
             self.background_dark = bg
         else:
-            self.background = bg
+            self._background = bg
 
         if len(self.pos_lock) > 0:
             for client in self.clients:
@@ -1738,7 +1756,7 @@ class Area:
         self.overlay = overlay
 
         for client in self.clients:
-            client.send_command("BN", bg, client.pos, self.overlay, mode)
+            client.send_command("BN", client.area.background, client.pos, self.overlay, mode)
 
     def change_status(self, value):
         """
@@ -2272,10 +2290,7 @@ class Area:
         self.send_command("HP", 2, self.hp_pro)
 
         # Send the background information
-        if self.dark:
-            self.send_command("BN", self.background_dark)
-        else:
-            self.send_command("BN", self.background)
+        self.send_command("BN", self.background)
 
     class JukeboxVote:
         """Represents a single vote cast for the jukebox."""
