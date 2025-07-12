@@ -532,14 +532,26 @@ def ooc_cmd_player_move_delay(client, arg):
     Delay must be from -1800 to 1800 in seconds or empty to check.
     Usage: /player_move_delay <id> [delay]
     """
-    args = arg.split()
+    args = shlex.split(arg)
     try:
         if len(args) > 0 and (
             client.is_mod or client in client.area.area_manager.owners
         ):
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
-            )[0]
+            # Try to find by char name first
+            targets = client.server.client_manager.get_targets(
+                client, TargetType.CHAR_NAME, args[0]
+            )
+            # If that doesn't work, find by client ID
+            if len(targets) == 0 and args[0].isdigit():
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.ID, int(args[0])
+                )
+            # If that doesn't work, find by OOC Name
+            if len(targets) == 0:
+                targets = client.server.client_manager.get_targets(
+                    client, TargetType.OOC_NAME, args[0]
+                )
+            c = targets[0]
             if len(args) > 1:
                 move_delay = min(
                     1800, max(-1800, int(args[1]))
