@@ -2291,6 +2291,7 @@ class ClientManager:
             self.current_client = client
             self.guild = None
             self.moves = [ClientManager.Move(move) for move in fighter["Moves"]]
+            self.bag = []
 
     class Move:
         def __init__(self, move):
