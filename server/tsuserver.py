@@ -299,6 +299,8 @@ class TsuServer3:
             self.config["block_relative"] = False
         if "global_chat" not in self.config:
             self.config["global_chat"] = True
+        if "music_allow_url" not in self.config:
+            self.config["music_allow_url"] = True
 
     def load_command_aliases(self):
         """Load a list of alternative command names."""

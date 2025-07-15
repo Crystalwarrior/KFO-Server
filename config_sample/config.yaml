@@ -75,6 +75,12 @@ block_repeat: true
 # Whether global chat is enabled
 global_chat: true
 
+# If playing streamed music by URL is allowed or not
+music_allow_url: true
+
+# Can use /gethubs without being a mod
+can_gethubs: true
+
 # Enables additional logging.
 debug: false
 

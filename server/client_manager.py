@@ -551,9 +551,13 @@ class ClientManager:
 
                 if (contains_URL(song)):
                     checked = False
-                    for line in self.server.music_whitelist:
-                        if song.startswith(line):
+                    # Only if url music is configured to be allowed
+                    if self.server.config["music_allow_url"] == True:
+                        if len(self.server.music_whitelist) <= 0:
                             checked = True
+                        for line in self.server.music_whitelist:
+                            if song.startswith(line):
+                                checked = True
                     if checked == False:
                         self.send_ooc(
                             "This URL is not allowed."
