@@ -7,7 +7,7 @@ from server.constants import encode_ao_packet
 class EvidenceList:
     """Contains a list of evidence items."""
 
-    limit = 35
+    limit = 50
     
     class Evidence:
         """Represents a single evidence item."""

@@ -590,9 +590,9 @@ class Area:
 
         # Update the clients in that area
         if self.dark:
-            self.change_background(self.background_dark)
+            self.change_background(self.background_dark, overlay=self.overlay)
         else:
-            self.change_background(self._background)
+            self.change_background(self._background, overlay=self.overlay)
         self.change_hp(1, self.hp_def)
         self.change_hp(2, self.hp_pro)
         if self.ambience:
@@ -937,7 +937,7 @@ class Area:
                     c.send_command("BN", bg)
                 c.send_command(cmd, *args)
                 if c.area.background != bg:
-                    c.send_command("BN", c.area.background)
+                    c.send_command("BN", c.area.background, c.area.overlay)
 
     def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
         """Broadcast a timer to all clients in this area."""
