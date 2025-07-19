@@ -43,6 +43,10 @@ If you're looking for the list of commands, it can be found [here](commands.md).
     - If True, normal users can choose songs in this area.
     - If False, only CMs and above can choose songs.
     - Default: *True*
+* **music_locked**
+    - If True, no one can choose songs in this area, regardless of can_dj setting.
+    - If False, people can change songs depending on can_dj setting.
+    - Default: *False*
 * **hidden**
     - If True, this area will be hidden from the client area lists.
     - If False, the area is visible in the client area lists.

@@ -488,6 +488,7 @@ def ooc_cmd_area_pref(client, arg):
         "replace_music",
         "client_music",
         "can_dj",
+        "music_locked",
         "hidden",
         "can_whisper",
         "can_wtce",

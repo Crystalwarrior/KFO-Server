@@ -590,6 +590,11 @@ class ClientManager:
                             f"You cannot change music in area [{area.id}] {area.name}!"
                         )
                         continue
+                    if area.music_locked:
+                        self.send_ooc(
+                            f"You cannot change music in area [{area.id}] {area.name} - music is locked!"
+                        )
+                        continue
                     if self.edit_ambience:
                         if self.is_mod or self in area.owners:
                             area.set_ambience(name)
