@@ -12,7 +12,7 @@ class EvidenceList:
     class Evidence:
         """Represents a single evidence item."""
 
-        def __init__(self, name, desc, image, pos, can_hide_in=False, show_in_dark=0):
+        def __init__(self, name, desc, image, pos, can_hide_in=False, show_in_dark=0, triggers = None):
             self.name = name
             self.desc = desc
             self.image = image
@@ -21,7 +21,9 @@ class EvidenceList:
             self.can_hide_in = can_hide_in
             self.show_in_dark = show_in_dark
             self.hiding_client = None
-            self.triggers = {"present": ""}
+            self.triggers = triggers
+            if triggers == None:
+                self.triggers = {}
 
         def set_name(self, name):
             self.name = name
@@ -44,6 +46,7 @@ class EvidenceList:
                 "pos": self.pos,
                 "can_hide_in": self.can_hide_in,
                 "show_in_dark": self.show_in_dark,
+                "triggers": self.triggers,
             }
 
         def trigger(self, area, trig, target):
@@ -296,7 +299,7 @@ class EvidenceList:
 
     def import_evidence(self, data):
         for evi in data:
-            name, desc, image, pos, can_hide_in, show_in_dark = "<name>", "<desc>", "", "all", False, 0
+            name, desc, image, pos, can_hide_in, show_in_dark, triggers = "<name>", "<desc>", "", "all", False, 0, {}
             if "name" in evi:
                 name = evi["name"]
             if "desc" in evi:
@@ -309,8 +312,10 @@ class EvidenceList:
                 can_hide_in = evi["can_hide_in"] is True
             if "show_in_dark" in evi:
                 show_in_dark = int(evi["show_in_dark"])
+            if "triggers" in evi:
+                triggers = evi["triggers"]
             self.evidences.append(self.Evidence(
-                name, desc, image, pos, can_hide_in, show_in_dark))
+                name, desc, image, pos, can_hide_in, show_in_dark, triggers))
 
     def export_evidence(self):
         return [e.to_dict() for e in self.evidences]
@@ -411,7 +416,7 @@ class EvidenceList:
                     )
                     pos = "hidden"
             self.evidences[id] = self.Evidence(
-                name, desc, image, pos, can_hide_in, show_in_dark)
+                name, desc, image, pos, can_hide_in, show_in_dark, evi.triggers)
             new_name = self.evidences[id].name
         else:
             # Are you serious? This is absolutely fucking mental.
@@ -437,7 +442,7 @@ class EvidenceList:
             if image == "*":
                 image = evi.image
             self.evidences[id] = self.Evidence(
-                name, desc, image, evi.pos
+                name, desc, image, evi.pos, evi.can_hide_in, evi.show_in_dark, evi.triggers
             )
             new_name = evi.name
 

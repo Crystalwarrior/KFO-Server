@@ -971,10 +971,10 @@ def ooc_cmd_trigger(client, arg):
             msg += f'\nCall "{value}" on {key}'
         msg = "\nEvidence triggers:"
         for evidence in client.area.evi_list.evidences:
-            # TODO: figure out why triggers.items() doesn't work here
-            value = evidence.triggers["present"]
-            if value != "":
-                msg += f'\n💼{evidence.name}: Call "{value}" on present'
+            if "present" in evidence.triggers:
+                value = evidence.triggers["present"]
+                if value != "":
+                    msg += f'\n💼{evidence.name}: Call "{value}" on present'
         client.send_ooc(msg)
         return
     if arg.lower().startswith("present "):

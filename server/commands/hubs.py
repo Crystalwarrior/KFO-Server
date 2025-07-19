@@ -105,13 +105,13 @@ def ooc_cmd_save_hub(client, arg):
     """
     args = shlex.split(arg)
     if not client.is_mod:
-        if args[0] == "":
+        if arg == "":
             raise ArgumentError(
                 "You must be authorized to save the default hub!")
         if len(args[0]) < 3:
             raise ArgumentError("Filename must be at least 3 symbols long!")
     try:
-        if args[0] != "":
+        if arg != "":
             name = derelative(args[0]).replace("/", "")
             if len(args) > 2 and args[1].lower() == "read_only":
                 path = "storage/hubs/read_only"
