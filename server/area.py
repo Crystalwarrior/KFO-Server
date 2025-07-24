@@ -938,10 +938,10 @@ class Area:
                 continue
             if c.remote_listen == 3 or (cmd == "MS" and c.remote_listen == 1):
                 if c.area.background != bg:
-                    c.send_command("BN", bg)
+                    c.send_command("BN", bg, "", "", 0)
                 c.send_command(cmd, *args)
                 if c.area.background != bg:
-                    c.send_command("BN", c.area.background, c.area.overlay)
+                    c.send_command("BN", c.area.background, "", c.area.overlay, 0)
 
     def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
         """Broadcast a timer to all clients in this area."""
