@@ -1865,7 +1865,6 @@ class Area:
             self.name = self.o_name
             self.doc = self.o_doc
             self.desc = self.o_desc
-            self.change_background(self.o_background)
             self.pos_lock.clear()
 
         if not dc:
