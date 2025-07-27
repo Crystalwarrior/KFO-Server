@@ -1107,20 +1107,6 @@ class AOProtocol(asyncio.Protocol):
             except (ValueError, AreaError):
                 self.client.send_ooc("Invalid targets!")
                 return
-        if contains_URL(
-            text.replace("}", "")
-            .replace("{", "")
-            .replace("`", "")
-            .replace("|", "")
-            .replace("~", "")
-            .replace("º", "")
-            .replace("№", "")
-            .replace("√", "")
-            .replace("\\s", "")
-            .replace("\\f", "")
-        ):
-            self.client.send_ooc("You shouldn't send links in IC!")
-            return
 
         msg = dezalgo(text, self.server.zalgo_tolerance)
         if self.client.shaken:
