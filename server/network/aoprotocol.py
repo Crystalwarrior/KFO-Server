@@ -2183,6 +2183,10 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc("You are muted by a moderator.")
             return
 
+        if self.client.char_id == None or self.client.char_id == -1:
+            self.client.disconnect()
+            return
+
         if not self.server.raidmode.can_modcall(self.client):
             return
 
