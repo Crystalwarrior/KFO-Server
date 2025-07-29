@@ -469,7 +469,22 @@ class ClientManager:
                 self.area,
                 message={"from": old_char, "to": new_char},
             )
-
+            # Inform the CMs of character change
+            self.area.send_owner_command(
+                "CT",
+                self.server.config["hostname"],
+                f"[{self.id}] {self.showname} changed character from {old_char} to {new_char}.",
+                "1",
+            )
+            # send_owner_command does not tell CMs present in the area about evidence manipulation, so let's do that manually
+            for c in self.area.owners:
+                if c in self.area.clients:
+                    c.send_command(
+                        "CT",
+                        self.server.config["hostname"],
+                        f"[{self.id}] {self.showname} changed character from {old_char} to {new_char}.",
+                        "1",
+                    )
             self.area.update_timers(self, running_only=True)
 
         def change_music_cd(self):
