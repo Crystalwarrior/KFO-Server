@@ -937,11 +937,10 @@ class Area:
             if c in self.clients:
                 continue
             if c.remote_listen == 3 or (cmd == "MS" and c.remote_listen == 1):
+                # Make sure the correct listen BG displays
                 if c.area.background != bg:
                     c.send_command("BN", bg, "", "", 0)
                 c.send_command(cmd, *args)
-                if c.area.background != bg:
-                    c.send_command("BN", c.area.background, "", c.area.overlay, 0)
 
     def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
         """Broadcast a timer to all clients in this area."""
@@ -1198,6 +1197,11 @@ class Area:
                     c.send_command(
                         "CT", f"[pos '{pos}'] {name}", msg)
                     continue
+
+            # Before we send the message, if our remote_listen is different...
+            if c.remote_listen in [1, 3]:
+                # Make sure to reset the BG back to normal since remote_listen IC/ALL clients might be off sync
+                c.send_command("BN", c.area.background, "", c.area.overlay, 0)
             c.send_command("MS", msg_type,
                            pre,
                            folder,
