@@ -906,9 +906,14 @@ def ooc_cmd_timer(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_demo(client, arg):
     """
+    Run a demo parsed from evidence description.
     Usage:
     /demo <evidence_id> or /demo <evidence_name>
     Use /demo to stop demo
+    You may optionally pass client id, showname and charname after passing the target evidence, for ex.
+    /demo "<evidence_name>" "cid" "showname" "char_name"
+    This is how /trigger calls the /demo command.
+    In the demo itself, <cid>, <showname>, <char> will be replaced with your provided "cid", "showname" and "char_name".
     """
     if arg == "":
         client.area.stop_demo()
@@ -917,15 +922,26 @@ def ooc_cmd_demo(client, arg):
     if (time.time() * 1000 - client.last_demo_call) < 1000:
         client.send_ooc("Please wait a bit before calling /demo again!")
         return
+    args = shlex.split(arg)
+    demo_name = args[0]
     evidence = None
-    if arg.isnumeric():
-        arg = str(int(arg) - 1)
+    if demo_name.isnumeric():
+        demo_name = str(int(demo_name) - 1)
     for i, evi in enumerate(client.area.evi_list.evidences):
-        if arg.lower() == evi.name.lower() or arg == str(i):
+        if demo_name.lower() == evi.name.lower() or demo_name == str(i):
             evidence = evi
             break
     if not evidence:
         raise ArgumentError("Target evidence not found!")
+    cid = str(client.id)
+    showname = client.showname
+    char = client.char_name
+    if len(args) > 1:
+        cid = str(args[1])
+    if len(args) > 2:
+        showname = args[2]
+    if len(args) > 3:
+        char = args[3]
 
     client.last_demo_call = time.time() * 1000
     client.area.demo.clear()
@@ -935,6 +951,9 @@ def ooc_cmd_demo(client, arg):
         .replace("<and>", "&")
         .replace("<percent>", "%")
         .replace("<dollar>", "$")
+        .replace("<cid>", cid)
+        .replace("<showname>", showname)
+        .replace("<char>", char)
     )
     packets = desc.split("%")
     for packet in packets:
