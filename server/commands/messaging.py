@@ -33,7 +33,7 @@ def ooc_cmd_g(client, arg):
     Broadcast a server-wide message.
     Usage: /g <message>
     """
-    if not client.server.config["global_chat"]:
+    if not client.server.config["global_chat"] and not client.is_mod:
         raise ClientError("Global chat is disabled.")
     if client.muted_global:
         raise ClientError("Global chat toggled off.")
