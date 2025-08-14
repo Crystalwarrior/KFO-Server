@@ -203,8 +203,10 @@ def ooc_cmd_forcepos(client, arg):
     """
     Set the place another character resides in the area.
     Usage: /forcepos <pos> <target>
+    if <pos> = RANDOM, all the <target>s will be forced into a random pos, pulled from the area's pos_lock.
+    if <pos> contains the "," symbol then it will be treated as a list of positions to randomize by.
     """
-    args = arg.split()
+    args = shlex.split(arg)
 
     if len(args) < 1:
         raise ArgumentError(
@@ -234,19 +236,29 @@ def ooc_cmd_forcepos(client, arg):
 
     for t in targets:
         try:
-            t.change_position(pos)
+            _pos = pos
+            choices = []
+            if pos == "RANDOM":
+                choices = t.area.pos_lock
+            # given a list of pos
+            if "," in pos:
+                for p in pos.split(","):
+                    choices.append(p.strip())
+            # if we received NO choice
+            if len(choices) <= 0:
+                choices = ["wit", "def", "pro", "hlp", "hld", "jud"]
+            if len(choices) == 1:
+                _pos = choices[0]
+            else:
+                _pos = random.choice(choices)
+            t.change_position(_pos)
             t.area.broadcast_evidence_list()
-            t.send_ooc(f"Forced into /pos {pos}.")
+            t.send_ooc(f"Forced into /pos {_pos}.")
+            client.send_ooc(f"Forced [{t.id}] {t.showname} into /pos {_pos}.")
             database.log_area("forcepos", client, client.area,
                               target=t, message=pos)
         except ClientError:
             raise
-
-    client.area.broadcast_ooc(
-        "{} forced {} client(s) into /pos {}.".format(
-            client.showname, len(targets), pos
-        )
-    )
 
 
 def ooc_cmd_force_switch(client, arg):
