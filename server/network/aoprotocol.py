@@ -2088,6 +2088,11 @@ class AOProtocol(asyncio.Protocol):
 
         current_time = time.strftime("%H:%M", time.gmtime())
         if len(args) < 1:
+            self.client.set_mod_call_delay()
+            database.log_area("modcall", self.client, self.client.area)
+            self.server.webhooks.modcall(
+                char=self.client.char_name, ipid=self.client.ip, area=self.client.area
+            )
             self.server.send_all_cmd_pred(
                 "ZZ",
                 "[{} UTC] {} ({}) in hub {} [{}]{} without reason (not using 2.6?)".format(
@@ -2100,12 +2105,16 @@ class AOProtocol(asyncio.Protocol):
                 ),
                 pred=lambda c: c.is_mod,
             )
-            self.client.set_mod_call_delay()
-            database.log_area("modcall", self.client, self.client.area)
-            self.server.webhooks.modcall(
-                char=self.client.char_name, ipid=self.client.ip, area=self.client.area
-            )
         else:
+            self.client.set_mod_call_delay()
+            database.log_area("modcall", self.client,
+                              self.client.area, message=args[0])
+            self.server.webhooks.modcall(
+                char=self.client.char_name,
+                ipid=self.client.ip,
+                area=self.client.area,
+                reason=args[0][:100],
+            )
             self.server.send_all_cmd_pred(
                 "ZZ",
                 "[{} UTC] {} ({}) in hub {} [{}]{} with reason: {}".format(
@@ -2118,15 +2127,6 @@ class AOProtocol(asyncio.Protocol):
                     args[0][:100],
                 ),
                 pred=lambda c: c.is_mod,
-            )
-            self.client.set_mod_call_delay()
-            database.log_area("modcall", self.client,
-                              self.client.area, message=args[0])
-            self.server.webhooks.modcall(
-                char=self.client.char_name,
-                ipid=self.client.ip,
-                area=self.client.area,
-                reason=args[0][:100],
             )
 
     def net_cmd_opKICK(self, args):

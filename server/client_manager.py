@@ -48,7 +48,6 @@ class ClientManager:
             self.is_muted = False
             self.is_ooc_muted = False
             self.pm_mute = False
-            self.mod_call_time = 0
             self.ipid = ipid
             self.version = ""
             self.software = ""
@@ -77,10 +76,6 @@ class ClientManager:
             self.casing_jud = False
             self.casing_jur = False
             self.casing_steno = False
-            self.case_call_time = 0
-
-            # Need command
-            self.need_call_time = 0
 
             # flood-guard stuff
             self.mus_counter = 0
@@ -1827,6 +1822,30 @@ class ClientManager:
                 raise ClientError("Invalid password.")
 
         @property
+        def mod_call_time(self):
+            return self.server.client_manager.get_spam_delay(self.ipid, "mod_call")
+
+        @mod_call_time.setter
+        def mod_call_time(self, value):
+            self.server.client_manager.set_spam_delay(self.ipid, "mod_call", value)
+
+        @property
+        def case_call_time(self):
+            return self.server.client_manager.get_spam_delay(self.ipid, "case_call")
+
+        @case_call_time.setter
+        def case_call_time(self, value):
+            self.server.client_manager.set_spam_delay(self.ipid, "case_call", value)
+
+        @property
+        def need_call_time(self):
+            return self.server.client_manager.get_spam_delay(self.ipid, "need_call")
+
+        @need_call_time.setter
+        def need_call_time(self, value):
+            self.server.client_manager.set_spam_delay(self.ipid, "need_call", value)
+
+        @property
         def ip(self):
             """Get an anonymized version of the IP address."""
             return self.ipid
@@ -2121,6 +2140,19 @@ class ClientManager:
         self.clients = set()
         self.server = server
         self.cur_id = [i for i in range(self.server.config["playerlimit"])]
+        self.delays = {}
+
+    def set_spam_delay(self, ipid, spam_type, value):
+        if not str(ipid) in self.delays:
+            self.delays[str(ipid)] = {}
+        self.delays[str(ipid)][spam_type] = value
+
+    def get_spam_delay(self, ipid, spam_type):
+        if not str(ipid) in self.delays:
+            return 0
+        if not spam_type in self.delays[str(ipid)]:
+            return 0
+        return self.delays[str(ipid)][spam_type]
 
     def new_client_preauth(self, client):
         maxclients = self.server.config["multiclient_limit"]
