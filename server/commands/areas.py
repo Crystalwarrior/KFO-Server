@@ -23,6 +23,7 @@ __all__ = [
     "ooc_cmd_overlay",
     "ooc_cmd_overlay_clear",
     "ooc_cmd_bg",
+    "ooc_cmd_bglock",
     "ooc_cmd_bgs",
     "ooc_cmd_status",
     "ooc_cmd_area",
@@ -44,7 +45,6 @@ __all__ = [
     "ooc_cmd_max_players",
     "ooc_cmd_desc",
     "ooc_cmd_edit_ambience",
-    "ooc_cmd_lights",
 
     "ooc_cmd_auto_pair",
 
@@ -146,6 +146,23 @@ def ooc_cmd_bg(client, arg):
         f"{client.showname} changed the background to {arg}.")
     database.log_area("bg", client, client.area, message=arg)
 
+def ooc_cmd_bglock(client, arg):
+    """
+    Toggle whether or not non-moderators are allowed to change the background of a room
+    usage /bglock
+    """
+    if not client.is_mod and client not in client.area.owners:
+        raise ClientError("Insufficient permissions.")
+    if len.(arg) !=0:
+        raise ArgumentError("This command has no arguments.")
+    if client.area.bg_lock==True:
+        client.area.bg_lock=False
+    else:
+        client.area.bg_lock=True
+    client.area.broadcast_ooc(
+        '{} [{}] has set the background lock to {}.'.format(
+            client.showname, client.id, client.area.bg_lock))
+    database.log_area("bg_lock", client, client.area, message=client.area.bg_lock)
 
 def ooc_cmd_bgs(client, arg):
     """
@@ -823,12 +840,18 @@ def ooc_cmd_desc(client, arg):
                 raise ClientError("You must be authorized to do that.")
             client.area.desc_dark = arg.strip()
         else:
-            client.area.desc = arg.strip()
+            if not client.is_mod and not (client in client.area.owners):
+                raise ClientError("Must be CM to change area description.")
+            else:
+                client.area.desc = arg.strip()
         desc = arg[:128]
         if len(arg) > len(desc):
             desc += "... Use /desc to read the rest."
-        client.area.broadcast_ooc(
-            f"📃{client.showname} changed the area description to: {desc}."
+        if not client.is_mod and not (client in client.area.owners):
+            raise ClientError("Must be CM to change area description.")
+        else:
+            client.area.broadcast_ooc(
+                f"📃{client.showname} changed the area description to: {desc}."
         )
         database.log_area("desc.change", client, client.area, message=arg)
 
@@ -858,40 +881,6 @@ def ooc_cmd_edit_ambience(client, arg):
         stat = "now"
     client.send_ooc(f"Playing a song will {stat} edit the area's ambience.")
 
-
-@mod_only(area_owners=True)
-def ooc_cmd_lights(client, arg):
-    """
-    Toggle lights for this area. If lights are off, players will not be able to use /getarea or see evidence.
-    Players will also be unable to see area movement messages or use /chardesc.
-    You can change /bg, /desc and /pos_lock of the area when its dark and it will remember it next time you turn the lights off.
-    tog can be `on`, `off` or empty.
-    Usage: /lights [tog]
-    """
-    if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
-    if arg:
-        if arg == "on":
-            client.area.dark = False
-        elif arg == "off":
-            client.area.dark = True
-        else:
-            raise ArgumentError("Invalid argument: {}".format(arg))
-    else:
-        client.area.dark = not client.area.dark
-    stat = "no longer"
-    bg = client.area.background
-    if client.area.dark:
-        stat = "now"
-        bg = client.area.background_dark
-    for c in client.area.clients:
-        pos = c.pos
-        if c.area.dark:
-            pos = client.area.pos_dark
-        c.send_command("BN", bg, pos)
-    client.send_ooc(f"This area is {stat} dark.")
 
 def ooc_cmd_auto_pair(client, arg):
     """

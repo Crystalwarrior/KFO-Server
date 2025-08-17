@@ -906,6 +906,8 @@ def ooc_cmd_trigger(client, arg):
     Usage:
     /trigger trig cmd arg(s)
     """
+    if not client.is_mod:
+        raise ClientError("Nuh-uh.")
     if arg == "":
         msg = "This area's triggers are:"
         for key, value in client.area.triggers.items():
