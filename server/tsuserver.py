@@ -21,7 +21,6 @@ from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
 from server.constants import remove_URL, dezalgo
 from server.raidmode import RaidManager
-from server.valleyid import ValleyID
 
 
 logger = logging.getLogger("main")
@@ -123,7 +122,6 @@ class TsuServer3:
         self.lockdown = False
         self.whitelist = set()
         self.load_whitelist()
-        self.valleyid = ValleyID(self)
         
     def load_whitelist(self):
         """Load whitelist from storage."""

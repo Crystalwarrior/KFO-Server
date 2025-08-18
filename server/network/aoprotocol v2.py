@@ -838,6 +838,11 @@ class AOProtocol(asyncio.Protocol):
                     )
                     return
 
+        if text.replace(" ", "").startswith("(("):
+            self.client.send_ooc(
+                "Please, *please* use the OOC chat instead of polluting IC. Normal OOC is local to area. You can use /h to talk across the hub, or /g to talk across the entire server."
+            )
+            return
         # Scrub text and showname for bad words
         if (
             self.client.area.area_manager.censor_ic
@@ -1073,7 +1078,20 @@ class AOProtocol(asyncio.Protocol):
             except (ValueError, AreaError):
                 self.client.send_ooc("Invalid targets!")
                 return
-
+        if contains_URL(
+            text.replace("}", "")
+            .replace("{", "")
+            .replace("`", "")
+            .replace("|", "")
+            .replace("~", "")
+            .replace("º", "")
+            .replace("№", "")
+            .replace("√", "")
+            .replace("\\s", "")
+            .replace("\\f", "")
+        ):
+            self.client.send_ooc("You shouldn't send links in IC!")
+            return
 
         msg = dezalgo(text, self.server.zalgo_tolerance)
         if self.client.shaken:
@@ -2130,10 +2148,6 @@ class AOProtocol(asyncio.Protocol):
 
         if self.client.is_muted:
             self.client.send_ooc("You are muted by a moderator.")
-            return
-            
-        if self.client.char_id == None or self.client.char_id == -1:
-            self.client.disconnect()
             return
 
         if not self.server.raidmode.can_modcall(self.client):

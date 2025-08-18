@@ -53,8 +53,7 @@ __all__ = [
     "ooc_cmd_toggleshownames",
     "ooc_cmd_togglechars",
     "ooc_cmd_playtime",
-    "ooc_cmd_raidcon",
-    "ooc_cmd_asns"
+    "ooc_cmd_raidcon"
 ]
 
 
@@ -872,96 +871,71 @@ def ooc_cmd_lockdown(client, arg):
             raise ClientError(f"Failed to write to whitelist.txt: {e}")
     else:
         raise ArgumentError("Invalid argument. Usage: /lockdown [on/off/update/legacy <password>]")
-
+        
 @mod_only()
 def ooc_cmd_whitelist(client, arg):
     """
-    Add a ValleyID or HDID to the whitelist.
-    Usage: /whitelist valley <valleyid>
-           /whitelist hdid <hdid>
+    Add a HDID to the whitelist.
+    Usage: /whitelist <hdid>
     """
+        
     if not arg:
-        raise ArgumentError("Not enough arguments. Use /whitelist valley <valleyid> or /whitelist hdid <hdid>")
+        raise ArgumentError("You must specify a HDID.")
         
-    args = arg.split()
-    if len(args) < 2:
-        raise ArgumentError("Not enough arguments. Use /whitelist valley <valleyid> or /whitelist hdid <hdid>")
-        
-    whitelist_type = args[0].lower()
-    identifier = args[1]
+    hdid = arg.strip()
+    client.server.whitelist.add(hdid)
+    client.server.raidmode.whitelisted_hdids.add(hdid)
+    client.server.save_whitelist()
     
-    if whitelist_type not in ['valley', 'hdid']:
-        raise ArgumentError("Invalid whitelist type. Use 'valley' or 'hdid'")
-        
-    try:
-        if whitelist_type == 'valley':
-            with open("storage/strictmode.txt", "a+") as f:
-                f.seek(0)
-                if identifier in f.read().splitlines():
-                    raise ClientError("This ValleyID is already whitelisted.")
-                f.write(f"{identifier}\n")
-                
-            client.send_ooc(f"ValleyID {identifier} has been whitelisted.")
-            database.log_misc("whitelist_valley", client, data={"valleyid": identifier})
-            
-        else:
-            with open("storage/whitelist.txt", "a+") as f:
-                f.seek(0)
-                if identifier in f.read().splitlines():
-                    raise ClientError("This HDID is already whitelisted.")
-                f.write(f"{identifier}\n")
-                
-            client.send_ooc(f"HDID {identifier} has been whitelisted.")
-            database.log_misc("whitelist_hdid", client, data={"hdid": identifier})
-            
-    except Exception as e:
-        raise ServerError(f"Error while whitelisting: {e}")
-
+    for c in client.server.client_manager.clients:
+        if c.hdid == hdid:
+            c.connection_time = time.time()
+            c.first_packet_sent = False 
+    client.send_ooc(f"HDID {hdid} has been added to the whitelist.")
+  
 @mod_only()
 def ooc_cmd_unwhitelist(client, arg):
     """
-    Remove a ValleyID or HDID from the whitelist.
-    Usage: /unwhitelist valley <valleyid>
-           /unwhitelist hdid <hdid>
+    Remove a HDID from the whitelist.
+    Usage: /unwhitelist <hdid>
     """
+        
     if not arg:
-        raise ArgumentError("Not enough arguments. Use /unwhitelist valley <valleyid> or /unwhitelist hdid <hdid>")
+        raise ArgumentError("You must specify a HDID.")
         
-    args = arg.split()
-    if len(args) < 2:
-        raise ArgumentError("Not enough arguments. Use /unwhitelist valley <valleyid> or /unwhitelist hdid <hdid>")
-        
-    whitelist_type = args[0].lower()
-    identifier = args[1]
-    
-    if whitelist_type not in ['valley', 'hdid']:
-        raise ArgumentError("Invalid whitelist type. Use 'valley' or 'hdid'")
-        
-    try:
-        if whitelist_type == 'valley':
-            filename = "storage/strictmode.txt"
-        else:
-            filename = "storage/whitelist.txt"
-            
-        found = False
-        with open(filename, "r") as f:
-            lines = f.readlines()
-            
-        with open(filename, "w") as f:
-            for line in lines:
-                if line.strip() != identifier:
-                    f.write(line)
-                else:
-                    found = True
+    hdid = arg.strip()
+    if hdid in client.server.whitelist:
+        client.server.whitelist.remove(hdid)
+        client.server.raidmode.whitelisted_hdids.remove(hdid)
+        client.server.save_whitelist()
+
+        if client.server.lockdown:
+            kicked_clients = []
+            for c in client.server.client_manager.clients:
+                if c.hdid == hdid:
+                    kicked_clients.append(c)
+                    c.send_ooc("You have been kicked: Unwhitelisted during lockdown.")
+                    c.disconnect()
                     
-        if not found:
-            raise ClientError(f"This {whitelist_type.upper()} is not in the whitelist.")
+            if kicked_clients:
+                client.send_ooc(f"HDID {hdid} has been removed from the whitelist and {len(kicked_clients)} client(s) were kicked.")
+            else:
+                client.send_ooc(f"HDID {hdid} has been removed from the whitelist. No clients were connected with this HDID.")
+        else:
+            affected_clients = []
+            for c in client.server.client_manager.clients:
+                if c.hdid == hdid:
+                    affected_clients.append(c)
+                    c.connection_time = time.time()
+                    c.first_packet_sent = False
+                    c.send_ooc("You have been removed from the whitelist. Raid mode restrictions now apply.")
             
-        client.send_ooc(f"{whitelist_type.upper()} {identifier} has been removed from the whitelist.")
-        database.log_misc(f"unwhitelist_{whitelist_type}", client, data={whitelist_type: identifier})
-        
-    except Exception as e:
-        raise ServerError(f"Error while unwhitelisting: {e}")
+            if affected_clients:
+                client.send_ooc(f"HDID {hdid} has been removed from the whitelist and restrictions applied to {len(affected_clients)} client(s).")
+            else:
+                client.send_ooc(f"HDID {hdid} has been removed from the whitelist.")
+    else:
+        client.send_ooc(f"HDID {hdid} is not in the whitelist.")
         
 @mod_only()
 def ooc_cmd_togglejoins(client, arg):
@@ -1081,57 +1055,4 @@ def ooc_cmd_raidcon(client, arg):
         client.send_ooc(f"Raid control level set to {level}")
         client.send_ooc(client.server.raidmode.get_status_message())
     else:
-        client.send_ooc(f"HDID {client.hdid} is not in the whitelist.")
-
-@mod_only()
-def ooc_cmd_asns(client, arg):
-    """
-    Show ASN information for players in the current area or all areas.
-    Usage: /asns [all]
-    """
-    print("ASNS COMMAND STARTED")  # Basic verification the command runs
-    
-    def get_ip_from_ipid(ipid):
-        print(f"Getting IP for IPID: {ipid}")
-        with database.db as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT ip_address FROM ipids WHERE ipid = ?",
-                (ipid,)
-            )
-            result = cursor.fetchone()
-            print(f"Database query result: {result}")  # Print raw result
-            if result:
-                print(f"Found IP: {result['ip_address']}")
-                return result['ip_address']
-            print(f"No IP found for IPID {ipid}")
-            return None
-
-    try:
-        print(f"Current area: {client.area.id}")
-        print(f"Clients in area: {len(client.area.clients)}")
-        
-        client.send_ooc(f"=== Area {client.area.id}: {client.area.name} ===")
-        for c in client.area.clients:
-            print(f"Processing client: {c.id} (IPID: {c.ipid})")
-            try:
-                ip = get_ip_from_ipid(c.ipid)
-                print(f"Got IP: {ip}")
-                if ip:
-                    print("About to get ASN...")
-                    asn = client.server.valleyid.get_asn(ip)
-                    print(f"Got ASN: {asn}")
-                    valley_id = client.server.valleyid.generate_valleyid(c.hdid, ip)
-                    print(f"Got ValleyID: {valley_id}")
-                    client.send_ooc(f"- [{c.id}] {c.char_name}: IP={ip}, ASN={asn}, HDID={c.hdid}, ValleyID={valley_id}")
-                else:
-                    print("No IP found")
-                    client.send_ooc(f"- [{c.id}] {c.char_name}: IP=None, ASN=0, HDID={c.hdid}, ValleyID=ERROR")
-            except Exception as e:
-                print(f"Error processing client {c.id}: {str(e)}")
-                import traceback
-                traceback.print_exc()
-    except Exception as e:
-        print(f"Error in asns command: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        client.send_ooc(f"HDID {hdid} is not in the whitelist.")

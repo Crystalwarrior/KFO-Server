@@ -520,7 +520,7 @@ def ooc_cmd_rps(client, arg):
     if not arg:
         msg = "RPS rules:"
         for i, rule in enumerate(rps_rules):
-            msg += f"\n  {i+1}) "
+            msg += f"\n  {i+1}) "
             choice = rule[0]
             msg += choice
             if len(choice) > 1:
@@ -583,8 +583,8 @@ def ooc_cmd_rps(client, arg):
 
     # Start constructing our output message
     msg = '🎲Rock Paper Scissors🎲'
-    msg += f'\n  ◽ [{target.id}] {target.showname} picks {target.rps_choice}!'
-    msg += f'\n  ◽ [{client.id}] {client.showname} picks {client.rps_choice}!'
+    msg += f'\n  ◽ [{target.id}] {target.showname} picks {target.rps_choice}!'
+    msg += f'\n  ◽ [{client.id}] {client.showname} picks {client.rps_choice}!'
     
     # Calculate our winner
     a = target.rps_choice.lower()
@@ -605,9 +605,9 @@ def ooc_cmd_rps(client, arg):
 
     # Congratulate our winner or announce a tie
     if winner:
-        msg += f"\n  🏆[{winner.id}] {winner.showname} WINS!!!🏆"
+        msg += f"\n  🏆[{winner.id}] {winner.showname} WINS!!!🏆"
     else:
-        msg += f"\n  👔It's a tie!👔"
+        msg += f"\n  👔It's a tie!👔"
 
     # Announce the message!
     client.area.broadcast_ooc(msg)
@@ -907,7 +907,7 @@ def ooc_cmd_trigger(client, arg):
     /trigger trig cmd arg(s)
     """
     if not client.is_mod:
-        raise ClientError("Nuh-uh.")
+    	raise ClientError("Nuh-uh.")
     if arg == "":
         msg = "This area's triggers are:"
         for key, value in client.area.triggers.items():

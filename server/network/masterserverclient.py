@@ -57,15 +57,6 @@ class MasterServerClient:
                 finally:
                     await asyncio.sleep(self.interval)
 
-    def get_advertised_ip(self):
-        """Get the IP/hostname to advertise"""
-        cfg = self.server.config
-        
-        if cfg.get('masterserver_custom_hostname'):
-            return cfg['masterserver_custom_hostname']
-        
-        return self.get_my_ip()
-        
     def get_my_ip(self):
         """
         Get the external IP address using STUN servers.
@@ -90,13 +81,12 @@ class MasterServerClient:
         Returns:
             None
         """
-        advertised_ip = self.get_advertised_ip()
         cfg = self.server.config
         body = {}
 
         if cfg['advertise_port']:
             body = {
-                'ip': advertised_ip,
+                'ip': await asyncio.get_event_loop().run_in_executor(None, self.get_my_ip),
                 'port': cfg['advertising_port'],
                 'name': cfg['masterserver_name'],
                 'description': cfg['masterserver_description'],

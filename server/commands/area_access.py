@@ -247,39 +247,6 @@ def ooc_cmd_unlock(client, arg):
         links = " ".join(links)
         ooc_cmd_link_unlock(client, links)
 
-@mod_only(area_owners=True)
-def ooc_cmd_link(client, arg):
-    """
-    Set up a two-way link from your current area with targeted area(s).
-    Usage:  /link <id(s)>
-    """
-    args = arg.split()
-    if len(args) <= 0:
-        ooc_cmd_links(client, arg)
-        return
-    try:
-        links = []
-        for aid in args:
-            try:
-                area = client.area.area_manager.get_area_by_abbreviation(aid)
-                target_id = area.id
-            except Exception:
-                area = client.area.area_manager.get_area_by_id(int(aid))
-                target_id = area.id
-
-            if not client.is_mod and client not in area.owners:
-                client.send_ooc(f"You don't own area [{area.id}] {area.name}.")
-                continue
-
-            client.area.link(target_id)
-            # Connect the target area to us
-            area.link(client.area.id)
-            links.append(target_id)
-        links = ", ".join(str(link) for link in links)
-        client.send_ooc(
-            f"Area {client.area.name} has been linked with {links} (two-way)."
-        )
-        client.area.broadcast_area_list()
 
 def ooc_cmd_pw(client, arg):
     """
