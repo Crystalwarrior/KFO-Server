@@ -4,6 +4,7 @@ import os
 import shlex
 
 from server.client_manager import ClientManager
+from server.constants import derelative
 
 from . import mod_only
 from .. import commands
@@ -164,7 +165,8 @@ def ooc_cmd_create_fighter(client, arg):
 
     fighter_list = os.listdir("storage/battlesystem")
 
-    if f"{args[0].lower()}.yaml" in fighter_list:
+    path = derelative(args[0].lower())
+    if f"{path}.yaml" in fighter_list:
         client.send_ooc("This fighter has already been created.")
         return
 
@@ -179,12 +181,12 @@ def ooc_cmd_create_fighter(client, arg):
     fighter["Moves"] = []
 
     with open(
-        f"storage/battlesystem/{args[0].lower()}.yaml",
+        f"storage/battlesystem/{path}.yaml",
         "w",
         encoding="utf-8",
     ) as c_save:
         yaml.dump(fighter, c_save)
-        client.send_ooc(f"{args[0]} has been created!")
+        client.send_ooc(f"{path} has been created!")
 
 
 def ooc_cmd_create_move(client, arg):
@@ -280,7 +282,10 @@ def ooc_cmd_modify_stat(client, arg):
     Usage: /modify_stat FighterName Stat Value
     """
     args = shlex.split(arg)
-    if f"{args[0].lower()}.yaml" not in os.listdir("storage/battlesystem"):
+    
+    
+    path = derelative(args[0].lower())
+    if f"{path}.yaml" not in os.listdir("storage/battlesystem"):
         client.send_ooc("No fighter has this name!")
         return
 
@@ -295,16 +300,16 @@ def ooc_cmd_modify_stat(client, arg):
         return
 
     with open(
-        f"storage/battlesystem/{args[0].lower()}.yaml", "r", encoding="utf-8"
+        f"storage/battlesystem/{path}.yaml", "r", encoding="utf-8"
     ) as c_load:
         char = yaml.safe_load(c_load)
         char[args[1].upper()] = float(args[2])
         with open(
-            f"storage/battlesystem/{args[0].lower()}.yaml", "w", encoding="utf-8"
+            f"storage/battlesystem/{path}.yaml", "w", encoding="utf-8"
         ) as c_save:
             yaml.dump(char, c_save)
     client.send_ooc(
-        f"{args[0]}'s {args[1]} has been modified. To check the changes choose again this fighter"
+        f"{path}'s {args[1]} has been modified. To check the changes choose again this fighter"
     )
 
 
