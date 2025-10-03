@@ -871,6 +871,7 @@ class AOProtocol(asyncio.Protocol):
                 self.client.send_ooc("Invalid index!")
             return
         if msg_type not in ("chat", "0", "1", "2", "3", "4", "5"):
+            self.client.send_ooc("Your message type is invalid!")
             return
         # Disable the meme functionality of desk_mod that makes you selectively hide
         # jud/hld/hlp foregrounds when showing every other foreground due to how many
@@ -883,22 +884,29 @@ class AOProtocol(asyncio.Protocol):
         if emote_mod == 4:
             emote_mod = 6
         if emote_mod not in (0, 1, 2, 5, 6):
+            self.client.send_ooc("Your emote modifier is invalid!")
             return
         if cid != self.client.char_id:
+            self.client.send_ooc("Your character ID is mismatched!")
             return
         if sfx_delay < 0:
+            self.client.send_ooc("Your sfx delay is invalid! (can't be less than 0)")
             return
         if "4" in str(button) and "<and>" not in str(button):
             if not button.isdigit():
+                self.client.send_ooc("Your Objection is invalid!")
                 return
         if self.client.presenting > 0:
             evidence = self.client.presenting
             self.client.presenting = 0
         if evidence < 0:
+            self.client.send_ooc("Your evidence index is invalid!")
             return
         if ding not in (0, 1):
+            self.client.send_ooc("Your realization flash is invalid!")
             return
         if color < 0 or color >= 12:
+            self.client.send_ooc("Your color is invalid!")
             return
         if len(showname) > 20:
             self.client.send_ooc("Your IC showname is way too long!")
