@@ -293,6 +293,9 @@ class Area:
         self.auto_pair = False
         self.auto_pair_max = "triple"
         self.auto_pair_cycle = False
+        
+        # list of areas to broadcast ic messages to
+        self.broadcast_list = []
 
     @property
     def name(self):
@@ -1174,12 +1177,15 @@ class Area:
 
         if targets is None:
             targets = self.clients
+            # add all targets of the broadcasted areas as well
+            for area in self.broadcast_list:
+                targets = set(list(targets) + list(area.clients))
         for c in targets:
             # Blinded clients don't receive IC messages
             if c.blinded:
                 continue
             # pos doesn't match listen_pos, we're not listening so make this an OOC message instead
-            if c.listen_pos is not None:
+            if c.area == self and c.listen_pos is not None:
                 if (
                     type(c.listen_pos) is list
                     and not (pos in c.listen_pos)
@@ -1202,12 +1208,15 @@ class Area:
             if c.remote_listen in [1, 3]:
                 # Make sure to reset the BG back to normal since remote_listen IC/ALL clients might be off sync
                 c.send_command("BN", c.area.background, "", c.area.overlay, 0)
+            msg_to_send = msg
+            if c.area != self:
+                msg_to_send = "}}}[" + str(self.id) + "] {{{" + msg
             c.send_command("MS", msg_type,
                            pre,
                            folder,
                            # if we're in first person mode, treat our msgs as narration
                            "" if c == client and client.firstperson else anim,
-                           msg,
+                           msg_to_send,
                            pos,
                            sfx,
                            emote_mod,
@@ -1664,6 +1673,9 @@ class Area:
         self.music_looping = loop
         self.music_effects = effects
         self.send_command("MC", name, cid, showname, loop, 0, effects)
+        # Broadcast for the rest
+        for area in self.broadcast_list:
+            area.play_music(name, cid, loop, showname, effects)
 
     def can_send_message(self, client):
         """
@@ -2257,8 +2269,14 @@ class Area:
                 print(ex)
                 self.stop_demo()
                 return
-        elif len(client.broadcast_list) > 0:
-            for area in client.broadcast_list:
+        else:
+            area_list = [self]
+            if len(client.broadcast_list) > 0:
+                area_list = client.broadcast_list
+            # we probably shouldn't broadcast the area broadcast list with demos as it removes a level of control and granularity
+            # if len(self.broadcast_list) > 0:
+            #     area_list += self.broadcast_list
+            for area in area_list:
                 if header == "MS":
                     # If we're on narration pos
                     if args[5] == "":
@@ -2270,18 +2288,6 @@ class Area:
                             if len(self.pos_lock) > 0:
                                 args[5] = self.pos_lock[0]
                 area.send_command(header, *args)
-        else:
-            if header == "MS":
-                # If we're on narration pos
-                if args[5] == "":
-                    if self.last_ic_message is not None:
-                        # Set the pos to last message's pos
-                        args[5] = self.last_ic_message[5]
-                    else:
-                        # Set the pos to the 0th pos-lock
-                        if len(self.pos_lock) > 0:
-                            args[5] = self.pos_lock[0]
-            self.send_command(header, *args)
         # Proceed to next demo line
         self.play_demo(client)
 

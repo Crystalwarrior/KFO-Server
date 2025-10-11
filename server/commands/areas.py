@@ -34,6 +34,8 @@ __all__ = [
     "ooc_cmd_edit_ambience",
     "ooc_cmd_lights",
     "ooc_cmd_auto_pair",
+    "ooc_cmd_area_broadcast",
+    "ooc_cmd_clear_area_broadcast",
 ]
 
 def ooc_cmd_overlay(client, arg):
@@ -903,3 +905,47 @@ def ooc_cmd_auto_pair(client, arg):
         client.send_ooc("Pairing will show a maximum of 3 characters on screen now")
     else:
         client.send_ooc("Pairing will show a maximum of 2 characters on screen now")
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_area_broadcast(client, arg):
+    """
+    Start broadcasting current area's IC, Music and Judge buttons to specified area ID's.
+    To include all areas, use /area_broadcast all
+    /clear_area_broadcast to clear the list
+    Usage: /area_broadcast <id(s)>
+    """
+    args = arg.split()
+    if len(args) <= 0:
+        a_list = ", ".join([str(a.id) for a in client.area.broadcast_list])
+        client.send_ooc(f"Current area broadcast list is {a_list}")
+        return
+    if arg.lower() == "all":
+        args = []
+        for area in client.area.area_manager.areas:
+            args.append(area.id)
+    try:
+        broadcast_list = []
+        for aid in args:
+            area = client.area.area_manager.get_area_by_id(int(aid))
+            broadcast_list.append(area)
+        client.area.broadcast_list = broadcast_list
+        a_list = ", ".join([str(a.id) for a in client.area.broadcast_list])
+        client.send_ooc(f"Area's broadcast list is now {a_list}")
+    except ValueError:
+        client.send_ooc("Bad arguments!")
+    except (ClientError, AreaError):
+        raise
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_clear_area_broadcast(client, arg):
+    """
+    Clear the area's broadcasting of IC, Music and Judge buttons.
+    Usage: /clear_area_broadcast
+    """
+    if len(client.area.broadcast_list) <= 0:
+        client.send_ooc("Current area broadcast list is already empty!")
+        return
+    client.area.broadcast_list.clear()
+    client.send_ooc("Current area broadcast list has been cleared.")
