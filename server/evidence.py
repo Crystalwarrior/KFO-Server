@@ -56,6 +56,9 @@ class EvidenceList:
 
             if len(area.owners) <= 0:
                 return
+            
+            if trig not in self.triggers:
+                return
 
             arg = self.triggers[trig]
             if arg == "":
