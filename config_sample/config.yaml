@@ -27,10 +27,11 @@ local: false
 #   mod2:
 #     password: bar
 #
-# You can add, remove, or change passwords for individual users.
-# When they are changed using /refresh, the affected users' mod statuses are
-# revoked.
-modpass: mod
+# You can add, remove, or change passwords for individual mods
+# The username (in this example Admin) corresponds to the OOC name
+modpass:
+  Admin:
+    password: mod
 
 # Password to use the /restart command
 restartpass: restart
