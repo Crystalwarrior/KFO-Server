@@ -43,8 +43,8 @@ motd: Welcome to my server!
 use_websockets: true
 # Port to listen on for websocket connections
 websocket_port: 50001
-# Websocket port that is advertised to the masterserver for WS connections
-advertised_websocket_port: 80
+# Optional: advertise a different ws port to the masterserver
+# advertised_websocket_port: 80
 
 # Whether the server is open to secure websocket connections
 use_securewebsockets: false
