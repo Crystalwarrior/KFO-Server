@@ -18,7 +18,7 @@ API_BASE_URL = 'https://servers.aceattorneyonline.com'
 
 
 class MasterServerClient:
-    """Advertises information about this server to the master server."""
+    """Advertises information about this server to the masterserver."""
 
     def __init__(self, server):
         self.server = server
@@ -47,7 +47,7 @@ class MasterServerClient:
                 try:
                     await self.send_server_info(http)
                 except aiohttp.ClientError:
-                    # Master server is down or unreachable, may be temporary so log it as a warning
+                    # Masterserver is down or unreachable, may be temporary so log it as a warning
                     logger.warning('Failed to connect to the master server')
                 except Exception as err:
                     # Unknown error occurred, log it as a hard error with full exception information
@@ -70,10 +70,12 @@ class MasterServerClient:
             if nat_type != stun.Blocked:
                 return external_ip
 
+        return None
+
     async def send_server_info(self, http: aiohttp.ClientSession):
         """
         Send server information to the specified HTTP client session.
-        Usually being the master server.
+        Usually being the masterserver.
 
         Parameters:
             http (aiohttp.ClientSession): The aiohttp client to send the server information to.
@@ -91,7 +93,7 @@ class MasterServerClient:
             loop = asyncio.get_event_loop()
             f_ip = await loop.run_in_executor(None, self.get_my_ip)
 
-        body = {
+        advertise_body = {
             'ip': f_ip,
             'port': cfg['port'],
             'name': cfg['masterserver_name'],
@@ -99,18 +101,37 @@ class MasterServerClient:
             'players': self.server.player_count
         }
 
-        if cfg['use_websockets']:
-            body['ws_port'] = cfg['websocket_port']
+        self.add_ws_info(advertise_body)
 
-        if 'use_securewebsockets' in cfg and cfg['use_securewebsockets']:
-            if 'secure_websocket_port' in cfg:
-                body['wss_port'] = cfg['secure_websocket_port']
-
-        async with http.post(f'{API_BASE_URL}/servers', json=body) as res:
+        async with http.post(f'{API_BASE_URL}/servers', json=advertise_body) as res:
             err_body = await res.text()
             try:
                 res.raise_for_status()
             except aiohttp.ClientResponseError as err:
-                logging.error("Got status=%s advertising %s: %s", err.status, body, err_body)
+                logging.error("Got status=%s advertising %s: %s", err.status, advertise_body, err_body)
 
         logger.debug('Heartbeat to %s/servers', API_BASE_URL)
+
+    # Helper to add websocket info to advertise_body
+    def add_ws_info(self, advertise_body: dict) -> None:
+        cfg = self.server.config
+
+        if 'use_websockets' not in cfg or cfg['use_websockets'] == False:
+            # Explicitly disabled, return
+            return
+
+        if 'websocket_port' not in cfg or not cfg['websocket_port']:
+            # If we don't listen on a websocket port, don't advertise it
+            return
+
+        ws_port = cfg['websocket_port']
+
+        # Override if advertised_websocket_port is present and valid
+        if 'advertised_websocket_port' in cfg and cfg['advertised_websocket_port']:
+            ws_port = cfg['advertised_websocket_port']
+
+        advertise_body['ws_port'] = ws_port
+
+        if 'use_securewebsockets' in cfg and cfg['use_securewebsockets'] == True:
+            if 'secure_websocket_port' in cfg and cfg['secure_websocket_port']:
+                advertise_body['wss_port'] = cfg['secure_websocket_port']
