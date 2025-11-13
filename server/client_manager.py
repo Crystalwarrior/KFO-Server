@@ -497,6 +497,9 @@ class ClientManager:
                         "1",
                     )
             self.area.update_timers(self, running_only=True)
+            
+            self.area.broadcast_player_list()
+            self.area.broadcast_area_desc_to_target(self)
 
         def change_music_cd(self):
             """
@@ -1017,6 +1020,10 @@ class ClientManager:
                 except ClientError as ex:
                     msg += f'\n{ex}'
             self.send_ooc(msg)
+            
+            # DRO Client exclusive
+            self.area.broadcast_area_desc_to_target(self)
+            self.send_command("joined_area")
 
             # We failed to enter the same area as whoever we've been following, break the follow
             if self.following is not None and not (self.following in self.area.clients):
@@ -2026,6 +2033,7 @@ class ClientManager:
             self._hidden = tog
             self.send_ooc(f"You are {msg} from /getarea and playercounts.")
             self.area.area_manager.send_arup_players()
+            self.area.broadcast_player_list()
 
         def blind(self, tog=True):
             self.blinded = tog
@@ -2036,6 +2044,7 @@ class ClientManager:
                 f"You are {msg} blinded from the area and seeing non-broadcasted IC messages."
             )
             self.send_command("LE", *self.area.get_evidence_list(self))
+            self.area.broadcast_player_list()
 
         def freeze(self, tog=True):
             self.frozen = tog
@@ -2328,6 +2337,7 @@ class ClientManager:
             client.area.broadcast_ooc("{} is now AFK.".format(client.showname))
             client.send_ooc("You are now AFK. Have a good day!")
             client.area.afkers.append(client)
+        client.area.broadcast_player_list()
 
     def refresh_music(self, clients=None, reload=False):
         """

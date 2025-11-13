@@ -10,6 +10,7 @@ import asyncio
 import random
 import time
 import arrow
+import json
 
 import oyaml as yaml  # ordered yaml
 import os
@@ -731,6 +732,8 @@ class Area:
 
         if client.subtheme != self.area_manager.subtheme:
             client.send_command("ST", self.area_manager.subtheme, "1")
+        
+        self.broadcast_player_list()
 
     def update_judge_buttons(self, client):
         # Judge buttons are client-sided by default.
@@ -830,6 +833,8 @@ class Area:
         # Commented out due to potentially causing clientside lag...
         # self.send_command('CharsCheck',
         #                     *client.get_available_char_list())
+        
+        self.broadcast_player_list()
 
     def unlock(self):
         """Mark the area as unlocked."""
@@ -1390,6 +1395,88 @@ class Area:
                 c.send_command("MS", *statement)
         except (ValueError, IndexError):
             raise AreaError("Invalid testimony reference!")
+
+    def broadcast_area_desc(self):
+        # DRO Client exclusive
+        targets = self.clients
+        for c in targets:
+            self.broadcast_area_desc_to_target(c)
+
+    def broadcast_area_desc_to_target(self, target):
+        reason = 0
+        area_desc = "Nothing particularly interesting."
+        # If area description is set
+        if self.desc.strip() != "":
+            area_desc = self.desc
+        # Modifiers
+        if target.blinded:
+            reason = 3
+            area_desc = "You can't see anything as you are currently blinded."
+        elif self.dark:
+            area_desc = "The lights are off, so you cannot see anything."
+            reason = 1
+        target.send_command("LIST_REASON", reason, area_desc)
+
+    def broadcast_player_list(self):
+        """
+        Send the player list packet to everyone in the area.
+        """
+        return_data = {}
+        return_data['packet'] = 'player_list'
+        for target_client in self.clients:
+            special_allowed = (
+                target_client.is_mod
+                or target_client in self.owners
+            )
+            player_data_to_send = list()
+            player_stuff = list()
+            if self.can_getarea and not self.dark:
+                for c in self.clients: 
+                    if c != target_client and (not c.hidden or special_allowed):
+                        chara_client_info = {}
+                        player_stuff.append(str(c.id))
+                        chara_client_info["id"] = str(c.id)
+                        chara_client_info["afk"] = str(c in self.afkers)
+
+                        #Append the Showname
+                        ## 1.5
+                        player_stuff.append(str(c.showname))
+                        chara_client_info["showname"] = str(c.showname)
+
+                        ## 1.5.1
+                        
+
+                        #Append the Character Name
+                        ## 1.5
+                        # if(c.icon_visible):
+                        char_folder = self.area_manager.char_list[c.char_id]
+                        player_stuff.append(str(char_folder))
+                        chara_client_info["character"] = str(char_folder)
+                        # else:
+                        #     player_stuff.append("")
+                        #     chara_client_info["character"] = "NO_CHARA"
+
+                        if(target_client.is_mod):
+                            # chara_client_info["HDID"] = str(c.hdid)
+                            chara_client_info["IPID"] = str(c.ipid)
+
+                        # if(c.files):
+                        #     chara_client_info["url"] = c.files[1]
+
+                        # if(c.char_outfit):
+                        #     chara_client_info["outfit"] = c.char_outfit 
+
+                        if(c.desc):
+                            chara_client_info["status"] = c.desc
+                        player_data_to_send.append(chara_client_info)
+                        
+
+            return_data['data'] = player_data_to_send
+            
+            json_data = json.dumps(return_data)
+            target_client.send_command('JSN', json_data)
+            
+            target_client.send_command('LP', player_stuff)
 
     def parse_msg_delay(self, msg):
         """Just returns the delay value between messages.

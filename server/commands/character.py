@@ -1089,6 +1089,8 @@ def ooc_cmd_chardesc(client, arg):
             client.area.broadcast_ooc(
                 f"{client.showname} changed their character description to: {desc}."
             )
+            
+        client.area.broadcast_player_list()
         database.log_area("chardesc.change", client, client.area, message=arg)
 
 
@@ -1104,6 +1106,7 @@ def ooc_cmd_chardesc_clear(client, arg):
     database.log_area(
         "chardesc.clear", client, client.area
     )
+    client.area.broadcast_player_list()
 
 
 @mod_only(hub_owners=True)
@@ -1140,6 +1143,7 @@ def ooc_cmd_chardesc_set(client, arg):
         database.log_area(
             "chardesc.set", client, client.area, message=f"{target}: {desc}"
         )
+        client.area.broadcast_player_list()
     except Exception:
         raise ArgumentError("Target not found.")
 
@@ -1290,6 +1294,7 @@ def ooc_cmd_showname(client, arg):
     client.used_showname_command = True
     client.showname = arg
     client.send_ooc(f"You set your showname to '{client.showname}'.")
+    client.area.broadcast_player_list()
 
 
 def ooc_cmd_charlists(client, arg):

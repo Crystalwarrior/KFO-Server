@@ -1072,7 +1072,7 @@ class AOProtocol(asyncio.Protocol):
         if self.client.used_showname_command:
             showname = self.client.showname
         self.client.showname = showname
-
+        
         # Here, we check the pair stuff, and save info about it to the client.
         # Notably, while we only get a charid_pair and an offset, we send back a chair_pair, an emote, a talker offset
         # and an other offset.
@@ -1578,6 +1578,9 @@ class AOProtocol(asyncio.Protocol):
         if self.client.software == "DRO":
             # send it back to the client
             self.client.send_command("ackMS")
+        
+        # Acknowledge showname etc. - also DRO client
+        self.client.area.broadcast_player_list()
 
     def net_cmd_ct(self, args):
         """OOC Message

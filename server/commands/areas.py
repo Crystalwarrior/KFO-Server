@@ -829,6 +829,7 @@ def ooc_cmd_desc(client, arg):
         client.area.broadcast_ooc(
             f"📃{client.showname} changed the area description to: {desc}."
         )
+        client.area.broadcast_area_desc()
         database.log_area("desc.change", client, client.area, message=arg)
 
 
