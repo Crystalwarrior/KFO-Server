@@ -498,7 +498,10 @@ class ClientManager:
                     )
             self.area.update_timers(self, running_only=True)
             
-            self.area.broadcast_player_list()
+            if not self.hidden and not self.sneaking:
+                self.area.broadcast_player_list()
+            else:
+                self.area.broadcast_player_list_to_target(self)
             self.area.broadcast_area_desc_to_target(self)
 
         def change_music_cd(self):
@@ -2033,7 +2036,8 @@ class ClientManager:
             self._hidden = tog
             self.send_ooc(f"You are {msg} from /getarea and playercounts.")
             self.area.area_manager.send_arup_players()
-            self.area.broadcast_player_list()
+            if not self.sneaking:
+                self.area.broadcast_player_list()
 
         def blind(self, tog=True):
             self.blinded = tog
@@ -2044,7 +2048,10 @@ class ClientManager:
                 f"You are {msg} blinded from the area and seeing non-broadcasted IC messages."
             )
             self.send_command("LE", *self.area.get_evidence_list(self))
-            self.area.broadcast_player_list()
+            if not self.hidden and not self.sneaking:
+                self.area.broadcast_player_list()
+            else:
+                self.area.broadcast_player_list_to_target(self)
 
         def freeze(self, tog=True):
             self.frozen = tog
@@ -2327,17 +2334,20 @@ class ClientManager:
 
     def toggle_afk(self, client):
         if client in client.area.afkers:
-            client.area.broadcast_ooc(
-                "{} is no longer AFK.".format(client.showname))
+            if not client.hidden and not client.sneaking:
+                client.area.broadcast_ooc(
+                    "{} is no longer AFK.".format(client.showname))
             client.send_ooc(
                 "You are no longer AFK. Welcome back!"
             )  # Making the server a bit friendly wouldn't hurt, right?
             client.area.afkers.remove(client)
         else:
-            client.area.broadcast_ooc("{} is now AFK.".format(client.showname))
+            if not client.hidden and not client.sneaking:
+                client.area.broadcast_ooc("{} is now AFK.".format(client.showname))
             client.send_ooc("You are now AFK. Have a good day!")
             client.area.afkers.append(client)
-        client.area.broadcast_player_list()
+        if not client.hidden and not client.sneaking:
+            client.area.broadcast_player_list()
 
     def refresh_music(self, clients=None, reload=False):
         """

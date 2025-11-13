@@ -277,6 +277,7 @@ def ooc_cmd_getarea(client, arg):
             raise ClientError(
                 "Can't see that area - insufficient permissions!")
     client.send_area_info(aid)
+    client.area.broadcast_player_list_to_target(client)
 
 
 def ooc_cmd_getareas(client, arg):
