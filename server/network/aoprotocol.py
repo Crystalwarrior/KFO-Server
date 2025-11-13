@@ -1735,7 +1735,7 @@ class AOProtocol(asyncio.Protocol):
         if len(args) <= 0:
             return
         # Test for Hub or Area Switcher
-        if len(args[0].split()) > 0:
+        try:
             if args[0].split()[0].startswith("🌍["):
                 # self.client.send_ooc('Switching to the list of Hubs...')
                 self.client.viewing_hub_list = True
@@ -1772,14 +1772,13 @@ class AOProtocol(asyncio.Protocol):
                 self.client.area.area_manager.send_arup_cms([self.client])
                 self.client.area.area_manager.send_arup_lock([self.client])
                 return
-        try:
             called_function = "ooc_cmd_area"
             if self.client.viewing_hub_list:
                 called_function = "ooc_cmd_hub"
             # We can get cheeky and spoof ARUP info with normal song names
             getattr(commands, called_function)(
                 self.client, args[0].split("\n")[0])
-        except AreaError:
+        except (IndexError, AreaError):
             if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.INT):
                 if not self.validate_net_cmd(
                     args, self.ArgType.STR, self.ArgType.INT, self.ArgType.STR_OR_EMPTY
