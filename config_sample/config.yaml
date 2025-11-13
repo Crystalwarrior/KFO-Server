@@ -11,7 +11,7 @@ hostname: <dollar>H
 # enforced, but bad things are supposed to happen if this is exceeded.
 playerlimit: 100
 
-# Port to listen on. You should forward this port on your router.
+# TCP port to listen on
 port: 27016
 
 # Whether this server can only be accessed by the local machine it is
