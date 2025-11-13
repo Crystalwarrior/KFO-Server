@@ -563,7 +563,7 @@ class ClientManager:
                 .replace("<dollar>", "$") \
                 .replace("<and>", "&")
             try:
-                if song == "~stop.mp3" or self.server.get_song_is_category(
+                if song == "~stop.mp3" or song.strip() == "" or self.server.get_song_is_category(
                     self.construct_music_list(), song
                 ):
                     name, length = "~stop.mp3", 0

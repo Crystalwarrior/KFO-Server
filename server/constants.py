@@ -21,6 +21,14 @@ class MusicEffect(IntFlag):
     SYNC_POS = 4
 
 
+class ReportCardReason(IntFlag):
+    Nothing = 0,
+    Blackout = 1,
+    PendingLook = 2,
+    Blinded = 3,
+    NoPlayerList = 4
+
+
 def dezalgo(input, tolerance=3):
     """
     Turns any string into a de-zalgo'd version, with a tolerance to allow for normal diacritic use.

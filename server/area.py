@@ -2,7 +2,7 @@ from server import database
 from server import commands
 from server.evidence import EvidenceList
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import MusicEffect, derelative, censor
+from server.constants import MusicEffect, ReportCardReason, derelative, censor
 
 from collections import OrderedDict
 
@@ -1408,18 +1408,20 @@ class Area:
             self.broadcast_area_desc_to_target(c)
 
     def broadcast_area_desc_to_target(self, target):
-        reason = 0
+        reason = ReportCardReason.Nothing
         area_desc = "Nothing particularly interesting."
         # If area description is set
         if self.desc.strip() != "":
             area_desc = self.desc
         # Modifiers
         if target.blinded:
-            reason = 3
+            reason = ReportCardReason.Blinded
             area_desc = "You can't see anything as you are currently blinded."
         elif self.dark:
+            reason = ReportCardReason.Blackout
             area_desc = "The lights are off, so you cannot see anything."
-            reason = 1
+        elif not self.can_getarea:
+            reason = ReportCardReason.NoPlayerList
         target.send_command("LIST_REASON", reason, area_desc)
 
     def broadcast_player_list(self):
@@ -1438,7 +1440,7 @@ class Area:
         )
         player_data_to_send = list()
         player_stuff = list()
-        if self.can_getarea and not self.dark:
+        if (self.can_getarea and not self.dark) or special_allowed:
             for c in self.clients:
                 if c == target:
                     continue
