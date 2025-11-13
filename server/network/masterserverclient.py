@@ -18,7 +18,7 @@ API_BASE_URL = 'https://servers.aceattorneyonline.com'
 
 
 class MasterServerClient:
-    """Advertises information about this server to the master server."""
+    """Advertises information about this server to the masterserver."""
 
     def __init__(self, server):
         self.server = server
@@ -47,7 +47,7 @@ class MasterServerClient:
                 try:
                     await self.send_server_info(http)
                 except aiohttp.ClientError:
-                    # Master server is down or unreachable, may be temporary so log it as a warning
+                    # Masterserver is down or unreachable, may be temporary so log it as a warning
                     logger.warning('Failed to connect to the master server')
                 except Exception as err:
                     # Unknown error occurred, log it as a hard error with full exception information
@@ -73,7 +73,7 @@ class MasterServerClient:
     async def send_server_info(self, http: aiohttp.ClientSession):
         """
         Send server information to the specified HTTP client session.
-        Usually being the master server.
+        Usually being the masterserver.
 
         Parameters:
             http (aiohttp.ClientSession): The aiohttp client to send the server information to.
