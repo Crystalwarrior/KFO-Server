@@ -39,16 +39,17 @@ restartpass: restart
 # Sent to joining players.
 motd: Welcome to my server!
 
-# Whether the server is open to webAO connections.
-# The websocket port must be different from the main server port
-# and must also be forwarded.
+# Whether the server is open to webAO connections
 use_websockets: true
+# Port to listen on for websocket connections
 websocket_port: 50001
+# Websocket port that is advertised to the masterserver for WS connections
+advertised_websocket_port: 80
 
 # Whether the server is open to secure websocket connections
-# Note that this requires special setup on the server side (terminating SSL)
 use_securewebsockets: false
-secure_websocket_port: 50002
+# Port that is advertised to the masterserver for WSS connections (KFO-Server does not accept SSL directly)
+secure_websocket_port: 443
 
 # WebAO Asset URL for hosting files. Leave blank to use vanilla
 asset_url:
