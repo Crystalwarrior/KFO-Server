@@ -70,6 +70,8 @@ class MasterServerClient:
             if nat_type != stun.Blocked:
                 return external_ip
 
+        return None
+
     async def send_server_info(self, http: aiohttp.ClientSession):
         """
         Send server information to the specified HTTP client session.
