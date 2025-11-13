@@ -1068,6 +1068,7 @@ class AOProtocol(asyncio.Protocol):
                 # target_area.trigger('present')
             except IndexError:
                 evidence = 0
+        old_showname = self.client.showname
         # Update the showname ref for the client
         if self.client.used_showname_command:
             showname = self.client.showname
@@ -1580,7 +1581,8 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_command("ackMS")
         
         # Acknowledge showname etc. - also DRO client
-        self.client.area.broadcast_player_list()
+        if old_showname != self.client.showname:
+            self.client.area.broadcast_player_list()
 
     def net_cmd_ct(self, args):
         """OOC Message

@@ -815,8 +815,10 @@ def ooc_cmd_follow(client, arg):
             raise ClientError(
                 "You are not a mod/GM - Target must be present in your area!"
             )
-        if client.following == c.id:
-            raise ClientError(f"Already following [{c.id}] {c.showname}!")
+        if client.following and client.following.id == c.id:
+            ooc_cmd_unfollow(client, "")
+            return
+            # raise ClientError(f"Already following [{c.id}] {c.showname}!")
         if client.area != c.area:
             client.change_area(c.area)
         client.following = c
