@@ -14,7 +14,7 @@ playerlimit: 100
 # Port to listen on. You should forward this port on your router.
 port: 27016
 
-# Whether or not this server can only be accessed by the local machine it is
+# Whether this server can only be accessed by the local machine it is
 # being hosted on.
 local: false
 
@@ -38,21 +38,21 @@ restartpass: restart
 # Sent to joining players.
 motd: Welcome to my server!
 
-# Whether or not the server is open to webAO connections.
+# Whether the server is open to webAO connections.
 # The websocket port must be different from the main server port
 # and must also be forwarded.
 use_websockets: true
 websocket_port: 50001
 
-# Whether or not the server is open to secure websocket connections
-# Do note that this requires special setup on the server side (terminating SSL)
+# Whether the server is open to secure websocket connections
+# Note that this requires special setup on the server side (terminating SSL)
 use_securewebsockets: false
 secure_websocket_port: 50002
 
 # WebAO Asset URL for hosting files. Leave blank to use vanilla
 asset_url:
 
-# Whether or not the server should be advertised on the server list.
+# Whether the server should be advertised on the server list.
 use_masterserver: true
 # How the server should be listed on the server list.
 masterserver_name: My First Server
@@ -68,7 +68,7 @@ timeout: 250
 # Don't touch this if you don't know what you're doing.
 packet_size: 1024
 
-# Whether or not to prevent users from repeatedly posting the same message.
+# Whether to prevent users from repeatedly posting the same message.
 # If True, you will not be able to post the same message as the last one if you posted it.
 block_repeat: true
 
@@ -113,14 +113,14 @@ max_chars_ic: 256
 
 # Set up a Discord Bridge bot that keeps track of user messages on both ends (AO2 and Discord).
 bridgebot:
-  enabled: false # Whether or not this bot is enabled
+  enabled: false # Whether this bot is enabled
   token: string1234 # Discord Token for the bot
   channel: ao2-lobby # channel to set up a bridge with
   character: Ponco # character folder for Bridgebot to use
   emote: normal # idle emote for Bridgebot to use
   pos: jur # position Bridgebot will use when talking
-  base_url: http://www.example.com/base/ # base folder URL to seek for bridgebot to obtain stuff like character avatar graphics etc.
-  embed_emotes: False # whether or not to embed emotes into the message (only supports .png atm)
+  base_url: http://www.example.com/base/ # base folder URL to seek for bridgebot to get stuff like character avatar graphics etc.
+  embed_emotes: False # whether to embed emotes into the message (only supports .png atm)
   hub_id: 0 # numeric Hub ID where Bridgebot will reside
   area_id: 0 # numeric Area ID where Bridgebot will talk
   prefix: "}}}[√Dis√] {" # prefix to use before in-character message, usually to identify this message as Bridgebot one
@@ -133,7 +133,7 @@ bridgebot:
   announce_ping: false
   announce_role:
 
-# Whether or not Discord webhooks are enabled, and if they are, the webhook URL to use.
+# Whether Discord webhooks are enabled, and if they are, the webhook URL to use.
 # If webhooks_enabled is set to false, no webhooks will function regardless of whether they are enabled or not.
 webhooks_enabled: false
 webhook_url: example.com
@@ -143,7 +143,7 @@ modcall_webhook:
   enabled: true
   username: Modcall # the username the webhook will use
   avatar_url: # url of a custom avatar image, leave blank to use the avatar the webhook was set up with
-  ping_on_no_mods: false # whether or not to ping mods if a modcall is received while no moderators are online
+  ping_on_no_mods: false # whether to ping mods if a modcall is received while no moderators are online
   mod_role_id: # the role ID of the role you want pinged. leave blank to use @here instead
 
 kick_webhook:
