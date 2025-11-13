@@ -7,7 +7,7 @@
 # be used by other players.
 hostname: <dollar>H
 
-# Max number of player slots to be made. The player limit is not actually
+# Max number of player slots to be made. The player limit is actually not
 # enforced, but bad things are supposed to happen if this is exceeded.
 playerlimit: 100
 
