@@ -1081,6 +1081,10 @@ def ooc_cmd_chardesc(client, arg):
         except Exception:
             raise ArgumentError("Target not found.")
     else:
+        arg = arg.strip()
+        if arg == "":
+            ooc_cmd_chardesc_clear(client)
+            return
         client.desc = arg
         if not client.hidden and not client.sneaking:
             desc = arg[:128]
