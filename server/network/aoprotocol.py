@@ -1580,8 +1580,8 @@ class AOProtocol(asyncio.Protocol):
             # send it back to the client
             self.client.send_command("ackMS")
         
-        # Acknowledge showname etc. - also DRO client
-        if old_showname != self.client.showname:
+        # Broadcast our presence if our showname changed or if we spoke while sneaking
+        if old_showname != self.client.showname or self.client.sneaking:
             self.client.area.broadcast_player_list()
 
     def net_cmd_ct(self, args):
