@@ -957,7 +957,7 @@ class ClientManager:
             if self not in self.area.clients:
                 self.area.new_client(self)
             if target_pos != "":
-                self.pos = target_pos
+                self.change_position(target_pos)
 
             # If we're using /evidence_present, reset it due to area change (evidence will be different most likely)
             self.presenting = 0
