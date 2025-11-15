@@ -118,7 +118,8 @@ class TsuServer3:
     def start(self):
         """Start the server."""
         logger.info("Starting server")
-        loop = asyncio.get_event_loop_policy().get_event_loop()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
         bound_ip = "0.0.0.0"
         if self.config["local"]:
