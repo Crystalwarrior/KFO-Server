@@ -361,6 +361,10 @@ class ClientManager:
             self.send_ooc(f"👥{players}/{limit} players online.")
 
         def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+            if timer_id == 0:
+                timer = self.area.area_manager.timer
+            else:
+                timer = self.area.timers[timer_id-1]
             if self.software == "DRO":
                 # configuration. There's no situation where these values are different on KFO-Server
                 # step length cannot be manually modified yet
@@ -381,10 +385,6 @@ class ClientManager:
                 else:
                     self.send_command("TI", timer_id, 2, new_time) # Show timer
                     self.send_command("TI", timer_id, int(not start), new_time) # Set timer with value and start
-                    if timer_id == 0:
-                        timer = self.area.area_manager.timer
-                    else:
-                        timer = self.area.timers[timer_id-1]
                     self.send_command("TF", timer_id, timer.format, new_time)
                     self.send_command("TIN", timer_id, timer.interval)
 
