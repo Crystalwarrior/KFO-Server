@@ -363,10 +363,13 @@ class ClientManager:
         def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
             if self.software == "DRO":
                 # configuration. There's no situation where these values are different on KFO-Server
-                self.send_timer_set_step_length(timer_id, -16) # 16 milliseconds, matches AO
-                self.send_timer_set_firing_interval(timer_id, 16) # 16 milliseconds, matches AO
-                
-                self.send_command("TST", timer_id, new_time) # set time
+                # step length cannot be manually modified yet
+                self.send_timer_set_step_length(timer_id, -timer.interval)
+                self.send_timer_set_firing_interval(timer_id, timer.interval)
+                # set time
+                self.send_command("TST", timer_id, new_time)
+                # as of 1.8.1, set timer format
+                self.send_command("TSR", timer_id, timer.format)
                 if start:
                     self.send_command("TR", timer_id) # resume
                 else:
@@ -406,7 +409,7 @@ class ClientManager:
             if self.software == "DRO":
                 self.send_command("TSF", timer_id, new_firing_interval) #set firing
             else:
-                pass # no ao equivalent
+                self.send_command("TIN", timer_id, new_firing_interval)
 
         def is_valid_name(self, name):
             """
