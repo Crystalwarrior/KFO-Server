@@ -44,6 +44,7 @@ __all__ = [
     "ooc_cmd_minigame_end_song",
     "ooc_cmd_minigame_concede_song",
     "ooc_cmd_subtheme",
+    "ooc_cmd_time_of_day",
     "ooc_cmd_evidence_save",
     "ooc_cmd_evidence_load",
     "ooc_cmd_evidence_overlay",
@@ -1000,16 +1001,28 @@ def ooc_cmd_concede(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_subtheme(client, arg):
     """
-    Change the subtheme for the hub.
+    Change the subtheme (DRO gamemode) for the hub.
     Usage: /subtheme <subtheme_name>
     """
-    client.area.area_manager.subtheme = arg
+    client.area.area_manager.subtheme = arg.strip()
     # Set everyone's subthemes
-    for c in client.area.area_manager.clients:
-        c.subtheme = arg
-        c.send_command("ST", arg, "1")
+    client.area.area_manager.broadcast_subtheme()
     client.send_ooc(
         f"Setting hub subtheme to {arg}."
+    )
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_time_of_day(client, arg):
+    """
+    Change the time of day for the hub.
+    Usage: /time_of_day <tod_name>
+    """
+    client.area.area_manager.time_of_day = arg.strip()
+    # Set everyone's time_of_day
+    client.area.area_manager.broadcast_subtheme()
+    client.send_ooc(
+        f"Setting hub time_of_day to {arg}."
     )
 
 

@@ -730,8 +730,7 @@ class Area:
                     MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
             )
 
-        if client.subtheme != self.area_manager.subtheme:
-            client.send_command("ST", self.area_manager.subtheme, "1")
+        self.area_manager.update_subtheme(client)
 
         if not client.hidden and not client.sneaking:
             self.broadcast_player_list()

@@ -164,8 +164,11 @@ class ClientManager:
             # Whether or not the client used the /showname command
             self.used_showname_command = False
 
-            # Currently requested subtheme of this client
+            # Currently requested subtheme (DRO gamemode) of this client
             self.subtheme = ""
+
+            # Currently requested time of day of this client
+            self.time_of_day = ""
 
             # The last char_url set by this client.
             self.char_url = ""
@@ -1780,8 +1783,7 @@ class ClientManager:
             self.send_command("LE", *self.area.get_evidence_list(self))
             self.send_command("MM", 1)
 
-            if self.area.area_manager.subtheme != "":
-                self.send_command("ST", self.area.area_manager.subtheme, "1")
+            self.area.area_manager.update_subtheme(self)
             self.area.area_manager.send_arup_players([self])
             self.area.area_manager.send_arup_status([self])
             self.area.area_manager.send_arup_cms([self])
