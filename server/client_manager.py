@@ -309,9 +309,12 @@ class ClientManager:
                             pair_jsn_packet['data']['offset_right'] = 0
                             json_data = json.dumps(pair_jsn_packet)
                             self.send_command('JSN', json_data)
-
                         # Now, modify the packet
                         lst = list(args)
+                        # make sure to pad the list out
+                        for n in range(len(args), 22):
+                            # append with 0s we're gonna replace anyway
+                            lst.append(0)
                         lst[16] = ""  # No video support :(
                         lst[17] = hide_char # hide character if we're blankposting or narrating
                         lst[18] = -1  # would be target id, but we dunno who
