@@ -2,20 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import shlex
-from typing import TYPE_CHECKING, Optional, Set
+from typing import Optional, Set
 
 import arrow
 import pytimeparse
 
 from server import database
+from server.client import Client
 from server.constants import TargetType
 from server.exceptions import ArgumentError, ClientError, ServerError
 
 from . import help, list_commands, list_submodules, mod_only
-
-if TYPE_CHECKING:
-    # Adjust this import to wherever your Client class actually lives
-    from server.client import Client
 
 __all__ = [
     "ooc_cmd_motd",
