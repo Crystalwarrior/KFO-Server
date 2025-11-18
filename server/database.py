@@ -7,19 +7,25 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import reduce
 from textwrap import dedent
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import arrow
 
 from .exceptions import ServerError
 
+if TYPE_CHECKING:  # Avoid circular imports at runtime
+    from server.area import Area
+    from server.client import Client
+
+
 logger = logging.getLogger("database")
 
 
-DB_FILE = "storage/db.sqlite3"
-_database_singleton = None
+DB_FILE: str = "storage/db.sqlite3"
+_database_singleton: Optional["Database"] = None
 
 
-def __getattr__(name):
+def __getattr__(name: str) -> Any:
     global _database_singleton
     if _database_singleton is None:
         _database_singleton = Database()
@@ -32,16 +38,16 @@ class Database:
     information about the server, such as users, bans, and logs.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         new = not os.path.exists("storage/db.sqlite3")
-        self.db = sqlite3.connect(DB_FILE)
+        self.db: sqlite3.Connection = sqlite3.connect(DB_FILE)
         self.db.execute("PRAGMA foreign_keys = ON")
         self.db.row_factory = sqlite3.Row
         if new:
             self.migrate_json_to_v1()
         self.migrate()
 
-    def migrate_json_to_v1(self):
+    def migrate_json_to_v1(self) -> None:
         """Migrate to v1 of the database from JSON."""
         with self.db as conn:
             logger.debug("Initializing database")
@@ -55,12 +61,12 @@ class Database:
             with open("storage/ip_ids.json", "r") as ipids_file:
                 # Sometimes, there are multiple IP addresses mapped to
                 # the same IPID, so we have to reassign those IPIDs.
-                ip_ipids = json.loads(ipids_file.read())
-                ipids = set([ipid for ip, ipid in ip_ipids.items()])
-                next_fallback_id = reduce(lambda max_ipid, ipid: max(max_ipid, ipid), ipids)
+                ip_ipids: Dict[str, int] = json.loads(ipids_file.read())
+                ipids: set[int] = set([ipid for ip, ipid in ip_ipids.items()])
+                next_fallback_id: int = reduce(lambda max_ipid, ipid: max(max_ipid, ipid), ipids)
                 for ip, ipid in ip_ipids.items():
                     ipids.add(ipid)
-                    effective_id = ipid
+                    effective_id: int = ipid
                     while True:
                         try:
                             conn.execute(
@@ -82,7 +88,7 @@ class Database:
                             break
 
             with open("storage/hd_ids.json", "r") as hdids_file:
-                hdids = json.loads(hdids_file.read())
+                hdids: Dict[str, List[int]] = json.loads(hdids_file.read())
                 for hdid, hdid_ipids in hdids.items():
                     for ipid in hdid_ipids:
                         # Sometimes, there are HDID entries that do not
@@ -135,11 +141,11 @@ class Database:
 
             logger.debug("Migration to v1 complete")
 
-    def migrate(self):
+    def migrate(self) -> None:
         for version in [2, 3, 4]:
             self.migrate_to_version(version)
 
-    def migrate_to_version(self, version):
+    def migrate_to_version(self, version: int) -> None:
         with self.db as conn:
             cur_version = conn.execute("PRAGMA user_version").fetchone()["user_version"]
             if cur_version >= version:
@@ -149,7 +155,7 @@ class Database:
                 conn.executescript(file.read())
         logger.debug("Migration to v%s complete", version)
 
-    def ipid(self, ip):
+    def ipid(self, ip: str) -> int:
         """Get an IPID from an IP address."""
         with self.db as conn:
             conn.execute(
@@ -170,7 +176,7 @@ class Database:
             ).fetchone()["ipid"]
             return ipid
 
-    def add_hdid(self, ipid, hdid):
+    def add_hdid(self, ipid: int, hdid: str) -> None:
         """Associate an HDID with an IPID."""
         with self.db as conn:
             conn.execute(
@@ -184,13 +190,13 @@ class Database:
 
     def ban(
         self,
-        target_id,
-        reason,
-        ban_type="ipid",
-        banned_by=None,
-        unban_date=None,
-        ban_id=None,
-    ):
+        target_id: Union[int, str],
+        reason: str,
+        ban_type: str = "ipid",
+        banned_by: Optional["Client"] = None,
+        unban_date: Optional[datetime] = None,
+        ban_id: Optional[int] = None,
+    ) -> int:
         """
         Ban an IPID or HDID.
         These should be used sparingly, as they can affect large swaths
@@ -240,7 +246,7 @@ class Database:
 
         return ban_id
 
-    def last_known_name(self, ipid):
+    def last_known_name(self, ipid: int) -> Optional[str]:
         """
         Find the last known OOC name of an IPID.
         """
@@ -268,13 +274,13 @@ class Database:
         banned_by: int
         reason: str
 
-        def __post_init__(self):
+        def __post_init__(self) -> None:
             self.ban_date = arrow.get(self.ban_date).datetime
             if self.unban_date is not None:
                 self.unban_date = arrow.get(self.unban_date).datetime
 
         @property
-        def ipids(self):
+        def ipids(self) -> List[int]:
             """Find IPIDs affected by this ban."""
             with _database_singleton.db as conn:
                 return [
@@ -290,7 +296,7 @@ class Database:
                 ]
 
         @property
-        def hdids(self):
+        def hdids(self) -> List[str]:
             """Find HDIDs affected by this ban."""
             with _database_singleton.db as conn:
                 return [
@@ -306,14 +312,14 @@ class Database:
                 ]
 
         @property
-        def banned_by_name(self):
+        def banned_by_name(self) -> Optional[str]:
             """
             Find the last known OOC name of the player who issued
             the ban.
             """
             return _database_singleton.last_known_name(self.banned_by)
 
-    def find_ban(self, ipid=None, hdid=None, ban_id=None):
+    def find_ban(self, ipid: Optional[int] = None, hdid: Optional[str] = None, ban_id: Optional[int] = None) -> Optional["Database.Ban"]:
         """Check if an IPID and/or HDID are banned."""
         with self.db as conn:
             # Why is this query so complicated? The answer is that I am
@@ -345,7 +351,7 @@ class Database:
             else:
                 return None
 
-    def unban(self, ban_id):
+    def unban(self, ban_id: int) -> bool:
         """Remove a ban entry."""
         logger.info("Unbanning %s", ban_id)
         with self.db as conn:
@@ -359,7 +365,7 @@ class Database:
             ).rowcount
             return unbans > 0
 
-    def schedule_unbans(self):
+    def schedule_unbans(self) -> None:
         """
         Schedule unbans from the database.
 
@@ -368,7 +374,7 @@ class Database:
         schedule_unbans will only get the unbans for the next 12 hours
         and then will have to be called again 12 hours later.
         """
-        dated_bans = []
+        dated_bans: List[sqlite3.Row] = []
         with self.db as conn:
             dated_bans = conn.execute(
                 dedent(
@@ -384,7 +390,7 @@ class Database:
         for ban in dated_bans:
             self._schedule_unban(ban["ban_id"])
 
-    def _schedule_unban(self, ban_id):
+    def _schedule_unban(self, ban_id: int) -> None:
         with self.db as conn:
             ban = conn.execute(
                 dedent(
@@ -396,13 +402,20 @@ class Database:
             ).fetchone()
             time_to_unban = (arrow.get(ban["unban_date"]) - arrow.utcnow()).total_seconds()
 
-            def auto_unban():
+            def auto_unban() -> None:
                 self.unban(ban_id)
                 self.log_misc("auto_unban", data={"id": ban_id})
 
             asyncio.get_running_loop().call_later(time_to_unban, auto_unban)
 
-    def log_area(self, event_subtype, client, area, message=None, target=None):
+    def log_area(
+        self,
+        event_subtype: str,
+        client: Optional["Client"],
+        area: "Area",
+        message: Optional[Union[str, Dict[str, Any]]] = None,
+        target: Optional["Client"] = None,
+    ) -> None:
         """
         Log an area or OOC event. The event subtype is translated to an enum
         value, creating one if necessary.
@@ -445,7 +458,7 @@ class Database:
                 ),
             )
 
-    def log_connect(self, client, failed=False):
+    def log_connect(self, client: "Client", failed: bool = False) -> None:
         """Log a connect attempt."""
         logger.info(f"{client.ipid} (HDID: {client.hdid}) " + f"{'was blocked from connecting' if failed else 'connected'}.")
         with self.db as conn:
@@ -458,7 +471,13 @@ class Database:
                 (client.ipid, client.hdid, failed),
             )
 
-    def log_misc(self, event_subtype, client=None, target=None, data=None):
+    def log_misc(
+        self,
+        event_subtype: str,
+        client: Optional["Client"] = None,
+        target: Optional["Client"] = None,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """
         Log a miscellaneous event. The event subtype is translated to an enum
         value, creating one if necessary.
@@ -480,7 +499,7 @@ class Database:
                 (client_ipid, target_ipid, subtype_id, data_json),
             )
 
-    def recent_bans(self, count=5):
+    def recent_bans(self, count: int = 5) -> List["Database.Ban"]:
         """
         Get the most recent bans in chronological order.
         """
@@ -500,7 +519,7 @@ class Database:
                 ).fetchall()
             ]
 
-    def _subtype_atom(self, event_type, event_subtype):
+    def _subtype_atom(self, event_type: str, event_subtype: str) -> int:
         if event_type not in ("area", "misc"):
             raise AssertionError()
 
