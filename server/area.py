@@ -7,7 +7,7 @@ import random
 import time
 import traceback
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union
 
 import arrow
 import oyaml as yaml  # ordered yaml
@@ -18,8 +18,8 @@ from server.evidence import EvidenceList
 from server.exceptions import AreaError, ArgumentError, ClientError, ServerError
 
 if TYPE_CHECKING:  # Avoid circular imports at runtime
-    from server.client import Client
     from server.area_manager import AreaManager
+    from server.client import Client
     from server.tsuserver import TsuServer
 
 logger = logging.getLogger("area")
