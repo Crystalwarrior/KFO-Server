@@ -2220,7 +2220,7 @@ class Area:
                 0,
             )
 
-    def play_demo(self, client):
+    def play_demo(self, client: "Client") -> None:
         if self.demo_schedule:
             self.demo_schedule.cancel()
         if len(self.demo) <= 0:
@@ -2291,7 +2291,7 @@ class Area:
         # Proceed to next demo line
         self.play_demo(client)
 
-    def stop_demo(self):
+    def stop_demo(self) -> None:
         if self.demo_schedule:
             self.demo_schedule.cancel()
         self.demo.clear()
@@ -2309,9 +2309,9 @@ class Area:
     class JukeboxVote:
         """Represents a single vote cast for the jukebox."""
 
-        def __init__(self, client, name, length, showname):
-            self.client = client
-            self.name = name
-            self.length = length
-            self.chance = 1
-            self.showname = showname
+        def __init__(self, client: "Client", name: str, length: int, showname: str) -> None:
+            self.client: "Client" = client
+            self.name: str = name
+            self.length: int = length
+            self.chance: int = 1
+            self.showname: str = showname
