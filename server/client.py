@@ -8,7 +8,9 @@ import time
 import arrow
 import oyaml as yaml
 
-from server.constants import derelative
+from server import database
+from server.constants import contains_URL, derelative, encode_ao_packet
+from server.exceptions import AreaError, ClientError, ServerError
 
 
 class Client:
@@ -130,7 +132,7 @@ class Client:
         self.narrator = False
         # if True, this char's msg will be replaced with ../misc/blank
         self.blankpost = False
-        # if True, this char's msg will be narrating over current IC visuals without showing a character, but only to yourself (AO2.9.1+)
+        # if True, this char's msg will be narrating over current IC visuals without showing a character, but only to yourself (AO2.9.1+)  # noqa: E501
         self.firstperson = False
 
         # a list of all areas the client can currently see
@@ -184,8 +186,8 @@ class Client:
         """
         Compose and send an AO-compatible message, with arguments
         delimited by `#` and ending with `#%`.
-        :param command: command name
-        :param *args: list of arguments
+        :param command: Command name
+        :param args: List of arguments
         """
         if args:
             # Music packet
@@ -271,7 +273,8 @@ class Client:
                         pair_jsn_packet["data"]["last_sprite"] = other_emote
                         pair_jsn_packet["data"]["flipped"] = other_flip
 
-                        # no y offset is supported and on DRO Client, the pairing offsets are measured in pixels rather than percentage
+                        # No y offset is supported
+                        # On DRO Client, the pairing offsets are measured in pixels rather than percentage
                         offset_pair_x_dro = 500
                         if offset_pair_x:
                             offset_pair_x_dro = int((float(offset_pair_x) / 100) * 960 + 480)  # other_offset
@@ -353,7 +356,7 @@ class Client:
             else:
                 self.send_command("TP", timer_id)  # pause
         else:
-            if new_time == None:
+            if new_time is None:
                 self.send_command("TI", timer_id, 1, 0)  # Stop timer
                 self.send_command("TI", timer_id, 3, 0)  # Hide timer
             else:
@@ -508,10 +511,7 @@ class Client:
                 self.mus_mute_time = 0
         times_per_interval = self.server.config["music_change_floodguard"]["times_per_interval"]
         interval_length = self.server.config["music_change_floodguard"]["interval_length"]
-        if (
-            time.time() - self.mus_change_time[(self.mus_counter - times_per_interval + 1) % times_per_interval]
-            < interval_length
-        ):
+        if time.time() - self.mus_change_time[(self.mus_counter - times_per_interval + 1) % times_per_interval] < interval_length:
             self.mus_mute_time = time.time()
             return self.server.config["music_change_floodguard"]["mute_length"]
         self.mus_counter = (self.mus_counter + 1) % times_per_interval
@@ -572,9 +572,7 @@ class Client:
 
             for area in target_areas:
                 if area.cannot_ic_interact(self):
-                    self.send_ooc(
-                        f"You are not on area [{area.id}] {area.name} invite list, and thus, you cannot change music!"
-                    )
+                    self.send_ooc(f"You are not on area [{area.id}] {area.name} invite list, and thus, you cannot change music!")
                     continue
                 if not self.is_mod and self not in area.owners and not area.can_dj:
                     self.send_ooc(f"You cannot change music in area [{area.id}] {area.name}!")
@@ -630,12 +628,7 @@ class Client:
 
                 # Showname info
                 if showname != "":
-                    if (
-                        len(showname) > 0
-                        and not area.showname_changes_allowed
-                        and not self.is_mod
-                        and self not in area.owners
-                    ):
+                    if len(showname) > 0 and not area.showname_changes_allowed and not self.is_mod and self not in area.owners:
                         self.send_ooc(f"Showname changes are forbidden in area [{area.id}] {area.name}!")
                         continue
 
@@ -648,9 +641,7 @@ class Client:
                     database.log_area("jukebox.vote", self, area, message=name)
                 else:
                     if self.change_music_cd():
-                        self.send_ooc(
-                            f"You changed song too many times. Please try again after {int(self.change_music_cd())} seconds."
-                        )
+                        self.send_ooc(f"You changed song too many times. Please try again after {int(self.change_music_cd())} seconds.")
                         return
                     area.play_music(name, self.char_id, length, showname, effects)
                     area.add_music_playing(self, name, showname)
@@ -658,9 +649,7 @@ class Client:
             database.log_area("music", self, self.area, message=name)
         except ServerError:
             if self.music_ref != "":
-                self.send_ooc(
-                    f"Error: song {song} was not accepted! View acceptable music by resetting your client's using /musiclist."
-                )
+                self.send_ooc(f"Error: song {song} was not accepted! View acceptable music by resetting your client's using /musiclist.")
             else:
                 self.send_ooc(f"Error: song {song} was not accepted! (No permission)")
 
@@ -678,10 +667,7 @@ class Client:
                 self.wtce_mute_time = 0
         times_per_interval = self.server.config["wtce_floodguard"]["times_per_interval"]
         interval_length = self.server.config["wtce_floodguard"]["interval_length"]
-        if (
-            time.time() - self.wtce_time[(self.wtce_counter - times_per_interval + 1) % times_per_interval]
-            < interval_length
-        ):
+        if time.time() - self.wtce_time[(self.wtce_counter - times_per_interval + 1) % times_per_interval] < interval_length:
             self.wtce_mute_time = time.time()
             return self.server.config["music_change_floodguard"]["mute_length"]
         self.wtce_counter = (self.wtce_counter + 1) % times_per_interval
@@ -702,10 +688,7 @@ class Client:
                 self.ooc_mute_time = 0
         times_per_interval = self.server.config["ooc_floodguard"]["times_per_interval"]
         interval_length = self.server.config["ooc_floodguard"]["interval_length"]
-        if (
-            time.time() - self.ooc_time[(self.ooc_counter - times_per_interval + 1) % times_per_interval]
-            < interval_length
-        ):
+        if time.time() - self.ooc_time[(self.ooc_counter - times_per_interval + 1) % times_per_interval] < interval_length:
             self.ooc_mute_time = time.time()
             return self.server.config["music_change_floodguard"]["mute_length"]
         self.ooc_counter = (self.ooc_counter + 1) % times_per_interval
@@ -762,11 +745,7 @@ class Client:
                 song_list = song_list + self.area.area_manager.music_list
 
         # Area music list
-        if (
-            self.area.music_ref != ""
-            and self.area.music_ref != self.area.area_manager.music_ref
-            and len(self.area.music_list) > 0
-        ):
+        if self.area.music_ref != "" and self.area.music_ref != self.area.area_manager.music_ref and len(self.area.music_list) > 0:
             if self.area.replace_music:
                 song_list = self.area.music_list
             else:
@@ -795,10 +774,12 @@ class Client:
         if self.local_music_list != song_list or reload:
             self.reload_music_list(song_list)
 
-    def reload_music_list(self, music=[]):
+    def reload_music_list(self, music=None):
         """
         Rebuild the music list with the provided array, or the server music list as a whole.
         """
+        if music is None:
+            music = []
         song_list = []
 
         if len(music) > 0:
@@ -811,16 +792,16 @@ class Client:
         # KEEP THE ASTERISK
         self.send_command("FM", *song_list)
 
-    def reload_area_list(self, areas=[]):
+    def reload_area_list(self, areas=None):
         """
-        Rebuild the area list according to provided areas list.
+        Rebuild the area list according to the provided area list.
         """
+        if areas is None:
+            areas = []
         area_list = []
         if len(self.server.hub_manager.hubs) > 1:
             if not self.area.area_manager.arup_enabled:
-                area_list = [
-                    f"🌍[{self.area.area_manager.id}] {self.area.area_manager.name}\n Double-Click me to see Hubs\n  _______"
-                ]
+                area_list = [f"🌍[{self.area.area_manager.id}] {self.area.area_manager.name}\n Double-Click me to see Hubs\n  _______"]
             else:
                 area_list = [f"🌍[{self.area.area_manager.id}] {self.area.area_manager.name}"]
         if len(areas) > 0:
@@ -859,10 +840,7 @@ class Client:
             old_area.remove_client(self)
         self.area = area
 
-        if (
-            old_area.area_manager != area.area_manager
-            and old_area.area_manager.char_list != area.area_manager.char_list
-        ):
+        if old_area.area_manager != area.area_manager and old_area.area_manager.char_list != area.area_manager.char_list:
             # Send them that hub's char list
             self.area.area_manager.send_characters(self)
             self.char_select()
@@ -954,10 +932,7 @@ class Client:
             or len(self.area.links) <= 0
             or (
                 str(area.id) in self.area.links
-                and (
-                    len(self.area.links[str(area.id)]["evidence"]) <= 0
-                    or self.hidden_in in self.area.links[str(area.id)]["evidence"]
-                )
+                and (len(self.area.links[str(area.id)]["evidence"]) <= 0 or self.hidden_in in self.area.links[str(area.id)]["evidence"])
             )
         )
 
@@ -1018,9 +993,7 @@ class Client:
                 and self.area.links[str(area.id)]["password"] != ""
                 and password != self.area.links[str(area.id)]["password"]
             ):
-                raise ClientError(
-                    f"Failed to enter [{area.id}] {area.name}: Incorrect password! Use /pw <id> [password]"
-                )
+                raise ClientError(f"Failed to enter [{area.id}] {area.name}: Incorrect password! Use /pw <id> [password]")
 
         if (
             self.char_id == -1
@@ -1052,9 +1025,7 @@ class Client:
         delay = self.area.time_until_move(self)
         if not self.forced_to_follow and not allowed and delay > 0:
             sec = int(math.ceil(delay * 0.001))
-            raise ClientError(
-                f"Failed to enter [{area.id}] {area.name}: You need to wait {sec} seconds until you can move again."
-            )
+            raise ClientError(f"Failed to enter [{area.id}] {area.name}: You need to wait {sec} seconds until you can move again.")
 
         # Mods and area owners can be any character regardless of availability
         if not (self.is_mod or self in area.owners or self.char_id == -1) and not area.is_char_available(self.char_id):
@@ -1167,9 +1138,7 @@ class Client:
                     continue
                 if old_area.area_manager == self.area.area_manager:
                     if c in self.area.clients:
-                        c.send_ooc(
-                            f"[{self.id}] {self.showname} enters unannounced from [{old_area.id}] {old_area.name}{reason}"
-                        )
+                        c.send_ooc(f"[{self.id}] {self.showname} enters unannounced from [{old_area.id}] {old_area.name}{reason}")
                 else:
                     c.send_ooc(
                         f"[{self.id}] {self.showname} enters unannounced from Hub [{old_area.area_manager.id}] {old_area.area_manager.name}{reason}"
@@ -1935,18 +1904,16 @@ class Client:
     def set_need_call_delay(self):
         """Begin the need cooldown."""
         try:
-            self.need_call_time = round(
-                time.time() * 1000.0 + int(self.server.config["need_webhook"]["delay"]) * 1000.0
-            )
-        except:
+            self.need_call_time = round(time.time() * 1000.0 + int(self.server.config["need_webhook"]["delay"]) * 1000.0)
+        except Exception:
             self.need_call_time = round(time.time() * 1000 + 60000)
 
     def can_call_case(self):
-        """Whether or not the client can currently announce a case."""
+        """Whether the client can currently announce a case."""
         return (time.time() * 1000.0 - self.case_call_time) > 0
 
     def can_call_need(self):
-        """Whether or not the client can currently call a need."""
+        """Whether the client can currently call a need."""
         return (time.time() * 1000.0 - self.need_call_time) > 0
 
     def disemvowel_message(self, message):
