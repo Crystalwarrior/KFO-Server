@@ -1,12 +1,11 @@
 import asyncio
 import datetime
 import logging
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import arrow
 
 from server import commands
-from server.area import Area
 from server.client import Client
 from server.exceptions import AreaError, ArgumentError, ClientError, ServerError
 
@@ -23,7 +22,7 @@ class Timer:
         started: bool = False,
         static: Optional[datetime.timedelta] = None,
         target: Optional[arrow.Arrow] = None,
-        area: Optional[Area] = None,
+        area: Optional[Any] = None,
         caller: Optional[Client] = None,
     ):
         self.id: int = _id

@@ -12,6 +12,7 @@ import arrow
 import oyaml as yaml  # ordered yaml
 
 from server import commands, database
+from server.client import Client
 from server.constants import MusicEffect, censor, derelative
 from server.evidence import EvidenceList
 from server.exceptions import AreaError, ArgumentError, ClientError, ServerError

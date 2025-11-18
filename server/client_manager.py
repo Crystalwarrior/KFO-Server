@@ -1,22 +1,19 @@
 import asyncio
 from heapq import heappop, heappush
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Union
+from typing import Any, Dict, Iterable, List, Optional, Set, Union
 
 from server import database
 from server.client import Client
 from server.constants import TargetType
 from server.exceptions import ClientError
 
-if TYPE_CHECKING:  # Avoid circular imports at runtime
-    from server.tsuserver import TsuServer
-
 
 class ClientManager:
     """Holds the list of all clients currently connected to the server."""
 
-    def __init__(self, server: TsuServer) -> None:
+    def __init__(self, server) -> None:
         self.clients: Set[Client] = set()
-        self.server: TsuServer = server
+        self.server = server
         self.cur_id: List[int] = [i for i in range(self.server.config["playerlimit"])]
         # Mapping of ipid -> spam_type -> delay seconds
         self.delays: Dict[str, Dict[str, float]] = {}
