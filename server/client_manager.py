@@ -1,12 +1,13 @@
 from heapq import heappop, heappush
 
 from server import database
-from server.constants import TargetType, encode_ao_packet, contains_URL, derelative
-from server.exceptions import ClientError, AreaError, ServerError
+from server.constants import TargetType
+from server.exceptions import ClientError
 
 
 class ClientManager:
     """Holds the list of all clients currently connected to the server."""
+
     def __init__(self, server):
         self.clients = set()
         self.server = server
@@ -14,14 +15,14 @@ class ClientManager:
         self.delays = {}
 
     def set_spam_delay(self, ipid, spam_type, value):
-        if not str(ipid) in self.delays:
+        if str(ipid) not in self.delays:
             self.delays[str(ipid)] = {}
         self.delays[str(ipid)][spam_type] = value
 
     def get_spam_delay(self, ipid, spam_type):
-        if not str(ipid) in self.delays:
+        if str(ipid) not in self.delays:
             return 0
-        if not spam_type in self.delays[str(ipid)]:
+        if spam_type not in self.delays[str(ipid)]:
             return 0
         return self.delays[str(ipid)][spam_type]
 
@@ -46,8 +47,7 @@ class ClientManager:
 
         peername = transport.get_extra_info("peername")[0]
 
-        c = self.Client(self.server, transport, user_id,
-                        database.ipid(peername))
+        c = self.Client(self.server, transport, user_id, database.ipid(peername))
         self.clients.add(c)
         temp_ipid = c.ipid
         for client in self.server.client_manager.clients:
@@ -100,10 +100,7 @@ class ClientManager:
                     "FA",
                     *[
                         "🌐 Hubs 🌐\n Double-Click me to see Areas\n  _______",
-                        *[
-                            f"[{hub.id}] {hub.name} (users: {hub.count})"
-                            for hub in self.server.hub_manager.hubs
-                        ],
+                        *[f"[{hub.id}] {hub.name} (users: {hub.count})" for hub in self.server.hub_manager.hubs],
                     ],
                 )
 
@@ -146,7 +143,7 @@ class ClientManager:
                             targets.append(client)
                     elif key == TargetType.ID:
                         if client.id == value:
-                             targets.append(client)
+                            targets.append(client)
                     elif key == TargetType.IPID:
                         if client.ipid == value:
                             targets.append(client)
@@ -174,11 +171,8 @@ class ClientManager:
     def toggle_afk(self, client):
         if client in client.area.afkers:
             if not client.hidden and not client.sneaking:
-                client.area.broadcast_ooc(
-                    "{} is no longer AFK.".format(client.showname))
-            client.send_ooc(
-                "You are no longer AFK. Welcome back!"
-            )  # Making the server a bit friendly wouldn't hurt, right?
+                client.area.broadcast_ooc("{} is no longer AFK.".format(client.showname))
+            client.send_ooc("You are no longer AFK. Welcome back!")  # Making the server a bit friendly wouldn't hurt, right?
             client.area.afkers.remove(client)
         else:
             if not client.hidden and not client.sneaking:
@@ -204,7 +198,7 @@ class ClientManager:
 
     def get_mods(self):
         return [c for c in self.clients if c.is_mod]
-        
+
     class BattleChar:
         def __init__(self, client, fighter_name, fighter):
             self.fighter = fighter_name
