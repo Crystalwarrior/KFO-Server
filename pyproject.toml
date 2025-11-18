@@ -1,5 +1,5 @@
 [tool.ruff]
-line-length = 120
+line-length = 140
 lint.select = ["E", "F", "W", "I"]  # PEP8/pycodestyle, pyflakes, warnings, imports
 lint.ignore = [
     "E203", # allow slicing whitespace (Black compat)
