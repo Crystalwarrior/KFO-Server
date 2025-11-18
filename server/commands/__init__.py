@@ -7,17 +7,15 @@ def call(client, cmd, arg):
         if cmd in client.server.command_aliases:
             called_function = f"ooc_cmd_{client.server.command_aliases[cmd]}"
     if not hasattr(me, called_function):
-        client.send_ooc(
-            f"Invalid command: {cmd}. Use /help to find up-to-date commands."
-        )
+        client.send_ooc(f"Invalid command: {cmd}. Use /help to find up-to-date commands.")
         return
     getattr(me, called_function)(client, arg)
 
 
 def submodules():
     """Get all command-related submodules."""
-    import sys
     import inspect
+    import sys
 
     me = sys.modules[__name__]
     for _, v in inspect.getmembers(me):
@@ -27,8 +25,8 @@ def submodules():
 
 def reload():
     """Reload all submodules."""
-    import sys
     import importlib
+    import sys
 
     me = sys.modules[__name__]
     for module in submodules():
@@ -38,8 +36,8 @@ def reload():
 
 
 def help(command):
-    import sys
     import inspect
+    import sys
 
     try:
         doc = inspect.getdoc(getattr(sys.modules[__name__], command))
@@ -68,11 +66,7 @@ def list_commands(submodule=""):
     import inspect
 
     cmds = ""
-    modules = [
-        a
-        for a in submodules()
-        if submodule == "" or a.__name__.split(".")[-1] == submodule
-    ]
+    modules = [a for a in submodules() if submodule == "" or a.__name__.split(".")[-1] == submodule]
     if len(modules) == 0:
         raise AttributeError
     for module in modules:
@@ -85,13 +79,14 @@ def list_commands(submodule=""):
                 doc = doc[: doc.find(".") + 1]
             prefix = "ooc_cmd_"
             if func.startswith(prefix):
-                func = func[len(prefix):]
+                func = func[len(prefix) :]
             cmds += f"{func} - {doc}\n"
     return cmds
 
 
 def mod_only(area_owners=False, hub_owners=False):
     import functools
+
     from ..exceptions import ClientError
 
     def decorator(func):
@@ -116,12 +111,12 @@ def mod_only(area_owners=False, hub_owners=False):
 from .admin import *
 from .area_access import *
 from .areas import *
+from .battle import *
 from .casing import *
 from .character import *
 from .fun import *
 from .hubs import *
+from .inventory import *
 from .messaging import *
 from .music import *
 from .roleplay import *
-from .battle import *
-from .inventory import *
