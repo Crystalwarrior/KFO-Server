@@ -1,44 +1,56 @@
-import re
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
 from server import commands
-from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import encode_ao_packet
+from server.exceptions import AreaError, ArgumentError, ClientError, ServerError
+
+if TYPE_CHECKING:  # Avoid circular imports at runtime
+    from server.area import Area
+    from server.client import Client
+
 
 class EvidenceList:
     """Contains a list of evidence items."""
 
-    limit = 50
-    
+    limit: int = 50
+
     class Evidence:
         """Represents a single evidence item."""
 
-        def __init__(self, name, desc, image, pos, can_hide_in=False, show_in_dark=0, triggers = None):
+        def __init__(
+            self,
+            name: str,
+            desc: str,
+            image: str,
+            pos: str,
+            can_hide_in: bool = False,
+            show_in_dark: int = 0,
+            triggers: Optional[Dict[str, str]] = None,
+        ) -> None:
+            self.name: str = name
+            self.desc: str = desc
+            self.image: str = image
+            self.public: bool = False
+            self.pos: str = pos
+            self.can_hide_in: bool = can_hide_in
+            # 0 = hide in dark; 1 = show in dark; 2 = only in dark
+            self.show_in_dark: int = show_in_dark
+            self.hiding_client: Optional["Client"] = None
+            self.triggers: Dict[str, str] = triggers if triggers is not None else {}
+
+        def set_name(self, name: str) -> None:
             self.name = name
-            self.desc = desc
-            self.image = image
-            self.public = False
-            self.pos = pos
-            self.can_hide_in = can_hide_in
-            self.show_in_dark = show_in_dark
-            self.hiding_client = None
-            self.triggers = triggers
-            if triggers == None:
-                self.triggers = {}
 
-        def set_name(self, name):
-            self.name = name
-
-        def set_desc(self, desc):
+        def set_desc(self, desc: str) -> None:
             self.desc = desc
 
-        def set_image(self, image):
+        def set_image(self, image: str) -> None:
             self.image = image
 
-        def to_tuple(self):
+        def to_tuple(self) -> Tuple[str, str, str]:
             """Serialize data to the AO protocol."""
-            return (self.name, self.desc, self.image)
+            return self.name, self.desc, self.image
 
-        def to_dict(self):
+        def to_dict(self) -> Dict[str, Any]:
             return {
                 "name": self.name,
                 "desc": self.desc,
@@ -49,14 +61,14 @@ class EvidenceList:
                 "triggers": self.triggers,
             }
 
-        def trigger(self, area, trig, target):
+        def trigger(self, area: "Area", trig: str, target: "Client") -> None:
             """Call the trigger's associated command."""
             if target.hidden:
                 return
 
             if len(area.owners) <= 0:
                 return
-            
+
             if trig not in self.triggers:
                 return
 
@@ -71,11 +83,7 @@ class EvidenceList:
             # This permission system may be out of wack, but it *should* be good for now
             owner = sorted_owners[0]
 
-            arg = (
-                arg.replace("<cid>", str(target.id))
-                .replace("<showname>", target.showname)
-                .replace("<char>", target.char_name)
-            )
+            arg = arg.replace("<cid>", str(target.id)).replace("<showname>", target.showname).replace("<char>", target.char_name)
             args = arg.split(" ")
             cmd = args.pop(0).lower()
             if len(args) > 0:
@@ -90,27 +98,25 @@ class EvidenceList:
             except (ClientError, AreaError, ArgumentError, ServerError) as ex:
                 owner.send_ooc(f"[Area {area.id}] {ex}")
             except Exception as ex:
-                owner.send_ooc(
-                    f"[Area {area.id}] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
-                )
+                owner.send_ooc(f"[Area {area.id}] An internal error occurred: {ex}. Please inform the staff of the server about the issue.")
 
-    def __init__(self):
-        self.evidences = []
+    def __init__(self) -> None:
+        self.evidences: List["EvidenceList.Evidence"] = []
 
-    def can_see(self, evi, pos):  # used with hiddenCM ebidense
+    def can_see(self, evi: "EvidenceList.Evidence", pos: str) -> bool:  # used with hiddenCM ebidense
         pos = pos.strip(" ")
         for p in evi.pos.strip(" ").split(","):
             if p == "all" or (pos != "" and pos == p):
                 return True
         return False
 
-    def can_hide_in(self, evi):
+    def can_hide_in(self, evi: "EvidenceList.Evidence") -> bool:
         return evi.can_hide_in
 
-    def show_in_dark(self, evi):
+    def show_in_dark(self, evi: "EvidenceList.Evidence") -> int:
         return evi.show_in_dark
 
-    def login(self, client):
+    def login(self, client: "Client") -> bool:
         """
         Determine whether or not evidence can be modified.
         :param client: origin
@@ -120,15 +126,11 @@ class EvidenceList:
             return True
         elif client.area.evidence_mod == "Mods" and not client.is_mod:
             return False
-        elif (
-            client.area.evidence_mod == "CM"
-            and client not in client.area.owners
-            and not client.is_mod
-        ):
+        elif client.area.evidence_mod == "CM" and client not in client.area.owners and not client.is_mod:
             return False
         return True
 
-    def correct_format(self, client, desc):
+    def correct_format(self, client: "Client", desc: str) -> bool:
         """
         Check whether or not an evidence item contains a correct
         `<owner = [pos]>` metadata, if HiddenCM mode is on.
@@ -145,14 +147,14 @@ class EvidenceList:
             return True
         return False
 
-    def parse_desc(self, desc):
+    def parse_desc(self, desc: str) -> Tuple[str, str, bool, int]:
         lines = desc.split("\n", 3)
         poses = "hidden"
-        can_hide_in = 0
-        show_in_dark = 0
+        can_hide_in: bool = False
+        show_in_dark: int = 0
         matches = 0
         for line in lines:
-            cmd = line.strip(" ") # remove all whitespace
+            cmd = line.strip(" ")  # remove all whitespace
             if cmd.startswith("<") and cmd.endswith(">"):
                 args = cmd.strip("<>").split("=")
                 if len(args) < 2:
@@ -172,20 +174,17 @@ class EvidenceList:
         # Remvoes N lines, where N is how many <> we matched. Can't be more than 3.
         while matches > 0:
             # Truncates from the start of newline
-            desc = desc[desc.find("\n")+1:]
+            desc = desc[desc.find("\n") + 1 :]
             matches -= 1
         return desc, poses, can_hide_in, show_in_dark
 
-    def add_evidence(self, client, name, desc, image):
+    def add_evidence(self, client: "Client", name: str, desc: str, image: str) -> None:
         """
         Add an evidence item.
         :param client: origin
         :param name: evidence name
-        :param description: evidence description
+        :param desc: evidence description
         :param image: evidence image file
-        :param pos: positions for which evidence will be shown
-        (Default value = 'all')
-
         """
         if not self.login(client):
             return
@@ -193,9 +192,7 @@ class EvidenceList:
             if client.area.dark:
                 return
         if len(self.evidences) >= self.limit:
-            client.send_ooc(
-                f"You can't have more than {self.limit} evidence items at a time."
-            )
+            client.send_ooc(f"You can't have more than {self.limit} evidence items at a time.")
             return
         can_hide_in = False
         show_in_dark = 0
@@ -210,14 +207,13 @@ class EvidenceList:
                 if len(client.area.pos_lock) > 0 and client.pos in client.area.pos_lock:
                     pos = client.pos
 
-        self.evidences.append(self.Evidence(
-            name, desc, image, pos, can_hide_in, show_in_dark))
-        id = len(self.evidences)
+        self.evidences.append(self.Evidence(name, desc, image, pos, can_hide_in, show_in_dark))
+        id_ = len(self.evidences)
         # Inform the CMs of evidence manupulation
         client.area.send_owner_command(
             "CT",
             client.server.config["hostname"],
-            f"[{client.id}] {client.showname} added evidence {id}: {name} in area [{client.area.id}] {client.area.name}.",
+            f"[{client.id}] {client.showname} added evidence {id_}: {name} in area [{client.area.id}] {client.area.name}.",
             "1",
         )
         # send_owner_command does not tell CMs present in the area about evidence manipulation, so let's do that manually
@@ -226,11 +222,11 @@ class EvidenceList:
                 c.send_command(
                     "CT",
                     client.server.config["hostname"],
-                    f"[{client.id}] {client.showname} added evidence {id}: {name} in this area.",
+                    f"[{client.id}] {client.showname} added evidence {id_}: {name} in this area.",
                     "1",
                 )
 
-    def evidence_swap(self, client, id1, id2):
+    def evidence_swap(self, client: "Client", id1: int, id2: int) -> None:
         """
         Swap two evidence items.
         :param client: origin
@@ -253,7 +249,7 @@ class EvidenceList:
         client.area.send_owner_command(
             "CT",
             client.server.config["hostname"],
-            f"[{client.id}] {client.showname} swapped evidence {id1+1}: {self.evidences[id1].name} with {id2+1}: {self.evidences[id2].name} in area [{client.area.id}] {client.area.name}.",
+            f"[{client.id}] {client.showname} swapped evidence {id1 + 1}: {self.evidences[id1].name} with {id2 + 1}: {self.evidences[id2].name} in area [{client.area.id}] {client.area.name}.",
             "1",
         )
         # send_owner_command does not tell CMs present in the area about evidence manipulation, so let's do that manually
@@ -262,18 +258,18 @@ class EvidenceList:
                 c.send_command(
                     "CT",
                     client.server.config["hostname"],
-                    f"[{client.id}] {client.showname} swapped evidence {id1+1}: {self.evidences[id1].name} with {id2+1}: {self.evidences[id2].name} in this area.",
+                    f"[{client.id}] {client.showname} swapped evidence {id1 + 1}: {self.evidences[id1].name} with {id2 + 1}: {self.evidences[id2].name} in this area.",
                     "1",
                 )
 
-    def create_evi_list(self, client):
+    def create_evi_list(self, client: "Client") -> Tuple[List[int], List[Tuple[str, str, str]]]:
         """
         Compose an evidence list to send to a client.
         :param client: client to send list to
 
         """
-        evi_list = []
-        nums_list = [0]
+        evi_list: List[Tuple[str, str, str]] = []
+        nums_list: List[int] = [0]
         for i in range(len(self.evidences)):
             if client in client.area.owners or client.is_mod:
                 nums_list.append(i + 1)
@@ -283,10 +279,7 @@ class EvidenceList:
                     can_hide_in = int(evi.can_hide_in)
                     show_in_dark = int(evi.show_in_dark)
                     desc = f"<owner={evi.pos}>\n<can_hide_in={can_hide_in}>\n<show_in_dark={show_in_dark}>\n{evi.desc}"
-                evi_list.append(
-                    self.Evidence(evi.name, desc, evi.image,
-                                  evi.pos).to_tuple()
-                )
+                evi_list.append(self.Evidence(evi.name, desc, evi.image, evi.pos).to_tuple())
             elif self.can_see(self.evidences[i], client.pos):
                 # show_in_dark:
                 # 0 - Do not show evidence in dark areas.
@@ -300,7 +293,7 @@ class EvidenceList:
                 evi_list.append(self.evidences[i].to_tuple())
         return nums_list, evi_list
 
-    def import_evidence(self, data):
+    def import_evidence(self, data: List[Dict[str, Any]]) -> None:
         for evi in data:
             name, desc, image, pos, can_hide_in, show_in_dark, triggers = "<name>", "<desc>", "", "all", False, 0, {}
             if "name" in evi:
@@ -317,17 +310,16 @@ class EvidenceList:
                 show_in_dark = int(evi["show_in_dark"])
             if "triggers" in evi:
                 triggers = evi["triggers"]
-            self.evidences.append(self.Evidence(
-                name, desc, image, pos, can_hide_in, show_in_dark, triggers))
+            self.evidences.append(self.Evidence(name, desc, image, pos, can_hide_in, show_in_dark, triggers))
 
-    def export_evidence(self):
+    def export_evidence(self) -> List[Dict[str, Any]]:
         return [e.to_dict() for e in self.evidences]
 
-    def del_evidence(self, client, id):
+    def del_evidence(self, client: "Client", id_: int) -> None:
         """
         Delete an evidence item.
         :param client: origin
-        :param id: evidence ID
+        :param id_: evidence ID
 
         """
         if not self.login(client):
@@ -335,12 +327,12 @@ class EvidenceList:
         if not client.is_mod and client not in client.area.owners:
             if client.area.dark:
                 return
-        if id not in range(len(self.evidences)):
+        if id_ not in range(len(self.evidences)):
             return
         word = "deleted"
         if not client.is_mod and client not in client.area.owners:
-            id = client.evi_list[id + 1] - 1
-            evi = self.evidences[id]
+            id_ = client.evi_list[id_ + 1] - 1
+            evi = self.evidences[id_]
             if client.area.evidence_mod == "HiddenCM":
                 if evi.pos != "hidden":
                     client.add_inventory_evidence(evi.name, evi.desc, evi.image)
@@ -351,16 +343,16 @@ class EvidenceList:
                     evi.desc = f"(🚮Deleted by [{client.id}] {client.showname} ({client.name}))\n{evi.desc}"
                     evi.pos = "hidden"
             else:
-                self.evidences.pop(id)
+                self.evidences.pop(id_)
         else:
-            evi = self.evidences[id]
-            self.evidences.pop(id)
+            evi = self.evidences[id_]
+            self.evidences.pop(id_)
 
         # Inform the CMs of evidence manupulation
         client.area.send_owner_command(
             "CT",
             client.server.config["hostname"],
-            f"[{client.id}] {client.showname} {word} evidence {id+1}: {evi.name} in area [{client.area.id}] {client.area.name}.",
+            f"[{client.id}] {client.showname} {word} evidence {id_ + 1}: {evi.name} in area [{client.area.id}] {client.area.name}.",
             "1",
         )
         # send_owner_command does not tell CMs present in the area about evidence manipulation, so let's do that manually
@@ -369,7 +361,7 @@ class EvidenceList:
                 c.send_command(
                     "CT",
                     client.server.config["hostname"],
-                    f"[{client.id}] {client.showname} {word} evidence {id+1}: {evi.name} in this area.",
+                    f"[{client.id}] {client.showname} {word} evidence {id_ + 1}: {evi.name} in this area.",
                     "1",
                 )
 
@@ -379,11 +371,11 @@ class EvidenceList:
             c.area.broadcast_area_list(c)
             c.send_ooc(f"You discover {c.showname} in the {evi.name}!")
 
-    def edit_evidence(self, client, id, arg):
+    def edit_evidence(self, client: "Client", id_: int, arg: Sequence[str]) -> None:
         """
         Modify an evidence item.
         :param client: origin
-        :param id: evidence ID
+        :param id_: evidence ID
         :param arg: evidence information
 
         """
@@ -398,9 +390,9 @@ class EvidenceList:
         can_hide_in = False
         show_in_dark = 0
         if client in client.area.owners or client.is_mod:
-            if id not in range(len(self.evidences)):
+            if id_ not in range(len(self.evidences)):
                 return
-            evi = self.evidences[id]
+            evi = self.evidences[id_]
             old_name = evi.name
             # If any of the args are *, keep the old entry
             if name == "*":
@@ -418,18 +410,17 @@ class EvidenceList:
                         'You entered a bad pos - evidence hidden! Make sure to have <owner=pos> at the top, where "pos" is the /pos this evidence should show up in. Put in "all" if you want it to show up in all pos, or "hidden" for no pos.'
                     )
                     pos = "hidden"
-            self.evidences[id] = self.Evidence(
-                name, desc, image, pos, can_hide_in, show_in_dark, evi.triggers)
-            new_name = self.evidences[id].name
+            self.evidences[id_] = self.Evidence(name, desc, image, pos, can_hide_in, show_in_dark, evi.triggers)
+            new_name = self.evidences[id_].name
         else:
             # Are you serious? This is absolutely fucking mental.
             # Server sends evidence to client in an indexed list starting from 1.
             # Client sends evidence updates to server using an index starting from 0.
             # This needs a complete overhaul.
-            id = client.evi_list[id + 1] - 1
-            if id not in range(len(self.evidences)):
+            id_ = client.evi_list[id_ + 1] - 1
+            if id_ not in range(len(self.evidences)):
                 return
-            evi = self.evidences[id]
+            evi = self.evidences[id_]
             # 0 - Do not show evidence in dark areas.
             if client.area.dark and evi.show_in_dark == 0:
                 return
@@ -444,9 +435,7 @@ class EvidenceList:
                 desc = evi.desc
             if image == "*":
                 image = evi.image
-            self.evidences[id] = self.Evidence(
-                name, desc, image, evi.pos, evi.can_hide_in, evi.show_in_dark, evi.triggers
-            )
+            self.evidences[id_] = self.Evidence(name, desc, image, evi.pos, evi.can_hide_in, evi.show_in_dark, evi.triggers)
             new_name = evi.name
 
         namechange = f"'{old_name}' to '{new_name}'" if new_name != old_name else f"'{old_name}'"
@@ -454,7 +443,7 @@ class EvidenceList:
         client.area.send_owner_command(
             "CT",
             client.server.config["hostname"],
-            f"[{client.id}] {client.showname} edited evidence {id+1}: {namechange} in area [{client.area.id}] {client.area.name}.",
+            f"[{client.id}] {client.showname} edited evidence {id_ + 1}: {namechange} in area [{client.area.id}] {client.area.name}.",
             "1",
         )
         # send_owner_command does not tell CMs present in the area about evidence manipulation, so let's do that manually
@@ -463,6 +452,6 @@ class EvidenceList:
                 c.send_command(
                     "CT",
                     client.server.config["hostname"],
-                    f"[{client.id}] {client.showname} edited evidence {id+1}: {namechange} in this area.",
+                    f"[{client.id}] {client.showname} edited evidence {id_ + 1}: {namechange} in this area.",
                     "1",
                 )
