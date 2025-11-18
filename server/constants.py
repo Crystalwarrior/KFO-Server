@@ -1,6 +1,5 @@
 import re
-from enum import Enum
-from enum import IntFlag
+from enum import Enum, IntFlag
 
 
 class TargetType(Enum):
@@ -62,8 +61,7 @@ def censor(text, censor_list=[], replace="*", whole_words=True):
     if whole_words:
         regex = r"\b%s\b"
     for word in censor_list:
-        text = re.sub(regex % word, len(word) * replace,
-                      text, flags=re.IGNORECASE)
+        text = re.sub(regex % word, len(word) * replace, text, flags=re.IGNORECASE)
     return text
 
 
@@ -83,26 +81,14 @@ def encode_ao_packet(params):
         if type(arg) is tuple:
             encoded = []
             for tup in arg:
-                encoded.append(
-                    str(tup)
-                    .replace("#", "<num>")
-                    .replace("%", "<percent>")
-                    .replace("$", "<dollar>")
-                    .replace("&", "<and>")
-                )
+                encoded.append(str(tup).replace("#", "<num>").replace("%", "<percent>").replace("$", "<dollar>").replace("&", "<and>"))
             new_params.append(tuple(encoded))
         else:
-            new_params.append(
-                str(arg)
-                .replace("#", "<num>")
-                .replace("%", "<percent>")
-                .replace("$", "<dollar>")
-                .replace("&", "<and>")
-            )
+            new_params.append(str(arg).replace("#", "<num>").replace("%", "<percent>").replace("$", "<dollar>").replace("&", "<and>"))
     return new_params
 
+
 def derelative(sample):
-    while '../' in sample or '/..' in sample or '..\\' in sample or '\\..' in sample:
-        sample = sample.replace(
-                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+    while "../" in sample or "/.." in sample or "..\\" in sample or "\\.." in sample:
+        sample = sample.replace("../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
     return sample
