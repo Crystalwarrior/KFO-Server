@@ -1,5 +1,6 @@
 import re
 from enum import Enum, IntFlag
+from typing import Any, List
 
 
 class TargetType(Enum):
@@ -20,7 +21,7 @@ class MusicEffect(IntFlag):
     SYNC_POS = 4
 
 
-def dezalgo(input, tolerance=3):
+def dezalgo(input_: str, tolerance: int = 3):
     """
     Turns any string into a de-zalgo'd version, with a tolerance to allow for normal diacritic use.
 
@@ -42,19 +43,22 @@ def dezalgo(input, tolerance=3):
         + re.escape(str(tolerance))
         + ",})",
         "",
-        input,
+        input_,
     )
     return filtered
 
 
-def censor(text, censor_list=[], replace="*", whole_words=True):
+def censor(text: str, censor_list=None, replace: str = "*", whole_words: bool = True) -> str:
     """
     Checks if the string contains any of the passed restricted words and replaces them with the replace char.
     Returns a parsed string.
+    :param text: string to censor
     :param censor_list: list of swear words to replace
     :param replace: what to replace every letter of the word with
-    :param whole_word: if true, we'll only match full words instead of partial matches
+    :param whole_words: if true, we'll only match full words instead of partial matches
     """
+    if censor_list is None:
+        censor_list = []
     if censor_list is None or len(censor_list) <= 0:
         return text
     regex = r"%s"
@@ -65,17 +69,17 @@ def censor(text, censor_list=[], replace="*", whole_words=True):
     return text
 
 
-def remove_URL(sample):
+def remove_URL(sample: str) -> str:
     """Remove URLs from a sample string"""
     return re.sub(r"http\S+", "", sample)
 
 
-def contains_URL(sample):
+def contains_URL(sample: str) -> str:
     """Determine if string contains a URL in sample string."""
     return re.match(r"http\S+", sample) is not None
 
 
-def encode_ao_packet(params):
+def encode_ao_packet(params: List[Any]) -> List[Any]:
     new_params = []
     for arg in params:
         if type(arg) is tuple:
@@ -88,7 +92,7 @@ def encode_ao_packet(params):
     return new_params
 
 
-def derelative(sample):
+def derelative(sample: str) -> str:
     while "../" in sample or "/.." in sample or "..\\" in sample or "\\.." in sample:
         sample = sample.replace("../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
     return sample
