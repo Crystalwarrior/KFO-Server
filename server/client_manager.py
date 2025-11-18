@@ -1,6 +1,7 @@
 from heapq import heappop, heappush
 
 from server import database
+from server.client import Client
 from server.constants import TargetType
 from server.exceptions import ClientError
 
@@ -47,13 +48,13 @@ class ClientManager:
 
         peername = transport.get_extra_info("peername")[0]
 
-        c = self.Client(self.server, transport, user_id, database.ipid(peername))
-        self.clients.add(c)
-        temp_ipid = c.ipid
-        for client in self.server.client_manager.clients:
-            if client.ipid == temp_ipid:
-                client.clientscon += 1
-        return c
+        new_client = Client(self.server, transport, user_id, database.ipid(peername))
+        self.clients.add(new_client)
+        temp_ipid = new_client.ipid
+        for new_client in self.server.client_manager.clients:
+            if new_client.ipid == temp_ipid:
+                new_client.clientscon += 1
+        return new_client
 
     def remove_client(self, client):
         """
