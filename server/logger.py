@@ -2,8 +2,10 @@ import logging
 import logging.handlers
 import sys
 
+from server.client import Client
 
-def setup_logging(debug: bool = False):
+
+def setup_logging(debug: bool = False) -> None:
     formatter = logging.Formatter("[%(asctime)s][%(name)s][%(levelname)s] %(message)s")
 
     # Log to terminal (stdout)
@@ -27,7 +29,7 @@ def setup_logging(debug: bool = False):
     logging.getLogger().setLevel(logging.DEBUG if debug else logging.INFO)
 
 
-def parse_client_info(client):
+def parse_client_info(client: Client) -> str:
     """Prepend information about a client to a log entry."""
     if client is None:
         return ""
