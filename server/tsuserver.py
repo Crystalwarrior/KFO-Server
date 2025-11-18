@@ -7,6 +7,7 @@ import traceback
 import geoip2.database
 import websockets
 import yaml
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import server.logger
 from server import database
@@ -23,32 +24,37 @@ from server.network.webhooks import Webhooks
 
 logger = logging.getLogger("main")
 
+if TYPE_CHECKING:  # Avoid circular imports at runtime
+    from server.client import Client
+    from server.area_manager import AreaManager
+
 
 class TsuServer:
     """The main class for KFO-Server derivative of tsuserver3 server software."""
 
-    def __init__(self):
-        self.software = "KFO-Server"
-        self.release = 3
-        self.major_version = 3
-        self.minor_version = 0
+    def __init__(self) -> None:
+        self.software: str = "KFO-Server"
+        self.release: int = 3
+        self.major_version: int = 3
+        self.minor_version: int = 0
 
-        self.config = None
-        self.censors = None
-        self.allowed_iniswaps = []
-        self.char_list = None
-        self.char_emotes = None
-        self.music_list = []
-        self.music_whitelist = []
-        self.backgrounds = None
-        self.backgrounds_categories = None
-        self.server_links = None
-        self.zalgo_tolerance = None
-        self.ipRange_bans = []
-        self.geoIpReader = None
-        self.useGeoIp = False
-        self.need_webhook = False
-        self.supported_features = [
+        self.config: Dict[str, Any] | None = None
+        self.censors: Dict[str, Any] | None = None
+        # Allowed INI swaps list structure is defined by YAML; keep broad
+        self.allowed_iniswaps: List[Any] = []
+        self.char_list: List[str] | None = None
+        self.char_emotes: Dict[str, Emotes] | None = None
+        self.music_list: List[Dict[str, Any]] = []
+        self.music_whitelist: List[str] = []
+        self.backgrounds: List[str] | None = None
+        self.backgrounds_categories: Dict[str, List[str]] | None = None
+        self.server_links: Any = None
+        self.zalgo_tolerance: Optional[int] = None
+        self.ipRange_bans: List[str] = []
+        self.geoIpReader: Optional[geoip2.database.Reader] = None
+        self.useGeoIp: bool = False
+        self.need_webhook: bool = False
+        self.supported_features: List[str] = [
             "yellowtext",
             "customobjections",
             "prezoom",
@@ -70,7 +76,7 @@ class TsuServer:
             "typing_timer",
             "video_support",
         ]
-        self.command_aliases = {}
+        self.command_aliases: Dict[str, Any] = {}
 
         try:
             self.geoIpReader = geoip2.database.Reader("./storage/GeoLite2-ASN.mmdb")
@@ -79,7 +85,7 @@ class TsuServer:
         except FileNotFoundError:
             self.useGeoIp = False
 
-        self.ms_client = None
+        self.ms_client: Optional[MasterServerClient] = None
         sys.setrecursionlimit(50)
         try:
             self.load_config()
@@ -91,7 +97,7 @@ class TsuServer:
             self.load_backgrounds()
             self.load_server_links()
             self.load_ipranges()
-            self.hub_manager = HubManager(self)
+            self.hub_manager: HubManager = HubManager(self)
         except yaml.YAMLError:
             print("There was a syntax error parsing a configuration file:")
             traceback.print_exc()
@@ -107,13 +113,13 @@ class TsuServer:
             print("Please check sample config files for the correct format.")
             sys.exit(1)
 
-        self.client_manager = ClientManager(self)
+        self.client_manager: ClientManager = ClientManager(self)
         server.logger.setup_logging(debug=self.config["debug"])
 
-        self.webhooks = Webhooks(self)
-        self.bridgebot = None
+        self.webhooks: Webhooks = Webhooks(self)
+        self.bridgebot: Optional[Bridgebot] = None
 
-    def start(self):
+    def start(self) -> None:
         """Start the server."""
         logger.info("Starting server")
         loop = asyncio.get_event_loop_policy().get_event_loop()
@@ -170,17 +176,17 @@ class TsuServer:
         loop.run_until_complete(ao_server.wait_closed())
         loop.close()
 
-    async def schedule_unbans(self):
+    async def schedule_unbans(self) -> None:
         while True:
             database.schedule_unbans()
             await asyncio.sleep(3600 * 12)
 
     @property
-    def version(self):
+    def version(self) -> str:
         """Get the server's current version."""
         return f"{self.release}.{self.major_version}.{self.minor_version}"
 
-    def new_client(self, transport):
+    def new_client(self, transport: asyncio.BaseTransport) -> "Client":
         """
         Create a new client based on a raw transport by passing
         it to the client manager.
@@ -218,7 +224,7 @@ class TsuServer:
         c.area.new_client(c)
         return c
 
-    def remove_client(self, client):
+    def remove_client(self, client: "Client") -> None:
         """
         Remove a disconnected client.
         :param client: client object
@@ -232,11 +238,11 @@ class TsuServer:
         self.client_manager.remove_client(client)
 
     @property
-    def player_count(self):
+    def player_count(self) -> int:
         """Get the number of non-spectating clients."""
         return len([client for client in self.client_manager.clients if client.char_id != -1])
 
-    def load_config(self):
+    def load_config(self) -> None:
         """Load the main server configuration from a YAML file."""
         try:
             with open("config/config.yaml", "r", encoding="utf-8") as cfg:
@@ -285,7 +291,7 @@ class TsuServer:
         if "music_allow_url" not in self.config:
             self.config["music_allow_url"] = True
 
-    def load_command_aliases(self):
+    def load_command_aliases(self) -> None:
         """Load a list of alternative command names."""
         try:
             with open("config/command_aliases.yaml", "r", encoding="utf-8") as command_aliases:
@@ -293,7 +299,7 @@ class TsuServer:
         except Exception:
             logger.debug("Cannot find command_aliases.yaml")
 
-    def load_censors(self):
+    def load_censors(self) -> None:
         """Load a list of banned words to scrub from chats."""
         try:
             with open("config/censors.yaml", "r", encoding="utf-8") as censors:
@@ -301,16 +307,16 @@ class TsuServer:
         except Exception:
             logger.debug("Cannot find censors.yaml")
 
-    def load_characters(self):
+    def load_characters(self) -> None:
         """Load the character list from a YAML file."""
         with open("config/characters.yaml", "r", encoding="utf-8") as chars:
             self.char_list = yaml.safe_load(chars)
         self.char_emotes = {char: Emotes(char) for char in self.char_list}
 
-    def load_music(self):
+    def load_music(self) -> None:
         self.load_music_list()
 
-    def load_backgrounds(self):
+    def load_backgrounds(self) -> None:
         """Load the backgrounds list from a YAML file."""
         with open("config/backgrounds.yaml", "r", encoding="utf-8") as bgs:
             bg_yaml = yaml.safe_load(bgs)
@@ -323,7 +329,7 @@ class TsuServer:
                 self.backgrounds_categories = bg_yaml
                 self.backgrounds = sum(list(self.backgrounds_categories.values()), [])
 
-    def load_server_links(self):
+    def load_server_links(self) -> None:
         """Load the server links list from a YAML file."""
         try:
             with open("config/server_links.yaml", "r", encoding="utf-8") as links:
@@ -331,7 +337,7 @@ class TsuServer:
         except Exception as e:
             logger.debug("Cannot find server_links.yaml, error: (%s)", e)
 
-    def load_iniswaps(self):
+    def load_iniswaps(self) -> None:
         """Load a list of characters for which INI swapping is allowed."""
         try:
             with open("config/iniswaps.yaml", "r", encoding="utf-8") as iniswaps:
@@ -339,7 +345,7 @@ class TsuServer:
         except Exception:
             logger.debug("Cannot find iniswaps.yaml")
 
-    def load_ipranges(self):
+    def load_ipranges(self) -> None:
         """Load a list of banned IP ranges."""
         try:
             with open("config/iprange_ban.txt", "r", encoding="utf-8") as ipranges:
@@ -347,7 +353,7 @@ class TsuServer:
         except Exception:
             logger.debug("Cannot find iprange_ban.txt")
 
-    def load_music_list(self):
+    def load_music_list(self) -> None:
         try:
             with open("config/music.yaml", "r", encoding="utf-8") as music:
                 self.music_list = yaml.safe_load(music)
@@ -359,8 +365,8 @@ class TsuServer:
         except Exception:
             logger.debug("Cannot find url.txt")
 
-    def build_music_list(self, music_list):
-        song_list = []
+    def build_music_list(self, music_list: List[Dict[str, Any]]) -> List[str]:
+        song_list: List[str] = []
         for item in music_list:
             if "category" not in item:  # skip settings n stuff
                 continue
@@ -369,7 +375,7 @@ class TsuServer:
                 song_list.append(song["name"])
         return song_list
 
-    def get_song_data(self, music_list, music):
+    def get_song_data(self, music_list: List[Dict[str, Any]], music: str) -> Tuple[str, int]:
         """
         Get information about a track, if exists.
         :param music_list: music list to search
@@ -394,7 +400,7 @@ class TsuServer:
                     return song["name"], length
         raise ServerError("Music not found.")
 
-    def get_song_is_category(self, music_list, music):
+    def get_song_is_category(self, music_list: List[Dict[str, Any]], music: str) -> bool:
         """
         Get whether a track is a category.
         :param music_list: music list to search
@@ -408,7 +414,7 @@ class TsuServer:
                 return True
         return False
 
-    def send_all_cmd_pred(self, cmd, *args, pred=lambda x: True):
+    def send_all_cmd_pred(self, cmd: str, *args: Any, pred: Callable[["Client"], bool] = lambda x: True) -> None:
         """
         Broadcast an AO-compatible command to all clients that satisfy
         a predicate.
@@ -417,7 +423,7 @@ class TsuServer:
             if pred(client):
                 client.send_command(cmd, *args)
 
-    def broadcast_global(self, client, msg, as_mod=False):
+    def broadcast_global(self, client: "Client", msg: str, as_mod: bool = False) -> None:
         """
         Broadcast an OOC message to all clients that do not have
         global chat muted.
@@ -433,7 +439,7 @@ class TsuServer:
         ooc_name = f"<dollar>G[{client.area.area_manager.abbreviation}]|{as_mod}{client.name}"
         self.send_all_cmd_pred("CT", ooc_name, msg, pred=lambda x: not x.muted_global)
 
-    def send_modchat(self, client, msg):
+    def send_modchat(self, client: "Client", msg: str) -> None:
         """
         Send an OOC message to all mods.
         :param client: sender
@@ -443,7 +449,7 @@ class TsuServer:
         ooc_name = "{}[{}][{}]".format("<dollar>M", client.area.id, client.name)
         self.send_all_cmd_pred("CT", ooc_name, msg, pred=lambda x: x.is_mod)
 
-    def broadcast_need(self, client, msg):
+    def broadcast_need(self, client: "Client", msg: str) -> None:
         """
         Broadcast an OOC "need" message to all clients who do not
         have advertisements muted.
@@ -459,7 +465,7 @@ class TsuServer:
             pred=lambda x: not x.muted_adverts,
         )
 
-    def send_arup(self, client, args):
+    def send_arup(self, client: "Client", args: Sequence[Any]) -> None:
         """Update the area properties for this 2.6 client.
 
         Playercount:
@@ -495,7 +501,7 @@ class TsuServer:
 
         client.send_command("ARUP", *args)
 
-    def send_discord_chat(self, name, message, hub_id=0, area_id=0):
+    def send_discord_chat(self, name: str, message: str, hub_id: int = 0, area_id: int = 0) -> None:
         area = self.hub_manager.get_hub_by_id(hub_id).get_area_by_id(area_id)
         cid = area.area_manager.get_char_id_by_name(self.config["bridgebot"]["character"])
         message = dezalgo(message)
@@ -523,7 +529,7 @@ class TsuServer:
             pos=self.config["bridgebot"]["pos"],
         )
 
-    def refresh(self):
+    def refresh(self) -> None:
         """
         Refresh as many parts of the server as possible:
          - MOTD
