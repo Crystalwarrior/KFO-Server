@@ -161,7 +161,7 @@ class Area:
         self.music_looping: int = 0
         self.music_effects: int = 0
         self.evi_list: EvidenceList = EvidenceList()
-        self.testimony: List[str] = []
+        self.testimony: List[Tuple] = []
         self.testimony_title: str = ""
         self.testimony_index: int = -1
         self.recording: bool = False
@@ -920,7 +920,6 @@ class Area:
         """
         Send an IC message from a client to all applicable clients in the area.
         :param client: speaker
-        :param *args: arguments
         """
         if client in self.afkers:
             client.server.client_manager.toggle_afk(client)
@@ -1627,10 +1626,9 @@ class Area:
         for area in self.broadcast_list:
             area.play_music(name, cid, loop, showname, effects)
 
-    def can_send_message(self, client):
+    def can_send_message(self):
         """
         Check if a client can send an IC message in this area.
-        :param client: sender
         """
         return (time.time() * 1000.0 - self.next_message_time) > 0
 
@@ -2232,7 +2230,7 @@ class Area:
     class JukeboxVote:
         """Represents a single vote cast for the jukebox."""
 
-        def __init__(self, client: Client, name: str, length: int, showname: str) -> None:
+        def __init__(self, client: Client | None, name: str, length: int, showname: str) -> None:
             self.client: Client = client
             self.name: str = name
             self.length: int = length
