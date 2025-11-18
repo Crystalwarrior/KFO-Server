@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import shlex
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Set
 
 import arrow
 import pytimeparse
@@ -14,8 +15,7 @@ from . import help, list_commands, list_submodules, mod_only
 
 if TYPE_CHECKING:
     # Adjust this import to wherever your Client class actually lives
-    from server.client_manager import Client
-
+    from server.client import Client
 
 __all__ = [
     "ooc_cmd_motd",
@@ -32,6 +32,14 @@ __all__ = [
     "ooc_cmd_mods",
     "ooc_cmd_unmod",
     "ooc_cmd_ooc_mute",
+    "ooc_cmd_ooc_unmute",
+    "ooc_cmd_bans",
+    "ooc_cmd_baninfo",
+    "ooc_cmd_time",
+    "ooc_cmd_whois",
+    "ooc_cmd_restart",
+    "ooc_cmd_myid",
+    "ooc_cmd_multiclients",
 ]
 
 
@@ -361,4 +369,183 @@ def ooc_cmd_ooc_mute(client: Client, arg: str) -> None:
     """
     if len(arg) == 0:
         raise ArgumentError("You must specify a target. Use /ooc_mute <OOC-name>.")
-    targets = client.ser
+    targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, False)
+    if not targets:
+        raise ArgumentError("Targets not found. Use /ooc_mute <OOC-name>.")
+    for target in targets:
+        target.is_ooc_muted = True
+        database.log_area("ooc_mute", client, client.area, target=target)
+    client.send_ooc("Muted {} existing client(s).".format(len(targets)))
+
+
+@mod_only()
+def ooc_cmd_ooc_unmute(client: Client, arg: str) -> None:
+    """
+    Allow an OOC-muted user to talk out-of-character.
+    Usage: /ooc_unmute <ooc-name>
+    """
+    if len(arg) == 0:
+        raise ArgumentError("You must specify a target. Use /ooc_unmute <OOC-name>.")
+    targets = client.server.client_manager.get_ooc_muted_clients()
+    if not targets:
+        raise ArgumentError("Targets not found. Use /ooc_unmute <OOC-name>.")
+    for target in targets:
+        target.is_ooc_muted = False
+        database.log_area("ooc_unmute", client, client.area, target=target)
+    client.send_ooc("Unmuted {} existing client(s).".format(len(targets)))
+
+
+@mod_only()
+def ooc_cmd_bans(client: Client, _arg: str) -> None:
+    """
+    Get the 5 most recent bans.
+    Usage: /bans
+    """
+    msg = "Last 5 bans:\n"
+    for ban in database.recent_bans():
+        time = arrow.get(ban.ban_date).humanize()
+        msg += f"{time}: {ban.banned_by_name} ({ban.banned_by}) issued ban {ban.ban_id} ('{ban.reason}')\n"
+    client.send_ooc(msg)
+
+
+@mod_only()
+def ooc_cmd_baninfo(client: Client, arg: str) -> None:
+    """
+    Get information about a ban.
+    Usage: /baninfo <id> ['ban_id'|'ipid'|'hdid']
+    By default, id identifies a ban_id.
+    """
+    args = arg.split(" ")
+    if len(arg) == 0:
+        raise ArgumentError("You must specify an ID.")
+    elif len(args) == 1:
+        lookup_type = "ban_id"
+    else:
+        lookup_type = args[1]
+
+    if lookup_type not in ("ban_id", "ipid", "hdid"):
+        raise ArgumentError("Incorrect lookup type.")
+
+    ban = database.find_ban(**{lookup_type: args[0]})
+    if ban is None:
+        client.send_ooc("No ban found for this ID.")
+    else:
+        msg = f"Ban ID: {ban.ban_id}\n"
+        msg += "Affected IPIDs: " + ", ".join([str(ipid) for ipid in ban.ipids]) + "\n"
+        msg += "Affected HDIDs: " + ", ".join(ban.hdids) + "\n"
+        msg += f'Reason: "{ban.reason}"\n'
+        msg += f"Banned by: {ban.banned_by_name} ({ban.banned_by})\n"
+
+        ban_date = arrow.get(ban.ban_date)
+        msg += f"Banned on: {ban_date.format()} ({ban_date.humanize()})\n"
+        if ban.unban_date is not None:
+            unban_date = arrow.get(ban.unban_date)
+            msg += f"Unban date: {unban_date.format()} ({unban_date.humanize()})"
+        else:
+            msg += "Unban date: N/A"
+        client.send_ooc(msg)
+
+
+def ooc_cmd_time(client: Client, arg: str) -> None:
+    """
+    Returns the current server time.
+    Usage:  /time
+    """
+    if len(arg) > 0:
+        raise ArgumentError("This command takes no arguments")
+    from time import asctime, gmtime
+    from time import time as now_time
+
+    msg = "The current time in UTC (aka GMT) is:\n["
+    msg += asctime(gmtime(now_time()))
+    msg += "]"
+    client.send_ooc(msg)
+
+
+@mod_only()
+def ooc_cmd_whois(client: Client, arg: str) -> None:
+    """
+    Get information about an online user.
+    Usage: /whois <name|id|ipid|showname|character>
+    """
+    found_clients: Set[Client] = set()
+    for c in client.server.client_manager.clients:
+        if (
+            arg.lower() in c.name.lower()
+            or arg in c.showname.lower()
+            or arg.lower() in c.char_name.lower()
+            or arg in str(c.id)
+            or arg in str(c.ipid)
+        ):
+            found_clients.add(c)
+
+    info = f"WHOIS lookup for {arg}:"
+    for c in found_clients:
+        info += f"\n[{c.id}] "
+        if c.showname != c.char_name:
+            info += f'"{c.showname}" ({c.char_name})'
+        else:
+            info += f"{c.showname}"
+        info += f" ({c.ipid})"
+        if c.name != "":
+            info += f": {c.name}"
+    info += f"\nMatched {len(found_clients)} online clients."
+    client.send_ooc(info)
+
+
+@mod_only()
+def ooc_cmd_restart(client: Client, arg: str) -> None:
+    """
+    Restart the server (WARNING: The server will be *stopped* unless you set up a restart batch/bash file!)
+    Usage: /restart
+    """
+    if arg != client.server.config["restartpass"]:
+        raise ArgumentError("no")
+    print(f"!!!{client.name} called /restart!!!")
+    client.server.send_all_cmd_pred("CT", "WARNING", "Restarting the server...")
+    asyncio.get_running_loop().stop()
+
+
+def ooc_cmd_myid(client: Client, arg: str) -> None:
+    """
+    Get information for your current client, such as client ID.
+    Usage: /myid
+    """
+    if len(arg) > 0:
+        raise ArgumentError("This command takes no arguments")
+    info = f"You are: [{client.id}] "
+    if client.showname != client.char_name:
+        info += f'"{client.showname}" ({client.char_name})'
+    else:
+        info += f"{client.showname}"
+    if client.is_mod:
+        info += f" ({client.ipid})"
+    if client.name != "":
+        info += f": {client.name}"
+    client.send_ooc(info)
+
+
+@mod_only()
+def ooc_cmd_multiclients(client: Client, arg: str) -> None:
+    """
+    Get all the multi-clients of the IPID provided, detects multiclients on the same hardware even if the IPIDs are different.
+    Usage: /multiclients <ipid>
+    """
+    found_clients: Set[Client] = set()
+    for c in client.server.client_manager.clients:
+        if arg == str(c.ipid):
+            found_clients.add(c)
+            found_clients |= set(client.server.client_manager.get_multiclients(c.ipid, c.hdid))
+
+    info = f"Clients belonging to {arg}:"
+    for c in found_clients:
+        info += f"\n[{c.id}] "
+        if c.showname != c.char_name:
+            info += f'"{c.showname}" ({c.char_name})'
+        else:
+            info += f"{c.showname}"
+        info += f" ({c.ipid})"
+        if c.name != "":
+            info += f": {c.name}"
+    info += f"\nMatched {len(found_clients)} online clients."
+    client.send_ooc(info)
