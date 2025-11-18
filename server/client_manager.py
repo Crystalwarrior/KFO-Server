@@ -968,6 +968,10 @@ class ClientManager:
             if target_pos != "":
                 self.change_position(target_pos)
 
+            # set our character's recorded area
+            if self.char_id != -1 and self.area.area_manager.character_persistance:
+                self.c_area = self.area
+
             # If we're using /evidence_present, reset it due to area change (evidence will be different most likely)
             self.presenting = 0
 
@@ -997,7 +1001,6 @@ class ClientManager:
                             ],
                         ],
                     )
-
             # Update everyone's available characters list
             # Commented out due to potentially causing clientside lag...
             # self.area.send_command('CharsCheck',
@@ -1970,6 +1973,17 @@ class ClientManager:
             """Set the character's description character data."""
             self.area.area_manager.set_character_data(
                 self.char_id, "desc", value)
+
+        @property
+        def c_area(self):
+            """Get the character's area."""
+            return self.area.area_manager.get_character_data(self.char_id, "area", "")
+
+        @c_area.setter
+        def area(self, value):
+            """Set the character's area character data."""
+            self.area.area_manager.set_character_data(
+                self.char_id, "area", value)
 
         @property
         def hidden(self):
