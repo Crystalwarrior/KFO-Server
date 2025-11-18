@@ -7,6 +7,7 @@ import random
 import time
 import traceback
 from collections import OrderedDict
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import arrow
 import oyaml as yaml  # ordered yaml
@@ -15,6 +16,11 @@ from server import commands, database
 from server.constants import MusicEffect, censor, derelative
 from server.evidence import EvidenceList
 from server.exceptions import AreaError, ArgumentError, ClientError, ServerError
+
+if TYPE_CHECKING:  # Avoid circular imports at runtime
+    from server.client import Client
+    from server.area_manager import AreaManager
+    from server.tsuserver import TsuServer
 
 logger = logging.getLogger("area")
 
@@ -25,27 +31,27 @@ class Area:
 
         def __init__(
             self,
-            _id,
-            Set=False,
-            started=False,
-            static=None,
-            target=None,
-            area=None,
-            caller=None,
+            _id: int,
+            Set: bool = False,
+            started: bool = False,
+            static: Optional[datetime.timedelta] = None,
+            target: Optional["arrow.Arrow"] = None,
+            area: Optional["Area"] = None,
+            caller: Optional["Client"] = None,
         ):
-            self.id = _id
-            self.set = Set
-            self.started = started
-            self.static = static
-            self.target = target
-            self.area = area
-            self.caller = caller
-            self.schedule = None
-            self.commands = []
-            self.format = "hh:mm:ss.zzz"
-            self.interval = 16
+            self.id: int = _id
+            self.set: bool = Set
+            self.started: bool = started
+            self.static: Optional[datetime.timedelta] = static
+            self.target: Optional["arrow.Arrow"] = target
+            self.area: Optional["Area"] = area
+            self.caller: Optional["Client"] = caller
+            self.schedule: Optional[asyncio.TimerHandle] = None
+            self.commands: List[str] = []
+            self.format: str = "hh:mm:ss.zzz"
+            self.interval: int = 16
 
-        def timer_expired(self):
+        def timer_expired(self) -> None:
             if self.schedule:
                 self.schedule.cancel()
             # Either the area or the hub was destroyed at some point
@@ -58,7 +64,7 @@ class Area:
             self.area.broadcast_ooc(f"Timer {self.id + 1} has expired.")
             self.call_commands()
 
-        def call_commands(self):
+        def call_commands(self) -> None:
             if self.caller is None:
                 return
             if self.area is None or self is None:
@@ -99,44 +105,44 @@ class Area:
 
     """Represents a single instance of an area."""
 
-    def __init__(self, area_manager, name):
-        self.clients = set()
-        self.invite_list = set()
-        self.area_manager = area_manager
-        self._name = name
+    def __init__(self, area_manager: "AreaManager", name: str):
+        self.clients: Set["Client"] = set()
+        self.invite_list: Set[int] = set()
+        self.area_manager: "AreaManager" = area_manager
+        self._name: str = name
 
         # Initialize prefs
-        self._background = "default"
-        self.background_suffix = ""
-        self.overlay = ""
-        self.pos_lock = []
+        self._background: str = "default"
+        self.background_suffix: str = ""
+        self.overlay: str = ""
+        self.pos_lock: List[str] = []
         self.bg_lock = False
         self.overlay_lock = False
-        self.evidence_mod = "FFA"
+        self.evidence_mod: str = "FFA"
         self.can_cm = False
         self.locking_allowed = False
         self.iniswap_allowed = True
         self.showname_changes_allowed = True
         self.shouts_allowed = True
         self.jukebox = False
-        self.abbreviation = self.abbreviate()
+        self.abbreviation: str = self.abbreviate()
         self.non_int_pres_only = False
         self.locked = False
         self.muted = False
         self.blankposting_allowed = True
         self.blankposting_forced = False
-        self.hp_def = 10
-        self.hp_pro = 10
-        self.doc = "No document."
-        self.status = "IDLE"
+        self.hp_def: int = 10
+        self.hp_pro: int = 10
+        self.doc: str = "No document."
+        self.status: str = "IDLE"
         self.move_delay = 0
         self.hide_clients = False
         self.max_players = -1
-        self.desc = ""
-        self.music_ref = ""
+        self.desc: str = ""
+        self.music_ref: str = ""
         self.client_music = True
         self.replace_music = False
-        self.ambience = ""
+        self.ambience: str = ""
         self.can_dj = True
         self.music_locked = False
         self.hidden = False
@@ -152,17 +158,17 @@ class Area:
         self.can_panic_talk_action = False
         self.force_sneak = False
         # Whether the area is dark or not
-        self.dark = False
+        self.dark: bool = False
         # The background to set when area's lights are turned off
-        self.background_dark = "fxdarkness"
+        self.background_dark: str = "fxdarkness"
         # The pos to set when the area's lights are turned off
-        self.pos_dark = "wit"
+        self.pos_dark: str = "wit"
         # The desc to set when the area's lights are turned off
-        self.desc_dark = "It's pitch black in here, you can't see a thing!"
+        self.desc_dark: str = "It's pitch black in here, you can't see a thing!"
         # Sends a message to the IC when changing areas
         self.passing_msg = False
         # Minimum time that has to pass before you can send another message
-        self.msg_delay = 200
+        self.msg_delay: int = 200
         # Whether to reveal evidence in all pos if it is presented
         self.present_reveals_evidence = True
         # /prefs end
@@ -171,42 +177,42 @@ class Area:
 
         # CROSS SWORDS
         # The name of the song to play when minigame starts
-        self.cross_swords_song_start = ""
+        self.cross_swords_song_start: str = ""
         # The name of the song to play when minigame ends
-        self.cross_swords_song_end = ""
+        self.cross_swords_song_end: str = ""
         # The name of the song to play when minigame is conceded
-        self.cross_swords_song_concede = ""
+        self.cross_swords_song_concede: str = ""
         # in seconds, 300s = 5m
-        self.cross_swords_timer = 300
+        self.cross_swords_timer: int = 300
 
         # SCRUM DEBATE
         # The name of the song to play when minigame starts
-        self.scrum_debate_song_start = ""
+        self.scrum_debate_song_start: str = ""
         # The name of the song to play when minigame ends
-        self.scrum_debate_song_end = ""
+        self.scrum_debate_song_end: str = ""
         # The name of the song to play when minigame is conceded
-        self.scrum_debate_song_concede = ""
+        self.scrum_debate_song_concede: str = ""
         # in seconds, 300s = 5m. How much time is added on top of cross swords.
-        self.scrum_debate_added_time = 300
+        self.scrum_debate_added_time: int = 300
 
         # PANIC TALK ACTION
         # The name of the song to play when minigame starts
-        self.panic_talk_action_song_start = ""
+        self.panic_talk_action_song_start: str = ""
         # The name of the song to play when minigame ends
-        self.panic_talk_action_song_end = ""
+        self.panic_talk_action_song_end: str = ""
         # The name of the song to play when minigame is conceded
-        self.panic_talk_action_song_concede = ""
+        self.panic_talk_action_song_concede: str = ""
         # in seconds, 300s = 5m
-        self.panic_talk_action_timer = 300
+        self.panic_talk_action_timer: int = 300
         # Cooldown in seconds, 300s = 5m
-        self.minigame_cooldown = 300
+        self.minigame_cooldown: int = 300
         # Who's debating who
-        self.red_team = set()
-        self.blue_team = set()
+        self.red_team: Set["Client"] = set()
+        self.blue_team: Set["Client"] = set()
         # Clients who cast votes
-        self.votes_cast = set()
+        self.votes_cast: Set[int] = set()
         # What percentage of valid voters needs to vote to force-end the minigame, rounded
-        self.votes_percentage = 0.7
+        self.votes_percentage: float = 0.7
         # Minigame name
         self.minigame = ""
         # Minigame schedule
@@ -223,115 +229,115 @@ class Area:
         self.o_desc = self.desc
         self.o_background = self._background
 
-        self.music_looper = None
-        self.next_message_time = 0
-        self.judgelog = []
-        self.music = ""
-        self.music_player = ""
-        self.music_player_ipid = -1
-        self.music_looping = 0
-        self.music_effects = 0
-        self.evi_list = EvidenceList()
-        self.testimony = []
-        self.testimony_title = ""
-        self.testimony_index = -1
-        self.recording = False
-        self.last_ic_message = None
-        self.cards = dict()
-        self.votes = dict()
-        self.password = ""
+        self.music_looper: Optional[asyncio.Task] = None
+        self.next_message_time: float = 0
+        self.judgelog: List[str] = []
+        self.music: str = ""
+        self.music_player: str = ""
+        self.music_player_ipid: int = -1
+        self.music_looping: int = 0
+        self.music_effects: int = 0
+        self.evi_list: EvidenceList = EvidenceList()
+        self.testimony: List[str] = []
+        self.testimony_title: str = ""
+        self.testimony_index: int = -1
+        self.recording: bool = False
+        self.last_ic_message: Optional[Tuple[Any, ...]] = None
+        self.cards: Dict[str, Any] = dict()
+        self.votes: Dict[str, Any] = dict()
+        self.password: str = ""
 
-        self.jukebox_votes = []
-        self.jukebox_prev_char_id = -1
+        self.jukebox_votes: List["Area.JukeboxVote"] = []
+        self.jukebox_prev_char_id: int = -1
 
-        self.music_list = []
+        self.music_list: List[str] = []
 
-        self._owners = set()
-        self.afkers = []
+        self._owners: Set["Client"] = set()
+        self.afkers: List["Client"] = []
 
         # Dictionary of dictionaries with further info, examine def link for more info
-        self.links = {}
+        self.links: Dict[str, Dict[str, Any]] = {}
 
         # Timers ID 1 thru 20, (indexes 0 to 19 in area), timer ID 0 is reserved for hubs.
-        self.timers = [self.Timer(x) for x in range(20)]
+        self.timers: List[Area.Timer] = [self.Timer(x) for x in range(20)]
 
         # Demo stuff
-        self.demo = []
-        self.demo_schedule = None
+        self.demo: List[str] = []
+        self.demo_schedule: Optional[asyncio.TimerHandle] = None
 
         # Commands to call when certain triggers are fulfilled.
         # #Requires at least 1 area owner to exist to determine permission.
-        self.triggers = {
+        self.triggers: Dict[str, str] = {
             "join": "",  # User joins the area.
             "leave": "",  # User leaves the area.
         }
 
         # Battle system stuff
-        self.can_battle = True
-        self.battle_started = False
-        self.fighters = []
-        self.num_selected_move = 0
-        self.battle_guilds = {}
+        self.can_battle: bool = True
+        self.battle_started: bool = False
+        self.fighters: List[Any] = []
+        self.num_selected_move: int = 0
+        self.battle_guilds: Dict[str, List["Client"]] = {}
 
         # Battle system customization
-        self.battle_paralysis_rate = 3
-        self.battle_critical_rate = 15
-        self.battle_critical_bonus = 1.5
-        self.battle_bonus_malus = 1.5
-        self.battle_poison_damage = 16
-        self.battle_show_hp = True
-        self.battle_min_multishot = 2
-        self.battle_max_multishot = 5
-        self.battle_burn_damage = 8
-        self.battle_freeze_damage = 8
-        self.battle_confusion_rate = 3
-        self.battle_enraged_bonus = 2.25
-        self.battle_stolen_stat = 10
+        self.battle_paralysis_rate: int = 3
+        self.battle_critical_rate: int = 15
+        self.battle_critical_bonus: float = 1.5
+        self.battle_bonus_malus: float = 1.5
+        self.battle_poison_damage: int = 16
+        self.battle_show_hp: bool = True
+        self.battle_min_multishot: int = 2
+        self.battle_max_multishot: int = 5
+        self.battle_burn_damage: int = 8
+        self.battle_freeze_damage: int = 8
+        self.battle_confusion_rate: int = 3
+        self.battle_enraged_bonus: float = 2.25
+        self.battle_stolen_stat: int = 10
 
         # multiple pair
-        self.auto_pair = False
-        self.auto_pair_max = "triple"
-        self.auto_pair_cycle = False
+        self.auto_pair: bool = False
+        self.auto_pair_max: str = "triple"
+        self.auto_pair_cycle: bool = False
 
         # list of areas to broadcast ic messages to
-        self.broadcast_list = []
+        self.broadcast_list: List["Area"] = []
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Area's name string. Abbreviation is also updated according to this."""
         return self._name
 
     @name.setter
-    def name(self, value):
+    def name(self, value: str) -> None:
         self._name = value.strip()
         while "<num>" in self._name or "<percent>" in self._name:
             self._name = self._name.replace("<num>", "").replace("<percent>", "")
         self.abbreviation = self.abbreviate()
 
     @property
-    def id(self):
+    def id(self) -> int:
         """Get area's index in the AreaManager's 'areas' list if present in its areas. Otherwise, return -1."""
         return self.area_manager.areas.index(self) if self in self.area_manager.areas else -1
 
     @property
-    def server(self):
+    def server(self) -> "TsuServer":
         """Area's server. Accesses AreaManager's 'server' property"""
         return self.area_manager.server
 
     @property
-    def owners(self):
+    def owners(self) -> Set["Client"]:
         """Area's owners. Also appends Game Masters (Hub Managers)."""
         return self.area_manager.owners | self._owners
 
     @property
-    def background(self):
+    def background(self) -> str:
         """Current background of the area."""
         bg = self._background
         if self.dark:
             bg = self.background_dark
         return bg + self.background_suffix
 
-    def trigger(self, trig, target):
+    def trigger(self, trig: str, target: "Client") -> None:
         """Call the trigger's associated command."""
         if target.hidden:
             return
@@ -368,7 +374,7 @@ class Area:
             owner.send_ooc(f"[Area {self.id}] An internal error occurred: {ex}. Please inform the staff of the server about the issue.")
             logger.error("Exception while running a command")
 
-    def abbreviate(self):
+    def abbreviate(self) -> str:
         """Abbreviate our name."""
         if self.name.lower().startswith("courtroom"):
             return "CR" + self.name.split()[-1]
@@ -381,7 +387,7 @@ class Area:
         else:
             return self.name.upper()
 
-    def load(self, area):
+    def load(self, area: Dict[str, Any]) -> None:
         self._name = area["area"]
         self.o_name = self._name
         self.o_abbreviation = self.abbreviation
@@ -609,8 +615,8 @@ class Area:
         if "auto_pair_cycle" in area:
             self.auto_pair_cycle = area["auto_pair_cycle"]
 
-    def save(self):
-        area = OrderedDict()
+    def save(self) -> Dict[str, Any]:
+        area: "OrderedDict[str, Any]" = OrderedDict()
         area["area"] = self.name
         area["background"] = self._background
         area["background_suffix"] = self.background_suffix
@@ -691,7 +697,7 @@ class Area:
         area["auto_pair_cycle"] = self.auto_pair_cycle
         return area
 
-    def new_client(self, client):
+    def new_client(self, client: "Client") -> None:
         """Add a client to the area."""
         self.clients.add(client)
         if client.char_id is not None:
@@ -723,7 +729,7 @@ class Area:
         else:
             self.broadcast_player_list_to_target(client)
 
-    def update_judge_buttons(self, client):
+    def update_judge_buttons(self, client: "Client") -> None:
         # Judge buttons are client-sided by default.
         jd = -1
         # This area won't let us use judge buttons unless we have privileges.
@@ -739,7 +745,7 @@ class Area:
             jd = 0
         client.send_command("JD", jd)
 
-    def update_timers(self, client, running_only=False):
+    def update_timers(self, client: "Client", running_only: bool = False) -> None:
         """Update the timers for the target client"""
         # this client didn't even pick char yet
         if client.char_id is None:
@@ -768,7 +774,7 @@ class Area:
             elif not running_only:
                 client.send_timer_set_time(timer_id + 1, None, False)
 
-    def remove_client(self, client):
+    def remove_client(self, client: "Client") -> None:
         """Remove a disconnected client from the area."""
         if client.hidden_in is not None:
             client.hide(False, hidden=True)
@@ -825,23 +831,23 @@ class Area:
         # self.send_command('CharsCheck',
         #                     *client.get_available_char_list())
 
-    def unlock(self):
+    def unlock(self) -> None:
         """Mark the area as unlocked."""
         self.locked = False
         self.area_manager.send_arup_lock()
 
-    def lock(self):
+    def lock(self) -> None:
         """Mark the area as locked."""
         self.locked = True
         self.area_manager.send_arup_lock()
 
-    def mute(self):
+    def mute(self) -> None:
         """Mute the area."""
         self.muted = True
         self.invite_list.clear()
         self.area_manager.send_arup_lock()
 
-    def unmute(self):
+    def unmute(self) -> None:
         """Unmute the area."""
         self.muted = False
         self.invite_list.clear()
@@ -849,14 +855,14 @@ class Area:
 
     def link(
         self,
-        target,
-        locked=False,
-        hidden=False,
-        target_pos="",
-        can_peek=True,
-        evidence=[],
-        password="",
-    ):
+        target: Union[int, str],
+        locked: bool = False,
+        hidden: bool = False,
+        target_pos: str = "",
+        can_peek: bool = True,
+        evidence: Optional[List[int]] = None,
+        password: str = "",
+    ) -> Dict[str, Any]:
         """
         Sets up a one-way connection between this area and targeted area.
         Returns the link dictionary.
@@ -869,7 +875,9 @@ class Area:
         :param password: the password you need to input to pass through this link
 
         """
-        link = {
+        if evidence is None:
+            evidence = []
+        link: Dict[str, Any] = {
             "locked": locked,
             "hidden": hidden,
             "target_pos": target_pos,
@@ -880,34 +888,34 @@ class Area:
         self.links[str(target)] = link
         return link
 
-    def unlink(self, target):
+    def unlink(self, target: Union[int, str]) -> None:
         try:
             del self.links[str(target)]
         except KeyError:
             raise AreaError(f"Link {target} does not exist in Area {self.name}!")
 
-    def is_char_available(self, char_id):
+    def is_char_available(self, char_id: int) -> bool:
         """
         Check if a character is available for use.
         :param char_id: character ID
         """
         return char_id not in [x.char_id for x in self.clients]
 
-    def get_rand_avail_char_id(self):
+    def get_rand_avail_char_id(self) -> int:
         """Get a random available character ID."""
         avail_set = set(range(len(self.area_manager.char_list))) - {x.char_id for x in self.clients}
         if len(avail_set) == 0:
             raise AreaError("No available characters.")
         return random.choice(tuple(avail_set))
 
-    def send_command(self, cmd, *args):
+    def send_command(self, cmd: str, *args: Any) -> None:
         """
         Broadcast an AO-compatible command to all clients in the area.
         """
         for c in self.clients:
             c.send_command(cmd, *args)
 
-    def send_owner_command(self, cmd, *args):
+    def send_owner_command(self, cmd: str, *args: Any) -> None:
         """
         Send an AO-compatible command to all owners of the area
         that are not currently in the area.
@@ -918,7 +926,7 @@ class Area:
             if c.remote_listen == 3 or (cmd == "CT" and c.remote_listen == 2) or (cmd == "MS" and c.remote_listen == 1):
                 c.send_command(cmd, *args)
 
-    def send_owner_ic(self, bg, cmd, *args):
+    def send_owner_ic(self, bg: str, cmd: str, *args: Any) -> None:
         """
         Send an IC message to all owners of the area
         that are not currently in the area, with the specified bg.
@@ -932,12 +940,12 @@ class Area:
                     c.send_command("BN", bg, "", "", 0)
                 c.send_command(cmd, *args)
 
-    def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+    def send_timer_set_time(self, timer_id: Optional[int] = None, new_time: Optional[int] = None, start: bool = False) -> None:
         """Broadcast a timer to all clients in this area."""
         for c in self.clients:
             c.send_timer_set_time(timer_id, new_time, start)
 
-    def broadcast_ooc(self, msg):
+    def broadcast_ooc(self, msg: str) -> None:
         """
         Broadcast an OOC message to all clients in the area.
         :param msg: message
