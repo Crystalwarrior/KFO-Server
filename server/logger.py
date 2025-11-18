@@ -1,11 +1,10 @@
-import sys
 import logging
 import logging.handlers
+import sys
 
 
 def setup_logging(debug: bool = False):
-    formatter = logging.Formatter(
-        "[%(asctime)s][%(name)s][%(levelname)s] %(message)s")
+    formatter = logging.Formatter("[%(asctime)s][%(name)s][%(levelname)s] %(message)s")
 
     # Log to terminal (stdout)
     stdout_handler = logging.StreamHandler(sys.stdout)
@@ -13,9 +12,7 @@ def setup_logging(debug: bool = False):
     logging.getLogger().addHandler(stdout_handler)
 
     # Log to server.log
-    serverlog_handler = logging.handlers.RotatingFileHandler(
-        "logs/server.log", encoding="utf-8", maxBytes=1024 * 512
-    )
+    serverlog_handler = logging.handlers.RotatingFileHandler("logs/server.log", encoding="utf-8", maxBytes=1024 * 512)
     # The serverlog should never log debug messages
     serverlog_handler.setLevel(logging.INFO)
     serverlog_handler.setFormatter(formatter)
@@ -23,9 +20,7 @@ def setup_logging(debug: bool = False):
 
     if debug:
         # Log to debug.log
-        debuglog_handler = logging.handlers.RotatingFileHandler(
-            "logs/debug.log", encoding="utf-8", maxBytes=1024 * 1024 * 4
-        )
+        debuglog_handler = logging.handlers.RotatingFileHandler("logs/debug.log", encoding="utf-8", maxBytes=1024 * 1024 * 4)
         debuglog_handler.setFormatter(formatter)
         logging.getLogger().addHandler(debuglog_handler)
 
