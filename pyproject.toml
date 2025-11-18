@@ -1,9 +1,8 @@
 [tool.ruff]
 line-length = 120
-select = ["E", "F", "W", "I"]  # PEP8/pycodestyle, pyflakes, warnings, imports
-ignore = [
+lint.select = ["E", "F", "W", "I"]  # PEP8/pycodestyle, pyflakes, warnings, imports
+lint.ignore = [
     "E203", # allow slicing whitespace (Black compat)
-    "W503", # allow line break before binary operator
 ]
 
 # Optional: set a Python version (recommended)
