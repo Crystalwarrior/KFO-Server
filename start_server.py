@@ -44,7 +44,7 @@ def main():
 
 
 if __name__ == "__main__":
-    print("tsuserver3 - an Attorney Online server")
+    print("KFO-Server - an Attorney Online server")
     try:
         check_deps()
         main()
