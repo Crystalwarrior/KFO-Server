@@ -200,7 +200,7 @@ class Area:
         self.battle_started: bool = False
         self.fighters: List[Any] = []
         self.num_selected_move: int = 0
-        self.battle_guilds: Dict[str, List["Client"]] = {}
+        self.battle_guilds: Dict[str, List[Client]] = {}
 
         # Battle system customization
         self.battle_paralysis_rate: int = 3
@@ -248,7 +248,7 @@ class Area:
         return self.area_manager.server
 
     @property
-    def owners(self) -> Set["Client"]:
+    def owners(self) -> Set[Client]:
         """Area's owners. Also appends Game Masters (Hub Managers)."""
         return self.area_manager.owners | self._owners
 
@@ -260,7 +260,7 @@ class Area:
             bg = self.background_dark
         return bg + self.background_suffix
 
-    def trigger(self, trig: str, target: "Client") -> None:
+    def trigger(self, trig: str, target: Client) -> None:
         """Call the trigger's associated command."""
         if target.hidden:
             return
@@ -620,7 +620,7 @@ class Area:
         area["auto_pair_cycle"] = self.auto_pair_cycle
         return area
 
-    def new_client(self, client: "Client") -> None:
+    def new_client(self, client: Client) -> None:
         """Add a client to the area."""
         self.clients.add(client)
         if client.char_id is not None:
@@ -652,7 +652,7 @@ class Area:
         else:
             self.broadcast_player_list_to_target(client)
 
-    def update_judge_buttons(self, client: "Client") -> None:
+    def update_judge_buttons(self, client: Client) -> None:
         # Judge buttons are client-sided by default.
         jd = -1
         # This area won't let us use judge buttons unless we have privileges.
@@ -668,7 +668,7 @@ class Area:
             jd = 0
         client.send_command("JD", jd)
 
-    def update_timers(self, client: "Client", running_only: bool = False) -> None:
+    def update_timers(self, client: Client, running_only: bool = False) -> None:
         """Update the timers for the target client"""
         # this client didn't even pick char yet
         if client.char_id is None:
@@ -697,7 +697,7 @@ class Area:
             elif not running_only:
                 client.send_timer_set_time(timer_id + 1, None, False)
 
-    def remove_client(self, client: "Client") -> None:
+    def remove_client(self, client: Client) -> None:
         """Remove a disconnected client from the area."""
         if client.hidden_in is not None:
             client.hide(False, hidden=True)
@@ -2143,7 +2143,7 @@ class Area:
                 0,
             )
 
-    def play_demo(self, client: "Client") -> None:
+    def play_demo(self, client: Client) -> None:
         if self.demo_schedule:
             self.demo_schedule.cancel()
         if len(self.demo) <= 0:
@@ -2232,8 +2232,8 @@ class Area:
     class JukeboxVote:
         """Represents a single vote cast for the jukebox."""
 
-        def __init__(self, client: "Client", name: str, length: int, showname: str) -> None:
-            self.client: "Client" = client
+        def __init__(self, client: Client, name: str, length: int, showname: str) -> None:
+            self.client: Client = client
             self.name: str = name
             self.length: int = length
             self.chance: int = 1
