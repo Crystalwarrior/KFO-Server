@@ -649,7 +649,7 @@ def ooc_cmd_link_evidence(client, arg):
         if len(args) > 1:
             for evi_id in args[1:]:
                 evi_id = int(evi_id) - 1
-                client.area.evi_list.evidences[evi_id]  # Test if we can access target evidence
+                test_var_unused = client.area.evi_list.evidences[evi_id]  # Test if we can access target evidence
                 evidences.append(evi_id)
     except IndexError:
         raise ArgumentError("Evidence not found.")
