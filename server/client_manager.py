@@ -1,7 +1,6 @@
-from heapq import heappop, heappush
-from typing import Any, Dict, Iterable, List, Optional, Set, Union, TYPE_CHECKING
-
 import asyncio
+from heapq import heappop, heappush
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Union
 
 from server import database
 from server.client import Client
@@ -10,8 +9,6 @@ from server.exceptions import ClientError
 
 if TYPE_CHECKING:  # Avoid circular imports at runtime
     from server.tsuserver import TsuServer3
-    from server.area_manager import AreaManager
-    from server.area import Area
 
 
 class ClientManager:
