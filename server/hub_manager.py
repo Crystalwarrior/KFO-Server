@@ -1,39 +1,42 @@
+from typing import TYPE_CHECKING, Any, Dict, List, Set
+
 import oyaml as yaml  # ordered yaml
 
 from server.area_manager import AreaManager
 from server.exceptions import AreaError
 
+if TYPE_CHECKING:  # Avoid circular imports at runtime
+    from server.client import Client
+    from server.tsuserver import TsuServer
+
 
 class HubManager:
     """Holds the list of all Area Managers (Hubs)."""
 
-    def __init__(self, server):
-        self.server = server
-        self.hubs = []
+    def __init__(self, server: "TsuServer") -> None:
+        self.server: "TsuServer" = server
+        self.hubs: List[AreaManager] = []
         self.load()
 
     @property
-    def clients(self):
-        clients = set()
+    def clients(self) -> Set["Client"]:
+        clients: Set["Client"] = set()
         for hub in self.hubs:
             clients = clients | hub.clients
         return clients
 
-    def load(self, path="config/areas.yaml", hub_id=-1):
+    def load(self, path: str = "config/areas.yaml", hub_id: int = -1) -> None:
         try:
             with open(path, "r", encoding="utf-8") as stream:
-                hubs = yaml.safe_load(stream)
+                hubs: List[Dict[str, Any]] = yaml.safe_load(stream)
         except Exception:
-            raise AreaError(
-                f"Trying to load Hub list: File path {path} is invalid!")
+            raise AreaError(f"Trying to load Hub list: File path {path} is invalid!")
 
         if hub_id != -1:
             try:
                 self.hubs[hub_id].load(hubs[hub_id], destructive=True)
             except ValueError:
-                raise AreaError(
-                    f"Invalid Hub ID {hub_id}! Please contact the server host."
-                )
+                raise AreaError(f"Invalid Hub ID {hub_id}! Please contact the server host.")
             return
 
         if "area" in hubs[0]:
@@ -51,13 +54,9 @@ class HubManager:
                     # I hate this
                     for a_name in reachable_areas:
                         a_name = a_name.strip()
-                        target_area = self.hubs[0].get_area_by_name(
-                            a_name, case_sensitive=True
-                        )
+                        target_area = self.hubs[0].get_area_by_name(a_name, case_sensitive=True)
                         self.hubs[0].areas[i].link(target_area.id)
-                        print(
-                            f"[tsuDR conversion] Linking area {self.hubs[0].areas[i].name} to {target_area.name}"
-                        )
+                        print(f"[tsuDR conversion] Linking area {self.hubs[0].areas[i].name} to {target_area.name}")
                         is_dr_hub = True
                 if "default_description" in area:
                     self.hubs[0].areas[i].desc = area["default_description"]
@@ -87,36 +86,35 @@ class HubManager:
             self.hubs[i].o_abbreviation = self.hubs[i].abbreviation
             i += 1
 
-    def save(self, path="config/areas.yaml"):
+    def save(self, path: str = "config/areas.yaml") -> None:
         try:
             with open(path, "w", encoding="utf-8") as stream:
-                hubs = []
+                hubs: List[Dict[str, Any]] = []
                 for hub in self.hubs:
                     hubs.append(hub.save())
                 yaml.dump(hubs, stream, default_flow_style=False)
         except Exception:
-            raise AreaError(
-                f"Trying to save Hub list: File path {path} is invalid!")
+            raise AreaError(f"Trying to save Hub list: File path {path} is invalid!")
 
-    def default_hub(self):
+    def default_hub(self) -> AreaManager:
         """Get the default hub."""
         return self.hubs[0]
 
-    def get_hub_by_name(self, name):
+    def get_hub_by_name(self, name: str) -> AreaManager:
         """Get a hub by name."""
         for hub in self.hubs:
             if hub.name.lower() == name.lower():
                 return hub
         raise AreaError("Hub not found.")
 
-    def get_hub_by_id(self, num):
+    def get_hub_by_id(self, num: int) -> AreaManager:
         """Get a hub by ID."""
         for hub in self.hubs:
             if hub.id == num:
                 return hub
         raise AreaError("Hub not found.")
 
-    def get_hub_by_abbreviation(self, abbr):
+    def get_hub_by_abbreviation(self, abbr: str) -> AreaManager:
         """Get a hub by abbreviation."""
         for hub in self.hubs:
             if hub.abbreviation.lower() == abbr.lower():
