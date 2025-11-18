@@ -257,9 +257,7 @@ class Client:
                     #     self_offset_y_dro = int((float(self_offset_y) / 100) * 960 + 480) # offset_pair
                     # Pair data detected!
                     if (charid_pair and charid_pair != "-1") or (self_offset_x and self_offset_x != "0"):
-                        pair_jsn_packet = {}
-                        pair_jsn_packet["packet"] = "pair_data"
-                        pair_jsn_packet["data"] = {}
+                        pair_jsn_packet = {"packet": "pair_data", "data": {}}
                         other_emote = ""
                         other_folder = ""
                         other_flip = False
@@ -286,9 +284,7 @@ class Client:
                         self.send_command("JSN", json_data)
                     # No pair :(
                     else:
-                        pair_jsn_packet = {}
-                        pair_jsn_packet["packet"] = "pair"
-                        pair_jsn_packet["data"] = {}
+                        pair_jsn_packet = {"packet": "pair", "data": {}}
                         pair_jsn_packet["data"]["pair_left"] = -1
                         pair_jsn_packet["data"]["pair_right"] = -1
                         pair_jsn_packet["data"]["offset_left"] = 0
@@ -498,7 +494,8 @@ class Client:
         if self.is_mod or self in self.area.owners:
             return 0
 
-        # Get a list of unique IPIDs from the current area to determine if the "player" is truly alone in an area (spectators or hidden players don't count).
+        # Get a list of unique IPIDs from the current area to determine if the "player" is truly alone in an area
+        # (spectators or hidden players don't count).
         players = set([c.ipid for c in self.area.clients if not c.hidden])
         # If we're alone in the area, we don't get spam protection.
         if len(players) <= 1:
@@ -548,13 +545,13 @@ class Client:
             if contains_URL(song):
                 checked = False
                 # Only if url music is configured to be allowed
-                if self.server.config["music_allow_url"] == True:
+                if self.server.config["music_allow_url"]:
                     if len(self.server.music_whitelist) <= 0:
                         checked = True
                     for line in self.server.music_whitelist:
                         if song.startswith(line):
                             checked = True
-                if checked == False:
+                if not checked:
                     self.send_ooc("This URL is not allowed.")
                     return
 
@@ -732,7 +729,6 @@ class Client:
     def construct_music_list(self):
         """
         Obtain the most relevant music list for the client.
-        :param client_music: when True, include the client's music in the equation.
         """
         # Server music list
         song_list = self.server.music_list
