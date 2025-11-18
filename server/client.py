@@ -1441,9 +1441,9 @@ class Client:
     def send_areas_clients(self, mods=False, afk_check=False, show_links=False):
         """
         Send information over OOC about all areas of the client's hub.
-        :param area_id: area ID
-        :param mods: if true, limit player list to mods
-        :param afk_check: if true, limit player list to afks
+        :param mods: If true, limit player list to mods
+        :param afk_check: If true, limit player list to afks
+        :show_links: If true, show the user links of the clients
         """
         if not self.is_mod and self not in self.area.area_manager.owners and self.char_id != -1:
             if self.blinded:
