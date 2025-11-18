@@ -1,9 +1,14 @@
-from urllib import parse
 import asyncio
+from urllib import parse
+
 import discord
+from discord.errors import Forbidden, HTTPException
 from discord.ext import commands
 from discord.utils import escape_markdown
-from discord.errors import Forbidden, HTTPException
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
+
+if TYPE_CHECKING:  # Avoid circular imports at runtime
+    from server.tsuserver import TsuServer
 
 
 class Bridgebot(commands.Bot):
@@ -11,23 +16,27 @@ class Bridgebot(commands.Bot):
     The AO2 Discord bridge self.
     """
 
-    def __init__(self, server, target_chanel, hub_id, area_id):
+    def __init__(self, server: "TsuServer", target_chanel: str, hub_id: int, area_id: int) -> None:
         intents = discord.Intents.all()
         super().__init__(command_prefix="!", intents=intents)
-        self.server = server
-        self.pending_messages = []
-        self.hub_id = hub_id
-        self.area_id = area_id
-        self.target_channel = target_chanel
-        self.announce_channel = server.config["bridgebot"]["announce_channel"]
-        self.announce_title = server.config["bridgebot"]["announce_title"]
-        self.announce_image = server.config["bridgebot"]["announce_image"]
-        self.announce_color = server.config["bridgebot"]["announce_color"]
-        self.announce_description = server.config["bridgebot"]["announce_description"]
-        self.announce_ping = server.config["bridgebot"]["announce_ping"]
-        self.announce_role = server.config["bridgebot"]["announce_role"]
+        self.server: TsuServer = server  # type: ignore[name-defined]
+        self.pending_messages: List[Tuple[str, str, Optional[str], Optional[str]]] = []
+        self.hub_id: int = hub_id
+        self.area_id: int = area_id
+        self.target_channel: str = target_chanel
+        # Will be set in on_ready
+        self.guild: Optional[discord.Guild] = None
+        self.channel: Optional[discord.TextChannel] = None
+        # Announcement configuration (types depend on config; keep broad where uncertain)
+        self.announce_channel: str = server.config["bridgebot"]["announce_channel"]
+        self.announce_title: str = server.config["bridgebot"]["announce_title"]
+        self.announce_image: str = server.config["bridgebot"]["announce_image"]
+        self.announce_color: Any = server.config["bridgebot"]["announce_color"]
+        self.announce_description: str = server.config["bridgebot"]["announce_description"]
+        self.announce_ping: bool = server.config["bridgebot"]["announce_ping"]
+        self.announce_role: Any = server.config["bridgebot"]["announce_role"]
 
-    async def init(self, token):
+    async def init(self, token: str) -> None:
         """Starts the actual bot"""
         print("Trying to start the Discord Bridge bot...")
         try:
@@ -35,19 +44,26 @@ class Bridgebot(commands.Bot):
         except Exception as e:
             print(e)
 
-
-    def add_commands(self):
+    def add_commands(self) -> None:
         @self.command()
-        async def announcing(ctx, name=None, description=None, url=None, additional=None, when=None, where=None):
+        async def announcing(
+            ctx: commands.Context,
+            name: Optional[str] = None,
+            description: Optional[str] = None,
+            url: Optional[str] = None,
+            additional: Optional[str] = None,
+            when: Optional[str] = None,
+            where: Optional[str] = None,
+        ) -> None:
             desc = f"{ctx.author}" + " " + self.announce_description
             embed = discord.Embed(title=self.announce_title, description=desc, color=self.announce_color)
-            if name is not None:    
+            if name is not None:
                 embed.add_field(name="Announce Name:", value=name, inline=False)
             else:
                 self.channel.send("Arguments error!\n!announcing name description url additional when where")
                 return
             if description is not None:
-                embed.add_field(name="Description:", value=description,inline=False)
+                embed.add_field(name="Description:", value=description, inline=False)
             else:
                 self.channel.send("Arguments error!\n!announcing name description url additional when where")
                 return
@@ -60,17 +76,17 @@ class Bridgebot(commands.Bot):
                 embed.add_field(name="When:", value=when, inline=True)
             if where is not None:
                 embed.add_field(name="Where:", value=where, inline=True)
-            channel = discord.utils.get( self.guild.text_channels, name=self.announce_channel)
+            channel = discord.utils.get(self.guild.text_channels, name=self.announce_channel)  # type: ignore[union-attr]
             if self.announce_ping:
                 await channel.send(f"<@&{self.announce_role}>", embed=embed)
             else:
                 await channel.send(embed=embed)
 
         @self.tree.command()
-        async def gethubs(interaction: discord.Interaction):
+        async def gethubs(interaction: discord.Interaction) -> None:
             msg = ""
             number_players = int(self.server.player_count)
-            msg += f"**Clients in Areas**\n"
+            msg += "**Clients in Areas**\n"
             for hub in self.server.hub_manager.hubs:
                 if len(hub.clients) == 0:
                     continue
@@ -84,9 +100,9 @@ class Bridgebot(commands.Bot):
                         continue
                     msg += f"\t**[{area.id}] {area.name} (users: {len(area.clients)}) [{area.status}]"
                     if area.locked:
-                        msg += f" [LOCKED]"
+                        msg += " [LOCKED]"
                     elif area.muted:
-                        msg += f" [SPECTATABLE]"
+                        msg += " [SPECTATABLE]"
                     if area.get_owners() != "":
                         msg += f" [CM(s): {area.get_owners()}]"
                     msg += "**\n"
@@ -112,14 +128,14 @@ class Bridgebot(commands.Bot):
                 msg += "\n"
             msg += f"Current online: {number_players} clients\n"
             if len(msg) > 2000:
-                msgchunks = [msg[i:i+2000] for i in range(0, len(msg), 2000)]
+                msgchunks = [msg[i : i + 2000] for i in range(0, len(msg), 2000)]
                 for chunk in msgchunks:
                     await interaction.response.send_message(chunk)
             else:
                 await interaction.response.send_message(msg)
 
         @self.event
-        async def on_message(message):
+        async def on_message(message: discord.Message) -> None:
             # Screw these loser bots
             if message.author.bot or message.webhook_id is not None:
                 return
@@ -136,9 +152,7 @@ class Bridgebot(commands.Bot):
                 except Exception:
                     max_char = 256
                 if len(message.clean_content) > max_char:
-                    await self.channel.send(
-                        "Your message was too long - it was not received by the client. (The limit is 256 characters)"
-                    )
+                    await self.channel.send("Your message was too long - it was not received by the client. (The limit is 256 characters)")
                     return
                 self.server.send_discord_chat(
                     message.author.name,
@@ -146,8 +160,8 @@ class Bridgebot(commands.Bot):
                     self.hub_id,
                     self.area_id,
                 )
-                
-    def queue_message(self, name, message, charname, anim):
+
+    def queue_message(self, name: str, message: str, charname: str, anim: str) -> None:
         base = None
         avatar_url = None
         anim_url = None
@@ -157,15 +171,12 @@ class Bridgebot(commands.Bot):
         if "embed_emotes" in self.server.config["bridgebot"]:
             embed_emotes = self.server.config["bridgebot"]["embed_emotes"]
         if base is not None:
-            avatar_url = base + \
-                parse.quote("characters/" + charname + "/char_icon.png")
+            avatar_url = base + parse.quote("characters/" + charname + "/char_icon.png")
             if embed_emotes:
-                anim_url = base + parse.quote(
-                    "characters/" + charname + "/" + anim + ".png"
-                )
+                anim_url = base + parse.quote("characters/" + charname + "/" + anim + ".png")
         self.pending_messages.append([name, message, avatar_url, anim_url])
 
-    async def on_ready(self):
+    async def on_ready(self) -> None:
         print("Discord Bridge Successfully logged in.")
         print("Username -> " + self.user.name)
         print("ID -> " + str(self.user.id))
@@ -175,9 +186,7 @@ class Bridgebot(commands.Bot):
         except Exception as e:
             print(e)
         self.guild = self.guilds[0]
-        self.channel = discord.utils.get(
-            self.guild.text_channels, name=self.target_channel
-        )
+        self.channel = discord.utils.get(self.guild.text_channels, name=self.target_channel)  # type: ignore[assignment]
         await self.wait_until_ready()
 
         while True:
@@ -186,25 +195,29 @@ class Bridgebot(commands.Bot):
 
             await asyncio.sleep(max(0.1, self.server.config["bridgebot"]["tickspeed"]))
 
-    async def send_char_message(self, name, message, avatar=None, image=None):
-        webhook = None
-        embed = None
+    async def send_char_message(
+        self,
+        name: str,
+        message: str,
+        avatar: Optional[str] = None,
+        image: Optional[str] = None,
+    ) -> None:
+        webhook: Optional[discord.Webhook] = None
+        embed: Optional[discord.Embed] = None
         try:
-            webhooks = await self.channel.webhooks()
+            webhooks = await self.channel.webhooks()  # type: ignore[union-attr]
             for hook in webhooks:
                 if hook.user == self.user or hook.name == "AO2_Bridgebot":
                     webhook = hook
                     break
             if webhook is None:
-                webhook = await self.channel.create_webhook(name="AO2_Bridgebot")
+                webhook = await self.channel.create_webhook(name="AO2_Bridgebot")  # type: ignore[union-attr]
             if image is not None:
                 embed = discord.Embed()
                 embed.set_image(url=image)
                 print(avatar, image)
             await webhook.send(message, username=name, avatar_url=avatar, embed=embed)
-            print(
-                f'[DiscordBridge] Sending message from "{name}" to "{self.channel.name}"'
-            )
+            print(f'[DiscordBridge] Sending message from "{name}" to "{self.channel.name}"')
         except Forbidden:
             print(
                 f'[DiscordBridge] Insufficient permissions - couldnt send char message "{name}: {message}" with avatar "{avatar}" to "{self.channel.name}"'
