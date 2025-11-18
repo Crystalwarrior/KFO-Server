@@ -1,33 +1,42 @@
 from heapq import heappop, heappush
+from typing import Any, Dict, Iterable, List, Optional, Set, Union, TYPE_CHECKING
+
+import asyncio
 
 from server import database
 from server.client import Client
 from server.constants import TargetType
 from server.exceptions import ClientError
 
+if TYPE_CHECKING:  # Avoid circular imports at runtime
+    from server.tsuserver import TsuServer3
+    from server.area_manager import AreaManager
+    from server.area import Area
+
 
 class ClientManager:
     """Holds the list of all clients currently connected to the server."""
 
-    def __init__(self, server):
-        self.clients = set()
-        self.server = server
-        self.cur_id = [i for i in range(self.server.config["playerlimit"])]
-        self.delays = {}
+    def __init__(self, server: "TsuServer3") -> None:
+        self.clients: Set[Client] = set()
+        self.server: "TsuServer3" = server
+        self.cur_id: List[int] = [i for i in range(self.server.config["playerlimit"])]
+        # Mapping of ipid -> spam_type -> delay seconds
+        self.delays: Dict[str, Dict[str, float]] = {}
 
-    def set_spam_delay(self, ipid, spam_type, value):
+    def set_spam_delay(self, ipid: int, spam_type: str, value: float) -> None:
         if str(ipid) not in self.delays:
             self.delays[str(ipid)] = {}
         self.delays[str(ipid)][spam_type] = value
 
-    def get_spam_delay(self, ipid, spam_type):
+    def get_spam_delay(self, ipid: int, spam_type: str) -> float:
         if str(ipid) not in self.delays:
             return 0
         if spam_type not in self.delays[str(ipid)]:
             return 0
         return self.delays[str(ipid)][spam_type]
 
-    def new_client_preauth(self, client):
+    def new_client_preauth(self, client: Client) -> bool:
         maxclients = self.server.config["multiclient_limit"]
         for c in self.server.client_manager.clients:
             if c.ipid == client.ipid:
@@ -35,7 +44,7 @@ class ClientManager:
                     return False
         return True
 
-    def new_client(self, transport):
+    def new_client(self, transport: asyncio.BaseTransport) -> Client:
         """
         Create a new client, add it to the list, and assign it a player ID.
         :param transport: asyncio transport
@@ -56,7 +65,7 @@ class ClientManager:
                 new_client.clientscon += 1
         return new_client
 
-    def remove_client(self, client):
+    def remove_client(self, client: Client) -> None:
         """
         Remove a disconnected client from the client list.
         :param client: disconnected client
@@ -105,7 +114,15 @@ class ClientManager:
                     ],
                 )
 
-    def get_targets(self, client, key, value, local=False, single=False, all_hub=False):
+    def get_targets(
+        self,
+        client: Client,
+        key: Union[int, TargetType],
+        value: Union[str, int],
+        local: bool = False,
+        single: bool = False,  # unused, kept for API compatibility
+        all_hub: bool = False,
+    ) -> List[Client]:
         """
         Find players by a combination of identifying data.
         Possible keys: player ID, OOC name, character name, HDID, IPID,
@@ -118,7 +135,7 @@ class ClientManager:
         :param single: search only a single user (Default value = False)
         :param all_hub: search in all hubs (Default value = False)
         """
-        targets = []
+        targets: List[Client] = []
         if key == TargetType.ALL:
             for nkey in range(6):
                 targets += self.get_targets(client, nkey, value, local)
@@ -153,23 +170,23 @@ class ClientManager:
                             targets.append(client)
         return targets
 
-    def get_muted_clients(self):
+    def get_muted_clients(self) -> List[Client]:
         """Get a list of muted clients."""
-        clients = []
+        clients: List[Client] = []
         for client in self.clients:
             if client.is_muted:
                 clients.append(client)
         return clients
 
-    def get_ooc_muted_clients(self):
+    def get_ooc_muted_clients(self) -> List[Client]:
         """Get a list of OOC-muted clients."""
-        clients = []
+        clients: List[Client] = []
         for client in self.clients:
             if client.is_ooc_muted:
                 clients.append(client)
         return clients
 
-    def toggle_afk(self, client):
+    def toggle_afk(self, client: Client) -> None:
         if client in client.area.afkers:
             if not client.hidden and not client.sneaking:
                 client.area.broadcast_ooc("{} is no longer AFK.".format(client.showname))
@@ -183,7 +200,7 @@ class ClientManager:
         if not client.hidden and not client.sneaking:
             client.area.broadcast_player_list()
 
-    def refresh_music(self, clients=None, reload=False):
+    def refresh_music(self, clients: Optional[Iterable[Client]] = None, reload: bool = False) -> None:
         """
         Refresh the listed clients' music lists.
         :param clients: list of clients whose music lists should be regenerated.
@@ -194,35 +211,35 @@ class ClientManager:
         for client in clients:
             client.refresh_music(reload)
 
-    def get_multiclients(self, ipid=-1, hdid=""):
+    def get_multiclients(self, ipid: int = -1, hdid: str = "") -> List[Client]:
         return [c for c in self.clients if c.ipid == ipid or c.hdid == hdid]
 
-    def get_mods(self):
+    def get_mods(self) -> List[Client]:
         return [c for c in self.clients if c.is_mod]
 
     class BattleChar:
-        def __init__(self, client, fighter_name, fighter):
-            self.fighter = fighter_name
-            self.hp = float(fighter["HP"])
-            self.maxhp = self.hp
-            self.atk = float(fighter["ATK"])
-            self.mana = float(fighter["MANA"])
-            self.defe = float(fighter["DEF"])
-            self.spa = float(fighter["SPA"])
-            self.spd = float(fighter["SPD"])
-            self.spe = float(fighter["SPE"])
-            self.target = None
-            self.selected_move = -1
-            self.status = None
-            self.current_client = client
-            self.guild = None
-            self.moves = [ClientManager.Move(move) for move in fighter["Moves"]]
+        def __init__(self, client: Client, fighter_name: str, fighter: Dict[str, Any]) -> None:
+            self.fighter: str = fighter_name
+            self.hp: float = float(fighter["HP"])
+            self.maxhp: float = self.hp
+            self.atk: float = float(fighter["ATK"])
+            self.mana: float = float(fighter["MANA"])
+            self.defe: float = float(fighter["DEF"])
+            self.spa: float = float(fighter["SPA"])
+            self.spd: float = float(fighter["SPD"])
+            self.spe: float = float(fighter["SPE"])
+            self.target: Optional[Client] = None
+            self.selected_move: int = -1
+            self.status: Optional[str] = None
+            self.current_client: Client = client
+            self.guild: Optional[str] = None
+            self.moves: List["ClientManager.Move"] = [ClientManager.Move(move) for move in fighter["Moves"]]
 
     class Move:
-        def __init__(self, move):
-            self.name = move["Name"]
-            self.cost = move["ManaCost"]
-            self.type = move["MovesType"]
-            self.power = float(move["Power"])
-            self.effect = move["Effects"]
-            self.accuracy = float(move["Accuracy"])
+        def __init__(self, move: Dict[str, Any]) -> None:
+            self.name: str = move["Name"]
+            self.cost: float = move["ManaCost"]
+            self.type: str = move["MovesType"]
+            self.power: float = float(move["Power"])
+            self.effect: Any = move["Effects"]
+            self.accuracy: float = float(move["Accuracy"])
