@@ -703,6 +703,29 @@ class Area:
         area["auto_pair_cycle"] = self.auto_pair_cycle
         return area
 
+    def play_client_ambience(self, client):
+        if client.software == "DRO":
+            # DRO packet
+            client.send_command(
+                "area_ambient",
+                # for compatibility with the KFO method, navigate out of sounds/ambience into sounds/music
+                "../music/"+self.ambience,
+            )
+        else:
+            # AO packet
+            if self.ambience != client.playing_audio[1]:
+                # Play the ambience
+                client.send_command(
+                    "MC",
+                    self.ambience,
+                    -1,
+                    "",
+                    1,
+                    1,
+                    int(MusicEffect.FADE_OUT |
+                        MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
+                )
+
     def new_client(self, client):
         """Add a client to the area."""
         self.clients.add(client)
@@ -717,18 +740,7 @@ class Area:
         # Update the timers for the client
         self.update_timers(client)
 
-        if self.ambience != client.playing_audio[1]:
-            # Play the ambience
-            client.send_command(
-                "MC",
-                self.ambience,
-                -1,
-                "",
-                1,
-                1,
-                int(MusicEffect.FADE_OUT |
-                    MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
-            )
+        self.play_client_ambience(client)
 
         self.area_manager.update_subtheme(client)
 
@@ -1744,15 +1756,8 @@ class Area:
 
     def set_ambience(self, name):
         self.ambience = name
-        self.send_command(
-            "MC",
-            self.ambience,
-            -1,
-            "",
-            1,
-            1,
-            int(MusicEffect.FADE_OUT | MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
-        )
+        for client in self.clients:
+            self.play_client_ambience(client)
 
     def play_music(self, name, cid, loop=0, showname="", effects=0):
         """
