@@ -1457,6 +1457,8 @@ class Area:
                     continue
                 if c.hidden and not special_allowed:
                     continue
+                if c.char_id is None:
+                    continue
                 chara_client_info = {}
                 player_stuff.append(str(c.id))
                 chara_client_info["id"] = str(c.id)
