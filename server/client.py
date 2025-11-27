@@ -146,7 +146,7 @@ class Client:
         self.narrator = False
         # if True, this char's msg will be replaced with ../misc/blank
         self.blankpost = False
-        # if True, this char's msg will be narrating over current IC visuals without showing a character, but only to yourself (AO2.9.1+)  # noqa: E501
+        # if True, this char's msg will be narrating over current IC visuals without showing a character, but only to yourself (AO2.9.1+)
         self.firstperson = False
 
         # a list of all areas the client can currently see
@@ -166,8 +166,11 @@ class Client:
         # Whether or not the client used the /showname command
         self.used_showname_command = False
 
-        # Currently requested subtheme of this client
+        # Currently requested subtheme (DRO gamemode) of this client
         self.subtheme = ""
+
+        # Currently requested time of day of this client
+        self.time_of_day = ""
 
         # The last char_url set by this client.
         self.char_url = ""
@@ -289,8 +292,7 @@ class Client:
                         pair_jsn_packet["data"]["last_sprite"] = other_emote
                         pair_jsn_packet["data"]["flipped"] = other_flip
 
-                        # No y offset is supported
-                        # On DRO Client, the pairing offsets are measured in pixels rather than percentage
+                        # no y offset is supported and on DRO Client, the pairing offsets are measured in pixels rather than percentage
                         offset_pair_x_dro = 500
                         if offset_pair_x:
                             offset_pair_x_dro = int(
@@ -311,9 +313,12 @@ class Client:
                         pair_jsn_packet["data"]["offset_right"] = 0
                         json_data = json.dumps(pair_jsn_packet)
                         self.send_command("JSN", json_data)
-
                     # Now, modify the packet
                     lst = list(args)
+                    # make sure to pad the list out
+                    for n in range(len(args), 22):
+                        # append with 0s we're gonna replace anyway
+                        lst.append(0)
                     lst[16] = ""  # No video support :(
                     lst[17] = (
                         hide_char  # hide character if we're blankposting or narrating
@@ -365,16 +370,19 @@ class Client:
         self.send_ooc(f"👥{players}/{limit} players online.")
 
     def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+        if timer_id == 0:
+            timer = self.area.area_manager.timer
+        else:
+            timer = self.area.timers[timer_id - 1]
         if self.software == "DRO":
             # configuration. There's no situation where these values are different on KFO-Server
-            self.send_timer_set_step_length(
-                timer_id, -16
-            )  # 16 milliseconds, matches AO
-            self.send_timer_set_firing_interval(
-                timer_id, 16
-            )  # 16 milliseconds, matches AO
-
-            self.send_command("TST", timer_id, new_time)  # set time
+            # step length cannot be manually modified yet
+            self.send_timer_set_step_length(timer_id, -timer.interval)
+            self.send_timer_set_firing_interval(timer_id, timer.interval)
+            # set time
+            self.send_command("TST", timer_id, new_time)
+            # as of 1.8.1, set timer format
+            self.send_command("TSR", timer_id, timer.format)
             if start:
                 self.send_command("TR", timer_id)  # resume
             else:
@@ -388,10 +396,6 @@ class Client:
                 self.send_command(
                     "TI", timer_id, int(not start), new_time
                 )  # Set timer with value and start
-                if timer_id == 0:
-                    timer = self.area.area_manager.timer
-                else:
-                    timer = self.area.timers[timer_id - 1]
                 self.send_command("TF", timer_id, timer.format, new_time)
                 self.send_command("TIN", timer_id, timer.interval)
 
@@ -418,7 +422,7 @@ class Client:
         if self.software == "DRO":
             self.send_command("TSF", timer_id, new_firing_interval)  # set firing
         else:
-            pass  # no ao equivalent
+            self.send_command("TIN", timer_id, new_firing_interval)
 
     def is_valid_name(self, name):
         """
@@ -526,8 +530,7 @@ class Client:
         if self.is_mod or self in self.area.owners:
             return 0
 
-        # Get a list of unique IPIDs from the current area to determine if the "player" is truly alone in an area
-        # (spectators or hidden players don't count).
+        # Get a list of unique IPIDs from the current area to determine if the "player" is truly alone in an area (spectators or hidden players don't count).
         players = set([c.ipid for c in self.area.clients if not c.hidden])
         # If we're alone in the area, we don't get spam protection.
         if len(players) <= 1:
@@ -580,8 +583,10 @@ class Client:
             .replace("<and>", "&")
         )
         try:
-            if song == "~stop.mp3" or self.server.get_song_is_category(
-                self.construct_music_list(), song
+            if (
+                song == "~stop.mp3"
+                or song.strip() == ""
+                or self.server.get_song_is_category(self.construct_music_list(), song)
             ):
                 name, length = "~stop.mp3", 0
             else:
@@ -601,13 +606,13 @@ class Client:
             if contains_URL(song):
                 checked = False
                 # Only if url music is configured to be allowed
-                if self.server.config["music_allow_url"]:
+                if self.server.config["music_allow_url"] == True:
                     if len(self.server.music_whitelist) <= 0:
                         checked = True
                     for line in self.server.music_whitelist:
                         if song.startswith(line):
                             checked = True
-                if not checked:
+                if checked == False:
                     self.send_ooc("This URL is not allowed.")
                     return
 
@@ -830,6 +835,7 @@ class Client:
     def construct_music_list(self):
         """
         Obtain the most relevant music list for the client.
+        :param client_music: when True, include the client's music in the equation.
         """
         # Server music list
         song_list = self.server.music_list
@@ -879,12 +885,10 @@ class Client:
         if self.local_music_list != song_list or reload:
             self.reload_music_list(song_list)
 
-    def reload_music_list(self, music=None):
+    def reload_music_list(self, music=[]):
         """
         Rebuild the music list with the provided array, or the server music list as a whole.
         """
-        if music is None:
-            music = []
         song_list = []
 
         if len(music) > 0:
@@ -897,12 +901,10 @@ class Client:
         # KEEP THE ASTERISK
         self.send_command("FM", *song_list)
 
-    def reload_area_list(self, areas=None):
+    def reload_area_list(self, areas=[]):
         """
-        Rebuild the area list according to the provided area list.
+        Rebuild the area list according to provided areas list.
         """
-        if areas is None:
-            areas = []
         area_list = []
         if len(self.server.hub_manager.hubs) > 1:
             if not self.area.area_manager.arup_enabled:
@@ -964,7 +966,7 @@ class Client:
         if self not in self.area.clients:
             self.area.new_client(self)
         if target_pos != "":
-            self.pos = target_pos
+            self.change_position(target_pos)
 
         # If we're using /evidence_present, reset it due to area change (evidence will be different most likely)
         self.presenting = 0
@@ -1613,9 +1615,9 @@ class Client:
     def send_areas_clients(self, mods=False, afk_check=False, show_links=False):
         """
         Send information over OOC about all areas of the client's hub.
-        :param mods: If true, limit player list to mods
-        :param afk_check: If true, limit player list to afks
-        :show_links: If true, show the user links of the clients
+        :param area_id: area ID
+        :param mods: if true, limit player list to mods
+        :param afk_check: if true, limit player list to afks
         """
         if (
             not self.is_mod
@@ -1781,8 +1783,7 @@ class Client:
         self.send_command("LE", *self.area.get_evidence_list(self))
         self.send_command("MM", 1)
 
-        if self.area.area_manager.subtheme != "":
-            self.send_command("ST", self.area.area_manager.subtheme, "1")
+        self.area.area_manager.update_subtheme(self)
         self.area.area_manager.send_arup_players([self])
         self.area.area_manager.send_arup_status([self])
         self.area.area_manager.send_arup_cms([self])
@@ -2127,15 +2128,15 @@ class Client:
                 time.time() * 1000.0
                 + int(self.server.config["need_webhook"]["delay"]) * 1000.0
             )
-        except Exception:
+        except:
             self.need_call_time = round(time.time() * 1000 + 60000)
 
     def can_call_case(self):
-        """Whether the client can currently announce a case."""
+        """Whether or not the client can currently announce a case."""
         return (time.time() * 1000.0 - self.case_call_time) > 0
 
     def can_call_need(self):
-        """Whether the client can currently call a need."""
+        """Whether or not the client can currently call a need."""
         return (time.time() * 1000.0 - self.need_call_time) > 0
 
     def disemvowel_message(self, message):
