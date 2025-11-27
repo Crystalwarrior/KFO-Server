@@ -1,3 +1,4 @@
+import asyncio
 import json
 import math
 import os
@@ -19,7 +20,7 @@ class Client:
     Clients may only belong to a single area.
     """
 
-    def __init__(self, server, transport, user_id, ipid):
+    def __init__(self, server, transport: asyncio.BaseTransport, user_id, ipid):
         self.is_checked = False
         self.transport = transport
         self.hdid = ""
