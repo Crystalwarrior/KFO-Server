@@ -1,5 +1,7 @@
 import asyncio
 import json
+from typing import TYPE_CHECKING
+
 import math
 import os
 import re
@@ -13,6 +15,9 @@ from server import database
 from server.constants import contains_URL, derelative, encode_ao_packet
 from server.exceptions import AreaError, ClientError, ServerError
 
+if TYPE_CHECKING:
+    from tsuserver import TsuServer3
+
 
 class Client:
     """Represents a single instance of a user.
@@ -20,7 +25,13 @@ class Client:
     Clients may only belong to a single area.
     """
 
-    def __init__(self, server, transport: asyncio.BaseTransport, user_id, ipid):
+    def __init__(
+        self,
+        server: "TsuServer3",
+        transport: asyncio.BaseTransport,
+        user_id: int,
+        ipid: int,
+    ):
         self.is_checked = False
         self.transport = transport
         self.hdid = ""
