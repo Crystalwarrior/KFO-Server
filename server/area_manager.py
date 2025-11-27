@@ -123,8 +123,10 @@ class AreaManager:
         self.char_list_ref = ""
         self.char_list = self.server.char_list
 
-        # Subtheme for this hub
+        # Subtheme for this hub (gamemode on DRO client)
         self.subtheme = ""
+        # Time of day for this hub
+        self.time_of_day = ""
 
         self.timer = self.Timer()
         
@@ -611,6 +613,26 @@ class AreaManager:
         """Broadcast an OOC message to all areas in this hub."""
         for area in self.areas:
             area.send_command("CT", area.server.config["hostname"], msg, "1")
+
+    def update_subtheme(self, client):
+        client.subtheme = self.subtheme
+        # GM is DRO client's "gamemode"
+        client.send_command("GM", self.subtheme)
+        # Set the time of day as well
+        client.send_command("TOD", self.time_of_day)
+        
+        # AO portion
+        if client.subtheme != self.subtheme or client.time_of_day != self.time_of_day:
+            # ST is Subtheme, AO lacks time of day equivalent.
+            # Therefore treat Time of Day as the override...
+            if self.time_of_day != "":
+                client.send_command("ST", self.time_of_day, "1")
+            else:
+                client.send_command("ST", self.subtheme, "1")
+        
+    def broadcast_subtheme(self):
+        for client in self.clients:
+            self.update_subtheme(client)
 
     def send_arup_players(self, clients=None):
         """Broadcast ARUP packet containing player counts."""

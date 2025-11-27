@@ -2,7 +2,7 @@ from server import database
 from server import commands
 from server.evidence import EvidenceList
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import MusicEffect, derelative, censor
+from server.constants import MusicEffect, ReportCardReason, derelative, censor
 
 from collections import OrderedDict
 
@@ -703,6 +703,29 @@ class Area:
         area["auto_pair_cycle"] = self.auto_pair_cycle
         return area
 
+    def play_client_ambience(self, client):
+        if client.software == "DRO":
+            # DRO packet
+            client.send_command(
+                "area_ambient",
+                # for compatibility with the KFO method, navigate out of sounds/ambience into sounds/music
+                "../music/"+self.ambience,
+            )
+        else:
+            # AO packet
+            if self.ambience != client.playing_audio[1]:
+                # Play the ambience
+                client.send_command(
+                    "MC",
+                    self.ambience,
+                    -1,
+                    "",
+                    1,
+                    1,
+                    int(MusicEffect.FADE_OUT |
+                        MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
+                )
+
     def new_client(self, client):
         """Add a client to the area."""
         self.clients.add(client)
@@ -717,21 +740,9 @@ class Area:
         # Update the timers for the client
         self.update_timers(client)
 
-        if self.ambience != client.playing_audio[1]:
-            # Play the ambience
-            client.send_command(
-                "MC",
-                self.ambience,
-                -1,
-                "",
-                1,
-                1,
-                int(MusicEffect.FADE_OUT |
-                    MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
-            )
+        self.play_client_ambience(client)
 
-        if client.subtheme != self.area_manager.subtheme:
-            client.send_command("ST", self.area_manager.subtheme, "1")
+        self.area_manager.update_subtheme(client)
 
         if not client.hidden and not client.sneaking:
             self.broadcast_player_list()
@@ -1408,18 +1419,20 @@ class Area:
             self.broadcast_area_desc_to_target(c)
 
     def broadcast_area_desc_to_target(self, target):
-        reason = 0
+        reason = ReportCardReason.Nothing
         area_desc = "Nothing particularly interesting."
         # If area description is set
         if self.desc.strip() != "":
             area_desc = self.desc
         # Modifiers
         if target.blinded:
-            reason = 3
+            reason = ReportCardReason.Blinded
             area_desc = "You can't see anything as you are currently blinded."
         elif self.dark:
+            reason = ReportCardReason.Blackout
             area_desc = "The lights are off, so you cannot see anything."
-            reason = 1
+        elif not self.can_getarea:
+            reason = ReportCardReason.NoPlayerList
         target.send_command("LIST_REASON", reason, area_desc)
 
     def broadcast_player_list(self):
@@ -1438,11 +1451,13 @@ class Area:
         )
         player_data_to_send = list()
         player_stuff = list()
-        if self.can_getarea and not self.dark:
+        if (self.can_getarea and not self.dark) or special_allowed:
             for c in self.clients:
                 if c == target:
                     continue
                 if c.hidden and not special_allowed:
+                    continue
+                if c.char_id is None:
                     continue
                 chara_client_info = {}
                 player_stuff.append(str(c.id))
@@ -1460,7 +1475,9 @@ class Area:
                 #Append the Character Name
                 ## 1.5
                 # if(c.icon_visible):
-                char_folder = self.area_manager.char_list[c.char_id]
+                char_folder = "Spectator"
+                if self.area_manager.is_valid_char_id(c.char_id):
+                    char_folder = self.area_manager.char_list[c.char_id]
                 player_stuff.append(str(char_folder))
                 chara_client_info["character"] = str(char_folder)
                 # else:
@@ -1743,15 +1760,8 @@ class Area:
 
     def set_ambience(self, name):
         self.ambience = name
-        self.send_command(
-            "MC",
-            self.ambience,
-            -1,
-            "",
-            1,
-            1,
-            int(MusicEffect.FADE_OUT | MusicEffect.FADE_IN | MusicEffect.SYNC_POS),
-        )
+        for client in self.clients:
+            self.play_client_ambience(client)
 
     def play_music(self, name, cid, loop=0, showname="", effects=0):
         """

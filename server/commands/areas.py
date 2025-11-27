@@ -31,6 +31,7 @@ __all__ = [
     "ooc_cmd_peek",
     "ooc_cmd_max_players",
     "ooc_cmd_desc",
+    "ooc_cmd_desc_clear",
     "ooc_cmd_edit_ambience",
     "ooc_cmd_lights",
     "ooc_cmd_auto_pair",
@@ -818,6 +819,10 @@ def ooc_cmd_desc(client, arg):
             and client.char_id == -1
         ):
             raise ClientError("You may not do that while spectating!")
+        arg = arg.strip()
+        if arg == "":
+            ooc_cmd_desc_clear(client)
+            return
         if client.area.dark:
             if not client.is_mod and not (client in client.area.owners):
                 raise ClientError("You must be authorized to do that.")
@@ -833,6 +838,33 @@ def ooc_cmd_desc(client, arg):
         client.area.broadcast_area_desc()
         database.log_area("desc.change", client, client.area, message=arg)
 
+
+def ooc_cmd_desc_clear(client, arg):
+    """
+    Clears the area description that appears to the user any time they enter the area.
+    Usage: /desc_clear
+    """
+    if client.blinded:
+        raise ClientError("You are blinded!")
+    if client.area.cannot_ic_interact(client):
+        raise ClientError("You are not on the area's invite list!")
+    if (
+        not client.is_mod
+        and not (client in client.area.owners)
+        and client.char_id == -1
+    ):
+        raise ClientError("You may not do that while spectating!")
+    if client.area.dark:
+        if not client.is_mod and not (client in client.area.owners):
+            raise ClientError("You must be authorized to do that.")
+        client.area.desc_dark = ""
+    else:
+        client.area.desc = ""
+    client.area.broadcast_ooc(
+        f"📃{client.showname} cleared the area description."
+    )
+    client.area.broadcast_area_desc()
+    database.log_area("desc.clear", client, client.area)
 
 @mod_only(area_owners=True)
 def ooc_cmd_edit_ambience(client, arg):

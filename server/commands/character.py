@@ -1081,6 +1081,10 @@ def ooc_cmd_chardesc(client, arg):
         except Exception:
             raise ArgumentError("Target not found.")
     else:
+        arg = arg.strip()
+        if arg == "":
+            ooc_cmd_chardesc_clear(client)
+            return
         client.desc = arg
         if not client.hidden and not client.sneaking:
             desc = arg[:128]
@@ -1098,12 +1102,14 @@ def ooc_cmd_chardesc_clear(client, arg):
     Clear your chardesc.
     Usage: /chardesc_clear
     """
+    client.area.area_manager.set_character_data(client.char_id, "desc", "")
     if not client.hidden and not client.sneaking:
-        client.area.area_manager.set_character_data(client.char_id, "desc", "")
         client.area.broadcast_ooc(
             f"{client.showname} cleared their character description."
         )
         client.area.broadcast_player_list()
+    else:
+        client.send_ooc(f"You cleared your character description.")
     database.log_area(
         "chardesc.clear", client, client.area
     )
@@ -1136,7 +1142,7 @@ def ooc_cmd_chardesc_set(client, arg):
                 raise
         desc = ""
         if len(args) > 1:
-            desc = " ".join(args[1:])
+            desc = " ".join(args[1:]).strip()
         client.area.area_manager.set_character_data(target, "desc", desc)
         target = client.area.area_manager.char_list[target]
         client.send_ooc(f"📜{target} Description: {desc}")

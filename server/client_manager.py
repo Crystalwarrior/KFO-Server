@@ -164,8 +164,11 @@ class ClientManager:
             # Whether or not the client used the /showname command
             self.used_showname_command = False
 
-            # Currently requested subtheme of this client
+            # Currently requested subtheme (DRO gamemode) of this client
             self.subtheme = ""
+
+            # Currently requested time of day of this client
+            self.time_of_day = ""
 
             # The last char_url set by this client.
             self.char_url = ""
@@ -306,9 +309,12 @@ class ClientManager:
                             pair_jsn_packet['data']['offset_right'] = 0
                             json_data = json.dumps(pair_jsn_packet)
                             self.send_command('JSN', json_data)
-
                         # Now, modify the packet
                         lst = list(args)
+                        # make sure to pad the list out
+                        for n in range(len(args), 22):
+                            # append with 0s we're gonna replace anyway
+                            lst.append(0)
                         lst[16] = ""  # No video support :(
                         lst[17] = hide_char # hide character if we're blankposting or narrating
                         lst[18] = -1  # would be target id, but we dunno who
@@ -358,12 +364,19 @@ class ClientManager:
             self.send_ooc(f"👥{players}/{limit} players online.")
 
         def send_timer_set_time(self, timer_id=None, new_time=None, start=False):
+            if timer_id == 0:
+                timer = self.area.area_manager.timer
+            else:
+                timer = self.area.timers[timer_id-1]
             if self.software == "DRO":
                 # configuration. There's no situation where these values are different on KFO-Server
-                self.send_timer_set_step_length(timer_id, -16) # 16 milliseconds, matches AO
-                self.send_timer_set_firing_interval(timer_id, 16) # 16 milliseconds, matches AO
-                
-                self.send_command("TST", timer_id, new_time) # set time
+                # step length cannot be manually modified yet
+                self.send_timer_set_step_length(timer_id, -timer.interval)
+                self.send_timer_set_firing_interval(timer_id, timer.interval)
+                # set time
+                self.send_command("TST", timer_id, new_time)
+                # as of 1.8.1, set timer format
+                self.send_command("TSR", timer_id, timer.format)
                 if start:
                     self.send_command("TR", timer_id) # resume
                 else:
@@ -375,10 +388,6 @@ class ClientManager:
                 else:
                     self.send_command("TI", timer_id, 2, new_time) # Show timer
                     self.send_command("TI", timer_id, int(not start), new_time) # Set timer with value and start
-                    if timer_id == 0:
-                        timer = self.area.area_manager.timer
-                    else:
-                        timer = self.area.timers[timer_id-1]
                     self.send_command("TF", timer_id, timer.format, new_time)
                     self.send_command("TIN", timer_id, timer.interval)
 
@@ -403,7 +412,7 @@ class ClientManager:
             if self.software == "DRO":
                 self.send_command("TSF", timer_id, new_firing_interval) #set firing
             else:
-                pass # no ao equivalent
+                self.send_command("TIN", timer_id, new_firing_interval)
 
         def is_valid_name(self, name):
             """
@@ -563,7 +572,7 @@ class ClientManager:
                 .replace("<dollar>", "$") \
                 .replace("<and>", "&")
             try:
-                if song == "~stop.mp3" or self.server.get_song_is_category(
+                if song == "~stop.mp3" or song.strip() == "" or self.server.get_song_is_category(
                     self.construct_music_list(), song
                 ):
                     name, length = "~stop.mp3", 0
@@ -957,7 +966,7 @@ class ClientManager:
             if self not in self.area.clients:
                 self.area.new_client(self)
             if target_pos != "":
-                self.pos = target_pos
+                self.change_position(target_pos)
 
             # If we're using /evidence_present, reset it due to area change (evidence will be different most likely)
             self.presenting = 0
@@ -1780,8 +1789,7 @@ class ClientManager:
             self.send_command("LE", *self.area.get_evidence_list(self))
             self.send_command("MM", 1)
 
-            if self.area.area_manager.subtheme != "":
-                self.send_command("ST", self.area.area_manager.subtheme, "1")
+            self.area.area_manager.update_subtheme(self)
             self.area.area_manager.send_arup_players([self])
             self.area.area_manager.send_arup_status([self])
             self.area.area_manager.send_arup_cms([self])

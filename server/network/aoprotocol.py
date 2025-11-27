@@ -1575,8 +1575,8 @@ class AOProtocol(asyncio.Protocol):
             # send it back to the client
             self.client.send_command("ackMS")
         
-        # Acknowledge showname etc. - also DRO client
-        if old_showname != self.client.showname:
+        # Broadcast our presence if our showname changed or if we spoke while sneaking
+        if old_showname != self.client.showname or self.client.sneaking:
             self.client.area.broadcast_player_list()
 
     def net_cmd_ct(self, args):
@@ -1729,52 +1729,51 @@ class AOProtocol(asyncio.Protocol):
         
         if len(args) <= 0:
             return
-
-        if args[0].split()[0].startswith("🌍["):
-            # self.client.send_ooc('Switching to the list of Hubs...')
-            self.client.viewing_hub_list = True
-            preflist = self.client.server.supported_features.copy()
-            preflist.remove("arup")
-            self.client.send_command("FL", *preflist)
-            for hub in self.client.server.hub_manager.hubs:
-                count = 0
-                for c in hub.clients:
-                    if not c.area.hide_clients and not c.hidden:
-                        count = count + 1
-                hub.count = count
-            self.client.send_command(
-                "FA",
-                *[
-                    "🌐 Hubs 🌐\n Double-Click me to see Areas\n  _______",
-                    *[
-                        f"[{hub.id}] {hub.name} (users: {hub.count})"
-                        for hub in self.client.server.hub_manager.hubs
-                    ],
-                ],
-            )
-            return
-        if args[0].split("\n")[0] == "🌐 Hubs 🌐":
-            # self.client.send_ooc('Switching to the list of Areas...')
-            self.client.viewing_hub_list = False
-            preflist = self.client.server.supported_features.copy()
-            if not self.client.area.area_manager.arup_enabled:
-                preflist.remove("arup")
-            self.client.send_command("FL", *preflist)
-            self.client.reload_area_list(self.client.local_area_list)
-            self.client.area.area_manager.send_arup_players([self.client])
-            self.client.area.area_manager.send_arup_status([self.client])
-            self.client.area.area_manager.send_arup_cms([self.client])
-            self.client.area.area_manager.send_arup_lock([self.client])
-            return
-
+        # Test for Hub or Area Switcher
         try:
+            if args[0].split()[0].startswith("🌍["):
+                # self.client.send_ooc('Switching to the list of Hubs...')
+                self.client.viewing_hub_list = True
+                preflist = self.client.server.supported_features.copy()
+                preflist.remove("arup")
+                self.client.send_command("FL", *preflist)
+                for hub in self.client.server.hub_manager.hubs:
+                    count = 0
+                    for c in hub.clients:
+                        if not c.area.hide_clients and not c.hidden:
+                            count = count + 1
+                    hub.count = count
+                self.client.send_command(
+                    "FA",
+                    *[
+                        "🌐 Hubs 🌐\n Double-Click me to see Areas\n  _______",
+                        *[
+                            f"[{hub.id}] {hub.name} (users: {hub.count})"
+                            for hub in self.client.server.hub_manager.hubs
+                        ],
+                    ],
+                )
+                return
+            if args[0].split("\n")[0] == "🌐 Hubs 🌐":
+                # self.client.send_ooc('Switching to the list of Areas...')
+                self.client.viewing_hub_list = False
+                preflist = self.client.server.supported_features.copy()
+                if not self.client.area.area_manager.arup_enabled:
+                    preflist.remove("arup")
+                self.client.send_command("FL", *preflist)
+                self.client.reload_area_list(self.client.local_area_list)
+                self.client.area.area_manager.send_arup_players([self.client])
+                self.client.area.area_manager.send_arup_status([self.client])
+                self.client.area.area_manager.send_arup_cms([self.client])
+                self.client.area.area_manager.send_arup_lock([self.client])
+                return
             called_function = "ooc_cmd_area"
             if self.client.viewing_hub_list:
                 called_function = "ooc_cmd_hub"
             # We can get cheeky and spoof ARUP info with normal song names
             getattr(commands, called_function)(
                 self.client, args[0].split("\n")[0])
-        except AreaError:
+        except (IndexError, AreaError):
             if not self.validate_net_cmd(args, self.ArgType.STR, self.ArgType.INT):
                 if not self.validate_net_cmd(
                     args, self.ArgType.STR, self.ArgType.INT, self.ArgType.STR_OR_EMPTY
