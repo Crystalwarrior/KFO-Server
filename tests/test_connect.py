@@ -1,6 +1,6 @@
 import asyncio
 
-from tests.testing.mocks import MockServer, make_protocol_factory
+from tests.mock.mocks import MockServer, make_protocol_factory
 
 
 def test_client_can_connect_and_receive_handshake():

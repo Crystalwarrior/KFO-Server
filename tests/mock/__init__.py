@@ -1,5 +1,5 @@
 """
-Test utilities package.
+Test utilities package (renamed from `tests.testing`).
 
 This package contains light-weight mock classes and helpers for exercising
 `server.network.aoprotocol.AOProtocol` without spinning up the full server

@@ -45,7 +45,7 @@ class MockClientManager:
     a pre-auth limit; here we simply allow all connections.
     """
 
-    def new_client_preauth(self, client: MockClient) -> bool:  # noqa: ARG002
+    def new_client_preauth(self, client: "MockClient") -> bool:  # noqa: ARG002
         return True
 
 
