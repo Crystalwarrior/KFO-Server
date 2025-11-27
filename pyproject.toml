@@ -1,0 +1,15 @@
+[tool.ruff]
+line-length = 140
+lint.select = ["E", "F", "W", "I"]  # PEP8/pycodestyle, pyflakes, warnings, imports
+lint.ignore = [
+    "E203", # allow slicing whitespace (Black compat)
+]
+
+# Optional: set a Python version (recommended)
+target-version = "py311"
+
+# Ruff formatter (optional; enables PEP8-style formatting)
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
