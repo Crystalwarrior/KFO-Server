@@ -775,11 +775,6 @@ class AOProtocol(asyncio.Protocol):
                     )
                     return
 
-        if text.replace(" ", "").startswith("(("):
-            self.client.send_ooc(
-                "Please, *please* use the OOC chat instead of polluting IC. Normal OOC is local to area. You can use /h to talk across the hub, or /g to talk across the entire server."
-            )
-            return
         # Scrub text and showname for bad words
         if (
             self.client.area.area_manager.censor_ic
