@@ -104,7 +104,10 @@ class ClientManager:
                     "FA",
                     *[
                         "🌐 Hubs 🌐\n Double-Click me to see Areas\n  _______",
-                        *[f"[{hub.id}] {hub.name} (users: {hub.count})" for hub in self.server.hub_manager.hubs],
+                        *[
+                            f"[{hub.id}] {hub.name} (users: {hub.count})"
+                            for hub in self.server.hub_manager.hubs
+                        ],
                     ],
                 )
 
@@ -148,7 +151,10 @@ class ClientManager:
                         if value.lower().startswith(client.ip.lower()):
                             targets.append(client)
                     elif key == TargetType.OOC_NAME:
-                        if value.lower().startswith(client.name.lower()) and client.name:
+                        if (
+                            value.lower().startswith(client.name.lower())
+                            and client.name
+                        ):
                             targets.append(client)
                     elif key == TargetType.CHAR_NAME:
                         if value.lower().startswith(client.char_name.lower()):
@@ -183,8 +189,12 @@ class ClientManager:
     def toggle_afk(self, client: Client) -> None:
         if client in client.area.afkers:
             if not client.hidden and not client.sneaking:
-                client.area.broadcast_ooc("{} is no longer AFK.".format(client.showname))
-            client.send_ooc("You are no longer AFK. Welcome back!")  # Making the server a bit friendly wouldn't hurt, right?
+                client.area.broadcast_ooc(
+                    "{} is no longer AFK.".format(client.showname)
+                )
+            client.send_ooc(
+                "You are no longer AFK. Welcome back!"
+            )  # Making the server a bit friendly wouldn't hurt, right?
             client.area.afkers.remove(client)
         else:
             if not client.hidden and not client.sneaking:
@@ -194,7 +204,9 @@ class ClientManager:
         if not client.hidden and not client.sneaking:
             client.area.broadcast_player_list()
 
-    def refresh_music(self, clients: Optional[Iterable[Client]] = None, reload: bool = False) -> None:
+    def refresh_music(
+        self, clients: Optional[Iterable[Client]] = None, reload: bool = False
+    ) -> None:
         """
         Refresh the listed clients' music lists.
         :param clients: list of clients whose music lists should be regenerated.
@@ -212,7 +224,9 @@ class ClientManager:
         return [c for c in self.clients if c.is_mod]
 
     class BattleChar:
-        def __init__(self, client: Client, fighter_name: str, fighter: Dict[str, Any]) -> None:
+        def __init__(
+            self, client: Client, fighter_name: str, fighter: Dict[str, Any]
+        ) -> None:
             self.fighter: str = fighter_name
             self.hp: float = float(fighter["HP"])
             self.maxhp: float = self.hp
@@ -227,7 +241,9 @@ class ClientManager:
             self.status: Optional[str] = None
             self.current_client: Client = client
             self.guild: Optional[str] = None
-            self.moves: List["ClientManager.Move"] = [ClientManager.Move(move) for move in fighter["Moves"]]
+            self.moves: List["ClientManager.Move"] = [
+                ClientManager.Move(move) for move in fighter["Moves"]
+            ]
 
     class Move:
         def __init__(self, move: Dict[str, Any]) -> None:
