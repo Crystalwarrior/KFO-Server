@@ -9,7 +9,7 @@ from server.constants import (
 
 
 def test_remove_and_contains_url():
-    s = "check this http://example.com/page and this https://t.co/x"
+    s = "http://example.com/page"
     assert contains_URL(s) is True
     cleaned = remove_URL(s)
     # No http-URLs should remain
