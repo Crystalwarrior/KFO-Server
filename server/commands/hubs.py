@@ -327,7 +327,7 @@ def ooc_cmd_area_create(client, arg):
 
         client.area.area_manager.broadcast_area_list()
         client.send_ooc(
-            f"New area created! {area.name} ({len(client.area.area_manager.areas)}/{client.area.area_manager.max_areas})"
+            f"New area created! [{area.id}] {area.name} ({len(client.area.area_manager.areas)}/{client.area.area_manager.max_areas})"
         )
     except AreaError:
         raise
