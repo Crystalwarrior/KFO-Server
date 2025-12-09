@@ -1465,18 +1465,18 @@ class Area:
                 chara_client_info["afk"] = str(c in self.afkers)
 
                 #Append the Showname
-                ## 1.5
+                # 1.5
                 player_stuff.append(str(c.showname))
                 chara_client_info["showname"] = str(c.showname)
 
-                ## 1.5.1
+                # 1.5.1
                 
 
                 #Append the Character Name
-                ## 1.5
+                # 1.5
                 # if(c.icon_visible):
                 char_folder = "Spectator"
-                if self.area_manager.is_valid_char_id(c.char_id):
+                if c.char_id is not None and self.area_manager.is_valid_char_id(c.char_id):
                     char_folder = self.area_manager.char_list[c.char_id]
                 player_stuff.append(str(char_folder))
                 chara_client_info["character"] = str(char_folder)
