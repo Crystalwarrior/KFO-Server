@@ -1778,9 +1778,6 @@ class Area:
         self.music_looping = loop
         self.music_effects = effects
         self.send_command("MC", name, cid, showname, loop, 0, effects)
-        # Broadcast for the rest
-        for area in self.broadcast_list:
-            area.play_music(name, cid, loop, showname, effects)
 
     def can_send_message(self, client):
         """
