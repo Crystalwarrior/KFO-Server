@@ -1003,7 +1003,9 @@ class ClientManager:
                 old_area.remove_client(self)
             self.area = area
 
-            if old_area.area_manager != area.area_manager and old_area.area_manager.char_list != area.area_manager.char_list:
+            # When swapping between hubs, if the new hub charlist is different from ours or if the target hub has character autokick enabled,
+            # bring up the character select screen for the client
+            if old_area.area_manager != area.area_manager and (area.area_manager.autokick_to_latest_area or old_area.area_manager.char_list != area.area_manager.char_list):
                 # Send them that hub's char list
                 self.area.area_manager.send_characters(self)
                 self.char_select()
