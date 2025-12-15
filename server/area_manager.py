@@ -615,7 +615,6 @@ class AreaManager:
             area.send_command("CT", area.server.config["hostname"], msg, "1")
 
     def update_subtheme(self, client):
-        client.subtheme = self.subtheme
         # GM is DRO client's "gamemode"
         client.send_command("GM", self.subtheme)
         # Set the time of day as well
@@ -629,6 +628,7 @@ class AreaManager:
                 client.send_command("ST", self.time_of_day, "1")
             else:
                 client.send_command("ST", self.subtheme, "1")
+        client.subtheme = self.subtheme
         
     def broadcast_subtheme(self):
         for client in self.clients:
