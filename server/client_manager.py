@@ -1990,11 +1990,11 @@ class ClientManager:
         def inventory(self, value):
             """Set the character's inventory."""
             self.area.area_manager.set_character_data(
-                self.char_id, "inventory", value)
+                self.char_id, "inventory", list(value))
         
         def add_inventory_evidence(self, name, desc, image):
             inventory = self.area.area_manager.get_character_data(self.char_id, "inventory", list())
-            inventory.append((name, desc, image))
+            inventory.append([name, desc, image])
             self.area.area_manager.set_character_data(self.char_id, "inventory", inventory)
         
         def remove_inventory_evidence(self, index):

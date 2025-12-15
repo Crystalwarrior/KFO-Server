@@ -174,7 +174,7 @@ def ooc_cmd_inventory_add(client, arg):
         return
 
     inventory = client.area.area_manager.get_character_data(target, "inventory", list())
-    inventory.append((args[0], args[1], args[2]))
+    inventory.append([args[0], args[1], args[2]])
     client.area.area_manager.set_character_data(target, "inventory", inventory)
     charname = client.area.area_manager.char_list[target]
     client.send_ooc(f"Added evidence '{args[0]}' into {charname}'s inventory")
@@ -253,7 +253,7 @@ def ooc_cmd_inventory_edit(client, arg):
                 f"Target evidence not found! (/inventory_edit {arg})"
             )
         evi_name = evidence[0]
-        inventory[i] = (args[0], args[1], args[2])
+        inventory[i] = [args[0], args[1], args[2]]
         client.area.area_manager.set_character_data(target, "inventory", inventory)
         database.log_area("inventory.edit", client, client.area)
         charname = client.area.area_manager.char_list[target]
