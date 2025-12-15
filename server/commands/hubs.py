@@ -48,6 +48,7 @@ __all__ = [
     "ooc_cmd_broadcast",
     "ooc_cmd_clear_broadcast",
     "ooc_cmd_hpset",
+    "ooc_cmd_toggle_autokick",
 ]
 
 
@@ -1081,3 +1082,16 @@ def ooc_cmd_hpset(client, arg):
         for aid in args[2:]:
             area = client.area.area_manager.get_area_by_id(int(aid))
             area.change_hp(side, int(args[1]))
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_toggle_autokick(client, arg):
+    """
+    when True, swapping to a character will instantly kick you to that character's latest area.
+    Usage: /toggle_autokick
+    """
+    client.area.area_manager.autokick_to_latest_area = not client.area.area_manager.autokick_to_latest_area
+    toggle = "enabled" if client.area.area_manager.autokick_to_latest_area else "disabled"
+    client.area.area_manager.broadcast_ooc(
+        f"Auto-kick to your picked character's latest area is now {toggle} for this hub."
+    )

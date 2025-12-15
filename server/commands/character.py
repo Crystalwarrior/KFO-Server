@@ -1404,16 +1404,17 @@ def get_latest_area(client, char_id: int):
         char_folder = client.area.area_manager.char_list[char_id]
     if not char_folder:
         client.send_ooc(f"Can't get latest area when spectating!")
-        return
+        return None
     latest_area_id = client.area.area_manager.get_character_data(char_id, "latest_area", None)
     if not latest_area_id:
         client.send_ooc(f"{char_folder} has no latest occupied area defined!")
-        return        
+        return None
+    target_area = None
     try:
         target_area = client.area.area_manager.get_area_by_id(latest_area_id)
     except Exception:
         client.send_ooc(f"{char_folder} latest occupied area [{latest_area_id}] is not valid for current hub!")
-        return
+        return None
     return target_area
 
 @mod_only(hub_owners=True)
@@ -1439,6 +1440,8 @@ def ooc_cmd_get_latest_area(client, arg):
     area = get_latest_area(client, target_charid)
     if area:
         client.send_ooc(f"{client.area.area_manager.char_list[target_charid]} latest occupied area is [{area.id}] {area.name}.")
+    else:  
+        client.send_ooc(f"Area not found!")
 
 @mod_only(hub_owners=True)
 def ooc_cmd_kick_to_latest_area(client, arg):

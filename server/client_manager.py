@@ -438,7 +438,41 @@ class ClientManager:
         def record_latest_area(self):
             """Record the client character's latest area if not in lobby, if not spectator and not GM/mod."""
             if self.area.area_manager.default_area() != self.area and self.char_id != -1 and self not in self.area.owners and not self.is_mod:
-                self.latest_area = self.area.id
+                self.area.area_manager.set_character_data(self.char_id, "latest_area", self.area.id)
+        
+        def kick_to_latest_area(self):
+            """Kick the client to their character's latest recorded area."""
+            latest_area = self.area.area_manager.get_character_data(
+                self.char_id, "latest_area", None
+            )
+            if latest_area == None:
+                return
+            
+            target_area = self.area.area_manager.get_area_by_id(latest_area)
+            if not target_area:
+                return
+            old_area = self.area
+            self.set_area(target_area)
+            self.send_ooc(
+                f"You were kicked from [{old_area.id}] {old_area.name} to [{target_area.id}] {target_area.name}."
+            )
+            old_area.invite_list.discard(self.id)
+            # Inform the CMs of the auto kick
+            self.area.send_owner_command(
+                "CT",
+                self.server.config["hostname"],
+                f"Kicked [{self.id}] {self.showname} from [{old_area.id}] {old_area.name} to [{target_area.id}] {target_area.name}.",
+                "1",
+            )
+            # send_owner_command does not broadcast to CMs present in the area, so let's do that manually
+            for c in self.area.owners:
+                if c in self.area.clients:
+                    c.send_command(
+                        "CT",
+                        self.server.config["hostname"],
+                        f"Kicked [{self.id}] {self.showname} from [{old_area.id}] {old_area.name} to [{target_area.id}] {target_area.name}.",
+                        "1",
+                    )
 
         def change_character(self, char_id, force=False):
             """
@@ -501,7 +535,7 @@ class ClientManager:
                 f"[{self.id}] {self.showname} changed character from {old_char} to {new_char}.",
                 "1",
             )
-            # send_owner_command does not tell CMs present in the area about evidence manipulation, so let's do that manually
+            # send_owner_command does not broadcast to CMs present in the area, so let's do that manually
             for c in self.area.owners:
                 if c in self.area.clients:
                     c.send_command(
@@ -510,15 +544,20 @@ class ClientManager:
                         f"[{self.id}] {self.showname} changed character from {old_char} to {new_char}.",
                         "1",
                     )
+
+            if self.area.area_manager.autokick_to_latest_area:
+                self.kick_to_latest_area()
+            else:     
+                # Record last known area ID for this character if not spectator/gm/mod, and hub autokick is not set
+                self.record_latest_area()
+
             self.area.update_timers(self, running_only=True)
             
             if not self.hidden and not self.sneaking:
                 self.area.broadcast_player_list()
             else:
                 self.area.broadcast_player_list_to_target(self)
-            self.area.broadcast_area_desc_to_target(self)
-            # Record last known area ID for this character if not spectator/gm/mod
-            self.record_latest_area()
+            self.area.broadcast_area_desc_to_target(self)       
 
         def change_music_cd(self):
             """
@@ -1345,6 +1384,9 @@ class ClientManager:
                 self.send_ooc(
                     "This area is muted - you cannot talk in-character unless invited."
                 )
+
+            if self.area == self.area.area_manager.default_area() and self.area.area_manager.autokick_to_latest_area:
+                self.kick_to_latest_area()
 
         # CU Packet
         # CU#<authority:int>#<action:int>#<char_name:str>#<link:str>#%

@@ -107,6 +107,7 @@ class AreaManager:
         self.can_spectate = True
         self.can_getareas = True
         self.passing_msg = False
+        self.autokick_to_latest_area = False
         # /prefs
 
         # optimization memes
@@ -209,6 +210,7 @@ class AreaManager:
             "can_spectate",
             "can_getareas",
             "passing_msg",
+            "autokick_to_latest_area",
             "char_list_ref",
         ]
         for entry in list(set(load_list) - set(ignore)):
@@ -310,6 +312,7 @@ class AreaManager:
             "can_spectate",
             "can_getareas",
             "passing_msg",
+            "autokick_to_latest_area",
             "char_list_ref",
         ]
         for entry in list(set(save_list) - set(ignore)):
