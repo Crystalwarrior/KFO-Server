@@ -519,9 +519,6 @@ def ooc_cmd_area_kick(client, arg):
             old_area = c.area
             if len(args) >= 3:
                 target_pos = args[2]
-            client.send_ooc(
-                f"Attempting to kick [{c.id}] {c.showname} from [{old_area.id}] {old_area.name} to [{area.id}] {area.name}."
-            )
             c.set_area(area, target_pos)
             c.send_ooc(
                 f"You were kicked from [{old_area.id}] {old_area.name} to [{area.id}] {area.name}."
@@ -530,6 +527,9 @@ def ooc_cmd_area_kick(client, arg):
                 "area_kick", client, client.area, target=c, message=area.id
             )
             client.area.invite_list.discard(c.id)
+            client.send_ooc(
+                f"Kicked [{c.id}] {c.showname} from [{old_area.id}] {old_area.name} to [{area.id}] {area.name}."
+            )
     except ValueError:
         raise ArgumentError("Area ID must be a number.")
     except AreaError:

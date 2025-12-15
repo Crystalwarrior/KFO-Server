@@ -56,6 +56,8 @@ __all__ = [
     "ooc_cmd_webfiles",
     "ooc_cmd_set_url",
     "ooc_cmd_get_urls",
+    "ooc_cmd_get_latest_area",
+    "ooc_cmd_kick_to_latest_area",
 ]
 
 
@@ -1395,3 +1397,90 @@ def ooc_cmd_triple_pair(client, arg):
     if client.third_charid in range(0, len(client.area.area_manager.char_list)):
         char = client.area.area_manager.char_list[client.third_charid]
     client.send_ooc(f"Successfully paired with '{char}'! Ask them to pair with you back, and show up on the same /pos for it to work.")
+
+def get_latest_area(client, char_id: int):
+    char_folder = None
+    if char_id in range(0, len(client.area.area_manager.char_list)):
+        char_folder = client.area.area_manager.char_list[char_id]
+    if not char_folder:
+        client.send_ooc(f"Can't get latest area when spectating!")
+        return
+    latest_area_id = client.area.area_manager.get_character_data(char_id, "latest_area", None)
+    if not latest_area_id:
+        client.send_ooc(f"{char_folder} has no latest occupied area defined!")
+        return        
+    try:
+        target_area = client.area.area_manager.get_area_by_id(latest_area_id)
+    except Exception:
+        client.send_ooc(f"{char_folder} latest occupied area [{latest_area_id}] is not valid for current hub!")
+        return
+    return target_area
+
+@mod_only(hub_owners=True)
+def ooc_cmd_get_latest_area(client, arg):
+    """
+    Get a character's latest occupied area. Lobby area is always excluded.
+    If used by itself, gets your character's latest occupied area instead.
+    Usage: /get_latest_area [cid|charname]
+    """
+    target_charid = -1
+    if len(arg) == 0:
+        target_charid = client.char_id
+    elif arg.isdigit():
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(arg), True
+        )
+        if len(targets) > 0:
+            target_charid = targets[0].char_id
+    else:
+        for i in range(0, len(client.area.area_manager.char_list)):
+            if arg.lower() == client.area.area_manager.char_list[i].lower():
+                target_charid = i
+    area = get_latest_area(client, target_charid)
+    if area:
+        client.send_ooc(f"{client.area.area_manager.char_list[target_charid]} latest occupied area is [{area.id}] {area.name}.")
+
+@mod_only(hub_owners=True)
+def ooc_cmd_kick_to_latest_area(client, arg):
+    """
+    Kick the occupied character in current area to their latest occupied area.
+    This command is best used in lobby area. If used by itself, kicks you instead.
+    Usage: /kick_to_latest_area [cid|charname]
+    """
+    target_charid = -1
+    if len(arg) == 0:
+        target_charid = client.char_id
+        targets = [client]
+    elif arg.isdigit():
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(arg), True
+        )
+        if len(targets) > 0:
+            target_charid = targets[0].char_id
+    else:
+        for i in range(0, len(client.area.area_manager.char_list)):
+            if arg.lower() == client.area.area_manager.char_list[i].lower():
+                target_charid = i
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.CHAR_NAME, client.area.area_manager.char_list[target_charid], True
+        )
+    area = get_latest_area(client, target_charid)
+    if area:
+        try:
+            for target in targets:
+                old_area = target.area
+                target.set_area(area)
+                target.send_ooc(
+                    f"You were kicked from [{old_area.id}] {old_area.name} to [{area.id}] {area.name}."
+                )
+                database.log_area(
+                    "kick_to_latest_area", client, client.area, target=target, message=area.id
+                )
+                client.area.invite_list.discard(target.id)
+                client.send_ooc(
+                    f"Kicked [{target.id}] {target.showname} from [{old_area.id}] {old_area.name} to [{area.id}] {area.name}."
+                )
+        except AreaError:
+            raise
+        except ClientError:
+            raise

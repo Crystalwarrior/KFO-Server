@@ -435,6 +435,11 @@ class ClientManager:
             """Disconnect the client gracefully."""
             self.transport.close()
 
+        def record_latest_area(self):
+            """Record the client character's latest area if not in lobby, if not spectator and not GM/mod."""
+            if self.area.area_manager.default_area() != self.area and self.char_id != -1 and self not in self.area.owners and not self.is_mod:
+                self.latest_area = self.area.id
+
         def change_character(self, char_id, force=False):
             """
             Change the client's character or force the character selection
@@ -512,6 +517,8 @@ class ClientManager:
             else:
                 self.area.broadcast_player_list_to_target(self)
             self.area.broadcast_area_desc_to_target(self)
+            # Record last known area ID for this character if not spectator/gm/mod
+            self.record_latest_area()
 
         def change_music_cd(self):
             """
@@ -1043,6 +1050,9 @@ class ClientManager:
             # We failed to enter the same area as whoever we've been following, break the follow
             if self.following is not None and not (self.following in self.area.clients):
                 self.unfollow()
+
+            # Record last known area ID for this character if not spectator/gm/mod
+            self.record_latest_area()
 
             self.area.trigger("join", self)
 
@@ -1991,6 +2001,19 @@ class ClientManager:
             """Set the character's inventory."""
             self.area.area_manager.set_character_data(
                 self.char_id, "inventory", list(value))
+
+        @property
+        def latest_area(self):
+            """Get the character's latest occupied area ID."""
+            return self.area.area_manager.get_character_data(
+                self.char_id, "latest_area", None
+            )
+
+        @inventory.setter
+        def latest_area(self, value):
+            """Set the character's latest occupied area ID."""
+            self.area.area_manager.set_character_data(
+                self.char_id, "latest_area", int(value))
         
         def add_inventory_evidence(self, name, desc, image):
             inventory = self.area.area_manager.get_character_data(self.char_id, "inventory", list())
