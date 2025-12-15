@@ -1504,15 +1504,15 @@ def ooc_cmd_set_latest_area(client, arg):
     target_charid = -1
     if len(args) == 1:
         target_charid = client.char_id
-    elif arg.isdigit():
+    elif args[0].isdigit():
         targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), True
+            client, TargetType.ID, int(args[1]), True
         )
         if len(targets) > 0:
             target_charid = targets[0].char_id
     else:
         for i in range(0, len(client.area.area_manager.char_list)):
-            if arg.lower() == client.area.area_manager.char_list[i].lower():
+            if args[0].lower() == client.area.area_manager.char_list[i].lower():
                 target_charid = i
     char_folder = None
     if target_charid in range(0, len(client.area.area_manager.char_list)):
@@ -1520,9 +1520,10 @@ def ooc_cmd_set_latest_area(client, arg):
     if not char_folder:
         client.send_ooc(f"Invalid character id!")
         return None
-    to_area = int(args[0])
     if len(args) >= 2:
         to_area = int(args[1])
+    else:
+        to_area = int(args[0])
     client.area.area_manager.set_character_data(target_charid, "latest_area", to_area)
     try:
         target_area = client.area.area_manager.get_area_by_id(to_area)
