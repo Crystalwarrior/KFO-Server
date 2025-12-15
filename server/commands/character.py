@@ -58,6 +58,7 @@ __all__ = [
     "ooc_cmd_get_urls",
     "ooc_cmd_get_latest_area",
     "ooc_cmd_kick_to_latest_area",
+    "ooc_cmd_set_latest_area",
 ]
 
 
@@ -1487,3 +1488,44 @@ def ooc_cmd_kick_to_latest_area(client, arg):
             raise
         except ClientError:
             raise
+
+@mod_only(hub_owners=True)
+def ooc_cmd_set_latest_area(client, arg):
+    """
+    Set a character's latest occupied area. Lobby area is always excluded.
+    If used by itself, gets your character's latest occupied area instead.
+    Usage: /set_latest_area <cid|charname> [area_id]
+    """
+    args = shlex.split(arg)
+    if len(args) == 0:
+        raise ArgumentError(
+            "Not enough args. Usage: /set_latest_area <cid|charname> [area_id]"
+        )
+    target_charid = -1
+    if len(args) == 1:
+        target_charid = client.char_id
+    elif arg.isdigit():
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(arg), True
+        )
+        if len(targets) > 0:
+            target_charid = targets[0].char_id
+    else:
+        for i in range(0, len(client.area.area_manager.char_list)):
+            if arg.lower() == client.area.area_manager.char_list[i].lower():
+                target_charid = i
+    char_folder = None
+    if target_charid in range(0, len(client.area.area_manager.char_list)):
+        char_folder = client.area.area_manager.char_list[target_charid]
+    if not char_folder:
+        client.send_ooc(f"Invalid character id!")
+        return None
+    to_area = int(args[0])
+    if len(args) >= 2:
+        to_area = int(args[1])
+    client.area.area_manager.set_character_data(target_charid, "latest_area", to_area)
+    try:
+        target_area = client.area.area_manager.get_area_by_id(to_area)
+        client.send_ooc(f"Successfuly set {char_folder} latest occupied area to [{target_area.id}] {target_area.name}.")
+    except Exception:
+        client.send_ooc(f"Warning: setting {char_folder} latest occupied area to an invalid area for current hub. Area ID: [{to_area}].")
