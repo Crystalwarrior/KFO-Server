@@ -917,9 +917,13 @@ class Area:
     def is_char_available(self, char_id):
         """
         Check if a character is available for use.
+        Area Owners occupying a character is ignored as a condition.
         :param char_id: character ID
         """
-        return char_id not in [x.char_id for x in self.clients]
+        for c in self.clients:
+            if char_id == c.char_id and c not in self.owners:
+                return False
+        return True
 
     def get_rand_avail_char_id(self):
         """Get a random available character ID."""
