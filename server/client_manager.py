@@ -1385,9 +1385,6 @@ class ClientManager:
                     "This area is muted - you cannot talk in-character unless invited."
                 )
 
-            if self.area == self.area.area_manager.default_area() and self.area.area_manager.autokick_to_latest_area:
-                self.kick_to_latest_area()
-
         # CU Packet
         # CU#<authority:int>#<action:int>#<char_name:str>#<link:str>#%
         # Sets the character_URL of the client.
