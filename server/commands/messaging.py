@@ -96,9 +96,10 @@ def ooc_cmd_toggleglobal(client, arg):
     Mute global chat.
     Usage: /toggleglobal
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
-    client.muted_global = not client.muted_global
+    boolean = not client.muted_global
+    if len(arg) > 0:
+        boolean = arg in ["true", "on", "1"]
+    client.muted_global = boolean
     glob_stat = "on"
     if client.muted_global:
         glob_stat = "off"
@@ -130,9 +131,10 @@ def ooc_cmd_toggleadverts(client, arg):
     Mute advertisements.
     Usage: /toggleadverts
     """
-    if len(arg) != 0:
-        raise ArgumentError("This command doesn't take any arguments")
-    client.muted_adverts = not client.muted_adverts
+    boolean = not client.muted_adverts
+    if len(arg) > 0:
+        boolean = arg in ["true", "on", "1"]
+    client.muted_adverts = not boolean
     adv_stat = "on"
     if client.muted_adverts:
         adv_stat = "off"

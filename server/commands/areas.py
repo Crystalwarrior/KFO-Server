@@ -953,20 +953,13 @@ def ooc_cmd_area_broadcast(client, arg):
     /clear_area_broadcast to clear the list
     Usage: /area_broadcast <id(s)>
     """
-    args = arg.split()
+    args = shlex.split(arg)
     if len(args) <= 0:
         a_list = ", ".join([str(a.id) for a in client.area.broadcast_list])
         client.send_ooc(f"Current area broadcast list is {a_list}")
         return
-    if arg.lower() == "all":
-        args = []
-        for area in client.area.area_manager.areas:
-            args.append(area.id)
     try:
-        broadcast_list = []
-        for aid in args:
-            area = client.area.area_manager.get_area_by_id(int(aid))
-            broadcast_list.append(area)
+        broadcast_list = client.area.area_manager.get_areas_by_args(args)
         client.area.broadcast_list = broadcast_list
         a_list = ", ".join([str(a.id) for a in client.area.broadcast_list])
         client.send_ooc(f"Area's broadcast list is now {a_list}")

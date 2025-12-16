@@ -1,6 +1,8 @@
 from server.exceptions import ClientError, ArgumentError, AreaError
 from . import mod_only
 
+import shlex
+
 __all__ = [
     "ooc_cmd_area_lock",
     "ooc_cmd_area_unlock",
@@ -32,20 +34,13 @@ def ooc_cmd_area_lock(client, arg):
     Prevent users from joining the current area.
     Usage: /area_lock
     """
-    args = arg.split()
+    args = shlex.split(arg)
     if len(args) == 0:
         args = [client.area.id]
 
     try:
-        area_list = []
-        for aid in args:
-            try:
-                target_id = client.area.area_manager.get_area_by_abbreviation(
-                    aid).id
-            except Exception:
-                target_id = int(aid)
-            area = client.area.area_manager.get_area_by_id(target_id)
-
+        area_list = client.area.area_manager.get_areas_by_args(args)
+        for area in area_list:
             if not client.is_mod and client not in area.owners:
                 if not str(target_id) in client.keys:
                     if area.locking_allowed and area != client.area:
@@ -88,19 +83,13 @@ def ooc_cmd_area_mute(client, arg):
     Makes this area impossible to speak for normal users unlesss /invite is used.
     Usage: /area_mute
     """
-    args = arg.split()
+    args = shlex.split(arg)
     if len(args) == 0:
         args = [client.area.id]
 
     try:
-        area_list = []
-        for aid in args:
-            try:
-                target_id = client.area.area_manager.get_area_by_abbreviation(
-                    aid).id
-            except Exception:
-                target_id = int(aid)
-            area = client.area.area_manager.get_area_by_id(target_id)
+        area_list = client.area.area_manager.get_areas_by_args(args)
+        for area in area_list:
             if not client.is_mod and client not in area.owners:
                 client.send_ooc(f"You don't own area [{area.id}] {area.name}.")
                 continue
@@ -126,19 +115,13 @@ def ooc_cmd_area_unmute(client, arg):
     Undo the effects of /area_mute.
     Usage: /area_unmute
     """
-    args = arg.split()
+    args = shlex.split(arg)
     if len(args) == 0:
         args = [client.area.id]
 
     try:
-        area_list = []
-        for aid in args:
-            try:
-                target_id = client.area.area_manager.get_area_by_abbreviation(
-                    aid).id
-            except Exception:
-                target_id = int(aid)
-            area = client.area.area_manager.get_area_by_id(target_id)
+        area_list = client.area.area_manager.get_areas_by_args(args)
+        for area in area_list:
             if not client.is_mod and client not in area.owners:
                 client.send_ooc(f"You don't own area [{area.id}] {area.name}.")
                 continue
@@ -163,20 +146,13 @@ def ooc_cmd_area_unlock(client, arg):
     Allow anyone to freely join the current area.
     Usage: /area_unlock
     """
-    args = arg.split()
+    args = shlex.split(arg)
     if len(args) == 0:
         args = [client.area.id]
 
     try:
-        area_list = []
-        for aid in args:
-            try:
-                target_id = client.area.area_manager.get_area_by_abbreviation(
-                    aid).id
-            except Exception:
-                target_id = int(aid)
-            area = client.area.area_manager.get_area_by_id(target_id)
-
+        area_list = client.area.area_manager.get_areas_by_args(args)
+        for area in area_list:
             if not client.is_mod and client not in area.owners:
                 if not str(target_id) in client.keys:
                     if area.locking_allowed and area != client.area:

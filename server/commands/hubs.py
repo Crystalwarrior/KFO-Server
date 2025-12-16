@@ -610,9 +610,12 @@ def ooc_cmd_hub_move_delay(client, arg):
 def ooc_cmd_toggle_replace_music(client, arg):
     """
     Toggle the hub music list to replace the server's music list.
-    Usage: /toggle_replace_music
+    Usage: /toggle_replace_music [true/false]
     """
-    client.area.area_manager.replace_music = not client.area.area_manager.replace_music
+    boolean = not client.area.area_manager.replace_music
+    if len(arg) > 0:
+        boolean = arg in ["true", "on", "1"]
+    client.area.area_manager.replace_music = boolean
     toggle = "now" if client.area.area_manager.replace_music else "no longer"
     client.server.client_manager.refresh_music(
         client.area.area_manager.clients)
@@ -627,7 +630,10 @@ def ooc_cmd_toggle_passing_ic(client, arg):
     Toggle an IC message when changing areas for this hub.
     Usage: /toggle_passing_ic
     """
-    client.area.area_manager.passing_msg = not client.area.area_manager.passing_msg
+    boolean = not client.area.area_manager.passing_msg
+    if len(arg) > 0:
+        boolean = arg in ["true", "on", "1"]
+    client.area.area_manager.passing_msg = boolean
     toggle = "enabled" if client.area.area_manager.passing_msg else "disabled"
     client.area.area_manager.broadcast_ooc(
         f"IC area passing messages are now {toggle} for this hub."
@@ -679,7 +685,10 @@ def ooc_cmd_toggle_getareas(client, arg):
     Toggle the permissions of /getareas for normal players in this hub.
     Usage: /toggle_getareas
     """
-    client.area.area_manager.can_getareas = not client.area.area_manager.can_getareas
+    boolean = not client.area.area_manager.can_getareas
+    if len(arg) > 0:
+        boolean = arg in ["true", "on", "1"]
+    client.area.area_manager.can_getareas = boolean
     toggle = "enabled" if client.area.area_manager.can_getareas else "disabled"
     client.area.area_manager.broadcast_ooc(
         f"Use of /getareas has been {toggle} for this hub."
@@ -692,7 +701,10 @@ def ooc_cmd_toggle_spectate(client, arg):
     Disable the ability to use a spectator character for non-GMs for this hub.
     Usage: /toggle_spectate
     """
-    client.area.area_manager.can_spectate = not client.area.area_manager.can_spectate
+    boolean = not client.area.area_manager.can_spectate
+    if len(arg) > 0:
+        boolean = arg in ["true", "on", "1"]
+    client.area.area_manager.can_spectate = boolean
     toggle = "enabled" if client.area.area_manager.can_spectate else "disabled"
     client.area.area_manager.broadcast_ooc(
         f"Spectating has been {toggle} for this hub."
@@ -1014,20 +1026,13 @@ def ooc_cmd_broadcast(client, arg):
     /clear_broadcast to stop broadcasting.
     Usage: /broadcast <id(s)>
     """
-    args = arg.split()
+    args = shlex.split(arg)
     if len(args) <= 0:
         a_list = ", ".join([str(a.id) for a in client.broadcast_list])
         client.send_ooc(f"Your broadcast list is {a_list}")
         return
-    if arg.lower() == "all":
-        args = []
-        for area in client.area.area_manager.areas:
-            args.append(area.id)
     try:
-        broadcast_list = []
-        for aid in args:
-            area = client.area.area_manager.get_area_by_id(int(aid))
-            broadcast_list.append(area)
+        broadcast_list = client.area.area_manager.get_areas_by_args(args)
         # We don't modify the client.broadcast_list directly until now just in case there's an exception.
         client.broadcast_list = broadcast_list
         a_list = ", ".join([str(a.id) for a in client.broadcast_list])
@@ -1057,7 +1062,7 @@ def ooc_cmd_hpset(client, arg):
     To include all areas, use set [area] to all.
     Usage: /hpset <pos> <amount> [area]
     """
-    args = list(arg.split(" "))
+    args = shlex.split(arg)
     if len(args) == 0:
         raise ArgumentError(
             "You must specify a position and HP. Use /hpset <pos> <amount> [area]")
@@ -1073,15 +1078,11 @@ def ooc_cmd_hpset(client, arg):
         raise ArgumentError(
             "Invalid position. Use \"pro\" or \"def\"")
 
-    if len(args) == 2:
-        client.area.change_hp(side, int(args[1]))
-    elif args[2] == "all":
-        for area in client.area.area_manager.areas:
-            area.change_hp(side, int(args[1]))
-    else:
-        for aid in args[2:]:
-            area = client.area.area_manager.get_area_by_id(int(aid))
-            area.change_hp(side, int(args[1]))
+    area_list = [client.area]
+    if len(args > 2):
+        area_list = client.area.area_manager.get_areas_by_args(args[1:])
+    for area in area_list:
+        area.change_hp(side, int(args[1]))
 
 
 @mod_only(area_owners=True)
@@ -1090,7 +1091,10 @@ def ooc_cmd_toggle_autokick(client, arg):
     when True, swapping to a character will instantly kick you to that character's latest area.
     Usage: /toggle_autokick
     """
-    client.area.area_manager.autokick_to_latest_area = not client.area.area_manager.autokick_to_latest_area
+    boolean = not client.area.area_manager.autokick_to_latest_area
+    if len(arg) > 0:
+        boolean = arg in ["true", "on", "1"]
+    client.area.area_manager.autokick_to_latest_area = boolean
     toggle = "enabled" if client.area.area_manager.autokick_to_latest_area else "disabled"
     client.area.area_manager.broadcast_ooc(
         f"Auto-kick to your picked character's latest area is now {toggle} for this hub."

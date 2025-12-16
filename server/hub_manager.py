@@ -52,7 +52,7 @@ class HubManager:
                     for a_name in reachable_areas:
                         a_name = a_name.strip()
                         target_area = self.hubs[0].get_area_by_name(
-                            a_name, case_sensitive=True
+                            a_name, case_insensitive=True
                         )
                         self.hubs[0].areas[i].link(target_area.id)
                         print(
