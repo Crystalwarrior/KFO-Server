@@ -68,7 +68,6 @@ def ooc_cmd_area_lock(client, arg):
                 client.send_ooc(f"Area {area.name} is already locked.")
                 continue
             area.lock()
-            area_list.append(area.id)
         if len(area_list) > 0:
             client.send_ooc(f"Locked areas {area_list}.")
     except ValueError:
@@ -100,7 +99,6 @@ def ooc_cmd_area_mute(client, arg):
                 continue
             area.mute()
             area.broadcast_ooc("This area is now muted.")
-            area_list.append(area.id)
         if len(area_list) > 0:
             client.send_ooc(f"Made areas {area_list} muted.")
     except ValueError:
@@ -132,7 +130,6 @@ def ooc_cmd_area_unmute(client, arg):
                 continue
             area.unmute()
             area.broadcast_ooc("This area is no longer muted.")
-            area_list.append(area.id)
         if len(area_list) > 0:
             client.send_ooc(f"Made areas {area_list} unmuted.")
     except ValueError:
@@ -180,7 +177,6 @@ def ooc_cmd_area_unlock(client, arg):
                 client.send_ooc(f"Area {area.name} is already unlocked.")
                 continue
             area.unlock()
-            area_list.append(area.id)
         if len(area_list) > 0:
             client.send_ooc(f"Unlocked areas {area_list}.")
     except ValueError:
