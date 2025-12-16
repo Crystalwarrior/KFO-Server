@@ -2042,7 +2042,7 @@ class Area:
 
         update_clients = []
         for c in clients:
-            allowed = c.is_mod or c in self.owners
+            allowed = (c.is_mod or c in self.owners) and not c.available_areas_only
             area_list = c.get_area_list(allowed, allowed)
             if refresh or c.local_area_list != area_list:
                 update_clients.append(c)

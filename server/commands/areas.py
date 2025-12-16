@@ -213,8 +213,7 @@ def ooc_cmd_area(client, arg):
     Usage: /area [id] or /area [name]
     """
     if arg == "":
-        client.send_area_list(
-            full=client.is_mod or client in client.area.owners)
+        client.send_area_list(full=(client.is_mod or client in client.area.owners) and not client.available_areas_only)
         return
 
     try:
@@ -249,7 +248,12 @@ def ooc_cmd_area_visible(client, arg):
     """
     if arg != "":
         raise ArgumentError("This command takes no arguments!")
-    client.send_area_list(full=False)
+    client.available_areas_only = not client.available_areas_only
+    toggle = "enabled" if client.available_areas_only else "disabled"
+    client.area.broadcast_area_list(client)
+    client.send_ooc(
+        f"You have {toggle} only displaying player-visible areas."
+    )
 
 
 def ooc_cmd_autogetarea(client, arg):

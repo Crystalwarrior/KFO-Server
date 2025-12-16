@@ -189,6 +189,9 @@ class ClientManager:
 
             # Battle system stuff
             self.battle = None
+            
+            # If only the available areas should be displayed even as a GM
+            self.available_areas_only = False
 
         def send_raw_message(self, msg):
             """
