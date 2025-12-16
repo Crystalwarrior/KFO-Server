@@ -36,7 +36,7 @@ def ooc_cmd_area_lock(client, arg):
     """
     args = shlex.split(arg)
     if len(args) == 0:
-        args = [client.area.id]
+        args = [str(client.area.id)]
 
     try:
         area_list = client.area.area_manager.get_areas_by_args(args)
@@ -84,7 +84,7 @@ def ooc_cmd_area_mute(client, arg):
     """
     args = shlex.split(arg)
     if len(args) == 0:
-        args = [client.area.id]
+        args = [str(client.area.id)]
 
     try:
         area_list = client.area.area_manager.get_areas_by_args(args)
@@ -115,7 +115,7 @@ def ooc_cmd_area_unmute(client, arg):
     """
     args = shlex.split(arg)
     if len(args) == 0:
-        args = [client.area.id]
+        args = [str(client.area.id)]
 
     try:
         area_list = client.area.area_manager.get_areas_by_args(args)
@@ -145,7 +145,7 @@ def ooc_cmd_area_unlock(client, arg):
     """
     args = shlex.split(arg)
     if len(args) == 0:
-        args = [client.area.id]
+        args = [str(client.area.id)]
 
     try:
         area_list = client.area.area_manager.get_areas_by_args(args)
