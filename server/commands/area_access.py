@@ -69,7 +69,7 @@ def ooc_cmd_area_lock(client, arg):
                 continue
             area.lock()
         if len(area_list) > 0:
-            client.send_ooc(f"Locked areas {area_list}.")
+            client.send_ooc(f"Locked {len(area_list)} areas.")
     except ValueError:
         raise ArgumentError("Target must be an abbreviation or number.")
     except (ClientError, AreaError):
@@ -100,7 +100,7 @@ def ooc_cmd_area_mute(client, arg):
             area.mute()
             area.broadcast_ooc("This area is now muted.")
         if len(area_list) > 0:
-            client.send_ooc(f"Made areas {area_list} muted.")
+            client.send_ooc(f"Made {len(area_list)} areas muted.")
     except ValueError:
         raise ArgumentError("Target must be an abbreviation or number.")
     except (ClientError, AreaError):
@@ -131,7 +131,7 @@ def ooc_cmd_area_unmute(client, arg):
             area.unmute()
             area.broadcast_ooc("This area is no longer muted.")
         if len(area_list) > 0:
-            client.send_ooc(f"Made areas {area_list} unmuted.")
+            client.send_ooc(f"Made {len(area_list)} areas unmuted.")
     except ValueError:
         raise ArgumentError("Target must be an abbreviation or number.")
     except (ClientError, AreaError):
@@ -178,7 +178,7 @@ def ooc_cmd_area_unlock(client, arg):
                 continue
             area.unlock()
         if len(area_list) > 0:
-            client.send_ooc(f"Unlocked areas {area_list}.")
+            client.send_ooc(f"Unlocked {len(area_list)} areas.")
     except ValueError:
         raise ArgumentError("Target must be an abbreviation or number.")
     except (ClientError, AreaError):
