@@ -960,7 +960,8 @@ def ooc_cmd_area_broadcast(client, arg):
         return
     try:
         broadcast_list = client.area.area_manager.get_areas_by_args(args)
-        client.area.broadcast_list = broadcast_list
+        # We use a copy of the list cuz otherwise clearing this fucking deletes all the areas. Nice.
+        client.area.broadcast_list = broadcast_list.copy()
         a_list = ", ".join([str(a.id) for a in client.area.broadcast_list])
         client.send_ooc(f"Area's broadcast list is now {a_list}")
     except ValueError:
