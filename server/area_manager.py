@@ -593,7 +593,8 @@ class AreaManager:
             arg = arg.strip()
             # "all" keyword includes all areas
             if arg.lower() == "all":
-                return self.areas
+                # MAKE SURE TO RETURN A COPY AND NOT A DIRECT REFERENCE OR YOU'RE GONNA BE IN A WORLD OF HURT
+                return self.areas.copy()
             # If arg is area range, e.g. 1-12, extend list by that range
             a_range = arg.split('-')
             if len(a_range) == 2 and a_range[0].strip().isnumeric() and a_range[1].strip().isnumeric():
