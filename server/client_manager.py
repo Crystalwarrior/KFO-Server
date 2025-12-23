@@ -2292,6 +2292,17 @@ class ClientManager:
         for client in self.server.client_manager.clients:
             if client.ipid == temp_ipid:
                 client.clientscon += 1
+        # 2.11 player list support
+        c.send_command("PR", c.id, 0)
+        for target in self.server.client_manager.clients:
+            if target.area.id == 0 and target.id != c.id:
+                target.send_command("PR", c.id, 0) #register new client to others in lobby
+
+                c.send_command("PR", target.id, 0) #register others in lobby to new client
+                c.send_command("PU", target.id, 0, target.name) #fetch names of others in lobby
+                c.send_command("PU", target.id, 1, target.char_name) #fetch chars of others in lobby
+                c.send_command("PU", target.id, 2, target.showname) #fetch shownames of others in lobby
+                c.send_command("PU", target.id, 3, target.area.id) #fetch area of others in lobby
         return c
 
     def remove_client(self, client):
@@ -2316,6 +2327,9 @@ class ClientManager:
                 c.clientscon -= 1
             if c.following == client:
                 c.unfollow()
+            # 2.11 player list support
+            if c.area.id == client.area.id:
+                c.send_command("PR", client.id, 1)
         self.clients.remove(client)
 
         # TODO: Maybe take into account than sending the "CU" packet can reveal your cover.
