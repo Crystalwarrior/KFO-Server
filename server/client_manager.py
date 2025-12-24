@@ -531,6 +531,11 @@ class ClientManager:
                 self.area,
                 message={"from": old_char, "to": new_char},
             )
+            # 2.11 player list support
+            for target in self.server.client_manager.clients:
+                if target.area.id == self.area.id:
+                    target.send_command("PU", self.id, 1, self.char_name)
+                    
             # Inform the CMs of character change
             self.area.send_owner_command(
                 "CT",
