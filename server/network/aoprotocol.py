@@ -1494,6 +1494,12 @@ class AOProtocol(asyncio.Protocol):
         ):
             additive = 0
 
+        # 2.11 player list support
+        for target in self.client.server.client_manager.clients:
+            if target.area.id == self.client.area.id:
+                target.send_command("PU", self.client.id, 2, self.client.showname)
+        self.client.send_command("PU", self.client.id, 2, self.client.showname)
+        
         self.client.area.send_ic(
             client=self.client,
             msg_type=msg_type,
@@ -1718,6 +1724,13 @@ class AOProtocol(asyncio.Protocol):
             args[1] = self.client.shake_message(args[1])
         if self.client.disemvowel:
             args[1] = self.client.disemvowel_message(args[1])
+        
+        # 2.11 player list support
+        for target in self.client.server.client_manager.clients:
+            if target.area.id == self.client.area.id:
+                target.send_command("PU", self.client.id, 0, self.client.name)
+        self.client.send_command("PU", self.client.id, 0, self.client.name)
+
         self.client.area.send_command("CT", name, args[1])
         self.client.area.send_owner_command(
             "CT", f"[{self.client.area.id}]{name}", args[1]
