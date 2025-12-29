@@ -2319,14 +2319,17 @@ class ClientManager:
                 client.clientscon += 1
         # 2.11 player list support
         c.send_command("PR", c.id, 0)
+        c.send_command("PU", c.id, 0, c.name)
         for target in self.server.client_manager.clients:
             if target.area.id == 0 and target.id != c.id:
                 target.send_command("PR", c.id, 0) #register new client to others in lobby
+                target.send_command("PU", c.id, 0, c.name) #register name of new client to others in lobby
 
                 c.send_command("PR", target.id, 0) #register others in lobby to new client
                 c.send_command("PU", target.id, 0, target.name) #fetch names of others in lobby
                 c.send_command("PU", target.id, 1, target.char_name) #fetch chars of others in lobby
-                c.send_command("PU", target.id, 2, target.showname) #fetch shownames of others in lobby
+                if target.showname != target.char_name:
+                    c.send_command("PU", target.id, 2, target.showname) #fetch shownames of others in lobby
                 c.send_command("PU", target.id, 3, target.area.id) #fetch area of others in lobby
         return c
 
