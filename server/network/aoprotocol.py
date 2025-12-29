@@ -1495,10 +1495,11 @@ class AOProtocol(asyncio.Protocol):
             additive = 0
 
         # 2.11 player list support
-        for target in self.client.server.client_manager.clients:
-            if target.area.id == self.client.area.id:
-                target.send_command("PU", self.client.id, 2, self.client.showname)
-        self.client.send_command("PU", self.client.id, 2, self.client.showname)
+        if self.client.showname != self.client.char_name:
+            for target in self.client.server.client_manager.clients:
+                if target.area.id == self.client.area.id:
+                    target.send_command("PU", self.client.id, 2, self.client.showname)
+            self.client.send_command("PU", self.client.id, 2, self.client.showname)
         
         self.client.area.send_ic(
             client=self.client,
