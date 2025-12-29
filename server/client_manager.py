@@ -1262,13 +1262,15 @@ class ClientManager:
                     target.send_command("PR", self.id, 0) # add self to new area to other clients
                     target.send_command("PU", self.id, 0, self.name) # send name to other clients
                     target.send_command("PU", self.id, 1, self.char_name) # send char id to other clients
-                    target.send_command("PU", self.id, 2, self.showname) # send showname to other clients
+                    if self.showname != self.char_name:
+                        target.send_command("PU", self.id, 2, self.showname) # send showname to other clients
                     target.send_command("PU", self.id, 3, self.area.id) # send area id to other clients
 
                     self.send_command("PR", target.id, 0) # add client from new area
                     self.send_command("PU", target.id, 0, target.name)
                     self.send_command("PU", target.id, 1, target.char_name)
-                    self.send_command("PU", target.id, 2, target.showname)
+                    if target.showname != target.char_name:
+                        self.send_command("PU", target.id, 2, target.showname)
                     self.send_command("PU", target.id, 3, target.area.id)
 
             self.send_command("PU", self.id, 3, self.area.id) # send area id to self
