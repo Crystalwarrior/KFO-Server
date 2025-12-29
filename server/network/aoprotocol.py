@@ -1409,7 +1409,7 @@ class AOProtocol(asyncio.Protocol):
                 # msg = "}}}[❗] {{{" + text
                 if whisper_clients is None:
                     # This also sends the message across the GM clients
-                    self.client.area.broadcast_ooc(f"[❗] [{self.client.id}] {self.client.showname} action:\n" + text)
+                    self.client.area.broadcast_action(self.client, text)
 
         # Check whether or not the reserved character for Emote Tags is in the message
         if "¨" in text:

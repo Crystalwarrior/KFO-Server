@@ -163,6 +163,8 @@ class ClientManager:
             self.viewing_hub_list = False
             # Whether or not the client used the /showname command
             self.used_showname_command = False
+            # if we're listening to OOC-broadcast actions
+            self.ooc_actions = True
 
             # Currently requested subtheme (DRO gamemode) of this client
             self.subtheme = ""

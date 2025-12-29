@@ -985,6 +985,29 @@ class Area:
             "CT", f"[{self.id}]" + self.server.config["hostname"], msg, "1"
         )
 
+    def broadcast_action(self, client, msg):
+        """
+        Broadcast an Action message to all clients in the area who are listening to actions.
+        :param msg: message
+        """
+        cmd = "CT"
+        msg = f"[❗] [{client.id}] {client.showname} action:\n{msg}"
+        for c in self.clients:
+            if not c.ooc_actions:
+                continue
+            c.send_command(cmd, self.server.config["hostname"], msg, "1")
+
+        for c in self.owners:
+            if c in self.clients:
+                continue
+            if not c.ooc_actions:
+                continue
+            if (
+                c.remote_listen == 3
+                or c.remote_listen == 2
+            ):
+                c.send_command(cmd, f"[{self.id}]" + self.server.config["hostname"], msg, "1")
+
     def send_ic(self,
                 client=None,
                 msg_type="1",

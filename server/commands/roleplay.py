@@ -37,6 +37,7 @@ __all__ = [
     "ooc_cmd_trigger",
     "ooc_cmd_format_timer",
     "ooc_cmd_timer_interval",
+    "ooc_cmd_ooc_actions",
 ]
 
 
@@ -187,7 +188,7 @@ def ooc_cmd_roll(client, arg):
     roll, num_dice, chosen_max, _modifiers, Sum = rtd(arg)
 
     client.area.broadcast_ooc(
-        f"{client.showname} rolled {roll} out of {chosen_max}."
+        f"[👉🎲] [{client.id}] {client.showname} rolled:\n {roll} out of {chosen_max}."
         + (f"\nThe total sum is {Sum}." if num_dice > 1 else "")
     )
     database.log_area(
@@ -213,7 +214,10 @@ def ooc_cmd_rollp(client, arg):
         c.send_ooc(
             f"[{client.area.id}]{client.showname} secretly rolled {roll} out of {chosen_max}."
         )
-
+    client.area.send_owner_command(
+        f"[👉🎲] [{client.id}] {client.showname} secretly rolled:\n {roll} out of {chosen_max}."
+        + (f"\nThe total sum is {Sum}." if num_dice > 1 else "")
+    )
     database.log_area(
         "rollp", client, client.area, message=f"{roll} out of {chosen_max}"
     )
@@ -1096,3 +1100,27 @@ def ooc_cmd_timer_interval(client, arg):
     if timer.set:
         client.send_timer_set_interval(args[0], timer)
     client.send_ooc(f"Timer {args[0]} interval is set to '{args[1]}'")
+
+def ooc_cmd_ooc_actions(client, arg):
+    """
+    Enable or disable IC actions being broadcast to OOC as well.
+    tog can be `on`, `off` or empty.
+    Usage: /ooc_actions [tog]
+    """
+    if len(arg.split()) > 1:
+        raise ArgumentError(
+            "This command can only take one argument ('on' or 'off') or no arguments at all!"
+        )
+    if arg:
+        if arg == "on":
+            client.ooc_actions = True
+        elif arg == "off":
+            client.ooc_actions = False
+        else:
+            raise ArgumentError("Invalid argument: {}".format(arg))
+    else:
+        client.ooc_actions = not client.ooc_actions
+    stat = "no longer see"
+    if client.ooc_actions:
+        stat = "now see"
+    client.send_ooc(f"You will {stat} actions in OOC.")
