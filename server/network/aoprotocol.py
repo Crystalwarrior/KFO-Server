@@ -1368,7 +1368,7 @@ class AOProtocol(asyncio.Protocol):
                     if showname != "" and showname != self.client.area.area_manager.char_list[cid]:
                         webname = f"{showname} ({webname})"
                     # you'll hate me for this
-                    text = (
+                    txt = (
                         msg.replace("}", "")
                         .replace("{", "")
                         .replace("`", "")
@@ -1381,26 +1381,27 @@ class AOProtocol(asyncio.Protocol):
                         .replace("\\f", "")
                     )
                     # escape chars
-                    text = text.replace(
+                    txt = txt.replace(
                         "@", "@\u200b"
                     )  # The only way to escape a Discord ping is a zero width space...
-                    text = text.replace("<num>", "\\#")
-                    text = text.replace("<and>", "&")
-                    text = text.replace("<percent>", "%")
-                    text = text.replace("<dollar>", "$")
-                    text = text.replace("*", "\\*")
-                    text = text.replace("_", "\\_")
+                    txt = txt.replace("<num>", "\\#")
+                    txt = txt.replace("<and>", "&")
+                    txt = txt.replace("<percent>", "%")
+                    txt = txt.replace("<dollar>", "$")
+                    txt = txt.replace("*", "\\*")
+                    txt = txt.replace("_", "\\_")
                     # String is empty if we're strippin
-                    if not text.strip():
+                    if not txt.strip():
                         # Discord blankpost
-                        text = "_ _"
+                        txt = "_ _"
                     self.server.bridgebot.queue_message(
-                        webname, text, self.client.char_name, anim
+                        webname, txt, self.client.char_name, anim
                     )
 
         # Check if the message can be considered to contain actions in it
-        if "*" in text or "[" in text or "|" in text or color == 3:
+        if text.lstrip().startswith("*") or "[" in text or "|" in text or color == 3:
             is_action = True
+            # * at the end is "correction", don't count it as action
             if "[" not in text and "|" not in text and color != 3 and text.count("*") == 1 and text.rstrip().endswith("*"):
                 is_action = False
 
