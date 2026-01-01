@@ -264,7 +264,7 @@ class ClientManager:
                         offset_pair_x = 0
                         offset_pair_y = 0
                         if len(args) > 20 and args[20]:
-                            offset = str(args[19]).replace('<and>', '&').split('&')
+                            offset = str(args[20]).replace('<and>', '&').split('&')
                             offset_pair_x = offset[0]
                             if len(offset) > 1:
                                 offset_pair_y = offset[1]
@@ -297,8 +297,8 @@ class ClientManager:
                             offset_pair_x_dro = 500
                             if offset_pair_x:
                                 offset_pair_x_dro = int((float(offset_pair_x) / 100) * 960 + 480) # other_offset
-                            pair_jsn_packet['data']['self_offset'] = self_offset_x
-                            pair_jsn_packet['data']['offset_pair'] = offset_pair_x
+                            pair_jsn_packet['data']['self_offset'] = self_offset_x_dro
+                            pair_jsn_packet['data']['offset_pair'] = offset_pair_x_dro
                             
                             # Send the result!
                             json_data = json.dumps(pair_jsn_packet)
