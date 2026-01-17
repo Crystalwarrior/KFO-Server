@@ -1022,7 +1022,10 @@ class ClientManager:
             if self not in self.area.clients:
                 self.area.new_client(self)
             if target_pos != "":
-                self.change_position(target_pos)
+                try:
+                    self.change_position(target_pos)
+                except ClientError:
+                    target_pos = ""
 
             # If we're using /evidence_present, reset it due to area change (evidence will be different most likely)
             self.presenting = 0
@@ -2178,7 +2181,7 @@ class ClientManager:
             Change the character's current position in the area.
             :param pos: position in area (Default value = '')
             """
-            if len(self.area.pos_lock) > 0 and not (pos in self.area.pos_lock):
+            if len(self.area.pos_lock) > 0 and not (pos in self.area.pos_lock) and pos != self.area.pos_dark:
                 poslist = ", ".join(str(l) for l in self.area.pos_lock)
                 raise ClientError(f"Invalid pos! Available pos are {poslist}.")
             if self.hidden_in is not None:
