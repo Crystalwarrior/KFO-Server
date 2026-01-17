@@ -1403,11 +1403,12 @@ def get_latest_area(client, char_id: int):
     char_folder = None
     if char_id in range(0, len(client.area.area_manager.char_list)):
         char_folder = client.area.area_manager.char_list[char_id]
-    if not char_folder:
+    if char_folder == None:
+        print(char_folder, ' ', char_id)
         client.send_ooc(f"Can't get latest area when spectating!")
         return None
     latest_area_id = client.area.area_manager.get_character_data(char_id, "latest_area", None)
-    if not latest_area_id:
+    if latest_area_id == None:
         client.send_ooc(f"{char_folder} has no latest occupied area defined!")
         return None
     target_area = None
@@ -1435,8 +1436,9 @@ def ooc_cmd_get_latest_area(client, arg):
         if len(targets) > 0:
             target_charid = targets[0].char_id
     else:
+        arg = arg.replace("\"", "").lower()
         for i in range(0, len(client.area.area_manager.char_list)):
-            if arg.lower() == client.area.area_manager.char_list[i].lower():
+            if arg == client.area.area_manager.char_list[i].lower():
                 target_charid = i
     area = get_latest_area(client, target_charid)
     if area:
@@ -1462,8 +1464,9 @@ def ooc_cmd_kick_to_latest_area(client, arg):
         if len(targets) > 0:
             target_charid = targets[0].char_id
     else:
+        arg = arg.replace("\"", "").lower()
         for i in range(0, len(client.area.area_manager.char_list)):
-            if arg.lower() == client.area.area_manager.char_list[i].lower():
+            if arg == client.area.area_manager.char_list[i].lower():
                 target_charid = i
         targets = client.server.client_manager.get_targets(
             client, TargetType.CHAR_NAME, client.area.area_manager.char_list[target_charid], True
