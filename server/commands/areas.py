@@ -825,7 +825,7 @@ def ooc_cmd_desc(client, arg):
             raise ClientError("You may not do that while spectating!")
         arg = arg.strip()
         if arg == "":
-            ooc_cmd_desc_clear(client)
+            ooc_cmd_desc_clear(client, "")
             return
         if client.area.dark:
             if not client.is_mod and not (client in client.area.owners):
