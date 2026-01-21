@@ -67,6 +67,7 @@ class TsuServer3:
             "effects",
             "expanded_desk_mods",
             "y_offset",
+            "custom_blips",
             "triplex",
             "typing_timer",
             "video_support",

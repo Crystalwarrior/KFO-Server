@@ -374,6 +374,8 @@ class AOProtocol(asyncio.Protocol):
         effect = ""
         pair_order = 0
         third_charid = -1
+        blipname = ""
+        slide = 0
         video = ""
         if self.validate_net_cmd(
             args,
@@ -595,6 +597,8 @@ class AOProtocol(asyncio.Protocol):
             self.ArgType.INT, # 24 # additive
             self.ArgType.STR, # 25 # effect
             self.ArgType.INT, # 26 # third_charid
+            self.ArgType.STR, # 27 # blipname
+            self.ArgType.INT, # 28 # slide
         ):
             # AO Golden validation monstrosity
             (
@@ -625,6 +629,8 @@ class AOProtocol(asyncio.Protocol):
                 additive,
                 effect,
                 third_charid,
+                blipname,
+                slide,
             ) = args
             try:
                 pair_args = charid_pair.split("^")
@@ -664,7 +670,9 @@ class AOProtocol(asyncio.Protocol):
             self.ArgType.INT, # 24 # additive
             self.ArgType.STR, # 25 # effect
             self.ArgType.INT, # 26 # third_charid
-            self.ArgType.STR_OR_EMPTY, # 27 # video
+            self.ArgType.STR, # 27 # blipname
+            self.ArgType.INT, # 28 # slide
+            self.ArgType.STR_OR_EMPTY, # 29 # video
         ):
             # KFO Client validation monstrosity
             (
@@ -695,6 +703,8 @@ class AOProtocol(asyncio.Protocol):
                 additive,
                 effect,
                 third_charid,
+                blipname,
+                slide,
                 video,
             ) = args
             try:
@@ -754,6 +764,7 @@ class AOProtocol(asyncio.Protocol):
             frames_realization = derelative(frames_realization)
             frames_sfx = derelative(frames_sfx)
             effect = derelative(effect)
+            blipname = derelative(blipname)
 
         if not self.client.is_mod and not (self.client in self.client.area.owners):
             if not self.client.area.blankposting_allowed:
@@ -1294,7 +1305,9 @@ class AOProtocol(asyncio.Protocol):
                         third_emote, # 32
                         third_offset, # 33
                         third_flip, # 33
-                        video, # 34
+                        blipname, #34
+                        slide, #35
+                        video, # 36
                     )
                 a_list = ", ".join([str(a.id) for a in target_area])
                 if not (self.client.area in target_area):
@@ -1337,6 +1350,8 @@ class AOProtocol(asyncio.Protocol):
                         third_emote,
                         third_offset,
                         third_flip,
+                        blipname,
+                        slide,
                         video,
                     )
                 self.client.send_ooc(f"Broadcasting to areas {a_list}")
@@ -1479,6 +1494,8 @@ class AOProtocol(asyncio.Protocol):
                         third_emote,
                         third_offset,
                         third_flip,
+                        blipname,
+                        slide,
                         video,
                     )
 
@@ -1527,6 +1544,8 @@ class AOProtocol(asyncio.Protocol):
             frames_sfx=frames_sfx,
             additive=additive,
             effect=effect,
+            blipname=blipname,
+            slide=slide,
             targets=whisper_clients,
             third_charid=third_charid,
             third_folder=third_folder,
@@ -1573,6 +1592,8 @@ class AOProtocol(asyncio.Protocol):
             third_emote,
             third_offset,
             third_flip,
+            blipname,
+            slide,
             video,
         )
 

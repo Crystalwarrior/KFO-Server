@@ -1039,7 +1039,9 @@ class Area:
                 frames_realization="",
                 frames_sfx="",
                 additive=0,
-                effect="", 
+                effect="",
+                blipname="",
+                slide=0,
                 targets=None,
                 third_charid=-1,
                 third_folder="",
@@ -1290,6 +1292,8 @@ class Area:
                            frames_sfx,
                            additive,
                            effect,
+                           blipname,
+                           slide,
                            third_charid,
                            third_folder,
                            third_emote,
@@ -1345,12 +1349,14 @@ class Area:
             frames_sfx,  # 27
             additive,  # 28
             effect,  # 29
-            third_charid, # 30
-            third_folder, # 31
-            third_emote, # 32
-            third_offset, # 33
-            third_flip, # 34
-            video, #35
+            blipname, #30
+            slide, #31
+            third_charid, # 32
+            third_folder, # 33
+            third_emote, # 34
+            third_offset, # 35
+            third_flip, # 36
+            video, #37
         )
         self.last_ic_message = args
 
@@ -1405,12 +1411,14 @@ class Area:
                 frames_sfx,  # 27
                 additive,  # 28
                 effect,  # 29
-                third_charid, # 30
-                third_folder, # 31
-                third_emote, # 32
-                third_offset, # 33
-                third_flip, # 34
-                video, # 35
+                blipname,  #30
+                slide,  #31
+                third_charid, # 32
+                third_folder, # 33
+                third_emote, # 34
+                third_offset, # 35
+                third_flip, # 36
+                video, # 37
             )
             if idx == -1:
                 # Add one statement at the very end.
