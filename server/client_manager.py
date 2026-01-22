@@ -533,6 +533,11 @@ class ClientManager:
                 self.area,
                 message={"from": old_char, "to": new_char},
             )
+            # 2.11 player list support
+            for target in self.server.client_manager.clients:
+                if target.area.id == self.area.id:
+                    target.send_command("PU", self.id, 1, self.char_name)
+                    
             # Inform the CMs of character change
             self.area.send_owner_command(
                 "CT",
@@ -1252,6 +1257,28 @@ class ClientManager:
             old_area = self.area
             self.set_area(area, target_pos)
             self.last_move_time = round(time.time() * 1000.0)
+
+            # 2.11 player list support
+            for target in self.server.client_manager.clients:
+                if target.area.id == old_area.id and target.id != self.id:
+                    self.send_command("PR", target.id, 1) # remove clients from previous area
+                    target.send_command("PR", self.id, 1) # remove self from previous area to other clients
+                if target.area.id == self.area.id and target.id != self.id:
+                    target.send_command("PR", self.id, 0) # add self to new area to other clients
+                    target.send_command("PU", self.id, 0, self.name) # send name to other clients
+                    target.send_command("PU", self.id, 1, self.char_name) # send char id to other clients
+                    if self.showname != self.char_name:
+                        target.send_command("PU", self.id, 2, self.showname) # send showname to other clients
+                    target.send_command("PU", self.id, 3, self.area.id) # send area id to other clients
+
+                    self.send_command("PR", target.id, 0) # add client from new area
+                    self.send_command("PU", target.id, 0, target.name)
+                    self.send_command("PU", target.id, 1, target.char_name)
+                    if target.showname != target.char_name:
+                        self.send_command("PU", target.id, 2, target.showname)
+                    self.send_command("PU", target.id, 3, target.area.id)
+
+            self.send_command("PU", self.id, 3, self.area.id) # send area id to self
 
             for c in self.server.client_manager.clients:
                 # If target c is following us
@@ -2297,6 +2324,20 @@ class ClientManager:
         for client in self.server.client_manager.clients:
             if client.ipid == temp_ipid:
                 client.clientscon += 1
+        # 2.11 player list support
+        c.send_command("PR", c.id, 0)
+        c.send_command("PU", c.id, 0, c.name)
+        for target in self.server.client_manager.clients:
+            if target.area.id == 0 and target.id != c.id:
+                target.send_command("PR", c.id, 0) #register new client to others in lobby
+                target.send_command("PU", c.id, 0, c.name) #register name of new client to others in lobby
+
+                c.send_command("PR", target.id, 0) #register others in lobby to new client
+                c.send_command("PU", target.id, 0, target.name) #fetch names of others in lobby
+                c.send_command("PU", target.id, 1, target.char_name) #fetch chars of others in lobby
+                if target.showname != target.char_name:
+                    c.send_command("PU", target.id, 2, target.showname) #fetch shownames of others in lobby
+                c.send_command("PU", target.id, 3, target.area.id) #fetch area of others in lobby
         return c
 
     def remove_client(self, client):
@@ -2321,6 +2362,9 @@ class ClientManager:
                 c.clientscon -= 1
             if c.following == client:
                 c.unfollow()
+            # 2.11 player list support
+            if c.area.id == client.area.id:
+                c.send_command("PR", client.id, 1)
         self.clients.remove(client)
 
         # TODO: Maybe take into account than sending the "CU" packet can reveal your cover.
