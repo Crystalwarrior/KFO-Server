@@ -1,16 +1,16 @@
-
 from server import commands
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
+
 
 class EvidenceList:
     """Contains a list of evidence items."""
 
     limit = 50
-    
+
     class Evidence:
         """Represents a single evidence item."""
 
-        def __init__(self, name, desc, image, pos, can_hide_in=False, show_in_dark=0, triggers = None):
+        def __init__(self, name, desc, image, pos, can_hide_in=False, show_in_dark=0, triggers=None):
             self.name = name
             self.desc = desc
             self.image = image
@@ -54,7 +54,7 @@ class EvidenceList:
 
             if len(area.owners) <= 0:
                 return
-            
+
             if trig not in self.triggers:
                 return
 
@@ -118,11 +118,7 @@ class EvidenceList:
             return True
         elif client.area.evidence_mod == "Mods" and not client.is_mod:
             return False
-        elif (
-            client.area.evidence_mod == "CM"
-            and client not in client.area.owners
-            and not client.is_mod
-        ):
+        elif client.area.evidence_mod == "CM" and client not in client.area.owners and not client.is_mod:
             return False
         return True
 
@@ -150,7 +146,7 @@ class EvidenceList:
         show_in_dark = 0
         matches = 0
         for line in lines:
-            cmd = line.strip(" ") # remove all whitespace
+            cmd = line.strip(" ")  # remove all whitespace
             if cmd.startswith("<") and cmd.endswith(">"):
                 args = cmd.strip("<>").split("=")
                 if len(args) < 2:
@@ -170,7 +166,7 @@ class EvidenceList:
         # Remvoes N lines, where N is how many <> we matched. Can't be more than 3.
         while matches > 0:
             # Truncates from the start of newline
-            desc = desc[desc.find("\n")+1:]
+            desc = desc[desc.find("\n") + 1 :]
             matches -= 1
         return desc, poses, can_hide_in, show_in_dark
 
@@ -191,9 +187,7 @@ class EvidenceList:
             if client.area.dark:
                 return
         if len(self.evidences) >= self.limit:
-            client.send_ooc(
-                f"You can't have more than {self.limit} evidence items at a time."
-            )
+            client.send_ooc(f"You can't have more than {self.limit} evidence items at a time.")
             return
         can_hide_in = False
         show_in_dark = 0
@@ -208,8 +202,7 @@ class EvidenceList:
                 if len(client.area.pos_lock) > 0 and client.pos in client.area.pos_lock:
                     pos = client.pos
 
-        self.evidences.append(self.Evidence(
-            name, desc, image, pos, can_hide_in, show_in_dark))
+        self.evidences.append(self.Evidence(name, desc, image, pos, can_hide_in, show_in_dark))
         id = len(self.evidences)
         # Inform the CMs of evidence manupulation
         client.area.send_owner_command(
@@ -281,10 +274,7 @@ class EvidenceList:
                     can_hide_in = int(evi.can_hide_in)
                     show_in_dark = int(evi.show_in_dark)
                     desc = f"<owner={evi.pos}>\n<can_hide_in={can_hide_in}>\n<show_in_dark={show_in_dark}>\n{evi.desc}"
-                evi_list.append(
-                    self.Evidence(evi.name, desc, evi.image,
-                                  evi.pos).to_tuple()
-                )
+                evi_list.append(self.Evidence(evi.name, desc, evi.image, evi.pos).to_tuple())
             elif self.can_see(self.evidences[i], client.pos):
                 # show_in_dark:
                 # 0 - Do not show evidence in dark areas.
@@ -315,8 +305,7 @@ class EvidenceList:
                 show_in_dark = int(evi["show_in_dark"])
             if "triggers" in evi:
                 triggers = evi["triggers"]
-            self.evidences.append(self.Evidence(
-                name, desc, image, pos, can_hide_in, show_in_dark, triggers))
+            self.evidences.append(self.Evidence(name, desc, image, pos, can_hide_in, show_in_dark, triggers))
 
     def export_evidence(self):
         return [e.to_dict() for e in self.evidences]
@@ -416,8 +405,7 @@ class EvidenceList:
                         'You entered a bad pos - evidence hidden! Make sure to have <owner=pos> at the top, where "pos" is the /pos this evidence should show up in. Put in "all" if you want it to show up in all pos, or "hidden" for no pos.'
                     )
                     pos = "hidden"
-            self.evidences[id] = self.Evidence(
-                name, desc, image, pos, can_hide_in, show_in_dark, evi.triggers)
+            self.evidences[id] = self.Evidence(name, desc, image, pos, can_hide_in, show_in_dark, evi.triggers)
             new_name = self.evidences[id].name
         else:
             # Are you serious? This is absolutely fucking mental.
