@@ -46,11 +46,11 @@ _V28 = _BASE + [
     ("nonint_pre", ArgType.INT),
     ("sfx_looping", ArgType.STR),
     ("screenshake", ArgType.INT),
-    ("frames_shake", ArgType.STR),
-    ("frames_realization", ArgType.STR),
-    ("frames_sfx", ArgType.STR),
+    ("frames_shake", ArgType.STR_OR_EMPTY),
+    ("frames_realization", ArgType.STR_OR_EMPTY),
+    ("frames_sfx", ArgType.STR_OR_EMPTY),
     ("additive", ArgType.INT),
-    ("effect", ArgType.STR),
+    ("effect", ArgType.STR_OR_EMPTY),
 ]
 
 # DRO 1.1.0: different layout after base
