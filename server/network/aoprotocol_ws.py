@@ -22,11 +22,10 @@ class AOProtocolWS(AOProtocol):
 
             """
             remote_address = self.ws.remote_address
-            if (remote_address[0] == "127.0.0.1"):
+            if remote_address[0] == "127.0.0.1":
                 # See if proxy
                 try:
-                    remote_address = (
-                        self.ws.request_headers['X-Forwarded-For'], 0)
+                    remote_address = (self.ws.request_headers["X-Forwarded-For"], 0)
                 except Exception:
                     pass
             info = {"peername": remote_address}
@@ -83,7 +82,7 @@ def new_websocket_client(server):
 
     """
 
-    async def func(websocket, _):
+    async def func(websocket):
         client = AOProtocolWS(server, websocket)
         while client.ws_connected:
             await client.ws_handle()

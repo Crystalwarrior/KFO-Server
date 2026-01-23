@@ -4,8 +4,8 @@ import os
 import yaml
 
 from server import database
-from server.constants import TargetType, derelative, contains_URL
-from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
+from server.constants import TargetType, derelative
+from server.exceptions import ClientError, ArgumentError, AreaError
 
 from . import mod_only
 
@@ -49,9 +49,7 @@ def ooc_cmd_currentmusic(client, arg):
         )
     else:
         client.send_ooc(
-            "The current music is '{}' and was played by {}.".format(
-                client.area.music, client.area.music_player
-            )
+            "The current music is '{}' and was played by {}.".format(client.area.music, client.area.music_player)
         )
 
 
@@ -88,13 +86,9 @@ def ooc_cmd_jukebox_toggle(client, arg):
     client.area.jukebox = not client.area.jukebox
     client.area.jukebox_votes = []
     client.area.broadcast_ooc(
-        "{} [{}] has set the jukebox to {}.".format(
-            client.showname, client.id, client.area.jukebox
-        )
+        "{} [{}] has set the jukebox to {}.".format(client.showname, client.id, client.area.jukebox)
     )
-    database.log_area(
-        "jukebox_toggle", client, client.area, message=client.area.jukebox
-    )
+    database.log_area("jukebox_toggle", client, client.area, message=client.area.jukebox)
 
 
 @mod_only(area_owners=True)
@@ -108,20 +102,15 @@ def ooc_cmd_jukebox_skip(client, arg):
     if not client.area.jukebox:
         raise ClientError("This area does not have a jukebox.")
     if len(client.area.jukebox_votes) == 0:
-        raise ClientError(
-            "There is no song playing right now, skipping is pointless.")
+        raise ClientError("There is no song playing right now, skipping is pointless.")
     client.area.start_jukebox()
     if len(client.area.jukebox_votes) == 1:
         client.area.broadcast_ooc(
-            "{} [{}] has forced a skip, restarting the only jukebox song.".format(
-                client.showname, client.id
-            )
+            "{} [{}] has forced a skip, restarting the only jukebox song.".format(client.showname, client.id)
         )
     else:
         client.area.broadcast_ooc(
-            "{} [{}] has forced a skip to the next jukebox song.".format(
-                client.showname, client.id
-            )
+            "{} [{}] has forced a skip to the next jukebox song.".format(client.showname, client.id)
         )
     database.log_area("jukebox_skip", client, client.area)
 
@@ -172,8 +161,7 @@ def ooc_cmd_jukebox(client, arg):
             if total == 0:
                 message += "-- CHANCE: 100"
             else:
-                message += "-- CHANCE: " + \
-                    str(round(chance[song] / total * 100))
+                message += "-- CHANCE: " + str(round(chance[song] / total * 100))
 
         client.send_ooc(f"The jukebox has the following songs in it:{message}")
 
@@ -185,8 +173,7 @@ def ooc_cmd_play(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError("You must specify a song.")
-    client.change_music(arg, client.char_id, "", 2,
-                        True)  # looped change music
+    client.change_music(arg, client.char_id, "", 2, True)  # looped change music
 
 
 def ooc_cmd_play_once(client, arg):
@@ -196,8 +183,7 @@ def ooc_cmd_play_once(client, arg):
     """
     if len(arg) == 0:
         raise ArgumentError("You must specify a song.")
-    client.change_music(arg, client.char_id, "", 2,
-                        False)  # non-looped change music
+    client.change_music(arg, client.char_id, "", 2, False)  # non-looped change music
 
 
 @mod_only()
@@ -209,9 +195,7 @@ def ooc_cmd_blockdj(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target. Use /blockdj <id>.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
         raise ArgumentError("You must enter a number. Use /blockdj <id>.")
     if not targets:
@@ -233,9 +217,7 @@ def ooc_cmd_unblockdj(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target. Use /unblockdj <id>.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
         raise ArgumentError("You must enter a number. Use /unblockdj <id>.")
     if not targets:
@@ -259,14 +241,14 @@ def ooc_cmd_musiclists(client, arg):
         try:
             if F.lower().endswith(".yaml"):
                 musiclist_read_only.append(F[:-5])
-        except:
+        except Exception:
             continue
 
     for F in os.listdir("storage/musiclists/"):
         try:
             if F.lower().endswith(".yaml"):
                 musiclist_editable.append(F[:-5])
-        except:
+        except Exception:
             continue
 
     musiclist_read_only.sort()
@@ -353,8 +335,7 @@ def ooc_cmd_hub_musiclist(client, arg):
                 client.area.area_manager.load_music(f"storage/musiclists/{arg}.yaml")
             client.area.area_manager.music_ref = arg
             client.send_ooc(f"Loading hub musiclist {arg}...")
-        client.server.client_manager.refresh_music(
-            client.area.area_manager.clients)
+        client.server.client_manager.refresh_music(client.area.area_manager.clients)
     except AreaError:
         raise
     except Exception:
@@ -368,14 +349,11 @@ def ooc_cmd_random_music(client, arg):
     """
     songs = []
     for c in client.local_music_list:
-        if "category" in c and (
-            arg == "" or c["category"].strip("==").lower() == arg.lower()
-        ):
+        if "category" in c and (arg == "" or c["category"].strip("==").lower() == arg.lower()):
             if "songs" in c:
                 songs = songs + c["songs"]
     if len(songs) <= 0:
-        raise ArgumentError(
-            "Could not find a single song that fit the criteria!")
+        raise ArgumentError("Could not find a single song that fit the criteria!")
     song_name = songs[random.randint(0, len(songs) - 1)]["name"]
     client.change_music(song_name, client.char_id, "", 2)
 
@@ -383,19 +361,15 @@ def ooc_cmd_random_music(client, arg):
 def musiclist_rebuild(musiclist, path):
     prepath = ""
     for item in musiclist:
-        if (
-            "use_unique_folder" in item
-            and item["use_unique_folder"] is True
-        ):
-            prepath = os.path.splitext(
-                os.path.basename(f"storage/musiclists/{path}"))[0] + "/"
+        if "use_unique_folder" in item and item["use_unique_folder"] is True:
+            prepath = os.path.splitext(os.path.basename(f"storage/musiclists/{path}"))[0] + "/"
 
         if "category" not in item:
             continue
 
         for song in item["songs"]:
             song["name"] = prepath + song["name"]
-            
+
     return musiclist
 
 
@@ -443,9 +417,9 @@ def ooc_cmd_musiclist_save(client, arg):
     if os.path.isfile(f"storage/musiclists/{name}.yaml") and len(args) > 2 and args[1].lower() == "read_only":
         try:
             os.remove(f"storage/musiclists/{name}.yaml")
-        except:
+        except OSError:
             raise AreaError(f"{args[0]} hasn't been removed from write and read folder!")
-        
+
     with open(filepath, "w", encoding="utf-8") as yaml_save:
         yaml.dump(musiclist, yaml_save)
     client.send_ooc(f"Musiclist '{name}' saved on server list!")
@@ -458,22 +432,20 @@ def ooc_cmd_musiclist_remove(client, arg):
     Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>
     """
     if arg == "":
-        client.send_ooc(
-            "Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>"
-        )
+        client.send_ooc("Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>")
         return
 
     args = shlex.split(arg)
     if len(args) != 3:
-        client.send_ooc(
-            "Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>"
-        )
+        client.send_ooc("Usage: /musiclist_remove <local/area/hub> <Category> <MusicName>")
         return
 
     if args[0] not in ["local", "area", "hub"]:
-        client.send_ooc("You can add a song if musiclist is loaded in local or in area or in hub.\nUsage: /musiclist_add <local/area/hub> <Category> <MusicName>")
+        client.send_ooc(
+            "You can add a song if musiclist is loaded in local or in area or in hub.\nUsage: /musiclist_add <local/area/hub> <Category> <MusicName>"
+        )
         return
-    
+
     if args[0] == "local":
         targets = [client]
         musiclist = client.music_list
@@ -489,7 +461,7 @@ def ooc_cmd_musiclist_remove(client, arg):
             return
         targets = client.area.area_manager.clients
         musiclist = client.area.area_manager.music_list
-        
+
     if musiclist == []:
         client.send_ooc("You cannot remove a song, if there aren't songs in the musiclist.")
         return
@@ -507,10 +479,7 @@ def ooc_cmd_musiclist_remove(client, arg):
 
     category_id = categories.index(args[1])
 
-    songs = [
-        musiclist[category_id]["songs"][i]["name"]
-        for i in range(0, len(musiclist[category_id]["songs"]))
-    ]
+    songs = [musiclist[category_id]["songs"][i]["name"] for i in range(0, len(musiclist[category_id]["songs"]))]
 
     if args[2] not in songs:
         client.send_ooc("Song has not been found!")
@@ -530,7 +499,7 @@ def ooc_cmd_musiclist_remove(client, arg):
     else:
         path = client.area.area_manager.music_ref
         client.area.area_manager.music_list = musiclist_rebuild(musiclist, path)
-        
+
     client.server.client_manager.refresh_music(targets, True)
     client.send_ooc(f"'{args[2]}' song has been removed to '{path}' musiclist.")
 
@@ -543,24 +512,20 @@ def ooc_cmd_musiclist_add(client, arg):
     Usage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]
     """
     if arg == "":
-        client.send_ooc(
-            "Usage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]"
-        )
+        client.send_ooc("Usage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]")
         return
 
     args = shlex.split(arg)
     if len(args) < 3:
-        client.send_ooc(
-            "Usage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]"
-        )
+        client.send_ooc("Usage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]")
         return
-    
+
     if args[0] not in ["local", "area", "hub"]:
         client.send_ooc(
             "You can add a song if musiclist is loaded in local or in area or in hub.\nUsage: /musiclist_add <local/area/hub> <Category> <MusicName> [Length] [Path]"
         )
         return
-    
+
     if args[0] == "local":
         targets = [client]
         musiclist = client.music_list
@@ -576,7 +541,7 @@ def ooc_cmd_musiclist_add(client, arg):
             return
         targets = client.area.area_manager.clients
         musiclist = client.area.area_manager.music_list
-        
+
     if musiclist == []:
         musiclist.append({})
         musiclist[0]["use_unique_folder"] = False
@@ -586,7 +551,7 @@ def ooc_cmd_musiclist_add(client, arg):
             client.area.music_ref = "unsaved"
         else:
             client.area.area_manager.music_ref = "unsaved"
-             
+
     categories = []
     for i in range(0, len(musiclist)):
         if "category" in musiclist[i]:
@@ -606,8 +571,8 @@ def ooc_cmd_musiclist_add(client, arg):
     song_id = len(musiclist[category_id]["songs"]) - 1
 
     name = args[2]
-    if not name.endswith(('.mp3', '.ogg', '.opus', '.wav', '.m4a')):
-        name += '.music'
+    if not name.endswith((".mp3", ".ogg", ".opus", ".wav", ".m4a")):
+        name += ".music"
     musiclist[category_id]["songs"][song_id]["name"] = name
 
     length = -1
@@ -631,6 +596,6 @@ def ooc_cmd_musiclist_add(client, arg):
     else:
         path = client.area.area_manager.music_ref
         client.area.area_manager.music_list = musiclist_rebuild(musiclist, path)
-                
+
     client.server.client_manager.refresh_music(targets, True)
     client.send_ooc(f"'{args[2]}' song has been added to '{path}' musiclist.")

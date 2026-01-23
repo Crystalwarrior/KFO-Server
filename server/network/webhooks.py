@@ -35,7 +35,7 @@ class Webhooks:
         data = {}
         data["content"] = message
         data["avatar_url"] = avatar_url
-        data["username"] = username if username is not None else "tsuserver webhook"
+        data["username"] = username if username is not None else "KFO-Server webhook"
         if embed is True:
             data["embeds"] = []
             embed = {}
@@ -43,9 +43,7 @@ class Webhooks:
             embed["title"] = title
             embed["color"] = color
             data["embeds"].append(embed)
-        result = requests.post(
-            url, data=json.dumps(data), headers={"Content-Type": "application/json"}
-        )
+        result = requests.post(url, data=json.dumps(data), headers={"Content-Type": "application/json"})
         try:
             result.raise_for_status()
         except requests.exceptions.HTTPError as err:
@@ -53,9 +51,7 @@ class Webhooks:
         else:
             database.log_misc(
                 "webhook.ok",
-                data="successfully delivered payload, code {}".format(
-                    result.status_code
-                ),
+                data="successfully delivered payload, code {}".format(result.status_code),
             )
 
     def modcall(self, char, ipid, area, reason=None):
@@ -97,19 +93,18 @@ class Webhooks:
         is_enabled = self.server.config["login_webhook"]["enabled"]
         username = self.server.config["login_webhook"]["username"]
         avatar_url = self.server.config["login_webhook"]["avatar_url"]
-        
+
         if not is_enabled:
             return
 
         message = f"{client.name} ({client.ipid}) (hdid: {client.hdid}) has logged in as mod profile: {loginprofile}"
 
-        self.send_webhook(username=username,
-                          avatar_url=avatar_url, message=message)
+        self.send_webhook(username=username, avatar_url=avatar_url, message=message)
 
     def needcall(self, client=None, reason=None):
         if "need_webhook" not in self.server.config:
             return
-            
+
         is_enabled = self.server.config["need_webhook"]["enabled"]
         username = self.server.config["need_webhook"]["username"]
         avatar_url = self.server.config["need_webhook"]["avatar_url"]
@@ -150,19 +145,10 @@ class Webhooks:
 
         message = f"{char} ({ipid})" if char is not None else str(ipid)
         message += " was kicked"
-        message += (
-            f" by {client.name} ({client.ipid})"
-            if client is not None
-            else " from the server"
-        )
-        message += (
-            f" with reason: {reason}"
-            if reason.strip() != ""
-            else " (no reason provided)."
-        )
+        message += f" by {client.name} ({client.ipid})" if client is not None else " from the server"
+        message += f" with reason: {reason}" if reason.strip() != "" else " (no reason provided)."
 
-        self.send_webhook(username=username,
-                          avatar_url=avatar_url, message=message)
+        self.send_webhook(username=username, avatar_url=avatar_url, message=message)
 
     def ban(
         self,
@@ -181,26 +167,13 @@ class Webhooks:
         if not is_enabled:
             return
         message = f"{char} ({ipid})" if char is not None else str(ipid)
-        message += (
-            f" (hdid: {hdid}) was hardware-banned"
-            if hdid is not None
-            else " was banned"
-        )
-        message += (
-            f" by {client.name} ({client.ipid})"
-            if client is not None
-            else " from the server"
-        )
+        message += f" (hdid: {hdid}) was hardware-banned" if hdid is not None else " was banned"
+        message += f" by {client.name} ({client.ipid})" if client is not None else " from the server"
         message += f" with reason: {reason}" if reason.strip() != "" else ""
         message += f" (Ban ID: {ban_id})."
-        message += (
-            f" It will expire {unban_date}"
-            if unban_date is not None
-            else " It is a permanent ban."
-        )
+        message += f" It will expire {unban_date}" if unban_date is not None else " It is a permanent ban."
 
-        self.send_webhook(username=username,
-                          avatar_url=avatar_url, message=message)
+        self.send_webhook(username=username, avatar_url=avatar_url, message=message)
 
     def unban(self, ban_id, client=None):
         is_enabled = self.server.config["unban_webhook"]["enabled"]
@@ -211,11 +184,6 @@ class Webhooks:
             return
 
         message = f"Ban ID {ban_id} was revoked"
-        message += (
-            f" by {client.name} ({client.ipid})."
-            if client is not None
-            else " by the server."
-        )
+        message += f" by {client.name} ({client.ipid})." if client is not None else " by the server."
 
-        self.send_webhook(username=username,
-                          avatar_url=avatar_url, message=message)
+        self.send_webhook(username=username, avatar_url=avatar_url, message=message)

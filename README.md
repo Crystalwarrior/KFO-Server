@@ -3,6 +3,42 @@
 
 KFO-Server is the official Python-based server for Attorney Online, forked from tsuserver3.
 
+If you are looking to use KFO-Server to set up a server, see [Server setup](#server-setup) below.
+
+## Development setup
+
+To set up KFO-Server for development, follow these instructions.
+
+First, install dependencies:
+
+```bash
+uv sync
+```
+
+Then you can run the server using uv:
+
+```bash
+uv run python start_server.py
+```
+
+### Run linter
+
+```(bash)
+uv run ruff check .
+```
+
+### Run tests
+
+```(bash)
+uv run tox
+```
+
+### Run formatter
+
+```(bash)
+uv run ruff format .
+```
+
 ## Server setup
 
 In order to set up the server, you must follow these instructions. This assumes you are familiar with using a terminal.
@@ -22,42 +58,21 @@ If you don't want to use Git, you can download the latest zip of KFO-Server [her
 
 ### Install dependencies
 
-In order to install dependencies, you will need to open a terminal.
-
-On Windows, you can do this by pressing Win+R, typing in `cmd`, and pressing Enter.
-On Linux, you can do this by pressing Ctrl+Alt+T.
-
-You should then navigate to the folder where the server is located.
-
-Take note that depending on your operating system, the command for python may be python3 or python.
-You should also verify the version by running `python --version` or `python3 --version`.
-
-First, we need to create the virtual environment. This can be done by running the following command:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run:
 
 ```bash
-python -m venv venv
+uv sync
 ```
 
-Then, we need to activate the virtual environment.
-If you're on a unix system (bash or similar), you can run the following command:
+This will create a virtual environment and install all dependencies.
 
-```bash
-./venv/bin/pip install -r requirements.txt
-```
-
-If you're on Windows (cmd), you may have to do this instead:
-
-```batch
-venv\Scripts\pip install -r requirements.txt
-```
-
-### Configure tsuserver
+### Configure KFO-Server
 
 * Copy `config_sample` to `config`
 * Edit the values in the `.yaml` files to your liking.
 * Be sure to check your YAML file for syntax errors. Use this website: <http://www.yamllint.com/>
   * *Use spaces only; do not use tabs.*
-* You don't need to copy characters into the `characters` folder *unless* you specifically chose to disable iniswapping in an area (in `areas.yaml`). In this case, all tsuserver needs to know is the `char.ini` of each character. It doesn't need sprites.
+* You don't need to copy characters into the `characters` folder *unless* you specifically chose to disable iniswapping in an area (in `areas.yaml`). In this case, all KFO-Server needs to know is the `char.ini` of each character. It doesn't need sprites.
 
 ### Run
 
@@ -70,7 +85,7 @@ To stop the server, press Ctrl+C in the terminal.
 
 You can also use docker to run KFO-server. First you need to install [Docker](https://get.docker.com/) and [Docker Compose](https://docs.docker.com/compose/install/).
 
-Once you have everything configured, do `docker-compose up`. It will build the image and start tsuserver up for you. If you accidentally restart the server, the container will automatically start back up. If you're not understanding why it's starting, try starting it up manually:
+Once you have everything configured, do `docker-compose up`. It will build the image and start KFO-Server up for you. If you accidentally restart the server, the container will automatically start back up. If you're not understanding why it's starting, try starting it up manually:
 
 ## Pro Tips
 
@@ -82,6 +97,6 @@ Once you have everything configured, do `docker-compose up`. It will build the i
 
 ## License
 
-This server is licensed under the AGPLv3 license. In short, if you use a modified version of tsuserver3, you *must* distribute its source licensed under the AGPLv3 as well, and notify your users where the modified source may be found. The main difference between the AGPL and the GPL is that for the AGPL, network use counts as distribution. If you do not accept these terms, you should use [serverD](https://github.com/Attorney-Online-Engineering-Task-Force/serverD), which uses GPL rather than AGPL.
+This server is licensed under the AGPLv3 license. In short, if you use a modified version of KFO-Server, you *must* distribute its source licensed under the AGPLv3 as well, and notify your users where the modified source may be found. The main difference between the AGPL and the GPL is that for the AGPL, network use counts as distribution. If you do not accept these terms, you should use [serverD](https://github.com/Attorney-Online-Engineering-Task-Force/serverD), which uses GPL rather than AGPL.
 
 See the [LICENSE](LICENSE.md) file for more information.

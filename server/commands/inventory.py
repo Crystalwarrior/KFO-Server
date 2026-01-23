@@ -1,11 +1,8 @@
 import shlex
-import yaml
-import os
 
-import re
 
 from server import database
-from server.constants import TargetType, derelative
+from server.constants import TargetType
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 from . import mod_only
@@ -28,7 +25,7 @@ def get_inventory(evi_list, arg):
             # 0 = name
             # 1 = desc
             # 2 = image
-            evi_msg = f"\n💼[{i+1}]: '{evi[0]}'"  # (🖼️{evi[2]})
+            evi_msg = f"\n💼[{i + 1}]: '{evi[0]}'"  # (🖼️{evi[2]})
             if arg == "" or arg.lower() in evi_msg.lower():
                 msg += evi_msg
         msg += "\n\n|| Use /inventory [evi_name/id] to read specific evidence. ||"
@@ -42,10 +39,8 @@ def get_inventory(evi_list, arg):
                 evidence = evi
                 break
         if evidence is None:
-            raise AreaError(
-                f"Target evidence not found! (/inventory {arg})"
-            )
-        msg = f"==💼[{i+1}]: '{evidence[0]}=="
+            raise AreaError(f"Target evidence not found! (/inventory {arg})")
+        msg = f"==💼[{i + 1}]: '{evidence[0]}=="
         msg += f"\n🖼️Image: {evidence[2]}"
         msg += f"\n📃Desc:\n{evidence[1]}"
         msg += f"\n\n|| Use /inventory_drop {i} to drop this into the area ||"
@@ -86,12 +81,8 @@ def ooc_cmd_inventory_drop(client, arg):
                 evidence = evi
                 break
         if evidence is None:
-            raise AreaError(
-                f"Target evidence not found! (/inventory_drop {arg})"
-            )
-        client.area.evi_list.add_evidence(
-            client, evidence[0], evidence[1], evidence[2]
-        )
+            raise AreaError(f"Target evidence not found! (/inventory_drop {arg})")
+        client.area.evi_list.add_evidence(client, evidence[0], evidence[1], evidence[2])
         client.remove_inventory_evidence(i)
         client.area.broadcast_evidence_list()
         msg = f"You drop '{evidence[0]}' evidence into [{client.id}] {client.area.name}."
@@ -104,9 +95,7 @@ def ooc_cmd_inventory_drop(client, arg):
 
 def get_inventory_target(client, arg):
     if arg.isnumeric():
-        target = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        target = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
         if target:
             target = target[0].char_id
         else:
@@ -115,7 +104,7 @@ def get_inventory_target(client, arg):
     else:
         try:
             target = client.area.area_manager.get_char_id_by_name(arg)
-        except (ServerError):
+        except ServerError:
             raise
     return target
 
@@ -129,19 +118,17 @@ def ooc_cmd_inventory_get(client, arg):
     try:
         # Get the user input
         args = shlex.split(arg)
-        
+
         target = get_inventory_target(client, args.pop(0))
-                
+
         inventory = client.area.area_manager.get_character_data(target, "inventory", "")
         charname = client.area.area_manager.char_list[target]
         inventory_list = get_inventory(inventory, " ".join(args))
         msg = f"==Evidence in '{charname}' inventory==\n{inventory_list}"
         client.send_ooc(msg)
-        database.log_area(
-            "inventory.get", client, client.area, message=charname
-        )
+        database.log_area("inventory.get", client, client.area, message=charname)
     except ValueError as ex:
-        client.send_ooc(f'{ex} (/inventory_get {arg})')
+        client.send_ooc(f"{ex} (/inventory_get {arg})")
         return
 
 
@@ -154,13 +141,14 @@ def ooc_cmd_inventory_add(client, arg):
     try:
         # Get the user input
         args = shlex.split(arg)
-        
+
         target = get_inventory_target(client, args.pop(0))
 
         max_args = 3
         if len(args) > max_args:
             raise ArgumentError(
-                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/inventory_add {arg})")
+                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/inventory_add {arg})"
+            )
         # fill the rest of it with asterisk to fill to max_args
         args = args + ([""] * (max_args - len(args)))
         if args[0] == "":
@@ -170,7 +158,7 @@ def ooc_cmd_inventory_add(client, arg):
         if args[2] == "":
             args[2] = "empty.png"
     except ValueError as ex:
-        client.send_ooc(f'{ex} (/inventory_add {arg})')
+        client.send_ooc(f"{ex} (/inventory_add {arg})")
         return
 
     inventory = client.area.area_manager.get_character_data(target, "inventory", list())
@@ -191,10 +179,11 @@ def ooc_cmd_inventory_remove(client, arg):
         target = get_inventory_target(client, args.pop(0))
         if len(args) > 1:
             raise ArgumentError(
-                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/inventory_remove {arg})")
+                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/inventory_remove {arg})"
+            )
 
         inventory = client.area.area_manager.get_character_data(target, "inventory", list())
-        
+
         arg = " ".join(args)
         evidence = None
         for i, evi in enumerate(inventory):
@@ -202,13 +191,11 @@ def ooc_cmd_inventory_remove(client, arg):
                 evidence = evi
                 break
         if evidence is None:
-            raise AreaError(
-                f"Target evidence not found! (/inventory_remove {arg})"
-            )
+            raise AreaError(f"Target evidence not found! (/inventory_remove {arg})")
         inventory.pop(i)
         client.area.area_manager.set_character_data(target, "inventory", inventory)
     except ValueError as ex:
-        client.send_ooc(f'{ex} (/inventory_remove {arg})')
+        client.send_ooc(f"{ex} (/inventory_remove {arg})")
         return
 
 
@@ -234,11 +221,12 @@ def ooc_cmd_inventory_edit(client, arg):
         max_args = 3
         if len(args) > max_args:
             raise ArgumentError(
-                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/inventory_edit {arg})")
+                f"Too many arguments! Make sure to surround your args in \"\"'s if there's spaces. (/inventory_edit {arg})"
+            )
         # fill the rest of it with asterisk to fill to max_args
         args = args + (["*"] * (max_args - len(args)))
     except ValueError as ex:
-        client.send_ooc(f'{ex} (/inventory_edit {arg})')
+        client.send_ooc(f"{ex} (/inventory_edit {arg})")
         return
 
     try:
@@ -249,17 +237,14 @@ def ooc_cmd_inventory_edit(client, arg):
                 evidence = evi
                 break
         if evidence is None:
-            raise AreaError(
-                f"Target evidence not found! (/inventory_edit {arg})"
-            )
+            raise AreaError(f"Target evidence not found! (/inventory_edit {arg})")
         evi_name = evidence[0]
         inventory[i] = [args[0], args[1], args[2]]
         client.area.area_manager.set_character_data(target, "inventory", inventory)
         database.log_area("inventory.edit", client, client.area)
         charname = client.area.area_manager.char_list[target]
         if args[0] != "*" and target_evi != args[0]:
-            client.send_ooc(
-                f"You have edited evidence '{evi_name}' to '{args[0]}' in {charname}'s inventory.")
+            client.send_ooc(f"You have edited evidence '{evi_name}' to '{args[0]}' in {charname}'s inventory.")
         else:
             client.send_ooc(f"You have edited evidence '{evi_name}' in {charname}'s inventory.")
     except ValueError:

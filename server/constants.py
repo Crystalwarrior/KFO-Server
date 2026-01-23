@@ -22,10 +22,10 @@ class MusicEffect(IntFlag):
 
 
 class ReportCardReason(IntFlag):
-    Nothing = 0,
-    Blackout = 1,
-    PendingLook = 2,
-    Blinded = 3,
+    Nothing = 0
+    Blackout = 1
+    PendingLook = 2
+    Blinded = 3
     NoPlayerList = 4
 
 
@@ -70,8 +70,7 @@ def censor(text, censor_list=[], replace="*", whole_words=True):
     if whole_words:
         regex = r"\b%s\b"
     for word in censor_list:
-        text = re.sub(regex % word, len(word) * replace,
-                      text, flags=re.IGNORECASE)
+        text = re.sub(regex % word, len(word) * replace, text, flags=re.IGNORECASE)
     return text
 
 
@@ -86,31 +85,19 @@ def contains_URL(sample):
 
 
 def encode_ao_packet(params):
+    def escape(s):
+        return str(s).replace("#", "<num>").replace("%", "<percent>").replace("$", "<dollar>").replace("&", "<and>")
+
     new_params = []
     for arg in params:
         if type(arg) is tuple:
-            encoded = []
-            for tup in arg:
-                encoded.append(
-                    str(tup)
-                    .replace("#", "<num>")
-                    .replace("%", "<percent>")
-                    .replace("$", "<dollar>")
-                    .replace("&", "<and>")
-                )
-            new_params.append(tuple(encoded))
+            new_params.append(tuple(escape(tup) for tup in arg))
         else:
-            new_params.append(
-                str(arg)
-                .replace("#", "<num>")
-                .replace("%", "<percent>")
-                .replace("$", "<dollar>")
-                .replace("&", "<and>")
-            )
+            new_params.append(escape(arg))
     return new_params
 
+
 def derelative(sample):
-    while '../' in sample or '/..' in sample or '..\\' in sample or '\\..' in sample:
-        sample = sample.replace(
-                "../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
+    while "../" in sample or "/.." in sample or "..\\" in sample or "\\.." in sample:
+        sample = sample.replace("../", "").replace("/..", "").replace("..\\", "").replace("\\..", "")
     return sample

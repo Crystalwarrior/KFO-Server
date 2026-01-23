@@ -1,66 +1,24 @@
-import sys
-import subprocess
 import os
+import shutil
 
-
-# Install dependencies in case one is missing
-def check_deps():
-    py_version = sys.version_info
-    if py_version.major < 3 or (py_version.major == 3 and py_version.minor < 7):
-        print(
-            "tsuserver3 requires at least Python 3.7! Your version: {}.{}".format(
-                py_version.major, py_version.minor
-            )
-        )
-        sys.exit(1)
-
-    try:
-        import oyaml
-        import websockets
-        import arrow
-        import pytimeparse
-        import geoip2
-        import discord
-        import stun
-    except ModuleNotFoundError:
-        print("Installing dependencies for you...")
-        try:
-            subprocess.check_call(
-                [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "install",
-                    "-r",
-                    "requirements.txt",
-                ]
-            )
-            print(
-                "If an import error occurs after the installation, try "
-                "restarting the server."
-            )
-        except subprocess.CalledProcessError:
-            print(
-                "Couldn't install it for you, because you don't have pip, "
-                "or another error occurred."
-            )
+from server.kfoserver import KFOServer
 
 
 def main():
-    from server.tsuserver import TsuServer3
+    if not os.path.exists("config"):
+        print("Config folder not found, copying from config_sample...")
+        shutil.copytree("config_sample", "config")
 
-    server = TsuServer3()
+    server = KFOServer()
     server.start()
 
 
 if __name__ == "__main__":
-    print("tsuserver3 - an Attorney Online server")
+    print("KFO-Server - an Attorney Online server")
     try:
-        check_deps()
         main()
     except KeyboardInterrupt:
         print("Keyboard interrupt detected, closing server...")
     except SystemExit:
-        # Truly idiotproof
         if os.name == "nt":
             input("(Press Enter to exit)")

@@ -30,10 +30,7 @@ class Emotes:
             char_path = path.join(char_dir, self.name, "char.ini")
             with open(char_path, encoding="utf-8-sig") as f:
                 char_ini.read_file(f)
-                logger.info(
-                    "Found char.ini for %s that can be used for iniswap restrictions!",
-                    char_path
-                )
+                logger.info("Found char.ini for %s that can be used for iniswap restrictions!", char_path)
         except FileNotFoundError:
             return
 
@@ -43,9 +40,7 @@ class Emotes:
             for emote_id in range(1, int(char_ini["emotions"]["number"]) + 1):
                 try:
                     emote_id = str(emote_id)
-                    _name, preanim, anim, _mod = char_ini["emotions"][
-                        str(emote_id)
-                    ].split("#")[:4]
+                    _name, preanim, anim, _mod = char_ini["emotions"][str(emote_id)].split("#")[:4]
                     # if "soundn" in char_ini and emote_id in char_ini["soundn"]:
                     #     sfx = char_ini["soundn"][str(emote_id)] or ""
                     #     if sfx != "" and len(sfx) == 1:
@@ -57,23 +52,25 @@ class Emotes:
 
                     # sfx checking is not performed due to custom sfx being possible, so don't bother for now
                     sfx = ""
-                    self.emotes.add(
-                        (preanim.lower(), anim.lower(), sfx.lower()))
+                    self.emotes.add((preanim.lower(), anim.lower(), sfx.lower()))
                 except KeyError as e:
                     logger.warning(
-                        "Broken key %s in character file %s. "
-                        "This indicates a malformed character INI file.", e.args[0], char_path
+                        "Broken key %s in character file %s. This indicates a malformed character INI file.",
+                        e.args[0],
+                        char_path,
                     )
         except KeyError as e:
             logger.warning(
-                "Unknown key %s in character file %s. "
-                "This indicates a malformed character INI file.", e.args[0], char_path
+                "Unknown key %s in character file %s. This indicates a malformed character INI file.",
+                e.args[0],
+                char_path,
             )
             return
         except ValueError as e:
             logger.warning(
-                "Value error in character file %s:\n%ss\n"
-                "This indicates a malformed character INI file.", char_path, e
+                "Value error in character file %s:\n%ss\nThis indicates a malformed character INI file.",
+                char_path,
+                e,
             )
             return
 
@@ -90,6 +87,10 @@ class Emotes:
         # Loop through emotes
         for emote in self.emotes:
             # If we find an emote that matches all 3, allow it
-            if (preanim == "" or emote[0] == preanim) and (anim == "" or emote[1] == anim) and (sfx == "" or emote[2] == sfx):
+            if (
+                (preanim == "" or emote[0] == preanim)
+                and (anim == "" or emote[1] == anim)
+                and (sfx == "" or emote[2] == sfx)
+            ):
                 return True
         return False

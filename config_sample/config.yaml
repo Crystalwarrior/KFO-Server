@@ -48,14 +48,14 @@ websocket_port: 50001
 
 # Whether the server is open to secure websocket connections
 use_securewebsockets: false
-# Port that is advertised to the masterserver for WSS connections (KFO-Server does not accept SSL directly)
+# Port advertised to the masterserver for WSS connections (KFO-Server does not accept SSL directly)
 secure_websocket_port: 443
 
 # WebAO Asset URL for hosting files. Leave blank to use vanilla
 asset_url:
 
 # Whether the server should be advertised on the server list.
-use_masterserver: true
+use_masterserver: false
 # How the server should be listed on the server list.
 masterserver_name: My First Server
 masterserver_description: This is my flashy new server

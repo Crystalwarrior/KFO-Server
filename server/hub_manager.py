@@ -24,16 +24,13 @@ class HubManager:
             with open(path, "r", encoding="utf-8") as stream:
                 hubs = yaml.safe_load(stream)
         except Exception:
-            raise AreaError(
-                f"Trying to load Hub list: File path {path} is invalid!")
+            raise AreaError(f"Trying to load Hub list: File path {path} is invalid!")
 
         if hub_id != -1:
             try:
                 self.hubs[hub_id].load(hubs[hub_id], destructive=True)
             except ValueError:
-                raise AreaError(
-                    f"Invalid Hub ID {hub_id}! Please contact the server host."
-                )
+                raise AreaError(f"Invalid Hub ID {hub_id}! Please contact the server host.")
             return
 
         if "area" in hubs[0]:
@@ -51,13 +48,9 @@ class HubManager:
                     # I hate this
                     for a_name in reachable_areas:
                         a_name = a_name.strip()
-                        target_area = self.hubs[0].get_area_by_name(
-                            a_name, case_insensitive=True
-                        )
+                        target_area = self.hubs[0].get_area_by_name(a_name, case_insensitive=True)
                         self.hubs[0].areas[i].link(target_area.id)
-                        print(
-                            f"[tsuDR conversion] Linking area {self.hubs[0].areas[i].name} to {target_area.name}"
-                        )
+                        print(f"[tsuDR conversion] Linking area {self.hubs[0].areas[i].name} to {target_area.name}")
                         is_dr_hub = True
                 if "default_description" in area:
                     self.hubs[0].areas[i].desc = area["default_description"]
@@ -95,8 +88,7 @@ class HubManager:
                     hubs.append(hub.save())
                 yaml.dump(hubs, stream, default_flow_style=False)
         except Exception:
-            raise AreaError(
-                f"Trying to save Hub list: File path {path} is invalid!")
+            raise AreaError(f"Trying to save Hub list: File path {path} is invalid!")
 
     def default_hub(self):
         """Get the default hub."""

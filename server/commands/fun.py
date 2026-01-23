@@ -1,6 +1,6 @@
 from server import database
 from server.constants import TargetType
-from server.exceptions import ClientError, ArgumentError
+from server.exceptions import ArgumentError
 
 from . import mod_only
 
@@ -22,9 +22,7 @@ def ooc_cmd_disemvowel(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
         raise ArgumentError("You must specify a target. Use /disemvowel <id>.")
     if targets:
@@ -45,12 +43,9 @@ def ooc_cmd_undisemvowel(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
-        raise ArgumentError(
-            "You must specify a target. Use /undisemvowel <id>.")
+        raise ArgumentError("You must specify a target. Use /undisemvowel <id>.")
     if targets:
         for c in targets:
             database.log_area("undisemvowel", client, client.area, target=c)
@@ -69,9 +64,7 @@ def ooc_cmd_shake(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
         raise ArgumentError("You must specify a target. Use /shake <id>.")
     if targets:
@@ -92,9 +85,7 @@ def ooc_cmd_unshake(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
         raise ArgumentError("You must specify a target. Use /unshake <id>.")
     if targets:
@@ -113,6 +104,4 @@ def ooc_cmd_rainbow(client, arg):
     """
     client.rainbow = not client.rainbow
     toggle = "now" if client.rainbow else "no longer"
-    client.send_ooc(
-        f"You will {toggle} have rainbowtext."
-    )
+    client.send_ooc(f"You will {toggle} have rainbowtext.")

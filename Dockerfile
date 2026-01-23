@@ -4,12 +4,14 @@ RUN apk --no-cache add git
 
 WORKDIR /app
 
-COPY requirements.txt start_server.py ./
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
 
 COPY server/ server/
 COPY migrations/ migrations/
 COPY storage/ storage/
+COPY start_server.py ./
 
-CMD python ./start_server.py
+CMD ["uv", "run", "python", "./start_server.py"]

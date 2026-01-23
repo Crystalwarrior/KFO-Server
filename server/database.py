@@ -60,21 +60,17 @@ class Database:
                 # the same IPID, so we have to reassign those IPIDs.
                 ip_ipids = json.loads(ipids_file.read())
                 ipids = set([ipid for ip, ipid in ip_ipids.items()])
-                next_fallback_id = reduce(
-                    lambda max_ipid, ipid: max(max_ipid, ipid), ipids
-                )
+                next_fallback_id = reduce(lambda max_ipid, ipid: max(max_ipid, ipid), ipids)
                 for ip, ipid in ip_ipids.items():
                     ipids.add(ipid)
                     effective_id = ipid
                     while True:
                         try:
                             conn.execute(
-                                dedent(
-                                    """
+                                dedent("""
                                 INSERT INTO ipids(ipid, ip_address)
                                 VALUES (?, ?)
-                                """
-                                ),
+                                """),
                                 (effective_id, ip),
                             )
                         except sqlite3.IntegrityError:
@@ -83,9 +79,7 @@ class Database:
                             next_fallback_id = effective_id
                         else:
                             if effective_id != ipid:
-                                logger.debug(
-                                    "IPID %s reassigned to %s", ipid, effective_id
-                                )
+                                logger.debug("IPID %s reassigned to %s", ipid, effective_id)
                             break
 
             with open("storage/hd_ids.json", "r") as hdids_file:
@@ -95,17 +89,13 @@ class Database:
                         # Sometimes, there are HDID entries that do not
                         # correspond to any IPIDs in the IPID table.
                         if ipid not in ipids:
-                            logger.debug(
-                                "IPID %s in HDID list does not exist. Ignoring.", ipid
-                            )
+                            logger.debug("IPID %s in HDID list does not exist. Ignoring.", ipid)
                             continue
                         conn.execute(
-                            dedent(
-                                """
+                            dedent("""
                             INSERT OR IGNORE INTO hdids(hdid, ipid)
                             VALUES (?, ?)
-                            """
-                            ),
+                            """),
                             (hdid, ipid),
                         )
 
@@ -118,30 +108,23 @@ class Database:
                     try:
                         ipid = int(ipid)
                     except ValueError:
-                        logger.debug(
-                            "Bad IPID %s in ban list. Ignoring.", ipid)
+                        logger.debug("Bad IPID %s in ban list. Ignoring.", ipid)
                         continue
                     if ipid not in ipids:
-                        logger.debug(
-                            "IPID %s in ban list does not exist. Ignoring.", ipid
-                        )
+                        logger.debug("IPID %s in ban list does not exist. Ignoring.", ipid)
                         continue
                     ban_id = conn.execute(
-                        dedent(
-                            """
+                        dedent("""
                         INSERT INTO bans(ban_id, reason)
                         VALUES (NULL, ?)
-                        """
-                        ),
+                        """),
                         (ban_info["Reason"],),
                     ).lastrowid
                     conn.execute(
-                        dedent(
-                            """
+                        dedent("""
                         INSERT INTO ip_bans(ipid, ban_id)
                         VALUES (?, ?)
-                        """
-                        ),
+                        """),
                         (ipid, ban_id),
                     )
 
@@ -153,8 +136,7 @@ class Database:
 
     def migrate_to_version(self, version):
         with self.db as conn:
-            cur_version = conn.execute("PRAGMA user_version").fetchone()[
-                "user_version"]
+            cur_version = conn.execute("PRAGMA user_version").fetchone()["user_version"]
             if cur_version >= version:
                 return
 
@@ -166,19 +148,15 @@ class Database:
         """Get an IPID from an IP address."""
         with self.db as conn:
             conn.execute(
-                dedent(
-                    """
+                dedent("""
                 INSERT OR IGNORE INTO ipids(ipid, ip_address) VALUES (NULL, ?)
-                """
-                ),
+                """),
                 (ip,),
             )
             ipid = conn.execute(
-                dedent(
-                    """
+                dedent("""
                 SELECT ipid FROM ipids WHERE ip_address = ?
-                """
-                ),
+                """),
                 (ip,),
             ).fetchone()["ipid"]
             return ipid
@@ -187,11 +165,9 @@ class Database:
         """Associate an HDID with an IPID."""
         with self.db as conn:
             conn.execute(
-                dedent(
-                    """
+                dedent("""
                 INSERT OR IGNORE INTO hdids(hdid, ipid) VALUES (?, ?)
-                """
-                ),
+                """),
                 (hdid, ipid),
             )
 
@@ -211,41 +187,30 @@ class Database:
         """
         with self.db as conn:
             if ban_id is None:
-                logger.info(
-                    f"{banned_by.name} ({banned_by.ipid}) "
-                    + f"banned {target_id}: '{reason}'."
-                )
+                logger.info(f"{banned_by.name} ({banned_by.ipid}) " + f"banned {target_id}: '{reason}'.")
                 ban_id = conn.execute(
-                    dedent(
-                        """
+                    dedent("""
                     INSERT INTO bans(reason, banned_by, unban_date)
                     VALUES (?, ?, ?)
-                    """
-                    ),
+                    """),
                     (reason, banned_by.ipid, unban_date),
                 ).lastrowid
             if ban_type == "ipid":
                 try:
                     conn.execute(
-                        dedent(
-                            """
+                        dedent("""
                         INSERT INTO ip_bans(ipid, ban_id) VALUES (?, ?)
-                        """
-                        ),
+                        """),
                         (target_id, ban_id),
                     )
                 except sqlite3.IntegrityError as exc:
-                    raise ServerError(
-                        f"Error inserting ban: {exc}" " (the IPID may not exist)"
-                    )
+                    raise ServerError(f"Error inserting ban: {exc} (the IPID may not exist)")
             elif ban_type == "hdid":
                 try:
                     conn.execute(
-                        dedent(
-                            """
+                        dedent("""
                         INSERT INTO hdid_bans(hdid, ban_id) VALUES (?, ?)
-                        """
-                        ),
+                        """),
                         (target_id, ban_id),
                     )
                 except sqlite3.IntegrityError as exc:
@@ -264,13 +229,11 @@ class Database:
         """
         with self.db as conn:
             row = conn.execute(
-                dedent(
-                    """
+                dedent("""
                 SELECT ooc_name FROM area_events
                 WHERE ipid = ? AND ooc_name IS NOT NULL AND ooc_name != ''
                 ORDER BY event_time DESC LIMIT 1
-                """
-                ),
+                """),
                 (ipid,),
             ).fetchone()
             if row is not None:
@@ -298,11 +261,9 @@ class Database:
                 return [
                     row["ipid"]
                     for row in conn.execute(
-                        dedent(
-                            """
+                        dedent("""
                         SELECT ipid FROM ip_bans WHERE ban_id = ?
-                        """
-                        ),
+                        """),
                         (self.ban_id,),
                     ).fetchall()
                 ]
@@ -314,11 +275,9 @@ class Database:
                 return [
                     row["hdid"]
                     for row in conn.execute(
-                        dedent(
-                            """
+                        dedent("""
                         SELECT hdid FROM hdid_bans WHERE ban_id = ?
-                        """
-                        ),
+                        """),
                         (self.ban_id,),
                     ).fetchall()
                 ]
@@ -345,8 +304,7 @@ class Database:
             #      ooc_name IS NOT NULL
             #   ORDER BY event_time DESC LIMIT 1
             ban = conn.execute(
-                dedent(
-                    """
+                dedent("""
                 SELECT *
                 FROM (
                     SELECT ban_id FROM ip_bans WHERE ipid = ?
@@ -354,8 +312,7 @@ class Database:
                     UNION SELECT ban_id FROM bans WHERE ban_id = ?
                 )
                 JOIN bans USING (ban_id)
-                """
-                ),
+                """),
                 (ipid, hdid, ban_id),
             ).fetchone()
             if ban is not None:
@@ -368,11 +325,9 @@ class Database:
         logger.info("Unbanning %s", ban_id)
         with self.db as conn:
             unbans = conn.execute(
-                dedent(
-                    """
+                dedent("""
                 DELETE FROM bans WHERE ban_id = ?
-                """
-                ),
+                """),
                 (ban_id,),
             ).rowcount
             return unbans > 0
@@ -389,13 +344,11 @@ class Database:
         dated_bans = []
         with self.db as conn:
             dated_bans = conn.execute(
-                dedent(
-                    """
+                dedent("""
                 SELECT ban_id FROM bans
                 WHERE unban_date IS NOT NULL AND
                     datetime(unban_date) < datetime(?, '+12 hours')
-                """
-                ),
+                """),
                 (arrow.utcnow().datetime,),
             ).fetchall()
 
@@ -405,16 +358,12 @@ class Database:
     def _schedule_unban(self, ban_id):
         with self.db as conn:
             ban = conn.execute(
-                dedent(
-                    """
+                dedent("""
                 SELECT unban_date FROM bans WHERE ban_id = ?
-                """
-                ),
+                """),
                 (ban_id,),
             ).fetchone()
-            time_to_unban = (
-                arrow.get(ban["unban_date"]) - arrow.utcnow()
-            ).total_seconds()
+            time_to_unban = (arrow.get(ban["unban_date"]) - arrow.utcnow()).total_seconds()
 
             def auto_unban():
                 self.unban(ban_id)
@@ -428,9 +377,7 @@ class Database:
         value, creating one if necessary.
         """
         ipid, char_name, ooc_name = (
-            (client.ipid, client.char_name, client.name)
-            if client is not None
-            else (None, None, None)
+            (client.ipid, client.char_name, client.name) if client is not None else (None, None, None)
         )
         target_ipid = target.ipid if target is not None else None
         subtype_id = self._subtype_atom("area", event_subtype)
@@ -447,13 +394,11 @@ class Database:
         )
         with self.db as conn:
             conn.execute(
-                dedent(
-                    """
+                dedent("""
                 INSERT INTO area_events(ipid, hub_id, hub_name, area_id, area_name, ic_name, char_name, ooc_name,
                     event_subtype, message, target_ipid)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """
-                ),
+                """),
                 (
                     ipid,
                     area.area_manager.id,
@@ -472,16 +417,13 @@ class Database:
     def log_connect(self, client, failed=False):
         """Log a connect attempt."""
         logger.info(
-            f"{client.ipid} (HDID: {client.hdid}) "
-            + f'{"was blocked from connecting" if failed else "connected"}.'
+            f"{client.ipid} (HDID: {client.hdid}) " + f"{'was blocked from connecting' if failed else 'connected'}."
         )
         with self.db as conn:
             conn.execute(
-                dedent(
-                    """
+                dedent("""
                 INSERT INTO connect_events(ipid, hdid, failed) VALUES (?, ?, ?)
-                """
-                ),
+                """),
                 (client.ipid, client.hdid, failed),
             )
 
@@ -494,17 +436,14 @@ class Database:
         target_ipid = target.ipid if target is not None else None
         subtype_id = self._subtype_atom("misc", event_subtype)
         data_json = json.dumps(data)
-        logger.info(
-            "%s (%s onto %s): %s", event_subtype, client_ipid, target_ipid, data)
+        logger.info("%s (%s onto %s): %s", event_subtype, client_ipid, target_ipid, data)
 
         with self.db as conn:
             conn.execute(
-                dedent(
-                    """
+                dedent("""
                 INSERT INTO misc_events(ipid, target_ipid, event_subtype,
                     event_data) VALUES (?, ?, ?, ?)
-                """
-                ),
+                """),
                 (client_ipid, target_ipid, subtype_id, data_json),
             )
 
@@ -516,14 +455,12 @@ class Database:
             return [
                 Database.Ban(**row)
                 for row in conn.execute(
-                    dedent(
-                        """
+                    dedent("""
                     SELECT * FROM (SELECT * FROM bans
                         WHERE ban_date IS NOT NULL
                         ORDER BY ban_date DESC LIMIT ?)
                     ORDER BY ban_date ASC
-                    """
-                    ),
+                    """),
                     (count,),
                 ).fetchall()
             ]
@@ -534,20 +471,16 @@ class Database:
 
         with self.db as conn:
             conn.execute(
-                dedent(
-                    f"""
+                dedent(f"""
                 INSERT OR IGNORE INTO {event_type}_event_types(type_name)
                 VALUES (?)
-                """
-                ),
+                """),
                 (event_subtype,),
             )
             return conn.execute(
-                dedent(
-                    f"""
+                dedent(f"""
                 SELECT type_id FROM {event_type}_event_types
                 WHERE type_name = ?
-                """
-                ),
+                """),
                 (event_subtype,),
             ).fetchone()["type_id"]

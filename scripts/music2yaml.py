@@ -2,8 +2,6 @@
 import os
 import sys
 
-from shutil import copy2
-
 os.chdir(os.path.dirname(__file__))
 
 arg = ""
@@ -24,9 +22,7 @@ File.write(
     "  use_unique_folder: True #If true, this music will be contained entirely within its own folder e.g. base/music/<yaml name>/*.mp3\n"
 )
 if droppedFile:
-    input(
-        "Writing .ogg and .mp3 and categorizing them based on file argument to music.yaml. Press ENTER to begin."
-    )
+    input("Writing .ogg and .mp3 and categorizing them based on file argument to music.yaml. Press ENTER to begin.")
     for line in droppedFile.readlines():
         try:
             line = line.rstrip()
@@ -42,18 +38,12 @@ if droppedFile:
                     # tag = TinyTag.get(line)
                     # duration = tag.duration
                     duration = -1
-                    File.write(
-                        '    - name: "{}"\n'.format(current_category + "/" + line)
-                    )
+                    File.write('    - name: "{}"\n'.format(current_category + "/" + line))
                     File.write("      length: {}\n".format(duration))
                     print("Name: {} Length: {}".format(line, duration))
                 except:
                     Err.write("Error for {}\n".format(line))
-                    input(
-                        "Unable to process song: {}! Press ENTER to continue.".format(
-                            line
-                        )
-                    )
+                    input("Unable to process song: {}! Press ENTER to continue.".format(line))
         except:
             continue
 else:
@@ -88,11 +78,7 @@ else:
                         # tag = TinyTag.get(line)
                         # duration = tag.duration
                         duration = -1
-                        File.write(
-                            '    - name: "{}"\n'.format(
-                                current_category + "/" + song.name
-                            )
-                        )
+                        File.write('    - name: "{}"\n'.format(current_category + "/" + song.name))
                         File.write("      length: {}\n".format(duration))
                         print("Name: {} Length: {}".format(song.name, duration))
 

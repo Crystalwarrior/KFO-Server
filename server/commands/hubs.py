@@ -66,12 +66,7 @@ def ooc_cmd_hub(client, arg):
             h = arg.split(" ")[0]
             hid = h.strip("[]")
             if (
-                (
-                    h.startswith("[")
-                    and h.endswith("]")
-                    and hid.isdigit()
-                    and hub.id == int(hid)
-                )
+                (h.startswith("[") and h.endswith("]") and hid.isdigit() and hub.id == int(hid))
                 or hub.name.lower() == arg.lower()
                 or hub.abbreviation == arg
                 or (arg.isdigit() and hub.id == int(arg))
@@ -107,8 +102,7 @@ def ooc_cmd_save_hub(client, arg):
     args = shlex.split(arg)
     if not client.is_mod:
         if arg == "":
-            raise ArgumentError(
-                "You must be authorized to save the default hub!")
+            raise ArgumentError("You must be authorized to save the default hub!")
         if len(args[0]) < 3:
             raise ArgumentError("Filename must be at least 3 symbols long!")
     try:
@@ -118,21 +112,16 @@ def ooc_cmd_save_hub(client, arg):
                 path = "storage/hubs/read_only"
             else:
                 path = "storage/hubs"
-            num_files = len(
-                [f for f in os.listdir(path) if os.path.isfile(
-                    os.path.join(path, f))]
-            )
+            num_files = len([f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))])
             if num_files >= 1000:  # yikes
-                raise AreaError(
-                    "Server storage full! Please contact the server host to resolve this issue."
-                )
+                raise AreaError("Server storage full! Please contact the server host to resolve this issue.")
             try:
                 if os.path.isfile(f"storage/hubs/read_only/{name}.yaml"):
                     raise ArgumentError(f"Hub {name} already exists and it is read-only!")
                 if os.path.isfile(f"storage/hubs/{name}.yaml") and len(args) > 2 and args[1].lower() == "read_only":
                     try:
                         os.remove(f"storage/hubs/{name}.yaml")
-                    except:
+                    except OSError:
                         raise AreaError(f"{name} hasn't been removed from write and read folder!")
                 name = f"{path}/{name}.yaml"
                 hub = client.area.area_manager.save(ignore=["can_gm", "max_areas"])
@@ -156,9 +145,7 @@ def ooc_cmd_save_hub(client, arg):
             client.send_ooc(f"Saving as {name}...")
         else:
             client.server.hub_manager.save("config/areas_new.yaml")
-            client.send_ooc(
-                "Saving all Hubs to areas_new.yaml. Contact the server owner to apply the changes."
-            )
+            client.send_ooc("Saving all Hubs to areas_new.yaml. Contact the server owner to apply the changes.")
     except AreaError:
         raise
 
@@ -187,8 +174,7 @@ def ooc_cmd_load_hub(client, arg):
         client.area.area_manager.send_arup_status()
         client.area.area_manager.send_arup_cms()
         client.area.area_manager.send_arup_lock()
-        client.server.client_manager.refresh_music(
-            client.area.area_manager.clients)
+        client.server.client_manager.refresh_music(client.area.area_manager.clients)
         client.send_ooc("Success, sending ARUP and refreshing music...")
     else:
         client.server.hub_manager.load(hub_id=client.area.area_manager.id)
@@ -226,8 +212,7 @@ def ooc_cmd_overlay_hub(client, arg):
         client.area.area_manager.send_arup_status()
         client.area.area_manager.send_arup_cms()
         client.area.area_manager.send_arup_lock()
-        client.server.client_manager.refresh_music(
-            client.area.area_manager.clients)
+        client.server.client_manager.refresh_music(client.area.area_manager.clients)
         client.send_ooc("Success, sending ARUP and refreshing music...")
     else:
         client.server.hub_manager.load()
@@ -253,14 +238,14 @@ def ooc_cmd_list_hubs(client, arg):
         try:
             if F.lower().endswith(".yaml"):
                 hubs_read_only.append(F[:-5])
-        except:
+        except Exception:
             continue
 
     for F in os.listdir("storage/hubs/"):
         try:
             if F.lower().endswith(".yaml"):
                 hubs_editable.append(F[:-5])
-        except:
+        except Exception:
             continue
 
     hubs_read_only.sort()
@@ -288,8 +273,7 @@ def ooc_cmd_clear_hub(client, arg):
     try:
         client.server.hub_manager.load(hub_id=client.area.area_manager.id)
         client.area.area_manager.broadcast_ooc("Hub clearing initiated...")
-        client.server.client_manager.refresh_music(
-            client.area.area_manager.clients)
+        client.server.client_manager.refresh_music(client.area.area_manager.clients)
         client.send_ooc("Success, sending ARUP and refreshing music...")
     except AreaError:
         raise
@@ -303,12 +287,9 @@ def ooc_cmd_rename_hub(client, arg):
     """
     if arg != "":
         client.area.area_manager.name = dezalgo(arg)[:64]
-        client.send_ooc(
-            f"Renamed hub [{client.area.area_manager.id}] to {client.area.area_manager.name}."
-        )
+        client.send_ooc(f"Renamed hub [{client.area.area_manager.id}] to {client.area.area_manager.name}.")
     else:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /rename_hub <name>.")
+        raise ArgumentError("Invalid number of arguments. Use /rename_hub <name>.")
 
 
 @mod_only(hub_owners=True)
@@ -354,8 +335,7 @@ def ooc_cmd_area_remove(client, arg):
         except (AreaError, ClientError):
             raise
     else:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /area_remove <aid>.")
+        raise ArgumentError("Invalid number of arguments. Use /area_remove <aid>.")
 
 
 @mod_only(hub_owners=True)
@@ -380,8 +360,7 @@ def ooc_cmd_area_duplicate(client, arg):
         except (AreaError, ClientError):
             raise
     else:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /area_duplicate <aid>.")
+        raise ArgumentError("Invalid number of arguments. Use /area_duplicate <aid>.")
 
 
 @mod_only(area_owners=True)
@@ -396,17 +375,13 @@ def ooc_cmd_area_rename(client, arg):
 
     args = arg.split(maxsplit=1)
     if len(args) <= 0:
-        raise ArgumentError(
-            "Invalid number of arguments. Use /area_rename [aid] <name>."
-        )
+        raise ArgumentError("Invalid number of arguments. Use /area_rename [aid] <name>.")
 
     # Test if we want to target an area
     if args[0].isnumeric():
         if len(args) == 1:
             # Can't set the area name to just a number only
-            raise ArgumentError(
-                "Only Area ID was provided with no name. Use /area_rename [aid] <name>."
-            )
+            raise ArgumentError("Only Area ID was provided with no name. Use /area_rename [aid] <name>.")
         try:
             area = client.area.area_manager.get_area_by_id(int(args[0]))
             name = args[1]
@@ -439,8 +414,7 @@ def ooc_cmd_area_swap(client, arg):
         area2 = client.area.area_manager.get_area_by_id(int(args[1]))
         client.area.area_manager.swap_area(area1, area2, True)
         client.area.area_manager.broadcast_area_list()
-        client.send_ooc(
-            f"Area {area1.name} has been swapped with Area {area2.name}!")
+        client.send_ooc(f"Area {area1.name} has been swapped with Area {area2.name}!")
     except ValueError:
         raise ArgumentError("Area IDs must be a number.")
     except (AreaError, ClientError):
@@ -461,8 +435,7 @@ def ooc_cmd_area_switch(client, arg):
         area2 = client.area.area_manager.get_area_by_id(int(args[1]))
         client.area.area_manager.swap_area(area1, area2, False)
         client.area.area_manager.broadcast_area_list()
-        client.send_ooc(
-            f"Area {area1.name} has been switched with Area {area2.name}!")
+        client.send_ooc(f"Area {area1.name} has been switched with Area {area2.name}!")
     except ValueError:
         raise ArgumentError("Area IDs must be a number.")
     except (AreaError, ClientError):
@@ -507,29 +480,23 @@ def ooc_cmd_area_pref(client, arg):
         msg = "Current preferences:"
         for attri in client.area.__dict__.keys():
             value = getattr(client.area, attri)
-            if not (type(value) is bool):
+            if type(value) is not bool:
                 continue
-            mod = "[gm] " if not (attri in cm_allowed) else ""
+            mod = "[gm] " if attri not in cm_allowed else ""
             msg += f"\n* {mod}{attri}={value}"
         client.send_ooc(msg)
         return
 
     args = arg.split()
     if len(args) > 2:
-        raise ArgumentError(
-            "Usage: /area_pref | /area_pref <pref> | /area_pref <pref> <on|off>"
-        )
+        raise ArgumentError("Usage: /area_pref | /area_pref <pref> | /area_pref <pref> <on|off>")
 
     try:
         cmd = args[0].lower()
         attri = getattr(client.area, cmd)
-        if not (type(attri) is bool):
+        if type(attri) is not bool:
             raise ArgumentError("Preference is not a boolean.")
-        if (
-            not client.is_mod
-            and client not in client.area.area_manager.owners
-            and not (cmd in cm_allowed)
-        ):
+        if not client.is_mod and client not in client.area.area_manager.owners and cmd not in cm_allowed:
             raise ClientError("You need to be a GM to modify this preference.")
         tog = not attri
         if len(args) > 1:
@@ -563,16 +530,11 @@ def ooc_cmd_area_move_delay(client, arg):
     args = arg.split()
     try:
         if len(args) > 0:
-            move_delay = min(
-                1800, max(-1800, int(args[0]))
-            )  # Move delay is limited between -1800 and 1800
+            move_delay = min(1800, max(-1800, int(args[0])))  # Move delay is limited between -1800 and 1800
             client.area.move_delay = move_delay
-            client.send_ooc(
-                f"Set {client.area.name} movement delay to {move_delay}.")
+            client.send_ooc(f"Set {client.area.name} movement delay to {move_delay}.")
         else:
-            client.send_ooc(
-                f"Current move delay for {client.area.name} is {client.area.move_delay}."
-            )
+            client.send_ooc(f"Current move delay for {client.area.name} is {client.area.move_delay}.")
     except ValueError:
         raise ArgumentError("Delay must be an integer between -1800 and 1800.")
     except (AreaError, ClientError):
@@ -589,13 +551,9 @@ def ooc_cmd_hub_move_delay(client, arg):
     args = arg.split()
     try:
         if len(args) > 0:
-            move_delay = min(
-                1800, max(-1800, int(args[0]))
-            )  # Move delay is limited between -1800 and 1800
+            move_delay = min(1800, max(-1800, int(args[0])))  # Move delay is limited between -1800 and 1800
             client.area.area_manager.move_delay = move_delay
-            client.send_ooc(
-                f"Set {client.area.area_manager.name} movement delay to {move_delay}."
-            )
+            client.send_ooc(f"Set {client.area.area_manager.name} movement delay to {move_delay}.")
         else:
             client.send_ooc(
                 f"Current move delay for {client.area.area_manager.name} is {client.area.area_manager.move_delay}."
@@ -617,11 +575,8 @@ def ooc_cmd_toggle_replace_music(client, arg):
         boolean = arg in ["true", "on", "1"]
     client.area.area_manager.replace_music = boolean
     toggle = "now" if client.area.area_manager.replace_music else "no longer"
-    client.server.client_manager.refresh_music(
-        client.area.area_manager.clients)
-    client.area.area_manager.broadcast_ooc(
-        f"Hub music list will {toggle} replace server music list."
-    )
+    client.server.client_manager.refresh_music(client.area.area_manager.clients)
+    client.area.area_manager.broadcast_ooc(f"Hub music list will {toggle} replace server music list.")
 
 
 @mod_only(hub_owners=True)
@@ -635,9 +590,7 @@ def ooc_cmd_toggle_passing_ic(client, arg):
         boolean = arg in ["true", "on", "1"]
     client.area.area_manager.passing_msg = boolean
     toggle = "enabled" if client.area.area_manager.passing_msg else "disabled"
-    client.area.area_manager.broadcast_ooc(
-        f"IC area passing messages are now {toggle} for this hub."
-    )
+    client.area.area_manager.broadcast_ooc(f"IC area passing messages are now {toggle} for this hub.")
 
 
 @mod_only(hub_owners=True)
@@ -648,15 +601,11 @@ def ooc_cmd_arup_enable(client, arg):
     Usage: /arup_enable
     """
     if client.area.area_manager.arup_enabled:
-        raise ClientError(
-            "ARUP system is already enabled! Use /arup_disable to disable it."
-        )
+        raise ClientError("ARUP system is already enabled! Use /arup_disable to disable it.")
     client.area.area_manager.arup_enabled = True
-    client.area.area_manager.send_command(
-        "FL", client.server.supported_features)
+    client.area.area_manager.send_command("FL", client.server.supported_features)
     client.area.area_manager.broadcast_area_list(refresh=True)
-    client.area.area_manager.broadcast_ooc(
-        "ARUP system has been enabled for this hub.")
+    client.area.area_manager.broadcast_ooc("ARUP system has been enabled for this hub.")
 
 
 @mod_only(hub_owners=True)
@@ -666,17 +615,13 @@ def ooc_cmd_arup_disable(client, arg):
     Usage: /arup_disable
     """
     if not client.area.area_manager.arup_enabled:
-        raise ClientError(
-            "ARUP system is already disabled! Use /arup_enable to enable it."
-        )
+        raise ClientError("ARUP system is already disabled! Use /arup_enable to enable it.")
     client.area.area_manager.arup_enabled = False
     preflist = client.server.supported_features.copy()
     preflist.remove("arup")
     client.area.area_manager.send_command("FL", *preflist)
     client.area.area_manager.broadcast_area_list(refresh=True)
-    client.area.area_manager.broadcast_ooc(
-        "ARUP system has been disabled for this hub."
-    )
+    client.area.area_manager.broadcast_ooc("ARUP system has been disabled for this hub.")
 
 
 @mod_only(hub_owners=True)
@@ -690,9 +635,7 @@ def ooc_cmd_toggle_getareas(client, arg):
         boolean = arg in ["true", "on", "1"]
     client.area.area_manager.can_getareas = boolean
     toggle = "enabled" if client.area.area_manager.can_getareas else "disabled"
-    client.area.area_manager.broadcast_ooc(
-        f"Use of /getareas has been {toggle} for this hub."
-    )
+    client.area.area_manager.broadcast_ooc(f"Use of /getareas has been {toggle} for this hub.")
 
 
 @mod_only(hub_owners=True)
@@ -706,9 +649,7 @@ def ooc_cmd_toggle_spectate(client, arg):
         boolean = arg in ["true", "on", "1"]
     client.area.area_manager.can_spectate = boolean
     toggle = "enabled" if client.area.area_manager.can_spectate else "disabled"
-    client.area.area_manager.broadcast_ooc(
-        f"Spectating has been {toggle} for this hub."
-    )
+    client.area.area_manager.broadcast_ooc(f"Spectating has been {toggle} for this hub.")
 
 
 @mod_only(hub_owners=True)
@@ -718,14 +659,10 @@ def ooc_cmd_hide_clients(client, arg):
     Usage: /hide_clients
     """
     if client.area.area_manager.hide_clients:
-        raise ClientError(
-            "Client playercounts already hidden! Use /unhide_clients to unhide."
-        )
+        raise ClientError("Client playercounts already hidden! Use /unhide_clients to unhide.")
     client.area.area_manager.hide_clients = True
     client.area.area_manager.broadcast_area_list()
-    client.area.area_manager.broadcast_ooc(
-        "Client playercounts are now hidden for this hub."
-    )
+    client.area.area_manager.broadcast_ooc("Client playercounts are now hidden for this hub.")
 
 
 @mod_only(hub_owners=True)
@@ -735,14 +672,10 @@ def ooc_cmd_unhide_clients(client, arg):
     Usage: /unhide_clients
     """
     if not client.area.area_manager.hide_clients:
-        raise ClientError(
-            "Client playercounts already revealed! Use /hide_clients to hide."
-        )
+        raise ClientError("Client playercounts already revealed! Use /hide_clients to hide.")
     client.area.area_manager.hide_clients = False
     client.area.area_manager.broadcast_area_list()
-    client.area.area_manager.broadcast_ooc(
-        "Client playercounts are no longer hidden for this hub."
-    )
+    client.area.area_manager.broadcast_ooc("Client playercounts are no longer hidden for this hub.")
 
 
 @mod_only(hub_owners=True)
@@ -753,37 +686,29 @@ def ooc_cmd_force_follow(client, arg):
     """
     arg = arg.split()
     if len(arg) == 0:
-        raise ArgumentError(
-            "You must specify a victim. Usage: /force_follow <victim_id> [target_id]")
+        raise ArgumentError("You must specify a victim. Usage: /force_follow <victim_id> [target_id]")
     try:
-        victims = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg[0]), False
-        )
+        victims = client.server.client_manager.get_targets(client, TargetType.ID, int(arg[0]), False)
     except Exception:
-        raise ArgumentError(
-            "You must specify a victim. Usage: /force_follow <victim_id> [target_id]")
+        raise ArgumentError("You must specify a victim. Usage: /force_follow <victim_id> [target_id]")
     target = client
     if len(arg) >= 2:
         try:
-            target = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(arg[1]), False
-            )
+            target = client.server.client_manager.get_targets(client, TargetType.ID, int(arg[1]), False)
         except Exception:
-            raise ArgumentError(
-                "Invalid target! Usage: /force_follow <victim_id> [target_id]")
+            raise ArgumentError("Invalid target! Usage: /force_follow <victim_id> [target_id]")
     if victims:
         for c in victims:
             if client == c:
-                raise ClientError(
-                    "You are already forced to follow yourself because you are yourself!"
-                )
+                raise ClientError("You are already forced to follow yourself because you are yourself!")
             c.following = client
             c.forced_to_follow = True
             c.send_ooc(f"You've been forced to follow {client.showname}!")
             if c.area != client.area:
                 c.set_area(client.area)
         client.send_ooc(
-            f"Forced {len(victims)} client(s) to follow [{target.id}] {target.showname}. Use /unfollow {target.id} to free them.")
+            f"Forced {len(victims)} client(s) to follow [{target.id}] {target.showname}. Use /unfollow {target.id} to free them."
+        )
     else:
         client.send_ooc("No targets found.")
 
@@ -795,9 +720,7 @@ def ooc_cmd_follow(client, arg):
     """
     if len(arg) == 0:
         try:
-            client.send_ooc(
-                f"You are currently following [{client.following.id}] {client.following.showname}."
-            )
+            client.send_ooc(f"You are currently following [{client.following.id}] {client.following.showname}.")
         except Exception:
             raise ArgumentError("Not following anybody. Use /follow <id>.")
         return
@@ -807,27 +730,17 @@ def ooc_cmd_follow(client, arg):
         and client not in client.area.area_manager.owners
         and client.following is not None
     ):
-        raise ClientError(
-            "You can't change follow targets while being forced to follow!"
-        )
+        raise ClientError("You can't change follow targets while being forced to follow!")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
         raise ArgumentError("You must specify a target. Use /follow <id>.")
     if targets:
         c = targets[0]
         if client == c:
             raise ClientError("Can't follow yourself!")
-        if (
-            c not in client.area.clients
-            and not client.is_mod
-            and client not in client.area.area_manager.owners
-        ):
-            raise ClientError(
-                "You are not a mod/GM - Target must be present in your area!"
-            )
+        if c not in client.area.clients and not client.is_mod and client not in client.area.area_manager.owners:
+            raise ClientError("You are not a mod/GM - Target must be present in your area!")
         if client.following and client.following.id == c.id:
             ooc_cmd_unfollow(client, "")
             return
@@ -849,16 +762,10 @@ def ooc_cmd_unfollow(client, arg):
     """
     allowed = client.is_mod or client in client.area.area_manager.owners
     if len(arg) == 0:
-        if (
-            client.forced_to_follow
-            and not allowed
-            and client.following is not None
-        ):
+        if client.forced_to_follow and not allowed and client.following is not None:
             raise ClientError("You can't escape being forced to follow!")
         try:
-            client.send_ooc(
-                f"You are no longer following [{client.following.id}] {client.following.showname}."
-            )
+            client.send_ooc(f"You are no longer following [{client.following.id}] {client.following.showname}.")
             client.following = None
             client.forced_to_follow = False
         except Exception:
@@ -884,27 +791,21 @@ def ooc_cmd_unfollow(client, arg):
 
     if client.is_mod or client in client.area.area_manager.owners:
         try:
-            targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(arg), False
-            )
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
         except Exception:
-            raise ArgumentError(
-                "You must specify a target. Use /follow_me <id>.")
+            raise ArgumentError("You must specify a target. Use /follow_me <id>.")
         if targets:
             count = 0
             for c in targets:
                 if c.forced_to_follow:
                     c.following = None
                     c.forced_to_follow = False
-                    c.send_ooc(
-                        "You've been freed from having to follow someone.")
+                    c.send_ooc("You've been freed from having to follow someone.")
                     count += 1
             if count == 0:
                 client.send_ooc("No valid targets found.")
             else:
-                client.send_ooc(
-                    f"Freed {count} existing client(s) from having to follow someone."
-                )
+                client.send_ooc(f"Freed {count} existing client(s) from having to follow someone.")
         else:
             client.send_ooc("No targets found.")
     else:
@@ -923,9 +824,7 @@ def ooc_cmd_info(client, arg):
         if not client.is_mod and client not in client.area.area_manager.owners:
             raise ClientError("You must be a GM of the Hub to do that.")
         client.area.area_manager.info = arg
-        client.area.area_manager.broadcast_ooc(
-            "{} changed the Hub info.".format(client.showname)
-        )
+        client.area.area_manager.broadcast_ooc("{} changed the Hub info.".format(client.showname))
         database.log_area("info.change", client, client.area, message=arg)
 
 
@@ -942,16 +841,13 @@ def ooc_cmd_gm(client, arg):
         if arg != "":
             # GM all self clients
             if arg == "*":
-                arg = [c.id for c in client.server.client_manager.get_multiclients(
-                    client.ipid, client.hdid)]
+                arg = [c.id for c in client.server.client_manager.get_multiclients(client.ipid, client.hdid)]
             # GM the targets
             else:
                 arg = arg.split(" ")
                 # Client is not a mod and not a GM, meaning they're trying to nominate someone without being /gm first
                 if not client.is_mod and client not in client.area.area_manager.owners:
-                    raise ArgumentError(
-                        "You cannot 'nominate' people to be GMs when you are not one."
-                    )
+                    raise ArgumentError("You cannot 'nominate' people to be GMs when you are not one.")
         else:
             # Self GM
             arg = [client.id]
@@ -959,25 +855,15 @@ def ooc_cmd_gm(client, arg):
         for id in arg:
             try:
                 id = int(id)
-                c = client.server.client_manager.get_targets(
-                    client, TargetType.ID, id, False
-                )[0]
+                c = client.server.client_manager.get_targets(client, TargetType.ID, id, False)[0]
                 if c not in client.area.area_manager.clients:
-                    raise ArgumentError(
-                        "You can only 'nominate' people to be GMs when they are in the hub."
-                    )
+                    raise ArgumentError("You can only 'nominate' people to be GMs when they are in the hub.")
                 elif c in client.area.area_manager.owners:
-                    client.send_ooc(
-                        f"{c.showname} [{c.id}] is already a GM here.")
+                    client.send_ooc(f"{c.showname} [{c.id}] is already a GM here.")
                 else:
                     for mc in c.server.client_manager.get_multiclients(c.ipid, c.hdid):
-                        if (
-                            mc in mc.area.area_manager.owners
-                            and mc.area.area_manager != c.area.area_manager
-                        ):
-                            raise ClientError(
-                                f"One of {c.showname} [{c.id}]'s clients is already a GM in another hub!"
-                            )
+                        if mc in mc.area.area_manager.owners and mc.area.area_manager != c.area.area_manager:
+                            raise ClientError(f"One of {c.showname} [{c.id}]'s clients is already a GM in another hub!")
                     client.area.area_manager.add_owner(c)
                     database.log_area("gm.add", client, client.area, target=c)
             except (ValueError, IndexError):
@@ -1002,16 +888,12 @@ def ooc_cmd_ungm(client, arg):
     for _id in arg:
         try:
             _id = int(_id)
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, _id, False
-            )[0]
+            c = client.server.client_manager.get_targets(client, TargetType.ID, _id, False)[0]
             if c in client.area.area_manager.owners:
                 client.area.area_manager.remove_owner(c)
                 database.log_area("gm.remove", client, client.area, target=c)
             else:
-                client.send_ooc(
-                    "You cannot remove someone from GMing when they aren't a GM."
-                )
+                client.send_ooc("You cannot remove someone from GMing when they aren't a GM.")
         except (ValueError, IndexError):
             client.send_ooc(f"{id} does not look like a valid ID.")
         except (ClientError, ArgumentError):
@@ -1064,19 +946,16 @@ def ooc_cmd_hpset(client, arg):
     """
     args = shlex.split(arg)
     if len(args) == 0:
-        raise ArgumentError(
-            "You must specify a position and HP. Use /hpset <pos> <amount> [area]")
+        raise ArgumentError("You must specify a position and HP. Use /hpset <pos> <amount> [area]")
     elif len(args) == 1:
-        raise ArgumentError(
-            "You must specify HP. Use /hpset <pos> <amount> [area]")
+        raise ArgumentError("You must specify HP. Use /hpset <pos> <amount> [area]")
 
     if args[0] == "def":
         side = 1
     elif args[0] == "pro":
         side = 2
     else:
-        raise ArgumentError(
-            "Invalid position. Use \"pro\" or \"def\"")
+        raise ArgumentError('Invalid position. Use "pro" or "def"')
 
     area_list = [client.area]
     if len(args > 2):

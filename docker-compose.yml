@@ -1,8 +1,7 @@
-version: "3.3"
 services:
-    tsuserver:
+    kfo-server:
         build: .
-        image: tsuserver
+        image: kfo-server
         ports:
             - 27016:27016
             - 50001:50001

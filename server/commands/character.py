@@ -77,6 +77,7 @@ def ooc_cmd_set_url(client, arg):
         client.send_ooc(f"URL set to {arg_strip}")
     client.char_url = arg_strip
 
+
 def ooc_cmd_get_urls(client, arg):
     """
     This command returns the server's URL List.
@@ -86,6 +87,7 @@ def ooc_cmd_get_urls(client, arg):
     for name, url in client.server.server_links.items():
         f_server_links += f"{name}: {url} \n"
     client.send_ooc(f_server_links)
+
 
 def ooc_cmd_switch(client, arg):
     """
@@ -108,8 +110,7 @@ def ooc_cmd_switch(client, arg):
     except ServerError:
         raise
     try:
-        client.change_character(
-            cid, client.is_mod or client in client.area.owners)
+        client.change_character(cid, client.is_mod or client in client.area.owners)
     except ClientError:
         raise
     client.send_ooc("Character changed.")
@@ -145,9 +146,7 @@ def ooc_cmd_pair(client, arg):
         return
 
     if arg.isdigit():
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), True
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), True)
         if len(targets) > 0:
             client.charid_pair = targets[0].char_id
             client.charid_pair_override = True
@@ -161,7 +160,9 @@ def ooc_cmd_pair(client, arg):
         char = client.charid_pair
         if client.charid_pair in range(0, len(client.area.area_manager.char_list)):
             char = client.area.area_manager.char_list[client.charid_pair]
-        client.send_ooc(f"Successfully paired with '{char}'! Ask them to pair with you back, and show up on the same /pos for it to work.")
+        client.send_ooc(
+            f"Successfully paired with '{char}'! Ask them to pair with you back, and show up on the same /pos for it to work."
+        )
     else:
         client.send_ooc("Pairing target not found!")
 
@@ -186,11 +187,11 @@ def ooc_cmd_pair_order(client, arg):
     Usage: /pair_order [order]
     """
     if client.charid_pair_override:
-        msg = ['in front of', 'behind']
+        msg = ["in front of", "behind"]
         if arg:
-            if arg.lower() == 'front':
+            if arg.lower() == "front":
                 client.pair_order = 0
-            elif arg.lower() == 'behind':
+            elif arg.lower() == "behind":
                 client.pair_order = 1
             elif arg.isdigit() and int(arg) in [0, 1]:
                 client.pair_order = int(arg)
@@ -220,17 +221,11 @@ def ooc_cmd_forcepos(client, arg):
 
     pos = args[0]
     if len(args) > 1:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.CHAR_NAME, " ".join(args[1:]), True
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, " ".join(args[1:]), True)
         if len(targets) == 0 and args[1].isdigit():
-            targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[1]), True
-            )
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[1]), True)
         if len(targets) == 0:
-            targets = client.server.client_manager.get_targets(
-                client, TargetType.OOC_NAME, " ".join(args[1:]), True
-            )
+            targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, " ".join(args[1:]), True)
         if len(targets) == 0:
             raise ArgumentError("No targets found.")
     else:
@@ -258,8 +253,7 @@ def ooc_cmd_forcepos(client, arg):
             t.area.broadcast_evidence_list()
             t.send_ooc(f"Forced into /pos {_pos}.")
             client.send_ooc(f"Forced [{t.id}] {t.showname} into /pos {_pos}.")
-            database.log_area("forcepos", client, client.area,
-                              target=t, message=pos)
+            database.log_area("forcepos", client, client.area, target=t, message=pos)
         except ClientError:
             raise
 
@@ -271,18 +265,13 @@ def ooc_cmd_force_switch(client, arg):
     Usage: /force_switch <id> [char]
     """
     if not arg:
-        raise ArgumentError(
-            'Not enough arguments. Usage: /force_switch <id> [char]')
+        raise ArgumentError("Not enough arguments. Usage: /force_switch <id> [char]")
     args = shlex.split(arg)
     try:
         if args[0].isnumeric():
-            targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
-            )
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
         else:
-            targets = client.server.client_manager.get_targets(
-                client, TargetType.CHAR_NAME, args[0], False
-            )
+            targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, args[0], False)
         for target in targets:
             force_switch(client, target, " ".join(args[1:]))
     except Exception as ex:
@@ -293,7 +282,7 @@ def ooc_cmd_force_switch(client, arg):
 
 def force_switch(client, target, char=""):
     if not client.is_mod and client not in target.area.owners:
-        raise ClientError(f'Insufficient permissions for {char}')
+        raise ClientError(f"Insufficient permissions for {char}")
     if char != "":
         try:
             if char == "-1" or char.lower() == "spectator":
@@ -314,7 +303,7 @@ def force_switch(client, target, char=""):
         except ClientError:
             raise
     else:
-        target.send_ooc(f"You've been forced into character select screen.")
+        target.send_ooc("You've been forced into character select screen.")
         target.char_select()
 
 
@@ -330,9 +319,7 @@ def ooc_cmd_kill(client, arg):
         targets = []
         ids = [int(s) for s in arg.split(" ")]
         for targ_id in ids:
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, targ_id, False
-            )
+            c = client.server.client_manager.get_targets(client, TargetType.ID, targ_id, False)
             if c:
                 targets = targets + c
     except Exception:
@@ -341,11 +328,10 @@ def ooc_cmd_kill(client, arg):
     try:
         for target in targets:
             force_switch(client, target, "-1")
-            target.send_ooc(f"💀You are dead!💀")
+            target.send_ooc("💀You are dead!💀")
     except Exception as ex:
-        raise ArgumentError(
-            f"Error encountered: {ex}. Use /kill <id(s)> as a mod or area owner."
-        )
+        raise ArgumentError(f"Error encountered: {ex}. Use /kill <id(s)> as a mod or area owner.")
+
 
 def ooc_cmd_randomchar(client, arg):
     """
@@ -379,18 +365,12 @@ def ooc_cmd_charcurse(client, arg):
             "You must specify a target (an ID) and at least one character ID. Consult /charids for the character IDs."
         )
     elif len(arg) == 1:
-        raise ArgumentError(
-            "You must specific at least one character ID. Consult /charids for the character IDs."
-        )
+        raise ArgumentError("You must specific at least one character ID. Consult /charids for the character IDs.")
     args = arg.split()
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(args[0]), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
     except Exception:
-        raise ArgumentError(
-            "You must specify a valid target! Make sure it is a valid ID."
-        )
+        raise ArgumentError("You must specify a valid target! Make sure it is a valid ID.")
     if targets:
         for c in targets:
             log_msg = ""
@@ -399,22 +379,15 @@ def ooc_cmd_charcurse(client, arg):
                 try:
                     cid = int(raw_cid)
                     c.charcurse.append(cid)
-                    part_msg += " " + \
-                        str(client.area.area_manager.char_list[cid]) + ","
-                    log_msg += " " + \
-                        str(client.area.area_manager.char_list[cid]) + ","
-                except:
-                    ArgumentError(
-                        "" + str(raw_cid) +
-                        " does not look like a valid character ID."
-                    )
+                    part_msg += " " + str(client.area.area_manager.char_list[cid]) + ","
+                    log_msg += " " + str(client.area.area_manager.char_list[cid]) + ","
+                except Exception:
+                    raise ArgumentError("" + str(raw_cid) + " does not look like a valid character ID.")
             part_msg = part_msg[:-1]
             part_msg += "."
             log_msg = log_msg[:-1]
             c.char_select()
-            database.log_area(
-                "charcurse", client, client.area, target=c, message=log_msg
-            )
+            database.log_area("charcurse", client, client.area, target=c, message=log_msg)
             client.send_ooc("Charcursed" + part_msg)
     else:
         client.send_ooc("No targets found.")
@@ -430,13 +403,9 @@ def ooc_cmd_uncharcurse(client, arg):
         raise ArgumentError("You must specify a target (an ID).")
     args = arg.split()
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(args[0]), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
     except Exception:
-        raise ArgumentError(
-            "You must specify a valid target! Make sure it is a valid ID."
-        )
+        raise ArgumentError("You must specify a valid target! Make sure it is a valid ID.")
     if targets:
         for c in targets:
             if len(c.charcurse) > 0:
@@ -489,9 +458,7 @@ def ooc_cmd_blind(client, arg):
         targets = []
         ids = [int(s) for s in arg.split(" ")]
         for targ_id in ids:
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, targ_id, False
-            )
+            c = client.server.client_manager.get_targets(client, TargetType.ID, targ_id, False)
             if c:
                 targets = targets + c
     except Exception:
@@ -522,9 +489,7 @@ def ooc_cmd_unblind(client, arg):
         targets = []
         ids = [int(s) for s in arg.split(" ")]
         for targ_id in ids:
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, targ_id, False
-            )
+            c = client.server.client_manager.get_targets(client, TargetType.ID, targ_id, False)
             if c:
                 targets = targets + c
     except Exception:
@@ -549,42 +514,28 @@ def ooc_cmd_player_move_delay(client, arg):
     """
     args = shlex.split(arg)
     try:
-        if len(args) > 0 and (
-            client.is_mod or client in client.area.area_manager.owners
-        ):
+        if len(args) > 0 and (client.is_mod or client in client.area.area_manager.owners):
             # Try to find by char name first
-            targets = client.server.client_manager.get_targets(
-                client, TargetType.CHAR_NAME, args[0]
-            )
+            targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, args[0])
             # If that doesn't work, find by client ID
             if len(targets) == 0 and args[0].isdigit():
-                targets = client.server.client_manager.get_targets(
-                    client, TargetType.ID, int(args[0])
-                )
+                targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]))
             # If that doesn't work, find by OOC Name
             if len(targets) == 0:
-                targets = client.server.client_manager.get_targets(
-                    client, TargetType.OOC_NAME, args[0]
-                )
+                targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, args[0])
             c = targets[0]
             if len(args) > 1:
-                move_delay = min(
-                    1800, max(-1800, int(args[1]))
-                )  # Move delay is limited between -1800 and 1800
+                move_delay = min(1800, max(-1800, int(args[1])))  # Move delay is limited between -1800 and 1800
                 c.move_delay = move_delay
-                client.send_ooc(
-                    f"Set move delay for {c.char_name} to {c.move_delay}.")
+                client.send_ooc(f"Set move delay for {c.char_name} to {c.move_delay}.")
             else:
-                client.send_ooc(
-                    f"Move delay for {c.char_name} is {c.move_delay}.")
+                client.send_ooc(f"Move delay for {c.char_name} is {c.move_delay}.")
         else:
             client.send_ooc(f"Your current move delay is {client.move_delay}.")
     except ValueError:
         raise ArgumentError("Delay must be an integer between -1800 and 1800.")
     except IndexError:
-        raise ArgumentError(
-            "Target client not found. Use /player_move_delay <id> [delay]."
-        )
+        raise ArgumentError("Target client not found. Use /player_move_delay <id> [delay].")
     except (AreaError, ClientError):
         raise
 
@@ -600,32 +551,23 @@ def ooc_cmd_player_hide(client, arg):
         raise ArgumentError("You must specify a target.")
     args = arg.split()
     if args[0] == "*":
-        targets = [
-            c for c in client.area.clients if c != client and c != client.area.owners
-        ]
+        targets = [c for c in client.area.clients if c != client and c != client.area.owners]
     else:
         try:
             targets = []
             ids = [int(s) for s in args]
             for targ_id in ids:
-                c = client.server.client_manager.get_targets(
-                    client, TargetType.ID, targ_id, False
-                )
+                c = client.server.client_manager.get_targets(client, TargetType.ID, targ_id, False)
                 if c:
                     targets = targets + c
         except Exception:
-            raise ArgumentError(
-                "You must specify a target. Use /player_unhide <id> [id(s)]."
-            )
+            raise ArgumentError("You must specify a target. Use /player_unhide <id> [id(s)].")
     if targets:
         for c in targets:
             if c.hidden:
-                raise ClientError(
-                    f"Client [{c.id}] {c.showname} already hidden!")
+                raise ClientError(f"Client [{c.id}] {c.showname} already hidden!")
             c.hide(True)
-            client.send_ooc(
-                f"You have hidden [{c.id}] {c.showname} from /getarea and playercounts."
-            )
+            client.send_ooc(f"You have hidden [{c.id}] {c.showname} from /getarea and playercounts.")
     else:
         client.send_ooc("No targets found.")
 
@@ -641,32 +583,23 @@ def ooc_cmd_player_unhide(client, arg):
         raise ArgumentError("You must specify a target.")
     args = arg.split()
     if args[0] == "*":
-        targets = [
-            c for c in client.area.clients if c != client and c != client.area.owners
-        ]
+        targets = [c for c in client.area.clients if c != client and c != client.area.owners]
     else:
         try:
             targets = []
             ids = [int(s) for s in args]
             for targ_id in ids:
-                c = client.server.client_manager.get_targets(
-                    client, TargetType.ID, targ_id, False
-                )
+                c = client.server.client_manager.get_targets(client, TargetType.ID, targ_id, False)
                 if c:
                     targets = targets + c
         except Exception:
-            raise ArgumentError(
-                "You must specify a target. Use /player_unhide <id> [id(s)]."
-            )
+            raise ArgumentError("You must specify a target. Use /player_unhide <id> [id(s)].")
     if targets:
         for c in targets:
             if not c.hidden:
-                raise ClientError(
-                    f"Client [{c.id}] {c.showname} already revealed!")
+                raise ClientError(f"Client [{c.id}] {c.showname} already revealed!")
             c.hide(False)
-            client.send_ooc(
-                f"You have revealed [{c.id}] {c.showname} for /getarea and playercounts."
-            )
+            client.send_ooc(f"You have revealed [{c.id}] {c.showname} for /getarea and playercounts.")
     else:
         client.send_ooc("No targets found.")
 
@@ -677,9 +610,7 @@ def ooc_cmd_hide(client, arg):
     Usage: /hide <evi_name/id>
     """
     if arg == "":
-        raise ArgumentError(
-            "Use /hide <evi_name/id> to hide in evidence, or /unhide to stop hiding."
-        )
+        raise ArgumentError("Use /hide <evi_name/id> to hide in evidence, or /unhide to stop hiding.")
     try:
         if arg.isnumeric():
             arg = str(int(arg) - 1)
@@ -708,25 +639,19 @@ def ooc_cmd_sneak(client, arg):
     """
     if not arg:
         if client.sneaking:
-            raise ClientError(
-                "You are already sneaking! Use /unsneak to stop sneaking.")
+            raise ClientError("You are already sneaking! Use /unsneak to stop sneaking.")
         client.sneak(True)
     else:
         args = shlex.split(arg)
         try:
             if args[0].isnumeric():
-                targets = client.server.client_manager.get_targets(
-                    client, TargetType.ID, int(args[0]), False
-                )
+                targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
             else:
-                targets = client.server.client_manager.get_targets(
-                    client, TargetType.CHAR_NAME, args[0], False
-                )
+                targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, args[0], False)
             for x in targets:
                 force_sneak(client, x)
         except Exception as ex:
-            raise ArgumentError(
-                f"Error encountered: {ex}. Use /sneak [id]")
+            raise ArgumentError(f"Error encountered: {ex}. Use /sneak [id]")
 
 
 def ooc_cmd_unsneak(client, arg):
@@ -737,25 +662,19 @@ def ooc_cmd_unsneak(client, arg):
     """
     if not arg:
         if not client.sneaking:
-            raise ClientError(
-                "You are not sneaking! Use /sneak to start sneaking.")
+            raise ClientError("You are not sneaking! Use /sneak to start sneaking.")
         client.sneak(False)
     else:
         args = shlex.split(arg)
         try:
             if args[0].isnumeric():
-                targets = client.server.client_manager.get_targets(
-                    client, TargetType.ID, int(args[0]), False
-                )
+                targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
             else:
-                targets = client.server.client_manager.get_targets(
-                    client, TargetType.CHAR_NAME, args[0], False
-                )
+                targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, args[0], False)
             for x in targets:
                 force_unsneak(client, x)
         except Exception as ex:
-            raise ArgumentError(
-                f"Error encountered: {ex}. Use /unsneak [id]")
+            raise ArgumentError(f"Error encountered: {ex}. Use /unsneak [id]")
 
 
 @mod_only(area_owners=True)
@@ -780,9 +699,7 @@ def ooc_cmd_freeze(client, arg):
         targets = []
         ids = [int(s) for s in arg.split(" ")]
         for targ_id in ids:
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, targ_id, False
-            )
+            c = client.server.client_manager.get_targets(client, TargetType.ID, targ_id, False)
             if c:
                 targets = targets + c
     except Exception:
@@ -794,9 +711,7 @@ def ooc_cmd_freeze(client, arg):
                 client.send_ooc(f"Client [{c.id}] {c.name} already frozen! Use /unfreeze {c.id} to undo.")
                 continue
             c.freeze(True)
-            client.send_ooc(
-                f"You have frozen [{c.id}] {c.name} from being able to move between areas."
-            )
+            client.send_ooc(f"You have frozen [{c.id}] {c.name} from being able to move between areas.")
     else:
         raise ArgumentError("No targets found.")
 
@@ -813,9 +728,7 @@ def ooc_cmd_unfreeze(client, arg):
         targets = []
         ids = [int(s) for s in arg.split(" ")]
         for targ_id in ids:
-            c = client.server.client_manager.get_targets(
-                client, TargetType.ID, targ_id, False
-            )
+            c = client.server.client_manager.get_targets(client, TargetType.ID, targ_id, False)
             if c:
                 targets = targets + c
     except Exception:
@@ -861,9 +774,7 @@ def ooc_cmd_unlisten_pos(client, arg):
     if client.listen_pos is None:
         raise ClientError("You are not listening to any pos at the moment!")
     client.listen_pos = None
-    client.send_ooc(
-        "You re no longer listening to any pos (All IC messages will appear as normal)."
-    )
+    client.send_ooc("You re no longer listening to any pos (All IC messages will appear as normal).")
 
 
 @mod_only(hub_owners=True)
@@ -909,14 +820,10 @@ def mod_keys(client, arg, mod=0):
     """
     args = arg.split()
     if len(args) <= 1 and mod != 0:
-        raise ArgumentError(
-            "Please provide the key(s) to set. Keys must be a number 5 or a link eg. 1-5."
-        )
+        raise ArgumentError("Please provide the key(s) to set. Keys must be a number 5 or a link eg. 1-5.")
     try:
         if args[0].isnumeric():
-            target = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
-            )
+            target = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
             if target:
                 target = target[0].char_id
             else:
@@ -925,7 +832,7 @@ def mod_keys(client, arg, mod=0):
         else:
             try:
                 target = client.area.area_manager.get_char_id_by_name(arg)
-            except (ServerError):
+            except ServerError:
                 raise
 
         if len(args) > 1:
@@ -939,16 +846,13 @@ def mod_keys(client, arg, mod=0):
                 # make sure all the keys are integers
                 key = int(key)
             if mod in (1, 2):
-                keys = client.area.area_manager.get_character_data(
-                    target, "keys", [])
+                keys = client.area.area_manager.get_character_data(target, "keys", [])
             if a in keys and mod == 2:
                 keys.remove(a)
-            elif not (a in keys):
+            elif a not in keys:
                 keys.append(a)
         client.area.area_manager.set_character_data(target, "keys", keys)
-        client.send_ooc(
-            f"Character folder {client.area.area_manager.char_list[target]}'s keys are updated: {keys}"
-        )
+        client.send_ooc(f"Character folder {client.area.area_manager.char_list[target]}'s keys are updated: {keys}")
     except ValueError:
         raise ArgumentError("Keys must be a number like 5 or a link eg. 1-5.")
     except (AreaError, ClientError):
@@ -986,9 +890,7 @@ def ooc_cmd_keys_remove(client, arg):
     Usage: /keys_remove <char> [key(s)]
     """
     if not arg:
-        raise ArgumentError(
-            "Usage: /keys_remove <char> [area id(s)]. Removes the selected 'keys' from the user."
-        )
+        raise ArgumentError("Usage: /keys_remove <char> [area id(s)]. Removes the selected 'keys' from the user.")
 
     mod_keys(client, arg, 2)
 
@@ -1004,14 +906,12 @@ def ooc_cmd_keys(client, arg):
     if len(args) < 1:
         client.send_ooc(f"Your current keys are {client.keys}")
         return
-    if not client.is_mod and not (client in client.area.area_manager.owners):
+    if not client.is_mod and client not in client.area.area_manager.owners:
         raise ClientError("Only mods and GMs can check other people's keys.")
     if len(args) == 1:
         try:
             if args[0].isnumeric():
-                target = client.server.client_manager.get_targets(
-                    client, TargetType.ID, int(args[0]), False
-                )
+                target = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
                 if target:
                     target = target[0].char_id
                 else:
@@ -1020,13 +920,10 @@ def ooc_cmd_keys(client, arg):
             else:
                 try:
                     target = client.area.area_manager.get_char_id_by_name(arg)
-                except (ServerError):
+                except ServerError:
                     raise
-            keys = client.area.area_manager.get_character_data(
-                target, "keys", [])
-            client.send_ooc(
-                f"{client.area.area_manager.char_list[target]} current keys are {keys}"
-            )
+            keys = client.area.area_manager.get_character_data(target, "keys", [])
+            client.send_ooc(f"{client.area.area_manager.char_list[target]} current keys are {keys}")
         except Exception:
             raise ArgumentError("Target not found.")
     else:
@@ -1041,9 +938,7 @@ def ooc_cmd_kms(client, arg):
     """
     if arg != "":
         raise ArgumentError("This command takes no arguments!")
-    for target in client.server.client_manager.get_multiclients(
-        client.ipid, client.hdid
-    ):
+    for target in client.server.client_manager.get_multiclients(client.ipid, client.hdid):
         if target != client:
             target.disconnect()
     client.send_ooc("Kicked other instances of client.")
@@ -1072,15 +967,11 @@ def ooc_cmd_chardesc(client, arg):
 
     if arg.isnumeric():
         try:
-            target = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(arg), True
-            )[0].char_id
-            desc = client.area.area_manager.get_character_data(
-                target, "desc", "")
+            target = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), True)[0].char_id
+            desc = client.area.area_manager.get_character_data(target, "desc", "")
             target = client.area.area_manager.char_list[target]
             client.send_ooc(f"📜{target} Description: {desc}")
-            database.log_area("chardesc.request", client,
-                              client.area, message=target)
+            database.log_area("chardesc.request", client, client.area, message=target)
         except Exception:
             raise ArgumentError("Target not found.")
     else:
@@ -1093,9 +984,7 @@ def ooc_cmd_chardesc(client, arg):
             desc = arg[:128]
             if len(arg) > len(desc):
                 desc += f"... Use /chardesc {client.id} to read the rest."
-            client.area.broadcast_ooc(
-                f"{client.showname} changed their character description to: {desc}."
-            )
+            client.area.broadcast_ooc(f"{client.showname} changed their character description to: {desc}.")
             client.area.broadcast_player_list()
         database.log_area("chardesc.change", client, client.area, message=arg)
 
@@ -1107,15 +996,11 @@ def ooc_cmd_chardesc_clear(client, arg):
     """
     client.area.area_manager.set_character_data(client.char_id, "desc", "")
     if not client.hidden and not client.sneaking:
-        client.area.broadcast_ooc(
-            f"{client.showname} cleared their character description."
-        )
+        client.area.broadcast_ooc(f"{client.showname} cleared their character description.")
         client.area.broadcast_player_list()
     else:
-        client.send_ooc(f"You cleared your character description.")
-    database.log_area(
-        "chardesc.clear", client, client.area
-    )
+        client.send_ooc("You cleared your character description.")
+    database.log_area("chardesc.clear", client, client.area)
 
 
 @mod_only(hub_owners=True)
@@ -1126,13 +1011,10 @@ def ooc_cmd_chardesc_set(client, arg):
     """
     args = arg.split(" ")
     if len(args) < 1:
-        raise ArgumentError(
-            "Not enough arguments. Usage: /chardesc_set <id> [desc]")
+        raise ArgumentError("Not enough arguments. Usage: /chardesc_set <id> [desc]")
     try:
         if args[0].isnumeric():
-            target = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
-            )
+            target = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
             if target:
                 target = target[0].char_id
             else:
@@ -1141,7 +1023,7 @@ def ooc_cmd_chardesc_set(client, arg):
         else:
             try:
                 target = client.area.area_manager.get_char_id_by_name(arg)
-            except (ServerError):
+            except ServerError:
                 raise
         desc = ""
         if len(args) > 1:
@@ -1149,9 +1031,7 @@ def ooc_cmd_chardesc_set(client, arg):
         client.area.area_manager.set_character_data(target, "desc", desc)
         target = client.area.area_manager.char_list[target]
         client.send_ooc(f"📜{target} Description: {desc}")
-        database.log_area(
-            "chardesc.set", client, client.area, message=f"{target}: {desc}"
-        )
+        database.log_area("chardesc.set", client, client.area, message=f"{target}: {desc}")
         if not client.hidden and not client.sneaking:
             client.area.broadcast_player_list()
     except Exception:
@@ -1166,9 +1046,7 @@ def ooc_cmd_chardesc_get(client, arg):
     """
     try:
         if arg.isnumeric():
-            target = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(arg), False
-            )
+            target = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
             if target:
                 target = target[0].char_id
             else:
@@ -1177,14 +1055,12 @@ def ooc_cmd_chardesc_get(client, arg):
         else:
             try:
                 target = client.area.area_manager.get_char_id_by_name(arg)
-            except (ServerError):
+            except ServerError:
                 raise
         desc = client.area.area_manager.get_character_data(target, "desc", "")
         target = client.area.area_manager.char_list[target]
         client.send_ooc(f"📜{target} Description: {desc}")
-        database.log_area(
-            "chardesc.get", client, client.area, message=f"{target}: {desc}"
-        )
+        database.log_area("chardesc.get", client, client.area, message=f"{target}: {desc}")
     except Exception:
         raise ArgumentError("Target not found.")
 
@@ -1197,9 +1073,7 @@ def ooc_cmd_narrate(client, arg):
     Usage: /narrate [tog]
     """
     if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
+        raise ArgumentError("This command can only take one argument ('on' or 'off') or no arguments at all!")
     if arg:
         if arg == "on":
             client.narrator = True
@@ -1211,9 +1085,7 @@ def ooc_cmd_narrate(client, arg):
         client.narrator = not client.narrator
     if client.blankpost is True:
         client.blankpost = False
-        client.send_ooc(
-            "You cannot be a narrator and blankposting at the same time. Blankposting disabled!"
-        )
+        client.send_ooc("You cannot be a narrator and blankposting at the same time. Blankposting disabled!")
     stat = "no longer be narrating"
     if client.narrator:
         stat = "be narrating now"
@@ -1227,9 +1099,7 @@ def ooc_cmd_blankpost(client, arg):
     Usage: /blankpost [tog]
     """
     if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
+        raise ArgumentError("This command can only take one argument ('on' or 'off') or no arguments at all!")
     if arg:
         if arg == "on":
             client.blankpost = True
@@ -1241,9 +1111,7 @@ def ooc_cmd_blankpost(client, arg):
         client.blankpost = not client.blankpost
     if client.narrator is True:
         client.narrator = False
-        client.send_ooc(
-            "You cannot be a narrator and blankposting at the same time. Narrating disabled!"
-        )
+        client.send_ooc("You cannot be a narrator and blankposting at the same time. Narrating disabled!")
     stat = "no longer be blankposting"
     if client.blankpost:
         stat = "be blankposting now"
@@ -1258,9 +1126,7 @@ def ooc_cmd_firstperson(client, arg):
     Usage: /firstperson [tog]
     """
     if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
+        raise ArgumentError("This command can only take one argument ('on' or 'off') or no arguments at all!")
     if arg:
         if arg == "on":
             client.firstperson = True
@@ -1272,9 +1138,7 @@ def ooc_cmd_firstperson(client, arg):
         client.firstperson = not client.firstperson
     if client.narrator is True:
         client.narrator = False
-        client.send_ooc(
-            "You cannot be a narrator and firstperson at the same time. Narrating disabled!"
-        )
+        client.send_ooc("You cannot be a narrator and firstperson at the same time. Narrating disabled!")
     stat = "no longer be firstperson"
     if client.firstperson:
         stat = "be firstperson now"
@@ -1298,8 +1162,7 @@ def ooc_cmd_showname(client, arg):
         client.send_ooc("Your IC showname is way too long!")
         return
     if not client.is_mod and arg.lstrip().lower().startswith("[m"):
-        client.send_ooc(
-            "Nice try! You may not spoof [M] tag in your showname.")
+        client.send_ooc("Nice try! You may not spoof [M] tag in your showname.")
         return
     client.used_showname_command = True
     client.showname = arg
@@ -1332,21 +1195,17 @@ def ooc_cmd_webfiles(client, arg):
 
     try:
         if args[0] == "*":
-            targets = [
-                c
-                for c in client.area.clients
-                if c != client and c != client.area.owners
-            ]
+            targets = [c for c in client.area.clients if c != client and c != client.area.owners]
         else:
-            targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), False
-            )
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)
     except ValueError:
         raise ArgumentError("Target ID must be a number or *.")
 
     try:
         for c in targets:
-            client.send_ooc(f"To download the files, visit https://attorneyonline.github.io/webDownloader/index.html?char={c.iniswap}")
+            client.send_ooc(
+                f"To download the files, visit https://attorneyonline.github.io/webDownloader/index.html?char={c.iniswap}"
+            )
     except Exception:
         raise ClientError("You must specify a target. Use /webfiles <id>")
 
@@ -1384,9 +1243,7 @@ def ooc_cmd_triple_pair(client, arg):
         return
 
     if arg.isdigit():
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), True
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), True)
         if len(targets) > 0:
             client.third_charid = targets[0].char_id
     else:
@@ -1397,18 +1254,21 @@ def ooc_cmd_triple_pair(client, arg):
     char = client.third_charid
     if client.third_charid in range(0, len(client.area.area_manager.char_list)):
         char = client.area.area_manager.char_list[client.third_charid]
-    client.send_ooc(f"Successfully paired with '{char}'! Ask them to pair with you back, and show up on the same /pos for it to work.")
+    client.send_ooc(
+        f"Successfully paired with '{char}'! Ask them to pair with you back, and show up on the same /pos for it to work."
+    )
+
 
 def get_latest_area(client, char_id: int):
     char_folder = None
     if char_id in range(0, len(client.area.area_manager.char_list)):
         char_folder = client.area.area_manager.char_list[char_id]
-    if char_folder == None:
-        print(char_folder, ' ', char_id)
-        client.send_ooc(f"Can't get latest area when spectating!")
+    if char_folder is None:
+        print(char_folder, " ", char_id)
+        client.send_ooc("Can't get latest area when spectating!")
         return None
     latest_area_id = client.area.area_manager.get_character_data(char_id, "latest_area", None)
-    if latest_area_id == None:
+    if latest_area_id is None:
         client.send_ooc(f"{char_folder} has no latest occupied area defined!")
         return None
     target_area = None
@@ -1418,6 +1278,7 @@ def get_latest_area(client, char_id: int):
         client.send_ooc(f"{char_folder} latest occupied area [{latest_area_id}] is not valid for current hub!")
         return None
     return target_area
+
 
 @mod_only(hub_owners=True)
 def ooc_cmd_get_latest_area(client, arg):
@@ -1430,21 +1291,22 @@ def ooc_cmd_get_latest_area(client, arg):
     if len(arg) == 0:
         target_charid = client.char_id
     elif arg.isdigit():
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), True
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), True)
         if len(targets) > 0:
             target_charid = targets[0].char_id
     else:
-        arg = arg.replace("\"", "").lower()
+        arg = arg.replace('"', "").lower()
         for i in range(0, len(client.area.area_manager.char_list)):
             if arg == client.area.area_manager.char_list[i].lower():
                 target_charid = i
     area = get_latest_area(client, target_charid)
     if area:
-        client.send_ooc(f"{client.area.area_manager.char_list[target_charid]} latest occupied area is [{area.id}] {area.name}.")
-    else:  
-        client.send_ooc(f"Area not found!")
+        client.send_ooc(
+            f"{client.area.area_manager.char_list[target_charid]} latest occupied area is [{area.id}] {area.name}."
+        )
+    else:
+        client.send_ooc("Area not found!")
+
 
 @mod_only(hub_owners=True)
 def ooc_cmd_kick_to_latest_area(client, arg):
@@ -1458,13 +1320,11 @@ def ooc_cmd_kick_to_latest_area(client, arg):
         target_charid = client.char_id
         targets = [client]
     elif arg.isdigit():
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), True
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), True)
         if len(targets) > 0:
             target_charid = targets[0].char_id
     else:
-        arg = arg.replace("\"", "").lower()
+        arg = arg.replace('"', "").lower()
         for i in range(0, len(client.area.area_manager.char_list)):
             if arg == client.area.area_manager.char_list[i].lower():
                 target_charid = i
@@ -1477,12 +1337,8 @@ def ooc_cmd_kick_to_latest_area(client, arg):
             for target in targets:
                 old_area = target.area
                 target.set_area(area)
-                target.send_ooc(
-                    f"You were kicked from [{old_area.id}] {old_area.name} to [{area.id}] {area.name}."
-                )
-                database.log_area(
-                    "kick_to_latest_area", client, client.area, target=target, message=area.id
-                )
+                target.send_ooc(f"You were kicked from [{old_area.id}] {old_area.name} to [{area.id}] {area.name}.")
+                database.log_area("kick_to_latest_area", client, client.area, target=target, message=area.id)
                 client.area.invite_list.discard(target.id)
                 client.send_ooc(
                     f"Kicked [{target.id}] {target.showname} from [{old_area.id}] {old_area.name} to [{area.id}] {area.name}."
@@ -1491,6 +1347,7 @@ def ooc_cmd_kick_to_latest_area(client, arg):
             raise
         except ClientError:
             raise
+
 
 @mod_only(hub_owners=True)
 def ooc_cmd_set_latest_area(client, arg):
@@ -1501,16 +1358,12 @@ def ooc_cmd_set_latest_area(client, arg):
     """
     args = shlex.split(arg)
     if len(args) == 0:
-        raise ArgumentError(
-            "Not enough args. Usage: /set_latest_area <cid|charname> [area_id]"
-        )
+        raise ArgumentError("Not enough args. Usage: /set_latest_area <cid|charname> [area_id]")
     target_charid = -1
     if len(args) == 1:
         target_charid = client.char_id
     elif args[0].isdigit():
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(args[1]), True
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[1]), True)
         if len(targets) > 0:
             target_charid = targets[0].char_id
     else:
@@ -1521,7 +1374,7 @@ def ooc_cmd_set_latest_area(client, arg):
     if target_charid in range(0, len(client.area.area_manager.char_list)):
         char_folder = client.area.area_manager.char_list[target_charid]
     if not char_folder:
-        client.send_ooc(f"Invalid character id!")
+        client.send_ooc("Invalid character id!")
         return None
     if len(args) >= 2:
         to_area = int(args[1])
@@ -1532,4 +1385,6 @@ def ooc_cmd_set_latest_area(client, arg):
         target_area = client.area.area_manager.get_area_by_id(to_area)
         client.send_ooc(f"Successfuly set {char_folder} latest occupied area to [{target_area.id}] {target_area.name}.")
     except Exception:
-        client.send_ooc(f"Warning: setting {char_folder} latest occupied area to an invalid area for current hub. Area ID: [{to_area}].")
+        client.send_ooc(
+            f"Warning: setting {char_folder} latest occupied area to an invalid area for current hub. Area ID: [{to_area}]."
+        )
