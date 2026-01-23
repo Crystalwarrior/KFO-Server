@@ -85,23 +85,15 @@ def contains_URL(sample):
 
 
 def encode_ao_packet(params):
+    def escape(s):
+        return str(s).replace("#", "<num>").replace("%", "<percent>").replace("$", "<dollar>").replace("&", "<and>")
+
     new_params = []
     for arg in params:
         if type(arg) is tuple:
-            encoded = []
-            for tup in arg:
-                encoded.append(
-                    str(tup)
-                    .replace("#", "<num>")
-                    .replace("%", "<percent>")
-                    .replace("$", "<dollar>")
-                    .replace("&", "<and>")
-                )
-            new_params.append(tuple(encoded))
+            new_params.append(tuple(escape(tup) for tup in arg))
         else:
-            new_params.append(
-                str(arg).replace("#", "<num>").replace("%", "<percent>").replace("$", "<dollar>").replace("&", "<and>")
-            )
+            new_params.append(escape(arg))
     return new_params
 
 
