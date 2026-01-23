@@ -31,3 +31,13 @@ packages = ["server"]
 [tool.black]
 line-length = 120
 target-version = ["py311"]
+
+[tool.ruff]
+line-length = 120
+exclude = ["scripts/"]
+
+[tool.ruff.lint]
+ignore = ["E741"]
+
+[tool.ruff.lint.per-file-ignores]
+"server/commands/__init__.py" = ["E402", "F403"]

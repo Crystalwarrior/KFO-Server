@@ -227,7 +227,7 @@ class AreaManager:
                         else:
                             self.load_music(f"storage/musiclists/{hub[entry]}.yaml")
 
-        if not ("character_data" in ignore) and "character_data" in hub:
+        if "character_data" not in ignore and "character_data" in hub:
             try:
                 self.load_character_data(hub["character_data"])
             except Exception:
@@ -237,7 +237,7 @@ class AreaManager:
                 if area == self.default_area():  # Do not remove the default area
                     continue
                 self.remove_area(area)
-        if not ("areas" in ignore) and "areas" in hub:
+        if "areas" not in ignore and "areas" in hub:
             self.load_areas(hub["areas"])
         self.broadcast_area_list()
 
@@ -443,7 +443,7 @@ class AreaManager:
         :param area: target area instance.
 
         """
-        if not (area in self.areas):
+        if area not in self.areas:
             raise AreaError("Area not found.")
         # Make a copy because it can change size during iteration
         # (causes runtime error otherwise)
@@ -475,9 +475,9 @@ class AreaManager:
         :param area2: second area to swap.
 
         """
-        if not (area1 in self.areas):
+        if area1 not in self.areas:
             raise AreaError("First area not found.")
-        if not (area2 in self.areas):
+        if area2 not in self.areas:
             raise AreaError("Second area not found.")
         # Grab the indexes
         a = self.areas.index(area1)

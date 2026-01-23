@@ -1,8 +1,6 @@
-import re
 
 from server import commands
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import encode_ao_packet
 
 class EvidenceList:
     """Contains a list of evidence items."""
@@ -22,7 +20,7 @@ class EvidenceList:
             self.show_in_dark = show_in_dark
             self.hiding_client = None
             self.triggers = triggers
-            if triggers == None:
+            if triggers is None:
                 self.triggers = {}
 
         def set_name(self, name):

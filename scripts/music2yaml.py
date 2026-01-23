@@ -2,7 +2,6 @@
 import os
 import sys
 
-from shutil import copy2
 
 os.chdir(os.path.dirname(__file__))
 

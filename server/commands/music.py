@@ -4,8 +4,8 @@ import os
 import yaml
 
 from server import database
-from server.constants import TargetType, derelative, contains_URL
-from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
+from server.constants import TargetType, derelative
+from server.exceptions import ClientError, ArgumentError, AreaError
 
 from . import mod_only
 
@@ -259,14 +259,14 @@ def ooc_cmd_musiclists(client, arg):
         try:
             if F.lower().endswith(".yaml"):
                 musiclist_read_only.append(F[:-5])
-        except:
+        except Exception:
             continue
 
     for F in os.listdir("storage/musiclists/"):
         try:
             if F.lower().endswith(".yaml"):
                 musiclist_editable.append(F[:-5])
-        except:
+        except Exception:
             continue
 
     musiclist_read_only.sort()
@@ -443,7 +443,7 @@ def ooc_cmd_musiclist_save(client, arg):
     if os.path.isfile(f"storage/musiclists/{name}.yaml") and len(args) > 2 and args[1].lower() == "read_only":
         try:
             os.remove(f"storage/musiclists/{name}.yaml")
-        except:
+        except OSError:
             raise AreaError(f"{args[0]} hasn't been removed from write and read folder!")
         
     with open(filepath, "w", encoding="utf-8") as yaml_save:

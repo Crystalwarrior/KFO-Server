@@ -1,11 +1,8 @@
 import shlex
-import yaml
-import os
 
-import re
 
 from server import database
-from server.constants import TargetType, derelative
+from server.constants import TargetType
 from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
 
 from . import mod_only

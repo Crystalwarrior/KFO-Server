@@ -70,7 +70,7 @@ class Bridgebot(commands.Bot):
         async def gethubs(interaction: discord.Interaction):
             msg = ""
             number_players = int(self.server.player_count)
-            msg += f"**Clients in Areas**\n"
+            msg += "**Clients in Areas**\n"
             for hub in self.server.hub_manager.hubs:
                 if len(hub.clients) == 0:
                     continue
@@ -84,9 +84,9 @@ class Bridgebot(commands.Bot):
                         continue
                     msg += f"\t**[{area.id}] {area.name} (users: {len(area.clients)}) [{area.status}]"
                     if area.locked:
-                        msg += f" [LOCKED]"
+                        msg += " [LOCKED]"
                     elif area.muted:
-                        msg += f" [SPECTATABLE]"
+                        msg += " [SPECTATABLE]"
                     if area.get_owners() != "":
                         msg += f" [CM(s): {area.get_owners()}]"
                     msg += "**\n"

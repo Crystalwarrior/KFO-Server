@@ -49,7 +49,7 @@ class MasterServerClient:
                 except aiohttp.ClientError:
                     # Masterserver is down or unreachable, may be temporary so log it as a warning
                     logger.warning('Failed to connect to the master server')
-                except Exception as err:
+                except Exception:
                     # Unknown error occurred, log it as a hard error with full exception information
                     exc_type, exc_value, exc_traceback = sys.exc_info()
                     logger.error("Uncaught exception while advertising server to masterserver")
@@ -116,7 +116,7 @@ class MasterServerClient:
     def add_ws_info(self, advertise_body: dict) -> None:
         cfg = self.server.config
 
-        if 'use_websockets' not in cfg or cfg['use_websockets'] == False:
+        if 'use_websockets' not in cfg or not cfg['use_websockets']:
             # Explicitly disabled, return
             return
 
@@ -132,6 +132,6 @@ class MasterServerClient:
 
         advertise_body['ws_port'] = ws_port
 
-        if 'use_securewebsockets' in cfg and cfg['use_securewebsockets'] == True:
+        if 'use_securewebsockets' in cfg and cfg['use_securewebsockets']:
             if 'secure_websocket_port' in cfg and cfg['secure_websocket_port']:
                 advertise_body['wss_port'] = cfg['secure_websocket_port']

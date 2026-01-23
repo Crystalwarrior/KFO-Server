@@ -56,11 +56,11 @@ def ooc_cmd_overlay(client, arg):
         raise AreaError("You are not on the area's invite list!")
     if (
         not client.is_mod
-        and not (client in client.area.owners)
+        and client not in client.area.owners
         and client.char_id == -1
     ):
         raise ClientError("You may not do that while spectating!")
-    if client.area.dark and not client.is_mod and not (client in client.area.owners):
+    if client.area.dark and not client.is_mod and client not in client.area.owners:
         raise ClientError("You must be authorized to do that.")
     try:
         client.area.change_background(client.area._background, overlay=arg)
@@ -83,11 +83,11 @@ def ooc_cmd_overlay_clear(client, arg):
         raise AreaError("You are not on the area's invite list!")
     if (
         not client.is_mod
-        and not (client in client.area.owners)
+        and client not in client.area.owners
         and client.char_id == -1
     ):
         raise ClientError("You may not do that while spectating!")
-    if client.area.dark and not client.is_mod and not (client in client.area.owners):
+    if client.area.dark and not client.is_mod and client not in client.area.owners:
         raise ClientError("You must be authorized to do that.")
     try:
         client.area.change_background(client.area._background, overlay="")
@@ -119,11 +119,11 @@ def ooc_cmd_bg(client, arg):
         raise AreaError("You are not on the area's invite list!")
     if (
         not client.is_mod
-        and not (client in client.area.owners)
+        and client not in client.area.owners
         and client.char_id == -1
     ):
         raise ClientError("You may not do that while spectating!")
-    if client.area.dark and not client.is_mod and not (client in client.area.owners):
+    if client.area.dark and not client.is_mod and client not in client.area.owners:
         raise ClientError("You must be authorized to do that.")
     try:
         client.area.change_background(arg)
@@ -567,7 +567,7 @@ def ooc_cmd_pos_lock(client, arg):
             pos = client.area.pos_dark
             client.send_ooc(f"Current darkness pos is {pos}.")
             return
-        if not client.is_mod and not (client in client.area.owners):
+        if not client.is_mod and client not in client.area.owners:
             raise ClientError("You must be authorized to do that.")
         client.area.pos_dark = arg
         client.area.broadcast_ooc(f"Locked darkness pos into {arg}.")
@@ -584,7 +584,7 @@ def ooc_cmd_pos_lock(client, arg):
         ooc_cmd_pos_lock_clear(client, arg)
         return
 
-    if not client.is_mod and not (client in client.area.owners):
+    if not client.is_mod and client not in client.area.owners:
         raise ClientError("You must be authorized to do that.")
 
     client.area.pos_lock.clear()
@@ -644,7 +644,7 @@ def ooc_cmd_knock(client, arg):
         allowed = client.is_mod or client in area.owners or client in client.area.owners
         if not allowed and area != client.area:
             if len(client.area.links) > 0:
-                if not str(area.id) in client.area.links:
+                if str(area.id) not in client.area.links:
                     raise ClientError(
                         f"Failed to knock on [{area.id}] {area.name}: That area is inaccessible!"
                     )
@@ -819,7 +819,7 @@ def ooc_cmd_desc(client, arg):
             raise ClientError("You are not on the area's invite list!")
         if (
             not client.is_mod
-            and not (client in client.area.owners)
+            and client not in client.area.owners
             and client.char_id == -1
         ):
             raise ClientError("You may not do that while spectating!")
@@ -828,7 +828,7 @@ def ooc_cmd_desc(client, arg):
             ooc_cmd_desc_clear(client, "")
             return
         if client.area.dark:
-            if not client.is_mod and not (client in client.area.owners):
+            if not client.is_mod and client not in client.area.owners:
                 raise ClientError("You must be authorized to do that.")
             client.area.desc_dark = arg.strip()
         else:
@@ -854,12 +854,12 @@ def ooc_cmd_desc_clear(client, arg):
         raise ClientError("You are not on the area's invite list!")
     if (
         not client.is_mod
-        and not (client in client.area.owners)
+        and client not in client.area.owners
         and client.char_id == -1
     ):
         raise ClientError("You may not do that while spectating!")
     if client.area.dark:
-        if not client.is_mod and not (client in client.area.owners):
+        if not client.is_mod and client not in client.area.owners:
             raise ClientError("You must be authorized to do that.")
         client.area.desc_dark = ""
     else:

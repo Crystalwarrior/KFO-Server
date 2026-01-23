@@ -42,7 +42,7 @@ def ooc_cmd_area_lock(client, arg):
         area_list = client.area.area_manager.get_areas_by_args(args)
         for area in area_list:
             if not client.is_mod and client not in area.owners:
-                if not str(target_id) in client.keys:
+                if str(area.id) not in client.keys:
                     if area.locking_allowed and area != client.area:
                         client.send_ooc(
                             "You can only lock that area from within!")
@@ -151,7 +151,7 @@ def ooc_cmd_area_unlock(client, arg):
         area_list = client.area.area_manager.get_areas_by_args(args)
         for area in area_list:
             if not client.is_mod and client not in area.owners:
-                if not str(target_id) in client.keys:
+                if str(area.id) not in client.keys:
                     if area.locking_allowed and area != client.area:
                         client.send_ooc(
                             "You can only unlock that area from within!")
@@ -330,7 +330,7 @@ def ooc_cmd_links(client, arg):
                 continue
             hidden = "📦"
 
-        if len(value["evidence"]) > 0 and not (client.hidden_in in value["evidence"]):
+        if len(value["evidence"]) > 0 and client.hidden_in not in value["evidence"]:
             # Can't see hidden links
             if not client.is_mod and client not in client.area.owners:
                 continue
@@ -761,7 +761,7 @@ def ooc_cmd_pw(client, arg):
     link = None
     password = ""
     if arg == "":
-        if not client.is_mod and not (client in client.area.owners):
+        if not client.is_mod and client not in client.area.owners:
             raise ArgumentError(
                 "You are not allowed to see this area's password. Use /pw <id> [password]"
             )
@@ -827,7 +827,7 @@ def ooc_cmd_setpw(client, arg):
             area = client.area.area_manager.get_area_by_id(int(args[0]))
         if len(args) > 1:
             password = args[1]
-        if not client.is_mod and not (client in area.owners):
+        if not client.is_mod and client not in area.owners:
             raise ClientError("You do not own that area!")
         if link is not None:
             link["password"] = password

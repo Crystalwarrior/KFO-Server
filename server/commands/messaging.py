@@ -1,6 +1,6 @@
 from server import database
 from server.constants import TargetType
-from server.exceptions import ClientError, ArgumentError, AreaError
+from server.exceptions import ClientError, ArgumentError
 
 from . import mod_only
 

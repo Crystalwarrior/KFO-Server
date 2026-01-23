@@ -285,7 +285,7 @@ def ooc_cmd_notecard_reveal(client, arg):
     else:
         client.area.cards.clear()
         client.area.broadcast_ooc(
-            f"Notecards have been cleared."
+            "Notecards have been cleared."
         )
 
     database.log_area("notecard_reveal", client, client.area)
@@ -433,7 +433,7 @@ def ooc_cmd_vote_reveal(client, arg):
     else:
         client.area.votes.clear()
         client.area.broadcast_ooc(
-            f"Votes have been cleared."
+            "Votes have been cleared."
         )
 
     database.log_area("vote_reveal", client, client.area)
@@ -670,7 +670,7 @@ def ooc_cmd_rps(client, arg):
     if winner:
         msg += f"\n  🏆[{winner.id}] {winner.showname} WINS!!!🏆"
     else:
-        msg += f"\n  👔It's a tie!👔"
+        msg += "\n  👔It's a tie!👔"
 
     # Announce the message!
     client.area.broadcast_ooc(msg)
@@ -796,12 +796,12 @@ def ooc_cmd_timer(client, arg):
             client.send_ooc(f"Timer {timer_id} is unset.")
         return
 
-    if not (client in client.area.owners) and not client.is_mod:
+    if client not in client.area.owners and not client.is_mod:
         raise ArgumentError(
             "Only CMs or GMs can modify timers. Usage: /timer <id>")
     if (
         timer_id == 0
-        and not (client in client.area.area_manager.owners)
+        and client not in client.area.area_manager.owners
         and not client.is_mod
     ):
         raise ArgumentError(
@@ -885,7 +885,7 @@ def ooc_cmd_timer(client, arg):
 
     # Send static time if applicable
     if timer.set:
-        s = int(not timer.started)
+        int(not timer.started)
         static_time = int(timer.static.total_seconds()) * 1000
         if timer_id == 0:
             client.area.area_manager.send_timer_set_time(timer_id, static_time, timer.started)
@@ -1027,7 +1027,7 @@ def ooc_cmd_format_timer(client, arg):
     args = shlex.split(arg)
     try:
         args[0] = int(args[0])
-    except:
+    except (ValueError, IndexError):
         return
     if args[0] == 0:
         if client.is_mod or client in client.area.area_manager.owners:
@@ -1072,7 +1072,7 @@ def ooc_cmd_timer_interval(client, arg):
     args = shlex.split(arg)
     try:
         args[0] = int(args[0])
-    except:
+    except (ValueError, IndexError):
         raise ArgumentError("Timer ID should be an integer")
     if args[0] == 0:
         if client.is_mod or client in client.area.area_manager.owners:
@@ -1092,10 +1092,10 @@ def ooc_cmd_timer_interval(client, arg):
             return
     try:
         if len(args) == 1:
-            timer.interval = 16 
+            timer.interval = 16
         else:
             timer.interval = pytimeparse.parse(args[1]) * 1000
-    except:
+    except (TypeError, ValueError):
         raise ArgumentError("Interval value not valid!")
     if timer.set:
         client.send_timer_set_interval(args[0], timer)
