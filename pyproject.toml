@@ -34,10 +34,14 @@ target-version = ["py311"]
 
 [tool.ruff]
 line-length = 120
+# Exclude utility scripts from linting
 exclude = ["scripts/"]
 
 [tool.ruff.lint]
+# E741: Ambiguous variable name (e.g., 'l') - used intentionally in list comprehensions
 ignore = ["E741"]
 
 [tool.ruff.lint.per-file-ignores]
+# E402: Module level import not at top of file - imports must come after __all__ definitions
+# F403: Star imports - intentional for re-exporting command modules
 "server/commands/__init__.py" = ["E402", "F403"]
