@@ -2,6 +2,7 @@ from .. import commands
 from server.constants import dezalgo, censor, contains_URL, derelative
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server import database
+from .ms_parser import parse_ms
 import time
 import arrow
 from enum import Enum
@@ -24,85 +25,6 @@ class AOProtocol(asyncio.Protocol):
         STR_OR_EMPTY = (2,)
         INT = (3,)
         INT_OR_STR = 3
-
-    # MS message field definitions: (field_name, type)
-    # Base fields shared by all protocol versions (indices 0-14)
-    _MS_BASE_FIELDS = [
-        ("msg_type", ArgType.STR),
-        ("pre", ArgType.STR_OR_EMPTY),
-        ("folder", ArgType.STR),
-        ("anim", ArgType.STR_OR_EMPTY),
-        ("text", ArgType.STR_OR_EMPTY),
-        ("pos", ArgType.STR),
-        ("sfx", ArgType.STR),
-        ("emote_mod", ArgType.INT),
-        ("cid", ArgType.INT),
-        ("sfx_delay", ArgType.INT),
-        ("button", ArgType.INT_OR_STR),
-        ("evidence", ArgType.INT),
-        ("flip", ArgType.INT),
-        ("ding", ArgType.INT),
-        ("color", ArgType.INT),
-    ]
-
-    # Extended fields for 2.6+ (charid_pair/offset_pair as INT)
-    _MS_26_FIELDS = _MS_BASE_FIELDS + [
-        ("showname", ArgType.STR_OR_EMPTY),
-        ("charid_pair", ArgType.INT),
-        ("offset_pair", ArgType.INT),
-        ("nonint_pre", ArgType.INT),
-    ]
-
-    # Extended fields for 2.8+ (charid_pair/offset_pair as STR to support pair_order)
-    _MS_28_FIELDS = _MS_BASE_FIELDS + [
-        ("showname", ArgType.STR_OR_EMPTY),
-        ("charid_pair", ArgType.STR),
-        ("offset_pair", ArgType.STR),
-        ("nonint_pre", ArgType.INT),
-        ("sfx_looping", ArgType.STR),
-        ("screenshake", ArgType.INT),
-        ("frames_shake", ArgType.STR),
-        ("frames_realization", ArgType.STR),
-        ("frames_sfx", ArgType.STR),
-        ("additive", ArgType.INT),
-        ("effect", ArgType.STR),
-    ]
-
-    # DRO 1.1.0 has a different field layout after base fields
-    _MS_DRO_FIELDS = _MS_BASE_FIELDS + [
-        ("showname", ArgType.STR_OR_EMPTY),
-        ("video", ArgType.STR_OR_EMPTY),
-        ("blankpost", ArgType.INT),
-    ]
-
-    # Schemas to try, in order from most to least complete
-    # Each entry: (schema_name, field_list, needs_pair_parsing)
-    _MS_SCHEMAS = [
-        ("kfo", _MS_28_FIELDS + [("third_charid", ArgType.INT), ("video", ArgType.STR_OR_EMPTY)], True),
-        ("ao_golden", _MS_28_FIELDS + [("third_charid", ArgType.INT)], True),
-        ("v28", _MS_28_FIELDS, True),
-        ("v26", _MS_26_FIELDS, False),
-        ("dro", _MS_DRO_FIELDS, False),
-        ("pre26", _MS_BASE_FIELDS, False),
-    ]
-
-    # Default values for optional MS fields
-    _MS_DEFAULTS = {
-        "showname": "",
-        "charid_pair": -1,
-        "offset_pair": 0,
-        "nonint_pre": 0,
-        "sfx_looping": "0",
-        "screenshake": 0,
-        "frames_shake": "",
-        "frames_realization": "",
-        "frames_sfx": "",
-        "additive": 0,
-        "effect": "",
-        "pair_order": 0,
-        "third_charid": -1,
-        "video": "",
-    }
 
     def __init__(self, server):
         super().__init__()
@@ -231,45 +153,6 @@ class AOProtocol(asyncio.Protocol):
                 except ValueError:
                     return False
         return True
-
-    def _parse_ms_args(self, args):
-        """Parse MS (IC message) arguments against known protocol schemas.
-
-        Tries schemas from most complete to least complete until one matches.
-        Returns a dict with all MS fields (using defaults for missing ones),
-        the schema name, and whether parsing succeeded.
-
-        :param args: the raw arguments from the MS command
-        :returns: (parsed_dict, schema_name) or (None, None) if no schema matched
-        """
-        for schema_name, fields, needs_pair_parsing in self._MS_SCHEMAS:
-            types = [f[1] for f in fields]
-            if self.validate_net_cmd(args, *types):
-                # Build dict from matched schema
-                ms = {f[0]: args[i] for i, f in enumerate(fields)}
-
-                # Apply defaults for any missing optional fields
-                for key, default in self._MS_DEFAULTS.items():
-                    ms.setdefault(key, default)
-
-                # Handle DRO-specific ding normalization
-                if schema_name == "dro":
-                    if ms["ding"] != 1:
-                        ms["ding"] = 0
-
-                # Handle pair_order extraction for 2.8+ protocols
-                if needs_pair_parsing:
-                    try:
-                        pair_args = ms["charid_pair"].split("^")
-                        ms["charid_pair"] = int(pair_args[0])
-                        if len(pair_args) > 1:
-                            ms["pair_order"] = pair_args[1]
-                    except ValueError:
-                        return None, None
-
-                return ms, schema_name
-
-        return None, None
 
     def net_cmd_hi(self, args):
         """Handshake.
@@ -480,7 +363,7 @@ class AOProtocol(asyncio.Protocol):
             return
 
         # Parse MS arguments against known protocol schemas
-        ms, schema_name = self._parse_ms_args(args)
+        ms = parse_ms(args)
         if ms is None:
             self.client.send_ooc(
                 f"Something went wrong! Please report this to the developers:\n{args}")
