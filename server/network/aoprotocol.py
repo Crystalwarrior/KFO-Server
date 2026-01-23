@@ -2,6 +2,7 @@ from .. import commands
 from server.constants import dezalgo, censor, contains_URL, derelative
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server import database
+from .ms_parser import parse_ms
 import time
 import arrow
 from enum import Enum
@@ -361,355 +362,43 @@ class AOProtocol(asyncio.Protocol):
             self.client.send_ooc("You are muted by a moderator.")
             return
 
-        showname = ""
-        charid_pair = -1
-        offset_pair = 0
-        nonint_pre = 0
-        sfx_looping = "0"
-        screenshake = 0
-        frames_shake = ""
-        frames_realization = ""
-        frames_sfx = ""
-        additive = 0
-        effect = ""
-        pair_order = 0
-        third_charid = -1
-        video = ""
-        if self.validate_net_cmd(
-            args,
-            self.ArgType.STR,  # msg_type
-            self.ArgType.STR_OR_EMPTY,
-            self.ArgType.STR,  # pre, folder
-            self.ArgType.STR_OR_EMPTY,
-            self.ArgType.STR_OR_EMPTY,  # anim, text
-            self.ArgType.STR,
-            self.ArgType.STR,  # pos, sfx
-            self.ArgType.INT,
-            self.ArgType.INT,  # emote_mod, cid
-            self.ArgType.INT,
-            self.ArgType.INT_OR_STR,  # sfx_delay, button
-            self.ArgType.INT,
-            self.ArgType.INT,  # evidence, flip
-            self.ArgType.INT,
-            self.ArgType.INT,  # ding, color
-        ):
-            # Pre-2.6 validation monstrosity.
-            (
-                msg_type,
-                pre,
-                folder,
-                anim,
-                text,
-                pos,
-                sfx,
-                emote_mod,
-                cid,
-                sfx_delay,
-                button,
-                evidence,
-                flip,
-                ding,
-                color,
-            ) = args
-        elif self.validate_net_cmd(
-            args,
-            self.ArgType.STR,  # msg_type
-            self.ArgType.STR_OR_EMPTY,
-            self.ArgType.STR,  # pre, folder
-            self.ArgType.STR_OR_EMPTY,
-            self.ArgType.STR_OR_EMPTY,  # anim, text
-            self.ArgType.STR,
-            self.ArgType.STR,  # pos, sfx
-            self.ArgType.INT,
-            self.ArgType.INT,  # emote_mod, cid
-            self.ArgType.INT,
-            self.ArgType.INT_OR_STR,  # sfx_delay, button
-            self.ArgType.INT,
-            self.ArgType.INT,  # evidence, flip
-            self.ArgType.INT,
-            self.ArgType.INT,  # ding, color
-            self.ArgType.STR_OR_EMPTY,  # DRO Showname
-            self.ArgType.STR_OR_EMPTY,  # DRO Video
-            self.ArgType.INT,  # 0 or 1, DRO hide_character
-        ):
-            # DRO1.1.0 validation monstrosity.
-            (
-                msg_type, # 0
-                pre, # 1
-                folder, # 2
-                anim, # 3
-                text, # 4
-                pos, # 5
-                sfx, # 6
-                emote_mod, # 7
-                cid, # 8
-                sfx_delay, # 9
-                button, # 10
-                evidence, # 11
-                flip, # 12
-                ding, # 13
-                color, # 14
-                showname, # 15
-                video, # 16
-                blankpost, # 17
-            ) = args
-            if ding != 1:
-                ding = 0
-        elif self.validate_net_cmd(
-            args,
-            self.ArgType.STR,
-            self.ArgType.STR_OR_EMPTY,  # msg_type, pre
-            self.ArgType.STR,
-            self.ArgType.STR_OR_EMPTY,
-            self.ArgType.STR_OR_EMPTY,  # folder, anim, text
-            self.ArgType.STR,
-            self.ArgType.STR,
-            self.ArgType.INT,  # pos, sfx, emote_mod
-            self.ArgType.INT,
-            self.ArgType.INT,
-            self.ArgType.INT_OR_STR,  # cid, sfx_delay, button
-            self.ArgType.INT,
-            self.ArgType.INT,
-            self.ArgType.INT,  # evidence, flip, ding
-            self.ArgType.INT,
-            self.ArgType.STR_OR_EMPTY,
-            self.ArgType.INT,  # color, showname, charid_pair
-            self.ArgType.INT,
-            self.ArgType.INT,  # offset_pair, nonint_pre
-        ):
-            # 2.6 validation monstrosity.
-            (
-                msg_type,
-                pre,
-                folder,
-                anim,
-                text,
-                pos,
-                sfx,
-                emote_mod,
-                cid,
-                sfx_delay,
-                button,
-                evidence,
-                flip,
-                ding,
-                color,
-                showname,
-                charid_pair,
-                offset_pair,
-                nonint_pre,
-            ) = args
-        elif self.validate_net_cmd(
-            args,
-            self.ArgType.STR, # 0 # msg_type
-            self.ArgType.STR_OR_EMPTY, # 1  # pre
-            self.ArgType.STR, # 2 # folder
-            self.ArgType.STR_OR_EMPTY, # 3 # anim
-            self.ArgType.STR_OR_EMPTY, # 4  # text
-            self.ArgType.STR, # 5 # pos
-            self.ArgType.STR, # 6 # sfx
-            self.ArgType.INT, # 7 # emote_mod
-            self.ArgType.INT, # 8 # cid
-            self.ArgType.INT, # 9 # sfx_delay
-            self.ArgType.INT_OR_STR, # 10 # button
-            self.ArgType.INT, # 11 # evidence
-            self.ArgType.INT, # 12 # flip
-            self.ArgType.INT, # 13 # ding
-            self.ArgType.INT, # 14 # color
-            self.ArgType.STR_OR_EMPTY, # 15 # showname
-            self.ArgType.STR, # 16 # charid_pair
-            self.ArgType.STR, # 17 # offset_pair
-            self.ArgType.INT, # 18 # nonint_pre
-            self.ArgType.STR, # 19 # sfx_looping
-            self.ArgType.INT, # 20 # screenshake
-            self.ArgType.STR, # 21 # frames_shake
-            self.ArgType.STR, # 22 # frames_realization
-            self.ArgType.STR, # 23 # frames_sfx
-            self.ArgType.INT, # 24 # additive
-            self.ArgType.STR, # 25  # effect
-        ):
-            # 2.8 validation monstrosity. (rip 2.7)
-            (
-                msg_type,
-                pre,
-                folder,
-                anim,
-                text,
-                pos,
-                sfx,
-                emote_mod,
-                cid,
-                sfx_delay,
-                button,
-                evidence,
-                flip,
-                ding,
-                color,
-                showname,
-                charid_pair,
-                offset_pair,
-                nonint_pre,
-                sfx_looping,
-                screenshake,
-                frames_shake,
-                frames_realization,
-                frames_sfx,
-                additive,
-                effect,
-            ) = args
-            try:
-                pair_args = charid_pair.split("^")
-                charid_pair = int(pair_args[0])
-                if len(pair_args) > 1:
-                    pair_order = pair_args[1]
-            except ValueError:
-                self.client.send_ooc(
-                    "Something went wrong! Please report the issue to the developers.")
-                return
-        elif self.validate_net_cmd(
-            args,
-            self.ArgType.STR, # 0 # msg_type
-            self.ArgType.STR_OR_EMPTY, # 1  # pre
-            self.ArgType.STR, # 2 # folder
-            self.ArgType.STR_OR_EMPTY, # 3 # anim
-            self.ArgType.STR_OR_EMPTY, # 4  # text
-            self.ArgType.STR, # 5 # pos
-            self.ArgType.STR, # 6 # sfx
-            self.ArgType.INT, # 7 # emote_mod
-            self.ArgType.INT, # 8 # cid
-            self.ArgType.INT, # 9 # sfx_delay
-            self.ArgType.INT_OR_STR, # 10 # button
-            self.ArgType.INT, # 11 # evidence
-            self.ArgType.INT, # 12 # flip
-            self.ArgType.INT, # 13 # ding
-            self.ArgType.INT, # 14 # color
-            self.ArgType.STR_OR_EMPTY, # 15 # showname
-            self.ArgType.STR, # 16 # charid_pair
-            self.ArgType.STR, # 17 # offset_pair
-            self.ArgType.INT, # 18 # nonint_pre
-            self.ArgType.STR, # 19 # sfx_looping
-            self.ArgType.INT, # 20 # screenshake
-            self.ArgType.STR, # 21 # frames_shake
-            self.ArgType.STR, # 22 # frames_realization
-            self.ArgType.STR, # 23 # frames_sfx
-            self.ArgType.INT, # 24 # additive
-            self.ArgType.STR, # 25 # effect
-            self.ArgType.INT, # 26 # third_charid
-        ):
-            # AO Golden validation monstrosity
-            (
-                msg_type,
-                pre,
-                folder,
-                anim,
-                text,
-                pos,
-                sfx,
-                emote_mod,
-                cid,
-                sfx_delay,
-                button,
-                evidence,
-                flip,
-                ding,
-                color,
-                showname,
-                charid_pair,
-                offset_pair,
-                nonint_pre,
-                sfx_looping,
-                screenshake,
-                frames_shake,
-                frames_realization,
-                frames_sfx,
-                additive,
-                effect,
-                third_charid,
-            ) = args
-            try:
-                pair_args = charid_pair.split("^")
-                charid_pair = int(pair_args[0])
-                if len(pair_args) > 1:
-                    pair_order = pair_args[1]
-            except ValueError:
-                self.client.send_ooc(
-                    "Something went wrong! Please report the issue to the developers.")
-                return
-        elif self.validate_net_cmd(
-            args,
-            self.ArgType.STR, # 0 # msg_type
-            self.ArgType.STR_OR_EMPTY, # 1  # pre
-            self.ArgType.STR, # 2 # folder
-            self.ArgType.STR_OR_EMPTY, # 3 # anim
-            self.ArgType.STR_OR_EMPTY, # 4  # text
-            self.ArgType.STR, # 5 # pos
-            self.ArgType.STR, # 6 # sfx
-            self.ArgType.INT, # 7 # emote_mod
-            self.ArgType.INT, # 8 # cid
-            self.ArgType.INT, # 9 # sfx_delay
-            self.ArgType.INT_OR_STR, # 10 # button
-            self.ArgType.INT, # 11 # evidence
-            self.ArgType.INT, # 12 # flip
-            self.ArgType.INT, # 13 # ding
-            self.ArgType.INT, # 14 # color
-            self.ArgType.STR_OR_EMPTY, # 15 # showname
-            self.ArgType.STR, # 16 # charid_pair
-            self.ArgType.STR, # 17 # offset_pair
-            self.ArgType.INT, # 18 # nonint_pre
-            self.ArgType.STR, # 19 # sfx_looping
-            self.ArgType.INT, # 20 # screenshake
-            self.ArgType.STR, # 21 # frames_shake
-            self.ArgType.STR, # 22 # frames_realization
-            self.ArgType.STR, # 23 # frames_sfx
-            self.ArgType.INT, # 24 # additive
-            self.ArgType.STR, # 25 # effect
-            self.ArgType.INT, # 26 # third_charid
-            self.ArgType.STR_OR_EMPTY, # 27 # video
-        ):
-            # KFO Client validation monstrosity
-            (
-                msg_type,
-                pre,
-                folder,
-                anim,
-                text,
-                pos,
-                sfx,
-                emote_mod,
-                cid,
-                sfx_delay,
-                button,
-                evidence,
-                flip,
-                ding,
-                color,
-                showname,
-                charid_pair,
-                offset_pair,
-                nonint_pre,
-                sfx_looping,
-                screenshake,
-                frames_shake,
-                frames_realization,
-                frames_sfx,
-                additive,
-                effect,
-                third_charid,
-                video,
-            ) = args
-            try:
-                pair_args = charid_pair.split("^")
-                charid_pair = int(pair_args[0])
-                if len(pair_args) > 1:
-                    pair_order = pair_args[1]
-            except ValueError:
-                self.client.send_ooc(
-                    "Something went wrong! Please report the issue to the developers.")
-                return
-        else:
+        # Parse MS arguments against known protocol schemas
+        ms = parse_ms(args)
+        if ms is None:
             self.client.send_ooc(
                 f"Something went wrong! Please report this to the developers:\n{args}")
             return
+
+        # Extract fields from parsed message
+        msg_type = ms["msg_type"]
+        pre = ms["pre"]
+        folder = ms["folder"]
+        anim = ms["anim"]
+        text = ms["text"]
+        pos = ms["pos"]
+        sfx = ms["sfx"]
+        emote_mod = ms["emote_mod"]
+        cid = ms["cid"]
+        sfx_delay = ms["sfx_delay"]
+        button = ms["button"]
+        evidence = ms["evidence"]
+        flip = ms["flip"]
+        ding = ms["ding"]
+        color = ms["color"]
+        showname = ms["showname"]
+        charid_pair = ms["charid_pair"]
+        offset_pair = ms["offset_pair"]
+        nonint_pre = ms["nonint_pre"]
+        sfx_looping = ms["sfx_looping"]
+        screenshake = ms["screenshake"]
+        frames_shake = ms["frames_shake"]
+        frames_realization = ms["frames_realization"]
+        frames_sfx = ms["frames_sfx"]
+        additive = ms["additive"]
+        effect = ms["effect"]
+        pair_order = ms["pair_order"]
+        third_charid = ms["third_charid"]
+        video = ms["video"]
         # Targets for whispering
         whisper_clients = None
 
