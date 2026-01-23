@@ -22,10 +22,10 @@ class MusicEffect(IntFlag):
 
 
 class ReportCardReason(IntFlag):
-    Nothing = (0,)
-    Blackout = (1,)
-    PendingLook = (2,)
-    Blinded = (3,)
+    Nothing = 0
+    Blackout = 1
+    PendingLook = 2
+    Blinded = 3
     NoPlayerList = 4
 
 
