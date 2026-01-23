@@ -27,6 +27,12 @@ uv run tox
 uv run black .
 ```
 
+### Lint code
+
+```bash
+uv run ruff check .
+```
+
 ## Server setup
 
 In order to set up the server, you must follow these instructions. This assumes you are familiar with using a terminal.
