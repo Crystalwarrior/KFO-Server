@@ -9,28 +9,34 @@ If you are looking to use KFO-Server to set up a server, see [Server setup](#ser
 
 To set up KFO-Server for development, follow these instructions.
 
-### Install dependencies
+First, install dependencies:
 
 ```bash
 uv sync
 ```
 
-### Run tests
+Then you can run the server using uv:
 
 ```bash
+uv run python start_server.py
+```
+
+### Run linter
+
+```(bash)
+uv run ruff check .
+```
+
+### Run tests
+
+```(bash)
 uv run tox
 ```
 
-### Format code
+### Run formatter
 
-```bash
-uv run black .
-```
-
-### Lint code
-
-```bash
-uv run ruff check .
+```(bash)
+uv run ruff format .
 ```
 
 ## Server setup
