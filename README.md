@@ -3,6 +3,30 @@
 
 KFO-Server is the official Python-based server for Attorney Online, forked from tsuserver3.
 
+If you are looking to use KFO-Server to set up a server, see [Server setup](#server-setup) below.
+
+## Development setup
+
+To set up KFO-Server for development, follow these instructions.
+
+### Install dependencies
+
+```bash
+uv sync
+```
+
+### Run tests
+
+```bash
+uv run tox
+```
+
+### Format code
+
+```bash
+uv run black .
+```
+
 ## Server setup
 
 In order to set up the server, you must follow these instructions. This assumes you are familiar with using a terminal.
@@ -22,34 +46,13 @@ If you don't want to use Git, you can download the latest zip of KFO-Server [her
 
 ### Install dependencies
 
-In order to install dependencies, you will need to open a terminal.
-
-On Windows, you can do this by pressing Win+R, typing in `cmd`, and pressing Enter.
-On Linux, you can do this by pressing Ctrl+Alt+T.
-
-You should then navigate to the folder where the server is located.
-
-Take note that depending on your operating system, the command for python may be python3 or python.
-You should also verify the version by running `python --version` or `python3 --version`.
-
-First, we need to create the virtual environment. This can be done by running the following command:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run:
 
 ```bash
-python -m venv venv
+uv sync
 ```
 
-Then, we need to activate the virtual environment.
-If you're on a unix system (bash or similar), you can run the following command:
-
-```bash
-./venv/bin/pip install -r requirements.txt
-```
-
-If you're on Windows (cmd), you may have to do this instead:
-
-```batch
-venv\Scripts\pip install -r requirements.txt
-```
+This will create a virtual environment and install all dependencies.
 
 ### Configure tsuserver
 
