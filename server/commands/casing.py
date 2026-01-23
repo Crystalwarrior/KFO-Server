@@ -101,7 +101,7 @@ def ooc_cmd_evidence(client, arg):
             # 0 = name
             # 1 = desc
             # 2 = image
-            evi_msg = f"\n💼[{i+1}]: '{evi[0]}'"  # (🖼️{evi[2]})
+            evi_msg = f"\n💼[{i + 1}]: '{evi[0]}'"  # (🖼️{evi[2]})
             if arg == "" or arg.lower() in evi_msg.lower():
                 msg += evi_msg
         msg += "\n\n|| Use /evidence [evi_name/id] to read specific evidence. ||"
@@ -117,7 +117,7 @@ def ooc_cmd_evidence(client, arg):
                 break
         if evidence is None:
             raise AreaError(f"Target evidence not found! (/evidence {arg})")
-        msg = f"==💼[{i+1}]: '{evidence[0]}=="
+        msg = f"==💼[{i + 1}]: '{evidence[0]}=="
         msg += f"\n🖼️Image: {evidence[2]}"
         msg += f"\n📃Desc:\n{evidence[1]}"
         msg += "\n\n|| Use /evidence to read all evidence in the area ||"
@@ -551,7 +551,7 @@ def ooc_cmd_testimony(client, arg):
                 return
             idx = int(args[0]) - 1
             client.area.testimony_send(idx)
-            client.area.broadcast_ooc(f"{client.showname} has moved to Statement {idx+1}.")
+            client.area.broadcast_ooc(f"{client.showname} has moved to Statement {idx + 1}.")
         except ValueError:
             raise ArgumentError("Index must be a number!")
         except ClientError:
@@ -570,7 +570,7 @@ def ooc_cmd_testimony(client, arg):
         here = "  "
         if i == client.area.testimony_index:
             here = " >"
-        msg += f"\n{here}{i+1}) {name}: {txt}"
+        msg += f"\n{here}{i + 1}) {name}: {txt}"
     client.send_ooc(msg)
 
 
@@ -640,7 +640,7 @@ def ooc_cmd_testimony_remove(client, arg):
         client.area.testimony.pop(idx)
         if client.area.testimony_index == idx:
             client.area.testimony_index = -1
-        client.area.broadcast_ooc(f"{client.showname} has removed Statement {idx+1}.")
+        client.area.broadcast_ooc(f"{client.showname} has removed Statement {idx + 1}.")
     except ValueError:
         raise ArgumentError("Index must be a number!")
     except IndexError:
@@ -666,7 +666,7 @@ def ooc_cmd_testimony_amend(client, arg):
         lst = list(client.area.testimony[idx])
         lst[4] = "}}}" + " ".join(args[1:])
         client.area.testimony[idx] = tuple(lst)
-        client.area.broadcast_ooc(f"{client.showname} has amended Statement {idx+1}.")
+        client.area.broadcast_ooc(f"{client.showname} has amended Statement {idx + 1}.")
     except ValueError:
         raise ArgumentError("Index must be a number!")
     except IndexError:
@@ -694,7 +694,7 @@ def ooc_cmd_testimony_swap(client, arg):
             client.area.testimony[idx1],
             client.area.testimony[idx2],
         )
-        client.area.broadcast_ooc(f"{client.showname} has swapped Statements {idx1+1} and {idx2+1}.")
+        client.area.broadcast_ooc(f"{client.showname} has swapped Statements {idx1 + 1} and {idx2 + 1}.")
     except ValueError:
         raise ArgumentError("Index must be a number!")
     except IndexError:
@@ -721,7 +721,7 @@ def ooc_cmd_testimony_insert(client, arg):
         statement = client.area.testimony.pop(idx1)
         client.area.testimony.insert(idx2, statement)
 
-        client.area.broadcast_ooc(f"{client.showname} has inserted Statement {idx1+1} into {idx2+1}.")
+        client.area.broadcast_ooc(f"{client.showname} has inserted Statement {idx1 + 1} into {idx2 + 1}.")
     except ValueError:
         raise ArgumentError("Index must be a number!")
     except IndexError:

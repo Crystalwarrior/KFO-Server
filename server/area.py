@@ -57,7 +57,7 @@ class Area:
             self.static = datetime.timedelta(0)
             self.started = False
 
-            self.area.broadcast_ooc(f"Timer {self.id+1} has expired.")
+            self.area.broadcast_ooc(f"Timer {self.id + 1} has expired.")
             self.call_commands()
 
         def call_commands(self):
@@ -1044,11 +1044,11 @@ class Area:
                 lst = list(self.testimony[idx])
                 lst[4] = "}}}" + msg[2:]
                 self.testimony[idx] = tuple(lst)
-                self.broadcast_ooc(f"{client.showname} has amended Statement {idx+1}.")
+                self.broadcast_ooc(f"{client.showname} has amended Statement {idx + 1}.")
                 if not self.recording:
                     self.testimony_send(idx)
             except IndexError:
-                client.send_ooc(f"Something went wrong, couldn't amend Statement {idx+1}!")
+                client.send_ooc(f"Something went wrong, couldn't amend Statement {idx + 1}!")
             return
 
         adding = msg.strip() != "" and self.recording and client is not None
@@ -1383,7 +1383,7 @@ class Area:
                 # Add one statement ahead of the one we're currently on.
                 idx += 1
                 self.testimony.insert(idx, args)
-            self.broadcast_ooc(f"Statement {idx+1} added.")
+            self.broadcast_ooc(f"Statement {idx + 1} added.")
             if not self.recording:
                 self.testimony_send(idx)
 

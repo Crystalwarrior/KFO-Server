@@ -244,7 +244,7 @@ class EvidenceList:
         client.area.send_owner_command(
             "CT",
             client.server.config["hostname"],
-            f"[{client.id}] {client.showname} swapped evidence {id1+1}: {self.evidences[id1].name} with {id2+1}: {self.evidences[id2].name} in area [{client.area.id}] {client.area.name}.",
+            f"[{client.id}] {client.showname} swapped evidence {id1 + 1}: {self.evidences[id1].name} with {id2 + 1}: {self.evidences[id2].name} in area [{client.area.id}] {client.area.name}.",
             "1",
         )
         # send_owner_command does not tell CMs present in the area about evidence manipulation, so let's do that manually
@@ -253,7 +253,7 @@ class EvidenceList:
                 c.send_command(
                     "CT",
                     client.server.config["hostname"],
-                    f"[{client.id}] {client.showname} swapped evidence {id1+1}: {self.evidences[id1].name} with {id2+1}: {self.evidences[id2].name} in this area.",
+                    f"[{client.id}] {client.showname} swapped evidence {id1 + 1}: {self.evidences[id1].name} with {id2 + 1}: {self.evidences[id2].name} in this area.",
                     "1",
                 )
 
@@ -347,7 +347,7 @@ class EvidenceList:
         client.area.send_owner_command(
             "CT",
             client.server.config["hostname"],
-            f"[{client.id}] {client.showname} {word} evidence {id+1}: {evi.name} in area [{client.area.id}] {client.area.name}.",
+            f"[{client.id}] {client.showname} {word} evidence {id + 1}: {evi.name} in area [{client.area.id}] {client.area.name}.",
             "1",
         )
         # send_owner_command does not tell CMs present in the area about evidence manipulation, so let's do that manually
@@ -356,7 +356,7 @@ class EvidenceList:
                 c.send_command(
                     "CT",
                     client.server.config["hostname"],
-                    f"[{client.id}] {client.showname} {word} evidence {id+1}: {evi.name} in this area.",
+                    f"[{client.id}] {client.showname} {word} evidence {id + 1}: {evi.name} in this area.",
                     "1",
                 )
 
@@ -440,7 +440,7 @@ class EvidenceList:
         client.area.send_owner_command(
             "CT",
             client.server.config["hostname"],
-            f"[{client.id}] {client.showname} edited evidence {id+1}: {namechange} in area [{client.area.id}] {client.area.name}.",
+            f"[{client.id}] {client.showname} edited evidence {id + 1}: {namechange} in area [{client.area.id}] {client.area.name}.",
             "1",
         )
         # send_owner_command does not tell CMs present in the area about evidence manipulation, so let's do that manually
@@ -449,6 +449,6 @@ class EvidenceList:
                 c.send_command(
                     "CT",
                     client.server.config["hostname"],
-                    f"[{client.id}] {client.showname} edited evidence {id+1}: {namechange} in this area.",
+                    f"[{client.id}] {client.showname} edited evidence {id + 1}: {namechange} in this area.",
                     "1",
                 )

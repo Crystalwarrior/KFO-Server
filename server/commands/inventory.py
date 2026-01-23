@@ -25,7 +25,7 @@ def get_inventory(evi_list, arg):
             # 0 = name
             # 1 = desc
             # 2 = image
-            evi_msg = f"\n💼[{i+1}]: '{evi[0]}'"  # (🖼️{evi[2]})
+            evi_msg = f"\n💼[{i + 1}]: '{evi[0]}'"  # (🖼️{evi[2]})
             if arg == "" or arg.lower() in evi_msg.lower():
                 msg += evi_msg
         msg += "\n\n|| Use /inventory [evi_name/id] to read specific evidence. ||"
@@ -40,7 +40,7 @@ def get_inventory(evi_list, arg):
                 break
         if evidence is None:
             raise AreaError(f"Target evidence not found! (/inventory {arg})")
-        msg = f"==💼[{i+1}]: '{evidence[0]}=="
+        msg = f"==💼[{i + 1}]: '{evidence[0]}=="
         msg += f"\n🖼️Image: {evidence[2]}"
         msg += f"\n📃Desc:\n{evidence[1]}"
         msg += f"\n\n|| Use /inventory_drop {i} to drop this into the area ||"

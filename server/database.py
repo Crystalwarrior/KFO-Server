@@ -204,7 +204,7 @@ class Database:
                         (target_id, ban_id),
                     )
                 except sqlite3.IntegrityError as exc:
-                    raise ServerError(f"Error inserting ban: {exc}" " (the IPID may not exist)")
+                    raise ServerError(f"Error inserting ban: {exc} (the IPID may not exist)")
             elif ban_type == "hdid":
                 try:
                     conn.execute(
@@ -417,7 +417,7 @@ class Database:
     def log_connect(self, client, failed=False):
         """Log a connect attempt."""
         logger.info(
-            f"{client.ipid} (HDID: {client.hdid}) " + f'{"was blocked from connecting" if failed else "connected"}.'
+            f"{client.ipid} (HDID: {client.hdid}) " + f"{'was blocked from connecting' if failed else 'connected'}."
         )
         with self.db as conn:
             conn.execute(

@@ -78,7 +78,7 @@ def send_info_fighter(client):
     msg = f"\n👤 {client.battle.fighter} 👤:\n"
     if client.battle.status is not None:
         msg += f"Status 🌈: {client.battle.status}\n"
-    msg += f"\nHP 💗: {round(client.battle.hp,2)}/{client.battle.maxhp}\nMANA 💧: {round(client.battle.mana,2)}\nATK 🗡️: {round(client.battle.atk,2)}\nDEF 🛡️: {round(client.battle.defe,2)}\nSPA ✨: {round(client.battle.spa,2)}\nSPD 🔮: {round(client.battle.spd,2)}\nSPE 💨: {round(client.battle.spe,2)}\n\n"
+    msg += f"\nHP 💗: {round(client.battle.hp, 2)}/{client.battle.maxhp}\nMANA 💧: {round(client.battle.mana, 2)}\nATK 🗡️: {round(client.battle.atk, 2)}\nDEF 🛡️: {round(client.battle.defe, 2)}\nSPA ✨: {round(client.battle.spa, 2)}\nSPD 🔮: {round(client.battle.spd, 2)}\nSPE 💨: {round(client.battle.spe, 2)}\n\n"
     for move in client.battle.moves:
         move_id = client.battle.moves.index(move)
         msg += f"🌠 [{move_id}]{move.name} 🌠:\nManaCost 💧: {move.cost}\nType 💠: {move.type}\nPower 💪: {move.power}\nAccuracy 🔎: {move.accuracy}%\n"
@@ -97,7 +97,7 @@ def send_stats_fighter(client):
     msg = f"\n👤 {client.battle.fighter} 👤:\n"
     if client.battle.status is not None:
         msg += f"Status 🌈: {client.battle.status}\n"
-    msg += f"\nHP 💗: {round(client.battle.hp,2)}/{client.battle.maxhp}\nMANA 💧: {round(client.battle.mana,2)}\nATK 🗡️: {round(client.battle.atk,2)}\nDEF 🛡️: {round(client.battle.defe,2)}\nSPA ✨: {round(client.battle.spa,2)}\nSPD 🔮: {round(client.battle.spd,2)}\nSPE 💨: {round(client.battle.spe,2)}\n\n"
+    msg += f"\nHP 💗: {round(client.battle.hp, 2)}/{client.battle.maxhp}\nMANA 💧: {round(client.battle.mana, 2)}\nATK 🗡️: {round(client.battle.atk, 2)}\nDEF 🛡️: {round(client.battle.defe, 2)}\nSPA ✨: {round(client.battle.spa, 2)}\nSPD 🔮: {round(client.battle.spd, 2)}\nSPE 💨: {round(client.battle.spe, 2)}\n\n"
     client.send_ooc(msg)
 
 
@@ -409,7 +409,7 @@ def send_battle_info(client):
                 emoji = "⚔️"
 
             if client.area.battle_show_hp:
-                show_hp = f": {round(client.battle.hp*100/client.battle.maxhp,2)}%"
+                show_hp = f": {round(client.battle.hp * 100 / client.battle.maxhp, 2)}%"
             else:
                 show_hp = ""
 
@@ -424,7 +424,7 @@ def send_battle_info(client):
                 emoji = "⚔️"
 
             if client.area.battle_show_hp:
-                show_hp = f": {round(client.battle.hp*100/client.battle.maxhp,2)}%"
+                show_hp = f": {round(client.battle.hp * 100 / client.battle.maxhp, 2)}%"
             else:
                 show_hp = ""
 

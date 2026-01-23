@@ -1180,7 +1180,7 @@ class ClientManager:
                     if old_area.area_manager == self.area.area_manager:
                         if self.area.area_manager.passing_msg is True:
                             old_area.send_ic(
-                                msg=f'~~{"}}}"}[º{self.showname}º leaves to º{area.name}º.]',
+                                msg=f"~~{'}}}'}[º{self.showname}º leaves to º{area.name}º.]",
                                 emote_mod=1,
                             )
                         for c in old_area.clients:
@@ -1226,7 +1226,7 @@ class ClientManager:
                     )
                     if self.area.area_manager.passing_msg is True:
                         self.area.send_ic(
-                            msg=f'~~{"}}}"}[º{self.showname}º enters from º{old_area.name}º.]',
+                            msg=f"~~{'}}}'}[º{self.showname}º enters from º{old_area.name}º.]",
                             emote_mod=1,
                         )
                 else:
@@ -1524,7 +1524,11 @@ class ClientManager:
                             else (
                                 4
                                 if (x in area._owners)
-                                else 5 if (x in area.area_manager.owners) else 6 if x.is_mod else 0
+                                else 5
+                                if (x in area.area_manager.owners)
+                                else 6
+                                if x.is_mod
+                                else 0
                             )
                         )
                     )

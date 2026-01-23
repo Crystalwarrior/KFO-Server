@@ -167,7 +167,7 @@ def kickban(client, arg, ban_hdid):
                 raise ArgumentError("Invalid ban duration.")
             unban_date = arrow.get().shift(seconds=duration).datetime
     else:
-        raise ArgumentError(f"Ambiguous input: {arg}\nPlease wrap your arguments " "in quotes.")
+        raise ArgumentError(f"Ambiguous input: {arg}\nPlease wrap your arguments in quotes.")
 
     try:
         raw_ipid = args[0]
@@ -394,7 +394,7 @@ def ooc_cmd_bans(client, _arg):
     msg = "Last 5 bans:\n"
     for ban in database.recent_bans():
         time = arrow.get(ban.ban_date).humanize()
-        msg += f"{time}: {ban.banned_by_name} ({ban.banned_by}) issued ban " f"{ban.ban_id} ('{ban.reason}')\n"
+        msg += f"{time}: {ban.banned_by_name} ({ban.banned_by}) issued ban {ban.ban_id} ('{ban.reason}')\n"
     client.send_ooc(msg)
 
 

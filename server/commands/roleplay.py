@@ -512,7 +512,7 @@ def ooc_cmd_rps(client, arg):
     if not arg:
         msg = "RPS rules:"
         for i, rule in enumerate(rps_rules):
-            msg += f"\n  {i+1}) "
+            msg += f"\n  {i + 1}) "
             choice = rule[0]
             msg += choice
             if len(choice) > 1:
@@ -690,9 +690,9 @@ def ooc_cmd_timer(client, arg):
         for timer_id, timer in enumerate(client.area.timers):
             if timer.set:
                 if timer.started:
-                    msg += f"\nTimer {timer_id+1} is at {timer.target - arrow.get()}"
+                    msg += f"\nTimer {timer_id + 1} is at {timer.target - arrow.get()}"
                 else:
-                    msg += f"\nTimer {timer_id+1} is at {timer.static}"
+                    msg += f"\nTimer {timer_id + 1} is at {timer.static}"
         client.send_ooc(msg)
         return
     # TI packet specification:

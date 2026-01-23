@@ -700,7 +700,7 @@ def ooc_cmd_pw(client, arg):
         if password == "":
             if client.is_mod or client in client.area.owners:
                 if link is not None and link["password"] != "":
-                    client.send_ooc(f'Link {client.area.id}-{area.id} password is: {link["password"]}')
+                    client.send_ooc(f"Link {client.area.id}-{area.id} password is: {link['password']}")
                 else:
                     client.send_ooc(f"Area [{area.id}] {area.name} password is: {area.password}")
             else:

@@ -55,20 +55,20 @@ class Emotes:
                     self.emotes.add((preanim.lower(), anim.lower(), sfx.lower()))
                 except KeyError as e:
                     logger.warning(
-                        "Broken key %s in character file %s. " "This indicates a malformed character INI file.",
+                        "Broken key %s in character file %s. This indicates a malformed character INI file.",
                         e.args[0],
                         char_path,
                     )
         except KeyError as e:
             logger.warning(
-                "Unknown key %s in character file %s. " "This indicates a malformed character INI file.",
+                "Unknown key %s in character file %s. This indicates a malformed character INI file.",
                 e.args[0],
                 char_path,
             )
             return
         except ValueError as e:
             logger.warning(
-                "Value error in character file %s:\n%ss\n" "This indicates a malformed character INI file.",
+                "Value error in character file %s:\n%ss\nThis indicates a malformed character INI file.",
                 char_path,
                 e,
             )
