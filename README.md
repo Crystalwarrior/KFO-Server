@@ -60,13 +60,13 @@ uv sync
 
 This will create a virtual environment and install all dependencies.
 
-### Configure tsuserver
+### Configure KFO-Server
 
 * Copy `config_sample` to `config`
 * Edit the values in the `.yaml` files to your liking.
 * Be sure to check your YAML file for syntax errors. Use this website: <http://www.yamllint.com/>
   * *Use spaces only; do not use tabs.*
-* You don't need to copy characters into the `characters` folder *unless* you specifically chose to disable iniswapping in an area (in `areas.yaml`). In this case, all tsuserver needs to know is the `char.ini` of each character. It doesn't need sprites.
+* You don't need to copy characters into the `characters` folder *unless* you specifically chose to disable iniswapping in an area (in `areas.yaml`). In this case, all KFO-Server needs to know is the `char.ini` of each character. It doesn't need sprites.
 
 ### Run
 
@@ -79,7 +79,7 @@ To stop the server, press Ctrl+C in the terminal.
 
 You can also use docker to run KFO-server. First you need to install [Docker](https://get.docker.com/) and [Docker Compose](https://docs.docker.com/compose/install/).
 
-Once you have everything configured, do `docker-compose up`. It will build the image and start tsuserver up for you. If you accidentally restart the server, the container will automatically start back up. If you're not understanding why it's starting, try starting it up manually:
+Once you have everything configured, do `docker-compose up`. It will build the image and start KFO-Server up for you. If you accidentally restart the server, the container will automatically start back up. If you're not understanding why it's starting, try starting it up manually:
 
 ## Pro Tips
 
@@ -91,6 +91,6 @@ Once you have everything configured, do `docker-compose up`. It will build the i
 
 ## License
 
-This server is licensed under the AGPLv3 license. In short, if you use a modified version of tsuserver3, you *must* distribute its source licensed under the AGPLv3 as well, and notify your users where the modified source may be found. The main difference between the AGPL and the GPL is that for the AGPL, network use counts as distribution. If you do not accept these terms, you should use [serverD](https://github.com/Attorney-Online-Engineering-Task-Force/serverD), which uses GPL rather than AGPL.
+This server is licensed under the AGPLv3 license. In short, if you use a modified version of KFO-Server, you *must* distribute its source licensed under the AGPLv3 as well, and notify your users where the modified source may be found. The main difference between the AGPL and the GPL is that for the AGPL, network use counts as distribution. If you do not accept these terms, you should use [serverD](https://github.com/Attorney-Online-Engineering-Task-Force/serverD), which uses GPL rather than AGPL.
 
 See the [LICENSE](LICENSE.md) file for more information.

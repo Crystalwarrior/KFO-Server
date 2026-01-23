@@ -1,10 +1,10 @@
 import os
 
-from server.tsuserver import TsuServer3
+from server.kfoserver import KFOServer
 
 
 def main():
-    server = TsuServer3()
+    server = KFOServer()
     server.start()
 
 

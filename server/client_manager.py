@@ -802,7 +802,7 @@ class ClientManager:
 
         def load_music(self, path):
             """Load a music list from a path. Use it for the local music list and reload it."""
-            # TODO: Move the musiclist parsing function to tsuserver3.py or something
+            # TODO: Move the musiclist parsing function to kfoserver.py or something
             try:
                 with open(path, "r", encoding="utf-8") as stream:
                     music_list = yaml.safe_load(stream)

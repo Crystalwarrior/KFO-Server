@@ -55,7 +55,7 @@ def ooc_cmd_help(client, arg):
 
     if arg == "":
         msg = inspect.cleandoc("""
-        Welcome to tsuserver3! You can use /help <command> on any known
+        Welcome to KFO-Server! You can use /help <command> on any known
         command to get up-to-date help on it.
         You may also use /help <category> to see available commands for that category.
 

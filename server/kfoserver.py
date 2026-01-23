@@ -24,8 +24,8 @@ from server.constants import remove_URL, dezalgo
 logger = logging.getLogger("main")
 
 
-class TsuServer3:
-    """The main class for KFO-Server derivative of tsuserver3 server software."""
+class KFOServer:
+    """The main class for KFO-Server."""
 
     def __init__(self):
         self.software = "KFO-Server"
