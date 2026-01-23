@@ -126,13 +126,15 @@ class KFOServer:
         ao_server_crt = loop.create_server(lambda: AOProtocol(self), bound_ip, self.config["port"])
         ao_server = loop.run_until_complete(ao_server_crt)
 
+        async def start_websockets():
+            await websockets.serve(new_websocket_client(self), bound_ip, self.config["websocket_port"])
+
         if self.config["use_websockets"]:
-            ao_server_ws = websockets.serve(new_websocket_client(self), bound_ip, self.config["websocket_port"])
-            asyncio.ensure_future(ao_server_ws)
+            loop.run_until_complete(start_websockets())
 
         if self.config["use_masterserver"]:
             self.ms_client = MasterServerClient(self)
-            asyncio.ensure_future(self.ms_client.connect(), loop=loop)
+            asyncio.ensure_future(self.ms_client.connect())
 
         if self.config["zalgo_tolerance"]:
             self.zalgo_tolerance = self.config["zalgo_tolerance"]
@@ -145,7 +147,7 @@ class KFOServer:
                     self.config["bridgebot"]["hub_id"],
                     self.config["bridgebot"]["area_id"],
                 )
-                asyncio.ensure_future(self.bridgebot.init(self.config["bridgebot"]["token"]), loop=loop)
+                asyncio.ensure_future(self.bridgebot.init(self.config["bridgebot"]["token"]))
                 self.bridgebot.add_commands()
             except Exception as ex:
                 # Don't end the whole server if bridgebot destroys itself

@@ -88,8 +88,7 @@ class MasterServerClient:
 
         # If fails, try to get the external IP
         if not f_ip:
-            loop = asyncio.get_event_loop()
-            f_ip = await loop.run_in_executor(None, self.get_my_ip)
+            f_ip = await asyncio.to_thread(self.get_my_ip)
 
         advertise_body = {
             "ip": f_ip,
