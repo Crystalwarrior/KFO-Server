@@ -294,7 +294,10 @@ class Area:
         self.auto_pair = False
         self.auto_pair_max = "triple"
         self.auto_pair_cycle = False
-        
+
+        # medieval mode - transforms all messages in the area to Ye Olde English
+        self.medieval_mode = False
+
         # list of areas to broadcast ic messages to
         self.broadcast_list = []
 
@@ -1208,6 +1211,10 @@ class Area:
                             break
                     # Speaker always goes in front
                     charid_pair = f"{charid_pair}^0"
+
+            # medieval mode - Ye Olde English
+            if client.medieval or self.medieval_mode:
+                msg = client.medieval_message(msg)
 
             # rainbow text!?!?!?
             if client.rainbow:
