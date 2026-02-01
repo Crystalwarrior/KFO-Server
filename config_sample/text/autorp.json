@@ -1,0 +1,2371 @@
+{
+    "prepended_words": {
+        "Forsooth, ": "1",
+        "I say, ": "1",
+        "I sayeth, ": "1",
+        "Forsooth, I say, ": "1",
+        "Forsooth, say I, ": "1",
+        "Forsooth, sayeth I, ": "1",
+        "Hark! ": "1",
+        "Harketh! ": "1",
+        "By &god, ": "1",
+        "By the Will of &godadj &god, ": "1",
+        "By the &bodyadj &bodypart of the &godadj &god, ": "1",
+        "By &godadj &god's &bodyadj &bodypart, ": "1",
+        "Avast, ": "1",
+        "Zounds, ": "1",
+        "Perchance, ": "1",
+        "Pray tell, ": "1",
+        "Prithee, ": "1",
+        "What hey, ": "1",
+        "What ho, ": "1",
+        "Pray, ": "1",
+        "Surely ": "1",
+        "Pray pardon, ": "1",
+        "Alas, ": "1",
+        "In short, ": "1",
+        "My Lord, ": "1",
+        "My Lady, ": "1",
+        "By my faith, ": "1",
+        "If it pleases you, ": "1",
+        "I pray you, ": "1",
+        "In truth, ": "1",
+        "By my trowth, ": "1",
+        "In sooth, ": "1",
+        "By my word, ": "1",
+        "S'wounds, ": "1",
+        "Z'wounds, ": "1",
+        "&god's wounds, ": "1",
+        "&god's &bodypart, ": "1",
+        "Heigh-ho, ": "1",
+        "Ah, ": "1",
+        "Quoth I, ": "1",
+        "Listen, ": "1",
+        "Listen thee, ": "1",
+        "Hear me, ": "1",
+        "Now hear me, ": "1",
+        "I warrant ": "1",
+        "Come, ": "1",
+        "Kind sire, ": "1",
+        "Sire, ": "1",
+        "There is much in what you say, and yet, ": "1"
+    },
+    "appended_words": {
+        "Anon!": "1",
+        "Hum.": "1",
+        "Good sir!": "1",
+        "Good sire!": "1",
+        "Milady!": "1",
+        "My Liege!": "1",
+        "Guvnor!": "1"
+    },
+    "word_replacements": [
+        {
+            "prev": [
+                "it"
+            ],
+            "word": [
+                "is"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "'tis"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [
+                "it"
+            ],
+            "word": [
+                "was"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "'twas"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [
+                "it"
+            ],
+            "word": [
+                "would"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "'twould"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [
+                "it"
+            ],
+            "word": [
+                "will"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "'twill"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [
+                "it"
+            ],
+            "word": [
+                "were"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "'twere"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [
+                "shall"
+            ],
+            "word": [
+                "not"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "shan't"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [
+                "will"
+            ],
+            "word": [
+                "not"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "shan't"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [
+                "over"
+            ],
+            "word": [
+                "there"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "yonder"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [
+                "in"
+            ],
+            "word": [
+                "the"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "i' the"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [
+                "thank"
+            ],
+            "word": [
+                "you"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "many good thanks to you",
+                "thankee",
+                "kindly thanks to you",
+                "grammercy to you"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "you",
+                "u"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "thou",
+                "thee",
+                "ye"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "are"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "art"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "god"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "Odin",
+                "Bob",
+                "Zeus",
+                "Hera",
+                "Thor",
+                "Crom",
+                "Mad-poet Navarth",
+                "Cugel",
+                "Wotsit",
+                "Baron Boddisey",
+                "Poseidon",
+                "Saint Mary",
+                "Pallus Athena",
+                "Loki",
+                "Erlik",
+                "Shoggoth",
+                "Omm",
+                "Vishnu",
+                "Azazoth",
+                "Father Odin",
+                "Allfather Odin",
+                "Cthulhu",
+                "Buddha",
+                "Aphrodite",
+                "Isis",
+                "Kali",
+                "Dionysus",
+                "Zarathustra",
+                "Croesus",
+                "Hermes",
+                "Venus",
+                "Montezuma",
+                "Popacatapetl",
+                "Hephaestus",
+                "Bubastes",
+                "Bacchus",
+                "Nebuchadnezzar",
+                "Assurbanipal",
+                "Sargon",
+                "Xerxes",
+                "Mulwatallish",
+                "Labarna",
+                "Hammurabi",
+                "Rameses",
+                "Minos",
+                "Tilgath-Pileser",
+                "Vercingetorix",
+                "Mithradites",
+                "Pericles",
+                "Belasarius",
+                "Archaemides",
+                "Heraclius",
+                "Imhotep",
+                "Artemis",
+                "Orthia",
+                "Phoebe",
+                "Hestia",
+                "Eros",
+                "Persephone",
+                "Minerva",
+                "Mercury",
+                "Aesculapius",
+                "Discordia",
+                "Hecate",
+                "Hespera"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "godadj"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "Almighty",
+                "Unthinkable",
+                "Unknowable",
+                "All-knowing",
+                "All-seeing",
+                "Lecherous",
+                "Scandalous",
+                "Merciful",
+                "Ravaging",
+                "Thunderous",
+                "Wrathful",
+                "Distant",
+                "Vengeful",
+                "Supreme",
+                "Wise",
+                "Warlike",
+                "Jealous",
+                "Vindictive",
+                "Powerful",
+                "Adulterous",
+                "Licentious",
+                "Crafty",
+                "Benefical",
+                "Virtuous",
+                "Protective",
+                "Prophetic",
+                "Bloodthirsty",
+                "Murderous",
+                "Ruinous",
+                "Militant",
+                "Invisible",
+                "Omnipotent",
+                "Forgotten",
+                "Enlightened",
+                "Tempestuous",
+                "Destructive",
+                "Grim"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "bodypart"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "Beard",
+                "Third Leg",
+                "Scalp",
+                "Eye",
+                "Thigh",
+                "Arm",
+                "Sword",
+                "Heel",
+                "Gaze",
+                "Tongue",
+                "Hammer",
+                "Toenail",
+                "Nether Regions",
+                "Liver",
+                "Lights",
+                "Spleen",
+                "Gall",
+                "Liver and Lights"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "bodyadj"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "Unknowable",
+                "Unescapable",
+                "Unfathomable",
+                "Unthinkable",
+                "Righteous",
+                "Hairy",
+                "Hairless",
+                "Wandering",
+                "Blistered",
+                "Awe-inspiring",
+                "Toothy",
+                "Ravaged",
+                "Aged",
+                "Endless",
+                "Wondrous",
+                "Unavoidable",
+                "Pestilent",
+                "Forgotten",
+                "Beautiful",
+                "Fertile",
+                "Prophetic",
+                "Musical",
+                "Helpful",
+                "Virginal",
+                "Curative",
+                "Bleak",
+                "Incessant",
+                "Sagely",
+                "Unfashionable",
+                "Unfaltering",
+                "Unfamiliar",
+                "Abysmal",
+                "Boundless",
+                "Eternal",
+                "Immeasurable",
+                "Infinite",
+                "Unending",
+                "Soundless",
+                "Incomprehensible",
+                "Inexplicable",
+                "Profound",
+                "unintelligible",
+                "Unbelievable",
+                "Impenetrable",
+                "Indecipherable",
+                "Esoteric",
+                "Enigmatic",
+                "Ancient",
+                "Venerable",
+                "Baneful",
+                "Contagious",
+                "Corrupting",
+                "Deadly",
+                "Deleterious",
+                "Evil",
+                "Noxious",
+                "Diseased",
+                "Pernicious",
+                "Pestiferous",
+                "Pestilential",
+                "Tainted",
+                "Contaminated",
+                "Pulchritudinous",
+                "Odoriferous",
+                "Misbegotten",
+                "Sacriligious"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "lol"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "lolleth",
+                "lollery"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "killed",
+                "beaten"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "slain",
+                "vanquished",
+                "brung low",
+                "conquered",
+                "fleeced",
+                "humbled",
+                "subjugated",
+                "bested",
+                "foiled"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "goodbye",
+                "bye",
+                "seeya",
+                "goodnight"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "farewell",
+                "fare thee well",
+                "good morrow",
+                "by your leave",
+                "godspeed",
+                "begone",
+                "good day",
+                "good day, sirrah",
+                "good day, sire",
+                "good day, master",
+                "adieu",
+                "cheerio",
+                "pleasant journey",
+                "I bid thee good day",
+                "I bid thee farewell"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "idiot",
+                "fool",
+                "bastard"
+            ],
+            "word_plural": [
+                "idiots",
+                "fools",
+                "bastards"
+            ],
+            "chance": 0,
+            "prepend_count": "2",
+            "replacement_prepend": [
+                "artless",
+                "droning",
+                "fawning",
+                "warped",
+                "paunchy",
+                "puny",
+                "spongy",
+                "ruttish",
+                "vain",
+                "lumpish",
+                "craven",
+                "witless",
+                "pustulent",
+                "infested",
+                "ill-bred",
+                "blind",
+                "scurvy",
+                "puny",
+                "fetid",
+                "vile",
+                "gibbering",
+                "mewling",
+                "rank",
+                "fawning",
+                "moonish",
+                "brutish",
+                "malapert",
+                "curst",
+                "lack-linen",
+                "bottle-ailed",
+                "lyingest",
+                "embossed",
+                "cheating",
+                "crook-pated",
+                "base-court",
+                "hasty-witted",
+                "two-faced",
+                "pox-marked",
+                "toad-brained",
+                "errant",
+                "idle-headed",
+                "quailing",
+                "flap-mouthed",
+                "puking",
+                "fly-bitten",
+                "surly",
+                "tottering",
+                "villainous",
+                "rump-fed",
+                "bootless",
+                "churlish",
+                "tickle-brained",
+                "froward"
+            ],
+            "replacement": [
+                "mongrel",
+                "codpiece",
+                "jackanape",
+                "ape",
+                "coxcomb",
+                "harlot",
+                "hussy",
+                "strumpet",
+                "cur",
+                "clot",
+                "fool",
+                "barnacle",
+                "harpy",
+                "wench",
+                "churl",
+                "pleb",
+                "taffer",
+                "scoundrel",
+                "scalliwag",
+                "mooncalf",
+                "rapscallion",
+                "doxy",
+                "bawd",
+                "tosspot",
+                "cupshot",
+                "recreant",
+                "fustalarion",
+                "scullion",
+                "rampallion",
+                "knave",
+                "barbermonger",
+                "boil",
+                "plague-sore",
+                "carbuncle",
+                "whoreson",
+                "clotpole",
+                "lout",
+                "gudgeon",
+                "puttock",
+                "skainsmate",
+                "varlet",
+                "bladder"
+            ],
+            "replacement_plural": [
+                "mongrels",
+                "codpieces",
+                "jackanapes",
+                "apes",
+                "coxcombes",
+                "harlots",
+                "hussies",
+                "strumpets",
+                "clots",
+                "fools",
+                "barnacles",
+                "harpies",
+                "wenches",
+                "churls",
+                "plebians",
+                "taffers",
+                "scoundrels",
+                "scalliwags",
+                "mooncalves",
+                "rapscallions",
+                "doxies",
+                "bawds",
+                "tosspots",
+                "cupshots",
+                "recreants",
+                "fustalarions",
+                "scullions",
+                "rampallions",
+                "knaves",
+                "barbermongerers",
+                "boils",
+                "plague-sores",
+                "carbuncles",
+                "whoresons",
+                "louts"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "yes"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "aye",
+                "yea",
+                "yea verily"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "no"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "nay",
+                "nayeth"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "hello",
+                "hi"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "good day",
+                "well met",
+                "well meteth",
+                "tally ho",
+                "ave"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "does"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "doeseth",
+                "dost",
+                "doth"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "kill",
+                "gank"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "slay",
+                "vanquish",
+                "bring low",
+                "conquer",
+                "fleece",
+                "humble",
+                "subjugate",
+                "best",
+                "foil"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "your"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "thy",
+                "thine",
+                "thyne"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "my"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "mine"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "in"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "within"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "it's"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "'tis"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "the"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "ye"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "joke"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "jest",
+                "jape"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "go"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "",
+                "be off"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "will"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "wilt",
+                "wouldst"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "gold",
+                "money"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "bullion",
+                "florins",
+                "pounds",
+                "ducats",
+                "pieces o'silver",
+                "groats",
+                "crowns",
+                "ingots"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "balls",
+                "groin"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "leathers",
+                "beans",
+                "poundables",
+                "nethers",
+                "nadchakles",
+                "buis",
+                "fellahs",
+                "coin purse"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "water"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "ale",
+                "mead",
+                "flagon of ale",
+                "flagon of mead"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "food"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "vittles",
+                "rations",
+                "sustenance",
+                "viands",
+                "nutriments"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "afk"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "away, fighting kobolds",
+                "away, fruity knights",
+                "aft, frisking knickers",
+                "abaft, flailing knouts"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "aggro"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "wrath"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "town",
+                "village",
+                "home"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "borough",
+                "burgage",
+                "burgh",
+                "keep",
+                "castle",
+                "hamlet",
+                "redoubt"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "sell"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "hawk",
+                "pawn",
+                "tender",
+                "purvey"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "buy"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "purchase",
+                "obtain"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "debuff"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "ailment",
+                "sickness",
+                "pox"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "map"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "chart"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "between"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "betwixt"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "thank",
+                "thx"
+            ],
+            "word_plural": [
+                "thanks"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "many good thank",
+                "thankee",
+                "kindly thank"
+            ],
+            "replacement_plural": [
+                "many thanks",
+                "much thankage",
+                "thankee muchly"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "please"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "I pray you",
+                "prithee",
+                "pray"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "ok"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "as you will",
+                "agreed",
+                "well said",
+                "just so"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "spy"
+            ],
+            "word_plural": [
+                "spies",
+                "spys"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "cutpurse",
+                "pickpocket",
+                "vagabond",
+                "blackguard",
+                "hooligan",
+                "pilferer",
+                "backstabber",
+                "thief",
+                "haunt",
+                "rogue",
+                "rouge"
+            ],
+            "replacement_plural": [
+                "cutpurses",
+                "pickpockets",
+                "vagabonds",
+                "blackguards",
+                "pilferers",
+                "backstabbers",
+                "thieves",
+                "haunts",
+                "rogues"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "soldier",
+                "solly"
+            ],
+            "word_plural": [
+                "soldiers"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "mercenary",
+                "warrior",
+                "shovelman",
+                "champion"
+            ],
+            "replacement_plural": [
+                "mercenaries",
+                "warriors",
+                "shovelmen",
+                "champions"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "demoman"
+            ],
+            "word_plural": [
+                "demomen",
+                "demomens",
+                "demomans"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "swordsman",
+                "scotsman",
+                "drunkard",
+                "swordmaster",
+                "blademaster",
+                "knight",
+                "paladin"
+            ],
+            "replacement_plural": [
+                "swordsmen",
+                "scotsmen",
+                "drunkards",
+                "swordmasters",
+                "blades for hire",
+                "blademasters",
+                "knights",
+                "paladins"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "medic"
+            ],
+            "word_plural": [
+                "medics"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "priest",
+                "cleric",
+                "healer",
+                "nursemaid",
+                "bonesetter",
+                "butcher",
+                "medicine man",
+                "witchdoctor",
+                "leech",
+                "apothecary",
+                "wizard"
+            ],
+            "replacement_plural": [
+                "priests",
+                "clerics",
+                "healers",
+                "nursemaids",
+                "bonesetters",
+                "butchers",
+                "medicine men",
+                "witchdoctors",
+                "leeches",
+                "apothecaries",
+                "wizards"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "pyro"
+            ],
+            "word_plural": [
+                "pyros"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "pyromaniac",
+                "maniac",
+                "flamewielder",
+                "firebrand",
+                "fire mage",
+                "fire magus",
+                "Masked Salamander"
+            ],
+            "replacement_plural": [
+                "priests",
+                "pyromaniac",
+                "maniac",
+                "flamewielder",
+                "firebrand",
+                "fire mages",
+                "fire magii",
+                "Masked Salamanders"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "sniper"
+            ],
+            "word_plural": [
+                "snipers"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "hunter",
+                "ranger",
+                "woodsman",
+                "beastmaster",
+                "australian",
+                "archer",
+                "bowman",
+                "arrowman",
+                "fletcher"
+            ],
+            "replacement_plural": [
+                "hunters",
+                "rangers",
+                "woodsmen",
+                "beastmasters",
+                "australians",
+                "archers",
+                "bowmen",
+                "arrowmen",
+                "fletchers"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "scout"
+            ],
+            "word_plural": [
+                "scouts"
+            ],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "lookout",
+                "outrider",
+                "spotter",
+                "explorer",
+                "patroller",
+                "runner",
+                "advance guard"
+            ],
+            "replacement_plural": [
+                "lookouts",
+                "outriders",
+                "spotters",
+                "explorers",
+                "patrollers",
+                "runners",
+                "advance guards"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "heavy"
+            ],
+            "word_plural": [
+                "heavies"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "brawler",
+                "bouncer",
+                "boxer",
+                "bruiser"
+            ],
+            "replacement_plural": [
+                "brawlers",
+                "bouncers",
+                "boxers",
+                "bruisers"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "engineer",
+                "engy"
+            ],
+            "word_plural": [
+                "engineers",
+                "engys",
+                "engies"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "craftsman",
+                "smith",
+                "smithy",
+                "blacksmith",
+                "artisan",
+                "machinist",
+                "ironsmith",
+                "metalworker",
+                "golem-maker",
+                "golemist"
+            ],
+            "replacement_plural": [
+                "craftsmen",
+                "smiths",
+                "smithies",
+                "blacksmiths",
+                "artisans",
+                "machinists",
+                "ironsmiths",
+                "metalworkers",
+                "golem-maker",
+                "golemists"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "is"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "be"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "party",
+                "group"
+            ],
+            "word_plural": [
+                "parties",
+                "groups"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "band",
+                "fellowship",
+                "assembly",
+                "troop"
+            ],
+            "replacement_plural": [
+                "bands",
+                "fellowships",
+                "assemblies",
+                "troops"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "lfg"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [
+                "I am seeking",
+                "I be looking for",
+                "I am desiring",
+                "I be searching for",
+                "I'm in search of"
+            ],
+            "replacement": [
+                "a fellowship",
+                "a band of trusty fellows",
+                "a trustworthy group",
+                "fine adventurers",
+                "a worthy band"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "newbie",
+                "newb",
+                "noob",
+                "nub",
+                "lowbie",
+                "beginner"
+            ],
+            "word_plural": [
+                "newbies",
+                "newbs",
+                "noobs",
+                "nubs",
+                "lowbies",
+                "beginners"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "neophyte",
+                "youngster",
+                "serf",
+                "dabbler",
+                "pleb",
+                "apprentice",
+                "journeyman",
+                "pupil",
+                "tenderfoot",
+                "initiate",
+                "fledgling",
+                "greenhorn",
+                "acolyte"
+            ],
+            "replacement_plural": [
+                "neophytes",
+                "youngsters",
+                "serfs",
+                "dabblers",
+                "plebians",
+                "apprentices",
+                "journeymen",
+                "pupils",
+                "tenderfeet",
+                "initiates",
+                "fledglings",
+                "greenhorns",
+                "acolytes"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "level"
+            ],
+            "word_plural": [
+                "levels"
+            ],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "rank",
+                "station"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "rofl",
+                "roflmao",
+                "roflol"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "rofleth",
+                "guffaw"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "wait"
+            ],
+            "word_plural": [
+                "waits"
+            ],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "hold",
+                "hold hard",
+                "mark time",
+                "tarry"
+            ],
+            "replacement_plural": [
+                "holds",
+                "holds hard",
+                "marks time",
+                "tarries"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "need"
+            ],
+            "word_plural": [
+                "needs"
+            ],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "covet",
+                "wish",
+                "desire",
+                "request"
+            ],
+            "replacement_plural": [
+                "covets",
+                "wishes",
+                "desires",
+                "requests"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "even"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "e'en"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "never"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "ne'er"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "over"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "o'er"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "before"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "'ere"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "unless"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "lest"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "haha",
+                "hehe",
+                "heh",
+                "hah"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "guffaw!",
+                "cackle!",
+                "oh, 'tis to laugh!",
+                "zounds!",
+                "chuckle!",
+                "snigger!",
+                "snort!",
+                "snicker!",
+                "cachinnate!",
+                "titter!",
+                "and there was much tittering!",
+                "and there was much guffawing!",
+                "and there was much chuckling!",
+                "and there was much snorting!",
+                "and there was much snickering!",
+                "and there was much mirth!"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "shop",
+                "store"
+            ],
+            "word_plural": [
+                "shops",
+                "stores"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "shoppe",
+                "shopcart",
+                "olde shoppe",
+                "market",
+                "marketplace",
+                "ye olde thrifte shoppe"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "vendor",
+                "seller"
+            ],
+            "word_plural": [
+                "vendors",
+                "salesmen"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "shopkeep",
+                "monger",
+                "merchant",
+                "purveyor"
+            ],
+            "replacement_plural": [
+                "shopkeepers",
+                "mongerers",
+                "merchants",
+                "purveyors"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "friend",
+                "buddy",
+                "pal",
+                "mate"
+            ],
+            "word_plural": [
+                "friends",
+                "buddies",
+                "pals",
+                "mates"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "companion",
+                "boon companion",
+                "chum",
+                "lad",
+                "cohort",
+                "confidant",
+                "right-hand man",
+                "mate",
+                "compadre",
+                "fellow"
+            ],
+            "replacement_plural": [
+                "companions",
+                "boon companions",
+                "chums",
+                "lads",
+                "cohorts",
+                "confidants",
+                "right-hand men",
+                "mates",
+                "compadres",
+                "fellows"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "teh"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "the"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "assist"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "aid",
+                "aideth",
+                "saveth",
+                "assistance",
+                "succor"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "could"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "couldst"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "would"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "wouldst"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "sure"
+            ],
+            "word_plural": [],
+            "chance": "3",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "shore"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "maybe"
+            ],
+            "word_plural": [],
+            "chance": "3",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "mayhaps",
+                "perchance"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "girl",
+                "woman"
+            ],
+            "word_plural": [
+                "girls",
+                "women"
+            ],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "madame",
+                "waif",
+                "mistress",
+                "lass",
+                "lady",
+                "goodwife",
+                "maid",
+                "maiden"
+            ],
+            "replacement_plural": [
+                "madames",
+                "waifs",
+                "mistresses",
+                "lasses",
+                "ladies",
+                "goodwives",
+                "maids",
+                "maidens"
+            ]
+        },
+        {
+            "prev": [],
+            "word": [
+                "later"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "anon"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "often"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "oft"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "really"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "indeed",
+                "in truth"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "those"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "yon"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "here"
+            ],
+            "word_plural": [],
+            "chance": "4",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "hither"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "enough"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "enow"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "wow"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "Marry",
+                "Faith",
+                "S'wounds",
+                "God's wounds",
+                "Zounds"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "child"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "poppet"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "why"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "wherefore"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "away"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "aroint"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "being"
+            ],
+            "word_plural": [],
+            "chance": "3",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "bein'"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "of"
+            ],
+            "word_plural": [],
+            "chance": "3",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "o'"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "fucker"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "swiver"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "shit"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "nightsoil"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "making"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "a-makin'"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "though"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "tho'"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "until"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "'till"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "underneath",
+                "beneath"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "'neath"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "coming"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "a-comin'"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "walking"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "a-walkin'"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "hunting"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "a-huntin'"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "bet"
+            ],
+            "word_plural": [],
+            "chance": "2",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "warrant"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "!"
+            ],
+            "word_plural": [],
+            "chance": "4",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                ", verily!",
+                ", verily I say!",
+                ", verily I sayeth!",
+                ", I say!",
+                ", I sayeth!",
+                "! Huzzah!",
+                "! Hear Hear!",
+                "! What-ho!",
+                "! Ho!",
+                "! Fie!",
+                ", indeed!"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "?"
+            ],
+            "word_plural": [],
+            "chance": "4",
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                ", I say?",
+                ", I wonder?",
+                ", wonder I?",
+                ", what say thee?",
+                ", what sayeth thee?",
+                ", what say thou?",
+                ", what sayeth thou?",
+                ", I ponder?",
+                ", I pondereth?",
+                ", pray tell?",
+                ", ho?",
+                ", do tell?"
+            ],
+            "replacement_plural": []
+        },
+        {
+            "prev": [],
+            "word": [
+                "flag"
+            ],
+            "word_plural": [],
+            "chance": 0,
+            "prepend_count": 0,
+            "replacement_prepend": [],
+            "replacement": [
+                "pennant",
+                "banner",
+                "colors",
+                "heraldry"
+            ],
+            "replacement_plural": []
+        }
+    ]
+}
