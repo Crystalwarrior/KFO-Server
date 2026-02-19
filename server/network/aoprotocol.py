@@ -86,6 +86,7 @@ class AOProtocol(asyncio.Protocol):
         try:
             self.client = self.server.new_client(transport)
         except ClientError:
+            print(traceback.format_exc())
             transport.close()
             return
 
