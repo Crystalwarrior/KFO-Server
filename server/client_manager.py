@@ -1845,11 +1845,15 @@ class ClientManager:
             """
             self.char_id = -1
             self.send_command("CharsCheck", *self.get_available_char_list())
+            self.send_command("DONE")
+
             self.send_command("HP", 1, self.area.hp_def)
             self.send_command("HP", 2, self.area.hp_pro)
             self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
             self.send_command("LE", *self.area.get_evidence_list(self))
             self.send_command("MM", 1)
+            if self.area.music_autoplay:
+                self.send_command("MC", self.area.music, -1, "", self.area.music_looping, 0, self.area.music_effects)
 
             self.area.area_manager.update_subtheme(self)
             self.area.area_manager.send_arup_players([self])
@@ -1869,8 +1873,6 @@ class ClientManager:
 
             # Send the server's declared links to the client.
             self.send_server_link_list()
-
-            self.send_command("DONE")
 
         def char_select(self):
             """Force the client to select a different character."""

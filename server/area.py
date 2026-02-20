@@ -729,9 +729,15 @@ class Area:
     def new_client(self, client):
         """Add a client to the area."""
         self.clients.add(client)
-        if client.char_id is not None:
-            database.log_area("area.join", client, self)
+        # Client not fully initialized yet. The rest will be handled when the client is done loading.
+        if client.char_id is None:
+            return
+        database.log_area("area.join", client, self)
+        self.update_client(client)
 
+    def update_client(self, client):
+        """Update the client with the relevant information about the area. Does not care if the client loaded in yet or not."""
+        # Autoplay music
         if self.music_autoplay and self.music != client.playing_audio[0]:
             client.send_command(
                 "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
@@ -740,10 +746,13 @@ class Area:
         # Update the timers for the client
         self.update_timers(client)
 
+        # Update ambience
         self.play_client_ambience(client)
 
+        # Make sure their theme variation is correct
         self.area_manager.update_subtheme(client)
 
+        # Update their player list information
         if not client.hidden and not client.sneaking:
             self.broadcast_player_list()
         else:
