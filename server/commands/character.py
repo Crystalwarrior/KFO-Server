@@ -244,13 +244,12 @@ def ooc_cmd_forcepos(client, arg):
             if pos == "RANDOM":
                 choices = t.area.pos_lock
             # given a list of pos
-            if "," in pos:
-                for p in pos.split(","):
-                    choices.append(p.strip())
+            for p in pos.split(","):
+                choices.append(p.strip())
             # if we received NO choice
             if len(choices) <= 0:
                 choices = ["wit", "def", "pro", "hlp", "hld", "jud"]
-            if len(choices) == 1:
+            elif len(choices) == 1:
                 _pos = choices[0]
             else:
                 _pos = random.choice(choices)
