@@ -38,6 +38,7 @@ __all__ = [
     "ooc_cmd_format_timer",
     "ooc_cmd_timer_interval",
     "ooc_cmd_ooc_actions",
+    "ooc_cmd_sfx",
 ]
 
 
@@ -1124,3 +1125,19 @@ def ooc_cmd_ooc_actions(client, arg):
     if client.ooc_actions:
         stat = "now see"
     client.send_ooc(f"You will {stat} actions in OOC.")
+
+
+def ooc_cmd_sfx(client, arg):
+    """
+    Play a sound effect directly without associating it with an emote.
+    Usage: /sfx [sound_path]
+    """
+    if arg == "":
+        raise ArgumentError(
+            "sound_path can't be empty. Usage: /sfx [sound_path]"
+        )
+    client.area.send_command("RT", arg)
+    client.area.broadcast_ooc(f"has played '{arg}'.")
+    database.log_area(
+        "sfx", client, client.area, message=f"has played {arg}"
+    )
