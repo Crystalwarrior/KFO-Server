@@ -1944,6 +1944,14 @@ class ClientManager:
             self.server.client_manager.set_spam_delay(self.ipid, "need_call", value)
 
         @property
+        def sfx_time(self):
+            return self.server.client_manager.get_spam_delay(self.ipid, "sfx")
+
+        @sfx_time.setter
+        def sfx_time(self, value):
+            self.server.client_manager.set_spam_delay(self.ipid, "sfx", value)
+
+        @property
         def ip(self):
             """Get an anonymized version of the IP address."""
             return self.ipid
@@ -2219,6 +2227,12 @@ class ClientManager:
             except:
                 self.need_call_time = round(time.time() * 1000 + 60000)
 
+        def set_sfx_delay(self):
+            """Begin the sfx cooldown."""
+            # 3 second delay by default
+            sfx_delay = 3000
+            self.sfx_time = round(time.time() * 1000.0 + sfx_delay)
+
         def can_call_case(self):
             """Whether or not the client can currently announce a case."""
             return (time.time() * 1000.0 - self.case_call_time) > 0
@@ -2226,6 +2240,10 @@ class ClientManager:
         def can_call_need(self):
             """Whether or not the client can currently call a need."""
             return (time.time() * 1000.0 - self.need_call_time) > 0
+
+        def can_sfx(self):
+            """Whether or not the client can currently play an sfx."""
+            return (time.time() * 1000.0 - self.sfx_time) > 0
 
         def disemvowel_message(self, message):
             """Disemvowel a chat message."""
