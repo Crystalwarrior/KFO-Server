@@ -443,8 +443,6 @@ class AOProtocol(asyncio.Protocol):
                 video, # 16
                 blankpost, # 17
             ) = args
-            if ding != 1:
-                ding = 0
         elif self.validate_net_cmd(
             args,
             self.ArgType.STR,
@@ -892,9 +890,6 @@ class AOProtocol(asyncio.Protocol):
         if evidence < 0:
             self.client.send_ooc("Your evidence index is invalid!")
             return
-        if ding not in (0, 1):
-            self.client.send_ooc("Your realization flash is invalid!")
-            return
         if color < 0 or color >= 12:
             self.client.send_ooc("Your color is invalid!")
             return
@@ -929,8 +924,6 @@ class AOProtocol(asyncio.Protocol):
                 emote_mod = 5
             # New clients do it in a specific objection message area.
             button = 0
-            # Turn off the ding.
-            ding = 0
         max_char = 0
         try:
             max_char = int(self.server.config["max_chars_ic"])
