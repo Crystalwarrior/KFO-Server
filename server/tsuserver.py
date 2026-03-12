@@ -20,6 +20,7 @@ from server.network.aoprotocol_ws import new_websocket_client
 from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
 from server.constants import remove_URL, dezalgo
+from server.medieval_parser import MedievalParser
 
 
 logger = logging.getLogger("main")
@@ -109,6 +110,7 @@ class TsuServer3:
             print("Please check sample config files for the correct format.")
             sys.exit(1)
 
+        self.medieval_parser = MedievalParser()
         self.client_manager = ClientManager(self)
         server.logger.setup_logging(debug=self.config["debug"])
 
