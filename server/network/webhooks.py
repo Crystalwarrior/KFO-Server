@@ -140,6 +140,39 @@ class Webhooks:
             url=url,
         )
 
+    def doormancall(self, client=None):
+        if "doorman_webhook" not in self.server.config:
+            return
+            
+        is_enabled = self.server.config["doorman_webhook"]["enabled"]
+        username = self.server.config["doorman_webhook"]["username"]
+        avatar_url = self.server.config["doorman_webhook"]["avatar_url"]
+        color = self.server.config["doorman_webhook"]["color"]
+        title = self.server.config["doorman_webhook"]["title"]
+        url = self.server.config["doorman_webhook"]["url"]
+        pingoption = self.server.config["doorman_webhook"]["pingoption"]
+        if pingoption not in [True, False]:
+            pingoption = False
+        if not is_enabled:
+            return
+        message = ""
+        if pingoption:
+            message += f"<@&{self.server.config['doorman_webhook']['role_id']}> \n"
+        message += self.server.config["doorman_webhook"]["message"]
+        description = f"[{client.id}] {client.name} ({client.showname}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name}"
+        description += f"\n{client.area.last_ic_message[4]}"
+
+        self.send_webhook(
+            username=username,
+            avatar_url=avatar_url,
+            message=message,
+            embed=True,
+            title=title,
+            color=color,
+            description=description,
+            url=url,
+        )
+
     def kick(self, ipid, reason="", client=None, char=None):
         is_enabled = self.server.config["kick_webhook"]["enabled"]
         username = self.server.config["kick_webhook"]["username"]

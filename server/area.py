@@ -297,6 +297,9 @@ class Area:
         
         # list of areas to broadcast ic messages to
         self.broadcast_list = []
+        
+        # doorman vars
+        self.doorman_call_time = 0
 
     @property
     def name(self):
@@ -1364,6 +1367,20 @@ class Area:
         )
         self.last_ic_message = args
 
+        if "doorman_webhook" in self.server.config and \
+            self.server.config["doorman_webhook"]["enabled"] and \
+            self.area_manager.id == int(self.server.config["doorman_webhook"]["hub_id"]) and \
+            self.id == int(self.server.config["doorman_webhook"]["area_id"]):
+            
+            living_clients = len(self.clients)
+            afkers = len(self.afkers)
+            doorman_needed = living_clients <= 1 or afkers >= living_clients - 1
+            if doorman_needed and self.can_call_doorman():
+                asyncio.get_running_loop().call_soon(
+                    self.server.webhooks.doormancall, client
+                )
+                self.set_doorman_call_delay()
+
         if adding:
             if len(self.testimony) >= 30:
                 client.send_ooc(
@@ -1433,6 +1450,20 @@ class Area:
             self.broadcast_ooc(f"Statement {idx+1} added.")
             if not self.recording:
                 self.testimony_send(idx)
+
+    def set_doorman_call_delay(self):
+        """Begin the doorman cooldown."""
+        try:
+            self.doorman_call_time = round(
+                time.time() * 1000.0
+                + int(self.server.config["doorman_webhook"]["delay"]) * 1000.0
+            )
+        except:
+            self.doorman_call_time = round(time.time() * 1000 + 60000)
+
+    def can_call_doorman(self):
+        """Whether or not the area can currently call for a doorman."""
+        return (time.time() * 1000.0 - self.doorman_call_time) > 0
 
     def testimony_send(self, idx):
         """Send the testimony statement at index"""
