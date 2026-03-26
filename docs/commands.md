@@ -268,48 +268,67 @@
     - Switch to another character. If you are a moderator and the specified character is currently being used, the current user of that character will be automatically reassigned a character.
 * **pos** `<name>`
     - Set the place your character resides in the area.
-* **forcepos** `<pos>` `<target>`
+* **forcepos** `<pos>` `<target>` (CM+)
     - Set the place another character resides in the area.
-* **force_switch** `[id]` `[char]`
+* **pair** `[cid|charname]`
+    - Pair with someone. Overrides client pairing choice.
+        - Paired characters appear on the same screen together, as long as they are in the same area.
+        - To change the characters positions, use the client and change the x- or y-offset.
+    - Run by itself to check your current (last?) pairing partner.
+* **triple_pair** `[cid|charname]`
+    - Triple Pair with someone.
+        - Works similar to `/pair` but adds a third character.
+        - NOTE: In order to view all three characters at the screen, only the central person that has a `/pair` and a `/triple_pair` can send an IC message. If any of the other two send a message, then they will show up with their respective pair partners.
+    - Run by itself to check your current (last?) pairing partner.
+* **unpair**
+    - Stop pairing with someone. Stops overriding client pairing choice.
+* **pair_order** `[order]`
+    - Choose if you'll appear in front or behind someone when pairing.
+    - Only works when using serverside `/pair [order]` can be either `front/0` or `behind/1`.
+* **force_switch** `[id]` `[char]` (CM+)
     - Enter the character select screen, or force another user to select another character.
     - Optional `[char]` forces them into that specific character folder/ID.
-* **kill** `<id>`
+* **kill** `<id>` (CM+)
     - Force the character into spectator mode with a message that they have died.
 * **randomchar**
     - Select a random character.
-* **charcurse** `<id>` `[charids...]`
+* **charcurse** `<id>` `[charids...]` (MOD ONLY)
     - Lock a user into being able to choose only from a list of characters.
-* **uncharcurse** `<id>`
+* **uncharcurse** `<id>` (MOD ONLY)
     - Remove the character choice restrictions from a user.
 * **charids**
     - Show character IDs corresponding to each character name.
 * **reload**
     - Reload a character to its default position and state.
-* **blind**
+* **blind** (CM+)
     - Blind the targeted player(s) from being able to see or talk IC.
-* **unblind**
+* **unblind** (CM+)
     - Undo effects of the /blind command.
-* **player\_move\_delay** `<id>` `[delay]`
+* **player\_move\_delay** `<id>` `[delay]` (CM+)
     - Set the player's move delay to a value in seconds. Can be negative.
     - Delay must be from `-1800` to `1800` in seconds or empty to check.
     - If only `delay` is provided, you will be setting your own move delay.
-* **player\_hide** `<id(s)>`
+* **player\_hide** `<id(s)>` (CM+)
     - Hide player(s) from `/getarea` and playercounts.
     - If `<id>` is `*`, it will hide everyone in the area excluding yourself and CMs.
-* **player\_unhide** `<id(s)>`
+* **player\_unhide** `<id(s)>` (CM+)
     - Unhide player(s) from `/getarea` and playercounts.
     - If `<id>` is `*`, it will unhide everyone in the area excluding yourself and CMs.
 * **hide** `<evi_name/id>`
     - Try to hide in the targeted evidence name or ID.
 * **unhide**
     - Stop hiding.
-* **sneak**
+* **sneak** `[id]`
     - Begin sneaking a.k.a. hide your area moving messages from the OOC.
-* **unsneak**
+    - Optional `[id]` forces a character to sneak. (Must be CM+)
+        - Alternative use with `/force_sneak [id]`
+* **unsneak** `[id]`
     - Stop sneaking a.k.a. show your area moving messages in the OOC.
-* **freeze** `<id>(s)`
+    - Optional `[id]` forces a character to stop sneaking. (Must be CM+)
+        - Alternative use with `/force_unsneak [id]`
+* **freeze** `<id>(s)` (GM+)
     - Freeze targeted player(s) from being able to move between areas.
-* **unfreeze** `<id>(s)`
+* **unfreeze** `<id>(s)` (GM+)
     - Undo the effects of `/freeze`.
 * **listen\_pos** `[pos(s)]`
     - Start only listening to your currently occupied pos.
@@ -317,31 +336,33 @@
     - Optional argument(s) is a list of positions you want to listen to.
 * **unlisten\_pos**
     - Undo the effects of `/listen_pos` command so you stop listening to the position(s).
-* **save\_character\_data** `<path>`
+* **save\_character\_data** `<path>` (GM+)
     - Save the move delay, keys, etc. for characters into a file in the `storage/character_data/` folder.
-* **load\_character\_data** `<path>`
+* **load\_character\_data** `<path>` (GM+)
     - Load the move delay, keys, etc. for characters from a file in the `storage/character_data/` folder.
-* **keys\_set** `<char>` `[key(s)]`
+* **keys\_set** `<char>` `[key(s)]` (GM+)
     - Sets the keys of the target client/character folder/character id to the key(s). Keys must be a number like 5 or a link eg. 1-5.
-* **keys\_add** `<char>` `[key(s)]`
+* **keys\_add** `<char>` `[key(s)]` (GM+)
     - Adds the keys of the target client/character folder/character id to the key(s). Keys must be a number like 5 or a link eg. 1-5.
-* **keys\_remove** `<char>` `[key(s)]`
+* **keys\_remove** `<char>` `[key(s)]` (GM+)
     - Remvove the keys of the target client/character folder/character id from the key(s). Keys must be a number like 5 or a link eg. 1-5.
 * **keys** `[target\_id]`
-    - Check your own keys, or someone else's (if admin).
+    - Check your own keys, or someone else's (if GM or above).
     - Keys allow you to `/lock` or `/unlock` specific areas, OR area links if it's formatted like 1-5
 * **kms**
     - Stands for Kick MySelf - Kick other instances of the client opened by you.
     - Useful if you lose connection and the old client is ghosting.
-* **chardesc** `[desc/id]`
+* **chardesc** `[desc|id]`
     - Look at your own character description if no arugments are provided.
     - Look at another person's character description if only ID is provided.
     - Set your own character description if description is provided instead of ID.
         - Do note that the first sentence of your chardesc is displayed during area transfer messages!
     - To set someone else's char desc as an admin/GM, or look at their desc, use `/chardesc_set` or `/chardesc_get`.
-* **chardesc\_set** `<id>` `[desc]`
+* **chardesc_clear**
+    - Clear your character description.
+* **chardesc\_set** `<id>` `[desc]` (GM+)
     - Set someone else's character description to desc or clear it.
-* **chardesc\_get** `<id>`
+* **chardesc\_get** `<id>` (GM+)
     - Get someone else's character description.
 * **narrate** `[on|off]`
     - Speak as a Narrator for your next emote.
@@ -353,6 +374,26 @@
     - Speak as a Narrator for your next emote, but only to yourself. Everyone else will see the emote you used.
     - If using 2.9.1, when you speak IC only the chat box will be affected.
     - tog can be `on`, `off` or empty.
+* **showname** `[name]`
+    - Set your own showname similar to the showname box in the client.
+    - Note that using this command will override the showname box.
+    - Passing no `[name]` will reset your showname and start using the showname box again.
+* **charlists**
+    - Displays all the available charlists.
+* **charlist** `[path]` (GM+)
+    - Load a character list. `/charlists` to see available character lists.
+    - Run `/charlist` by itself to reset it to the server's default.
+* **webfiles** `<id>`
+    - Gives a link to download each characters files from webAO.
+* **get_latest_area** `[cid|charname]` (GM+)
+    - Get a character's latest occupied area. Lobby area is always excluded.
+    - If used by itself, gets your character's latest occupied area instead.
+* **kick_to_latest_area** `[cid|charname]` (GM+)
+    - Kick the occupied character in current area to their latest occupied area.
+    - This command is best used in lobby area. If used by itself, kicks you instead.
+* **set_latest_area** ` <cid|charname> [area_id]`
+    - Set a character's latest occupied area. Lobby area is always excluded.
+    - If used by itself, gets your character's latest occupied area instead.
 ## Fun
 * **disemvowel** `<id>` (MOD ONLY)
     - Remove all vowels from a user's IC chat.
