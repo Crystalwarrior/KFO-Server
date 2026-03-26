@@ -452,9 +452,15 @@ class ClientManager:
             )
             if latest_area == None:
                 return
-            
-            target_area = self.area.area_manager.get_area_by_id(latest_area)
-            if not target_area:
+            target_area = None
+            try:
+                target_area = self.area.area_manager.get_area_by_id(latest_area)
+            except:
+                pass
+            if target_area == None:
+                self.send_ooc(
+                    f"Attempted to kick you to area ID {latest_area} but that area does not currently exist!"
+                )
                 return
             old_area = self.area
             self.set_area(target_area)
