@@ -610,22 +610,23 @@
     - `X` is the number of dice, `Y` is the maximum value on the die.
 * **notecard** `<message>`
     - Write a notecard that can only be revealed by a CM.
-* **notecard\_clear**
+* **notecard\_clear** *(CM)*
     - Clear all notecards as a CM.
-* **notecard\_reveal**
+* **notecard\_reveal** `[clear_tog]` *(CM)*
     - Reveal all notecards and their owners.
-* **notecard\_check**
+    - Set `[clear]` to `true/on/0` or `false/off/1` if you don't want the notecards to automatically clear after revealing.
+* **notecard\_check** *(CM)*
     - Check all notecards and their owners privately with a message telling others you've done so.
 * **vote** `<id>`
     - Cast a vote for a particular user that can only be revealed by a CM.
-* **vote\_clear** `[char_folder]`
+* **vote\_clear** `[char_folder]` *(CM)*
     - Clear all votes as a CM.
     - Include `[char_folder]` (case-sensitive) to only clear a specific voter.
-* **vote\_reveal**
+* **vote\_reveal** *(CM)*
     - Reveal the number of votes, the voters and those with the highest amount of votes.
-* **vote\_check**
+* **vote\_check** *(CM)*
     - Check the number of votes, the voters and those with the highest amount of votes privately with a message telling others you've done so.
-* **rolla\_reload**
+* **rolla\_reload** *(Mod)*
     - Reload ability dice sets from a configuration file.
     - The configuration file is located in `config/dice.yaml`.
 * **rolla\_set** `<name>`
@@ -637,7 +638,21 @@
 * **8ball** `<question>`
     - Answers a question. The result is shown publicly.
     - The answers depend on the `8ball` preset in `config/dice.yaml`.
-* **timer** `<id> [+/-][time]` OR `<id> start` OR `<id> <pause|stop>` OR `<id> <unset|hide>`
+* **rps** `[choice]`
+    - Starts a match of Rock Paper Scissors.
+    - If `[choice]` is not provided, view current RPS rules.
+    - To abandon the match use `/rps cancel`.
+* **rps_rules** `no arguments` OR `<add> <rule/s>` OR `<remove> <index>` OR `<clear>` *(CM)*
+    - Review or change rps rules.
+    - `/rps_rules`
+        - Review current rules, indexed.
+    - `/rps_rules <add|new|+> [a beats b, c, d, ...]`
+        - Add a new rule, or rules if the parameter is split by a line break.
+    - `/rps_rules <del|remove|-> [index]`
+        - Delete a rule at `index`.
+    - `/rps_rules <clear|clean|reset|wipe>`
+        - Wipe all current rules.
+* **timer** `<id> [+/-][time]` OR `<id> start` OR `<id> <pause|stop>` OR `<id> <unset|hide>` OR `<id> /cmd` *(CM)*
     - Manage a countdown timer in the current area. Note that timer of ID `0` is hub-wide. All other timer ID's are local to area.
     - Anyone can check ongoing timers, their status and time left using `/timer <id>`, so `/timer 0`.
     - `[time]` can be formated as `10m5s` for 10 minutes 5 seconds, `1h30m` for 1 hour 30 minutes, etc.
@@ -645,15 +660,39 @@
     - `start` starts the previously set timer, so `/timer 0 start`.
     - `pause` OR `stop` pauses the timer that's currently running, so `/timer 0 pause`.
     - `unset` OR `hide` hides the timer for it to no longer show up, so `/timer 0 hide`.
-* **format\_timer** `<id> <format>`
+    - Commands can also be passed - `/cmd` is a command that you want to run when the timer expires. That command will be added to the stack of commands to run.
+        - For example, `/timer 0 /h hello there` will say "hello there" in the ooc hub chat as your client. Adding `/timer 0 /timer 0 hide` will also hide the timer when it expires.
+        - To add a command to a timer, the timer must first be set.
+        - If you want to clear all commands, use `/timer <id> /clear`
+* **format\_timer** `<id> <format>` *(CM)*
     - Format the timer in the current area or hub.
     - Example of format: `"'Time Left:' hh:mm"` (quotes are important for having text in timer!)
     - Default format: `hh:mm:ss.zzz`
     - For more information on how to implement your format, [go here!](https://doc.qt.io/qt-6/qtime.html#toString)
-* **timer\_interval** `<id> <interval>`
+* **timer\_interval** `<id> <interval>` *(CM)*
     - Set timer interval in the current area or hub.
     - Example: `/timer_interval 1 15m`
     - Default interval: `/timer_interval 1 16ms`
+* **demo** `<evi_id|evi_name>` *(CM)*
+    - Calls a demo of commands that is stored within an evidence.
+        - When demo evidences are used, they are usually hidden and triggered by alternative means such as `/timer` or `/trigger present <id>`.
+    - Use `/demo` to stop the running demos.
+    - For more information on how demos work, [go here!](https://crystalwarrior.github.io/KFO-Wiki/guides/demo_guide/demo_guide/)
+* **trigger** `<trigger> <command> <arg(s)>` *(CM)*
+    - Set up a trigger for this area which, when fulfilled, will call the command.
+    - `trig` is the trigger keyword. Available keywords are `join`, `leave` and `present <id>` where `id`  is the evidence ID.
+    - `cmd` is the standard command name, such as 'lock' to call the `lock` command when trigger is fulfilled.
+    - `arg(s)` are the arguments of the command, so in `bg default`, `default` is the argument
+    - ***CM's, GM's and Mods are ignored by triggers.***
+    - Example Usages:
+        - `/trigger join h HELLO THERE` - Will say "HELLO THERE" in the ooc hub chat, each time when someone joins.
+        - `/trigger leave coinflip` - Will flip a coin each time someone leaves that area.
+        - `/trigger present 1 demo 2` - Will call a `/demo` of evidence with ID 2 in that area, when evidence with ID 1 has been presented by a non-cm/gm client user.
+    - For more information on how (evidence) triggers work, [go here!](https://crystalwarrior.github.io/KFO-Wiki/guides/demo_guide/demo_guide/)
+* **ooc\_actions** `[on|off]` *(CM)*
+    - Enable or disable IC actions being broadcast to OOC as well.
+* **sfx** `<sound_path>`
+    - Play a sound effect directly without associating it with an IC message.
 ## Musiclists
 * **musiclist\_add** `<local/area/hub> <Category> <MusicName> [Length] [Path]`
     - Allow you to add a song in a loaded musiclist!
