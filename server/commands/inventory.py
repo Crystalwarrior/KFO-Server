@@ -148,7 +148,7 @@ def ooc_cmd_inventory_get(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_inventory_add(client, arg):
     """
-    Use /inventory <target> [evi_name/id] to add evidence into their inventory.
+    Use /inventory_add <target> [evi_name/id] to add evidence into their inventory.
     Usage: /inventory_add <target> [evi_name/id]
     """
     try:
@@ -184,7 +184,7 @@ def ooc_cmd_inventory_add(client, arg):
 def ooc_cmd_inventory_remove(client, arg):
     """
     Remove a piece of evidence from target's inventory.
-    Usage: /inventory_remove <target> <evi_name/id>
+    Usage: /inventory_remove <target_id> <evi_name/id>
     """
     try:
         args = shlex.split(arg)
@@ -218,7 +218,7 @@ def ooc_cmd_inventory_edit(client, arg):
     Edit a piece of evidence in target's inventory.
     If you don't want to change something, put an * there.
     For sentences with spaces the arg should be surrounded in ""'s, for example /inventory_edit * "It's a chair." chair.png
-    Usage: /inventory_edit <target> <evi_name/id> [name] [desc] [image]
+    Usage: /inventory_edit <target_id> <evi_name/id> [name] [desc] [image]
     """
     if arg == "":
         raise ArgumentError(
