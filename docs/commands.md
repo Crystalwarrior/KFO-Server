@@ -41,7 +41,7 @@
     - or a command itself for a detailed explanation of its usage.
 * **login** `<password>`
     - Login as a moderator.
-* **unmod** **(Mod)**
+* **unmod** *(Mod)*
     - Log out as a moderator.
 * **refresh** *(Mod)*
     - Reload all moderator credentials, server options, and commands without restarting the server.
