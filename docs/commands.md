@@ -131,6 +131,8 @@
     - Show information about the current area.
 * **getareas**
     - Show information about all areas.
+* **gethubs**
+    - Show information about all hubs.
 * **getafk** `[all]`
     - Show currently AFK-ing players in the current area or in all areas.
 * **invite** `<id>`
@@ -623,3 +625,13 @@
     - Afterwards, next time the CM uses "Cross-Examination" button, the testimony title will be replayed, and the defense can use `>` to progress a statement, `<` to precede a statement, `>5` to go to specific statement 5.
     - You can use `**msg` to amend the current statement.
     - You can use `++msg` to add a new statement after the current one.
+
+## Deprecated / Broken
+* **getlink** `[id]`
+    - (Currently works the same as `getarea`, use `link` instead!)
+    - Show information about all areas.
+    - Including the client's link.
+* **getlinks**
+    - (Currently works the same as `getareas`, use `links` instead!)
+    - Show information about the current area, or target area id with sufficient permissions.
+    - Including the client's link.
