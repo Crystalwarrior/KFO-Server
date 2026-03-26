@@ -517,8 +517,25 @@
     - To include all areas, use set [area] to all.
 * **toggle\_autokick** `[on|off]` *(CM)*
     - When active, swapping to a character will instantly kick you to that character's latest area.
+## Inventory
+* **inventory**  `[evi_name/id]`
+    - Use `/inventory` to read all evidence in your inventory.
+    - Use `/inventory [evi_name/id]` to read specific evidence.
+* **inventory\_drop**  `[evi_name/id]`
+    - Use `/inventory_drop [evi_name/id]` to drop evidence from your inventory into the area.
+* **inventory\_get**  `<id>` *(GM)*
+    - Get someone else's evidence inventory.
+ * **inventory\_add**  `<target_id> [evi_name/id]` *(GM)*
+    - Use `/inventory_add <target_id> <evi_name/id>` to add evidence into their inventory.
+* **inventory\_remove**  `<target_id> <evi_name/id>` *(GM)*
+    - Remove a piece of evidence from target's inventory
+* **inventory\_edit**  `<target_id> <evi_name/id> [name] [desc] [image]` *(GM)*
+    - Edit a piece of evidence in target's inventory.
+    - If you don't want to change something, put an `*` there.
+    - For sentences with spaces the argument should be surrounded by quotation marks (`""`).
+        - Example Usage: `/inventory_edit * "It's a chair." chair.png`
 ## Messaging
-* **a**  `<area>` `<message>`
+* **a**  `<area> <message>`
     - Send a message to an area that you are a CM in.
 * **s** `<message>`
     - Send a message to all areas that you are a CM in.
@@ -538,7 +555,7 @@
     - Broadcast a need for a specific role in a case.
 * **toggleadverts**
     - Mute advertisements.
-* **pm** `<id|ooc-name|char-name>` `<message>`
+* **pm** `<id|ooc-name|char-name> <message>`
     - Send a private message to another online user. These messages are not logged by the server owner.
 * **mutepm**
     - Mute private messages.
@@ -576,12 +593,12 @@
     - Play a random track from your current muisc list. If supplied, `[category]` will pick the song from that category.
     - Usage: `/random_music [category]`
 ## Roleplay
-* **roll** `[value/XdY]` `["+5"/"-5"/"*5"/"/5"]`
+* **roll** `[value/XdY] ["+5"/"-5"/"*5"/"/5"]`
     - Roll a die. The result is shown publicly.
     - Example: `/roll 2d6 +5` would roll two 6-sided die and add 5 to every result.
     - Rolls a 1d6 if blank
     - X is the number of dice, Y is the maximum value on the die.
-* **rollp** `[value/XdY]` `["+5"/"-5"/"*5"/"/5"]`
+* **rollp** `[value/XdY] ["+5"/"-5"/"*5"/"/5"]`
     - Roll a die privately. Same as /roll but the result is only shown to you and the CMs.
     - Example: `/rollp 2d6 +5` would roll two 6-sided die and add 5 to every result.
     - Rolls a 1d6 if blank
