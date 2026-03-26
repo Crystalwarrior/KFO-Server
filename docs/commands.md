@@ -175,9 +175,9 @@
     - Set a max amount of players for current area between -1 and 99.
 * **desc** `[desc]`
     - Set an area description that appears to the user any time they enter the area.
-* **edit\_ambience** `[on|off]`
+* **edit\_ambience** `[on/off]`
     - Toggle edit mode for setting ambience. Playing music will set it as the area's ambience.
-* **lights** `[on|off]`
+* **lights** `[on/off]`
     - Toggle lights for this area. If lights are off, players will not be able to use `/getarea` or see evidence.
     - Players will also be unable to see area movement messages or use `/chardesc`.
     - You can change `/bg`, `/desc` and `/pos_lock` of the area when its dark and it will remember it next time you turn the lights off.
@@ -389,13 +389,13 @@
     - Set someone else's character description to desc or clear it.
 * **chardesc\_get** `<id>` *(GM)*
     - Get someone else's character description.
-* **narrate** `[on|off]`
+* **narrate** `[on/off]`
     - Speak as a Narrator for your next emote.
     - If using 2.9.1, when you speak IC only the chat box will be affected, making you "narrate" over the current visuals.
-* **blankpost** `[on|off]`
+* **blankpost** `[on/off]`
     - Use a blank image for your next emote (`base/misc/blank.png`, will be a missingno if you don't have it)
     - tog can be `on`, `off` or empty.
-* **firstperson** `[on|off]`
+* **firstperson** `[on/off]`
     - Speak as a Narrator for your next emote, but only to yourself. Everyone else will see the emote you used.
     - If using 2.9.1, when you speak IC only the chat box will be affected.
     - tog can be `on`, `off` or empty.
@@ -477,18 +477,18 @@
 * **hub\_move\_delay** `[delay]` *(GM)*
     - Set the hub's move delay to a value in seconds. Can be negative.
     - Delay must be from `-1800` to `1800` in seconds or empty to check.
-* **toggle\_replace\_music** `[on|off]` *(GM)*
+* **toggle\_replace\_music** `[on/off]` *(GM)*
     - Toggle the hub music list to replace the server's music list.
-* **toggle\_passing\_ic** `[on|off]` *(GM)*
+* **toggle\_passing\_ic** `[on/off]` *(GM)*
     - Toggle an IC message when changing areas for this hub.
 * **arup\_enable** *(GM)*
     - Enable the ARea UPdate system for this hub.
     - ARUP system is the extra information displayed in the A/M area list, as well as being able to set `/status`.
 * **arup\_disable** *(GM)*
     - Disable the ARea UPdate system for this hub.
-* **toggle\_getareas** `[on|off]` *(GM)*
+* **toggle\_getareas** `[on/off]` *(GM)*
     - Toggle the permissions of /getareas for normal players in this hub.
-* **toggle\_spectate** `[on|off]` *(GM)*
+* **toggle\_spectate** `[on/off]` *(GM)*
     - Disable the ability to use a spectator character for non-GMs for this hub.
 * **hide\_clients** *(GM)*
     - Hide the playercounts for this Hub's areas.
@@ -520,7 +520,7 @@
 * **hpset** `<def|pro> <amount> [area]>` *(CM)*
     - Set hp in area or multiple areas.
     - To include all areas, use set [area] to all.
-* **toggle\_autokick** `[on|off]` *(CM)*
+* **toggle\_autokick** `[on/off]` *(CM)*
     - When active, swapping to a character will instantly kick you to that character's latest area.
 ## Inventory
 * **inventory**  `[evi_name/id]`
@@ -540,25 +540,19 @@
     - For sentences with spaces the argument should be surrounded by quotation marks (`""`).
         - Example Usage: `/inventory_edit * "It's a chair." chair.png`
 ## Messaging
-* **a**  `<area> <message>`
-    - Send a message to an area that you are a CM in.
-* **s** `<message>`
-    - Send a message to all areas that you are a CM in.
 * **g** `<message>`
     - Broadcast a server-wise message.
 * **h** `<message>`
     - Broadcast a message to all areas in the hub.
-* **m** `<message>`
+* **m** `<message>` *(Mod)*
     - Send a message to all online moderators.
-* **lm** `<message>`
-    - Send a message to everyone in the current area, speaking officially.
-* **announce** `<message>`
+* **announce** `<message>` *(Mod)*
     - Make a server-wide announcement.
 * **toggleglobal**
     - Mute global chat.
-* **need** `<message>`
+* **need** `<message>` *(CM)*
     - Broadcast a need for a specific role in a case.
-* **toggleadverts**
+* **toggleadverts** `[on/off]`
     - Mute advertisements.
 * **pm** `<id|ooc-name|char-name> <message>`
     - Send a private message to another online user. These messages are not logged by the server owner.
@@ -704,7 +698,7 @@
         - `/trigger leave coinflip` - Will flip a coin each time someone leaves that area.
         - `/trigger present 1 demo 2` - Will call a `/demo` of evidence with ID 2 in that area, when evidence with ID 1 has been presented by a non-cm/gm client user.
     - For more information on how (evidence) triggers work, [go here!](https://crystalwarrior.github.io/KFO-Wiki/guides/demo_guide/demo_guide/)
-* **ooc\_actions** `[on|off]` *(CM)*
+* **ooc\_actions** `[on/off]` *(CM)*
     - Enable or disable IC actions being broadcast to OOC as well.
 * **sfx** `<sound_path>`
     - Play a sound effect directly without associating it with an IC message.
@@ -760,7 +754,7 @@
 * **battle\_effects**
     - Show all available battle effects
 ## In-Character Commands
-* **/a** `[id(s)] [msg]`
+* **/a** `[id(s)] [msg]` *(CM)*
     - Put this in the In-Character chat.
     - This command can only be used by CMs and above.
     - `[id(s)]` are optional. If ID(s) are not provided (`/a msg`), the message will be broadcast across all owned areas.
@@ -780,11 +774,17 @@
     - You can use `++msg` to add a new statement after the current one.
 
 ## Deprecated / Broken
+* **a**  `<area> <message>`
+    - Send a message to an area that you are a CM in.
+* **s** `<message>`
+    - Send a message to all areas that you are a CM in.
+* **lm** `<message>`
+    - Send a message to everyone in the current area, speaking officially.
 * **getlink** `[id]`
-    - (Currently works the same as `getarea`, use `link` instead!)
+    *(Currently works the same as `getarea`, use `link` instead!)*
     - Show information about all areas.
     - Including the client's link.
 * **getlinks**
-    - (Currently works the same as `getareas`, use `links` instead!)
+    *(Currently works the same as `getareas`, use `links` instead!)*
     - Show information about the current area, or target area id with sufficient permissions.
     - Including the client's link.
