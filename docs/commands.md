@@ -433,6 +433,12 @@
 * **webfiles** `<id>`
     - Provides a link to (manually) download character files from [webAO](https://attorneyonline.github.io/webDownloader/).
     - `id` must be a valid user id in the same area.
+* **set\_url** `<url>`
+    - This command sets the URL of the current character.
+    - The provided `url` can be viewed in the clients "DL Manager" tab in the settings.
+    - That URL is used client-side on AOG and server-side with the `/get_link` and `/get_links` commands.
+* **get\_urls**
+    - This command returns the server's URL List.
 * **get_latest_area** `[cid|charname]` *(GM)*
     - Get a character's latest occupied area. Lobby area is always excluded.
     - If used by itself, gets your character's latest occupied area instead.
