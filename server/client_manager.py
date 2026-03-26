@@ -1453,8 +1453,7 @@ class ClientManager:
             self.clear_user_links()
 
             # Get all the clients in the current area, if they have their user link declared.
-            # While also not including ourselves.
-            clients = (c for c in self.area.clients if c.char_url != "" and c.id != self.id)
+            clients = (c for c in self.area.clients if c.char_url != "")
 
             # Get the char_urls of the new area for this client.
             for client in clients:
