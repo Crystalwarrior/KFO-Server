@@ -211,9 +211,17 @@
         - Only the CM (case-maker, look at `/cm` for more info) or moderators can add, edit or remove evidence.
     * **HiddenCM**
         - Same as CM, but every evidence has a preset "owner's position" which can be set by a CM or moderator, such that only one side/position of the court may see the evidence. After presenting the evidence, the position of the evidence changes to "all" (visible to everyone).
-* **evi\_swap**  `<id>` `<id>`
+* **evidence\_swap**  `<id>` `<id>`
     - Swap the positions of two evidence items on the evidence list.
     - The ID of each evidence can be displayed by mousing over it in 2.8 client, or simply its number starting from 1.
+* **evidence\_save**  `<name>` (CM+)
+    - Allow you to save evidence in a list stored in the server files!
+* **evidence\_load**  `<name>`
+    - Allow you to load an evidence list from the server.
+* **evidence\_overlay**  `<name>` (CM+)
+    - Allow you to load and overlay an evidence list from the server to the existing evidence.
+* **evidence\_lists**
+    - Show all evidence lists available on the server.
 * **cm** `<id>`
     - Add a case manager for the current area.
     - Leave id blank to promote yourself if there are no CMs.
@@ -263,6 +271,16 @@
     - Expires in 5 minutes.
 * **concede** `<id>`
     - Concede a trial minigame and withdraw from either team you're part of.
+* **minigame\_start\_song** `<cs|sd|pta> [songname]` (CM+)
+    - Edit a starting song for any specific minigame. If songname is blank, it lets you choose a song from the music list to use.
+* **minigame\_end\_song** `<cs|sd|pta> [songname]` (CM+)
+    - Edit a ending song for any specific minigame. If songname is blank, it lets you choose a song from the music list to use.
+* **minigame\_concede\_song** `<cs|sd|pta> [songname]` (CM+)
+    - Edit a concede song for any specific minigame. If songname is blank, it lets you choose a song from the music list to use.
+* **subtheme** `<subtheme_name>` (GM+)
+    - Change the subtheme (DRO gamemode) for the hub.
+* **time\_of\_day** `<tod_name>` (GM+)
+    - Change the time of day for the hub. Useful for DRO-Client.
 ## Character
 * **switch** `<name>`
     - Switch to another character. If you are a moderator and the specified character is currently being used, the current user of that character will be automatically reassigned a character.
@@ -275,7 +293,7 @@
         - Paired characters appear on the same screen together, as long as they are in the same area.
         - To change the characters positions, use the client and change the x- or y-offset.
     - Run by itself to check your current (last?) pairing partner.
-* **triple_pair** `[cid|charname]`
+* **triple\_pair** `[cid|charname]`
     - Triple Pair with someone.
         - Works similar to `/pair` but adds a third character.
         - NOTE: In order to view all three characters at the screen, only the central person that has a `/pair` and a `/triple_pair` can send an IC message. If any of the other two send a message, then they will show up with their respective pair partners.
