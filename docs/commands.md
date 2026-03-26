@@ -427,77 +427,94 @@
 * **hub** `[id/name]`
     - List hubs, or go to another hub.
 ### Saving/loading
-* **save\_hub** `<name>` `[read_only]`
+* **save\_hub** `<name>` `[read_only]` (GM+)
     - Save the current Hub in the server's `storage/hubs/read_only/<name>.yaml` or `storage/hubs/<name>.yaml` file.
     - If blank and you're a mod, it will save to server's `config/areas_new.yaml` for the server owner to approve.
     - If `[read_only]` is a parameter in the arguments then none can rewrite the current hub.
-* **load\_hub** `<name>`
+* **load\_hub** `<name>` (GM+)
     - Load Hub data from the server's `storage/hubs/read_only/<name>.yaml` or `storage/hubs/<name>.yaml` file.
     - If blank and you're a mod, it will reload the server's `config/areas.yaml`.
-* **overlay\_hub** `<name>`
+* **overlay\_hub** `<name>` (GM+)
     - Overlay Hub data from the server's `storage/hubs/<name>.yaml` file on top of the current hub, only applying properties defined in that yaml.
     - If blank and you're a mod, it will overlay the server's `config/areas.yaml`.
 * **list\_hubs**
     - Show all the available hubs for loading in the `storage/hubs/` folder.
-* **clear\_hub**
+* **clear\_hub** (GM+)
     - Clear the current hub and reset it to its default state.
-* **rename\_hub** `<name>`
+* **rename\_hub** `<name>` (GM+)
     - Rename the hub you are currently in to `<name>`.
 ### Area Creation system
-* **area\_create** `[name]`
+* **area\_create** `[name]` (GM+)
     - Create a new area.
     - Newly created area's evidence mod will be HiddenCM.
     - Optional name will rename it to that as soon as its created.
-* **area\_remove** `<id>`
+* **area\_remove** `<id>` (GM+)
     - Remove specified area by Area ID.
-* **area\_rename** `<name>`
+* **area\_duplicate** `<area_id>` (GM+)
+    - Duplicate an area, copying all of its properties and evidence.
+* **area\_rename** `<name>` (CM+)
     - Rename area you are currently in to `<name>`.
-* **area\_swap** `<id>` `<id>`
+* **area\_swap** `<id>` `<id>` (GM+)
     - Swap areas by Area IDs while correcting links to reference the right areas.
-* **area\_switch** `<id>` `<id>`
+* **area\_switch** `<id>` `<id>` (GM+)
     - Switch areas by Area IDs without correcting links.
-* **area\_pref** `[pref]` `[tog]`
+* **area\_pref** `[pref]` `[tog]` (CM+)
     - Change a preference for an area.
     - If `[pref]` is not included, see available preferences.
     - The list of preferences is also available [here](prefs.md).
     - `[tog]` must be either `on`/`true`, or `off`/`false`.
     - If `[tog]` is not included, flip the current state of the pref e.g. `can_dj` is `true`, we do `/area_pref can_dj`, `can_dj` flips to `false`.
-* **area\_move\_delay** `[delay]`
+* **area\_move\_delay** `[delay]` (CM+)
     - Set the area's move delay to a value in seconds. Can be negative.
     - Delay must be from `-1800` to `1800` in seconds or empty to check.
-* **hub\_move\_delay** `[delay]`
+* **hub\_move\_delay** `[delay]` (GM+)
     - Set the hub's move delay to a value in seconds. Can be negative.
     - Delay must be from `-1800` to `1800` in seconds or empty to check.
-* **toggle\_replace\_music**
+* **toggle\_replace\_music** `[on|off]` (GM+)
     - Toggle the hub music list to replace the server's music list.
-* **arup\_enable**
+* **toggle\_passing\_ic** `[on|off]` (GM+)
+    - Toggle an IC message when changing areas for this hub.
+* **arup\_enable** (GM+)
     - Enable the ARea UPdate system for this hub.
     - ARUP system is the extra information displayed in the A/M area list, as well as being able to set `/status`.
-* **arup\_disable**
+* **arup\_disable** (GM+)
     - Disable the ARea UPdate system for this hub.
-* **hide\_clients**
+* **toggle\_getareas** `[on|off]` (GM+)
+    - Toggle the permissions of /getareas for normal players in this hub.
+* **toggle\_spectate** `[on|off]` (GM+)
+    - Disable the ability to use a spectator character for non-GMs for this hub.
+* **hide\_clients** (GM+)
     - Hide the playercounts for this Hub's areas.
-* **unhide\_clients**
+* **unhide\_clients** (GM+)
     - Unhide the playercounts for this Hub's areas.
 ### General
-* **follow**
-    - Follow targeted character ID.
+* **follow** `[id]`
+    - Follow targeted user ID.
+    - If used without `id`, will show who you're currently following.
+* **force\_follow** `<victim_id> [target_id]` (GM+)
+    - Force someone to follow you, or someone else.
 * **unfollow**
     - Stop following whoever you are following.
 * **info** `[info]`
-    - Check the information for the current Hub, or set it.
+    - Check the information for the current Hub, or set it (if you're a GM or higher).
 * **gm** `<id>`
     - Add a game master for the current Hub.
     - If id is not provided, try to claim GM if none exist.
-* **ungm**
+    - If providing an *, GM all clients belonging to self.
+* **ungm** (GM+)
     - Remove a game master from the current Hub.
     - If blank, demote yourself from being a GM.
-* **broadcast** `<id(s)>`
+* **broadcast** `<id(s)>` (GM+)
     - Start broadcasting your IC, Music and Judge buttons to specified area ID's.
     - To include all areas, use `/broadcast all`.
     - `/clear_broadcast` to stop broadcasting.
-* **clear\_broadcast**
+* **clear\_broadcast** (GM+)
     - Stop broadcasting your IC, Music and Judge buttons.
+* **hpset** `<def|pro> <amount> [area]>` (CM+)
+    - Set hp in area or multiple areas.
+    - To include all areas, use set [area] to all.
+* **toggle\_autokick** `[on|off]` (CM+)
+    - When active, swapping to a character will instantly kick you to that character's latest area.
 ## Messaging
 * **a**  `<area>` `<message>`
     - Send a message to an area that you are a CM in.
