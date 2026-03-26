@@ -82,7 +82,7 @@ def ooc_cmd_get_urls(client, arg):
     This command returns the server's URL List.
     Usage: /get_urls
     """
-    if client.server.server.server_links is None:
+    if client.server.server_links is None:
         raise ServerError("Server's URL list is not configured.")
     f_server_links = "Server URLs:\n"
     for name, url in client.server.server_links.items():
