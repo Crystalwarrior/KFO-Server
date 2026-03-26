@@ -115,7 +115,7 @@
 ## Areas
 * **bg** `<background>`
     - Set the background of an area.
-* **bg_suffix** `<bg_suffix>`
+* **bg\_suffix** `<bg_suffix>`
     - Set the background suffix of an area, which is what will be appended at the end of the area's /bg.
 * **bgs**
     - Display the server's available backgrounds.
@@ -125,6 +125,8 @@
     - List areas, or go to another area.
 * **area\_visible**
     - Display only linked and non-hidden areas. Useful to GMs.
+* **autogetarea**
+    - Automatically /getarea whenever you enter a new area.
 * **getarea**
     - Show information about the current area.
 * **getareas**
