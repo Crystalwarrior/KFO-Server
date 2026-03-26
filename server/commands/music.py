@@ -249,7 +249,7 @@ def ooc_cmd_unblockdj(client, arg):
 
 def ooc_cmd_musiclists(client, arg):
     """
-    Displays all the available music lists.
+    Displays all the available musiclists.
     Usage: /musiclists
     """
 
@@ -285,8 +285,8 @@ def ooc_cmd_musiclists(client, arg):
 
 def ooc_cmd_musiclist(client, arg):
     """
-    Load a client-side music list. Pass no arguments to reset. /musiclists to see available lists.
-    Note: if there is a set area/hub music list, their music lists will take priority.
+    Load a client-side musiclist. Pass no arguments to reset. /musiclists to see available lists.
+    Note: if there is a set area/hub musiclist, their musiclists will take priority.
     Usage: /musiclist [path]
     """
     try:
@@ -311,7 +311,7 @@ def ooc_cmd_musiclist(client, arg):
 @mod_only(area_owners=True)
 def ooc_cmd_area_musiclist(client, arg):
     """
-    Load an area-wide music list. Pass no arguments to reset. /musiclists to see available lists.
+    Load an area-wide musiclist. Pass no arguments to reset. /musiclists to see available lists.
     Area list takes priority over client lists.
     Usage: /area_musiclist [path]
     """
@@ -337,7 +337,7 @@ def ooc_cmd_area_musiclist(client, arg):
 @mod_only(hub_owners=True)
 def ooc_cmd_hub_musiclist(client, arg):
     """
-    Load a hub-wide music list. Pass no arguments to reset. /musiclists to see available lists.
+    Load a hub-wide musiclist. Pass no arguments to reset. /musiclists to see available lists.
     Hub list takes priority over client lists.
     Usage: /hub_musiclist [path]
     """
@@ -363,7 +363,7 @@ def ooc_cmd_hub_musiclist(client, arg):
 
 def ooc_cmd_random_music(client, arg):
     """
-    Play a random track from your current muisc list. If supplied, [category] will pick the song from that category.
+    Play a random track from your current musiclist. If supplied, [category] will pick the song from that category.
     Usage: /random_music [category]
     """
     songs = []
