@@ -21,7 +21,7 @@
 * **bans** *(Mod)*
     - Get the 5 most recent bans.
     - This can lag the server depending on the size of the database, so be judicious in its use.
-* **baninfo** `<id>` `[ban_id|ipid|hdid]` *(Mod)*
+* **baninfo** `<id> [ban_id|ipid|hdid]` *(Mod)*
     - Get information about a ban.
     - By default, id identifies a ban\_id.
 * **mute** `<ipid>` *(Mod)*
@@ -32,7 +32,7 @@
     - Prevent a user from talking out-of-character.
 * **ooc\_unmute** `<ooc-name>` *(Mod)*
     - Allow an OOC-muted user to talk out-of-character.
-### MISC
+### Misc
 * **motd**
     - Show the message of the day.
 * **help** `[command/category]`
@@ -103,23 +103,23 @@
     - Hide the path leading to target area(s).
 * **link\_unhide**
     - Unhide the path leading to target area(s).
-* **link\_pos** `<id>` `[pos]`
+* **link\_pos** `<id> [pos]`
     - Set the link's targeted pos when using it. Leave blank to reset.
 * **link\_peekable** `<id(s)>`
     - Make the path(s) leading to target area(s) `/peek`-able.
 * **link\_unpeekable** `<id(s)>`
     - Make the path(s) leading to target area(s) no longer `/peek`-able.
-* **link\_evidence** `<id>` `[evi_id(s)]`
+* **link\_evidence** `<id> [evi_id(s)]`
     - Make specific link only accessible from evidence ID(s).
     - Pass evidence ID's which you can see by mousing over evidence, or blank to see current evidences.
 * **unlink\_evidence**
     - Unlink evidence from links.
     - Pass evidence ID's which you can see by mousing over evidence.
-* **pw** `<id>` `[password]`
+* **pw** `<id> [password]`
     - Enter a passworded area. Password is case-sensitive and must match the set password exactly, otherwise it will fail.
     - You will move into the target area as soon as the correct password is provided.
     - Leave password empty if you own the area and want to check its current password.
-* **setpw** `<id>` `[password]`
+* **setpw** `<id> [password]`
     - Context-sensitive function to set a password area(s) and/or area link(s).
     - Pass area id, or link id from current area using !, e.g. 5 vs !5.
     - Leave `[password]` blank to clear the password.
@@ -152,7 +152,7 @@
 * **uninvite** `<id>`
     - Revoke an invitation for a particular user.
     - ID can be    - to uninvite everyone in the current area.
-* **area\_kick** `<id>` `[destination]` `[target_pos]`
+* **area\_kick** `<id> [destination] [target_pos]`
     - Remove a user from the current area and move them to another area.
     - If id is a `*` char, it will kick everyone but you and CMs from current area to destination.
     - If id is `**`, it will kick everyone including CM's from current area to destination.
@@ -175,14 +175,12 @@
     - Set a max amount of players for current area between -1 and 99.
 * **desc** `[desc]`
     - Set an area description that appears to the user any time they enter the area.
-* **edit\_ambience** `[tog]`
+* **edit\_ambience** `[on|off]`
     - Toggle edit mode for setting ambience. Playing music will set it as the area's ambience.
-    - tog can be `on`, `off` or empty.
-* **lights** `[tog]`
+* **lights** `[on|off]`
     - Toggle lights for this area. If lights are off, players will not be able to use `/getarea` or see evidence.
     - Players will also be unable to see area movement messages or use `/chardesc`.
     - You can change `/bg`, `/desc` and `/pos_lock` of the area when its dark and it will remember it next time you turn the lights off.
-    - tog can be `on`, `off` or empty.
 * **auto\_pair** `<double/triple>`
     - Set the max of players displayed on the screen.
     - Depends on the /area_pref auto_pair setting
@@ -193,17 +191,20 @@
     - Clear the link for the current case document.
 * **evidence** `[evi_name/id]`
     - Use `/evidence` to read all evidence in the area.
-    - Use `/evidence` `[evi_name/id]` to read specific evidence.
-* **evidence_add** `[name]` `[desc]` `[image]`
+    - Use `/evidence [evi_name/id]` to read specific evidence.
+* **evidence_add** `[name] [desc] [image]`
     - Add a piece of evidence.
     - For sentences with spaces the arg should be surrounded in `""`'s, for example `/evidence_add Chair "It's a chair." chair.png`
 * **evidence_remove** `<evi_name/id>`
     - Remove a piece of evidence.
-* **evidence_edit** `<evi_name/id>` `[name]` `[desc]` `[image]`
+* **evidence_edit** `<evi_name/id> [name] [desc] [image]`
     - Edit a piece of evidence.
     - If you don't want to change something, put an `*` there.
     - For sentences with spaces the arg should be surrounded in `""`'s, for example `/evidence_edit * "It's a chair." chair.png`
-* **evidence\_mod** `<FFA|Mods|CM|HiddenCM>`
+* **evidence\_present** `[id]`
+    - Present a piece of evidence on your next IC message.
+    - Don't include `[id]` or make it `0` to stop presenting evidence.
+* **evidence\_mod** `<FFA|Mods|CM|HiddenCM>` *(CM)*
     - Change the evidence privilege mode.
     * **FFA**
         - Everyone can add, edit and remove evidence.
@@ -213,7 +214,7 @@
         - Only the CM (case-maker, look at `/cm` for more info) or moderators can add, edit or remove evidence.
     * **HiddenCM**
         - Same as CM, but every evidence has a preset "owner's position" which can be set by a CM or moderator, such that only one side/position of the court may see the evidence. After presenting the evidence, the position of the evidence changes to "all" (visible to everyone).
-* **evidence\_swap**  `<id>` `<id>`
+* **evidence\_swap**  `<evi_id_1> <evi_id_2>` *(CM)*
     - Swap the positions of two evidence items on the evidence list.
     - The ID of each evidence can be displayed by mousing over it in 2.8 client, or simply its number starting from 1.
 * **evidence\_save**  `<name>` *(CM)*
@@ -227,49 +228,53 @@
 * **cm** `<id>`
     - Add a case manager for the current area.
     - Leave id blank to promote yourself if there are no CMs.
-* **uncm** `<id>`
+* **uncm** `<id>` *(CM)*
     - Remove a case manager from the current area.
     - Leave id blank to demote yourself.
 * **setcase**
     - Set the positions you are interested in taking for a case. (This command is used internally by the 2.6 client.)
-* **anncase** `<message>` `<def>` `<pro>` `<jud>` `<jur>` `<steno>`
+* **anncase** `<message> <def> <pro> <jud> <jur> <steno>`
     - Announce that a case is currently taking place in this area, needing a certain list of positions to be filled up.
-* **blockwtce** `<id>`
+* **blockwtce** `<id>` *(Mod)*
     - Prevent a user from using Witness Testimony/Cross Examination buttons as a judge.
-* **unblockwtce** `<id>`
+* **unblockwtce** `<id>` *(Mod)*
     - Allow a user to use WT/CE again.
-* **judgelog**
+* **judgelog** *(Mod)*
     - List the last 10 uses of judge controls in the current area.
 * **afk**
     - Sets your player as AFK in player listings.
-* **remote\_listen** `[option]`
+* **remote\_listen** `[option]` *(CM)*
     - Change the remote listen logs to either `NONE`, `IC`, `OOC` or `ALL`.
     - It will send you those messages from the areas you are an owner of.
     - Leave blank to see your current option.
 * **testimony** `[id]`
     - Display the currently recorded testimony, including statement IDs.
     - Optionally, `id` is a nubmer that can be passed to move to that statement ID.
-* **testimony\_start** `<title>`
+* **testimony\_start** `<title>` *(CM)*
     - Manually start a testimony with the given title.
-* **testimony\_continue**
-    - Manually start a testimony with the given title.
-* **testimony\_clear**
+* **testimony\_continue** *(CM)*
+    - Continue an existing testimony, restarting the recording so new statements may be added.
+* **testimony\_clear** *(CM)*
     - Clear the current testimony.
-* **testimony\_remove** `<id>`
+* **testimony\_remove** `<id>` *(CM)*
     - Remove the statement at index.
-* **testimony\_amend** `<id>` `<msg>`
+* **testimony\_amend** `<id> <msg>` *(CM)*
     - Edit the spoken message of the statement at idx.
-* **testimony\_swap** `<id>` `<id>`
+* **testimony\_swap** `<id_1> <id_>` *(CM)*
     - Swap the two statements by id.
-* **testimony\_insert** `<id>` `<id>`
+* **testimony\_insert** `<id_1> <id_2>` *(CM)*
     - Insert the targeted statement at idx.
 * **cs** `<id>`
     - Start a one-on-one "Cross Swords" debate with targeted player!
+        - Area Preference `can_cross_swords` must be set to true for this to work!
     - Expires in 5 minutes.
     - If there's an ongoing cross-swords already, it will turn into a Scrum Debate (team vs team debate) with you joining the side *against* the `<id>`.
+        - Area Preference `can_scrum_debate` must be set to true for this to work!
+        - Adds 5 Minutes to the timer
 * **pta** `<id>`
     - Start a one-on-one "Panic Talk Action" debate with targeted player!
-    - Unlike `/cs`, a Panic Talk Action (PTA) cannot evolve into a Scrum Debate.
+        - Area Preference `can_panic_talk_action` must be set to true for this to work!
+    - Unlike a "Cross Swords" (`/cs`), a Panic Talk Action (PTA) cannot evolve into a Scrum Debate.
     - Expires in 5 minutes.
 * **concede** `<id>`
     - Concede a trial minigame and withdraw from either team you're part of.
@@ -288,7 +293,7 @@
     - Switch to another character. If you are a moderator and the specified character is currently being used, the current user of that character will be automatically reassigned a character.
 * **pos** `<name>`
     - Set the place your character resides in the area.
-* **forcepos** `<pos>` `<target>` *(CM)*
+* **forcepos** `<pos> <target>` *(CM)*
     - Set the place another character resides in the area.
 * **pair** `[cid|charname]`
     - Pair with someone. Overrides client pairing choice.
@@ -305,14 +310,14 @@
 * **pair_order** `[order]`
     - Choose if you'll appear in front or behind someone when pairing.
     - Only works when using serverside `/pair [order]` can be either `front/0` or `behind/1`.
-* **force_switch** `[id]` `[char]` *(CM)*
+* **force_switch** `[id] [char]` *(CM)*
     - Enter the character select screen, or force another user to select another character.
     - Optional `[char]` forces them into that specific character folder/ID.
 * **kill** `<id>` *(CM)*
     - Force the character into spectator mode with a message that they have died.
 * **randomchar**
     - Select a random character.
-* **charcurse** `<id>` `[charids...]` *(Mod)*
+* **charcurse** `<id> [charids...]` *(Mod)*
     - Lock a user into being able to choose only from a list of characters.
 * **uncharcurse** `<id>` *(Mod)*
     - Remove the character choice restrictions from a user.
@@ -324,7 +329,7 @@
     - Blind the targeted player(s) from being able to see or talk IC.
 * **unblind** *(CM)*
     - Undo effects of the /blind command.
-* **player\_move\_delay** `<id>` `[delay]` *(CM)*
+* **player\_move\_delay** `<id> [delay]` *(CM)*
     - Set the player's move delay to a value in seconds. Can be negative.
     - Delay must be from `-1800` to `1800` in seconds or empty to check.
     - If only `delay` is provided, you will be setting your own move delay.
@@ -360,11 +365,11 @@
     - Save the move delay, keys, etc. for characters into a file in the `storage/character_data/` folder.
 * **load\_character\_data** `<path>` *(GM)*
     - Load the move delay, keys, etc. for characters from a file in the `storage/character_data/` folder.
-* **keys\_set** `<char>` `[key(s)]` *(GM)*
+* **keys\_set** `<char> [key(s)]` *(GM)*
     - Sets the keys of the target client/character folder/character id to the key(s). Keys must be a number like 5 or a link eg. 1-5.
-* **keys\_add** `<char>` `[key(s)]` *(GM)*
+* **keys\_add** `<char> [key(s)]` *(GM)*
     - Adds the keys of the target client/character folder/character id to the key(s). Keys must be a number like 5 or a link eg. 1-5.
-* **keys\_remove** `<char>` `[key(s)]` *(GM)*
+* **keys\_remove** `<char> [key(s)]` *(GM)*
     - Remvove the keys of the target client/character folder/character id from the key(s). Keys must be a number like 5 or a link eg. 1-5.
 * **keys** `[target\_id]`
     - Check your own keys, or someone else's (if GM or above).
@@ -380,7 +385,7 @@
     - To set someone else's char desc as an admin/GM, or look at their desc, use `/chardesc_set` or `/chardesc_get`.
 * **chardesc_clear**
     - Clear your character description.
-* **chardesc\_set** `<id>` `[desc]` *(GM)*
+* **chardesc\_set** `<id> [desc]` *(GM)*
     - Set someone else's character description to desc or clear it.
 * **chardesc\_get** `<id>` *(GM)*
     - Get someone else's character description.
@@ -429,7 +434,7 @@
 * **hub** `[id/name]`
     - List hubs, or go to another hub.
 ### Saving/loading
-* **save\_hub** `<name>` `[read_only]` *(GM)*
+* **save\_hub** `<name> [read_only]` *(GM)*
     - Save the current Hub in the server's `storage/hubs/read_only/<name>.yaml` or `storage/hubs/<name>.yaml` file.
     - If blank and you're a mod, it will save to server's `config/areas_new.yaml` for the server owner to approve.
     - If `[read_only]` is a parameter in the arguments then none can rewrite the current hub.
@@ -456,11 +461,11 @@
     - Duplicate an area, copying all of its properties and evidence.
 * **area\_rename** `<name>` *(CM)*
     - Rename area you are currently in to `<name>`.
-* **area\_swap** `<id>` `<id>` *(GM)*
+* **area\_swap** `<id> <id>` *(GM)*
     - Swap areas by Area IDs while correcting links to reference the right areas.
-* **area\_switch** `<id>` `<id>` *(GM)*
+* **area\_switch** `<id> <id>` *(GM)*
     - Switch areas by Area IDs without correcting links.
-* **area\_pref** `[pref]` `[tog]` *(CM)*
+* **area\_pref** `[pref] [tog]` *(CM)*
     - Change a preference for an area.
     - If `[pref]` is not included, see available preferences.
     - The list of preferences is also available [here](prefs.md).
@@ -650,14 +655,14 @@
     - Example: `/timer_interval 1 15m`
     - Default interval: `/timer_interval 1 16ms`
 ## Musiclists
-* **musiclist\_add** `<local/area/hub>` `<Category>` `<MusicName>` `[Length]` `[Path]`
+* **musiclist\_add** `<local/area/hub> <Category> <MusicName> [Length] [Path]`
     - Allow you to add a song in a loaded musiclist!
     - Remember to insert a file extension in `<MusicName>` unless you are using the optional `[Path]` (useful for streamed songs!)
     - If Length is `0`, song will not loop. If Length is `-1`, song will loop. Any other value will tell the server the length of the song (in seconds)
-* **musiclist\_remove** `<local/area/hub>` `<Category>` `<MusicName>`
+* **musiclist\_remove** `<local/area/hub> <Category> <MusicName>`
     - Allow you to remove a song from a musiclist!
     - Remember to insert a file extension in `<MusicName>`. For songs without extension, put in .music.
-* **musiclist\_save** `<local/area/hub>` `[MusiclistName]` `[read_only]`
+* **musiclist\_save** `<local/area/hub> [MusiclistName] [read_only]`
     - Allow you to save a musiclist on server list!
     - If the musiclist you're editing is already in the server list, you don't have to add `[MusiclistName]`
     - If `[read_only]` is a parameter in the arguments then none can rewrite the current musiclist
@@ -667,25 +672,25 @@
     - You will receive its stats and its moves.
 * **info\_fighter**
     - Send info about your fighter.
-* **create\_fighter** `<FighterName>` `<HP>` `<MANA>` `<ATK>` `<DEF>` `<SPA>` `<SPD>` `<SPE>`
+* **create\_fighter** `<FighterName> <HP> <MANA> <ATK> <DEF> <SPA> <SPD> <SPE>`
     - Allow you to create a fighter and to customize its stats.
-* **create\_move** `<MoveName>` `<ManaCost>` `<MovesType>` `<Power>` `<Accuracy>` `<Effects>`
+* **create\_move** `<MoveName> <ManaCost> <MovesType> <Power> <Accuracy> <Effects>`
     - Allow you to create a move for a fighter.
     - You have to choose a fighter first!
     - MovesType: Atk or Spa
-* **modify\_stat** `<FighterName>` `<Stat>` `<Value>`
+* **modify\_stat** `<FighterName> <Stat> <Value>`
     - Allow you to modify fighter's stats.
 * **delete\_fighter** `<FighterName>`
     - Allow you to delete a fighter.
 * **delete\_move** `<MoveName>`
     - Delete a move from a fighter.
     - You have to choose a fighter first!
-* **battle\_config** `<parameter>` `<value>`
+* **battle\_config** `<parameter> <value>`
     - Allow you to customize some battle settings.
     - parameters: paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage, show hp, min_multishot, max_multishot, burn_damage, freeze_damage, confusion_rate, enraged_bonus, stolen_stat
 * **fight**
     - Allow you to join the battle!
-* **use\_move** `<MoveName>` `<Target_ID>`
+* **use\_move** `<MoveName> <Target_ID>`
     - This command will let you use a move during a battle!
     - Heal and AttAll moves don't need a target!
 * **battle\_info**
@@ -713,12 +718,12 @@
 * **battle\_effects**
     - Show all available battle effects
 ## In-Character Commands
-* **/a** `[id(s)]` `[msg]`
+* **/a** `[id(s)] [msg]`
     - Put this in the In-Character chat.
     - This command can only be used by CMs and above.
     - `[id(s)]` are optional. If ID(s) are not provided (`/a msg`), the message will be broadcast across all owned areas.
     - `[id(s)]` stand for Area ID's that can be viewed using `/area`, or in the A/M area list, so `/a 1 msg` to send message "msg" to area ID 1. If multiple ID's, they must be comma-separated, like so: `/a 1,2,3,4 msg` - send message "msg" to area ID's 1, 2, 3 and 4.
-* **/w** `[id(s)]` `[msg]`
+* **/w** `[id(s)] [msg]`
     - Put this in the In-Character chat.
     - This command can be used by anyone, unless `/area_pref can_whisper` is `false`.
     - `[id(s)]` are optional. If ID(s) are not provided (`/w msg`), the message will be broadcast to clients in the current `/pos` only.
