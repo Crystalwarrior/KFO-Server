@@ -734,14 +734,14 @@
     - Allow you to create a move for a fighter.
     - You have to choose a fighter first!
     - MovesType: Atk or Spa
-* **modify\_stat** `<FighterName> <Stat> <Value>`
+* **modify\_stat** `<FighterName> <Stat> <Value>` *(GM)*
     - Allow you to modify fighter's stats.
-* **delete\_fighter** `<FighterName>`
+* **delete\_fighter** `<FighterName>` *(GM)*
     - Allow you to delete a fighter.
-* **delete\_move** `<MoveName>`
+* **delete\_move** `<MoveName>` *(GM)*
     - Delete a move from a fighter.
     - You have to choose a fighter first!
-* **battle\_config** `<parameter> <value>`
+* **battle\_config** `<parameter> <value>` *(GM)*
     - Allow you to customize some battle settings.
     - parameters: paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage, show hp, min_multishot, max_multishot, burn_damage, freeze_damage, confusion_rate, enraged_bonus, stolen_stat
 * **fight**
@@ -751,15 +751,15 @@
     - Heal and AttAll moves don't need a target!
 * **battle\_info**
     - Send you info about the battle.
-* **refresh\_battle**
+* **refresh\_battle** *(GM)*
     - Refresh the battle
-* **remove\_fighter** `<Target_ID>`
+* **remove\_fighter** `<Target_ID>` *(GM)*
     - Force a fighter to leave the battle.
 * **surrender**
     - A command to surrend from the current battle.
 * **skip\_move**
     - Allow you to skip the turn
-* **force\_skip\_move** `<Target_ID>`
+* **force\_skip\_move** `<Target_ID>` *(GM)*
     - Force a fighter to skip the turn
 * **create\_guild** `<NameGuild>`
     - Allow you to create a guild
