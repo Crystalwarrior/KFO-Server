@@ -74,7 +74,9 @@ class AOProtocol(asyncio.Protocol):
                 logger.debug(
                     "Unknown incoming message from %s: %s", ipid, msg)
             except Exception:
-                print(traceback.format_exc())
+                traceback_string = traceback.format_exc()
+                print(traceback_string)
+                self.client.send_command("KK", f'An error has occurred!\n{traceback_string}\n\nPlease contact the server owner to report this issue.')
                 self.client.disconnect()
                 raise
 
