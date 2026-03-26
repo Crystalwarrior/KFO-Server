@@ -345,14 +345,16 @@
     - If using 2.9.1, when you speak IC only the chat box will be affected.
     - tog can be `on`, `off` or empty.
 ## Fun
-* **disemvowel** `<id>`
+* **disemvowel** `<id>` (MOD ONLY)
     - Remove all vowels from a user's IC chat.
-* **undisemvowel** `<id>`
+* **undisemvowel** `<id>` (MOD ONLY)
     - Give back the freedom of vowels to a user.
-* **shake** `<id>`
+* **shake** `<id>` (MOD ONLY)
     - Scramble the words in a user's IC chat.
-* **unshake** `<id>`
+* **unshake** `<id>` (MOD ONLY)
     - Give back the freedom of coherent grammar to a user.
+* **rainbow** `[true/false]` 
+    - A toggle to colors the user's IC messages into rainbow colors.
 ## Hubs
 * **hub** `[id/name]`
     - List hubs, or go to another hub.
