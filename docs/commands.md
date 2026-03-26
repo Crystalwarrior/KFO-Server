@@ -115,6 +115,8 @@
 ## Areas
 * **bg** `<background>`
     - Set the background of an area.
+* **bg_suffix** `<bg_suffix>`
+    - Set the background suffix of an area, which is what will be appended at the end of the area's /bg.
 * **bgs**
     - Display the server's available backgrounds.
 * **status** `<idle|rp|casing|looking-for-players|lfp|recess|gaming>`
