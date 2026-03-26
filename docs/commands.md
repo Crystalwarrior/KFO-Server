@@ -128,33 +128,40 @@
 ## Areas
 * **bg** `<background>`
     - Set the background of an area.
-* **bg\_suffix** `<bg_suffix>`
+* **bg\_suffix** `<bg_suffix>` *(CM)*
     - Set the background suffix of an area, which is what will be appended at the end of the area's /bg.
-* **bgs**
+* **bgs** `[category]`
     - Display the server's available backgrounds.
-* **status** `<idle|rp|casing|looking-for-players|lfp|recess|gaming>`
+* **overlay** `<background>` *(CM)*
+    - Set the overlay of an area.
+    - If no argument is given, returns the current overlay.
+    - Use `/overlay_clear` to clear it.
+* **overlay_clear** *(CM)*
+    - Clear the overlay of an area.
+* **status** `<idle|rp|casing|looking-for-players|lfp|recess|gaming>` *(CM)*
     - Show or modify the current status of an area.
-* **area** `[id]`
-    - List areas, or go to another area.
+* **area** `[area_id/area_name]`
+    - Go to the specified area.
+    - Lists all available areas, if no argument is given.
 * **area\_visible**
     - Display only linked and non-hidden areas. Useful to GMs.
 * **autogetarea**
-    - Automatically /getarea whenever you enter a new area.
-* **getarea**
-    - Show information about the current area.
-* **getareas**
+    - Automatically `/getarea` whenever you enter a new area.
+* **getarea** `[id]`
+    - Show information about the current area, or target area id with sufficient permissions.
+* **getareas** *(GM)*
     - Show information about all areas.
 * **gethubs**
     - Show information about all hubs.
 * **getafk** `[all]`
     - Show currently AFK-ing players in the current area or in all areas.
-* **invite** `<id>`
+* **invite** `<id>` *(CM)*
     - Allow a particular user to join a locked or speak in spectator-only area.
     - ID can be `*` to invite everyone in the current area.
-* **uninvite** `<id>`
+* **uninvite** `<id>` *(CM)*
     - Revoke an invitation for a particular user.
     - ID can be    - to uninvite everyone in the current area.
-* **area\_kick** `<id> [destination] [target_pos]`
+* **area\_kick** `<id> [destination] [target_pos]` *(GM)*
     - Remove a user from the current area and move them to another area.
     - If id is a `*` char, it will kick everyone but you and CMs from current area to destination.
     - If id is `**`, it will kick everyone including CM's from current area to destination.
@@ -162,30 +169,40 @@
     - If id is `afk`, it will only kick all the afk people.
     - If the destination is not specified, the destination defaults to area 0.
     - `[target_pos]` is the optional position that everyone should end up in when kicked.
-* **pos\_lock** `<pos(s)>`
+* **pos\_lock** `<pos(s)>` *(CM)*
     - Lock current area's available positions into a list of pos separated by space.
     - Use `/pos_lock` none or `/pos_lock_clear` to make the list empty.
     - If your pos have spaces in them, it must be a comma-separated list like `/pos_lock` pos one, pos two, pos X
     - If you're locking into a single pos with spaces in it, end it with a comma, like `/pos_lock` this is a pos,
-* **pos\_lock\_clear**
+* **pos\_lock\_clear** *(CM)*
     - Clear the current area's position lock and make all positions available.
 * **knock** `<id>`
     - Knock on the target area ID to call on their attention to your area.
 * **peek** `<id>`
     - Peek into an area to see if there's people in it.
-* **max\_players** `[num]`
+* **max\_players** `[num]` *(CM)*
     - Set a max amount of players for current area between -1 and 99.
 * **desc** `[desc]`
-    - Set an area description that appears to the user any time they enter the area.
-* **edit\_ambience** `[on/off]`
+    - With no aguments given, read the current area description
+    - As CM or above, set an area description that appears to the user any time they enter the area.
+* **desc\_clear** ``
+    - Clears the area description that appears to the user any time they enter the area.
+* **edit\_ambience** `[on/off]` *(CM)*
     - Toggle edit mode for setting ambience. Playing music will set it as the area's ambience.
-* **lights** `[on/off]`
+* **lights** `[on/off]` *(CM)*
     - Toggle lights for this area. If lights are off, players will not be able to use `/getarea` or see evidence.
     - Players will also be unable to see area movement messages or use `/chardesc`.
     - You can change `/bg`, `/desc` and `/pos_lock` of the area when its dark and it will remember it next time you turn the lights off.
 * **auto\_pair** `<double/triple>`
     - Set the max of players displayed on the screen.
-    - Depends on the /area_pref auto_pair setting
+    - Depends on the `/area_pref auto_pair` setting
+* **area\_broadcast** `<id(s)>` *(GM)*
+    - Start broadcasting current area's IC, Music and Judge buttons to specified area ID's.
+        - Unlike `broadcast`, this will broadcast ALL messages and music changes that happen in the specified area(s) to every other area.
+    - To include all areas, use `/area_broadcast all`.
+    - Use `/clear_area_broadcast` to clear the list.
+* **clear\_area\_broadcast** *(GM)*
+    - Clear the area's broadcasting of IC, Music and Judge buttons.
 ## Casing
 * **doc** `[url]`
     - Show or change the link for the current case document.
@@ -515,6 +532,7 @@
     - If blank, demote yourself from being a GM.
 * **broadcast** `<id(s)>` *(GM)*
     - Start broadcasting your IC, Music and Judge buttons to specified area ID's.
+        - Unlike `area_broadcast`, this will broadcast ONLY YOUR messages and music changes you make to every other area.
     - To include all areas, use `/broadcast all`.
     - `/clear_broadcast` to stop broadcasting.
 * **clear\_broadcast** *(GM)*
@@ -776,6 +794,10 @@
     - You can use `++msg` to add a new statement after the current one.
 
 ## Deprecated / Broken
+* **shuffle_pos** `<pos(s)>` *(CM)*
+    *= WORK IN PROGRESS =*
+    - Randomly shuffle the players into a list of pos separated by space or comma.
+    - If your pos have spaces in them, it must be a comma-separated list like /shuffle_pos pos one, pos two, pos X
 * **a**  `<area> <message>`
     - Send a message to an area that you are a CM in.
 * **s** `<message>`
