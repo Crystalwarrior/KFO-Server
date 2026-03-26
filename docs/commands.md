@@ -65,9 +65,9 @@
     - Prevent users from joining the current area.
 * **area\_unlock**
     - Allow anyone to freely join the current area.
-* **area\_mute**
+* **area\_mute** *(CM)*
     - Makes this area impossible to speak for normal users unlesss `/invite` is used.
-* **area\_unmute**
+* **area\_unmute** *(CM)*
     - Undo the effects of `/area_mute`.
 * **lock** `<area(s)>` or `<!link(s)>`
     - Context-sensitive function to lock area(s) and/or area link(s).
@@ -85,41 +85,43 @@
         - `/unlock 1` - unlock area ID 1.
         - `/unlock !1` - unlock a link connected to area ID 1 (if it exists).
         - `/unlock 1 2 3` - unlock area IDs 1, 2 and 3.
-* **link** `<id(s)>`
+* **link** `<id(s)>` *(CM)*
     - Set up a two-way link from your current area with targeted area(s).
-* **unlink** `<id(s)>`
+* **unlink** `<id(s)>` *(CM)*
     - Remove a two-way link from your current area with targeted area(s).
 * **links**
     - Display this area's information about area links.
-* **onelink** `<id(s)>`
+* **onelink** `<id(s)>` *(CM)*
     - Set up a one-way link from your current area with targeted area(s).
-* **oneunlink** `<id(s)>`
+* **oneunlink** `<id(s)>` *(CM)*
     - Remove a one-way link from your current area with targeted area(s).
 * **link\_lock** `<id(s)>`
-    - Lock the path leading to target area(s)
+    - Lock the path leading to target area(s).
+    - Requires the corresponding `keys` to use as a regular user.
 * **link\_unlock** `<id(s)>`
     - Unlock the path leading to target area(s).
-* **link\_hide**
+    - Requires the corresponding `keys` to use as a regular user.
+* **link\_hide** *(CM)*
     - Hide the path leading to target area(s).
-* **link\_unhide**
+* **link\_unhide** *(CM)*
     - Unhide the path leading to target area(s).
-* **link\_pos** `<id> [pos]`
+* **link\_pos** `<id> [pos]` *(CM)*
     - Set the link's targeted pos when using it. Leave blank to reset.
-* **link\_peekable** `<id(s)>`
+* **link\_peekable** `<id(s)>` *(CM)*
     - Make the path(s) leading to target area(s) `/peek`-able.
-* **link\_unpeekable** `<id(s)>`
+* **link\_unpeekable** `<id(s)>` *(CM)*
     - Make the path(s) leading to target area(s) no longer `/peek`-able.
-* **link\_evidence** `<id> [evi_id(s)]`
+* **link\_evidence** `<id> [evi_id(s)]` *(CM)*
     - Make specific link only accessible from evidence ID(s).
     - Pass evidence ID's which you can see by mousing over evidence, or blank to see current evidences.
-* **unlink\_evidence**
+* **unlink\_evidence** *(CM)*
     - Unlink evidence from links.
     - Pass evidence ID's which you can see by mousing over evidence.
 * **pw** `<id> [password]`
     - Enter a passworded area. Password is case-sensitive and must match the set password exactly, otherwise it will fail.
     - You will move into the target area as soon as the correct password is provided.
     - Leave password empty if you own the area and want to check its current password.
-* **setpw** `<id> [password]`
+* **setpw** `<id> [password]` *(CM)*
     - Context-sensitive function to set a password area(s) and/or area link(s).
     - Pass area id, or link id from current area using !, e.g. 5 vs !5.
     - Leave `[password]` blank to clear the password.
