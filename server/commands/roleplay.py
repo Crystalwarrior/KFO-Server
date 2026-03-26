@@ -1129,12 +1129,12 @@ def ooc_cmd_ooc_actions(client, arg):
 
 def ooc_cmd_sfx(client, arg):
     """
-    Play a sound effect directly without associating it with an emote.
-    Usage: /sfx [sound_path]
+    Play a sound effect directly without associating it with an IC message.
+    Usage: /sfx <sound_path>
     """
     if arg == "":
         raise ArgumentError(
-            "sound_path can't be empty. Usage: /sfx [sound_path]"
+            "sound_path can't be empty. Usage: /sfx <sound_path>"
         )
     is_mod = client.is_mod or client in client.area.owners
     # Only incur cooldowns etc. on mods.
