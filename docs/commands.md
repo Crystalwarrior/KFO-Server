@@ -184,7 +184,7 @@
     - Set a max amount of players for current area between -1 and 99.
 * **desc** `[desc]`
     - With no aguments given, read the current area description
-    - As CM or above, set an area description that appears to the user any time they enter the area.
+    - Set an area description that appears to the user any time they enter the area.
 * **desc\_clear** ``
     - Clears the area description that appears to the user any time they enter the area.
 * **edit\_ambience** `[on/off]` *(CM)*
@@ -312,11 +312,14 @@
     - Switch to another character. If you are a moderator and the specified character is currently being used, the current user of that character will be automatically reassigned a character.
 * **pos** `<name>`
     - Set the place your character resides in the area.
-* **forcepos** `<pos> <target>` *(CM)*
+    - With no arguments provided, tells you your current position.
+* **forcepos** `<pos(s)> <target(s)>` *(CM)*
     - Set the place another character resides in the area.
+    - Set `pos` to "RANDOM", to force every `target` into a random position, taken from that area's `/pos_lock`
+    - `pos` will be read as a list of positions to randomize by, if it contains comma "," separated values. (Ex: `wit,def,pro`)
 * **pair** `[cid|charname]`
     - Pair with someone. Overrides client pairing choice.
-        - Paired characters appear on the same screen together, as long as they are in the same area.
+        - Paired characters appear on the same screen together, as long as they are in the same area and same `/pos`.
         - To change the characters positions, use the client and change the x- or y-offset.
     - Run by itself to check your current (last?) pairing partner.
 * **triple\_pair** `[cid|charname]`
@@ -428,7 +431,8 @@
     - Load a character list. `/charlists` to see available character lists.
     - Run `/charlist` by itself to reset it to the server's default.
 * **webfiles** `<id>`
-    - Gives a link to download each characters files from webAO.
+    - Provides a link to (manually) download character files from [webAO](https://attorneyonline.github.io/webDownloader/).
+    - `id` must be a valid user id in the same area.
 * **get_latest_area** `[cid|charname]` *(GM)*
     - Get a character's latest occupied area. Lobby area is always excluded.
     - If used by itself, gets your character's latest occupied area instead.
