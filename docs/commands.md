@@ -569,34 +569,49 @@
     - Show the current music playing.
 * **getmusic**
     - Grab the last played track in this area.
-* **jukebox\_toggle**
+        - To let new users that joined this area automatically listen to the current song as well, you can change the `/area_preference music_autoplay` to true.
+* **jukebox\_toggle** *(CM)*
     - Toggle jukebox mode. While jukebox mode is on, all music changes become votes for the next track, rather than changing the track immediately.
-* **jukebox\_skip**
+* **jukebox\_skip** *(CM)*
     - Skip the current track.
 * **jukebox**
     - Show information about the jukebox's queue and votes.
 * **play** `<name>`
     - Play a track and loop it. See `/play_once` for this command without looping.
+    - Can be used with streamed songs from a valid direct-link in place of `name`, if you're a CM or higher.
 * **play\_once** `<name>`
     - Play a track without looping it. See `/play` for this command with looping.
-* **blockdj** `<id>`
+    - Can be used with streamed songs from a valid direct-link in place of `name`, if you're a CM or higher.
+* **blockdj** `<id>` *(Mod)*
     - Prevent a user from changing music.
-* **unblockdj** `<id>`
+* **unblockdj** `<id>` *(Mod)*
     - Unblock a user from changing music.
-* **musiclists**
-    - Displays all the available music lists.
-* **musiclist** `[path]`
-    - Load a client-side music list. Pass no arguments to reset. `/musiclists` to see available lists.
-    - Note: if there is a set area/hub music list, their music lists will take priority.
-* **area\_musiclist** `[path]`
-    - Load an area-wide music list. Pass no arguments to reset. `/musiclists` to see available lists.
-    - Area list takes priority over client lists.
-* **hub\_musiclist** `[path]`
-    - Load a hub-wide music list. Pass no arguments to reset. `/musiclists` to see available lists.
-    - Hub list takes priority over client lists.
 * **random\_music** `[category]`
-    - Play a random track from your current muisc list. If supplied, `[category]` will pick the song from that category.
+    - Play a random track from your current musiclist. If supplied, `[category]` will pick the song from that category.
     - Usage: `/random_music [category]`
+### Musiclists
+* **musiclists**
+    - Displays all the available musiclists.
+* **musiclist** `[path]`
+    - Load a client-side musiclist. Pass no arguments to reset. `/musiclists` to see available lists.
+    - Note: if there is a set area/hub music list, their music lists will take priority.
+* **area\_musiclist** `[path]` *(CM)*
+    - Load an area-wide musiclist. Pass no arguments to reset. `/musiclists` to see available lists.
+    - Area list takes priority over client lists.
+* **hub\_musiclist** `[path]` *(GM)*
+    - Load a hub-wide musiclist. Pass no arguments to reset. `/musiclists` to see available lists.
+    - Hub list takes priority over client lists.
+* **musiclist\_add** `<local/area/hub> <Category> <MusicName> [Length] [Path]`
+    - Allows you to add a song in a loaded musiclist!
+    - Remember to insert a file extension in `<MusicName>` unless you are using the optional `[Path]` (useful for streamed songs!)
+    - If Length is `0`, song will not loop. If Length is `-1`, song will loop. Any other value will tell the server the length of the song (in seconds)
+* **musiclist\_remove** `<local/area/hub> <Category> <MusicName>`
+    - Allows you to remove a song from a musiclist!
+    - Remember to insert a file extension in `<MusicName>`. For songs without extension, put in `.music`.
+* **musiclist\_save** `<local/area/hub> [MusiclistName] [read_only]` *(GM)*
+    - Allows you to save a musiclist on server list!
+    - If the musiclist you're editing is already in the server list, you don't have to add `[MusiclistName]`
+    - If `[read_only]` is a parameter in the arguments then none can rewrite the current musiclist.
 ## Roleplay
 * **roll** `[value/XdY] ["+5"/"-5"/"*5"/"/5"]`
     - Roll a die. The result is shown publicly.
@@ -693,18 +708,6 @@
     - Enable or disable IC actions being broadcast to OOC as well.
 * **sfx** `<sound_path>`
     - Play a sound effect directly without associating it with an IC message.
-## Musiclists
-* **musiclist\_add** `<local/area/hub> <Category> <MusicName> [Length] [Path]`
-    - Allow you to add a song in a loaded musiclist!
-    - Remember to insert a file extension in `<MusicName>` unless you are using the optional `[Path]` (useful for streamed songs!)
-    - If Length is `0`, song will not loop. If Length is `-1`, song will loop. Any other value will tell the server the length of the song (in seconds)
-* **musiclist\_remove** `<local/area/hub> <Category> <MusicName>`
-    - Allow you to remove a song from a musiclist!
-    - Remember to insert a file extension in `<MusicName>`. For songs without extension, put in .music.
-* **musiclist\_save** `<local/area/hub> [MusiclistName] [read_only]`
-    - Allow you to save a musiclist on server list!
-    - If the musiclist you're editing is already in the server list, you don't have to add `[MusiclistName]`
-    - If `[read_only]` is a parameter in the arguments then none can rewrite the current musiclist
 ## Battle
 * **choose\_fighter** `<NameFighter>`
     - Allow you to choose a fighter from the list of the server.
