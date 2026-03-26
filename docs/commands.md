@@ -4,30 +4,32 @@
 ## Admin
 * **motd**
     - Show the message of the day.
-* **help**
+* **help [command/category]**
     - Show help for a command, or show general help.
-* **kick** `<ipid|*|**>` `[reason]`
+    - Can be used with an optional argument to either show a list of commands for specific category,
+    - or a command itself for a detailed explanation of its usage.
+* **kick** `<ipid|*|**>` `[reason]` (MOD ONLY)
     - Kick a player.
     - Special cases:
         - `*` kicks everyone in the current area.
         - `**` kicks everyone in the server.
-* **ban** `<ipid> "reason" "[# <minute|hour|day|week|month>(s)|perma]"`
+* **ban** `<ipid> "reason" "[# <minute|hour|day|week|month>(s)|perma]"` (MOD ONLY)
     - Ban a user. If a ban ID is specified instead of a reason,
     - then the IPID is added to an existing ban record.
     - Ban durations are 6 hours by default.
     - Usage 2: `/ban <ipid> <ban_id>`
-* **banhdid**
+* **banhdid** (MOD ONLY)
     - Ban both a user's HDID and IPID.
-* **unban** `<ban_id...>`
+* **unban** `<ban_id...>` (MOD ONLY)
     - Unban a list of users.
     - You need a ban ID to unban a user. Ban IDs are automatically included in ban reasons. Use `/baninfo <ban_id>` for more information about a ban.
-* **mute** `<ipid>`
+* **mute** `<ipid>` (MOD ONLY)
     - Prevent a user from speaking in-character.
-* **unmute** `<ipid|all>`
+* **unmute** `<ipid|all>` (MOD ONLY)
     - Unmute a user.
 * **login** `<password>`
     - Login as a moderator.
-* **refresh**
+* **refresh** (MOD ONLY)
     - Reload all moderator credentials, server options, and commands without restarting the server.
 * **online**
     - Show the number of players online.
@@ -35,20 +37,27 @@
     - Show a list of moderators online.
 * **unmod**
     - Log out as a moderator.
-* **ooc\_mute** `<ooc-name>`
+* **ooc\_mute** `<ooc-name>` (MOD ONLY)
     - Prevent a user from talking out-of-character.
-* **ooc\_unmute** `<ooc-name>`
+* **ooc\_unmute** `<ooc-name>` (MOD ONLY)
     - Allow an OOC-muted user to talk out-of-character.
-* **bans**
+* **bans** (MOD ONLY)
     - Get the 5 most recent bans.
     - This can lag the server depending on the size of the database, so be judicious in its use.
-* **baninfo** `<id>` `[ban_id|ipid|hdid]`
+* **baninfo** `<id>` `[ban_id|ipid|hdid]` (MOD ONLY)
     - Get information about a ban.
     - By default, id identifies a ban\_id.
 * **time**
     - Returns the current server time.
-* **whois** `<name|id|ipid|showname|character>`
+* **whois** `<name|id|ipid|showname|character>` (MOD ONLY)
     - Get information about an online user.
+* **restart** (MOD ONLY)
+  - Restart the server (WARNING: The server will be *stopped* unless you set up a restart batch/bash file!)
+* **myid**
+    - Get information for your current client, such as client ID.
+* **multiclients** `<ipid>` (MOD ONLY)
+    - Get all the multi-clients of the IPID provided, detects multiclients
+    - on the same hardware even if the IPIDs are different.
 ## Area Access
 * **area\_lock**
     - Prevent users from joining the current area.
@@ -353,7 +362,7 @@
     - Scramble the words in a user's IC chat.
 * **unshake** `<id>` (MOD ONLY)
     - Give back the freedom of coherent grammar to a user.
-* **rainbow** `[true/false]` 
+* **rainbow** `[true|false]` 
     - A toggle to colors the user's IC messages into rainbow colors.
 ## Hubs
 * **hub** `[id/name]`
