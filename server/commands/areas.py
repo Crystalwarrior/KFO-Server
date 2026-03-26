@@ -42,6 +42,7 @@ __all__ = [
 def ooc_cmd_overlay(client, arg):
     """
     Set the overlay of an area.
+    If no argument is given, returns the current overlay.
     Usage: /overlay <background>
     """
     if len(arg) == 0:
@@ -209,7 +210,8 @@ def ooc_cmd_status(client, arg):
 
 def ooc_cmd_area(client, arg):
     """
-    List areas, or go to another area.
+    Go to the specified area.
+    Lists all available areas, if no argument is given.
     Usage: /area [id] or /area [name]
     """
     if arg == "":
