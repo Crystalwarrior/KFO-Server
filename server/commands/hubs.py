@@ -501,6 +501,7 @@ def ooc_cmd_area_pref(client, arg):
         "bg_lock",
         "force_sneak",
         "present_reveals_evidence",
+        "ooc_actions_enabled",
     ]
 
     if len(arg) == 0:

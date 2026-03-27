@@ -37,7 +37,6 @@ __all__ = [
     "ooc_cmd_auto_pair",
     "ooc_cmd_area_broadcast",
     "ooc_cmd_clear_area_broadcast",
-    "ooc_cmd_ooc_actions",
 ]
 
 def ooc_cmd_overlay(client, arg):
@@ -986,15 +985,3 @@ def ooc_cmd_clear_area_broadcast(client, arg):
         return
     client.area.broadcast_list.clear()
     client.send_ooc("Current area broadcast list has been cleared.")
-
-
-@mod_only(area_owners=True)
-def ooc_cmd_ooc_actions(client, arg):
-    """
-    Toggle whether IC action messages (asterisk or color-3) are mirrored to OOC in this area.
-    Prevents spam exploits where action messages flood both IC and OOC channels.
-    Usage: /ooc_actions
-    """
-    client.area.ooc_actions_enabled = not client.area.ooc_actions_enabled
-    state = "enabled" if client.area.ooc_actions_enabled else "disabled"
-    client.area.broadcast_ooc(f"{client.showname} {state} OOC action mirroring.")
