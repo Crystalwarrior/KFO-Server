@@ -12,7 +12,7 @@ class EvidenceList:
     class Evidence:
         """Represents a single evidence item."""
 
-        def __init__(self, name, desc, image, pos, can_hide_in=False, show_in_dark=0, triggers = None):
+        def __init__(self, name, desc, image, pos, can_hide_in=False, show_in_dark=0, can_take=True, editable=True, triggers = None):
             self.name = name
             self.desc = desc
             self.image = image
@@ -24,6 +24,10 @@ class EvidenceList:
             self.triggers = triggers
             if triggers == None:
                 self.triggers = {}
+            # if this evidence can be "taken"
+            self.can_take = can_take
+            # if this evidence can be edited by non-CMs/GMs/Mods
+            self.editable = editable
 
         def set_name(self, name):
             self.name = name
@@ -46,6 +50,8 @@ class EvidenceList:
                 "pos": self.pos,
                 "can_hide_in": self.can_hide_in,
                 "show_in_dark": self.show_in_dark,
+                "can_take": self.can_take,
+                "editable": self.editable,
                 "triggers": self.triggers,
             }
 
@@ -110,6 +116,12 @@ class EvidenceList:
     def show_in_dark(self, evi):
         return evi.show_in_dark
 
+    def can_take(self, evi):
+        return evi.can_take
+
+    def editable(self, evi):
+        return evi.editable
+
     def login(self, client):
         """
         Determine whether or not evidence can be modified.
@@ -146,10 +158,15 @@ class EvidenceList:
         return False
 
     def parse_desc(self, desc):
-        lines = desc.split("\n", 3)
+        # Remember to adjust this any time you add a new property
+        num_properties = 5
+        
+        lines = desc.split("\n", num_properties)
         poses = "hidden"
         can_hide_in = 0
         show_in_dark = 0
+        can_take = 0
+        editable = 0
         matches = 0
         for line in lines:
             cmd = line.strip(" ") # remove all whitespace
@@ -169,12 +186,18 @@ class EvidenceList:
                 if key == "show_in_dark":
                     show_in_dark = int(value)
                     matches += 1
+                if key == "can_take":
+                    can_take = value == "1"
+                    matches += 1
+                if key == "editable":
+                    editable = value == "1"
+                    matches += 1
         # Remvoes N lines, where N is how many <> we matched. Can't be more than 3.
         while matches > 0:
             # Truncates from the start of newline
             desc = desc[desc.find("\n")+1:]
             matches -= 1
-        return desc, poses, can_hide_in, show_in_dark
+        return desc, poses, can_hide_in, show_in_dark, can_take, editable
 
     def add_evidence(self, client, name, desc, image):
         """
@@ -188,30 +211,32 @@ class EvidenceList:
 
         """
         if not self.login(client):
-            return
+            return False
         if not client.is_mod and client not in client.area.owners:
             if client.area.dark:
-                return
+                return False
         if len(self.evidences) >= self.limit:
             client.send_ooc(
                 f"You can't have more than {self.limit} evidence items at a time."
             )
-            return
+            return False
         can_hide_in = False
         show_in_dark = 0
+        can_take = True
+        editable = True
         pos = "all"
 
         if client.area.evidence_mod == "HiddenCM":
             if client in client.area.owners or client.is_mod:
                 pos = "hidden"
                 if self.correct_format(client, desc):
-                    desc, pos, can_hide_in, show_in_dark = self.parse_desc(desc)
+                    desc, pos, can_hide_in, show_in_dark, can_take, editable = self.parse_desc(desc)
             else:
                 if len(client.area.pos_lock) > 0 and client.pos in client.area.pos_lock:
                     pos = client.pos
 
         self.evidences.append(self.Evidence(
-            name, desc, image, pos, can_hide_in, show_in_dark))
+            name, desc, image, pos, can_hide_in, show_in_dark, can_take, editable))
         id = len(self.evidences)
         # Inform the CMs of evidence manupulation
         client.area.send_owner_command(
@@ -229,6 +254,7 @@ class EvidenceList:
                     f"[{client.id}] {client.showname} added evidence {id}: {name} in this area.",
                     "1",
                 )
+        return True
 
     def evidence_swap(self, client, id1, id2):
         """
@@ -282,7 +308,9 @@ class EvidenceList:
                 if client.area.evidence_mod == "HiddenCM":
                     can_hide_in = int(evi.can_hide_in)
                     show_in_dark = int(evi.show_in_dark)
-                    desc = f"<owner={evi.pos}>\n<can_hide_in={can_hide_in}>\n<show_in_dark={show_in_dark}>\n{evi.desc}"
+                    can_take = int(evi.can_take)
+                    editable = int(evi.editable)
+                    desc = f"<owner={evi.pos}>\n<can_hide_in={can_hide_in}>\n<show_in_dark={show_in_dark}>\n<can_take={can_take}>\n<editable={editable}>\n{evi.desc}"
                 evi_list.append(
                     self.Evidence(evi.name, desc, evi.image,
                                   evi.pos).to_tuple()
@@ -302,7 +330,7 @@ class EvidenceList:
 
     def import_evidence(self, data):
         for evi in data:
-            name, desc, image, pos, can_hide_in, show_in_dark, triggers = "<name>", "<desc>", "", "all", False, 0, {}
+            name, desc, image, pos, can_hide_in, show_in_dark, can_take, editable, triggers = "<name>", "<desc>", "", "all", False, 0, True, True, {}
             if "name" in evi:
                 name = evi["name"]
             if "desc" in evi:
@@ -315,10 +343,14 @@ class EvidenceList:
                 can_hide_in = evi["can_hide_in"] is True
             if "show_in_dark" in evi:
                 show_in_dark = int(evi["show_in_dark"])
+            if "can_take" in evi:
+                can_take = evi["can_take"] is True
+            if "editable" in evi:
+                editable = evi["editable"] is True
             if "triggers" in evi:
                 triggers = evi["triggers"]
             self.evidences.append(self.Evidence(
-                name, desc, image, pos, can_hide_in, show_in_dark, triggers))
+                name, desc, image, pos, can_hide_in, show_in_dark, can_take, editable, triggers))
 
     def export_evidence(self):
         return [e.to_dict() for e in self.evidences]
@@ -331,12 +363,12 @@ class EvidenceList:
 
         """
         if not self.login(client):
-            return
+            return False
         if not client.is_mod and client not in client.area.owners:
             if client.area.dark:
-                return
+                return False
         if id not in range(len(self.evidences)):
-            return
+            return False
         word = "deleted"
         if not client.is_mod and client not in client.area.owners:
             # account for the notorious swapper
@@ -345,6 +377,9 @@ class EvidenceList:
             evi = self.evidences[id]
             if client.area.evidence_mod == "HiddenCM":
                 if evi.pos != "hidden":
+                    if not evi.can_take or not evi.editable:
+                        client.send_ooc(f"{evi.name} cannot be taken into your /inventory!")
+                        return False
                     client.add_inventory_evidence(evi.name, evi.desc, evi.image)
                     client.send_ooc(f"You take {evi.name} into your /inventory!")
                     word = "took"
@@ -375,6 +410,7 @@ class EvidenceList:
             c.hide(False)
             c.area.broadcast_area_list(c)
             c.send_ooc(f"You discover {c.showname} in the {evi.name}!")
+        return True
 
     def edit_evidence(self, client, id, arg):
         """
@@ -385,7 +421,7 @@ class EvidenceList:
 
         """
         if not self.login(client):
-            return
+            return False
 
         name = arg[0]
         desc = arg[1]
@@ -394,9 +430,11 @@ class EvidenceList:
 
         can_hide_in = False
         show_in_dark = 0
+        can_take = True
+        editable = True
         if client in client.area.owners or client.is_mod:
             if id not in range(len(self.evidences)):
-                return
+                return False
             evi = self.evidences[id]
             old_name = evi.name
             # If any of the args are *, keep the old entry
@@ -409,14 +447,14 @@ class EvidenceList:
 
             if client.area.evidence_mod == "HiddenCM":
                 if self.correct_format(client, desc):
-                    desc, pos, can_hide_in, show_in_dark = self.parse_desc(desc)
+                    desc, pos, can_hide_in, show_in_dark, can_take, editable, = self.parse_desc(desc)
                 else:
                     client.send_ooc(
                         'You entered a bad pos - evidence hidden! Make sure to have <owner=pos> at the top, where "pos" is the /pos this evidence should show up in. Put in "all" if you want it to show up in all pos, or "hidden" for no pos.'
                     )
                     pos = "hidden"
             self.evidences[id] = self.Evidence(
-                name, desc, image, pos, can_hide_in, show_in_dark, evi.triggers)
+                name, desc, image, pos, can_hide_in, show_in_dark, can_take, editable, evi.triggers)
             new_name = self.evidences[id].name
         else:
             # Are you serious? This is absolutely fucking mental.
@@ -427,14 +465,18 @@ class EvidenceList:
             id += 1
             id = client.evi_list[id + 1] - 1
             if id not in range(len(self.evidences)):
-                return
+                return False
             evi = self.evidences[id]
+            # This evidence can't be edited
+            if not evi.editable:
+                client.send_ooc('This evidence cannot be edited!')
+                return False
             # 0 - Do not show evidence in dark areas.
             if client.area.dark and evi.show_in_dark == 0:
-                return
+                return False
             # 2 - ONLY show evidence in dark areas. Will be hidden in non-dark areas.
             if not client.area.dark and evi.show_in_dark == 2:
-                return
+                return False
             old_name = evi.name
             # If any of the args are *, keep the old entry
             if name == "*":
@@ -444,7 +486,7 @@ class EvidenceList:
             if image == "*":
                 image = evi.image
             self.evidences[id] = self.Evidence(
-                name, desc, image, evi.pos, evi.can_hide_in, evi.show_in_dark, evi.triggers
+                name, desc, image, evi.pos, evi.can_hide_in, evi.show_in_dark, evi.can_take, evi.editable, evi.triggers
             )
             new_name = evi.name
 
@@ -465,3 +507,4 @@ class EvidenceList:
                     f"[{client.id}] {client.showname} edited evidence {id+1}: {namechange} in this area.",
                     "1",
                 )
+        return True

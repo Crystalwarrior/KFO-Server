@@ -2088,9 +2088,9 @@ class AOProtocol(asyncio.Protocol):
             database.log_area("inventory.del", self.client, self.client.area)
             self.client.update_inventory()
             return
-        self.client.area.evi_list.del_evidence(self.client, evi_id)
-        database.log_area("evidence.del", self.client, self.client.area)
-        self.client.area.broadcast_evidence_list()
+        if self.client.area.evi_list.del_evidence(self.client, evi_id):
+            database.log_area("evidence.del", self.client, self.client.area)
+            self.client.area.broadcast_evidence_list()
 
     def net_cmd_ee(self, args):
         """Edits a piece of evidence.
@@ -2123,9 +2123,11 @@ class AOProtocol(asyncio.Protocol):
             return
         evi = (args[1], args[2], args[3], "all")
 
-        self.client.area.evi_list.edit_evidence(self.client, evi_id, evi)
-        database.log_area("evidence.edit", self.client, self.client.area)
-        self.client.area.broadcast_evidence_list()
+        if self.client.area.evi_list.edit_evidence(self.client, evi_id, evi):
+            database.log_area("evidence.edit", self.client, self.client.area)
+            self.client.area.broadcast_evidence_list()
+        else:
+            self.client.update_evidence_list()
 
     def net_cmd_zz(self, args):
         """Sent on mod call."""
