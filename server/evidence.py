@@ -339,6 +339,8 @@ class EvidenceList:
             return
         word = "deleted"
         if not client.is_mod and client not in client.area.owners:
+            # account for the notorious swapper
+            id += 1
             id = client.evi_list[id + 1] - 1
             evi = self.evidences[id]
             if client.area.evidence_mod == "HiddenCM":
@@ -346,12 +348,7 @@ class EvidenceList:
                     client.add_inventory_evidence(evi.name, evi.desc, evi.image)
                     client.send_ooc(f"You take {evi.name} into your /inventory!")
                     word = "took"
-
-                    evi.name = f"🚮{evi.name}"
-                    evi.desc = f"(🚮Deleted by [{client.id}] {client.showname} ({client.name}))\n{evi.desc}"
-                    evi.pos = "hidden"
-            else:
-                self.evidences.pop(id)
+            self.evidences.pop(id)
         else:
             evi = self.evidences[id]
             self.evidences.pop(id)
@@ -426,6 +423,8 @@ class EvidenceList:
             # Server sends evidence to client in an indexed list starting from 1.
             # Client sends evidence updates to server using an index starting from 0.
             # This needs a complete overhaul.
+            # and we have to account for the swapper too LMAO shift index by 1
+            id += 1
             id = client.evi_list[id + 1] - 1
             if id not in range(len(self.evidences)):
                 return

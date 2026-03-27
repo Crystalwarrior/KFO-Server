@@ -1030,7 +1030,27 @@ class AOProtocol(asyncio.Protocol):
             msg = self.client.disemvowel_message(msg)
         if evidence:
             area = self.client.area
-            try:
+            # the indexes of AO evidence are a curse upon curse designed solely to torture CW specifically
+            if self.client.viewing_inventory:
+                if evidence > 1 and evidence < len(self.client.inventory) + 2:
+                    # Necessary so we are shown the right piece of evidence visually...
+                    self.client.viewing_inventory = False
+                    # we substract 2 because:
+                    # * it's an index that begins at 1
+                    # * the first occupied item is for the inventory/area evidence list swapper
+                    idx = evidence-2
+                    inventory_item = self.client.inventory.pop(idx)
+                    self.client.area.evi_list.add_evidence(
+                        self.client, inventory_item[0], inventory_item[1], inventory_item[2]
+                    )
+                    database.log_area("evidence.drop", self.client, self.client.area)
+                    self.client.area.broadcast_evidence_list()
+                    self.client.send_ooc(f"You have dropped evidence '{inventory_item[0]}'.")
+                    evidence = len(self.client.evi_list)-1
+                else:
+                    evidence = 0
+
+            if evidence > 1:
                 evidence = self.client.evi_list[evidence]
                 evi = area.evi_list.evidences[evidence - 1]
                 self.client.area.broadcast_ooc(
@@ -1050,9 +1070,10 @@ class AOProtocol(asyncio.Protocol):
                 asyncio.get_running_loop().call_soon(
                     evi.trigger, area, "present", self.client
                 )
-                # target_area.trigger('present')
-            except IndexError:
+            else:
                 evidence = 0
+            # except IndexError:
+            #     evidence = 0
         old_showname = self.client.showname
         # Update the showname ref for the client
         if self.client.used_showname_command:
@@ -2014,7 +2035,7 @@ class AOProtocol(asyncio.Protocol):
         :param args:
 
         """
-        if not self.client.is_checked:
+        if not self.client.is_checked or self.client.blinded:
             return
         if not self.validate_net_cmd(
             args,
@@ -2024,6 +2045,19 @@ class AOProtocol(asyncio.Protocol):
         ):
             return
         if len(args) < 3:
+            return
+        if self.client.viewing_inventory:
+            if args[0] == "":
+                args[0] = "<name>"
+            if args[1] == "":
+                args[1] = "<description>"
+            if args[2] == "":
+                args[2] = "empty.png"
+            if not self.client.inventory:
+                self.client.inventory = list()
+            self.client.inventory.append([args[0], args[1], args[2]])
+            self.client.update_inventory()
+            database.log_area("inventory.add", self.client, self.client.area)
             return
         # evi = Evidence(args[0], args[1], args[2], self.client.pos)
         self.client.area.evi_list.add_evidence(
@@ -2038,11 +2072,23 @@ class AOProtocol(asyncio.Protocol):
         DE#<id: int>#%
 
         """
-        if not self.client.is_checked:
+        if not self.client.is_checked or self.client.blinded:
             return
         if not self.validate_net_cmd(args, self.ArgType.INT):
             return
-        self.client.area.evi_list.del_evidence(self.client, int(args[0]))
+        evi_id = int(args[0])
+        # we're swapping to inventory mode by deleting the first evidence
+        if evi_id <= 0:
+            self.client.set_view_inventory(not self.client.viewing_inventory)
+            return
+        # remove swapper from the equation
+        evi_id -= 1
+        if self.client.viewing_inventory:
+            self.client.inventory.pop(evi_id)
+            database.log_area("inventory.del", self.client, self.client.area)
+            self.client.update_inventory()
+            return
+        self.client.area.evi_list.del_evidence(self.client, evi_id)
         database.log_area("evidence.del", self.client, self.client.area)
         self.client.area.broadcast_evidence_list()
 
@@ -2052,7 +2098,7 @@ class AOProtocol(asyncio.Protocol):
         EE#<id: int>#<name: string>#<description: string>#<image: string>#%
 
         """
-        if not self.client.is_checked:
+        if not self.client.is_checked or self.client.blinded:
             return
         if not self.validate_net_cmd(
             args,
@@ -2064,10 +2110,20 @@ class AOProtocol(asyncio.Protocol):
             return
         elif len(args) < 4:
             return
-
+        evi_id = int(args[0])
+        # can't edit the swapper
+        if evi_id <= 0:
+            return
+        # remove swapper from the equation
+        evi_id -= 1
+        if self.client.viewing_inventory:
+            self.client.inventory[evi_id] = [args[1], args[2], args[3]]
+            self.client.update_inventory()
+            database.log_area("inventory.edit", self.client, self.client.area)
+            return
         evi = (args[1], args[2], args[3], "all")
 
-        self.client.area.evi_list.edit_evidence(self.client, int(args[0]), evi)
+        self.client.area.evi_list.edit_evidence(self.client, evi_id, evi)
         database.log_area("evidence.edit", self.client, self.client.area)
         self.client.area.broadcast_evidence_list()
 

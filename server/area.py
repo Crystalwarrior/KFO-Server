@@ -2015,8 +2015,8 @@ class Area:
         :param client: requester
         """
         client.evi_list, evi_list = self.evi_list.create_evi_list(client)
-        if client.blinded:
-            return [0]
+        # insert another dummy numby to account for the silly inventory/evidence swapper
+        client.evi_list.insert(0, 0)
         return evi_list
 
     def broadcast_evidence_list(self):
@@ -2025,7 +2025,7 @@ class Area:
         LE#<name>&<desc>&<img>#<name>
         """
         for client in self.clients:
-            client.send_command("LE", *self.get_evidence_list(client))
+            client.update_evidence_list()
 
     def get_owners(self):
         """

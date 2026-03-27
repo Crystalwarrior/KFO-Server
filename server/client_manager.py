@@ -194,6 +194,9 @@ class ClientManager:
             
             # If only the available areas should be displayed even as a GM
             self.available_areas_only = False
+            
+            # If we're viewing Area evidence or Inventory
+            self.viewing_inventory = False
 
         def send_raw_message(self, msg):
             """
@@ -568,7 +571,9 @@ class ClientManager:
                 self.area.broadcast_player_list()
             else:
                 self.area.broadcast_player_list_to_target(self)
-            self.area.broadcast_area_desc_to_target(self)       
+            self.area.broadcast_area_desc_to_target(self)
+            # make sure our inventory is up to date and stuff
+            self.update_evidence_list()
 
         def change_music_cd(self):
             """
@@ -1079,7 +1084,7 @@ class ClientManager:
                 # set that juicy pos dropdown
                 self.send_command("SD", "*".join(self.area.pos_lock))
             # Send the evidence information
-            self.send_command("LE", *self.area.get_evidence_list(self))
+            self.update_evidence_list()
             # Update our judge buttons
             self.area.update_judge_buttons(self)
             self.refresh_music()
@@ -1855,7 +1860,7 @@ class ClientManager:
             self.send_command("HP", 1, self.area.hp_def)
             self.send_command("HP", 2, self.area.hp_pro)
             self.send_command("BN", self.area.background, self.pos, self.area.overlay, 1)
-            self.send_command("LE", *self.area.get_evidence_list(self))
+            self.update_evidence_list()
             self.send_command("MM", 1)
             if self.area.music_autoplay:
                 self.send_command("MC", self.area.music, -1, "", self.area.music_looping, 0, self.area.music_effects)
@@ -2088,6 +2093,11 @@ class ClientManager:
             inventory = self.area.area_manager.get_character_data(self.char_id, "inventory", list())
             inventory.pop(index)
             self.area.area_manager.set_character_data(self.char_id, "inventory", inventory)
+        
+        def update_inventory(self):
+            for c in self.area.area_manager.clients:
+                if c.char_id == self.char_id and c.viewing_inventory:
+                    c.update_evidence_list() 
 
         def hide(self, tog=True, target=None, hidden=False):
             msg = "no longer hidden"
@@ -2145,7 +2155,7 @@ class ClientManager:
             self.send_ooc(
                 f"You are {msg} blinded from the area and seeing non-broadcasted IC messages."
             )
-            self.send_command("LE", *self.area.get_evidence_list(self))
+            self.update_evidence_list()
             if not self.hidden and not self.sneaking:
                 self.area.broadcast_player_list()
             else:
@@ -2208,7 +2218,7 @@ class ClientManager:
             # Send a "Set Position" packet
             self.send_command("SP", self.pos)
             # Send evidence list
-            self.send_command("LE", *self.area.get_evidence_list(self))
+            self.update_evidence_list()
 
         def set_mod_call_delay(self):
             """Begin the mod call cooldown."""
@@ -2275,6 +2285,29 @@ class ClientManager:
                 constructed_message += symbol
                 index = (index + 1) % len(color_array)
             return constructed_message
+
+        def set_view_inventory(self, state):
+            """Set if we're currently viewing the inventory or not"""
+            self.viewing_inventory = state
+            self.update_evidence_list()
+        
+        def update_evidence_list(self):
+            evi_list = []
+            if self.blinded:
+                evi_list.insert(0, ("Blinded!", "You are blind!\n\nYou are unable to see any IC messages or edit any evidence at this time.", "BLIND\n🕶️"))
+                self.send_command("LE", *evi_list)
+                return
+            if self.viewing_inventory:
+                for inv_item in self.inventory:
+                    # Add a tuple of the inventory item
+                    evi_list.append((inv_item[0], inv_item[1], inv_item[2]))
+            else:
+                evi_list = self.area.get_evidence_list(self)
+            if self.viewing_inventory:
+                evi_list.insert(0, ("Inventory", "Delete this piece of evidence to swap to 🌐Area Evidence!\n\nYou can 'present' things in your inventory to drop it into the Area Evidence.\n\n⚠️Deleting evidence in your Inventory will permanently get rid of it!", "INV.\n🎒"))
+            else:
+                evi_list.insert(0, ("Area", "Delete this piece of evidence to swap to 🎒Inventory Evidence!\n\nIf you want to take things in the area into your evidence, you need to press 'Delete' for that evidence as well.", "AREA\n🌐"))
+            self.send_command("LE", *evi_list)
 
     def __init__(self, server):
         self.clients = set()
