@@ -502,6 +502,7 @@ def ooc_cmd_area_pref(client, arg):
         "force_sneak",
         "present_reveals_evidence",
         "ooc_actions_enabled",
+        "medieval_mode",
     ]
 
     if len(arg) == 0:
