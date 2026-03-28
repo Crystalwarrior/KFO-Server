@@ -167,6 +167,8 @@ class Area:
         self.msg_delay = 200
         # Whether to reveal evidence in all pos if it is presented
         self.present_reveals_evidence = True
+        # Whether IC action messages (asterisk/color-3) are mirrored to OOC
+        self.ooc_actions_enabled = True
         # /prefs end
 
         # DR minigames
@@ -566,6 +568,8 @@ class Area:
             self.msg_delay = area['msg_delay']
         if 'present_reveals_evidence' in area:
             self.present_reveals_evidence = area['present_reveals_evidence']
+        if 'ooc_actions_enabled' in area:
+            self.ooc_actions_enabled = area['ooc_actions_enabled']
 
         if "evidence" in area and len(area["evidence"]) > 0:
             self.evi_list.evidences.clear()
@@ -696,6 +700,7 @@ class Area:
         area["passing_msg"] = self.passing_msg
         area["msg_delay"] = self.msg_delay
         area["present_reveals_evidence"] = self.present_reveals_evidence
+        area["ooc_actions_enabled"] = self.ooc_actions_enabled
         if len(self.evi_list.evidences) > 0:
             area["evidence"] = self.evi_list.export_evidence()
         if len(self.links) > 0:
@@ -1003,6 +1008,8 @@ class Area:
         Broadcast an Action message to all clients in the area who are listening to actions.
         :param msg: message
         """
+        if not self.ooc_actions_enabled:
+            return
         cmd = "CT"
         msg = f"[❗] [{client.id}] {client.showname} action:\n{msg}"
         for c in self.clients:

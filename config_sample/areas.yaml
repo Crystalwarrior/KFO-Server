@@ -79,3 +79,4 @@
 #     music_autoplay: false
 #     can_change_status: true
 #     use_backgrounds_yaml: false
+#     ooc_actions_enabled: true
