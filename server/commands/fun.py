@@ -10,6 +10,9 @@ __all__ = [
     "ooc_cmd_shake",
     "ooc_cmd_unshake",
     "ooc_cmd_rainbow",
+    "ooc_cmd_medieval",
+    "ooc_cmd_unmedieval",
+    "ooc_cmd_medieval_mode",
 ]
 
 
@@ -116,3 +119,80 @@ def ooc_cmd_rainbow(client, arg):
     client.send_ooc(
         f"You will {toggle} have rainbowtext."
     )
+
+
+@mod_only()
+def ooc_cmd_medieval(client, arg):
+    """
+    Transform a user's IC chat into Ye Olde English.
+    Usage: /medieval <id>
+    """
+    if len(arg) == 0:
+        raise ArgumentError("You must specify a target.")
+    try:
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(arg), False
+        )
+    except Exception:
+        raise ArgumentError("You must specify a target. Use /medieval <id>.")
+    if targets:
+        for c in targets:
+            if c.medieval:
+                client.send_ooc("That player is already speaking Ye Olde English!")
+            else:
+                database.log_area("medieval", client, client.area, target=c)
+                c.medieval = True
+                c.send_ooc("Forsooth! Thine speech will henceforth be Ye Olde!")
+        client.send_ooc(f"It is done, sire. Medieval'd {len(targets)} existing client(s).")
+    else:
+        client.send_ooc("No targets found.")
+
+
+@mod_only()
+def ooc_cmd_unmedieval(client, arg):
+    """
+    Return a user's IC chat to normal speech.
+    Usage: /unmedieval <id>
+    """
+    if len(arg) == 0:
+        raise ArgumentError("You must specify a target.")
+    try:
+        targets = client.server.client_manager.get_targets(
+            client, TargetType.ID, int(arg), False
+        )
+    except Exception:
+        raise ArgumentError("You must specify a target. Use /unmedieval <id>.")
+    if targets:
+        for c in targets:
+            if not c.medieval:
+                client.send_ooc("That player is not speaking Ye Olde English!")
+            else:
+                database.log_area("unmedieval", client, client.area, target=c)
+                c.medieval = False
+                c.send_ooc("Hark! Thine speech hast been returneth to normal.")
+        client.send_ooc(f"Un-medieval'd {len(targets)} existing client(s).")
+    else:
+        client.send_ooc("No targets found.")
+
+
+@mod_only(area_owners=True)
+def ooc_cmd_medieval_mode(client, arg):
+    """
+    Toggle medieval mode for this area. All IC messages will be transformed into Ye Olde English.
+    Usage: /medieval_mode [on/off]
+    """
+    if len(arg.split()) > 1:
+        raise ArgumentError(
+            "This command can only take one argument ('on' or 'off') or no arguments at all!"
+        )
+    if arg:
+        if arg == "on":
+            client.area.medieval_mode = True
+        elif arg == "off":
+            client.area.medieval_mode = False
+        else:
+            raise ArgumentError("Invalid argument: {}".format(arg))
+    else:
+        client.area.medieval_mode = not client.area.medieval_mode
+    stat = "now" if client.area.medieval_mode else "no longer"
+    client.area.broadcast_ooc(f"This area is {stat} in Medieval Mode. Hark!")

@@ -185,7 +185,10 @@ class ClientManager:
             
             # rainbowtext hell
             self.rainbow = False
-            
+
+            # medieval mode - transforms text to Ye Olde English
+            self.medieval = False
+
             # rock paper scissors choice
             self.rps_choice = ""
 
@@ -2285,6 +2288,10 @@ class ClientManager:
                 constructed_message += symbol
                 index = (index + 1) % len(color_array)
             return constructed_message
+
+        def medieval_message(self, message):
+            """Transform a chat message into Ye Olde English."""
+            return self.server.medieval_parser.degrootify(message)
 
         def set_view_inventory(self, state):
             """Set if we're currently viewing the inventory or not"""
