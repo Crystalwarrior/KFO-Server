@@ -194,10 +194,10 @@ def ooc_cmd_evidence_remove(client, arg):
                 f"Target evidence not found! (/evidence_remove {arg})"
             )
         evi_name = evidence[0]
-        client.area.evi_list.del_evidence(client, i)
-        database.log_area("evidence.del", client, client.area)
-        client.area.broadcast_evidence_list()
-        client.send_ooc(f"You have removed evidence '{evi_name}'.")
+        if client.area.evi_list.del_evidence(client, i):
+            database.log_area("evidence.del", client, client.area)
+            client.area.broadcast_evidence_list()
+            client.send_ooc(f"You have removed evidence '{evi_name}'.")
     except ValueError:
         raise
     except (AreaError, ClientError):
@@ -243,14 +243,14 @@ def ooc_cmd_evidence_edit(client, arg):
         evi_name = evidence[0]
         evi = (args[1], args[2], args[3], "all")
 
-        client.area.evi_list.edit_evidence(client, i, evi)
-        database.log_area("evidence.edit", client, client.area)
-        client.area.broadcast_evidence_list()
-        if evi[0] != "*" and evi_name != evi[0]:
-            client.send_ooc(
-                f"You have edited evidence '{evi_name}' to '{evi[0]}'.")
-        else:
-            client.send_ooc(f"You have edited evidence '{evi_name}'.")
+        if client.area.evi_list.edit_evidence(client, i, evi):
+            database.log_area("evidence.edit", client, client.area)
+            client.area.broadcast_evidence_list()
+            if evi[0] != "*" and evi_name != evi[0]:
+                client.send_ooc(
+                    f"You have edited evidence '{evi_name}' to '{evi[0]}'.")
+            else:
+                client.send_ooc(f"You have edited evidence '{evi_name}'.")
     except ValueError:
         raise
     except (AreaError, ClientError):

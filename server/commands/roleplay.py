@@ -38,6 +38,7 @@ __all__ = [
     "ooc_cmd_format_timer",
     "ooc_cmd_timer_interval",
     "ooc_cmd_ooc_actions",
+    "ooc_cmd_sfx",
 ]
 
 
@@ -744,7 +745,7 @@ def ooc_cmd_timer(client, arg):
     `pause` OR `stop` pauses the timer that's currently running, so `/timer 0 pause`.
     `unset` OR `hide` hides the timer for it to no longer show up, so `/timer 0 hide`.
     Commands can also be passed - /cmd is a command that you want to run when the timer expires. That command will be added to the stack of commands to run.
-    For example, `/timer 0 /timer 0 hide` will hide the timer when it expires. Adding `/timer 0 /h hello there` will also say "hello there" in hub chat as your client.
+    For example, `/timer 0 /h hello there` will say "hello there" in hub chat as your client. Adding `/timer 0 /timer 0 hide` will also hide the timer when it expires.
     If you want to clear all commands, use `/timer <id> /clear`
     Usage:
     /timer <id> [+][time] [start|pause/stop|unset/hide]
@@ -1124,3 +1125,49 @@ def ooc_cmd_ooc_actions(client, arg):
     if client.ooc_actions:
         stat = "now see"
     client.send_ooc(f"You will {stat} actions in OOC.")
+
+
+def ooc_cmd_sfx(client, arg):
+    """
+    Play a sound effect directly without associating it with an IC message.
+    Usage: /sfx <sound_path>
+    """
+    if arg == "":
+        raise ArgumentError(
+            "sound_path can't be empty. Usage: /sfx <sound_path>"
+        )
+    is_mod = client.is_mod or client in client.area.owners
+    # Only incur cooldowns etc. on mods.
+    if not is_mod:
+        if client.char_id <= -1 or client.char_id == None:
+            raise ClientError(
+                "You can't play sfx when you're a spectator and not a CM/GM!"
+            )
+        if not client.can_sfx():
+            raise ClientError(
+                "You need to wait before playing sfx again!"
+            )
+    target_areas = [client.area]
+    if len(client.broadcast_list) > 0 and is_mod:
+        try:
+            a_list = ", ".join([str(a.id)
+                                for a in client.broadcast_list])
+            client.send_ooc(f"Broadcasting to areas {a_list}")
+            target_areas = client.broadcast_list
+        except:
+            client.send_ooc(
+                "Your broadcast list is invalid! Do /clear_broadcast to reset it and /broadcast <id(s)> to set a new one."
+            )
+            return
+    for area in target_areas:
+        # Plays on unused music layer 3 (max channel)
+        area.send_command("MC", f"../general/{arg}", -1, "", 0, 3, 0)
+        area.broadcast_ooc(f"[{client.id}] {client.showname} has played sfx '{arg}'.")
+        for a in area.broadcast_list:
+            # Plays on unused music layer 3 (max channel)
+            a.send_command("MC", f"../general/{arg}", -1, "", 0, 3, 0)
+            a.broadcast_ooc(f"[{client.id}] {client.showname} has played sfx '{arg}'.")
+    client.set_sfx_delay()
+    database.log_area(
+        "sfx", client, client.area, message=f"has played sfx {arg}"
+    )

@@ -167,6 +167,8 @@ class Area:
         self.msg_delay = 200
         # Whether to reveal evidence in all pos if it is presented
         self.present_reveals_evidence = True
+        # Whether IC action messages (asterisk/color-3) are mirrored to OOC
+        self.ooc_actions_enabled = True
         # /prefs end
 
         # DR minigames
@@ -300,6 +302,9 @@ class Area:
 
         # list of areas to broadcast ic messages to
         self.broadcast_list = []
+        
+        # doorman vars
+        self.doorman_call_time = 0
 
     @property
     def name(self):
@@ -566,6 +571,8 @@ class Area:
             self.msg_delay = area['msg_delay']
         if 'present_reveals_evidence' in area:
             self.present_reveals_evidence = area['present_reveals_evidence']
+        if 'ooc_actions_enabled' in area:
+            self.ooc_actions_enabled = area['ooc_actions_enabled']
 
         if "evidence" in area and len(area["evidence"]) > 0:
             self.evi_list.evidences.clear()
@@ -696,6 +703,7 @@ class Area:
         area["passing_msg"] = self.passing_msg
         area["msg_delay"] = self.msg_delay
         area["present_reveals_evidence"] = self.present_reveals_evidence
+        area["ooc_actions_enabled"] = self.ooc_actions_enabled
         if len(self.evi_list.evidences) > 0:
             area["evidence"] = self.evi_list.export_evidence()
         if len(self.links) > 0:
@@ -732,9 +740,15 @@ class Area:
     def new_client(self, client):
         """Add a client to the area."""
         self.clients.add(client)
-        if client.char_id is not None:
-            database.log_area("area.join", client, self)
+        # Client not fully initialized yet. The rest will be handled when the client is done loading.
+        if client.char_id is None:
+            return
+        database.log_area("area.join", client, self)
+        self.update_client(client)
 
+    def update_client(self, client):
+        """Update the client with the relevant information about the area. Does not care if the client loaded in yet or not."""
+        # Autoplay music
         if self.music_autoplay and self.music != client.playing_audio[0]:
             client.send_command(
                 "MC", self.music, -1, "", self.music_looping, 0, self.music_effects
@@ -743,10 +757,13 @@ class Area:
         # Update the timers for the client
         self.update_timers(client)
 
+        # Update ambience
         self.play_client_ambience(client)
 
+        # Make sure their theme variation is correct
         self.area_manager.update_subtheme(client)
 
+        # Update their player list information
         if not client.hidden and not client.sneaking:
             self.broadcast_player_list()
         else:
@@ -807,7 +824,8 @@ class Area:
                 self.remove_owner(client)
                 client.send_ooc(
                     "You can only be a CM of a single area in this hub.")
-        if self.locking_allowed:
+        # Trigger this routine only if a non-privileged client left the area, and there are no GMs in this hub.
+        if self.locking_allowed and len(self._owners) <= 0 and len(self.area_manager.owners) <= 0:
             # Since anyone can lock/unlock, unlock if we were the last client in this area and it was locked.
             if len(self.clients) - 1 <= 0:
                 if self.locked:
@@ -993,6 +1011,8 @@ class Area:
         Broadcast an Action message to all clients in the area who are listening to actions.
         :param msg: message
         """
+        if not self.ooc_actions_enabled:
+            return
         cmd = "CT"
         msg = f"[❗] [{client.id}] {client.showname} action:\n{msg}"
         for c in self.clients:
@@ -1361,6 +1381,20 @@ class Area:
         )
         self.last_ic_message = args
 
+        if "doorman_webhook" in self.server.config and \
+            self.server.config["doorman_webhook"]["enabled"] and \
+            self.area_manager.id == int(self.server.config["doorman_webhook"]["hub_id"]) and \
+            self.id == int(self.server.config["doorman_webhook"]["area_id"]):
+            
+            living_clients = len(self.clients)
+            afkers = len(self.afkers)
+            doorman_needed = living_clients <= 1 or afkers >= living_clients - 1
+            if doorman_needed and self.can_call_doorman():
+                asyncio.get_running_loop().call_soon(
+                    self.server.webhooks.doormancall, client
+                )
+                self.set_doorman_call_delay()
+
         if adding:
             if len(self.testimony) >= 30:
                 client.send_ooc(
@@ -1430,6 +1464,20 @@ class Area:
             self.broadcast_ooc(f"Statement {idx+1} added.")
             if not self.recording:
                 self.testimony_send(idx)
+
+    def set_doorman_call_delay(self):
+        """Begin the doorman cooldown."""
+        try:
+            self.doorman_call_time = round(
+                time.time() * 1000.0
+                + int(self.server.config["doorman_webhook"]["delay"]) * 1000.0
+            )
+        except:
+            self.doorman_call_time = round(time.time() * 1000 + 60000)
+
+    def can_call_doorman(self):
+        """Whether or not the area can currently call for a doorman."""
+        return (time.time() * 1000.0 - self.doorman_call_time) > 0
 
     def testimony_send(self, idx):
         """Send the testimony statement at index"""
@@ -1981,8 +2029,8 @@ class Area:
         :param client: requester
         """
         client.evi_list, evi_list = self.evi_list.create_evi_list(client)
-        if client.blinded:
-            return [0]
+        # insert another dummy numby to account for the silly inventory/evidence swapper
+        client.evi_list.insert(0, 0)
         return evi_list
 
     def broadcast_evidence_list(self):
@@ -1991,7 +2039,7 @@ class Area:
         LE#<name>&<desc>&<img>#<name>
         """
         for client in self.clients:
-            client.send_command("LE", *self.get_evidence_list(client))
+            client.update_evidence_list()
 
     def get_owners(self):
         """

@@ -179,3 +179,17 @@ need_webhook:
   title: "AO NEED CALL"  
   message: "A user has used the /need command for players in the Attorney Online server!"  
   url:
+
+doorman_webhook:
+  hub_id: 0 # numeric Hub ID where doormen will be needed
+  area_id: 0 # numeric Area ID where doormen will be needed
+  enabled: true
+  delay: 120
+  username: Doorman
+  avatar_url:
+  color: "12745742"  
+  pingoption: true
+  role_id:
+  title: "DOORMAN REQUESTED"
+  message: "A user is alone and has no one to talk to!"
+  url: #webhook url

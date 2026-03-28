@@ -42,6 +42,7 @@ __all__ = [
 def ooc_cmd_overlay(client, arg):
     """
     Set the overlay of an area.
+    If no argument is given, returns the current overlay.
     Usage: /overlay <background>
     """
     if len(arg) == 0:
@@ -209,7 +210,8 @@ def ooc_cmd_status(client, arg):
 
 def ooc_cmd_area(client, arg):
     """
-    List areas, or go to another area.
+    Go to the specified area.
+    Lists all available areas, if no argument is given.
     Usage: /area [id] or /area [name]
     """
     if arg == "":
@@ -666,7 +668,12 @@ def ooc_cmd_knock(client, arg):
                     f"Failed to knock on [{area.id}] {area.name}: Current area is locked!"
                 )
 
-        area.send_command("RT", "knock")
+        for c in client.area.clients:
+            if c.software == "DRO":
+                # DRO client doesn't support custom RT packets. So for now just send a message with the knock effect (ding id 7) instead.
+                c.send_command("MS", 0, "", "","", "", "", "", 0, -1, 0, 0, 0, 0, 7, 0, "")
+            else:
+                c.send_command("RT", "knock")
         if area == client.area:
             area.broadcast_ooc(
                 f"💢 [{client.id}] {client.showname} knocks for attention. 💢"

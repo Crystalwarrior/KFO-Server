@@ -68,20 +68,21 @@ def ooc_cmd_set_url(client, arg):
     That URL is used client-side on AOG and server-side with the /get_link and /get_links commands.
     Usage: /set_url <url>
     """
-
-    arg_strip = arg.strip()
-
-    if arg_strip == "":
-        client.send_ooc("URL has been reset successfully.")
+    client.char_url = arg.strip()
+    if client.char_url == "":
+        client.area.broadcast_ooc(f"[{client.id}] {client.showname} has cleared their download link.")
     else:
-        client.send_ooc(f"URL set to {arg_strip}")
-    client.char_url = arg_strip
+        client.area.broadcast_ooc(f"[{client.id}] {client.showname} has set their download link to:\n{client.char_url}")
+    for c in client.area.clients:
+        c.get_new_area_user_links()
 
 def ooc_cmd_get_urls(client, arg):
     """
     This command returns the server's URL List.
     Usage: /get_urls
     """
+    if client.server.server_links is None:
+        raise ServerError("Server's URL list is not configured.")
     f_server_links = "Server URLs:\n"
     for name, url in client.server.server_links.items():
         f_server_links += f"{name}: {url} \n"
@@ -244,13 +245,12 @@ def ooc_cmd_forcepos(client, arg):
             if pos == "RANDOM":
                 choices = t.area.pos_lock
             # given a list of pos
-            if "," in pos:
-                for p in pos.split(","):
-                    choices.append(p.strip())
+            for p in pos.split(","):
+                choices.append(p.strip())
             # if we received NO choice
             if len(choices) <= 0:
                 choices = ["wit", "def", "pro", "hlp", "hld", "jud"]
-            if len(choices) == 1:
+            elif len(choices) == 1:
                 _pos = choices[0]
             else:
                 _pos = random.choice(choices)
