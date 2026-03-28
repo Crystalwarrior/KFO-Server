@@ -2,61 +2,72 @@
 `<>` mean "required arguments", `[]` mean "optional arguments". Actual commands do not need these brackets. There's also short-hands, or "aliases" for all commands you can read about [here](https://github.com/Crystalwarrior/KFO-Server/blob/master/config_sample/command_aliases.yaml) - formatted left: alias, right: called command, note that servers may include additional aliases or choose to remove existing ones.
 
 ## Admin
-* **motd**
-    - Show the message of the day.
-* **help**
-    - Show help for a command, or show general help.
-* **kick** `<ipid|*|**>` `[reason]`
+### Moderation
+* **kick** `<ipid|*|**> [reason]` *(Mod)*
     - Kick a player.
     - Special cases:
         - `*` kicks everyone in the current area.
         - `**` kicks everyone in the server.
-* **ban** `<ipid> "reason" "[# <minute|hour|day|week|month>(s)|perma]"`
+* **ban** `<ipid> "reason" "[# <minute|hour|day|week|month>(s)|perma]"` *(Mod)*
     - Ban a user. If a ban ID is specified instead of a reason,
     - then the IPID is added to an existing ban record.
     - Ban durations are 6 hours by default.
     - Usage 2: `/ban <ipid> <ban_id>`
-* **banhdid**
+* **banhdid** *(Mod)*
     - Ban both a user's HDID and IPID.
-* **unban** `<ban_id...>`
+* **unban** `<ban_id(s)>` *(Mod)*
     - Unban a list of users.
     - You need a ban ID to unban a user. Ban IDs are automatically included in ban reasons. Use `/baninfo <ban_id>` for more information about a ban.
-* **mute** `<ipid>`
+* **bans** *(Mod)*
+    - Get the 5 most recent bans.
+    - This can lag the server depending on the size of the database, so be judicious in its use.
+* **baninfo** `<id> [ban_id|ipid|hdid]` *(Mod)*
+    - Get information about a ban.
+    - By default, id identifies a ban\_id.
+* **mute** `<ipid>` *(Mod)*
     - Prevent a user from speaking in-character.
-* **unmute** `<ipid|all>`
+* **unmute** `<ipid|all>` *(Mod)*
     - Unmute a user.
+* **ooc\_mute** `<ooc-name>` *(Mod)*
+    - Prevent a user from talking out-of-character.
+* **ooc\_unmute** `<ooc-name>` *(Mod)*
+    - Allow an OOC-muted user to talk out-of-character.
+### Misc
+* **motd**
+    - Show the message of the day.
+* **help** `[command/category]`
+    - Show help for a command, or show general help.
+    - Can be used with an optional argument to either show a list of commands for specific category,
+    - or a command itself for a detailed explanation of its usage.
 * **login** `<password>`
     - Login as a moderator.
-* **refresh**
+* **unmod** *(Mod)*
+    - Log out as a moderator.
+* **refresh** *(Mod)*
     - Reload all moderator credentials, server options, and commands without restarting the server.
+* **restart** *(Mod)*
+  - Restart the server (WARNING: The server will be *stopped* unless you set up a restart batch/bash file!)
 * **online**
     - Show the number of players online.
 * **mods**
     - Show a list of moderators online.
-* **unmod**
-    - Log out as a moderator.
-* **ooc\_mute** `<ooc-name>`
-    - Prevent a user from talking out-of-character.
-* **ooc\_unmute** `<ooc-name>`
-    - Allow an OOC-muted user to talk out-of-character.
-* **bans**
-    - Get the 5 most recent bans.
-    - This can lag the server depending on the size of the database, so be judicious in its use.
-* **baninfo** `<id>` `[ban_id|ipid|hdid]`
-    - Get information about a ban.
-    - By default, id identifies a ban\_id.
 * **time**
     - Returns the current server time.
-* **whois** `<name|id|ipid|showname|character>`
+* **whois** `<name|id|ipid|showname|character>` *(Mod)*
     - Get information about an online user.
+* **myid**
+    - Get information for your current client, such as client ID.
+* **multiclients** `<ipid>` *(Mod)*
+    - Get all the multi-clients of the IPID provided, detects multiclients
+    - on the same hardware even if the IPIDs are different.
 ## Area Access
 * **area\_lock**
     - Prevent users from joining the current area.
 * **area\_unlock**
     - Allow anyone to freely join the current area.
-* **area\_mute**
+* **area\_mute** *(CM)*
     - Makes this area impossible to speak for normal users unlesss `/invite` is used.
-* **area\_unmute**
+* **area\_unmute** *(CM)*
     - Undo the effects of `/area_mute`.
 * **lock** `<area(s)>` or `<!link(s)>`
     - Context-sensitive function to lock area(s) and/or area link(s).
@@ -74,68 +85,83 @@
         - `/unlock 1` - unlock area ID 1.
         - `/unlock !1` - unlock a link connected to area ID 1 (if it exists).
         - `/unlock 1 2 3` - unlock area IDs 1, 2 and 3.
-* **link** `<id(s)>`
+* **link** `<id(s)>` *(CM)*
     - Set up a two-way link from your current area with targeted area(s).
-* **unlink** `<id(s)>`
+* **unlink** `<id(s)>` *(CM)*
     - Remove a two-way link from your current area with targeted area(s).
 * **links**
     - Display this area's information about area links.
-* **onelink** `<id(s)>`
+* **onelink** `<id(s)>` *(CM)*
     - Set up a one-way link from your current area with targeted area(s).
-* **oneunlink** `<id(s)>`
+* **oneunlink** `<id(s)>` *(CM)*
     - Remove a one-way link from your current area with targeted area(s).
 * **link\_lock** `<id(s)>`
-    - Lock the path leading to target area(s)
+    - Lock the path leading to target area(s).
+    - Requires the corresponding `keys` to use as a regular user.
 * **link\_unlock** `<id(s)>`
     - Unlock the path leading to target area(s).
-* **link\_hide**
+    - Requires the corresponding `keys` to use as a regular user.
+* **link\_hide** *(CM)*
     - Hide the path leading to target area(s).
-* **link\_unhide**
+* **link\_unhide** *(CM)*
     - Unhide the path leading to target area(s).
-* **link\_pos** `<id>` `[pos]`
+* **link\_pos** `<id> [pos]` *(CM)*
     - Set the link's targeted pos when using it. Leave blank to reset.
-* **link\_peekable** `<id(s)>`
+* **link\_peekable** `<id(s)>` *(CM)*
     - Make the path(s) leading to target area(s) `/peek`-able.
-* **link\_unpeekable** `<id(s)>`
+* **link\_unpeekable** `<id(s)>` *(CM)*
     - Make the path(s) leading to target area(s) no longer `/peek`-able.
-* **link\_evidence** `<id>` `[evi_id(s)]`
+* **link\_evidence** `<id> [evi_id(s)]` *(CM)*
     - Make specific link only accessible from evidence ID(s).
     - Pass evidence ID's which you can see by mousing over evidence, or blank to see current evidences.
-* **unlink\_evidence**
+* **unlink\_evidence** *(CM)*
     - Unlink evidence from links.
     - Pass evidence ID's which you can see by mousing over evidence.
-* **pw** `<id>` `[password]`
+* **pw** `<id> [password]`
     - Enter a passworded area. Password is case-sensitive and must match the set password exactly, otherwise it will fail.
     - You will move into the target area as soon as the correct password is provided.
     - Leave password empty if you own the area and want to check its current password.
-* **setpw** `<id>` `[password]`
+* **setpw** `<id> [password]` *(CM)*
     - Context-sensitive function to set a password area(s) and/or area link(s).
     - Pass area id, or link id from current area using !, e.g. 5 vs !5.
     - Leave `[password]` blank to clear the password.
 ## Areas
 * **bg** `<background>`
     - Set the background of an area.
-* **bgs**
+* **bg\_suffix** `<bg_suffix>` *(CM)*
+    - Set the background suffix of an area, which is what will be appended at the end of the area's /bg.
+* **bgs** `[category]`
     - Display the server's available backgrounds.
-* **status** `<idle|rp|casing|looking-for-players|lfp|recess|gaming>`
+* **overlay** `<background>` *(CM)*
+    - Set the overlay of an area.
+    - If no argument is given, returns the current overlay.
+    - Use `/overlay_clear` to clear it.
+* **overlay_clear** *(CM)*
+    - Clear the overlay of an area.
+* **status** `<idle|rp|casing|looking-for-players|lfp|recess|gaming>` *(CM)*
     - Show or modify the current status of an area.
-* **area** `[id]`
-    - List areas, or go to another area.
+* **area** `[area_id/area_name]`
+    - Go to the specified area.
+    - Lists all available areas, if no argument is given.
 * **area\_visible**
     - Display only linked and non-hidden areas. Useful to GMs.
-* **getarea**
-    - Show information about the current area.
-* **getareas**
+* **autogetarea**
+    - Automatically `/getarea` whenever you enter a new area.
+* **getarea** `[id]`
+    - Show information about the current area, or target area id with sufficient permissions.
+* **getareas** *(GM)*
     - Show information about all areas.
+* **gethubs**
+    - Show information about all hubs.
 * **getafk** `[all]`
     - Show currently AFK-ing players in the current area or in all areas.
-* **invite** `<id>`
+* **invite** `<id>` *(CM)*
     - Allow a particular user to join a locked or speak in spectator-only area.
     - ID can be `*` to invite everyone in the current area.
-* **uninvite** `<id>`
+* **uninvite** `<id>` *(CM)*
     - Revoke an invitation for a particular user.
     - ID can be    - to uninvite everyone in the current area.
-* **area\_kick** `<id>` `[destination]` `[target_pos]`
+* **area\_kick** `<id> [destination] [target_pos]` *(GM)*
     - Remove a user from the current area and move them to another area.
     - If id is a `*` char, it will kick everyone but you and CMs from current area to destination.
     - If id is `**`, it will kick everyone including CM's from current area to destination.
@@ -143,32 +169,40 @@
     - If id is `afk`, it will only kick all the afk people.
     - If the destination is not specified, the destination defaults to area 0.
     - `[target_pos]` is the optional position that everyone should end up in when kicked.
-* **pos\_lock** `<pos(s)>`
+* **pos\_lock** `<pos(s)>` *(CM)*
     - Lock current area's available positions into a list of pos separated by space.
     - Use `/pos_lock` none or `/pos_lock_clear` to make the list empty.
     - If your pos have spaces in them, it must be a comma-separated list like `/pos_lock` pos one, pos two, pos X
     - If you're locking into a single pos with spaces in it, end it with a comma, like `/pos_lock` this is a pos,
-* **pos\_lock\_clear**
+* **pos\_lock\_clear** *(CM)*
     - Clear the current area's position lock and make all positions available.
 * **knock** `<id>`
     - Knock on the target area ID to call on their attention to your area.
 * **peek** `<id>`
     - Peek into an area to see if there's people in it.
-* **max\_players** `[num]`
+* **max\_players** `[num]` *(CM)*
     - Set a max amount of players for current area between -1 and 99.
 * **desc** `[desc]`
+    - With no aguments given, read the current area description
     - Set an area description that appears to the user any time they enter the area.
-* **edit\_ambience** `[tog]`
+* **desc\_clear** ``
+    - Clears the area description that appears to the user any time they enter the area.
+* **edit\_ambience** `[on/off]` *(CM)*
     - Toggle edit mode for setting ambience. Playing music will set it as the area's ambience.
-    - tog can be `on`, `off` or empty.
-* **lights** `[tog]`
+* **lights** `[on/off]` *(CM)*
     - Toggle lights for this area. If lights are off, players will not be able to use `/getarea` or see evidence.
     - Players will also be unable to see area movement messages or use `/chardesc`.
     - You can change `/bg`, `/desc` and `/pos_lock` of the area when its dark and it will remember it next time you turn the lights off.
-    - tog can be `on`, `off` or empty.
 * **auto\_pair** `<double/triple>`
     - Set the max of players displayed on the screen.
-    - Depends on the /area_pref auto_pair setting
+    - Depends on the `/area_pref auto_pair` setting
+* **area\_broadcast** `<id(s)>` *(GM)*
+    - Start broadcasting current area's IC, Music and Judge buttons to specified area ID's.
+        - Unlike `broadcast`, this will broadcast ALL messages and music changes that happen in the specified area(s) to every other area.
+    - To include all areas, use `/area_broadcast all`.
+    - Use `/clear_area_broadcast` to clear the list.
+* **clear\_area\_broadcast** *(GM)*
+    - Clear the area's broadcasting of IC, Music and Judge buttons.
 ## Casing
 * **doc** `[url]`
     - Show or change the link for the current case document.
@@ -176,17 +210,20 @@
     - Clear the link for the current case document.
 * **evidence** `[evi_name/id]`
     - Use `/evidence` to read all evidence in the area.
-    - Use `/evidence` `[evi_name/id]` to read specific evidence.
-* **evidence_add** `[name]` `[desc]` `[image]`
+    - Use `/evidence [evi_name/id]` to read specific evidence.
+* **evidence_add** `[name] [desc] [image]`
     - Add a piece of evidence.
     - For sentences with spaces the arg should be surrounded in `""`'s, for example `/evidence_add Chair "It's a chair." chair.png`
 * **evidence_remove** `<evi_name/id>`
     - Remove a piece of evidence.
-* **evidence_edit** `<evi_name/id>` `[name]` `[desc]` `[image]`
+* **evidence_edit** `<evi_name/id> [name] [desc] [image]`
     - Edit a piece of evidence.
     - If you don't want to change something, put an `*` there.
     - For sentences with spaces the arg should be surrounded in `""`'s, for example `/evidence_edit * "It's a chair." chair.png`
-* **evidence\_mod** `<FFA|Mods|CM|HiddenCM>`
+* **evidence\_present** `[id]`
+    - Present a piece of evidence on your next IC message.
+    - Don't include `[id]` or make it `0` to stop presenting evidence.
+* **evidence\_mod** `<FFA|Mods|CM|HiddenCM>` *(CM)*
     - Change the evidence privilege mode.
     * **FFA**
         - Everyone can add, edit and remove evidence.
@@ -196,105 +233,149 @@
         - Only the CM (case-maker, look at `/cm` for more info) or moderators can add, edit or remove evidence.
     * **HiddenCM**
         - Same as CM, but every evidence has a preset "owner's position" which can be set by a CM or moderator, such that only one side/position of the court may see the evidence. After presenting the evidence, the position of the evidence changes to "all" (visible to everyone).
-* **evi\_swap**  `<id>` `<id>`
+* **evidence\_swap**  `<evi_id_1> <evi_id_2>` *(CM)*
     - Swap the positions of two evidence items on the evidence list.
     - The ID of each evidence can be displayed by mousing over it in 2.8 client, or simply its number starting from 1.
+* **evidence\_save**  `<name>` *(CM)*
+    - Allow you to save evidence in a list stored in the server files!
+* **evidence\_load**  `<name>`
+    - Allow you to load an evidence list from the server.
+* **evidence\_overlay**  `<name>` *(CM)*
+    - Allow you to load and overlay an evidence list from the server to the existing evidence.
+* **evidence\_lists**
+    - Show all evidence lists available on the server.
 * **cm** `<id>`
     - Add a case manager for the current area.
     - Leave id blank to promote yourself if there are no CMs.
-* **uncm** `<id>`
+* **uncm** `<id>` *(CM)*
     - Remove a case manager from the current area.
     - Leave id blank to demote yourself.
 * **setcase**
     - Set the positions you are interested in taking for a case. (This command is used internally by the 2.6 client.)
-* **anncase** `<message>` `<def>` `<pro>` `<jud>` `<jur>` `<steno>`
+* **anncase** `<message> <def> <pro> <jud> <jur> <steno>`
     - Announce that a case is currently taking place in this area, needing a certain list of positions to be filled up.
-* **blockwtce** `<id>`
+* **blockwtce** `<id>` *(Mod)*
     - Prevent a user from using Witness Testimony/Cross Examination buttons as a judge.
-* **unblockwtce** `<id>`
+* **unblockwtce** `<id>` *(Mod)*
     - Allow a user to use WT/CE again.
-* **judgelog**
+* **judgelog** *(Mod)*
     - List the last 10 uses of judge controls in the current area.
 * **afk**
     - Sets your player as AFK in player listings.
-* **remote\_listen** `[option]`
+* **remote\_listen** `[option]` *(CM)*
     - Change the remote listen logs to either `NONE`, `IC`, `OOC` or `ALL`.
     - It will send you those messages from the areas you are an owner of.
     - Leave blank to see your current option.
 * **testimony** `[id]`
     - Display the currently recorded testimony, including statement IDs.
     - Optionally, `id` is a nubmer that can be passed to move to that statement ID.
-* **testimony\_start** `<title>`
+* **testimony\_start** `<title>` *(CM)*
     - Manually start a testimony with the given title.
-* **testimony\_continue**
-    - Manually start a testimony with the given title.
-* **testimony\_clear**
+* **testimony\_continue** *(CM)*
+    - Continue an existing testimony, restarting the recording so new statements may be added.
+* **testimony\_clear** *(CM)*
     - Clear the current testimony.
-* **testimony\_remove** `<id>`
+* **testimony\_remove** `<id>` *(CM)*
     - Remove the statement at index.
-* **testimony\_amend** `<id>` `<msg>`
+* **testimony\_amend** `<id> <msg>` *(CM)*
     - Edit the spoken message of the statement at idx.
-* **testimony\_swap** `<id>` `<id>`
+* **testimony\_swap** `<id_1> <id_>` *(CM)*
     - Swap the two statements by id.
-* **testimony\_insert** `<id>` `<id>`
+* **testimony\_insert** `<id_1> <id_2>` *(CM)*
     - Insert the targeted statement at idx.
 * **cs** `<id>`
     - Start a one-on-one "Cross Swords" debate with targeted player!
+        - Area Preference `can_cross_swords` must be set to true for this to work!
     - Expires in 5 minutes.
     - If there's an ongoing cross-swords already, it will turn into a Scrum Debate (team vs team debate) with you joining the side *against* the `<id>`.
+        - Area Preference `can_scrum_debate` must be set to true for this to work!
+        - Adds 5 Minutes to the timer
 * **pta** `<id>`
     - Start a one-on-one "Panic Talk Action" debate with targeted player!
-    - Unlike `/cs`, a Panic Talk Action (PTA) cannot evolve into a Scrum Debate.
+        - Area Preference `can_panic_talk_action` must be set to true for this to work!
+    - Unlike a "Cross Swords" (`/cs`), a Panic Talk Action (PTA) cannot evolve into a Scrum Debate.
     - Expires in 5 minutes.
 * **concede** `<id>`
     - Concede a trial minigame and withdraw from either team you're part of.
+* **minigame\_start\_song** `<cs|sd|pta> [songname]` *(CM)*
+    - Edit a starting song for any specific minigame. If songname is blank, it lets you choose a song from the music list to use.
+* **minigame\_end\_song** `<cs|sd|pta> [songname]` *(CM)*
+    - Edit a ending song for any specific minigame. If songname is blank, it lets you choose a song from the music list to use.
+* **minigame\_concede\_song** `<cs|sd|pta> [songname]` *(CM)*
+    - Edit a concede song for any specific minigame. If songname is blank, it lets you choose a song from the music list to use.
+* **subtheme** `<subtheme_name>` *(GM)*
+    - Change the subtheme (DRO gamemode) for the hub.
+* **time\_of\_day** `<tod_name>` *(GM)*
+    - Change the time of day for the hub. Useful for DRO-Client.
 ## Character
 * **switch** `<name>`
     - Switch to another character. If you are a moderator and the specified character is currently being used, the current user of that character will be automatically reassigned a character.
 * **pos** `<name>`
     - Set the place your character resides in the area.
-* **forcepos** `<pos>` `<target>`
+    - With no arguments provided, tells you your current position.
+* **forcepos** `<pos(s)> <target(s)>` *(CM)*
     - Set the place another character resides in the area.
-* **force_switch** `[id]` `[char]`
+    - Set `pos` to "RANDOM", to force every `target` into a random position, taken from that area's `/pos_lock`
+    - `pos` will be read as a list of positions to randomize by, if it contains comma "," separated values. (Ex: `wit,def,pro`)
+* **pair** `[cid|charname]`
+    - Pair with someone. Overrides client pairing choice.
+        - Paired characters appear on the same screen together, as long as they are in the same area and same `/pos`.
+        - To change the characters positions, use the client and change the x- or y-offset.
+    - Run by itself to check your current (last?) pairing partner.
+* **triple\_pair** `[cid|charname]`
+    - Triple Pair with someone.
+        - Works similar to `/pair` but adds a third character.
+        - NOTE: In order to view all three characters at the screen, only the central person that has a `/pair` and a `/triple_pair` can send an IC message. If any of the other two send a message, then they will show up with their respective pair partners.
+    - Run by itself to check your current (last?) pairing partner.
+* **unpair**
+    - Stop pairing with someone. Stops overriding client pairing choice.
+* **pair_order** `[order]`
+    - Choose if you'll appear in front or behind someone when pairing.
+    - Only works when using serverside `/pair [order]` can be either `front/0` or `behind/1`.
+* **force_switch** `[id] [char]` *(CM)*
     - Enter the character select screen, or force another user to select another character.
     - Optional `[char]` forces them into that specific character folder/ID.
-* **kill** `<id>`
+* **kill** `<id>` *(CM)*
     - Force the character into spectator mode with a message that they have died.
 * **randomchar**
     - Select a random character.
-* **charcurse** `<id>` `[charids...]`
+* **charcurse** `<id> [charids...]` *(Mod)*
     - Lock a user into being able to choose only from a list of characters.
-* **uncharcurse** `<id>`
+* **uncharcurse** `<id>` *(Mod)*
     - Remove the character choice restrictions from a user.
 * **charids**
     - Show character IDs corresponding to each character name.
 * **reload**
     - Reload a character to its default position and state.
-* **blind**
+* **blind** *(CM)*
     - Blind the targeted player(s) from being able to see or talk IC.
-* **unblind**
+* **unblind** *(CM)*
     - Undo effects of the /blind command.
-* **player\_move\_delay** `<id>` `[delay]`
+* **player\_move\_delay** `<id> [delay]` *(CM)*
     - Set the player's move delay to a value in seconds. Can be negative.
     - Delay must be from `-1800` to `1800` in seconds or empty to check.
     - If only `delay` is provided, you will be setting your own move delay.
-* **player\_hide** `<id(s)>`
+* **player\_hide** `<id(s)>` *(CM)*
     - Hide player(s) from `/getarea` and playercounts.
     - If `<id>` is `*`, it will hide everyone in the area excluding yourself and CMs.
-* **player\_unhide** `<id(s)>`
+* **player\_unhide** `<id(s)>` *(CM)*
     - Unhide player(s) from `/getarea` and playercounts.
     - If `<id>` is `*`, it will unhide everyone in the area excluding yourself and CMs.
 * **hide** `<evi_name/id>`
     - Try to hide in the targeted evidence name or ID.
 * **unhide**
     - Stop hiding.
-* **sneak**
+* **sneak** `[id]`
     - Begin sneaking a.k.a. hide your area moving messages from the OOC.
-* **unsneak**
+    - Optional `[id]` forces a character to sneak. (Must be CM+)
+        - Alternative use with `/force_sneak [id]`
+* **unsneak** `[id]`
     - Stop sneaking a.k.a. show your area moving messages in the OOC.
-* **freeze** `<id>(s)`
+    - Optional `[id]` forces a character to stop sneaking. (Must be CM+)
+        - Alternative use with `/force_unsneak [id]`
+* **freeze** `<id>(s)` *(GM)*
     - Freeze targeted player(s) from being able to move between areas.
-* **unfreeze** `<id>(s)`
+* **unfreeze** `<id>(s)` *(GM)*
     - Undo the effects of `/freeze`.
 * **listen\_pos** `[pos(s)]`
     - Start only listening to your currently occupied pos.
@@ -302,148 +383,208 @@
     - Optional argument(s) is a list of positions you want to listen to.
 * **unlisten\_pos**
     - Undo the effects of `/listen_pos` command so you stop listening to the position(s).
-* **save\_character\_data** `<path>`
+* **save\_character\_data** `<path>` *(GM)*
     - Save the move delay, keys, etc. for characters into a file in the `storage/character_data/` folder.
-* **load\_character\_data** `<path>`
+* **load\_character\_data** `<path>` *(GM)*
     - Load the move delay, keys, etc. for characters from a file in the `storage/character_data/` folder.
-* **keys\_set** `<char>` `[key(s)]`
+* **keys\_set** `<char> [key(s)]` *(GM)*
     - Sets the keys of the target client/character folder/character id to the key(s). Keys must be a number like 5 or a link eg. 1-5.
-* **keys\_add** `<char>` `[key(s)]`
+* **keys\_add** `<char> [key(s)]` *(GM)*
     - Adds the keys of the target client/character folder/character id to the key(s). Keys must be a number like 5 or a link eg. 1-5.
-* **keys\_remove** `<char>` `[key(s)]`
+* **keys\_remove** `<char> [key(s)]` *(GM)*
     - Remvove the keys of the target client/character folder/character id from the key(s). Keys must be a number like 5 or a link eg. 1-5.
 * **keys** `[target\_id]`
-    - Check your own keys, or someone else's (if admin).
+    - Check your own keys, or someone else's (if GM or above).
     - Keys allow you to `/lock` or `/unlock` specific areas, OR area links if it's formatted like 1-5
 * **kms**
     - Stands for Kick MySelf - Kick other instances of the client opened by you.
     - Useful if you lose connection and the old client is ghosting.
-* **chardesc** `[desc/id]`
+* **chardesc** `[desc|id]`
     - Look at your own character description if no arugments are provided.
     - Look at another person's character description if only ID is provided.
     - Set your own character description if description is provided instead of ID.
         - Do note that the first sentence of your chardesc is displayed during area transfer messages!
     - To set someone else's char desc as an admin/GM, or look at their desc, use `/chardesc_set` or `/chardesc_get`.
-* **chardesc\_set** `<id>` `[desc]`
+* **chardesc_clear**
+    - Clear your character description.
+* **chardesc\_set** `<id> [desc]` *(GM)*
     - Set someone else's character description to desc or clear it.
-* **chardesc\_get** `<id>`
+* **chardesc\_get** `<id>` *(GM)*
     - Get someone else's character description.
-* **narrate** `[on|off]`
+* **narrate** `[on/off]`
     - Speak as a Narrator for your next emote.
     - If using 2.9.1, when you speak IC only the chat box will be affected, making you "narrate" over the current visuals.
-* **blankpost** `[on|off]`
+* **blankpost** `[on/off]`
     - Use a blank image for your next emote (`base/misc/blank.png`, will be a missingno if you don't have it)
     - tog can be `on`, `off` or empty.
-* **firstperson** `[on|off]`
+* **firstperson** `[on/off]`
     - Speak as a Narrator for your next emote, but only to yourself. Everyone else will see the emote you used.
     - If using 2.9.1, when you speak IC only the chat box will be affected.
     - tog can be `on`, `off` or empty.
+* **showname** `[name]`
+    - Set your own showname similar to the showname box in the client.
+    - Note that using this command will override the showname box.
+    - Passing no `[name]` will reset your showname and start using the showname box again.
+* **charlists**
+    - Displays all the available charlists.
+* **charlist** `[path]` *(GM)*
+    - Load a character list. `/charlists` to see available character lists.
+    - Run `/charlist` by itself to reset it to the server's default.
+* **webfiles** `<id>`
+    - Provides a link to (manually) download character files from [webAO](https://attorneyonline.github.io/webDownloader/).
+    - `id` must be a valid user id in the same area.
+* **set\_url** `<url>`
+    - This command sets the URL of the current character.
+    - The provided `url` can be viewed in the clients "DL Manager" tab in the settings.
+    - That URL is used client-side on AOG and server-side with the `/get_link` and `/get_links` commands.
+* **get\_urls**
+    - This command returns the server's URL List.
+* **get_latest_area** `[cid|charname]` *(GM)*
+    - Get a character's latest occupied area. Lobby area is always excluded.
+    - If used by itself, gets your character's latest occupied area instead.
+* **kick_to_latest_area** `[cid|charname]` *(GM)*
+    - Kick the occupied character in current area to their latest occupied area.
+    - This command is best used in lobby area. If used by itself, kicks you instead.
+* **set_latest_area** ` <cid|charname> [area_id]`
+    - Set a character's latest occupied area. Lobby area is always excluded.
+    - If used by itself, gets your character's latest occupied area instead.
 ## Fun
-* **disemvowel** `<id>`
+* **disemvowel** `<id>` *(Mod)*
     - Remove all vowels from a user's IC chat.
-* **undisemvowel** `<id>`
+* **undisemvowel** `<id>` *(Mod)*
     - Give back the freedom of vowels to a user.
-* **shake** `<id>`
+* **shake** `<id>` *(Mod)*
     - Scramble the words in a user's IC chat.
-* **unshake** `<id>`
+* **unshake** `<id>` *(Mod)*
     - Give back the freedom of coherent grammar to a user.
+* **rainbow** `[true|false]` 
+    - A toggle to colors the user's IC messages into rainbow colors.
 ## Hubs
 * **hub** `[id/name]`
     - List hubs, or go to another hub.
 ### Saving/loading
-* **save\_hub** `<name>` `[read_only]`
+* **save\_hub** `<name> [read_only]` *(GM)*
     - Save the current Hub in the server's `storage/hubs/read_only/<name>.yaml` or `storage/hubs/<name>.yaml` file.
     - If blank and you're a mod, it will save to server's `config/areas_new.yaml` for the server owner to approve.
     - If `[read_only]` is a parameter in the arguments then none can rewrite the current hub.
-* **load\_hub** `<name>`
+* **load\_hub** `<name>` *(GM)*
     - Load Hub data from the server's `storage/hubs/read_only/<name>.yaml` or `storage/hubs/<name>.yaml` file.
     - If blank and you're a mod, it will reload the server's `config/areas.yaml`.
-* **overlay\_hub** `<name>`
+* **overlay\_hub** `<name>` *(GM)*
     - Overlay Hub data from the server's `storage/hubs/<name>.yaml` file on top of the current hub, only applying properties defined in that yaml.
     - If blank and you're a mod, it will overlay the server's `config/areas.yaml`.
 * **list\_hubs**
     - Show all the available hubs for loading in the `storage/hubs/` folder.
-* **clear\_hub**
+* **clear\_hub** *(GM)*
     - Clear the current hub and reset it to its default state.
-* **rename\_hub** `<name>`
+* **rename\_hub** `<name>` *(GM)*
     - Rename the hub you are currently in to `<name>`.
 ### Area Creation system
-* **area\_create** `[name]`
+* **area\_create** `[name]` *(GM)*
     - Create a new area.
     - Newly created area's evidence mod will be HiddenCM.
     - Optional name will rename it to that as soon as its created.
-* **area\_remove** `<id>`
+* **area\_remove** `<id>` *(GM)*
     - Remove specified area by Area ID.
-* **area\_rename** `<name>`
+* **area\_duplicate** `<area_id>` *(GM)*
+    - Duplicate an area, copying all of its properties and evidence.
+* **area\_rename** `<name>` *(CM)*
     - Rename area you are currently in to `<name>`.
-* **area\_swap** `<id>` `<id>`
+* **area\_swap** `<id> <id>` *(GM)*
     - Swap areas by Area IDs while correcting links to reference the right areas.
-* **area\_switch** `<id>` `<id>`
+* **area\_switch** `<id> <id>` *(GM)*
     - Switch areas by Area IDs without correcting links.
-* **area\_pref** `[pref]` `[tog]`
+* **area\_pref** `[pref] [tog]` *(CM)*
     - Change a preference for an area.
     - If `[pref]` is not included, see available preferences.
     - The list of preferences is also available [here](prefs.md).
     - `[tog]` must be either `on`/`true`, or `off`/`false`.
     - If `[tog]` is not included, flip the current state of the pref e.g. `can_dj` is `true`, we do `/area_pref can_dj`, `can_dj` flips to `false`.
-* **area\_move\_delay** `[delay]`
+* **area\_move\_delay** `[delay]` *(CM)*
     - Set the area's move delay to a value in seconds. Can be negative.
     - Delay must be from `-1800` to `1800` in seconds or empty to check.
-* **hub\_move\_delay** `[delay]`
+* **hub\_move\_delay** `[delay]` *(GM)*
     - Set the hub's move delay to a value in seconds. Can be negative.
     - Delay must be from `-1800` to `1800` in seconds or empty to check.
-* **toggle\_replace\_music**
+* **toggle\_replace\_music** `[on/off]` *(GM)*
     - Toggle the hub music list to replace the server's music list.
-* **arup\_enable**
+* **toggle\_passing\_ic** `[on/off]` *(GM)*
+    - Toggle an IC message when changing areas for this hub.
+* **arup\_enable** *(GM)*
     - Enable the ARea UPdate system for this hub.
     - ARUP system is the extra information displayed in the A/M area list, as well as being able to set `/status`.
-* **arup\_disable**
+* **arup\_disable** *(GM)*
     - Disable the ARea UPdate system for this hub.
-* **hide\_clients**
+* **toggle\_getareas** `[on/off]` *(GM)*
+    - Toggle the permissions of /getareas for normal players in this hub.
+* **toggle\_spectate** `[on/off]` *(GM)*
+    - Disable the ability to use a spectator character for non-GMs for this hub.
+* **hide\_clients** *(GM)*
     - Hide the playercounts for this Hub's areas.
-* **unhide\_clients**
+* **unhide\_clients** *(GM)*
     - Unhide the playercounts for this Hub's areas.
 ### General
-* **follow**
-    - Follow targeted character ID.
+* **follow** `[id]`
+    - Follow targeted user ID.
+    - If used without `id`, will show who you're currently following.
+* **force\_follow** `<victim_id> [target_id]` *(GM)*
+    - Force someone to follow you, or someone else.
 * **unfollow**
     - Stop following whoever you are following.
 * **info** `[info]`
-    - Check the information for the current Hub, or set it.
+    - Check the information for the current Hub, or set it (if you're a GM or higher).
 * **gm** `<id>`
     - Add a game master for the current Hub.
     - If id is not provided, try to claim GM if none exist.
-* **ungm**
+    - If providing an *, GM all clients belonging to self.
+* **ungm** *(GM)*
     - Remove a game master from the current Hub.
     - If blank, demote yourself from being a GM.
-* **broadcast** `<id(s)>`
+* **broadcast** `<id(s)>` *(GM)*
     - Start broadcasting your IC, Music and Judge buttons to specified area ID's.
+        - Unlike `area_broadcast`, this will broadcast ONLY YOUR messages and music changes you make to every other area.
     - To include all areas, use `/broadcast all`.
     - `/clear_broadcast` to stop broadcasting.
-* **clear\_broadcast**
+* **clear\_broadcast** *(GM)*
     - Stop broadcasting your IC, Music and Judge buttons.
+* **hpset** `<def|pro> <amount> [area]>` *(CM)*
+    - Set hp in area or multiple areas.
+    - To include all areas, use set [area] to all.
+* **toggle\_autokick** `[on/off]` *(CM)*
+    - When active, swapping to a character will instantly kick you to that character's latest area.
+## Inventory
+* **inventory**  `[evi_name/id]`
+    - Use `/inventory` to read all evidence in your inventory.
+    - Use `/inventory [evi_name/id]` to read specific evidence.
+* **inventory\_drop**  `[evi_name/id]`
+    - Use `/inventory_drop [evi_name/id]` to drop evidence from your inventory into the area.
+* **inventory\_get**  `<id>` *(GM)*
+    - Get someone else's evidence inventory.
+ * **inventory\_add**  `<target_id> [evi_name/id]` *(GM)*
+    - Use `/inventory_add <target_id> <evi_name/id>` to add evidence into their inventory.
+* **inventory\_remove**  `<target_id> <evi_name/id>` *(GM)*
+    - Remove a piece of evidence from target's inventory
+* **inventory\_edit**  `<target_id> <evi_name/id> [name] [desc] [image]` *(GM)*
+    - Edit a piece of evidence in target's inventory.
+    - If you don't want to change something, put an `*` there.
+    - For sentences with spaces the argument should be surrounded by quotation marks (`""`).
+        - Example Usage: `/inventory_edit * "It's a chair." chair.png`
 ## Messaging
-* **a**  `<area>` `<message>`
-    - Send a message to an area that you are a CM in.
-* **s** `<message>`
-    - Send a message to all areas that you are a CM in.
 * **g** `<message>`
     - Broadcast a server-wise message.
 * **h** `<message>`
     - Broadcast a message to all areas in the hub.
-* **m** `<message>`
+* **m** `<message>` *(Mod)*
     - Send a message to all online moderators.
-* **lm** `<message>`
-    - Send a message to everyone in the current area, speaking officially.
-* **announce** `<message>`
+* **announce** `<message>` *(Mod)*
     - Make a server-wide announcement.
 * **toggleglobal**
     - Mute global chat.
-* **need** `<message>`
+* **need** `<message>` *(CM)*
     - Broadcast a need for a specific role in a case.
-* **toggleadverts**
+* **toggleadverts** `[on/off]`
     - Mute advertisements.
-* **pm** `<id|ooc-name|char-name>` `<message>`
+* **pm** `<id|ooc-name|char-name> <message>`
     - Send a private message to another online user. These messages are not logged by the server owner.
 * **mutepm**
     - Mute private messages.
@@ -452,63 +593,79 @@
     - Show the current music playing.
 * **getmusic**
     - Grab the last played track in this area.
-* **jukebox\_toggle**
+        - To let new users that joined this area automatically listen to the current song as well, you can change the `/area_preference music_autoplay` to true.
+* **jukebox\_toggle** *(CM)*
     - Toggle jukebox mode. While jukebox mode is on, all music changes become votes for the next track, rather than changing the track immediately.
-* **jukebox\_skip**
+* **jukebox\_skip** *(CM)*
     - Skip the current track.
 * **jukebox**
     - Show information about the jukebox's queue and votes.
 * **play** `<name>`
     - Play a track and loop it. See `/play_once` for this command without looping.
+    - Can be used with streamed songs from a valid direct-link in place of `name`, if you're a CM or higher.
 * **play\_once** `<name>`
     - Play a track without looping it. See `/play` for this command with looping.
-* **blockdj** `<id>`
+    - Can be used with streamed songs from a valid direct-link in place of `name`, if you're a CM or higher.
+* **blockdj** `<id>` *(Mod)*
     - Prevent a user from changing music.
-* **unblockdj** `<id>`
+* **unblockdj** `<id>` *(Mod)*
     - Unblock a user from changing music.
-* **musiclists**
-    - Displays all the available music lists.
-* **musiclist** `[path]`
-    - Load a client-side music list. Pass no arguments to reset. `/musiclists` to see available lists.
-    - Note: if there is a set area/hub music list, their music lists will take priority.
-* **area\_musiclist** `[path]`
-    - Load an area-wide music list. Pass no arguments to reset. `/musiclists` to see available lists.
-    - Area list takes priority over client lists.
-* **hub\_musiclist** `[path]`
-    - Load a hub-wide music list. Pass no arguments to reset. `/musiclists` to see available lists.
-    - Hub list takes priority over client lists.
 * **random\_music** `[category]`
-    - Play a random track from your current muisc list. If supplied, `[category]` will pick the song from that category.
+    - Play a random track from your current musiclist. If supplied, `[category]` will pick the song from that category.
     - Usage: `/random_music [category]`
+### Musiclists
+* **musiclists**
+    - Displays all the available musiclists.
+* **musiclist** `[path]`
+    - Load a client-side musiclist. Pass no arguments to reset. `/musiclists` to see available lists.
+    - Note: if there is a set area/hub music list, their music lists will take priority.
+* **area\_musiclist** `[path]` *(CM)*
+    - Load an area-wide musiclist. Pass no arguments to reset. `/musiclists` to see available lists.
+    - Area list takes priority over client lists.
+* **hub\_musiclist** `[path]` *(GM)*
+    - Load a hub-wide musiclist. Pass no arguments to reset. `/musiclists` to see available lists.
+    - Hub list takes priority over client lists.
+* **musiclist\_add** `<local/area/hub> <Category> <MusicName> [Length] [Path]`
+    - Allows you to add a song in a loaded musiclist!
+    - Remember to insert a file extension in `<MusicName>` unless you are using the optional `[Path]` (useful for streamed songs!)
+    - If Length is `0`, song will not loop. If Length is `-1`, song will loop. Any other value will tell the server the length of the song (in seconds)
+* **musiclist\_remove** `<local/area/hub> <Category> <MusicName>`
+    - Allows you to remove a song from a musiclist!
+    - Remember to insert a file extension in `<MusicName>`. For songs without extension, put in `.music`.
+* **musiclist\_save** `<local/area/hub> [MusiclistName] [read_only]` *(GM)*
+    - Allows you to save a musiclist on server list!
+    - If the musiclist you're editing is already in the server list, you don't have to add `[MusiclistName]`
+    - If `[read_only]` is a parameter in the arguments then none can rewrite the current musiclist.
 ## Roleplay
-* **roll** `[value/XdY]` `["+5"/"-5"/"*5"/"/5"]`
+* **roll** `[value/XdY] ["+5"/"-5"/"*5"/"/5"]`
     - Roll a die. The result is shown publicly.
     - Example: `/roll 2d6 +5` would roll two 6-sided die and add 5 to every result.
     - Rolls a 1d6 if blank
     - X is the number of dice, Y is the maximum value on the die.
-* **rollp** `[value/XdY]` `["+5"/"-5"/"*5"/"/5"]`
+* **rollp** `[value/XdY] ["+5"/"-5"/"*5"/"/5"]`
     - Roll a die privately. Same as /roll but the result is only shown to you and the CMs.
     - Example: `/rollp 2d6 +5` would roll two 6-sided die and add 5 to every result.
     - Rolls a 1d6 if blank
     - `X` is the number of dice, `Y` is the maximum value on the die.
 * **notecard** `<message>`
     - Write a notecard that can only be revealed by a CM.
-* **notecard\_clear**
+* **notecard\_clear** *(CM)*
     - Clear all notecards as a CM.
-* **notecard\_reveal**
+* **notecard\_reveal** `[clear_tog]` *(CM)*
     - Reveal all notecards and their owners.
-* **notecard\_check**
+    - Set `[clear]` to `true/on/0` or `false/off/1` if you don't want the notecards to automatically clear after revealing.
+* **notecard\_check** *(CM)*
     - Check all notecards and their owners privately with a message telling others you've done so.
 * **vote** `<id>`
     - Cast a vote for a particular user that can only be revealed by a CM.
-* **vote\_clear** `[char_folder]`
+* **vote\_clear** `[char_folder]` *(CM)*
     - Clear all votes as a CM.
     - Include `[char_folder]` (case-sensitive) to only clear a specific voter.
-* **vote\_reveal**
+* **vote\_reveal** *(CM)*
     - Reveal the number of votes, the voters and those with the highest amount of votes.
-* **vote\_check**
+* **vote\_check** *(CM)*
     - Check the number of votes, the voters and those with the highest amount of votes privately with a message telling others you've done so.
-* **rolla\_reload**
+* **rolla\_reload** *(Mod)*
     - Reload ability dice sets from a configuration file.
     - The configuration file is located in `config/dice.yaml`.
 * **rolla\_set** `<name>`
@@ -520,7 +677,21 @@
 * **8ball** `<question>`
     - Answers a question. The result is shown publicly.
     - The answers depend on the `8ball` preset in `config/dice.yaml`.
-* **timer** `<id> [+/-][time]` OR `<id> start` OR `<id> <pause|stop>` OR `<id> <unset|hide>`
+* **rps** `[choice]`
+    - Starts a match of Rock Paper Scissors.
+    - If `[choice]` is not provided, view current RPS rules.
+    - To abandon the match use `/rps cancel`.
+* **rps_rules** `no arguments` OR `<add> <rule/s>` OR `<remove> <index>` OR `<clear>` *(CM)*
+    - Review or change rps rules.
+    - `/rps_rules`
+        - Review current rules, indexed.
+    - `/rps_rules <add|new|+> [a beats b, c, d, ...]`
+        - Add a new rule, or rules if the parameter is split by a line break.
+    - `/rps_rules <del|remove|-> [index]`
+        - Delete a rule at `index`.
+    - `/rps_rules <clear|clean|reset|wipe>`
+        - Wipe all current rules.
+* **timer** `<id> [+/-][time]` OR `<id> start` OR `<id> <pause|stop>` OR `<id> <unset|hide>` OR `<id> /cmd` *(CM)*
     - Manage a countdown timer in the current area. Note that timer of ID `0` is hub-wide. All other timer ID's are local to area.
     - Anyone can check ongoing timers, their status and time left using `/timer <id>`, so `/timer 0`.
     - `[time]` can be formated as `10m5s` for 10 minutes 5 seconds, `1h30m` for 1 hour 30 minutes, etc.
@@ -528,65 +699,77 @@
     - `start` starts the previously set timer, so `/timer 0 start`.
     - `pause` OR `stop` pauses the timer that's currently running, so `/timer 0 pause`.
     - `unset` OR `hide` hides the timer for it to no longer show up, so `/timer 0 hide`.
-* **format\_timer** `<id> <format>`
+    - Commands can also be passed - `/cmd` is a command that you want to run when the timer expires. That command will be added to the stack of commands to run.
+        - For example, `/timer 0 /h hello there` will say "hello there" in the ooc hub chat as your client. Adding `/timer 0 /timer 0 hide` will also hide the timer when it expires.
+        - To add a command to a timer, the timer must first be set.
+        - If you want to clear all commands, use `/timer <id> /clear`
+* **format\_timer** `<id> <format>` *(CM)*
     - Format the timer in the current area or hub.
     - Example of format: `"'Time Left:' hh:mm"` (quotes are important for having text in timer!)
     - Default format: `hh:mm:ss.zzz`
     - For more information on how to implement your format, [go here!](https://doc.qt.io/qt-6/qtime.html#toString)
-* **timer\_interval** `<id> <interval>`
+* **timer\_interval** `<id> <interval>` *(CM)*
     - Set timer interval in the current area or hub.
     - Example: `/timer_interval 1 15m`
     - Default interval: `/timer_interval 1 16ms`
-## Musiclists
-* **musiclist\_add** `<local/area/hub>` `<Category>` `<MusicName>` `[Length]` `[Path]`
-    - Allow you to add a song in a loaded musiclist!
-    - Remember to insert a file extension in `<MusicName>` unless you are using the optional `[Path]` (useful for streamed songs!)
-    - If Length is `0`, song will not loop. If Length is `-1`, song will loop. Any other value will tell the server the length of the song (in seconds)
-* **musiclist\_remove** `<local/area/hub>` `<Category>` `<MusicName>`
-    - Allow you to remove a song from a musiclist!
-    - Remember to insert a file extension in `<MusicName>`. For songs without extension, put in .music.
-* **musiclist\_save** `<local/area/hub>` `[MusiclistName]` `[read_only]`
-    - Allow you to save a musiclist on server list!
-    - If the musiclist you're editing is already in the server list, you don't have to add `[MusiclistName]`
-    - If `[read_only]` is a parameter in the arguments then none can rewrite the current musiclist
+* **demo** `<evi_id|evi_name>` *(CM)*
+    - Calls a demo of commands that is stored within an evidence.
+        - When demo evidences are used, they are usually hidden and triggered by alternative means such as `/timer` or `/trigger present <id>`.
+    - Use `/demo` to stop the running demos.
+    - For more information on how demos work, [go here!](https://crystalwarrior.github.io/KFO-Wiki/guides/demo_guide/demo_guide/)
+* **trigger** `<trigger> <command> <arg(s)>` *(CM)*
+    - Set up a trigger for this area which, when fulfilled, will call the command.
+    - `trig` is the trigger keyword. Available keywords are `join`, `leave` and `present <id>` where `id`  is the evidence ID.
+    - `cmd` is the standard command name, such as 'lock' to call the `lock` command when trigger is fulfilled.
+    - `arg(s)` are the arguments of the command, so in `bg default`, `default` is the argument
+    - ***CM's, GM's and Mods are ignored by triggers.***
+    - Example Usages:
+        - `/trigger join h HELLO THERE` - Will say "HELLO THERE" in the ooc hub chat, each time when someone joins.
+        - `/trigger leave coinflip` - Will flip a coin each time someone leaves that area.
+        - `/trigger present 1 demo 2` - Will call a `/demo` of evidence with ID 2 in that area, when evidence with ID 1 has been presented by a non-cm/gm client user.
+    - For more information on how (evidence) triggers work, [go here!](https://crystalwarrior.github.io/KFO-Wiki/guides/demo_guide/demo_guide/)
+* **ooc\_actions** `[on/off]` *(CM)*
+    - Enable or disable IC actions being broadcast to OOC as well.
+* **sfx** `<sound_path>`
+    - Play a sound effect directly without associating it with an IC message.
 ## Battle
 * **choose\_fighter** `<NameFighter>`
     - Allow you to choose a fighter from the list of the server.
     - You will receive its stats and its moves.
 * **info\_fighter**
     - Send info about your fighter.
-* **create\_fighter** `<FighterName>` `<HP>` `<MANA>` `<ATK>` `<DEF>` `<SPA>` `<SPD>` `<SPE>`
+* **create\_fighter** `<FighterName> <HP> <MANA> <ATK> <DEF> <SPA> <SPD> <SPE>`
     - Allow you to create a fighter and to customize its stats.
-* **create\_move** `<MoveName>` `<ManaCost>` `<MovesType>` `<Power>` `<Accuracy>` `<Effects>`
+* **create\_move** `<MoveName> <ManaCost> <MovesType> <Power> <Accuracy> <Effects>`
     - Allow you to create a move for a fighter.
     - You have to choose a fighter first!
     - MovesType: Atk or Spa
-* **modify\_stat** `<FighterName>` `<Stat>` `<Value>`
+* **modify\_stat** `<FighterName> <Stat> <Value>` *(GM)*
     - Allow you to modify fighter's stats.
-* **delete\_fighter** `<FighterName>`
+* **delete\_fighter** `<FighterName>` *(GM)*
     - Allow you to delete a fighter.
-* **delete\_move** `<MoveName>`
+* **delete\_move** `<MoveName>` *(GM)*
     - Delete a move from a fighter.
     - You have to choose a fighter first!
-* **battle\_config** `<parameter>` `<value>`
+* **battle\_config** `<parameter> <value>` *(GM)*
     - Allow you to customize some battle settings.
     - parameters: paralysis_rate, critical_rate, critical_bonus, bonus_malus, poison_damage, show hp, min_multishot, max_multishot, burn_damage, freeze_damage, confusion_rate, enraged_bonus, stolen_stat
 * **fight**
     - Allow you to join the battle!
-* **use\_move** `<MoveName>` `<Target_ID>`
+* **use\_move** `<MoveName> <Target_ID>`
     - This command will let you use a move during a battle!
     - Heal and AttAll moves don't need a target!
 * **battle\_info**
     - Send you info about the battle.
-* **refresh\_battle**
+* **refresh\_battle** *(GM)*
     - Refresh the battle
-* **remove\_fighter** `<Target_ID>`
+* **remove\_fighter** `<Target_ID>` *(GM)*
     - Force a fighter to leave the battle.
 * **surrender**
     - A command to surrend from the current battle.
 * **skip\_move**
     - Allow you to skip the turn
-* **force\_skip\_move** `<Target_ID>`
+* **force\_skip\_move** `<Target_ID>` *(GM)*
     - Force a fighter to skip the turn
 * **create\_guild** `<NameGuild>`
     - Allow you to create a guild
@@ -601,12 +784,12 @@
 * **battle\_effects**
     - Show all available battle effects
 ## In-Character Commands
-* **/a** `[id(s)]` `[msg]`
+* **/a** `[id(s)] [msg]` *(CM)*
     - Put this in the In-Character chat.
     - This command can only be used by CMs and above.
     - `[id(s)]` are optional. If ID(s) are not provided (`/a msg`), the message will be broadcast across all owned areas.
     - `[id(s)]` stand for Area ID's that can be viewed using `/area`, or in the A/M area list, so `/a 1 msg` to send message "msg" to area ID 1. If multiple ID's, they must be comma-separated, like so: `/a 1,2,3,4 msg` - send message "msg" to area ID's 1, 2, 3 and 4.
-* **/w** `[id(s)]` `[msg]`
+* **/w** `[id(s)] [msg]`
     - Put this in the In-Character chat.
     - This command can be used by anyone, unless `/area_pref can_whisper` is `false`.
     - `[id(s)]` are optional. If ID(s) are not provided (`/w msg`), the message will be broadcast to clients in the current `/pos` only.
@@ -619,3 +802,23 @@
     - Afterwards, next time the CM uses "Cross-Examination" button, the testimony title will be replayed, and the defense can use `>` to progress a statement, `<` to precede a statement, `>5` to go to specific statement 5.
     - You can use `**msg` to amend the current statement.
     - You can use `++msg` to add a new statement after the current one.
+
+## Deprecated / Broken
+* **shuffle_pos** `<pos(s)>` *(CM)*
+    *= WORK IN PROGRESS =*
+    - Randomly shuffle the players into a list of pos separated by space or comma.
+    - If your pos have spaces in them, it must be a comma-separated list like /shuffle_pos pos one, pos two, pos X
+* **a**  `<area> <message>`
+    - Send a message to an area that you are a CM in.
+* **s** `<message>`
+    - Send a message to all areas that you are a CM in.
+* **lm** `<message>`
+    - Send a message to everyone in the current area, speaking officially.
+* **getlink** `[id]`
+    *(Currently works the same as `getarea`, use `link` instead!)*
+    - Show information about all areas.
+    - Including the client's link.
+* **getlinks**
+    *(Currently works the same as `getareas`, use `links` instead!)*
+    - Show information about the current area, or target area id with sufficient permissions.
+    - Including the client's link.

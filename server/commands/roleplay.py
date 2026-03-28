@@ -745,7 +745,7 @@ def ooc_cmd_timer(client, arg):
     `pause` OR `stop` pauses the timer that's currently running, so `/timer 0 pause`.
     `unset` OR `hide` hides the timer for it to no longer show up, so `/timer 0 hide`.
     Commands can also be passed - /cmd is a command that you want to run when the timer expires. That command will be added to the stack of commands to run.
-    For example, `/timer 0 /timer 0 hide` will hide the timer when it expires. Adding `/timer 0 /h hello there` will also say "hello there" in hub chat as your client.
+    For example, `/timer 0 /h hello there` will say "hello there" in hub chat as your client. Adding `/timer 0 /timer 0 hide` will also hide the timer when it expires.
     If you want to clear all commands, use `/timer <id> /clear`
     Usage:
     /timer <id> [+][time] [start|pause/stop|unset/hide]
@@ -1129,12 +1129,12 @@ def ooc_cmd_ooc_actions(client, arg):
 
 def ooc_cmd_sfx(client, arg):
     """
-    Play a sound effect directly without associating it with an emote.
-    Usage: /sfx [sound_path]
+    Play a sound effect directly without associating it with an IC message.
+    Usage: /sfx <sound_path>
     """
     if arg == "":
         raise ArgumentError(
-            "sound_path can't be empty. Usage: /sfx [sound_path]"
+            "sound_path can't be empty. Usage: /sfx <sound_path>"
         )
     is_mod = client.is_mod or client in client.area.owners
     # Only incur cooldowns etc. on mods.
