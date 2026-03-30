@@ -1729,6 +1729,17 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.send_owner_command(
             "CT", f"[{self.client.area.id}]{name}", args[1]
         )
+        webname = f"[{self.client.id}] {name}"
+        # Discord Bridgebot
+        if (
+            "bridgebot" in self.server.config
+            and self.server.config["bridgebot"]["enabled"]
+            and self.client.area.area_manager.id == self.server.bridgebot.hub_id
+            and self.client.area.id == self.server.bridgebot.area_id
+        ):
+            self.server.bridgebot.queue_message(
+                webname, args[1]
+            )
 
     def net_cmd_mc(self, args):
         """Play music.

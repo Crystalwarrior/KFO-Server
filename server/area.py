@@ -1005,6 +1005,16 @@ class Area:
         self.send_owner_command(
             "CT", f"[{self.id}]" + self.server.config["hostname"], msg, "1"
         )
+        # Discord Bridgebot
+        if (
+            "bridgebot" in self.server.config
+            and self.server.config["bridgebot"]["enabled"]
+            and self.area_manager.id == self.server.bridgebot.hub_id
+            and self.id == self.server.bridgebot.area_id
+        ):
+            self.server.bridgebot.queue_message(
+                self.server.config["hostname"], msg
+            )
 
     def broadcast_action(self, client, msg):
         """
