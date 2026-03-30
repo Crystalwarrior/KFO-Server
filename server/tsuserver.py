@@ -247,16 +247,16 @@ class TsuServer3:
                     f"[{client.id}] {client.showname} has disconnected.")
                 # Discord Bridgebot
                 if (
-                    "bridgebot" in self.server.config
-                    and self.server.config["bridgebot"]["enabled"]
-                    and self.client.area.area_manager.id == self.server.bridgebot.hub_id
-                    and self.client.area.id == self.server.bridgebot.area_id
+                    "bridgebot" in self.config
+                    and self.config["bridgebot"]["enabled"]
+                    and client.area.area_manager.id == self.bridgebot.hub_id
+                    and client.area.id == self.bridgebot.area_id
                 ):
-                    webname = f"[{self.client.id}] {self.client.char_name}"
-                    if self.client.showname != "" and self.client.showname != self.client.area.area_manager.char_list[self.client.char_id]:
-                        webname = f"[{self.client.id}] {self.client.showname} ({webname})"
-                    self.server.bridgebot.queue_message(
-                        "System", f"{webname} has disconnected.", self.client.char_name, ""
+                    webname = f"[{client.id}] {client.char_name}"
+                    if client.showname != "" and client.showname != client.area.area_manager.char_list[client.char_id]:
+                        webname = f"[{client.id}] {client.showname} ({webname})"
+                    self.bridgebot.queue_message(
+                        "System", f"{webname} has disconnected.", client.char_name, ""
                     )
             area.remove_client(client)
         self.client_manager.remove_client(client)
