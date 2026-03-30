@@ -252,9 +252,10 @@ class TsuServer3:
                     and client.area.area_manager.id == self.bridgebot.hub_id
                     and client.area.id == self.bridgebot.area_id
                 ):
-                    webname = f"[{client.id}] {client.char_name}"
+                    webname = client.char_name
                     if client.showname != "" and client.showname != client.area.area_manager.char_list[client.char_id]:
-                        webname = f"[{client.id}] {client.showname} ({webname})"
+                        webname = f"{client.showname} ({webname})"
+                    webname = f"[{client.id}] {webname}"
                     self.bridgebot.queue_message(
                         "System", f"{webname} has disconnected.", client.char_name, ""
                     )
