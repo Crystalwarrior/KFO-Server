@@ -156,10 +156,10 @@ class Bridgebot(commands.Bot):
             base = self.server.config["bridgebot"]["base_url"]
         if "embed_emotes" in self.server.config["bridgebot"]:
             embed_emotes = self.server.config["bridgebot"]["embed_emotes"]
-        if base is not None:
+        if base is not None and charname != "":
             avatar_url = base + \
                 parse.quote("characters/" + charname + "/char_icon.png")
-            if embed_emotes:
+            if embed_emotes and anim != "":
                 anim_url = base + parse.quote(
                     "characters/" + charname + "/" + anim + ".png"
                 )
