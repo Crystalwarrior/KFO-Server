@@ -147,7 +147,7 @@ class Bridgebot(commands.Bot):
                     self.area_id,
                 )
                 
-    def queue_message(self, name, message, charname, anim):
+    def queue_message(self, name, message, charname="", anim=""):
         base = None
         avatar_url = None
         anim_url = None
