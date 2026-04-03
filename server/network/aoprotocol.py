@@ -1386,20 +1386,6 @@ class AOProtocol(asyncio.Protocol):
                         .replace("\\s", "")
                         .replace("\\f", "")
                     )
-                    # escape chars
-                    txt = txt.replace(
-                        "@", "@\u200b"
-                    )  # The only way to escape a Discord ping is a zero width space...
-                    txt = txt.replace("<num>", "\\#")
-                    txt = txt.replace("<and>", "&")
-                    txt = txt.replace("<percent>", "%")
-                    txt = txt.replace("<dollar>", "$")
-                    txt = txt.replace("*", "\\*")
-                    txt = txt.replace("_", "\\_")
-                    # String is empty if we're strippin
-                    if not txt.strip():
-                        # Discord blankpost
-                        txt = "_ _"
                     self.server.bridgebot.queue_message(
                         webname, txt, self.client.char_name, anim
                     )

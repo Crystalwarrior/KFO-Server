@@ -146,7 +146,23 @@ class Bridgebot(commands.Bot):
                     self.hub_id,
                     self.area_id,
                 )
-                
+    def cleanup_text(text):
+        # escape chars
+        txt = txt.replace(
+            "@", "@\u200b"
+        )  # The only way to escape a Discord ping is a zero width space...
+        txt = txt.replace("<num>", "\\#")
+        txt = txt.replace("<and>", "&")
+        txt = txt.replace("<percent>", "%")
+        txt = txt.replace("<dollar>", "$")
+        txt = txt.replace("*", "\\*")
+        txt = txt.replace("_", "\\_")
+        # String is empty if we're strippin
+        if not txt.strip():
+            # Discord blankpost
+            txt = "_ _"
+        return txt
+        
     def queue_message(self, name, message, charname="", anim=""):
         base = None
         avatar_url = None
@@ -163,7 +179,8 @@ class Bridgebot(commands.Bot):
                 anim_url = base + parse.quote(
                     "characters/" + charname + "/" + anim + ".png"
                 )
-        self.pending_messages.append([name, message, avatar_url, anim_url])
+
+        self.pending_messages.append([self.cleanup_text(name), self.cleanup_text(message), avatar_url, anim_url])
 
     async def on_ready(self):
         print("Discord Bridge Successfully logged in.")
