@@ -1373,7 +1373,7 @@ class AOProtocol(asyncio.Protocol):
                 ):
                     webname = f"[{self.client.id}] {self.client.char_name}"
                     if showname != "" and showname != self.client.area.area_manager.char_list[cid]:
-                        webname = f"[{self.client.id}] {showname} ({webname})"
+                        webname = f"[{self.client.id}] {showname} ({self.client.char_name})"
                     # you'll hate me for this
                     txt = (
                         msg.replace("}", "")
