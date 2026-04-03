@@ -1307,22 +1307,18 @@ class ClientManager:
                                 msg=f'~~{"}}}"}[º{self.showname}º leaves to º{area.name}º.]',
                                 emote_mod=1,
                             )
+                        exclude_list = []
                         for c in old_area.clients:
                             # Check if the GMs should really see this msg
                             if c in old_area.owners and c.remote_listen in [2, 3]:
-                                continue
-                            c.send_command(
-                                "CT",
-                                self.server.config["hostname"],
-                                f"[{self.id}] {self.showname} leaves to [{self.area.id}] {self.area.name}.",
-                                "1",
-                            )
+                                exclude_list.append[c]
+                        old_area.broadcast_ooc(
+                            f"[{self.id}] {self.showname} leaves to [{self.area.id}] {self.area.name}.",
+                            exclude_list
+                        )
                     else:
-                        old_area.send_command(
-                            "CT",
-                            self.server.config["hostname"],
+                        old_area.broadcast_ooc(
                             f"[{self.id}] {self.showname} leaves to Hub [{self.area.area_manager.id}] {self.area.area_manager.name}.",
-                            "1",
                         )
                         old_area.send_owner_command(
                             "CT",
@@ -1342,11 +1338,8 @@ class ClientManager:
                     if len(self.desc) > 64:
                         desc += f"... Use /chardesc {self.id} to read the rest."
                 if old_area.area_manager == self.area.area_manager:
-                    self.area.send_command(
-                        "CT",
-                        self.server.config["hostname"],
+                    self.area.broadcast_ooc(
                         f"[{self.id}] {self.showname} enters from [{old_area.id}] {old_area.name}{desc}",
-                        "1",
                     )
                     if self.area.area_manager.passing_msg is True:
                         self.area.send_ic(
@@ -1354,11 +1347,8 @@ class ClientManager:
                             emote_mod=1,
                         )
                 else:
-                    self.area.send_command(
-                        "CT",
-                        self.server.config["hostname"],
+                    self.area.broadcast_ooc(
                         f"[{self.id}] {self.showname} enters from Hub [{old_area.area_manager.id}] {old_area.area_manager.name}{desc}",
-                        "1",
                     )
                     self.area.send_owner_command(
                         "CT",

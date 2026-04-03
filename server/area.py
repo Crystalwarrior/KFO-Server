@@ -996,12 +996,15 @@ class Area:
         for c in self.clients:
             c.send_timer_set_time(timer_id, new_time, start)
 
-    def broadcast_ooc(self, msg):
+    def broadcast_ooc(self, msg, exclude_list = []):
         """
         Broadcast an OOC message to all clients in the area.
         :param msg: message
         """
-        self.send_command("CT", self.server.config["hostname"], msg, "1")
+        for c in self.clients:
+            if c in exclude_list:
+                continue
+            c.send_command("CT", self.server.config["hostname"], msg, "1")
         self.send_owner_command(
             "CT", f"[{self.id}]" + self.server.config["hostname"], msg, "1"
         )
