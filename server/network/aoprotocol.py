@@ -1367,6 +1367,7 @@ class AOProtocol(asyncio.Protocol):
                 if (
                     "bridgebot" in self.server.config
                     and self.server.config["bridgebot"]["enabled"]
+                    and self.server.bridgebot
                     and self.client.area.area_manager.id == self.server.bridgebot.hub_id
                     and self.client.area.id == self.server.bridgebot.area_id
                 ):
