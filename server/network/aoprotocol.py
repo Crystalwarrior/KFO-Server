@@ -1715,7 +1715,7 @@ class AOProtocol(asyncio.Protocol):
         self.client.area.send_owner_command(
             "CT", f"[{self.client.area.id}]{name}", args[1]
         )
-        webname = f"[{self.client.id}] {name}"
+        webname = f"(OOC) [{self.client.id}] {name}"
         # Discord Bridgebot
         if (
             "bridgebot" in self.server.config
