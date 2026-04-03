@@ -146,7 +146,7 @@ class Bridgebot(commands.Bot):
                     self.hub_id,
                     self.area_id,
                 )
-    def cleanup_text(self, text):
+    def cleanup_text(self, txt):
         # escape chars
         txt = txt.replace(
             "@", "@\u200b"
