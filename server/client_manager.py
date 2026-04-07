@@ -1311,7 +1311,7 @@ class ClientManager:
                         for c in old_area.clients:
                             # Check if the GMs should really see this msg
                             if c in old_area.owners and c.remote_listen in [2, 3]:
-                                exclude_list.append[c]
+                                exclude_list.append(c)
                         old_area.broadcast_ooc(
                             f"[{self.id}] {self.showname} leaves to [{self.area.id}] {self.area.name}.",
                             exclude_list
