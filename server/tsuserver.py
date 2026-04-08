@@ -562,7 +562,7 @@ class TsuServer3:
          - Commands
          - Banlists
         """
-        with open("config/config.yaml", "r") as cfg:
+        with open("config/config.yaml", "r", encoding="utf-8") as cfg:
             cfg_yaml = yaml.safe_load(cfg)
             self.config["motd"] = cfg_yaml["motd"].replace("\\n", " \n")
 
