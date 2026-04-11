@@ -2,7 +2,7 @@ from server import commands
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server.area import Area
 from collections import OrderedDict
-from constants import derelative
+from server.constants import derelative
 
 import oyaml as yaml  # ordered yaml
 import os
