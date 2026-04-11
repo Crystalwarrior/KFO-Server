@@ -140,7 +140,7 @@ class Webhooks:
             url=url,
         )
 
-    def doormancall(self, client=None):
+    def doormancall(self, description = ""):
         if "doorman_webhook" not in self.server.config:
             return
             
@@ -159,9 +159,6 @@ class Webhooks:
         if pingoption:
             message += f"<@&{self.server.config['doorman_webhook']['role_id']}> \n"
         message += self.server.config["doorman_webhook"]["message"]
-        description = f"[{client.id}] {client.name} ({client.showname}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name}"
-        description += f"\n{client.area.last_ic_message[4]}"
-
         self.send_webhook(
             username=username,
             avatar_url=avatar_url,

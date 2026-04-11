@@ -1404,8 +1404,10 @@ class Area:
             afkers = len(self.afkers)
             doorman_needed = living_clients <= 1 or afkers >= living_clients - 1
             if doorman_needed and self.can_call_doorman():
+                description = f"[{client.id}] {client.name} ({client.showname}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name}"
+                description += f"\n{msg}"
                 asyncio.get_running_loop().call_soon(
-                    self.server.webhooks.doormancall, client
+                    self.server.webhooks.doormancall, description
                 )
                 self.set_doorman_call_delay()
 
