@@ -2,6 +2,7 @@ from server import commands
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server.area import Area
 from collections import OrderedDict
+from constants import derelative
 
 import oyaml as yaml  # ordered yaml
 import os
@@ -255,6 +256,7 @@ class AreaManager:
         """Load the character list from a YAML file."""
         if self.char_list_ref == charlist:
             return
+        charlist = derelative(charlist.lower())
         self.char_list_ref = charlist
         if charlist != "":
             new_chars = None
