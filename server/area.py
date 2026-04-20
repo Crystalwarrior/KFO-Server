@@ -1016,9 +1016,10 @@ class Area:
             and self.area_manager.id == self.server.bridgebot.hub_id
             and self.id == self.server.bridgebot.area_id
         ):
-            self.server.bridgebot.queue_message(
-                self.server.config["hostname"], msg
-            )
+            if "ooc_system" in self.server.config["bridgebot"] and self.server.config["bridgebot"]["ooc_system"]:
+                self.server.bridgebot.queue_message(
+                    self.server.config["hostname"], msg
+                )
 
     def broadcast_action(self, client, msg):
         """

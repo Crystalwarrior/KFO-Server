@@ -127,6 +127,8 @@ bridgebot:
   area_id: 0 # numeric Area ID where Bridgebot will talk
   prefix: "}}}[√Dis√] {" # prefix to use before in-character message, usually to identify this message as Bridgebot one
   tickspeed: 0.25 # how often does the Discord Bridge send the IC message piles to Discord in seconds. Cannot be lower than 0.1 (one tenth of a second)
+  ooc_chat: true
+  ooc_system: true
   announce_channel:
   announce_color: 12745742
   announce_title: Something is being hosted

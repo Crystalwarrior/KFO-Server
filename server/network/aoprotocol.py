@@ -1724,9 +1724,10 @@ class AOProtocol(asyncio.Protocol):
             and self.client.area.area_manager.id == self.server.bridgebot.hub_id
             and self.client.area.id == self.server.bridgebot.area_id
         ):
-            self.server.bridgebot.queue_message(
-                webname, args[1]
-            )
+            if "ooc_chat" in self.server.config["bridgebot"] and self.server.config["bridgebot"]["ooc_chat"]:
+                self.server.bridgebot.queue_message(
+                    webname, args[1]
+                )
 
     def net_cmd_mc(self, args):
         """Play music.

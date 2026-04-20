@@ -527,6 +527,7 @@ class ClientManager:
                 if not self.area.area_manager.can_spectate:
                     raise ClientError("Cannot spectate in this hub!")
                 raise ClientError("Cannot spectate in this area!")
+            old_char_id = self.char_id
             old_char = self.char_name
             arup = (self.char_id == -1 or char_id == -
                     1) and self.char_id != char_id
@@ -561,6 +562,10 @@ class ClientManager:
                         f"[{self.id}] {self.showname} changed character from {old_char} to {new_char}.",
                         "1",
                     )
+
+            if old_char_id == None:
+                self.area.broadcast_ooc(
+                    f"[{self.id}] {self.showname} has joined!")
 
             if self.area.area_manager.autokick_to_latest_area:
                 self.kick_to_latest_area()
