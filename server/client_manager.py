@@ -52,6 +52,8 @@ class ClientManager:
             self.version = ""
             self.software = ""
 
+            self.first_joined = True
+
             # Pairing character ID
             self.charid_pair = -1
             self.third_charid = -1
@@ -527,7 +529,7 @@ class ClientManager:
                 if not self.area.area_manager.can_spectate:
                     raise ClientError("Cannot spectate in this hub!")
                 raise ClientError("Cannot spectate in this area!")
-            old_char_id = self.char_id
+
             old_char = self.char_name
             arup = (self.char_id == -1 or char_id == -
                     1) and self.char_id != char_id
@@ -563,7 +565,8 @@ class ClientManager:
                         "1",
                     )
 
-            if old_char_id == None:
+            if self.first_joined:
+                self.first_joined = False
                 self.area.broadcast_ooc(
                     f"[{self.id}] {self.showname} has joined!")
 
