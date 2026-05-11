@@ -1404,7 +1404,7 @@ class Area:
             living_clients = len(self.clients)
             afkers = len(self.afkers)
             doorman_needed = living_clients <= 1 or afkers >= living_clients - 1
-            if doorman_needed and self.can_call_doorman():
+            if doorman_needed and self.can_call_doorman() and client != None and client.area != None:
                 description = f"[{client.id}] {client.name} ({client.showname}) in hub [{client.area.area_manager.id}] {client.area.area_manager.name} [{client.area.id}] {client.area.name}"
                 description += f"\n{msg}"
                 asyncio.get_running_loop().call_soon(
