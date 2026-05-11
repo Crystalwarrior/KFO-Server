@@ -42,7 +42,7 @@ def ooc_cmd_area_lock(client, arg):
         area_list = client.area.area_manager.get_areas_by_args(args)
         for area in area_list:
             if not client.is_mod and client not in area.owners:
-                if not str(target_id) in client.keys:
+                if not str(area.id) in client.keys:
                     if area.locking_allowed and area != client.area:
                         client.send_ooc(
                             "You can only lock that area from within!")
@@ -151,7 +151,7 @@ def ooc_cmd_area_unlock(client, arg):
         area_list = client.area.area_manager.get_areas_by_args(args)
         for area in area_list:
             if not client.is_mod and client not in area.owners:
-                if not str(target_id) in client.keys:
+                if not str(area.id) in client.keys:
                     if area.locking_allowed and area != client.area:
                         client.send_ooc(
                             "You can only unlock that area from within!")
