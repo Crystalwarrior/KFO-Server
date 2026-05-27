@@ -75,8 +75,7 @@ class TsuServer3:
         self.command_aliases = {}
 
         try:
-            self.geoIpReader = geoip2.database.Reader(
-                "./storage/GeoLite2-ASN.mmdb")
+            self.geoIpReader = geoip2.database.Reader("./storage/GeoLite2-ASN.mmdb")
             self.useGeoIp = True
             # on debian systems you can use /usr/share/GeoIP/GeoIPASNum.dat if the geoip-database-extra package is installed
         except FileNotFoundError:
@@ -135,15 +134,11 @@ class TsuServer3:
         if self.config["local"]:
             bound_ip = "127.0.0.1"
 
-        ao_server_crt = loop.create_server(
-            lambda: AOProtocol(self), bound_ip, self.config["port"]
-        )
+        ao_server_crt = loop.create_server(lambda: AOProtocol(self), bound_ip, self.config["port"])
         ao_server = loop.run_until_complete(ao_server_crt)
 
         if self.config["use_websockets"]:
-            loop.run_until_complete(
-                self.serve_websocket(bound_ip, self.config["websocket_port"])
-            )
+            loop.run_until_complete(self.serve_websocket(bound_ip, self.config["websocket_port"]))
 
         if self.config["use_masterserver"]:
             self.ms_client = MasterServerClient(self)
@@ -160,9 +155,7 @@ class TsuServer3:
                     self.config["bridgebot"]["hub_id"],
                     self.config["bridgebot"]["area_id"],
                 )
-                asyncio.ensure_future(
-                    self.bridgebot.init(self.config["bridgebot"]["token"]), loop=loop
-                )
+                asyncio.ensure_future(self.bridgebot.init(self.config["bridgebot"]["token"]), loop=loop)
                 self.bridgebot.add_commands()
             except Exception as ex:
                 # Don't end the whole server if bridgebot destroys itself
@@ -170,12 +163,11 @@ class TsuServer3:
 
         if "need_webhook" in self.config and self.config["need_webhook"]["enabled"]:
             self.need_webhook = True
-            
+
         asyncio.ensure_future(self.schedule_unbans())
 
         database.log_misc("start")
-        print("Server started and is listening on port {}".format(
-            self.config["port"]))
+        print("Server started and is listening on port {}".format(self.config["port"]))
 
         try:
             loop.run_forever()
@@ -219,7 +211,10 @@ class TsuServer3:
             asn = "Loopback"
 
         for line, rangeBan in enumerate(self.ipRange_bans):
-            if rangeBan != "" and ((peername.startswith(rangeBan) and (rangeBan.endswith('.') or rangeBan.endswith(':'))) or asn == rangeBan):
+            if rangeBan != "" and (
+                (peername.startswith(rangeBan) and (rangeBan.endswith(".") or rangeBan.endswith(":")))
+                or asn == rangeBan
+            ):
                 msg = "BD#"
                 msg += "Abuse\r\n"
                 msg += f"ID: {line}\r\n"
@@ -243,23 +238,15 @@ class TsuServer3:
         """
         if client.area:
             area = client.area
-            if (
-                not area.dark
-                and not area.force_sneak
-                and not client.sneaking
-                and not client.hidden
-            ):
-                area.broadcast_ooc(
-                    f"[{client.id}] {client.showname} has disconnected.")
+            if not area.dark and not area.force_sneak and not client.sneaking and not client.hidden:
+                area.broadcast_ooc(f"[{client.id}] {client.showname} has disconnected.")
             area.remove_client(client)
         self.client_manager.remove_client(client)
 
     @property
     def player_count(self):
         """Get the number of non-spectating clients."""
-        return len(
-            [client for client in self.client_manager.clients if client.char_id != -1]
-        )
+        return len([client for client in self.client_manager.clients if client.char_id != -1])
 
     def load_config(self):
         """Load the main server configuration from a YAML file."""
@@ -296,8 +283,7 @@ class TsuServer3:
             self.config["zalgo_tolerance"] = 3
 
         if isinstance(self.config["modpass"], str):
-            self.config["modpass"] = {"default": {
-                "password": self.config["modpass"]}}
+            self.config["modpass"] = {"default": {"password": self.config["modpass"]}}
         if "multiclient_limit" not in self.config:
             self.config["multiclient_limit"] = 16
         if "asset_url" not in self.config:
@@ -314,9 +300,7 @@ class TsuServer3:
     def load_command_aliases(self):
         """Load a list of alternative command names."""
         try:
-            with open(
-                "config/command_aliases.yaml", "r", encoding="utf-8"
-            ) as command_aliases:
+            with open("config/command_aliases.yaml", "r", encoding="utf-8") as command_aliases:
                 self.command_aliases = yaml.safe_load(command_aliases)
         except Exception:
             logger.debug("Cannot find command_aliases.yaml")
@@ -458,11 +442,8 @@ class TsuServer3:
             as_mod = "[M]"
         else:
             as_mod = ""
-        ooc_name = (
-            f"<dollar>G[{client.area.area_manager.abbreviation}]|{as_mod}{client.name}"
-        )
-        self.send_all_cmd_pred("CT", ooc_name, msg,
-                               pred=lambda x: not x.muted_global)
+        ooc_name = f"<dollar>G[{client.area.area_manager.abbreviation}]|{as_mod}{client.name}"
+        self.send_all_cmd_pred("CT", ooc_name, msg, pred=lambda x: not x.muted_global)
 
     def send_modchat(self, client, msg):
         """
@@ -471,8 +452,7 @@ class TsuServer3:
         :param msg: message
 
         """
-        ooc_name = "{}[{}][{}]".format(
-            "<dollar>M", client.area.id, client.name)
+        ooc_name = "{}[{}][{}]".format("<dollar>M", client.area.id, client.name)
         self.send_all_cmd_pred("CT", ooc_name, msg, pred=lambda x: x.is_mod)
 
     def broadcast_need(self, client, msg):
@@ -573,12 +553,9 @@ class TsuServer3:
             # Reload moderator passwords list and unmod any moderator affected by
             # credential changes or removals
             if isinstance(self.config["modpass"], str):
-                self.config["modpass"] = {
-                    "default": {"password": self.config["modpass"]}
-                }
+                self.config["modpass"] = {"default": {"password": self.config["modpass"]}}
             if isinstance(cfg_yaml["modpass"], str):
-                cfg_yaml["modpass"] = {"default": {
-                    "password": cfg_yaml["modpass"]}}
+                cfg_yaml["modpass"] = {"default": {"password": cfg_yaml["modpass"]}}
 
             for profile in self.config["modpass"]:
                 if (
@@ -592,8 +569,7 @@ class TsuServer3:
                         client.is_mod = False
                         client.mod_profile_name = None
                         database.log_misc("unmod.modpass", client)
-                        client.send_ooc(
-                            "Your moderator credentials have been revoked.")
+                        client.send_ooc("Your moderator credentials have been revoked.")
             self.config["modpass"] = cfg_yaml["modpass"]
 
         self.load_config()

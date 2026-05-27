@@ -6,9 +6,7 @@ def check_deps():
     py_version = sys.version_info
     if py_version.major < 3 or (py_version.major == 3 and py_version.minor < 11):
         print(
-            "tsuserver3 requires at least Python 3.11! Your version: {}.{}".format(
-                py_version.major, py_version.minor
-            )
+            "tsuserver3 requires at least Python 3.11! Your version: {}.{}".format(py_version.major, py_version.minor)
         )
         sys.exit(1)
 

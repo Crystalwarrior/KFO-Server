@@ -7,9 +7,7 @@ def call(client, cmd, arg):
         if cmd in client.server.command_aliases:
             called_function = f"ooc_cmd_{client.server.command_aliases[cmd]}"
     if not hasattr(me, called_function):
-        client.send_ooc(
-            f"Invalid command: {cmd}. Use /help to find up-to-date commands."
-        )
+        client.send_ooc(f"Invalid command: {cmd}. Use /help to find up-to-date commands.")
         return
     getattr(me, called_function)(client, arg)
 
@@ -68,11 +66,7 @@ def list_commands(submodule=""):
     import inspect
 
     cmds = ""
-    modules = [
-        a
-        for a in submodules()
-        if submodule == "" or a.__name__.split(".")[-1] == submodule
-    ]
+    modules = [a for a in submodules() if submodule == "" or a.__name__.split(".")[-1] == submodule]
     if len(modules) == 0:
         raise AttributeError
     for module in modules:
@@ -85,7 +79,7 @@ def list_commands(submodule=""):
                 doc = doc[: doc.find(".") + 1]
             prefix = "ooc_cmd_"
             if func.startswith(prefix):
-                func = func[len(prefix):]
+                func = func[len(prefix) :]
             cmds += f"{func} - {doc}\n"
     return cmds
 

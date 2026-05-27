@@ -25,9 +25,7 @@ def ooc_cmd_disemvowel(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
         raise ArgumentError("You must specify a target. Use /disemvowel <id>.")
     if targets:
@@ -48,12 +46,9 @@ def ooc_cmd_undisemvowel(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
-        raise ArgumentError(
-            "You must specify a target. Use /undisemvowel <id>.")
+        raise ArgumentError("You must specify a target. Use /undisemvowel <id>.")
     if targets:
         for c in targets:
             database.log_area("undisemvowel", client, client.area, target=c)
@@ -72,9 +67,7 @@ def ooc_cmd_shake(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
         raise ArgumentError("You must specify a target. Use /shake <id>.")
     if targets:
@@ -95,9 +88,7 @@ def ooc_cmd_unshake(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
         raise ArgumentError("You must specify a target. Use /unshake <id>.")
     if targets:
@@ -116,9 +107,7 @@ def ooc_cmd_rainbow(client, arg):
     """
     client.rainbow = not client.rainbow
     toggle = "now" if client.rainbow else "no longer"
-    client.send_ooc(
-        f"You will {toggle} have rainbowtext."
-    )
+    client.send_ooc(f"You will {toggle} have rainbowtext.")
 
 
 @mod_only()
@@ -130,9 +119,7 @@ def ooc_cmd_medieval(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
         raise ArgumentError("You must specify a target. Use /medieval <id>.")
     if targets:
@@ -157,9 +144,7 @@ def ooc_cmd_unmedieval(client, arg):
     if len(arg) == 0:
         raise ArgumentError("You must specify a target.")
     try:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(arg), False
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.ID, int(arg), False)
     except Exception:
         raise ArgumentError("You must specify a target. Use /unmedieval <id>.")
     if targets:
@@ -182,9 +167,7 @@ def ooc_cmd_medieval_mode(client, arg):
     Usage: /medieval_mode [on/off]
     """
     if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
+        raise ArgumentError("This command can only take one argument ('on' or 'off') or no arguments at all!")
     if arg:
         if arg == "on":
             client.area.medieval_mode = True
