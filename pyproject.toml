@@ -36,7 +36,8 @@ dependencies = [
 dev = [
     "pytest",
     "black",
-    "tox",
+    "tox>=4.21",
+    "tox-uv>=1",
 ]
 
 [tool.uv]
@@ -47,3 +48,15 @@ line-length = 120
 target-version = ["py311"]
 # You can add patterns here if you need to exclude generated files, etc.
 # extend-exclude = []
+
+[tool.tox]
+requires = ["tox>=4.21", "tox-uv>=1"]
+env_list = ["py311"]
+skip_missing_interpreters = true
+
+[tool.tox.env_run_base]
+runner = "uv-venv-lock-runner"
+package = "skip"
+dependency_groups = ["dev"]
+set_env = { PYTHONPATH = "{toxinidir}" }
+commands = [["pytest", "-q"]]
