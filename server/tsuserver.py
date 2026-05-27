@@ -82,7 +82,6 @@ class TsuServer3:
             self.useGeoIp = False
 
         self.ms_client = None
-        sys.setrecursionlimit(50)
         try:
             self.load_config()
             self.load_command_aliases()

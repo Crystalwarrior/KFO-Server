@@ -34,25 +34,19 @@ uv sync
 
 This creates a virtual environment under `.venv/` and installs every dependency pinned in `uv.lock`. Re-run `uv sync` any time you pull new changes to stay in sync with the lockfile.
 
-To include development tools (pytest, ruff, tox), use:
-
-```bash
-uv sync --group dev
-```
-
 Format the codebase with:
 
 ```bash
 uv run ruff format .
 ```
 
-### Configure tsuserver
+### Configure the server
 
 * Copy `config_sample` to `config`
 * Edit the values in the `.yaml` files to your liking.
 * Be sure to check your YAML file for syntax errors. Use this website: <http://www.yamllint.com/>
   * *Use spaces only; do not use tabs.*
-* You don't need to copy characters into the `characters` folder *unless* you specifically chose to disable iniswapping in an area (in `areas.yaml`). In this case, all tsuserver needs to know is the `char.ini` of each character. It doesn't need sprites.
+* You don't need to copy characters into the `characters` folder *unless* you specifically chose to disable iniswapping in an area (in `areas.yaml`). In this case, all the server needs to know is the `char.ini` of each character. It doesn't need sprites.
 
 ### Run
 
@@ -65,12 +59,12 @@ To stop the server, press Ctrl+C in the terminal.
 
 You can also use docker to run KFO-server. First you need to install [Docker](https://get.docker.com/) and [Docker Compose](https://docs.docker.com/compose/install/).
 
-Once you have everything configured, do `docker-compose up`. It will build the image and start tsuserver up for you. If you accidentally restart the server, the container will automatically start back up. If you're not understanding why it's starting, try starting it up manually:
+Once you have everything configured, do `docker compose up`. It will build the image and start the server for you. If you accidentally restart the server, the container will automatically start back up. If you're not understanding why it's starting, try starting it up manually:
 
 ## Pro Tips
 
 * To keep the server running even if your login shell is closed, use a multiplexer, such as screen or tmux.
-* For more info about available command, see [Commands](https://github.com/Crystalwarrior/KFO-Server/blob/master/docs/commands.md). You may also use the /help command on the server.
+* For more info about available commands, see [docs/commands.md](docs/commands.md). You may also use the `/help` command on the server.
 * For more info about Python virtual environments, refer to ["Creating Virtual Environments"](https://docs.python.org/3/library/venv.html#creating-virtual-environments)
 * In order to join your server, it has to be accessible to the public internet. You might need to forward the ports in config.yaml to make this work.
 * If you can't portforward, you may want to check out [ngrok](https://ngrok.com/). It's a service that allows you to expose your local server to the internet. It's free, but you can also pay for a subscription to get more features.

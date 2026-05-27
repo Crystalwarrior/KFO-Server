@@ -1,7 +1,6 @@
 import logging
 import os
 import shutil
-import sys
 from pathlib import Path
 
 import pytest
@@ -46,18 +45,10 @@ async def test_server(tmp_path):
 
     server.database._database_singleton = None
 
-    # 5. Instantiate real server. TsuServer3.__init__ calls sys.setrecursionlimit(50)
-    # which is too tight for pytest-asyncio's stack (and even for PyYAML's loader).
-    # Neutralize the call for the lifetime of the test so the limit stays at its
-    # default.
+    # 5. Instantiate real server.
     from server.tsuserver import TsuServer3
 
-    original_setrecursionlimit = sys.setrecursionlimit
-    sys.setrecursionlimit = lambda _limit: None
-    try:
-        server_instance = TsuServer3()
-    finally:
-        sys.setrecursionlimit = original_setrecursionlimit
+    server_instance = TsuServer3()
 
     # 7. Start WebSocket server on a random port using the server's own method
     ws_server = await server_instance.serve_websocket("127.0.0.1", 0)
