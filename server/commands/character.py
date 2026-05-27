@@ -403,7 +403,7 @@ def ooc_cmd_charcurse(client, arg):
                         str(client.area.area_manager.char_list[cid]) + ","
                     log_msg += " " + \
                         str(client.area.area_manager.char_list[cid]) + ","
-                except:
+                except Exception:
                     ArgumentError(
                         "" + str(raw_cid) +
                         " does not look like a valid character ID."
@@ -1403,12 +1403,12 @@ def get_latest_area(client, char_id: int):
     char_folder = None
     if char_id in range(0, len(client.area.area_manager.char_list)):
         char_folder = client.area.area_manager.char_list[char_id]
-    if char_folder == None:
+    if char_folder is None:
         print(char_folder, ' ', char_id)
         client.send_ooc("Can't get latest area when spectating!")
         return None
     latest_area_id = client.area.area_manager.get_character_data(char_id, "latest_area", None)
-    if latest_area_id == None:
+    if latest_area_id is None:
         client.send_ooc(f"{char_folder} has no latest occupied area defined!")
         return None
     target_area = None

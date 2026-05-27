@@ -20,7 +20,7 @@ class EvidenceList:
             self.show_in_dark = show_in_dark
             self.hiding_client = None
             self.triggers = triggers
-            if triggers == None:
+            if triggers is None:
                 self.triggers = {}
             # if this evidence can be "taken"
             self.can_take = can_take

@@ -45,6 +45,15 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 
+[tool.ruff]
+# scripts/ holds ad-hoc utilities that don't follow the server's style.
+exclude = ["scripts"]
+
+[tool.ruff.lint.per-file-ignores]
+# E402: command modules are imported after the decorator/__all__ machinery is defined.
+# F403: star imports are intentional — each submodule registers commands via its own __all__.
+"server/commands/__init__.py" = ["E402", "F403"]
+
 [tool.uv]
 package = false
 

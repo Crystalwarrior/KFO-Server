@@ -263,19 +263,13 @@ class ClientManager:
                         if len(args) > 16 and args[16]:
                             charid_pair = str(args[16])
                         self_offset_x = 0
-                        self_offset_y = 0
                         if len(args) > 19 and args[19]:
                             offset = str(args[19]).replace('<and>', '&').split('&')
                             self_offset_x = offset[0]
-                            if len(offset) > 1:
-                                self_offset_y = offset[1]
                         offset_pair_x = 0
-                        offset_pair_y = 0
                         if len(args) > 20 and args[20]:
                             offset = str(args[20]).replace('<and>', '&').split('&')
                             offset_pair_x = offset[0]
-                            if len(offset) > 1:
-                                offset_pair_y = offset[1]
 
                         self_offset_x_dro = 500
                         if self_offset_x:
@@ -395,7 +389,7 @@ class ClientManager:
                 else:
                     self.send_command("TP", timer_id) # pause
             else:
-                if new_time == None:
+                if new_time is None:
                     self.send_command("TI", timer_id, 1, 0) # Stop timer
                     self.send_command("TI", timer_id, 3, 0) # Hide timer
                 else:
@@ -458,14 +452,14 @@ class ClientManager:
             latest_area = self.area.area_manager.get_character_data(
                 self.char_id, "latest_area", None
             )
-            if latest_area == None:
+            if latest_area is None:
                 return
             target_area = None
             try:
                 target_area = self.area.area_manager.get_area_by_id(latest_area)
-            except:
+            except Exception:
                 pass
-            if target_area == None:
+            if target_area is None:
                 self.send_ooc(
                     f"Attempted to kick you to area ID {latest_area} but that area does not currently exist!"
                 )
@@ -666,13 +660,13 @@ class ClientManager:
                 if (contains_URL(song)):
                     checked = False
                     # Only if url music is configured to be allowed
-                    if self.server.config["music_allow_url"] == True:
+                    if self.server.config["music_allow_url"]:
                         if len(self.server.music_whitelist) <= 0:
                             checked = True
                         for line in self.server.music_whitelist:
                             if song.startswith(line):
                                 checked = True
-                    if checked == False:
+                    if not checked:
                         self.send_ooc(
                             "This URL is not allowed."
                         )
@@ -2076,7 +2070,7 @@ class ClientManager:
                 self.char_id, "latest_area", None
             )
 
-        @inventory.setter
+        @latest_area.setter
         def latest_area(self, value):
             """Set the character's latest occupied area ID."""
             self.area.area_manager.set_character_data(
@@ -2205,7 +2199,7 @@ class ClientManager:
             :param pos: position in area (Default value = '')
             """
             if len(self.area.pos_lock) > 0 and pos not in self.area.pos_lock and pos != self.area.pos_dark:
-                poslist = ", ".join(str(l) for l in self.area.pos_lock)
+                poslist = ", ".join(str(p) for p in self.area.pos_lock)
                 raise ClientError(f"Invalid pos! Available pos are {poslist}.")
             if self.hidden_in is not None:
                 # YOU DARE MOVE?!
@@ -2237,7 +2231,7 @@ class ClientManager:
                     time.time() * 1000.0
                     + int(self.server.config["need_webhook"]["delay"]) * 1000.0
                 )
-            except:
+            except Exception:
                 self.need_call_time = round(time.time() * 1000 + 60000)
 
         def set_sfx_delay(self):

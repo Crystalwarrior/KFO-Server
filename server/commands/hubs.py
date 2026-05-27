@@ -132,7 +132,7 @@ def ooc_cmd_save_hub(client, arg):
                 if os.path.isfile(f"storage/hubs/{name}.yaml") and len(args) > 2 and args[1].lower() == "read_only":
                     try:
                         os.remove(f"storage/hubs/{name}.yaml")
-                    except:
+                    except Exception:
                         raise AreaError(f"{name} hasn't been removed from write and read folder!")
                 name = f"{path}/{name}.yaml"
                 hub = client.area.area_manager.save(ignore=["can_gm", "max_areas"])
@@ -253,14 +253,14 @@ def ooc_cmd_list_hubs(client, arg):
         try:
             if F.lower().endswith(".yaml"):
                 hubs_read_only.append(F[:-5])
-        except:
+        except Exception:
             continue
 
     for F in os.listdir("storage/hubs/"):
         try:
             if F.lower().endswith(".yaml"):
                 hubs_editable.append(F[:-5])
-        except:
+        except Exception:
             continue
 
     hubs_read_only.sort()

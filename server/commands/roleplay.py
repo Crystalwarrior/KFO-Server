@@ -886,7 +886,6 @@ def ooc_cmd_timer(client, arg):
 
     # Send static time if applicable
     if timer.set:
-        s = int(not timer.started)
         static_time = int(timer.static.total_seconds()) * 1000
         if timer_id == 0:
             client.area.area_manager.send_timer_set_time(timer_id, static_time, timer.started)
@@ -1028,7 +1027,7 @@ def ooc_cmd_format_timer(client, arg):
     args = shlex.split(arg)
     try:
         args[0] = int(args[0])
-    except:
+    except Exception:
         return
     if args[0] == 0:
         if client.is_mod or client in client.area.area_manager.owners:
@@ -1073,7 +1072,7 @@ def ooc_cmd_timer_interval(client, arg):
     args = shlex.split(arg)
     try:
         args[0] = int(args[0])
-    except:
+    except Exception:
         raise ArgumentError("Timer ID should be an integer")
     if args[0] == 0:
         if client.is_mod or client in client.area.area_manager.owners:
@@ -1093,10 +1092,10 @@ def ooc_cmd_timer_interval(client, arg):
             return
     try:
         if len(args) == 1:
-            timer.interval = 16 
+            timer.interval = 16
         else:
             timer.interval = pytimeparse.parse(args[1]) * 1000
-    except:
+    except Exception:
         raise ArgumentError("Interval value not valid!")
     if timer.set:
         client.send_timer_set_interval(args[0], timer)
@@ -1139,7 +1138,7 @@ def ooc_cmd_sfx(client, arg):
     is_mod = client.is_mod or client in client.area.owners
     # Only incur cooldowns etc. on mods.
     if not is_mod:
-        if client.char_id <= -1 or client.char_id == None:
+        if client.char_id <= -1 or client.char_id is None:
             raise ClientError(
                 "You can't play sfx when you're a spectator and not a CM/GM!"
             )
@@ -1154,7 +1153,7 @@ def ooc_cmd_sfx(client, arg):
                                 for a in client.broadcast_list])
             client.send_ooc(f"Broadcasting to areas {a_list}")
             target_areas = client.broadcast_list
-        except:
+        except Exception:
             client.send_ooc(
                 "Your broadcast list is invalid! Do /clear_broadcast to reset it and /broadcast <id(s)> to set a new one."
             )
