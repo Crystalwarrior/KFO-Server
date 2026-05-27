@@ -34,10 +34,16 @@ uv sync
 
 This creates a virtual environment under `.venv/` and installs every dependency pinned in `uv.lock`. Re-run `uv sync` any time you pull new changes to stay in sync with the lockfile.
 
-To include development tools (pytest, black, tox), use:
+To include development tools (pytest, ruff, tox), use:
 
 ```bash
 uv sync --group dev
+```
+
+Format the codebase with:
+
+```bash
+uv run ruff format .
 ```
 
 ### Configure tsuserver

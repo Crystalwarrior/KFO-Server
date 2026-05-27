@@ -36,16 +36,17 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-asyncio",
-    "black",
     "tox>=4.21",
     "tox-uv>=1",
-    "ruff==0.15.7",
+    "ruff>=0.15",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 
 [tool.ruff]
+line-length = 120
+target-version = "py311"
 # scripts/ holds ad-hoc utilities that don't follow the server's style.
 exclude = ["scripts"]
 
@@ -56,12 +57,6 @@ exclude = ["scripts"]
 
 [tool.uv]
 package = false
-
-[tool.black]
-line-length = 120
-target-version = ["py311"]
-# You can add patterns here if you need to exclude generated files, etc.
-# extend-exclude = []
 
 [tool.tox]
 requires = ["tox>=4.21", "tox-uv>=1"]
