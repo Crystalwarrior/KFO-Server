@@ -5,10 +5,12 @@ stages:
   - execute
 
 install:
-  - pip install -r requirements.txt
+  - curl -LsSf https://astral.sh/uv/install.sh | sh
+  - export PATH="$HOME/.local/bin:$PATH"
+  - uv sync --frozen
 
 jobs:
   include:
     - stage: execute
       name: "Starting the Server"
-      script: python start_server.py
+      script: uv run python start_server.py

@@ -1,49 +1,29 @@
 import sys
-import subprocess
 import os
 
 
-# Install dependencies in case one is missing
 def check_deps():
     py_version = sys.version_info
-    if py_version.major < 3 or (py_version.major == 3 and py_version.minor < 7):
+    if py_version.major < 3 or (py_version.major == 3 and py_version.minor < 11):
         print(
-            "tsuserver3 requires at least Python 3.7! Your version: {}.{}".format(
+            "tsuserver3 requires at least Python 3.11! Your version: {}.{}".format(
                 py_version.major, py_version.minor
             )
         )
         sys.exit(1)
 
     try:
-        import oyaml
-        import websockets
-        import arrow
-        import pytimeparse
-        import geoip2
-        import discord
-        import stun
-    except ModuleNotFoundError:
-        print("Installing dependencies for you...")
-        try:
-            subprocess.check_call(
-                [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "install",
-                    "-r",
-                    "requirements.txt",
-                ]
-            )
-            print(
-                "If an import error occurs after the installation, try "
-                "restarting the server."
-            )
-        except subprocess.CalledProcessError:
-            print(
-                "Couldn't install it for you, because you don't have pip, "
-                "or another error occurred."
-            )
+        import oyaml  # noqa: F401
+        import websockets  # noqa: F401
+        import arrow  # noqa: F401
+        import pytimeparse  # noqa: F401
+        import geoip2  # noqa: F401
+        import discord  # noqa: F401
+        import stun  # noqa: F401
+    except ModuleNotFoundError as err:
+        print(f"Missing dependency: {err.name}.")
+        print("Install dependencies with `uv sync` (see README.md).")
+        sys.exit(1)
 
 
 def main():

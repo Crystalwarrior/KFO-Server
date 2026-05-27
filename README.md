@@ -7,11 +7,15 @@ KFO-Server is the official Python-based server for Attorney Online, forked from 
 
 In order to set up the server, you must follow these instructions. This assumes you are familiar with using a terminal.
 
-### Install Python
+### Install uv
 
-* Install the [latest version of Python](https://www.python.org/downloads/). You will need Python 3.11 or newer.
-* If you run Windows, make sure to check the "Add Python to PATH" and install pip checkboxes in the installer
-* If you run anything other than Windows, you should read "Advanced setup instructions" below.
+KFO-Server uses [uv](https://docs.astral.sh/uv/) to manage the Python toolchain and dependencies.
+It picks up the required Python version (3.11+) from `pyproject.toml` automatically — you do not need to install Python separately.
+
+Install uv by following the [official instructions](https://docs.astral.sh/uv/getting-started/installation/). The short version:
+
+* On Linux / macOS: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+* On Windows (PowerShell): `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`
 
 ### Download server software
 
@@ -22,33 +26,18 @@ If you don't want to use Git, you can download the latest zip of KFO-Server [her
 
 ### Install dependencies
 
-In order to install dependencies, you will need to open a terminal.
-
-On Windows, you can do this by pressing Win+R, typing in `cmd`, and pressing Enter.
-On Linux, you can do this by pressing Ctrl+Alt+T.
-
-You should then navigate to the folder where the server is located.
-
-Take note that depending on your operating system, the command for python may be python3 or python.
-You should also verify the version by running `python --version` or `python3 --version`.
-
-First, we need to create the virtual environment. This can be done by running the following command:
+From the project folder, run:
 
 ```bash
-python -m venv venv
+uv sync
 ```
 
-Then, we need to activate the virtual environment.
-If you're on a unix system (bash or similar), you can run the following command:
+This creates a virtual environment under `.venv/` and installs every dependency pinned in `uv.lock`. Re-run `uv sync` any time you pull new changes to stay in sync with the lockfile.
+
+To include development tools (pytest, black, tox), use:
 
 ```bash
-./venv/bin/pip install -r requirements.txt
-```
-
-If you're on Windows (cmd), you may have to do this instead:
-
-```batch
-venv\Scripts\pip install -r requirements.txt
+uv sync --group dev
 ```
 
 ### Configure tsuserver
