@@ -40,9 +40,8 @@ async def test_send_ic_message(test_server):
 
 @pytest.mark.xfail(
     reason=(
-        "KFO's aoprotocol.data_received intentionally KKs and disconnects the "
-        "client on any unhandled exception — see server/network/aoprotocol.py:76. "
-        "Imported from czar where the protocol layer tolerates downstream errors."
+        "aoprotocol.data_received intentionally KKs and disconnects the client "
+        "on any unhandled exception — see server/network/aoprotocol.py:76."
     ),
     strict=True,
 )
