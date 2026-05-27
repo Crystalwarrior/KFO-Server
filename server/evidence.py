@@ -1,8 +1,6 @@
-import re
 
 from server import commands
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import encode_ao_packet
 
 class EvidenceList:
     """Contains a list of evidence items."""

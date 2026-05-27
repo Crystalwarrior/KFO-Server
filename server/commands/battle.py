@@ -7,7 +7,6 @@ from server.client_manager import ClientManager
 from server.constants import derelative
 
 from . import mod_only
-from .. import commands
 
 __all__ = [
     "ooc_cmd_choose_fighter",
@@ -664,7 +663,7 @@ def ooc_cmd_skip_move(client, arg):
 
     client.battle.selected_move = -2
     client.area.num_selected_move += 1
-    client.send_ooc(f"You have choosen to skip the turn")
+    client.send_ooc("You have choosen to skip the turn")
     client.area.broadcast_ooc(f"{client.battle.fighter} has choosen a move")
 
     if client.area.num_selected_move == len(client.area.fighters):
@@ -1128,7 +1127,7 @@ def start_battle_animation(area):
                         if len(targets) == 1:
                             battle_send_ic(
                                 client,
-                                msg=f"and tries to help but the target is already down",
+                                msg="and tries to help but the target is already down",
                             )
                         continue
                     if "heal" in move.effect:
@@ -1259,7 +1258,7 @@ def start_battle_animation(area):
                 if client.battle.status == "enraged":
                     client.battle.status = None
                     damage = damage * area.battle_enraged_bonus
-                    battle_send_ic(client, msg=f"focuses all strenght")
+                    battle_send_ic(client, msg="focuses all strenght")
 
                 # send ic damage move
                 if damage == 0:
@@ -1575,7 +1574,7 @@ def start_battle_animation(area):
         winner.battle.guild = guild
         area.fighters = []
     elif len(area.fighters) == 0:
-        battle_send_ic(client, msg=f"~Everyone~ is down...", offset=100)
+        battle_send_ic(client, msg="~Everyone~ is down...", offset=100)
         area.fighters = []
     else:
         # check if there is a winner guild

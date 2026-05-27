@@ -440,7 +440,7 @@ class Area:
             self.pos_lock.clear()
             for pos in _pos_lock:
                 pos = pos.lower()
-                if pos != "none" and not (pos in self.pos_lock):
+                if pos != "none" and pos not in self.pos_lock:
                     self.pos_lock.append(pos.lower())
 
         if "evidence_mod" in area:
@@ -1278,7 +1278,7 @@ class Area:
             if c.area == self and c.listen_pos is not None:
                 if (
                     type(c.listen_pos) is list
-                    and not (pos in c.listen_pos)
+                    and pos not in c.listen_pos
                     or c.listen_pos == "self"
                     and pos != c.pos
                 ):
@@ -2225,8 +2225,8 @@ class Area:
         valid_voters = [
             c for c in self.clients if
                 not c.hidden and
-                not c in self.afkers and
-                not c in self.owners and
+                c not in self.afkers and
+                c not in self.owners and
                 c.char_id not in client.area.blue_team and
                 c.char_id not in client.area.red_team
         ]
@@ -2416,9 +2416,9 @@ class Area:
         if len(self.demo) <= 0:
             self.stop_demo()
             return
-        if not (client in self.owners):
+        if client not in self.owners:
             client.send_ooc(
-                f"[Demo] Playback stopped due to you having insufficient permissions! (Not CM/GM anymore)")
+                "[Demo] Playback stopped due to you having insufficient permissions! (Not CM/GM anymore)")
             self.stop_demo()
             return
 

@@ -286,7 +286,7 @@ def ooc_cmd_notecard_reveal(client, arg):
     else:
         client.area.cards.clear()
         client.area.broadcast_ooc(
-            f"Notecards have been cleared."
+            "Notecards have been cleared."
         )
 
     database.log_area("notecard_reveal", client, client.area)
@@ -434,7 +434,7 @@ def ooc_cmd_vote_reveal(client, arg):
     else:
         client.area.votes.clear()
         client.area.broadcast_ooc(
-            f"Votes have been cleared."
+            "Votes have been cleared."
         )
 
     database.log_area("vote_reveal", client, client.area)
@@ -671,7 +671,7 @@ def ooc_cmd_rps(client, arg):
     if winner:
         msg += f"\n  🏆[{winner.id}] {winner.showname} WINS!!!🏆"
     else:
-        msg += f"\n  👔It's a tie!👔"
+        msg += "\n  👔It's a tie!👔"
 
     # Announce the message!
     client.area.broadcast_ooc(msg)
@@ -797,12 +797,12 @@ def ooc_cmd_timer(client, arg):
             client.send_ooc(f"Timer {timer_id} is unset.")
         return
 
-    if not (client in client.area.owners) and not client.is_mod:
+    if client not in client.area.owners and not client.is_mod:
         raise ArgumentError(
             "Only CMs or GMs can modify timers. Usage: /timer <id>")
     if (
         timer_id == 0
-        and not (client in client.area.area_manager.owners)
+        and client not in client.area.area_manager.owners
         and not client.is_mod
     ):
         raise ArgumentError(

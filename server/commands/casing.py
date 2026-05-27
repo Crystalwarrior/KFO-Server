@@ -64,7 +64,7 @@ def ooc_cmd_doc(client, arg):
             raise ClientError("You are not on the area's invite list!")
         if (
             not client.is_mod
-            and not (client in client.area.owners)
+            and client not in client.area.owners
             and client.char_id == -1
         ):
             raise ClientError("You may not do that while spectating!")
@@ -86,7 +86,7 @@ def ooc_cmd_cleardoc(client, arg):
         raise ClientError("You are not on the area's invite list!")
     if (
         not client.is_mod
-        and not (client in client.area.owners)
+        and client not in client.area.owners
         and client.char_id == -1
     ):
         raise ClientError("You may not do that while spectating!")
@@ -1107,7 +1107,7 @@ def ooc_cmd_evidence_save(client, arg):
             )
     with open(arg, "w", encoding="utf-8") as yaml_save:
         yaml.dump(evidence, yaml_save)
-    database.log_area(f"evidence.save", client, client.area, arg)
+    database.log_area("evidence.save", client, client.area, arg)
     client.send_ooc(
         f"Evidence has been saved as '{arg}' on the server."
     )

@@ -719,7 +719,7 @@ class AOProtocol(asyncio.Protocol):
             len(showname) > 0
             and not self.client.area.showname_changes_allowed
             and not self.client.is_mod
-            and not (self.client in self.client.area.owners)
+            and self.client not in self.client.area.owners
         ):
             self.client.send_ooc(
                 "Showname changes are forbidden in this area!")
@@ -745,7 +745,7 @@ class AOProtocol(asyncio.Protocol):
             frames_sfx = derelative(frames_sfx)
             effect = derelative(effect)
 
-        if not self.client.is_mod and not (self.client in self.client.area.owners):
+        if not self.client.is_mod and self.client not in self.client.area.owners:
             if not self.client.area.blankposting_allowed:
                 # Regex is slow as hell, need to change this to be more performant
                 if text.strip() == "" or (
@@ -906,7 +906,7 @@ class AOProtocol(asyncio.Protocol):
         if (nonint_pre == 1 and button in range(1, 4)) or (
             self.client.area.non_int_pres_only
             and not self.client.is_mod
-            and not (self.client in self.client.area.owners)
+            and self.client not in self.client.area.owners
         ):
             if emote_mod == 1 or emote_mod == 2:
                 emote_mod = 0
@@ -917,7 +917,7 @@ class AOProtocol(asyncio.Protocol):
         if (
             not self.client.area.shouts_allowed
             and not self.client.is_mod
-            and not (self.client in self.client.area.owners)
+            and self.client not in self.client.area.owners
         ):
             # Old clients communicate the objecting in emote_mod.
             if emote_mod == 2:
@@ -940,7 +940,7 @@ class AOProtocol(asyncio.Protocol):
         if (
             self.server.config["block_repeat"]
             and not self.client.is_mod
-            and not (self.client in self.client.area.owners)
+            and self.client not in self.client.area.owners
             and text.strip() != ""
             and self.client.area.last_ic_message is not None
             and cid == self.client.area.last_ic_message[8]
@@ -1303,7 +1303,7 @@ class AOProtocol(asyncio.Protocol):
                         video, # 34
                     )
                 a_list = ", ".join([str(a.id) for a in target_area])
-                if not (self.client.area in target_area):
+                if self.client.area not in target_area:
                     if msg == "":
                         msg = " "
                     self.client.send_command(

@@ -523,7 +523,7 @@ class ClientManager:
                 char_id == -1
                 and not (self.area.area_manager.can_spectate and self.area.can_spectate)
                 and not self.is_mod
-                and not (self in self.area.owners)
+                and self not in self.area.owners
                 and not force
             ):
                 if not self.area.area_manager.can_spectate:
@@ -943,10 +943,7 @@ class ClientManager:
                 self.area.client_music
                 and self.area.area_manager.client_music
                 and self.music_ref != ""
-                and not (
-                    self.music_ref
-                    in [self.area.music_ref, self.area.area_manager.music_ref]
-                )
+                and self.music_ref not in [self.area.music_ref, self.area.area_manager.music_ref]
                 and len(self.music_list) > 0
             ):
                 if self.replace_music:
@@ -1037,7 +1034,7 @@ class ClientManager:
                 self.area.area_manager.send_characters(self)
                 self.char_select()
 
-            if len(self.area.pos_lock) > 0 and not (target_pos in self.area.pos_lock):
+            if len(self.area.pos_lock) > 0 and target_pos not in self.area.pos_lock:
                 target_pos = self.area.pos_lock[0]
             if self.area.dark:
                 target_pos = self.area.pos_dark
@@ -1119,7 +1116,7 @@ class ClientManager:
             self.send_command("joined_area")
 
             # We failed to enter the same area as whoever we've been following, break the follow
-            if self.following is not None and not (self.following in self.area.clients):
+            if self.following is not None and self.following not in self.area.clients:
                 self.unfollow()
 
             # Record last known area ID for this character if not spectator/gm/mod
@@ -1521,7 +1518,7 @@ class ClientManager:
                     if not hidden and area.hidden:
                         continue
                     if len(self.area.links) > 0:
-                        if not (str(area.id) in self.area.links):
+                        if str(area.id) not in self.area.links:
                             if not unlinked:
                                 continue
                         if (
@@ -2207,7 +2204,7 @@ class ClientManager:
             Change the character's current position in the area.
             :param pos: position in area (Default value = '')
             """
-            if len(self.area.pos_lock) > 0 and not (pos in self.area.pos_lock) and pos != self.area.pos_dark:
+            if len(self.area.pos_lock) > 0 and pos not in self.area.pos_lock and pos != self.area.pos_dark:
                 poslist = ", ".join(str(l) for l in self.area.pos_lock)
                 raise ClientError(f"Invalid pos! Available pos are {poslist}.")
             if self.hidden_in is not None:
@@ -2321,14 +2318,14 @@ class ClientManager:
         self.delays = {}
 
     def set_spam_delay(self, ipid, spam_type, value):
-        if not str(ipid) in self.delays:
+        if str(ipid) not in self.delays:
             self.delays[str(ipid)] = {}
         self.delays[str(ipid)][spam_type] = value
 
     def get_spam_delay(self, ipid, spam_type):
-        if not str(ipid) in self.delays:
+        if str(ipid) not in self.delays:
             return 0
-        if not spam_type in self.delays[str(ipid)]:
+        if spam_type not in self.delays[str(ipid)]:
             return 0
         return self.delays[str(ipid)][spam_type]
 

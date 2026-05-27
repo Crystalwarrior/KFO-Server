@@ -314,7 +314,7 @@ def force_switch(client, target, char=""):
         except ClientError:
             raise
     else:
-        target.send_ooc(f"You've been forced into character select screen.")
+        target.send_ooc("You've been forced into character select screen.")
         target.char_select()
 
 
@@ -341,7 +341,7 @@ def ooc_cmd_kill(client, arg):
     try:
         for target in targets:
             force_switch(client, target, "-1")
-            target.send_ooc(f"💀You are dead!💀")
+            target.send_ooc("💀You are dead!💀")
     except Exception as ex:
         raise ArgumentError(
             f"Error encountered: {ex}. Use /kill <id(s)> as a mod or area owner."
@@ -943,7 +943,7 @@ def mod_keys(client, arg, mod=0):
                     target, "keys", [])
             if a in keys and mod == 2:
                 keys.remove(a)
-            elif not (a in keys):
+            elif a not in keys:
                 keys.append(a)
         client.area.area_manager.set_character_data(target, "keys", keys)
         client.send_ooc(
@@ -1004,7 +1004,7 @@ def ooc_cmd_keys(client, arg):
     if len(args) < 1:
         client.send_ooc(f"Your current keys are {client.keys}")
         return
-    if not client.is_mod and not (client in client.area.area_manager.owners):
+    if not client.is_mod and client not in client.area.area_manager.owners:
         raise ClientError("Only mods and GMs can check other people's keys.")
     if len(args) == 1:
         try:
@@ -1112,7 +1112,7 @@ def ooc_cmd_chardesc_clear(client, arg):
         )
         client.area.broadcast_player_list()
     else:
-        client.send_ooc(f"You cleared your character description.")
+        client.send_ooc("You cleared your character description.")
     database.log_area(
         "chardesc.clear", client, client.area
     )
@@ -1405,7 +1405,7 @@ def get_latest_area(client, char_id: int):
         char_folder = client.area.area_manager.char_list[char_id]
     if char_folder == None:
         print(char_folder, ' ', char_id)
-        client.send_ooc(f"Can't get latest area when spectating!")
+        client.send_ooc("Can't get latest area when spectating!")
         return None
     latest_area_id = client.area.area_manager.get_character_data(char_id, "latest_area", None)
     if latest_area_id == None:
@@ -1444,7 +1444,7 @@ def ooc_cmd_get_latest_area(client, arg):
     if area:
         client.send_ooc(f"{client.area.area_manager.char_list[target_charid]} latest occupied area is [{area.id}] {area.name}.")
     else:  
-        client.send_ooc(f"Area not found!")
+        client.send_ooc("Area not found!")
 
 @mod_only(hub_owners=True)
 def ooc_cmd_kick_to_latest_area(client, arg):
@@ -1521,7 +1521,7 @@ def ooc_cmd_set_latest_area(client, arg):
     if target_charid in range(0, len(client.area.area_manager.char_list)):
         char_folder = client.area.area_manager.char_list[target_charid]
     if not char_folder:
-        client.send_ooc(f"Invalid character id!")
+        client.send_ooc("Invalid character id!")
         return None
     if len(args) >= 2:
         to_area = int(args[1])

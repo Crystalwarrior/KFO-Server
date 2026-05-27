@@ -509,9 +509,9 @@ def ooc_cmd_area_pref(client, arg):
         msg = "Current preferences:"
         for attri in client.area.__dict__.keys():
             value = getattr(client.area, attri)
-            if not (type(value) is bool):
+            if type(value) is not bool:
                 continue
-            mod = "[gm] " if not (attri in cm_allowed) else ""
+            mod = "[gm] " if attri not in cm_allowed else ""
             msg += f"\n* {mod}{attri}={value}"
         client.send_ooc(msg)
         return
@@ -525,12 +525,12 @@ def ooc_cmd_area_pref(client, arg):
     try:
         cmd = args[0].lower()
         attri = getattr(client.area, cmd)
-        if not (type(attri) is bool):
+        if type(attri) is not bool:
             raise ArgumentError("Preference is not a boolean.")
         if (
             not client.is_mod
             and client not in client.area.area_manager.owners
-            and not (cmd in cm_allowed)
+            and cmd not in cm_allowed
         ):
             raise ClientError("You need to be a GM to modify this preference.")
         tog = not attri

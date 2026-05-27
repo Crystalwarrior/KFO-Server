@@ -49,7 +49,7 @@ class MasterServerClient:
                 except aiohttp.ClientError:
                     # Masterserver is down or unreachable, may be temporary so log it as a warning
                     logger.warning('Failed to connect to the master server')
-                except Exception as err:
+                except Exception:
                     # Unknown error occurred, log it as a hard error with full exception information
                     exc_type, exc_value, exc_traceback = sys.exc_info()
                     logger.error("Uncaught exception while advertising server to masterserver")

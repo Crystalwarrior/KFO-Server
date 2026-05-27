@@ -4,8 +4,8 @@ import os
 import yaml
 
 from server import database
-from server.constants import TargetType, derelative, contains_URL
-from server.exceptions import ClientError, ServerError, ArgumentError, AreaError
+from server.constants import TargetType, derelative
+from server.exceptions import ClientError, ArgumentError, AreaError
 
 from . import mod_only
 
