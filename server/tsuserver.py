@@ -117,6 +117,14 @@ class TsuServer3:
         self.webhooks = Webhooks(self)
         self.bridgebot = None
 
+    async def serve_websocket(self, host: str, port: int):
+        """Start a WebSocket server on the given host and port.
+
+        Returns the ``websockets`` server object so the caller can
+        close it later.
+        """
+        return await websockets.serve(new_websocket_client(self), host, port)
+
     def start(self):
         """Start the server."""
         logger.info("Starting server")
@@ -133,11 +141,9 @@ class TsuServer3:
         ao_server = loop.run_until_complete(ao_server_crt)
 
         if self.config["use_websockets"]:
-            ao_server_ws = websockets.serve(
-                new_websocket_client(
-                    self), bound_ip, self.config["websocket_port"]
+            loop.run_until_complete(
+                self.serve_websocket(bound_ip, self.config["websocket_port"])
             )
-            asyncio.ensure_future(ao_server_ws)
 
         if self.config["use_masterserver"]:
             self.ms_client = MasterServerClient(self)

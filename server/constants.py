@@ -109,6 +109,18 @@ def encode_ao_packet(params):
             )
     return new_params
 
+
+def decode_ao_packet(s):
+    """Reverse the escaping applied by encode_ao_packet."""
+    return (
+        str(s)
+        .replace("<num>", "#")
+        .replace("<percent>", "%")
+        .replace("<dollar>", "$")
+        .replace("<and>", "&")
+    )
+
+
 def derelative(sample):
     while '../' in sample or '/..' in sample or '..\\' in sample or '\\..' in sample:
         sample = sample.replace(
