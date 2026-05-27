@@ -9,7 +9,7 @@ import yaml
 
 @pytest.fixture
 async def test_server(tmp_path):
-    """Real TsuServer3 in a temporary directory.
+    """Real KFOServer in a temporary directory.
 
     Copies config_sample/ and migrations/ into tmp_path, creates
     storage/ and logs/, patches CWD, and yields a running server
@@ -36,7 +36,7 @@ async def test_server(tmp_path):
     with open(config_path, "w") as f:
         yaml.dump(config, f)
 
-    # 3. chdir to tmp_path so TsuServer3 finds config/
+    # 3. chdir to tmp_path so KFOServer finds config/
     original_cwd = os.getcwd()
     os.chdir(tmp_path)
 
@@ -46,9 +46,9 @@ async def test_server(tmp_path):
     server.database._database_singleton = None
 
     # 5. Instantiate real server.
-    from server.tsuserver import TsuServer3
+    from server.kfoserver import KFOServer
 
-    server_instance = TsuServer3()
+    server_instance = KFOServer()
 
     # 7. Start WebSocket server on a random port using the server's own method
     ws_server = await server_instance.serve_websocket("127.0.0.1", 0)

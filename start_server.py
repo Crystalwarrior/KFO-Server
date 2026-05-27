@@ -2,9 +2,9 @@ import os
 
 
 def main():
-    from server.tsuserver import TsuServer3
+    from server.kfoserver import KFOServer
 
-    TsuServer3().start()
+    KFOServer().start()
 
 
 if __name__ == "__main__":

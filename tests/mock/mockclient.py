@@ -8,7 +8,7 @@ from server.constants import decode_ao_packet
 class MockClient:
     """Async WebSocket client that speaks the AO protocol for testing.
 
-    Connects to a real TsuServer3 over WebSocket, performs the handshake,
+    Connects to a real KFOServer over WebSocket, performs the handshake,
     and provides high-level helpers for every protocol command.
 
     Usage::

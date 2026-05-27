@@ -26,8 +26,8 @@ from server.medieval_parser import MedievalParser
 logger = logging.getLogger("main")
 
 
-class TsuServer3:
-    """The main class for KFO-Server derivative of tsuserver3 server software."""
+class KFOServer:
+    """The main class for KFO-Server, a derivative of tsuserver3."""
 
     def __init__(self):
         self.software = "KFO-Server"
