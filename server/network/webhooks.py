@@ -35,7 +35,7 @@ class Webhooks:
         data = {}
         data["content"] = message
         data["avatar_url"] = avatar_url
-        data["username"] = username if username is not None else "tsuserver webhook"
+        data["username"] = username if username is not None else "KFO-Server webhook"
         if embed is True:
             data["embeds"] = []
             embed = {}
