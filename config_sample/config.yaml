@@ -55,7 +55,7 @@ secure_websocket_port: 443
 asset_url:
 
 # Whether the server should be advertised on the server list.
-use_masterserver: true
+use_masterserver: false
 # How the server should be listed on the server list.
 masterserver_name: My First Server
 masterserver_description: This is my flashy new server
