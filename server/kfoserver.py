@@ -256,7 +256,7 @@ class KFOServer:
         except OSError:
             print("error: config/config.yaml wasn't found.")
             print("You are either running from the wrong directory, or")
-            print("you forgot to rename config_sample (read the instructions).")
+            print("you forgot to copy config_sample to config (read the instructions).")
             sys.exit(1)
 
         if "music_change_floodguard" not in self.config:
