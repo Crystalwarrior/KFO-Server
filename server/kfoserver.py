@@ -1,3 +1,5 @@
+import os
+import shutil
 import sys
 import logging
 import asyncio
@@ -249,6 +251,10 @@ class KFOServer:
 
     def load_config(self):
         """Load the main server configuration from a YAML file."""
+        if not os.path.isdir("config") and os.path.isdir("config_sample"):
+            print("No config/ directory found, bootstrapping from config_sample/.")
+            shutil.copytree("config_sample", "config")
+
         try:
             with open("config/config.yaml", "r", encoding="utf-8") as cfg:
                 self.config = yaml.safe_load(cfg)
@@ -256,7 +262,7 @@ class KFOServer:
         except OSError:
             print("error: config/config.yaml wasn't found.")
             print("You are either running from the wrong directory, or")
-            print("you forgot to copy config_sample to config (read the instructions).")
+            print("config/config.yaml was deleted.")
             sys.exit(1)
 
         if "music_change_floodguard" not in self.config:
