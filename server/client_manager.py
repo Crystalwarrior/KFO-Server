@@ -1064,7 +1064,9 @@ class ClientManager:
                 count = 0
                 for c in hub.clients:
                     if not c.area.hide_clients and not c.hidden:
-                        count = count + 1
+                        from server.remote_client import _SYSTEM_IPID
+                        if c.ipid != _SYSTEM_IPID:
+                            count = count + 1
                 hub.count = count
             for c in self.server.client_manager.clients:
                 if c.viewing_hub_list:
@@ -1602,13 +1604,20 @@ class ClientManager:
                 if area.hide_clients or area.area_manager.hide_clients or area.dark:
                     users = ''
                 else:
-                    # We exclude hidden players here because we don't want them to count for the user count
-                    player_list = [c for c in area.clients if not c.hidden]
+                    # We exclude hidden players and system/mock clients here
+                    from server.remote_client import _SYSTEM_IPID
+                    player_list = [c for c in area.clients if not c.hidden and c.ipid != _SYSTEM_IPID]
                     users = f' (users: {len(player_list)}) '
                 if area.hidden:
                     return ""
             else:
-                users = f' (users: {len(area.clients)}) '
+                # Mods see everyone; GMs and CMs don't see system/mock clients
+                from server.remote_client import _SYSTEM_IPID
+                if self.is_mod:
+                    users = f' (users: {len(area.clients)}) '
+                else:
+                    visible = [c for c in area.clients if c.ipid != _SYSTEM_IPID]
+                    users = f' (users: {len(visible)}) '
 
             info += f"[{area.id}] {area.name}{users}{status}{owner}{hidden}{locked}{pathlocked}{passworded}{muted}{dark}"
             return info
@@ -1623,6 +1632,11 @@ class ClientManager:
                 player_list = area.afkers
             else:
                 player_list = area.clients
+
+            # Filter out system/mock clients for non-mods
+            if not self.is_mod:
+                from server.remote_client import _SYSTEM_IPID
+                player_list = [c for c in player_list if c.ipid != _SYSTEM_IPID]
 
             if not self.is_mod and self not in area.owners:
                 if not area.can_getarea:
