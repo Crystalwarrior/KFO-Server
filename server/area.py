@@ -104,6 +104,8 @@ class Area:
     def __init__(self, area_manager, name):
         self.clients = set()
         self.invite_list = set()
+        self._ooc_monitors = set()  # callbacks for admin OOC monitoring
+        self._ic_monitors = set()   # callbacks for admin IC monitoring
         self.area_manager = area_manager
         self._name = name
 
@@ -961,6 +963,25 @@ class Area:
         """
         for c in self.clients:
             c.send_command(cmd, *args)
+        if cmd == "CT" and self._ooc_monitors:
+            name, msg = args[0], args[1] if len(args) > 1 else ""
+            sender = None
+            # Strip [M]/[GM]/[CM] prefixes added by net_cmd_ct
+            bare_name = name
+            for pfx in ("[CM]", "[GM]", "[M]"):
+                if bare_name.startswith(pfx):
+                    bare_name = bare_name[len(pfx):]
+                    break
+            for c in self.clients:
+                if c.name == bare_name:
+                    sender = c
+                    break
+            client_id = sender.id if sender else -1
+            for cb in list(self._ooc_monitors):
+                try:
+                    cb(self, name, msg, client_id)
+                except Exception:
+                    self._ooc_monitors.discard(cb)
 
     def send_owner_command(self, cmd, *args):
         """
@@ -1395,6 +1416,15 @@ class Area:
             video, #35
         )
         self.last_ic_message = args
+
+        if self._ic_monitors:
+            client_id = client.id if client else -1
+            char_name = client.char_name if client else ""
+            for cb in list(self._ic_monitors):
+                try:
+                    cb(self, msg, showname, client_id, char_name, color)
+                except Exception:
+                    self._ic_monitors.discard(cb)
 
         if "doorman_webhook" in self.server.config and \
             self.server.config["doorman_webhook"]["enabled"] and \

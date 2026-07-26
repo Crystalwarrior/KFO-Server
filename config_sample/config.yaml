@@ -195,3 +195,34 @@ doorman_webhook:
   title: "DOORMAN REQUESTED"
   message: "A user is alone and has no one to talk to!"
   url: #webhook url
+
+# Admin panel for viewing server logs in a web browser.
+# Logs are organized by hub/area and can be viewed live.
+admin_panel:
+  enabled: false
+  port: 27017
+  host: "0.0.0.0"
+  users:
+    admin: changeme  # Password should be replaced with a hash (see below)
+    # To hash a password, run: python -c "from server.web_view.admin_panel import _hash_password; print(_hash_password('your_password'))"
+    # Or leave as plaintext and it will work, but hashing is recommended.
+
+  # SSL: Option A - Self-signed or custom certificate (serves HTTPS directly)
+  # Generate a self-signed cert:
+  #   openssl req -x509 -newkey rsa:2048 -keyout config/admin_key.pem -out config/admin_cert.pem -days 3650 -nodes
+  ssl_cert:  # e.g. "config/admin_cert.pem"
+  ssl_key:   # e.g. "config/admin_key.pem"
+
+  # SSL: Option B - Let's Encrypt via Caddy reverse proxy (requires a domain)
+  # Set up a DNS A record pointing to this server, then create a Caddyfile:
+  #   admin.yourserver.com {
+  #       reverse_proxy localhost:27017
+  #   }
+  # Then run: caddy run
+  domain:  # e.g. "admin.yourserver.com"
+
+  # Rate limiting for login attempts
+  rate_limit:
+    max_attempts: 5        # Max failed login attempts before lockout
+    window_seconds: 300    # Time window in seconds (5 minutes)
+    lockout_seconds: 300   # Lockout duration in seconds (5 minutes)

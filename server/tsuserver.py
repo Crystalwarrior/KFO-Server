@@ -8,6 +8,8 @@ import websockets
 import geoip2.database
 import yaml
 
+from aiohttp import web
+
 import server.logger
 from server import database
 from server.hub_manager import HubManager
@@ -19,6 +21,7 @@ from server.network.aoprotocol import AOProtocol
 from server.network.aoprotocol_ws import new_websocket_client
 from server.network.masterserverclient import MasterServerClient
 from server.network.webhooks import Webhooks
+from server.web_view.admin_panel import create_admin_app
 from server.constants import remove_URL, dezalgo
 from server.medieval_parser import MedievalParser
 
@@ -164,8 +167,26 @@ class TsuServer3:
 
         if "need_webhook" in self.config and self.config["need_webhook"]["enabled"]:
             self.need_webhook = True
+
+        # Start admin panel web server if configured
+        self.admin_runner = None
+        admin_cfg = self.config.get("admin_panel", {})
+        if admin_cfg.get("enabled", False):
+            try:
+                admin_app, admin_ssl = create_admin_app(self.config, server=self)
+                admin_port = admin_cfg.get("port", 27017)
+                admin_host = admin_cfg.get("host", "0.0.0.0")
+                self.admin_runner = web.AppRunner(admin_app)
+                loop.run_until_complete(self.admin_runner.setup())
+                site = web.TCPSite(self.admin_runner, admin_host, admin_port, ssl_context=admin_ssl)
+                loop.run_until_complete(site.start())
+                proto = "HTTPS" if admin_ssl else "HTTP"
+                logger.info("Admin panel listening on %s://%s:%s", proto, admin_host, admin_port)
+            except Exception as e:
+                logger.error("Failed to start admin panel: %s", e)
             
         asyncio.ensure_future(self.schedule_unbans())
+        asyncio.ensure_future(self.schedule_wal_checkpoint())
 
         database.log_misc("start")
         print("Server started and is listening on port {}".format(
@@ -181,12 +202,25 @@ class TsuServer3:
 
         ao_server.close()
         loop.run_until_complete(ao_server.wait_closed())
+
+        if self.admin_runner:
+            loop.run_until_complete(self.admin_runner.cleanup())
+
         loop.close()
 
     async def schedule_unbans(self):
         while True:
             database.schedule_unbans()
             await asyncio.sleep(3600 * 12)
+
+    async def schedule_wal_checkpoint(self):
+        """Periodically checkpoint the WAL to prevent unbounded growth."""
+        while True:
+            await asyncio.sleep(3600)  # Every hour
+            try:
+                database.checkpoint_wal()
+            except Exception as e:
+                logger.debug("WAL checkpoint failed: %s", e)
 
     @property
     def version(self):

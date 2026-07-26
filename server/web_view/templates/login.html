@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel - Login</title>
+<link rel="stylesheet" href="/static/css/login.css">
+</head>
+<body>
+<div class="login-box">
+    <h1>Admin Panel</h1>
+    <form id="loginForm">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" autocomplete="username" autofocus>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password">
+        <button type="submit">Log In</button>
+    </form>
+    <div class="error" id="error"></div>
+</div>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('error');
+    errorEl.textContent = '';
+    try {
+        const resp = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value
+            })
+        });
+        const data = await resp.json();
+        if (data.ok) {
+            window.location.href = '/';
+        } else {
+            errorEl.textContent = data.error || 'Login failed';
+        }
+    } catch (err) {
+        errorEl.textContent = 'Connection error';
+    }
+});
+</script>
+</body>
+</html>

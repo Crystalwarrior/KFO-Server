@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel - Log Viewer</title>
+<link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+<header>
+    <h1>Log Viewer</h1>
+    <div>
+        <span class="user-info" id="userInfo"></span>
+        <button onclick="logout()">Logout</button>
+    </div>
+</header>
+
+<div class="tab-bar">
+    <div class="tab active" data-tab="area" onclick="switchTab('area')">Area Events</div>
+    <div class="tab" data-tab="connect" onclick="switchTab('connect')">Connections</div>
+    <div class="tab" data-tab="misc" onclick="switchTab('misc')">System/Misc</div>
+    <div class="tab" data-tab="admin" onclick="switchTab('admin')">Admin</div>
+</div>
+
+<!-- Log Viewer toolbar -->
+<div class="toolbar" id="logToolbar">
+    <span class="live-dot" id="liveDot"></span>
+    <button id="liveBtn" onclick="toggleLive()">Go Live</button>
+    <div class="sep"></div>
+    <label>Hub:</label>
+    <select id="filterHub" onchange="onHubChange()"><option value="">All</option></select>
+    <label>Area:</label>
+    <select id="filterArea"><option value="">All</option></select>
+    <div class="sep" id="eventTypeSep"></div>
+    <label id="eventTypeLabel">Event:</label>
+    <select id="filterEventType"><option value="">All</option></select>
+    <div class="sep"></div>
+    <label>IPID:</label>
+    <input type="number" id="filterIpid" placeholder="IPID" style="width:90px">
+    <div class="sep"></div>
+    <label>From:</label>
+    <input type="datetime-local" id="filterSince">
+    <label>To:</label>
+    <input type="datetime-local" id="filterUntil">
+    <div class="sep"></div>
+    <button onclick="applyFilters()">Apply</button>
+    <button onclick="clearFilters()">Clear</button>
+</div>
+
+
+
+<!-- Log content -->
+<div class="content" id="content">
+    <div class="loading">Loading...</div>
+</div>
+
+<!-- Admin content (hidden by default) -->
+<div class="admin-panel" id="adminPanel" style="display:none">
+    <div class="admin-output" id="adminOutput"></div>
+    <div class="admin-input-bar">
+        <input type="text" id="adminCmdInput" placeholder="Type a command, e.g. /kick 1" autocomplete="off" spellcheck="false">
+        <button onclick="executeAdminCmd()">Run</button>
+    </div>
+    <div class="admin-players" id="adminPlayers">
+        <div class="admin-players-header">
+            <span>Online Players</span>
+            <label class="ooc-toggle" title="Forward all OOC from your current area to the terminal">
+                <input type="checkbox" id="oocMonitorToggle" onchange="toggleOocMonitor(this.checked)">
+                <span class="ooc-toggle-label">Monitor OOC</span>
+            </label>
+            <label class="ooc-toggle" title="Forward all IC from your current area to the terminal">
+                <input type="checkbox" id="icMonitorToggle" onchange="toggleIcMonitor(this.checked)">
+                <span class="ooc-toggle-label">Monitor IC</span>
+            </label>
+            <button onclick="refreshPlayers()" class="btn-sm">Refresh</button>
+        </div>
+        <div class="admin-players-list" id="adminPlayersList">
+            <div class="loading">Loading players...</div>
+        </div>
+    </div>
+</div>
+
+<div class="pagination" id="pagination" style="display:none">
+    <button id="prevBtn" onclick="prevPage()" disabled>Previous</button>
+    <span class="info" id="pageInfo"></span>
+    <button id="nextBtn" onclick="nextPage()" disabled>Next</button>
+</div>
+
+<div class="status-bar">
+    <span id="statusLeft">Disconnected</span>
+    <span id="statusRight"></span>
+</div>
+
+<script src="/static/js/admin.js"></script>
+</body>
+</html>
