@@ -53,21 +53,9 @@ def _load_template(name):
         return f.read()
 
 
-def _hash_password(password, salt=None):
-    """Hash a password with a salt using SHA-256."""
-    if salt is None:
-        salt = secrets.token_hex(16)
-    hashed = hashlib.sha256((salt + password).encode()).hexdigest()
-    return f"{salt}:{hashed}"
-
-
 def _verify_password(stored, password):
-    """Verify a password against a stored hash. Supports both hashed (salt:hash) and plaintext."""
-    if ":" in stored and len(stored.split(":")[0]) == 32:
-        salt, _ = stored.split(":", 1)
-        return _hash_password(password, salt) == stored
-    else:
-        return stored == password
+    """Verify a plaintext password."""
+    return stored == password
 
 
 def _get_admin_credentials(config):
@@ -75,7 +63,7 @@ def _get_admin_credentials(config):
     admin_cfg = config.get("admin_panel", {})
     users = admin_cfg.get("users", {})
     if not users:
-        users = {"admin": _hash_password("admin")}
+        raise ValueError("No admin users configured. Set at least one admin user.")
     return users
 
 

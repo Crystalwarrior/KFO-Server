@@ -203,9 +203,8 @@ admin_panel:
   port: 27017
   host: "0.0.0.0"
   users:
-    admin: changeme  # Password should be replaced with a hash (see below)
-    # To hash a password, run: python -c "from server.web_view.admin_panel import _hash_password; print(_hash_password('your_password'))"
-    # Or leave as plaintext and it will work, but hashing is recommended.
+    # username: password
+    admin: changeme
 
   # SSL: Option A - Self-signed or custom certificate (serves HTTPS directly)
   # Generate a self-signed cert:
