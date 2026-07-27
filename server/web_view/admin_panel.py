@@ -36,13 +36,7 @@ _admin_html = None
 # Mock client instances keyed by session token, persists state across commands
 _remote_clients = {}
 
-# OOC monitor state: token -> {"area": Area, "callback": callable}
-_ooc_monitors = {}
-
-# IC monitor state: token -> {"area": Area, "callback": callable}
-_ic_monitors = {}
-
-# Active WebSocket connections for OOC forwarding
+# Active WebSocket connections for OOC/IC forwarding
 _ws_clients = set()
 
 
@@ -91,9 +85,11 @@ def _cleanup_sessions():
     expired = [t for t, s in _sessions.items() if now - s["created"] > _SESSION_TTL]
     for t in expired:
         del _sessions[t]
-        _remote_clients.pop(t, None)
-        _unmonitor_ooc(t)
-        _unmonitor_ic(t)
+        remote = _remote_clients.pop(t, None)
+        if remote:
+            remote.leave_area()
+            remote.clear()
+            remote._listeners.clear()
 
 
 def _require_auth(handler):
@@ -209,9 +205,11 @@ async def handle_logout(request):
     token = request.cookies.get("admin_session")
     if token and token in _sessions:
         del _sessions[token]
-        _remote_clients.pop(token, None)
-        _unmonitor_ooc(token)
-        _unmonitor_ic(token)
+        remote = _remote_clients.pop(token, None)
+        if remote:
+            remote.leave_area()
+            remote.clear()
+            remote._listeners.clear()
     response = web.json_response({"ok": True})
     response.del_cookie("admin_session")
     return response
@@ -330,22 +328,27 @@ async def handle_api_misc_events(request):
     return web.json_response({"events": events, "total": total})
 
 
-def _unmonitor_ooc(token):
-    """Remove OOC monitor for a session token."""
-    mon = _ooc_monitors.pop(token, None)
-    if mon and mon["area"]:
-        mon["area"]._ooc_monitors.discard(mon["callback"])
+def _ws_forward(entry):
+    """Send an OOC/IC event entry to all connected admin WebSocket clients."""
+    loop = asyncio.get_event_loop()
+    for ws in list(_ws_clients):
+        if ws.closed:
+            _ws_clients.discard(ws)
+            continue
+        loop.call_soon(asyncio.ensure_future, ws.send_json(entry))
 
 
 @_require_auth
 async def handle_api_ooc_monitor(request):
-    """Enable or disable OOC monitoring for the admin's current area."""
+    """Enable or disable OOC+IC monitoring. When enabled, the remote client
+    joins the area as a real participant and intercepts CT/MS packets."""
     server = request.app["server"]
     if server is None:
         return web.json_response({"error": "server not available"}, status=503)
 
     data = await request.json()
     token = request.cookies.get("admin_session", "")
+    enable = data.get("enable", False)
 
     if token not in _remote_clients:
         from server.remote_client import RemoteClient
@@ -354,104 +357,36 @@ async def handle_api_ooc_monitor(request):
         )
     remote = _remote_clients[token]
 
-    if not remote.area:
-        return web.json_response({"error": "admin has no area context"}, status=400)
-
-    area = remote.area
-    enable = data.get("enable", False)
-
     if enable:
-        _unmonitor_ooc(token)
-
-        def _on_ooc(a, name, msg, client_id):
-            entry = {
-                "type": "ooc",
-                "area_id": a.id,
-                "area_name": a.name,
-                "name": name,
-                "msg": msg,
-                "client_id": client_id,
-                "ts": time.time(),
-            }
-            loop = asyncio.get_event_loop()
-            for ws in list(_ws_clients):
-                if ws.closed:
-                    _ws_clients.discard(ws)
-                    continue
-                loop.call_soon(asyncio.ensure_future, ws.send_json(entry))
-
-        area._ooc_monitors.add(_on_ooc)
-        _ooc_monitors[token] = {"area": area, "callback": _on_ooc}
+        # Join area if not already in one
+        if not remote._in_area:
+            remote.join_area()
+        # Register listener for forwarding to WebSocket
+        remote.remove_listener(_ws_forward)
+        remote.add_listener(_ws_forward)
         return web.json_response({
             "ok": True, "monitoring": True,
-            "area_id": area.id, "area_name": area.name,
+            "area_id": remote.area.id if remote.area else -1,
+            "area_name": remote.area.name if remote.area else "?",
         })
     else:
-        _unmonitor_ooc(token)
+        remote.remove_listener(_ws_forward)
+        remote.leave_area()
         return web.json_response({"ok": True, "monitoring": False})
-
-
-def _unmonitor_ic(token):
-    """Remove IC monitor for a session token."""
-    mon = _ic_monitors.pop(token, None)
-    if mon and mon["area"]:
-        mon["area"]._ic_monitors.discard(mon["callback"])
 
 
 @_require_auth
 async def handle_api_ic_monitor(request):
-    """Enable or disable IC monitoring for the admin's current area."""
-    server = request.app["server"]
-    if server is None:
-        return web.json_response({"error": "server not available"}, status=503)
+    """Enable or disable IC monitoring (same as OOC — both are captured)."""
+    # IC monitoring is handled by the same mechanism as OOC.
+    # The remote client intercepts both CT and MS when in the area.
+    return await handle_api_ooc_monitor(request)
 
-    data = await request.json()
-    token = request.cookies.get("admin_session", "")
 
-    if token not in _remote_clients:
-        from server.remote_client import RemoteClient
-        _remote_clients[token] = RemoteClient(
-            server, is_mod=True, name="[ADMIN]"
-        )
-    remote = _remote_clients[token]
-
-    if not remote.area:
-        return web.json_response({"error": "admin has no area context"}, status=400)
-
-    area = remote.area
-    enable = data.get("enable", False)
-
-    if enable:
-        _unmonitor_ic(token)
-
-        def _on_ic(a, text, showname, client_id, char_name, color):
-            entry = {
-                "type": "ic",
-                "area_id": a.id,
-                "area_name": a.name,
-                "text": text,
-                "showname": showname,
-                "client_id": client_id,
-                "char_name": char_name,
-                "color": color,
-                "ts": time.time(),
-            }
-            loop = asyncio.get_event_loop()
-            for ws in list(_ws_clients):
-                if ws.closed:
-                    _ws_clients.discard(ws)
-                    continue
-                loop.call_soon(asyncio.ensure_future, ws.send_json(entry))
-
-        area._ic_monitors.add(_on_ic)
-        _ic_monitors[token] = {"area": area, "callback": _on_ic}
-        return web.json_response({
-            "ok": True, "monitoring": True,
-            "area_id": area.id, "area_name": area.name,
-        })
-    else:
-        _unmonitor_ic(token)
-        return web.json_response({"ok": True, "monitoring": False})
+@_require_auth
+async def handle_api_ic_monitor(request):
+    """IC monitoring is captured by the same mechanism as OOC."""
+    return await handle_api_ooc_monitor(request)
 
 
 @_require_auth
@@ -506,20 +441,20 @@ async def handle_api_command(request):
         )
     remote = _remote_clients[token]
 
+    # Ensure the remote client is in the area before executing commands
+    if not remote._in_area:
+        remote.join_area()
+
     if cmd == "ooc":
         if not remote.area:
             return web.json_response({"error": "no area context"}, status=400)
         if not arg:
             return web.json_response({"error": "usage: /ooc <message>"}, status=400)
-        # Send CT to all clients in the area
-        for c in remote.area.clients:
-            c.send_command("CT", "[ADMIN]", arg)
-        # Notify OOC monitors with the correct client ID
-        for cb in list(remote.area._ooc_monitors):
-            try:
-                cb(remote.area, "[ADMIN]", arg, remote.id)
-            except Exception:
-                remote.area._ooc_monitors.discard(cb)
+        # Build name like net_cmd_ct does
+        prefix = "[M]" if remote.is_mod else ""
+        name = f"{prefix}{remote.name}"
+        # Send through area.send_command — remote client receives it naturally
+        remote.area.send_command("CT", name, arg)
         return web.json_response({
             "output": [f"OOC: {arg}"],
             "cmd": cmd,

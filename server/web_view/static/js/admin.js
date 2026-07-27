@@ -278,20 +278,16 @@ function startLive() {
             if (entry.type === 'connected' || entry.type === 'pong') return;
             if (entry.type === 'ooc') {
                 if (oocMonitorActive) {
-                    const tag = `[${entry.area_name || 'A' + entry.area_id}]`;
-                    const id = entry.client_id >= 0 ? entry.client_id : '?';
-                    appendAdminOutput(`${tag} [${id}] ${entry.name}: ${entry.msg}`, 'ooc');
+                    appendAdminOutput(`${entry.name}: ${entry.msg}`, 'ooc');
                 }
                 return;
             }
             if (entry.type === 'ic') {
                 if (icMonitorActive) {
-                    const tag = `[${entry.area_name || 'A' + entry.area_id}]`;
                     const name = entry.showname || entry.char_name || `CID:${entry.client_id}`;
                     const charPart = (entry.showname && entry.char_name && entry.showname !== entry.char_name) ? ` (${entry.char_name})` : '';
-                    const id = entry.client_id >= 0 ? entry.client_id : '?';
                     const text = entry.text || '';
-                    appendAdminOutput(`${tag} [${id}] ${name}${charPart}: ${text}`, 'ic');
+                    appendAdminOutput(`[${entry.area_name || 'A' + entry.area_id}] ${name}${charPart}: ${text}`, 'ic');
                 }
                 return;
             }
