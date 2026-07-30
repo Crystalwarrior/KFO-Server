@@ -521,7 +521,7 @@ def create_admin_app(config, server=None):
     Create and configure the aiohttp admin panel application.
     Returns (app, ssl_context) where ssl_context may be None.
     """
-    global _login_html, _admin_html, _rate_limit_config
+    global _login_html, _admin_html
 
     _login_html = _load_template("login.html")
     _admin_html = _load_template("admin.html")
