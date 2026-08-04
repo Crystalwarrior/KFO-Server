@@ -325,6 +325,7 @@ class AOProtocol(asyncio.Protocol):
         if not self.client.joined:
             self.client.joined = True
             self.client.area.area_manager.send_arup_players()
+            self.server.player_state_observer.register_client(self.client)
 
     def net_cmd_cc(self, args):
         """Character selection.
@@ -1083,7 +1084,10 @@ class AOProtocol(asyncio.Protocol):
         if self.client.used_showname_command:
             showname = self.client.showname
         self.client.showname = showname
-        
+        if self.client.showname != old_showname:
+            self.server.player_state_observer.notify_character_name_changed(
+                self.client)
+
         # Here, we check the pair stuff, and save info about it to the client.
         # Notably, while we only get a charid_pair and an offset, we send back a chair_pair, an emote, a talker offset
         # and an other offset.
@@ -1668,7 +1672,9 @@ class AOProtocol(asyncio.Protocol):
             )
             return
 
-        self.client.name = args[0]
+        if self.client.name != args[0]:
+            self.client.name = args[0]
+            self.server.player_state_observer.notify_name_changed(self.client)
         if args[1].lstrip() != args[1] and args[1].lstrip().startswith("/"):
             self.client.send_ooc(
                 "Your message was not sent for safety reasons: you left space before that slash."

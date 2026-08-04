@@ -1292,6 +1292,8 @@ def ooc_cmd_showname(client, arg):
         client.used_showname_command = False
         client.showname = ""
         client.send_ooc("Your showname is now reset.")
+        client.server.player_state_observer.notify_character_name_changed(
+            client)
         return
     # having to copy-paste code from aoprotocol is kinda poopy, need to create a set_showname def
     if len(arg) > 20:
@@ -1304,6 +1306,7 @@ def ooc_cmd_showname(client, arg):
     client.used_showname_command = True
     client.showname = arg
     client.send_ooc(f"You set your showname to '{client.showname}'.")
+    client.server.player_state_observer.notify_character_name_changed(client)
     if not client.hidden and not client.sneaking:
         client.area.broadcast_player_list()
 
