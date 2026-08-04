@@ -143,10 +143,12 @@ def ooc_cmd_toggleadverts(client, arg):
 
 def ooc_cmd_pm(client, arg):
     """
-    Send a private message to another online user. These messages are not
+    Send a private message to one or more online users. These messages are not
     logged by the server owner.
+    Passing several IDs separated by commas opens a group conversation, and
+    everyone taking part is listed on the message so they can reply to it.
     The Target Types <ooc-name> and <char-name> work only if the target is in the same area.
-    Usage: /pm <id|ooc-name|char-name> <message>
+    Usage: /pm <id[,id,id]|ooc-name|char-name> <message>
     """
     args = arg.split()
     key = ""
@@ -155,20 +157,31 @@ def ooc_cmd_pm(client, arg):
         raise ArgumentError(
             'Not enough arguments. use /pm <target> <message>. Target should be ID, OOC-name or char-name. Use /getarea for getting info like "[ID] char-name".'
         )
-    targets = client.server.client_manager.get_targets(
-        client, TargetType.CHAR_NAME, arg, local=True
-    )
-    key = TargetType.CHAR_NAME
-    if len(targets) == 0 and args[0].isdigit():
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.ID, int(args[0]), all_hub=True
-        )
+    targets = []
+    ids = args[0].split(",")
+    if len(ids) > 1 and all(i.isdigit() for i in ids):
+        for i in ids:
+            for target in client.server.client_manager.get_targets(
+                client, TargetType.ID, int(i), all_hub=True
+            ):
+                if target not in targets:
+                    targets.append(target)
         key = TargetType.ID
-    if len(targets) == 0:
+    else:
         targets = client.server.client_manager.get_targets(
-            client, TargetType.OOC_NAME, arg, local=True
+            client, TargetType.CHAR_NAME, arg, local=True
         )
-        key = TargetType.OOC_NAME
+        key = TargetType.CHAR_NAME
+        if len(targets) == 0 and args[0].isdigit():
+            targets = client.server.client_manager.get_targets(
+                client, TargetType.ID, int(args[0]), all_hub=True
+            )
+            key = TargetType.ID
+        if len(targets) == 0:
+            targets = client.server.client_manager.get_targets(
+                client, TargetType.OOC_NAME, arg, local=True
+            )
+            key = TargetType.OOC_NAME
     if len(targets) == 0:
         raise ArgumentError("No targets found.")
     try:
@@ -182,28 +195,40 @@ def ooc_cmd_pm(client, arg):
     except Exception:
         raise ArgumentError(
             "Not enough arguments. Use /pm <target> <message>.")
-    c = targets[0]
-    if c.pm_mute:
-        raise ClientError("This user muted all pm conversation")
-    else:
+    conversation = ", ".join(f"[{c.id}] {c.showname}" for c in targets)
+    sent = []
+    muted = []
+    for c in targets:
+        if c.pm_mute:
+            muted.append(f"[{c.id}] {c.showname}")
+            continue
         if c.is_mod:
-            c.send_ooc(
-                "📨PM from {} (ID: {}, IPID: {}) in {} ({}): {}".format(
-                    client.name,
-                    client.id,
-                    client.ipid,
-                    client.area.name,
-                    client.showname,
-                    msg,
-                )
+            header = "📨PM from {} (ID: {}, IPID: {}) in {} ({})".format(
+                client.name,
+                client.id,
+                client.ipid,
+                client.area.name,
+                client.showname,
             )
         else:
-            c.send_ooc(
-                "📨PM from {} (ID: {}) in {} ({}): {}".format(
-                    client.name, client.id, client.area.name, client.showname, msg
-                )
+            header = "📨PM from {} (ID: {}) in {} ({})".format(
+                client.name, client.id, client.area.name, client.showname
             )
-        client.send_ooc("📤PM sent to {}. Message: {}".format(args[0], msg))
+        if len(targets) > 1:
+            header += f" to {conversation}"
+        c.send_ooc(f"{header}: {msg}")
+        sent.append(f"[{c.id}] {c.showname}")
+    if len(sent) == 0:
+        if len(targets) == 1:
+            raise ClientError("This user muted all pm conversation")
+        raise ClientError("Every user you tried to PM muted all pm conversation")
+    client.send_ooc("📤PM sent to {}. Message: {}".format(", ".join(sent), msg))
+    if len(muted) > 0:
+        client.send_ooc(
+            "📵Could not reach {}, they muted all pm conversation.".format(
+                ", ".join(muted)
+            )
+        )
 
 
 def ooc_cmd_mutepm(client, arg):

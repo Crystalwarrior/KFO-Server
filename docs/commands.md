@@ -584,8 +584,8 @@
     - Broadcast a need for a specific role in a case.
 * **toggleadverts** `[on/off]`
     - Mute advertisements.
-* **pm** `<id|ooc-name|char-name> <message>`
-    - Send a private message to another online user. These messages are not logged by the server owner.
+* **pm** `<id[,id,id]|ooc-name|char-name> <message>`
+    - Send a private message to one or more online users. These messages are not logged by the server owner.
 * **mutepm**
     - Mute private messages.
 ## Music
