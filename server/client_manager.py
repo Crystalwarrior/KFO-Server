@@ -53,6 +53,7 @@ class ClientManager:
             self.software = ""
 
             self.first_joined = True
+            self.joined = False
 
             # Pairing character ID
             self.charid_pair = -1
@@ -541,6 +542,7 @@ class ClientManager:
             #                        *self.get_available_char_list())
             if arup:
                 self.area.area_manager.send_arup_players()
+            self.server.player_state_observer.notify_character_changed(self)
             new_char = self.char_name
             database.log_area(
                 "char.change",
@@ -1059,6 +1061,12 @@ class ClientManager:
             self.area.broadcast_area_list(self)
 
             self.area.area_manager.send_arup_players()
+
+            if old_area.area_manager != self.area.area_manager:
+                self.server.player_state_observer.notify_hub_changed(
+                    self, old_area.area_manager)
+            else:
+                self.server.player_state_observer.notify_area_id_changed(self)
 
             for hub in self.server.hub_manager.hubs:
                 count = 0
@@ -2159,6 +2167,7 @@ class ClientManager:
             self._hidden = tog
             self.send_ooc(f"You are {msg} from /getarea and playercounts.")
             self.area.area_manager.send_arup_players()
+            self.server.player_state_observer.notify_visibility_changed(self)
             if not self.sneaking:
                 self.area.broadcast_player_list()
 

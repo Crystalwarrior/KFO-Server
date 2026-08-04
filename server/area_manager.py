@@ -670,29 +670,23 @@ class AreaManager:
         """Broadcast ARUP packet containing player counts."""
         if not self.arup_enabled:
             return
-        players_list = [0]
-        if len(self.server.hub_manager.hubs) > 1:
-            players_list = [0, -1]
         if clients is None:
             clients = self.clients
+        multiple_hubs = len(self.server.hub_manager.hubs) > 1
         for client in clients:
+            players_list = [0]
+            if multiple_hubs:
+                players_list.append(-1)
+            playerhubcount = 0
             for area in client.local_area_list:
                 playercount = -1
                 if not self.hide_clients and not area.hide_clients:
                     playercount = len(
                         [c for c in area.clients if not c.hidden])
+                    playerhubcount = playerhubcount + playercount
                 players_list.append(playercount)
-                playerhubcount = 0
-                for area in client.local_area_list:
-                    for c in area.clients:
-                        if (
-                            not self.hide_clients
-                            and not area.hide_clients
-                            and not c.hidden
-                        ):
-                            playerhubcount = playerhubcount + 1
-                if len(self.server.hub_manager.hubs) > 1:
-                    players_list[1] = playerhubcount
+            if multiple_hubs and len(client.local_area_list) > 0:
+                players_list[1] = playerhubcount
             self.server.send_arup(client, players_list)
 
     def send_arup_status(self, clients=None):
