@@ -53,6 +53,7 @@ class ClientManager:
             self.software = ""
 
             self.first_joined = True
+            self.joined = False
 
             # Pairing character ID
             self.charid_pair = -1
