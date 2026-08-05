@@ -53,15 +53,15 @@ class AOProtocol(asyncio.Protocol):
 
         buf = buf.translate({ord(c): None for c in "\0"})
 
-        packet_size = 1024  # in bits
+        packet_size = 8192  # in bytes
         if "packet_size" in self.server.config:
             packet_size = self.server.config["packet_size"]
 
-        if len(buf) > packet_size * 8:  # convert bits to bytes
+        if len(buf) > packet_size:
             self.client.send_ooc(
                 "Your last action was dropped because it was too big! Contact the server administrator for more information."
             )
-            logger.debug("Buffer overflow from %s with %s", ipid, len(buf))
+            logger.warning("Buffer overflow from %s with %s", ipid, len(buf))
             return
         self.buffer = buf
         for msg in self.get_messages():
@@ -71,7 +71,7 @@ class AOProtocol(asyncio.Protocol):
                 cmd, *args = msg.split("#")
                 self.net_cmd_dispatcher[cmd](self, args)
             except KeyError:
-                logger.debug("Unknown incoming message from %s: %s", ipid, msg)
+                logger.warning("Unknown incoming message from %s: %s", ipid, msg)
             except Exception:
                 # A bug handling one packet must not drop the client: log it and
                 # keep processing the rest of the buffer.

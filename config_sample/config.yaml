@@ -66,9 +66,9 @@ masterserver_description: This is my flashy new server
 # To prevent issues, this value should be greater than 60.
 timeout: 250
 
-# Packet size in bytes. This is 1024 by default.
+# Packet size in bytes. This is 8192 by default.
 # Don't touch this if you don't know what you're doing.
-packet_size: 1024
+packet_size: 8192
 
 # Whether to prevent users from repeatedly posting the same message.
 # If True, you will not be able to post the same message as the last one if you posted it.
