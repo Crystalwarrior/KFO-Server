@@ -1,5 +1,4 @@
 import asyncio
-import hashlib
 import json
 import logging
 import os
@@ -380,12 +379,6 @@ async def handle_api_ic_monitor(request):
     """Enable or disable IC monitoring (same as OOC — both are captured)."""
     # IC monitoring is handled by the same mechanism as OOC.
     # The remote client intercepts both CT and MS when in the area.
-    return await handle_api_ooc_monitor(request)
-
-
-@_require_auth
-async def handle_api_ic_monitor(request):
-    """IC monitoring is captured by the same mechanism as OOC."""
     return await handle_api_ooc_monitor(request)
 
 
