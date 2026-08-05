@@ -58,9 +58,7 @@ def rtd(arg):
         if arg_length == 2:
             dice_type, modifiers = args
             if len(modifiers) > MODIFIER_LENGTH_MAX:
-                raise ArgumentError(
-                    "The given modifier is too long to compute. Please try a shorter one"
-                )
+                raise ArgumentError("The given modifier is too long to compute. Please try a shorter one")
         elif arg_length == 1:
             dice_type, modifiers = arg, ""
         else:
@@ -77,31 +75,20 @@ def rtd(arg):
         try:
             num_dice, chosen_max = int(dice_type[0]), int(dice_type[1])
         except ValueError:
-            raise ArgumentError(
-                "Expected integer value for number of rolls and max value of dice"
-            )
+            raise ArgumentError("Expected integer value for number of rolls and max value of dice")
 
         if not 1 <= num_dice <= NUMDICE_MAX:
-            raise ArgumentError(
-                "Number of rolls must be between 1 and {}".format(NUMDICE_MAX)
-            )
+            raise ArgumentError("Number of rolls must be between 1 and {}".format(NUMDICE_MAX))
         if not 1 <= chosen_max <= DICE_MAX:
-            raise ArgumentError(
-                "Dice value must be between 1 and {}".format(DICE_MAX))
+            raise ArgumentError("Dice value must be between 1 and {}".format(DICE_MAX))
 
         for char in modifiers:
             if char not in ACCEPTABLE_IN_MODIFIER:
-                raise ArgumentError(
-                    "Expected numbers and standard mathematical operations in modifier"
-                )
+                raise ArgumentError("Expected numbers and standard mathematical operations in modifier")
             if char == "r":
                 special_calculation = True
-        if (
-            "**" in modifiers
-        ):  # Exponentiation manually disabled, it can be pretty dangerous
-            raise ArgumentError(
-                "Expected numbers and standard mathematical operations in modifier"
-            )
+        if "**" in modifiers:  # Exponentiation manually disabled, it can be pretty dangerous
+            raise ArgumentError("Expected numbers and standard mathematical operations in modifier")
     else:
         num_dice, chosen_max, modifiers = 1, 6, ""  # Default
 
@@ -135,22 +122,14 @@ def rtd(arg):
                                 "Given mathematical formula takes numbers past the server's computation limit"
                             )
                     except ValueError:
-                        raise ArgumentError(
-                            "Given mathematical formula has a syntax error and cannot be computed"
-                        )
+                        raise ArgumentError("Given mathematical formula has a syntax error and cannot be computed")
 
                 try:
-                    mid_roll = round(
-                        eval(aux_modifier[:-1])
-                    )  # By this point it should be 'safe' to run eval
+                    mid_roll = round(eval(aux_modifier[:-1]))  # By this point it should be 'safe' to run eval
                 except SyntaxError:
-                    raise ArgumentError(
-                        "Given mathematical formula has a syntax error and cannot be computed"
-                    )
+                    raise ArgumentError("Given mathematical formula has a syntax error and cannot be computed")
                 except TypeError:  # Deals with inputs like 3(r-1)
-                    raise ArgumentError(
-                        "Given mathematical formula has a syntax error and cannot be computed"
-                    )
+                    raise ArgumentError("Given mathematical formula has a syntax error and cannot be computed")
                 except ZeroDivisionError:
                     divzero_attempts += 1
                     if divzero_attempts == MAXDIVZERO_ATTEMPTS:
@@ -192,9 +171,7 @@ def ooc_cmd_roll(client, arg):
         f"[👉🎲] [{client.id}] {client.showname} rolled:\n {roll} out of {chosen_max}."
         + (f"\nThe total sum is {Sum}." if num_dice > 1 else "")
     )
-    database.log_area(
-        "roll", client, client.area, message=f"{roll} out of {chosen_max}"
-    )
+    database.log_area("roll", client, client.area, message=f"{roll} out of {chosen_max}")
 
 
 def ooc_cmd_rollp(client, arg):
@@ -208,20 +185,15 @@ def ooc_cmd_rollp(client, arg):
     roll, num_dice, chosen_max, _modifiers, Sum = rtd(arg)
 
     client.send_ooc(
-        f"[Hidden] You rolled {roll} out of {chosen_max}."
-        + (f"\nThe total sum is {Sum}." if num_dice > 1 else "")
+        f"[Hidden] You rolled {roll} out of {chosen_max}." + (f"\nThe total sum is {Sum}." if num_dice > 1 else "")
     )
     for c in client.area.owners:
-        c.send_ooc(
-            f"[{client.area.id}]{client.showname} secretly rolled {roll} out of {chosen_max}."
-        )
+        c.send_ooc(f"[{client.area.id}]{client.showname} secretly rolled {roll} out of {chosen_max}.")
     client.area.send_owner_command(
         f"[👉🎲] [{client.id}] {client.showname} secretly rolled:\n {roll} out of {chosen_max}."
         + (f"\nThe total sum is {Sum}." if num_dice > 1 else "")
     )
-    database.log_area(
-        "rollp", client, client.area, message=f"{roll} out of {chosen_max}"
-    )
+    database.log_area("rollp", client, client.area, message=f"{roll} out of {chosen_max}")
 
 
 def ooc_cmd_notecard(client, arg):
@@ -249,9 +221,7 @@ def ooc_cmd_notecard_clear(client, arg):
     Usage: /notecard_clear
     """
     client.area.cards.clear()
-    client.area.broadcast_ooc(
-        f"[{client.id}] {client.showname} has cleared all the note cards in this area."
-    )
+    client.area.broadcast_ooc(f"[{client.id}] {client.showname} has cleared all the note cards in this area.")
     database.log_area("notecard_clear", client, client.area)
 
 
@@ -269,14 +239,12 @@ def ooc_cmd_notecard_reveal(client, arg):
         card_showname = card_data[0]
         card_msg = card_data[1]
         card_owner_display = f"[DC] {card_showname}"
-        card_owner = client.server.client_manager.get_targets(
-            client, TargetType.CHAR_NAME, card_charname, False
-        )
+        card_owner = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, card_charname, False)
         if len(card_owner) > 0:
             card_owner = card_owner[0]
             card_owner_display = f"[{card_owner.id}] {card_owner.showname}"
         msg += f"\n{card_owner_display}: {card_msg}"
-    
+
     # Reveal the notecards in OOC!
     client.area.broadcast_ooc(msg)
 
@@ -285,9 +253,7 @@ def ooc_cmd_notecard_reveal(client, arg):
         client.send_ooc("Use /notecard_clear for clearing.")
     else:
         client.area.cards.clear()
-        client.area.broadcast_ooc(
-            f"Notecards have been cleared."
-        )
+        client.area.broadcast_ooc("Notecards have been cleared.")
 
     database.log_area("notecard_reveal", client, client.area)
 
@@ -300,26 +266,20 @@ def ooc_cmd_notecard_check(client, arg):
     """
     if len(client.area.cards) == 0:
         raise ClientError("There are no notecards to check in this area.")
-    client.area.broadcast_ooc(
-        f"[{client.id}] {client.showname} has checked the notecards in this area."
-    )
+    client.area.broadcast_ooc(f"[{client.id}] {client.showname} has checked the notecards in this area.")
     msg = "Notecards in this area:"
     for card_charname, card_data in client.area.cards.items():
         card_showname = card_data[0]
         card_msg = card_data[1]
         card_owner_display = f"[DC] {card_showname}"
-        card_owner = client.server.client_manager.get_targets(
-            client, TargetType.CHAR_NAME, card_charname, False
-        )
+        card_owner = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, card_charname, False)
         if len(card_owner) > 0:
             card_owner = card_owner[0]
             card_owner_display = f"[{card_owner.id}] {card_owner.showname}"
         msg += f"\n{card_owner_display}: {card_msg}"
 
     client.send_ooc(msg)
-    client.send_ooc(
-        "Use /notecard_clear for clearing, or /notecard_reveal to reveal the results publicly."
-    )
+    client.send_ooc("Use /notecard_clear for clearing, or /notecard_reveal to reveal the results publicly.")
     database.log_area("notecard_check", client, client.area)
 
 
@@ -332,12 +292,8 @@ def ooc_cmd_vote(client, arg):
     if len(args) == 0:
         raise ArgumentError("Please provide a client ID. Usage: /vote <id>.")
     if client.char_name in [y for x in client.area.votes.values() for y in x]:
-        raise ArgumentError(
-            "You already cast your vote! Wait on the CM to /vote_clear."
-        )
-    target = client.server.client_manager.get_targets(
-        client, TargetType.ID, int(args[0]), False
-    )[0]
+        raise ArgumentError("You already cast your vote! Wait on the CM to /vote_clear.")
+    target = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), False)[0]
     client.area.votes.setdefault(target.char_name, []).append(client.char_name)
     client.area.broadcast_ooc(f"[{client.id}] {client.showname} cast a vote.")
     database.log_area("vote", client, client.area)
@@ -354,26 +310,20 @@ def ooc_cmd_vote_clear(client, arg):
         for value in client.area.votes.values():
             if arg in value:
                 value.remove(arg)
-                client.area.broadcast_ooc(
-                    f"[{client.id}] {client.showname} has cleared {arg}'s vote."
-                )
+                client.area.broadcast_ooc(f"[{client.id}] {client.showname} has cleared {arg}'s vote.")
                 return
         raise ClientError(
             f"No vote was cast by {arg}! (This is case-sensitive - are you sure you spelled the voter character folder right?)"
         )
     client.area.votes.clear()
-    client.area.broadcast_ooc(
-        f"[{client.id}] {client.showname} has cleared all the votes in this area."
-    )
+    client.area.broadcast_ooc(f"[{client.id}] {client.showname} has cleared all the votes in this area.")
     database.log_area("vote_clear", client, client.area)
 
 
 def get_vote_results(client, votes):
     def get_showname(target_name):
         """Helper function to convert a charname to showname format."""
-        owners = client.server.client_manager.get_targets(
-            client, TargetType.CHAR_NAME, target_name, False
-        )
+        owners = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, target_name, False)
         if owners:
             owner = owners[0]
             return f"[{owner.id}] {owner.showname}"
@@ -381,38 +331,36 @@ def get_vote_results(client, votes):
 
     # Sort votes by count (ascending)
     sorted_votes = sorted(votes.items(), key=lambda x: len(x[1]))
-    
+
     msg_lines = []
     max_votes = 0
-    
+
     for candidate, voters in sorted_votes:
         # Process voters
         voter_names = [get_showname(voter) for voter in voters]
         voters_str = ", ".join(voter_names)
-        
+
         # Process candidate
         candidate_name = get_showname(candidate)
-        
+
         # Build vote line
         vote_count = len(voters)
         plural = "s" if vote_count > 1 else ""
-        msg_lines.append(
-            f"🗳️{vote_count} vote{plural} for {candidate_name}\n   ◽ Voted by {voters_str}."
-        )
-        
+        msg_lines.append(f"🗳️{vote_count} vote{plural} for {candidate_name}\n   ◽ Voted by {voters_str}.")
+
         # Track max votes
         if vote_count > max_votes:
             max_votes = vote_count
-    
+
     # Find winners
     winners = [get_showname(k) for k, v in sorted_votes if len(v) == max_votes]
-    
+
     # Add winner/tie message
     if len(winners) > 1:
         msg_lines.append(f"{', '.join(winners)} have tied for most votes.")
     else:
         msg_lines.append(f"{winners[0]} has most votes.")
-    
+
     return "\n".join(msg_lines)
 
 
@@ -433,9 +381,7 @@ def ooc_cmd_vote_reveal(client, arg):
         client.send_ooc("Use /vote_clear for clearing.")
     else:
         client.area.votes.clear()
-        client.area.broadcast_ooc(
-            f"Votes have been cleared."
-        )
+        client.area.broadcast_ooc("Votes have been cleared.")
 
     database.log_area("vote_reveal", client, client.area)
 
@@ -448,15 +394,11 @@ def ooc_cmd_vote_check(client, arg):
     """
     if len(client.area.votes) == 0:
         raise ClientError("There are no votes to check in this area.")
-    client.area.broadcast_ooc(
-        f"[{client.id}] {client.showname} has checked the votes in this area."
-    )
+    client.area.broadcast_ooc(f"[{client.id}] {client.showname} has checked the votes in this area.")
     msg = "Votes in this area:\n"
     msg += get_vote_results(client, client.area.votes)
     client.send_ooc(msg)
-    client.send_ooc(
-        "Use /vote_clear for clearing, or /vote_reveal to reveal the results publicly."
-    )
+    client.send_ooc("Use /vote_clear for clearing, or /vote_reveal to reveal the results publicly.")
     database.log_area("vote_check", client, client.area)
 
 
@@ -478,9 +420,7 @@ def rolla_reload(area):
         with open("config/dice.yaml", "r", encoding="utf-8") as dice:
             area.ability_dice = yaml.safe_load(dice)
     except Exception:
-        raise ServerError(
-            "There was an error parsing the ability dice configuration. Check your syntax."
-        )
+        raise ServerError("There was an error parsing the ability dice configuration. Check your syntax.")
 
 
 def ooc_cmd_rolla_set(client, arg):
@@ -492,13 +432,9 @@ def ooc_cmd_rolla_set(client, arg):
         rolla_reload(client.area)
     available_sets = ", ".join(client.area.ability_dice.keys())
     if len(arg) == 0:
-        raise ArgumentError(
-            f"You must specify the ability set name.\nAvailable sets: {available_sets}"
-        )
+        raise ArgumentError(f"You must specify the ability set name.\nAvailable sets: {available_sets}")
     elif arg not in client.area.ability_dice:
-        raise ArgumentError(
-            f"Invalid ability set '{arg}'.\nAvailable sets: {available_sets}"
-        )
+        raise ArgumentError(f"Invalid ability set '{arg}'.\nAvailable sets: {available_sets}")
     client.ability_dice_set = arg
     client.send_ooc(f"Set ability set to {arg}.")
 
@@ -518,16 +454,11 @@ def ooc_cmd_rolla(client, arg):
     if not hasattr(client.area, "ability_dice"):
         rolla_reload(client.area)
     if not hasattr(client, "ability_dice_set"):
-        raise ClientError(
-            "You must set your ability set using /rolla_set <name>.")
+        raise ClientError("You must set your ability set using /rolla_set <name>.")
     ability_dice = client.area.ability_dice[client.ability_dice_set]
     roll, max_roll, ability = rolla(ability_dice)
-    client.area.broadcast_ooc(
-        f"[{client.id}] {client.showname} rolled a {roll} (out of {max_roll}): {ability}."
-    )
-    database.log_area(
-        "rolla", client, client.area, message=f"{roll} out of {max_roll}: {ability}"
-    )
+    client.area.broadcast_ooc(f"[{client.id}] {client.showname} rolled a {roll} (out of {max_roll}): {ability}.")
+    database.log_area("rolla", client, client.area, message=f"{roll} out of {max_roll}: {ability}")
 
 
 def ooc_cmd_coinflip(client, arg):
@@ -539,9 +470,7 @@ def ooc_cmd_coinflip(client, arg):
         raise ArgumentError("This command has no arguments.")
     coin = ["heads", "tails"]
     flip = random.choice(coin)
-    client.area.broadcast_ooc(
-        f"[{client.id}] {client.showname} flipped a coin and got {flip}."
-    )
+    client.area.broadcast_ooc(f"[{client.id}] {client.showname} flipped a coin and got {flip}.")
     database.log_area("coinflip", client, client.area, message=flip)
 
 
@@ -577,27 +506,29 @@ def ooc_cmd_rps(client, arg):
 
     rps_rules = client.area.area_manager.rps_rules
 
-    # Strip the input of blank spaces on edges 
+    # Strip the input of blank spaces on edges
     arg = arg.strip()
-    
+
     # If doing /rps by itself, simply tell the user the rules.
     if not arg:
         msg = "RPS rules:"
         for i, rule in enumerate(rps_rules):
-            msg += f"\n  {i+1}) "
+            msg += f"\n  {i + 1}) "
             choice = rule[0]
             msg += choice
             if len(choice) > 1:
-                losers = ', '.join(rule[1:])
+                losers = ", ".join(rule[1:])
                 msg += f" beats {losers}"
         client.send_ooc(msg)
         return
 
     if arg.lower() in ["clear", "cancel"]:
         if client.rps_choice:
-            client.area.broadcast_ooc(f'[{client.id}] {client.showname} no longer wants to play 🎲Rock Paper Scissors🎲... 🙁')
+            client.area.broadcast_ooc(
+                f"[{client.id}] {client.showname} no longer wants to play 🎲Rock Paper Scissors🎲... 🙁"
+            )
         client.rps_choice = ""
-        client.send_ooc('You cleared your choice.')
+        client.send_ooc("You cleared your choice.")
         return
 
     # List of our available choices
@@ -615,16 +546,16 @@ def ooc_cmd_rps(client, arg):
         # Fuzzy match, queue up our pick but look if we can get something better
         if arg.lower() in choice:
             picked = choice
-    
+
     if picked not in choices:
         raise ArgumentError(f"Invalid choice! Available choices are: {', '.join(choices)}")
-    
+
     # If we already have made a rps choice before, simply silently swap our choice.
     if client.rps_choice:
         client.rps_choice = picked
-        client.send_ooc(f'Swapped your choice to {client.rps_choice}!')
+        client.send_ooc(f"Swapped your choice to {client.rps_choice}!")
         return
-        
+
     # Set our Rock Paper Scissors choice
     client.rps_choice = picked
 
@@ -640,16 +571,16 @@ def ooc_cmd_rps(client, arg):
 
     # Look for our opponent if none is present
     if not target:
-        msg = f'[{client.id}] {client.showname} wants to play 🎲Rock Paper Scissors🎲!\n❕ Do /rps [choice] to challenge them! ❕'
+        msg = f"[{client.id}] {client.showname} wants to play 🎲Rock Paper Scissors🎲!\n❕ Do /rps [choice] to challenge them! ❕"
         client.area.broadcast_ooc(msg)
-        client.send_ooc(f'You picked {client.rps_choice}!')
+        client.send_ooc(f"You picked {client.rps_choice}!")
         return
 
     # Start constructing our output message
-    msg = '🎲Rock Paper Scissors🎲'
-    msg += f'\n  ◽ [{target.id}] {target.showname} picks {target.rps_choice}!'
-    msg += f'\n  ◽ [{client.id}] {client.showname} picks {client.rps_choice}!'
-    
+    msg = "🎲Rock Paper Scissors🎲"
+    msg += f"\n  ◽ [{target.id}] {target.showname} picks {target.rps_choice}!"
+    msg += f"\n  ◽ [{client.id}] {client.showname} picks {client.rps_choice}!"
+
     # Calculate our winner
     a = target.rps_choice.lower()
     b = client.rps_choice.lower()
@@ -671,7 +602,7 @@ def ooc_cmd_rps(client, arg):
     if winner:
         msg += f"\n  🏆[{winner.id}] {winner.showname} WINS!!!🏆"
     else:
-        msg += f"\n  👔It's a tie!👔"
+        msg += "\n  👔It's a tie!👔"
 
     # Announce the message!
     client.area.broadcast_ooc(msg)
@@ -690,16 +621,16 @@ def ooc_cmd_rps_rules(client, arg):
             /rps_rules <del|remove|-> [index] - delete a rule at index
             /rps_rules <clear|clean|reset|wipe> - wipe all current rules
     """
-    #client.area.area_manager.rps_rules
+    # client.area.area_manager.rps_rules
 
-    # Strip the input of blank spaces on edges 
+    # Strip the input of blank spaces on edges
     arg = arg.strip()
-    
+
     # If doing /rps_rules by itself, simply tell the user the rules.
     if not arg:
         ooc_cmd_rps(client, "")
         return
-    
+
     try:
         args = arg.split(maxsplit=1)
         action = args[0]
@@ -715,24 +646,18 @@ def ooc_cmd_rps_rules(client, arg):
                 client.area.area_manager.rps_rules.append(newrule)
                 client.send_ooc(f"Added a new rule: {rule}")
         elif action.lower() in ["del", "remove", "-"]:
-            index = int(param)-1
+            index = int(param) - 1
             if index < 0 or index >= len(client.area.area_manager.rps_rules):
-                raise ArgumentError(
-                    "Invalid index!"
-                )
+                raise ArgumentError("Invalid index!")
             client.send_ooc(f"Deleted a rule: {client.area.area_manager.rps_rules[index]}")
             client.area.area_manager.rps_rules.pop(index)
         elif action.lower() in ["clear", "clean", "reset", "wipe"]:
             client.send_ooc("Deleted all rules.")
             client.area.area_manager.rps_rules.clear()
         else:
-            raise ArgumentError(
-                "Invalid action!"
-            )
+            raise ArgumentError("Invalid action!")
     except ValueError:
-        raise ArgumentError(
-            "Invalid parameter!"
-        )
+        raise ArgumentError("Invalid parameter!")
 
 
 def ooc_cmd_timer(client, arg):
@@ -766,9 +691,9 @@ def ooc_cmd_timer(client, arg):
         for timer_id, timer in enumerate(client.area.timers):
             if timer.set:
                 if timer.started:
-                    msg += f"\nTimer {timer_id+1} is at {timer.target - arrow.get()}"
+                    msg += f"\nTimer {timer_id + 1} is at {timer.target - arrow.get()}"
                 else:
-                    msg += f"\nTimer {timer_id+1} is at {timer.static}"
+                    msg += f"\nTimer {timer_id + 1} is at {timer.static}"
         client.send_ooc(msg)
         return
     # TI packet specification:
@@ -789,24 +714,17 @@ def ooc_cmd_timer(client, arg):
     if len(args) < 2:
         if timer.set:
             if timer.started:
-                client.send_ooc(
-                    f"Timer {timer_id} is at {timer.target - arrow.get()}")
+                client.send_ooc(f"Timer {timer_id} is at {timer.target - arrow.get()}")
             else:
                 client.send_ooc(f"Timer {timer_id} is at {timer.static}")
         else:
             client.send_ooc(f"Timer {timer_id} is unset.")
         return
 
-    if not (client in client.area.owners) and not client.is_mod:
-        raise ArgumentError(
-            "Only CMs or GMs can modify timers. Usage: /timer <id>")
-    if (
-        timer_id == 0
-        and not (client in client.area.area_manager.owners)
-        and not client.is_mod
-    ):
-        raise ArgumentError(
-            "Only GMs can set hub-wide timer ID 0. Usage: /timer <id>")
+    if client not in client.area.owners and not client.is_mod:
+        raise ArgumentError("Only CMs or GMs can modify timers. Usage: /timer <id>")
+    if timer_id == 0 and client not in client.area.area_manager.owners and not client.is_mod:
+        raise ArgumentError("Only GMs can set hub-wide timer ID 0. Usage: /timer <id>")
 
     command_arg = args[1]
 
@@ -870,15 +788,11 @@ def ooc_cmd_timer(client, arg):
 
         cmd = full.split(" ")[0]
         called_function = f"ooc_cmd_{cmd}"
-        if len(client.server.command_aliases) > 0 and not hasattr(
-            commands, called_function
-        ):
+        if len(client.server.command_aliases) > 0 and not hasattr(commands, called_function):
             if cmd in client.server.command_aliases:
                 called_function = f"ooc_cmd_{client.server.command_aliases[cmd]}"
         if not hasattr(commands, called_function):
-            client.send_ooc(
-                f"[Timer {timer_id}] Invalid command: {cmd}. Use /help to find up-to-date commands."
-            )
+            client.send_ooc(f"[Timer {timer_id}] Invalid command: {cmd}. Use /help to find up-to-date commands.")
             return
         timer.commands.append(full)
         client.send_ooc(f"Adding command to Timer {timer_id}: /{full}")
@@ -886,7 +800,6 @@ def ooc_cmd_timer(client, arg):
 
     # Send static time if applicable
     if timer.set:
-        s = int(not timer.started)
         static_time = int(timer.static.total_seconds()) * 1000
         if timer_id == 0:
             client.area.area_manager.send_timer_set_time(timer_id, static_time, timer.started)
@@ -935,12 +848,7 @@ def ooc_cmd_demo(client, arg):
     client.last_demo_call = time.time() * 1000
     client.area.demo.clear()
 
-    desc = (
-        evidence.desc.replace("<num>", "#")
-        .replace("<and>", "&")
-        .replace("<percent>", "%")
-        .replace("<dollar>", "$")
-    )
+    desc = evidence.desc.replace("<num>", "#").replace("<and>", "&").replace("<percent>", "%").replace("<dollar>", "$")
     packets = desc.split("%")
     for packet in packets:
         p_args = packet.split("#")
@@ -953,8 +861,7 @@ def ooc_cmd_demo(client, arg):
             client.area.demo += [p_args]
     for c in client.area.clients:
         if c in client.area.owners:
-            c.send_ooc(
-                f"Starting demo playback using evidence '{evidence.name}'...")
+            c.send_ooc(f"Starting demo playback using evidence '{evidence.name}'...")
 
     client.area.play_demo(client)
 
@@ -998,8 +905,7 @@ def ooc_cmd_trigger(client, arg):
         if not evidence:
             raise ArgumentError("Target evidence not found!")
         if len(args) <= 2:
-            client.send_ooc(
-                f'Call "{evidence.triggers[trig]}" on trigger "{trig}"')
+            client.send_ooc(f'Call "{evidence.triggers[trig]}" on trigger "{trig}"')
             return
         val = args[2]
         evidence.triggers[trig] = val
@@ -1010,8 +916,7 @@ def ooc_cmd_trigger(client, arg):
         if trig not in client.area.triggers:
             raise ArgumentError(f"Invalid trigger: {trig}")
         if len(args) <= 1:
-            client.send_ooc(
-                f'Call "{client.area.triggers[trig]}" on trigger "{trig}"')
+            client.send_ooc(f'Call "{client.area.triggers[trig]}" on trigger "{trig}"')
             return
         val = args[1]
         client.area.triggers[trig] = val
@@ -1028,7 +933,7 @@ def ooc_cmd_format_timer(client, arg):
     args = shlex.split(arg)
     try:
         args[0] = int(args[0])
-    except:
+    except Exception:
         return
     if args[0] == 0:
         if client.is_mod or client in client.area.area_manager.owners:
@@ -1037,16 +942,12 @@ def ooc_cmd_format_timer(client, arg):
             client.send_ooc("You cannot change timer 0 format if you are not GM")
             return
     else:
-        if (
-            client.is_mod
-            or client in client.area.area_manager.owners
-            or client in client.area.owners
-        ):
+        if client.is_mod or client in client.area.area_manager.owners or client in client.area.owners:
             timer = client.area.timers[args[0] - 1]
         else:
             client.send_ooc("You cannot change timer format if you are at least CM")
             return
-    timer.format = ' '.join(args[1:])
+    timer.format = " ".join(args[1:])
     if timer.format == "":
         timer.format = "hh:mm:ss.zzz"
         client.send_ooc("Resetting timer format to default.")
@@ -1073,7 +974,7 @@ def ooc_cmd_timer_interval(client, arg):
     args = shlex.split(arg)
     try:
         args[0] = int(args[0])
-    except:
+    except Exception:
         raise ArgumentError("Timer ID should be an integer")
     if args[0] == 0:
         if client.is_mod or client in client.area.area_manager.owners:
@@ -1082,25 +983,22 @@ def ooc_cmd_timer_interval(client, arg):
             client.send_ooc("You cannot change timer 0 interval if you are not GM")
             return
     else:
-        if (
-            client.is_mod
-            or client in client.area.area_manager.owners
-            or client in client.area.owners
-        ):
+        if client.is_mod or client in client.area.area_manager.owners or client in client.area.owners:
             timer = client.area.timers[args[0] - 1]
         else:
             client.send_ooc("You cannot change timer interval if you are at least CM")
             return
     try:
         if len(args) == 1:
-            timer.interval = 16 
+            timer.interval = 16
         else:
             timer.interval = pytimeparse.parse(args[1]) * 1000
-    except:
+    except Exception:
         raise ArgumentError("Interval value not valid!")
     if timer.set:
         client.send_timer_set_interval(args[0], timer)
     client.send_ooc(f"Timer {args[0]} interval is set to '{args[1]}'")
+
 
 def ooc_cmd_ooc_actions(client, arg):
     """
@@ -1109,9 +1007,7 @@ def ooc_cmd_ooc_actions(client, arg):
     Usage: /ooc_actions [tog]
     """
     if len(arg.split()) > 1:
-        raise ArgumentError(
-            "This command can only take one argument ('on' or 'off') or no arguments at all!"
-        )
+        raise ArgumentError("This command can only take one argument ('on' or 'off') or no arguments at all!")
     if arg:
         if arg == "on":
             client.ooc_actions = True
@@ -1133,28 +1029,21 @@ def ooc_cmd_sfx(client, arg):
     Usage: /sfx <sound_path>
     """
     if arg == "":
-        raise ArgumentError(
-            "sound_path can't be empty. Usage: /sfx <sound_path>"
-        )
+        raise ArgumentError("sound_path can't be empty. Usage: /sfx <sound_path>")
     is_mod = client.is_mod or client in client.area.owners
     # Only incur cooldowns etc. on mods.
     if not is_mod:
-        if client.char_id <= -1 or client.char_id == None:
-            raise ClientError(
-                "You can't play sfx when you're a spectator and not a CM/GM!"
-            )
+        if client.char_id <= -1 or client.char_id is None:
+            raise ClientError("You can't play sfx when you're a spectator and not a CM/GM!")
         if not client.can_sfx():
-            raise ClientError(
-                "You need to wait before playing sfx again!"
-            )
+            raise ClientError("You need to wait before playing sfx again!")
     target_areas = [client.area]
     if len(client.broadcast_list) > 0 and is_mod:
         try:
-            a_list = ", ".join([str(a.id)
-                                for a in client.broadcast_list])
+            a_list = ", ".join([str(a.id) for a in client.broadcast_list])
             client.send_ooc(f"Broadcasting to areas {a_list}")
             target_areas = client.broadcast_list
-        except:
+        except Exception:
             client.send_ooc(
                 "Your broadcast list is invalid! Do /clear_broadcast to reset it and /broadcast <id(s)> to set a new one."
             )
@@ -1168,6 +1057,4 @@ def ooc_cmd_sfx(client, arg):
             a.send_command("MC", f"../general/{arg}", -1, "", 0, 3, 0)
             a.broadcast_ooc(f"[{client.id}] {client.showname} has played sfx '{arg}'.")
     client.set_sfx_delay()
-    database.log_area(
-        "sfx", client, client.area, message=f"has played sfx {arg}"
-    )
+    database.log_area("sfx", client, client.area, message=f"has played sfx {arg}")

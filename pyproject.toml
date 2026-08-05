@@ -1,5 +1,76 @@
-[tool.black]
+[project]
+name = "kfo-server"
+version = "3.3.0"
+description = "KFO-Server is the official Python-based server for Attorney Online, forked from tsuserver3."
+readme = "README.md"
+license = { file = "LICENSE.md" }
+requires-python = ">=3.13"
+dependencies = [
+    "aiohttp==3.14.3",
+    "aiosignal==1.4.0",
+    "arrow==1.4.0",
+    "async-timeout==5.0.1",
+    "attrs==26.1.0",
+    "certifi==2026.7.22",
+    "charset-normalizer==3.4.9",
+    "discord.py==2.7.1",
+    "frozenlist==1.8.0",
+    "geoip2==5.3.0",
+    "idna==3.18",
+    "maxminddb==3.1.1",
+    "multidict==6.7.1",
+    "oyaml==1.0",
+    "pystun3==2.0.0",
+    "python-dateutil==2.9.0.post0",
+    "PyYAML==6.0.3",
+    "requests==2.34.2",
+    "six==1.17.0",
+    "timeparse-plus==1.2.0",
+    "types-python-dateutil==2.9.0.20260716",
+    "urllib3==2.7.0",
+    "websockets==17.0.1",
+    "yarl==1.24.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "tox>=4.21",
+    "tox-uv>=1",
+    "ruff>=0.15",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.ruff]
 line-length = 120
-target-version = ["py311"]
-# You can add patterns here if you need to exclude generated files, etc.
-# extend-exclude = []
+target-version = "py313"
+# scripts/ holds ad-hoc utilities that don't follow the server's style.
+exclude = ["scripts"]
+
+[tool.ruff.lint]
+# Pin the historical default ruleset explicitly so ruff version bumps don't
+# silently expand lint scope (0.16 broadened its implicit default).
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# E402: command modules are imported after the decorator/__all__ machinery is defined.
+# F403: star imports are intentional — each submodule registers commands via its own __all__.
+"server/commands/__init__.py" = ["E402", "F403"]
+
+[tool.uv]
+package = false
+
+[tool.tox]
+requires = ["tox>=4.21", "tox-uv>=1"]
+env_list = ["py313"]
+skip_missing_interpreters = true
+
+[tool.tox.env_run_base]
+runner = "uv-venv-lock-runner"
+package = "skip"
+dependency_groups = ["dev"]
+set_env = { PYTHONPATH = "{toxinidir}" }
+commands = [["pytest", "-q"]]

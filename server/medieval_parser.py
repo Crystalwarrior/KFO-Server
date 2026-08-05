@@ -149,9 +149,11 @@ class MedievalParser:
 
         # If it has prev_words, make sure the prev_word matches first
         if rep["prev_words"]:
-            if (not prev_word or
-                not self._contains_case_insensitive(self.word_vector, prev_word) or
-                not self._contains_case_insensitive(rep["prev_words"], prev_word)):
+            if (
+                not prev_word
+                or not self._contains_case_insensitive(self.word_vector, prev_word)
+                or not self._contains_case_insensitive(rep["prev_words"], prev_word)
+            ):
                 return (0, False)
             used_prev_word = True
         else:
@@ -217,7 +219,7 @@ class MedievalParser:
             fc = word[0].lower()
 
             # Randomly replace h's at the front of words with apostrophes
-            if fc == 'h' and random.randint(1, 2) == 1:
+            if fc == "h" and random.randint(1, 2) == 1:
                 return ("'" + word[1:], False)
 
             if len(word) > 3:
@@ -226,11 +228,11 @@ class MedievalParser:
                 lllc = word[-3].lower()
 
                 # Randomly modify words ending in "ed", by replacing the "e" with an apostrophe
-                if slc == 'e' and lc == 'd' and lllc != 'e' and random.randint(1, 4) == 1:
+                if slc == "e" and lc == "d" and lllc != "e" and random.randint(1, 4) == 1:
                     return (word[:-2] + "'d", False)
 
                 # Randomly append "th" or "st" to any word ending in "ke"
-                if slc == 'k' and lc == 'e' and random.randint(1, 3) == 1:
+                if slc == "k" and lc == "e" and random.randint(1, 3) == 1:
                     if random.randint(1, 2) == 1:
                         return (word + "th", False)
                     else:
@@ -241,11 +243,11 @@ class MedievalParser:
                 slc = word[-2].lower()
 
                 # Randomly append "eth" to words with appropriate last letters
-                if random.randint(1, 5) == 1 and lc in ['t', 'p', 'k', 'g', 'b', 'w']:
+                if random.randint(1, 5) == 1 and lc in ["t", "p", "k", "g", "b", "w"]:
                     return (word + "eth", False)
 
                 # Randomly append "est" to any word ending in "ss"
-                if lc == 's' and slc == 's' and random.randint(1, 5) == 1:
+                if lc == "s" and slc == "s" and random.randint(1, 5) == 1:
                     return (word + "est", False)
 
             if len(word) > 4:
@@ -254,8 +256,8 @@ class MedievalParser:
                 lllc = word[-3].lower()
 
                 # Randomly prepend "a-" to words ending in "ing", and randomly replace the trailing g with an apostrophe
-                if lllc == 'i' and slc == 'n' and lc == 'g':
-                    if len(word) > 2 and word[2] != '-':
+                if lllc == "i" and slc == "n" and lc == "g":
+                    if len(word) > 2 and word[2] != "-":
                         if random.randint(1, 2) == 1:
                             return ("a-" + word, False)
                         else:
@@ -272,12 +274,12 @@ class MedievalParser:
             fc = rep_str[0].lower()
             # Check if previous word was "an"
             if prev_word.lower() == "an":
-                if fc not in ['a', 'e', 'i', 'o', 'u']:
+                if fc not in ["a", "e", "i", "o", "u"]:
                     # Remove the trailing n
                     stored_word = stored_word[:-1]
             # Check if previous word was "a"
             elif prev_word.lower() == "a":
-                if fc in ['a', 'e', 'i', 'o', 'u']:
+                if fc in ["a", "e", "i", "o", "u"]:
                     # Add a trailing n
                     stored_word = stored_word + "n"
 
@@ -306,7 +308,7 @@ class MedievalParser:
             # Check if we've hit a word boundary
             if cur < text_len:
                 ch = text[cur]
-                if (ch >= 'A' and ch <= 'Z') or (ch >= 'a' and ch <= 'z') or ch == '&':
+                if (ch >= "A" and ch <= "Z") or (ch >= "a" and ch <= "z") or ch == "&":
                     cur += 1
                     continue
 
@@ -314,15 +316,15 @@ class MedievalParser:
             current_word_len = cur - current_word_start
             prev_word_len = max(0, current_word_start - prev_word_start - 1)  # -1 for the space
 
-            current_word = text[current_word_start:current_word_start + current_word_len]
-            prev_word = text[prev_word_start:prev_word_start + prev_word_len]
+            current_word = text[current_word_start : current_word_start + current_word_len]
+            prev_word = text[prev_word_start : prev_word_start + prev_word_len]
 
             modify_word = True
             skip_one_letter = False
 
             # pre/post pend blocks only modify words that start with an '&'
             if in_pre_post:
-                modify_word = current_word_start < len(text) and text[current_word_start] == '&'
+                modify_word = current_word_start < len(text) and text[current_word_start] == "&"
                 skip_one_letter = modify_word
 
             word_to_check = current_word[1:] if skip_one_letter else current_word
@@ -349,9 +351,7 @@ class MedievalParser:
                     if not used_prev_word:
                         # Perform a/an adjustment
                         adjusted_stored = self._perform_replacement(
-                            rep_str if rep_str else current_word,
-                            prev_word,
-                            stored_word
+                            rep_str if rep_str else current_word, prev_word, stored_word
                         )
                         final_text += adjusted_stored
                         # Append a space, but not if the last character is an apostrophe
@@ -377,7 +377,7 @@ class MedievalParser:
                 break
 
             # If it wasn't a space that ended this word, try checking it for a symbol
-            if cur < text_len and text[cur] != ' ':
+            if cur < text_len and text[cur] != " ":
                 symbol = text[cur]
                 symbol_rep, _ = self._replace_word(symbol, "", True, True)
                 if symbol_rep is not None:
@@ -393,11 +393,11 @@ class MedievalParser:
         if generate_pre_and_post:
             if final_text:
                 last_char = final_text[-1]
-                if last_char not in ['?', '!']:
+                if last_char not in ["?", "!"]:
                     # See if we generate a post. If we do, modify it as well.
                     post = self._get_random_post()
                     if post:
-                        if last_char != '.':
+                        if last_char != ".":
                             final_text += ". "
                         else:
                             final_text += " "

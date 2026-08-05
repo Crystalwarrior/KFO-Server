@@ -131,7 +131,7 @@ class AreaManager:
         self.time_of_day = ""
 
         self.timer = self.Timer()
-        
+
         # RPS-5 rules as default
         self.rps_rules = [
             ["rock", "scissors", "lizard"],
@@ -150,8 +150,7 @@ class AreaManager:
     def name(self, value):
         self._name = value.strip()
         while "<num>" in self._name or "<percent>" in self._name:
-            self._name = self._name.replace(
-                "<num>", "").replace("<percent>", "")
+            self._name = self._name.replace("<num>", "").replace("<percent>", "")
         self.abbreviation = self.abbreviate()
 
     @property
@@ -228,7 +227,7 @@ class AreaManager:
                         else:
                             self.load_music(f"storage/musiclists/{hub[entry]}.yaml")
 
-        if not ("character_data" in ignore) and "character_data" in hub:
+        if "character_data" not in ignore and "character_data" in hub:
             try:
                 self.load_character_data(hub["character_data"])
             except Exception:
@@ -238,7 +237,7 @@ class AreaManager:
                 if area == self.default_area():  # Do not remove the default area
                     continue
                 self.remove_area(area)
-        if not ("areas" in ignore) and "areas" in hub:
+        if "areas" not in ignore and "areas" in hub:
             self.load_areas(hub["areas"])
         self.broadcast_area_list()
 
@@ -336,8 +335,7 @@ class AreaManager:
     def load_music(self, path):
         try:
             if not os.path.isfile(path):
-                raise AreaError(
-                    f"Hub {self.name} trying to load music list: File path {path} is invalid!")
+                raise AreaError(f"Hub {self.name} trying to load music list: File path {path} is invalid!")
             with open(path, "r", encoding="utf-8") as stream:
                 music_list = yaml.safe_load(stream)
 
@@ -373,8 +371,7 @@ class AreaManager:
             with open(path, "r") as chars:
                 data = yaml.safe_load(chars)
         except Exception:
-            raise AreaError(
-                f"Hub {self.name} trying to load character data: File path {path} is invalid!")
+            raise AreaError(f"Hub {self.name} trying to load character data: File path {path} is invalid!")
 
         try:
             for char in data.copy():
@@ -383,8 +380,7 @@ class AreaManager:
                     data[self.char_list[char]] = data.pop(char)
             self.character_data = data
         except Exception:
-            raise AreaError(
-                "Something went wrong while loading the character data!")
+            raise AreaError("Something went wrong while loading the character data!")
 
     def save_character_data(self, path="config/character_data.yaml"):
         """
@@ -394,11 +390,9 @@ class AreaManager:
         """
         try:
             with open(path, "w", encoding="utf-8") as stream:
-                yaml.dump(self.character_data, stream,
-                          default_flow_style=False)
+                yaml.dump(self.character_data, stream, default_flow_style=False)
         except Exception:
-            raise AreaError(
-                f"Hub {self.name} trying to save character data: File path {path} is invalid!")
+            raise AreaError(f"Hub {self.name} trying to save character data: File path {path} is invalid!")
 
     def get_character_data(self, char, key, default_value=None):
         """
@@ -445,7 +439,7 @@ class AreaManager:
         :param area: target area instance.
 
         """
-        if not (area in self.areas):
+        if area not in self.areas:
             raise AreaError("Area not found.")
         # Make a copy because it can change size during iteration
         # (causes runtime error otherwise)
@@ -477,9 +471,9 @@ class AreaManager:
         :param area2: second area to swap.
 
         """
-        if not (area1 in self.areas):
+        if area1 not in self.areas:
             raise AreaError("First area not found.")
-        if not (area2 in self.areas):
+        if area2 not in self.areas:
             raise AreaError("Second area not found.")
         # Grab the indexes
         a = self.areas.index(area1)
@@ -520,9 +514,7 @@ class AreaManager:
         client.area.broadcast_area_list(client)
         client.area.broadcast_evidence_list()
 
-        self.broadcast_ooc(
-            f"[{client.id}] {client.showname} ({client.name}) is GM in this hub now."
-        )
+        self.broadcast_ooc(f"[{client.id}] {client.showname} ({client.name}) is GM in this hub now.")
         client.hide(True)
 
     def remove_owner(self, client):
@@ -543,9 +535,7 @@ class AreaManager:
         client.area.broadcast_area_list(client)
         client.area.broadcast_evidence_list()
 
-        self.broadcast_ooc(
-            f"[{client.id}] {client.showname} ({client.name}) is no longer GM in this hub."
-        )
+        self.broadcast_ooc(f"[{client.id}] {client.showname} ({client.name}) is no longer GM in this hub.")
         client.hide(False)
 
     def get_gms(self):
@@ -598,17 +588,15 @@ class AreaManager:
                 # MAKE SURE TO RETURN A COPY AND NOT A DIRECT REFERENCE OR YOU'RE GONNA BE IN A WORLD OF HURT
                 return self.areas.copy()
             # If arg is area range, e.g. 1-12, extend list by that range
-            a_range = arg.split('-')
+            a_range = arg.split("-")
             if len(a_range) == 2 and a_range[0].strip().isnumeric() and a_range[1].strip().isnumeric():
                 # unpack the range, turn it into a list and add it to the arglist
-                arg_list += [*range(int(a_range[0]), int(a_range[1])+1)]
+                arg_list += [*range(int(a_range[0]), int(a_range[1]) + 1)]
                 continue
             # Otherwise, just append the arg
             arg_list.append(arg.lower())
         for area in self.areas:
-            if area.id in arg_list or \
-               str(area.id) in arg_list or \
-               area.name.lower() in arg_list:
+            if area.id in arg_list or str(area.id) in arg_list or area.name.lower() in arg_list:
                 area_list.append(area)
         return area_list
 
@@ -651,7 +639,7 @@ class AreaManager:
         client.send_command("GM", self.subtheme)
         # Set the time of day as well
         client.send_command("TOD", self.time_of_day)
-        
+
         # AO portion
         if client.subtheme != self.subtheme or client.time_of_day != self.time_of_day:
             # ST is Subtheme, AO lacks time of day equivalent.
@@ -661,7 +649,7 @@ class AreaManager:
             else:
                 client.send_command("ST", self.subtheme, "1")
         client.subtheme = self.subtheme
-        
+
     def broadcast_subtheme(self):
         for client in self.clients:
             self.update_subtheme(client)
@@ -681,8 +669,7 @@ class AreaManager:
             for area in client.local_area_list:
                 playercount = -1
                 if not self.hide_clients and not area.hide_clients:
-                    playercount = len(
-                        [c for c in area.clients if not c.hidden])
+                    playercount = len([c for c in area.clients if not c.hidden])
                     playerhubcount = playerhubcount + playercount
                 players_list.append(playercount)
             if multiple_hubs and len(client.local_area_list) > 0:

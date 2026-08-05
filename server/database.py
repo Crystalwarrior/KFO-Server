@@ -61,9 +61,7 @@ class Database:
                 # the same IPID, so we have to reassign those IPIDs.
                 ip_ipids = json.loads(ipids_file.read())
                 ipids = set([ipid for ip, ipid in ip_ipids.items()])
-                next_fallback_id = reduce(
-                    lambda max_ipid, ipid: max(max_ipid, ipid), ipids
-                )
+                next_fallback_id = reduce(lambda max_ipid, ipid: max(max_ipid, ipid), ipids)
                 for ip, ipid in ip_ipids.items():
                     ipids.add(ipid)
                     effective_id = ipid
@@ -84,9 +82,7 @@ class Database:
                             next_fallback_id = effective_id
                         else:
                             if effective_id != ipid:
-                                logger.debug(
-                                    "IPID %s reassigned to %s", ipid, effective_id
-                                )
+                                logger.debug("IPID %s reassigned to %s", ipid, effective_id)
                             break
 
             with open("storage/hd_ids.json", "r") as hdids_file:
@@ -96,9 +92,7 @@ class Database:
                         # Sometimes, there are HDID entries that do not
                         # correspond to any IPIDs in the IPID table.
                         if ipid not in ipids:
-                            logger.debug(
-                                "IPID %s in HDID list does not exist. Ignoring.", ipid
-                            )
+                            logger.debug("IPID %s in HDID list does not exist. Ignoring.", ipid)
                             continue
                         conn.execute(
                             dedent(
@@ -119,13 +113,10 @@ class Database:
                     try:
                         ipid = int(ipid)
                     except ValueError:
-                        logger.debug(
-                            "Bad IPID %s in ban list. Ignoring.", ipid)
+                        logger.debug("Bad IPID %s in ban list. Ignoring.", ipid)
                         continue
                     if ipid not in ipids:
-                        logger.debug(
-                            "IPID %s in ban list does not exist. Ignoring.", ipid
-                        )
+                        logger.debug("IPID %s in ban list does not exist. Ignoring.", ipid)
                         continue
                     ban_id = conn.execute(
                         dedent(
@@ -154,8 +145,7 @@ class Database:
 
     def migrate_to_version(self, version):
         with self.db as conn:
-            cur_version = conn.execute("PRAGMA user_version").fetchone()[
-                "user_version"]
+            cur_version = conn.execute("PRAGMA user_version").fetchone()["user_version"]
             if cur_version >= version:
                 return
 
@@ -212,10 +202,7 @@ class Database:
         """
         with self.db as conn:
             if ban_id is None:
-                logger.info(
-                    f"{banned_by.name} ({banned_by.ipid}) "
-                    + f"banned {target_id}: '{reason}'."
-                )
+                logger.info(f"{banned_by.name} ({banned_by.ipid}) " + f"banned {target_id}: '{reason}'.")
                 ban_id = conn.execute(
                     dedent(
                         """
@@ -236,9 +223,7 @@ class Database:
                         (target_id, ban_id),
                     )
                 except sqlite3.IntegrityError as exc:
-                    raise ServerError(
-                        f"Error inserting ban: {exc}" " (the IPID may not exist)"
-                    )
+                    raise ServerError(f"Error inserting ban: {exc} (the IPID may not exist)")
             elif ban_type == "hdid":
                 try:
                     conn.execute(
@@ -413,9 +398,7 @@ class Database:
                 ),
                 (ban_id,),
             ).fetchone()
-            time_to_unban = (
-                arrow.get(ban["unban_date"]) - arrow.utcnow()
-            ).total_seconds()
+            time_to_unban = (arrow.get(ban["unban_date"]) - arrow.utcnow()).total_seconds()
 
             def auto_unban():
                 self.unban(ban_id)
@@ -429,9 +412,7 @@ class Database:
         value, creating one if necessary.
         """
         ipid, char_name, ooc_name = (
-            (client.ipid, client.char_name, client.name)
-            if client is not None
-            else (None, None, None)
+            (client.ipid, client.char_name, client.name) if client is not None else (None, None, None)
         )
         target_ipid = target.ipid if target is not None else None
         subtype_id = self._subtype_atom("area", event_subtype)
@@ -469,26 +450,28 @@ class Database:
                     target_ipid,
                 ),
             )
-        self._notify_subscribers("area", {
-            "event_time": arrow.utcnow().isoformat(),
-            "ipid": ipid,
-            "hub_id": area.area_manager.id,
-            "hub_name": area.area_manager.name,
-            "area_id": area.id,
-            "area_name": area.name,
-            "ic_name": client._showname,
-            "char_name": char_name,
-            "ooc_name": ooc_name,
-            "event_subtype": event_subtype,
-            "message": message,
-            "target_ipid": target_ipid,
-        })
+        self._notify_subscribers(
+            "area",
+            {
+                "event_time": arrow.utcnow().isoformat(),
+                "ipid": ipid,
+                "hub_id": area.area_manager.id,
+                "hub_name": area.area_manager.name,
+                "area_id": area.id,
+                "area_name": area.name,
+                "ic_name": client._showname,
+                "char_name": char_name,
+                "ooc_name": ooc_name,
+                "event_subtype": event_subtype,
+                "message": message,
+                "target_ipid": target_ipid,
+            },
+        )
 
     def log_connect(self, client, failed=False):
         """Log a connect attempt."""
         logger.info(
-            f"{client.ipid} (HDID: {client.hdid}) "
-            + f'{"was blocked from connecting" if failed else "connected"}.'
+            f"{client.ipid} (HDID: {client.hdid}) " + f"{'was blocked from connecting' if failed else 'connected'}."
         )
         with self.db as conn:
             conn.execute(
@@ -499,12 +482,15 @@ class Database:
                 ),
                 (client.ipid, client.hdid, failed),
             )
-        self._notify_subscribers("connect", {
-            "event_time": arrow.utcnow().isoformat(),
-            "ipid": client.ipid,
-            "hdid": client.hdid,
-            "failed": failed,
-        })
+        self._notify_subscribers(
+            "connect",
+            {
+                "event_time": arrow.utcnow().isoformat(),
+                "ipid": client.ipid,
+                "hdid": client.hdid,
+                "failed": failed,
+            },
+        )
 
     def log_misc(self, event_subtype, client=None, target=None, data=None):
         """
@@ -515,8 +501,7 @@ class Database:
         target_ipid = target.ipid if target is not None else None
         subtype_id = self._subtype_atom("misc", event_subtype)
         data_json = json.dumps(data)
-        logger.info(
-            "%s (%s onto %s): %s", event_subtype, client_ipid, target_ipid, data)
+        logger.info("%s (%s onto %s): %s", event_subtype, client_ipid, target_ipid, data)
 
         with self.db as conn:
             conn.execute(
@@ -528,13 +513,16 @@ class Database:
                 ),
                 (client_ipid, target_ipid, subtype_id, data_json),
             )
-        self._notify_subscribers("misc", {
-            "event_time": arrow.utcnow().isoformat(),
-            "ipid": client_ipid,
-            "target_ipid": target_ipid,
-            "event_subtype": event_subtype,
-            "event_data": data,
-        })
+        self._notify_subscribers(
+            "misc",
+            {
+                "event_time": arrow.utcnow().isoformat(),
+                "ipid": client_ipid,
+                "target_ipid": target_ipid,
+                "event_subtype": event_subtype,
+                "event_data": data,
+            },
+        )
 
     def subscribe(self):
         """
@@ -584,8 +572,9 @@ class Database:
         with self.db as conn:
             conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
 
-    def query_area_events(self, hub_id=None, area_id=None, event_subtype=None,
-                          ipid=None, since=None, until=None, limit=100, offset=0):
+    def query_area_events(
+        self, hub_id=None, area_id=None, event_subtype=None, ipid=None, since=None, until=None, limit=100, offset=0
+    ):
         """Query area events with optional filters."""
         conditions = []
         params = []
@@ -625,8 +614,7 @@ class Database:
             rows = conn.execute(query, params).fetchall()
             return [dict(row) for row in rows]
 
-    def count_area_events(self, hub_id=None, area_id=None, event_subtype=None,
-                          ipid=None, since=None, until=None):
+    def count_area_events(self, hub_id=None, area_id=None, event_subtype=None, ipid=None, since=None, until=None):
         """Count area events matching filters (for pagination)."""
         conditions = []
         params = []
@@ -660,8 +648,7 @@ class Database:
         with self.db as conn:
             return conn.execute(query, params).fetchone()["cnt"]
 
-    def query_connect_events(self, ipid=None, failed=None, since=None, until=None,
-                             limit=100, offset=0):
+    def query_connect_events(self, ipid=None, failed=None, since=None, until=None, limit=100, offset=0):
         """Query connection events with optional filters."""
         conditions = []
         params = []
@@ -715,8 +702,7 @@ class Database:
         with self.db as conn:
             return conn.execute(query, params).fetchone()["cnt"]
 
-    def query_misc_events(self, event_subtype=None, ipid=None, since=None, until=None,
-                          limit=100, offset=0):
+    def query_misc_events(self, event_subtype=None, ipid=None, since=None, until=None, limit=100, offset=0):
         """Query miscellaneous events with optional filters."""
         conditions = []
         params = []
@@ -787,9 +773,7 @@ class Database:
     def get_hubs(self):
         """Get distinct hub id/name pairs from area_events."""
         with self.db as conn:
-            rows = conn.execute(
-                "SELECT DISTINCT hub_id, hub_name FROM area_events ORDER BY hub_id"
-            ).fetchall()
+            rows = conn.execute("SELECT DISTINCT hub_id, hub_name FROM area_events ORDER BY hub_id").fetchall()
             return [{"hub_id": row["hub_id"], "hub_name": row["hub_name"]} for row in rows]
 
     def get_areas_for_hub(self, hub_id=None):

@@ -1,6 +1,6 @@
 from server import database
 from server.constants import TargetType
-from server.exceptions import ClientError, ArgumentError, AreaError
+from server.exceptions import ClientError, ArgumentError
 
 from . import mod_only
 
@@ -161,26 +161,18 @@ def ooc_cmd_pm(client, arg):
     ids = args[0].split(",")
     if len(ids) > 1 and all(i.isdigit() for i in ids):
         for i in ids:
-            for target in client.server.client_manager.get_targets(
-                client, TargetType.ID, int(i), all_hub=True
-            ):
+            for target in client.server.client_manager.get_targets(client, TargetType.ID, int(i), all_hub=True):
                 if target not in targets:
                     targets.append(target)
         key = TargetType.ID
     else:
-        targets = client.server.client_manager.get_targets(
-            client, TargetType.CHAR_NAME, arg, local=True
-        )
+        targets = client.server.client_manager.get_targets(client, TargetType.CHAR_NAME, arg, local=True)
         key = TargetType.CHAR_NAME
         if len(targets) == 0 and args[0].isdigit():
-            targets = client.server.client_manager.get_targets(
-                client, TargetType.ID, int(args[0]), all_hub=True
-            )
+            targets = client.server.client_manager.get_targets(client, TargetType.ID, int(args[0]), all_hub=True)
             key = TargetType.ID
         if len(targets) == 0:
-            targets = client.server.client_manager.get_targets(
-                client, TargetType.OOC_NAME, arg, local=True
-            )
+            targets = client.server.client_manager.get_targets(client, TargetType.OOC_NAME, arg, local=True)
             key = TargetType.OOC_NAME
     if len(targets) == 0:
         raise ArgumentError("No targets found.")
@@ -189,12 +181,11 @@ def ooc_cmd_pm(client, arg):
             msg = " ".join(args[1:])
         else:
             if key == TargetType.CHAR_NAME:
-                msg = arg[len(targets[0].char_name) + 1:]
+                msg = arg[len(targets[0].char_name) + 1 :]
             if key == TargetType.OOC_NAME:
-                msg = arg[len(targets[0].name) + 1:]
+                msg = arg[len(targets[0].name) + 1 :]
     except Exception:
-        raise ArgumentError(
-            "Not enough arguments. Use /pm <target> <message>.")
+        raise ArgumentError("Not enough arguments. Use /pm <target> <message>.")
     conversation = ", ".join(f"[{c.id}] {c.showname}" for c in targets)
     sent = []
     muted = []
@@ -224,11 +215,7 @@ def ooc_cmd_pm(client, arg):
         raise ClientError("Every user you tried to PM muted all pm conversation")
     client.send_ooc("📤PM sent to {}. Message: {}".format(", ".join(sent), msg))
     if len(muted) > 0:
-        client.send_ooc(
-            "📵Could not reach {}, they muted all pm conversation.".format(
-                ", ".join(muted)
-            )
-        )
+        client.send_ooc("📵Could not reach {}, they muted all pm conversation.".format(", ".join(muted)))
 
 
 def ooc_cmd_mutepm(client, arg):
@@ -239,6 +226,4 @@ def ooc_cmd_mutepm(client, arg):
     if len(arg) != 0:
         raise ArgumentError("This command doesn't take any arguments")
     client.pm_mute = not client.pm_mute
-    client.send_ooc(
-        "You stopped receiving PMs" if client.pm_mute else "You are now receiving PMs"
-    )
+    client.send_ooc("You stopped receiving PMs" if client.pm_mute else "You are now receiving PMs")

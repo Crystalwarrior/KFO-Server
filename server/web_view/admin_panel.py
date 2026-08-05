@@ -1,5 +1,4 @@
 import asyncio
-import hashlib
 import json
 import logging
 import os
@@ -94,6 +93,7 @@ def _cleanup_sessions():
 
 def _require_auth(handler):
     """Decorator that requires a valid session for HTTP handlers."""
+
     async def wrapper(request):
         token = request.cookies.get("admin_session")
         if not token:
@@ -107,6 +107,7 @@ def _require_auth(handler):
             return web.HTTPFound("/login")
         request["admin_user"] = user
         return await handler(request)
+
     return wrapper
 
 
@@ -195,8 +196,7 @@ async def handle_login(request):
     _clear_login_attempts(ip)
     token = _create_session(username)
     response = web.json_response({"ok": True, "user": username})
-    response.set_cookie("admin_session", token, httponly=True, samesite="Lax",
-                        max_age=_SESSION_TTL)
+    response.set_cookie("admin_session", token, httponly=True, samesite="Lax", max_age=_SESSION_TTL)
     return response
 
 
@@ -352,9 +352,8 @@ async def handle_api_ooc_monitor(request):
 
     if token not in _remote_clients:
         from server.remote_client import RemoteClient
-        _remote_clients[token] = RemoteClient(
-            server, is_mod=True, name="[ADMIN]"
-        )
+
+        _remote_clients[token] = RemoteClient(server, is_mod=True, name="[ADMIN]")
     remote = _remote_clients[token]
 
     if enable:
@@ -364,11 +363,14 @@ async def handle_api_ooc_monitor(request):
         # Register listener for forwarding to WebSocket
         remote.remove_listener(_ws_forward)
         remote.add_listener(_ws_forward)
-        return web.json_response({
-            "ok": True, "monitoring": True,
-            "area_id": remote.area.id if remote.area else -1,
-            "area_name": remote.area.name if remote.area else "?",
-        })
+        return web.json_response(
+            {
+                "ok": True,
+                "monitoring": True,
+                "area_id": remote.area.id if remote.area else -1,
+                "area_name": remote.area.name if remote.area else "?",
+            }
+        )
     else:
         remote.remove_listener(_ws_forward)
         remote.leave_area()
@@ -384,12 +386,6 @@ async def handle_api_ic_monitor(request):
 
 
 @_require_auth
-async def handle_api_ic_monitor(request):
-    """IC monitoring is captured by the same mechanism as OOC."""
-    return await handle_api_ooc_monitor(request)
-
-
-@_require_auth
 async def handle_api_players(request):
     """List all connected players."""
     server = request.app["server"]
@@ -398,18 +394,20 @@ async def handle_api_players(request):
 
     players = []
     for client in server.client_manager.clients:
-        players.append({
-            "id": client.id,
-            "name": client.name,
-            "char_name": getattr(client, "char_name", ""),
-            "showname": getattr(client, "showname", ""),
-            "ipid": client.ipid,
-            "area_id": client.area.id if client.area else -1,
-            "area_name": client.area.name if client.area else "Unknown",
-            "is_mod": client.is_mod,
-            "is_muted": client.is_muted,
-            "is_ooc_muted": client.is_ooc_muted,
-        })
+        players.append(
+            {
+                "id": client.id,
+                "name": client.name,
+                "char_name": getattr(client, "char_name", ""),
+                "showname": getattr(client, "showname", ""),
+                "ipid": client.ipid,
+                "area_id": client.area.id if client.area else -1,
+                "area_name": client.area.name if client.area else "Unknown",
+                "is_mod": client.is_mod,
+                "is_muted": client.is_muted,
+                "is_ooc_muted": client.is_ooc_muted,
+            }
+        )
     return web.json_response(players)
 
 
@@ -436,9 +434,8 @@ async def handle_api_command(request):
     # Reuse the same remote client per session so state (area, etc.) persists
     if token not in _remote_clients:
         from server.remote_client import RemoteClient
-        _remote_clients[token] = RemoteClient(
-            server, is_mod=True, name="[ADMIN]"
-        )
+
+        _remote_clients[token] = RemoteClient(server, is_mod=True, name="[ADMIN]")
     remote = _remote_clients[token]
 
     # Ensure the remote client is in the area before executing commands
@@ -455,18 +452,22 @@ async def handle_api_command(request):
         name = f"{prefix}{remote.name}"
         # Send through area.send_command — remote client receives it naturally
         remote.area.send_command("CT", name, arg)
-        return web.json_response({
-            "output": [f"OOC: {arg}"],
-            "cmd": cmd,
-            "arg": arg,
-        })
+        return web.json_response(
+            {
+                "output": [f"OOC: {arg}"],
+                "cmd": cmd,
+                "arg": arg,
+            }
+        )
 
     output = remote.execute(cmd, arg)
-    return web.json_response({
-        "output": output,
-        "cmd": cmd,
-        "arg": arg,
-    })
+    return web.json_response(
+        {
+            "output": output,
+            "cmd": cmd,
+            "arg": arg,
+        }
+    )
 
 
 @_require_auth
@@ -586,7 +587,9 @@ def create_admin_app(config, server=None):
             "      reverse_proxy localhost:%s\n"
             "  }\n"
             "Then run: caddy run",
-            domain, domain, admin_cfg.get("port", 27017),
+            domain,
+            domain,
+            admin_cfg.get("port", 27017),
         )
     else:
         logger.warning(

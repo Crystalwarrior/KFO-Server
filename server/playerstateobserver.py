@@ -56,10 +56,8 @@ class PlayerStateObserver:
         target.send_command("PR", client.id, self.ADD)
         target.send_command("PU", client.id, self.NAME, client.name)
         target.send_command("PU", client.id, self.CHARACTER, client.char_name)
-        target.send_command("PU", client.id,
-                            self.CHARACTER_NAME, client.showname)
-        target.send_command("PU", client.id, self.AREA_ID,
-                            self.get_area_id(target, client))
+        target.send_command("PU", client.id, self.CHARACTER_NAME, client.showname)
+        target.send_command("PU", client.id, self.AREA_ID, self.get_area_id(target, client))
 
     def get_area_id(self, target, client):
         """
@@ -86,8 +84,7 @@ class PlayerStateObserver:
     def notify_name_changed(self, client):
         if client not in self.listed:
             return
-        self.send_to_client_list(
-            client, "PU", client.id, self.NAME, client.name)
+        self.send_to_client_list(client, "PU", client.id, self.NAME, client.name)
 
     def notify_character_changed(self, client):
         """
@@ -97,16 +94,13 @@ class PlayerStateObserver:
         if client not in self.listed or client.hidden:
             self.notify_visibility_changed(client)
             return
-        self.send_to_client_list(
-            client, "PU", client.id, self.CHARACTER, client.char_name)
-        self.send_to_client_list(
-            client, "PU", client.id, self.CHARACTER_NAME, client.showname)
+        self.send_to_client_list(client, "PU", client.id, self.CHARACTER, client.char_name)
+        self.send_to_client_list(client, "PU", client.id, self.CHARACTER_NAME, client.showname)
 
     def notify_character_name_changed(self, client):
         if client not in self.listed:
             return
-        self.send_to_client_list(
-            client, "PU", client.id, self.CHARACTER_NAME, client.showname)
+        self.send_to_client_list(client, "PU", client.id, self.CHARACTER_NAME, client.showname)
 
     def notify_area_id_changed(self, client):
         if client not in self.listed:
@@ -114,8 +108,7 @@ class PlayerStateObserver:
         for target in self.client_list:
             if target.area.area_manager != client.area.area_manager:
                 continue
-            target.send_command("PU", client.id, self.AREA_ID,
-                                self.get_area_id(target, client))
+            target.send_command("PU", client.id, self.AREA_ID, self.get_area_id(target, client))
 
     def notify_visibility_changed(self, client):
         """Add or drop the listing of a client that hid or revealed itself."""
@@ -124,8 +117,7 @@ class PlayerStateObserver:
         if client.hidden:
             if client in self.listed:
                 self.listed.discard(client)
-                self.send_to_client_list(
-                    client, "PR", client.id, self.REMOVE)
+                self.send_to_client_list(client, "PR", client.id, self.REMOVE)
             return
         if client in self.listed:
             return
