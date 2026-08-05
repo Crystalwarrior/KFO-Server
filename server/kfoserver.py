@@ -171,7 +171,6 @@ class KFOServer:
         if "need_webhook" in self.config and self.config["need_webhook"]["enabled"]:
             self.need_webhook = True
 
-
         # Start admin panel web server if configured
         self.admin_runner = None
         admin_cfg = self.config.get("admin_panel", {})

@@ -450,20 +450,23 @@ class Database:
                     target_ipid,
                 ),
             )
-        self._notify_subscribers("area", {
-            "event_time": arrow.utcnow().isoformat(),
-            "ipid": ipid,
-            "hub_id": area.area_manager.id,
-            "hub_name": area.area_manager.name,
-            "area_id": area.id,
-            "area_name": area.name,
-            "ic_name": client._showname,
-            "char_name": char_name,
-            "ooc_name": ooc_name,
-            "event_subtype": event_subtype,
-            "message": message,
-            "target_ipid": target_ipid,
-        })
+        self._notify_subscribers(
+            "area",
+            {
+                "event_time": arrow.utcnow().isoformat(),
+                "ipid": ipid,
+                "hub_id": area.area_manager.id,
+                "hub_name": area.area_manager.name,
+                "area_id": area.id,
+                "area_name": area.name,
+                "ic_name": client._showname,
+                "char_name": char_name,
+                "ooc_name": ooc_name,
+                "event_subtype": event_subtype,
+                "message": message,
+                "target_ipid": target_ipid,
+            },
+        )
 
     def log_connect(self, client, failed=False):
         """Log a connect attempt."""
@@ -479,12 +482,15 @@ class Database:
                 ),
                 (client.ipid, client.hdid, failed),
             )
-        self._notify_subscribers("connect", {
-            "event_time": arrow.utcnow().isoformat(),
-            "ipid": client.ipid,
-            "hdid": client.hdid,
-            "failed": failed,
-        })
+        self._notify_subscribers(
+            "connect",
+            {
+                "event_time": arrow.utcnow().isoformat(),
+                "ipid": client.ipid,
+                "hdid": client.hdid,
+                "failed": failed,
+            },
+        )
 
     def log_misc(self, event_subtype, client=None, target=None, data=None):
         """
@@ -507,13 +513,16 @@ class Database:
                 ),
                 (client_ipid, target_ipid, subtype_id, data_json),
             )
-        self._notify_subscribers("misc", {
-            "event_time": arrow.utcnow().isoformat(),
-            "ipid": client_ipid,
-            "target_ipid": target_ipid,
-            "event_subtype": event_subtype,
-            "event_data": data,
-        })
+        self._notify_subscribers(
+            "misc",
+            {
+                "event_time": arrow.utcnow().isoformat(),
+                "ipid": client_ipid,
+                "target_ipid": target_ipid,
+                "event_subtype": event_subtype,
+                "event_data": data,
+            },
+        )
 
     def subscribe(self):
         """
@@ -563,8 +572,9 @@ class Database:
         with self.db as conn:
             conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
 
-    def query_area_events(self, hub_id=None, area_id=None, event_subtype=None,
-                          ipid=None, since=None, until=None, limit=100, offset=0):
+    def query_area_events(
+        self, hub_id=None, area_id=None, event_subtype=None, ipid=None, since=None, until=None, limit=100, offset=0
+    ):
         """Query area events with optional filters."""
         conditions = []
         params = []
@@ -604,8 +614,7 @@ class Database:
             rows = conn.execute(query, params).fetchall()
             return [dict(row) for row in rows]
 
-    def count_area_events(self, hub_id=None, area_id=None, event_subtype=None,
-                          ipid=None, since=None, until=None):
+    def count_area_events(self, hub_id=None, area_id=None, event_subtype=None, ipid=None, since=None, until=None):
         """Count area events matching filters (for pagination)."""
         conditions = []
         params = []
@@ -639,8 +648,7 @@ class Database:
         with self.db as conn:
             return conn.execute(query, params).fetchone()["cnt"]
 
-    def query_connect_events(self, ipid=None, failed=None, since=None, until=None,
-                             limit=100, offset=0):
+    def query_connect_events(self, ipid=None, failed=None, since=None, until=None, limit=100, offset=0):
         """Query connection events with optional filters."""
         conditions = []
         params = []
@@ -694,8 +702,7 @@ class Database:
         with self.db as conn:
             return conn.execute(query, params).fetchone()["cnt"]
 
-    def query_misc_events(self, event_subtype=None, ipid=None, since=None, until=None,
-                          limit=100, offset=0):
+    def query_misc_events(self, event_subtype=None, ipid=None, since=None, until=None, limit=100, offset=0):
         """Query miscellaneous events with optional filters."""
         conditions = []
         params = []
@@ -766,9 +773,7 @@ class Database:
     def get_hubs(self):
         """Get distinct hub id/name pairs from area_events."""
         with self.db as conn:
-            rows = conn.execute(
-                "SELECT DISTINCT hub_id, hub_name FROM area_events ORDER BY hub_id"
-            ).fetchall()
+            rows = conn.execute("SELECT DISTINCT hub_id, hub_name FROM area_events ORDER BY hub_id").fetchall()
             return [{"hub_id": row["hub_id"], "hub_name": row["hub_name"]} for row in rows]
 
     def get_areas_for_hub(self, hub_id=None):

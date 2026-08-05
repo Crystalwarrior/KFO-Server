@@ -54,6 +54,7 @@ class RemoteClient(ClientManager.Client):
 
     def __init__(self, server, is_mod=True, name="[SYSTEM]"):
         from server import database
+
         _ensure_system_ipid(database._database_singleton)
         super().__init__(server, _RemoteTransport(), user_id=-1, ipid=_SYSTEM_IPID)
         self.char_id = -1
@@ -150,7 +151,7 @@ class RemoteClient(ClientManager.Client):
                 for c in self.area.clients:
                     if c.char_id == cid:
                         client_id = c.id
-                        char_name = getattr(c, 'char_name', '')
+                        char_name = getattr(c, "char_name", "")
                         break
                 if not char_name:
                     try:
@@ -200,6 +201,7 @@ class RemoteClient(ClientManager.Client):
         self.output.clear()
         self.raw_packets.clear()
         from server import commands
+
         try:
             commands.call(self, cmd, arg)
         except Exception as e:
