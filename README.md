@@ -10,7 +10,7 @@ In order to set up the server, you must follow these instructions. This assumes 
 ### Install uv
 
 KFO-Server uses [uv](https://docs.astral.sh/uv/) to manage the Python toolchain and dependencies.
-It picks up the required Python version (3.11+) from `pyproject.toml` automatically — you do not need to install Python separately.
+It picks up the required Python version (3.13+) from `pyproject.toml` automatically — you do not need to install Python separately.
 
 Install uv by following the [official instructions](https://docs.astral.sh/uv/getting-started/installation/). The short version:
 
