@@ -257,19 +257,13 @@ class ClientManager:
                         if len(args) > 16 and args[16]:
                             charid_pair = str(args[16])
                         self_offset_x = 0
-                        self_offset_y = 0
                         if len(args) > 19 and args[19]:
                             offset = str(args[19]).replace("<and>", "&").split("&")
                             self_offset_x = offset[0]
-                            if len(offset) > 1:
-                                self_offset_y = offset[1]
                         offset_pair_x = 0
-                        offset_pair_y = 0
                         if len(args) > 20 and args[20]:
                             offset = str(args[20]).replace("<and>", "&").split("&")
                             offset_pair_x = offset[0]
-                            if len(offset) > 1:
-                                offset_pair_y = offset[1]
 
                         self_offset_x_dro = 500
                         if self_offset_x:
