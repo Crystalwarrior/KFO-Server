@@ -53,6 +53,7 @@ class ClientManager:
             self.software = ""
 
             self.first_joined = True
+            self.joined = False
 
             # Pairing character ID
             self.charid_pair = -1
@@ -256,13 +257,19 @@ class ClientManager:
                         if len(args) > 16 and args[16]:
                             charid_pair = str(args[16])
                         self_offset_x = 0
+                        self_offset_y = 0
                         if len(args) > 19 and args[19]:
                             offset = str(args[19]).replace("<and>", "&").split("&")
                             self_offset_x = offset[0]
+                            if len(offset) > 1:
+                                self_offset_y = offset[1]
                         offset_pair_x = 0
+                        offset_pair_y = 0
                         if len(args) > 20 and args[20]:
                             offset = str(args[20]).replace("<and>", "&").split("&")
                             offset_pair_x = offset[0]
+                            if len(offset) > 1:
+                                offset_pair_y = offset[1]
 
                         self_offset_x_dro = 500
                         if self_offset_x:
@@ -526,6 +533,7 @@ class ClientManager:
             #                        *self.get_available_char_list())
             if arup:
                 self.area.area_manager.send_arup_players()
+            self.server.player_state_observer.notify_character_changed(self)
             new_char = self.char_name
             database.log_area(
                 "char.change",
@@ -984,11 +992,19 @@ class ClientManager:
 
             self.area.area_manager.send_arup_players()
 
+            if old_area.area_manager != self.area.area_manager:
+                self.server.player_state_observer.notify_hub_changed(
+                    self, old_area.area_manager)
+            else:
+                self.server.player_state_observer.notify_area_id_changed(self)
+
             for hub in self.server.hub_manager.hubs:
                 count = 0
                 for c in hub.clients:
                     if not c.area.hide_clients and not c.hidden:
-                        count = count + 1
+                        from server.remote_client import _SYSTEM_IPID
+                        if c.ipid != _SYSTEM_IPID:
+                            count = count + 1
                 hub.count = count
             for c in self.server.client_manager.clients:
                 if c.viewing_hub_list:
@@ -1330,7 +1346,7 @@ class ClientManager:
             self.send_command("CU", "1", "2")
 
         def get_new_area_user_links(self):
-            """ "
+            """
             Get the char_urls of the new area that the client changed to.
             And applying the changes.
             """
@@ -1344,6 +1360,8 @@ class ClientManager:
             # Get the char_urls of the new area for this client.
             for client in clients:
                 self.add_user_link(client.char_name, client.char_url)
+
+
 
         def refresh_area_char_links(self, old_area):
             """
@@ -1471,13 +1489,20 @@ class ClientManager:
                 if area.hide_clients or area.area_manager.hide_clients or area.dark:
                     users = ""
                 else:
-                    # We exclude hidden players here because we don't want them to count for the user count
-                    player_list = [c for c in area.clients if not c.hidden]
-                    users = f" (users: {len(player_list)}) "
+                    # We exclude hidden players and system/mock clients here
+                    from server.remote_client import _SYSTEM_IPID
+                    player_list = [c for c in area.clients if not c.hidden and c.ipid != _SYSTEM_IPID]
+                    users = f' (users: {len(player_list)}) '
                 if area.hidden:
                     return ""
             else:
-                users = f" (users: {len(area.clients)}) "
+                # Mods see everyone; GMs and CMs don't see system/mock clients
+                from server.remote_client import _SYSTEM_IPID
+                if self.is_mod:
+                    users = f" (users: {len(area.clients)}) "
+                else:
+                    visible = [c for c in area.clients if c.ipid != _SYSTEM_IPID]
+                    users = f" (users: {len(visible)}) "
 
             info += (
                 f"[{area.id}] {area.name}{users}{status}{owner}{hidden}{locked}{pathlocked}{passworded}{muted}{dark}"
@@ -1494,6 +1519,11 @@ class ClientManager:
                 player_list = area.afkers
             else:
                 player_list = area.clients
+
+            # Filter out system/mock clients for non-mods
+            if not self.is_mod:
+                from server.remote_client import _SYSTEM_IPID
+                player_list = [c for c in player_list if c.ipid != _SYSTEM_IPID]
 
             if not self.is_mod and self not in area.owners:
                 if not area.can_getarea:
@@ -1975,6 +2005,7 @@ class ClientManager:
             self._hidden = tog
             self.send_ooc(f"You are {msg} from /getarea and playercounts.")
             self.area.area_manager.send_arup_players()
+            self.server.player_state_observer.notify_visibility_changed(self)
             if not self.sneaking:
                 self.area.broadcast_player_list()
 

@@ -37,9 +37,10 @@ class Database:
 
     def __init__(self):
         new = not os.path.exists("storage/db.sqlite3")
-        self.db = sqlite3.connect(DB_FILE)
+        self.db = sqlite3.connect(DB_FILE, check_same_thread=False)
         self.db.execute("PRAGMA foreign_keys = ON")
         self.db.row_factory = sqlite3.Row
+        self._log_subscribers = []
         if new:
             self.migrate_json_to_v1()
         self.migrate()
@@ -139,7 +140,7 @@ class Database:
             logger.debug("Migration to v1 complete")
 
     def migrate(self):
-        for version in [2, 3, 4]:
+        for version in [2, 3, 4, 5, 6, 7]:
             self.migrate_to_version(version)
 
     def migrate_to_version(self, version):
@@ -449,6 +450,20 @@ class Database:
                     target_ipid,
                 ),
             )
+        self._notify_subscribers("area", {
+            "event_time": arrow.utcnow().isoformat(),
+            "ipid": ipid,
+            "hub_id": area.area_manager.id,
+            "hub_name": area.area_manager.name,
+            "area_id": area.id,
+            "area_name": area.name,
+            "ic_name": client._showname,
+            "char_name": char_name,
+            "ooc_name": ooc_name,
+            "event_subtype": event_subtype,
+            "message": message,
+            "target_ipid": target_ipid,
+        })
 
     def log_connect(self, client, failed=False):
         """Log a connect attempt."""
@@ -464,6 +479,12 @@ class Database:
                 ),
                 (client.ipid, client.hdid, failed),
             )
+        self._notify_subscribers("connect", {
+            "event_time": arrow.utcnow().isoformat(),
+            "ipid": client.ipid,
+            "hdid": client.hdid,
+            "failed": failed,
+        })
 
     def log_misc(self, event_subtype, client=None, target=None, data=None):
         """
@@ -486,6 +507,36 @@ class Database:
                 ),
                 (client_ipid, target_ipid, subtype_id, data_json),
             )
+        self._notify_subscribers("misc", {
+            "event_time": arrow.utcnow().isoformat(),
+            "ipid": client_ipid,
+            "target_ipid": target_ipid,
+            "event_subtype": event_subtype,
+            "event_data": data,
+        })
+
+    def subscribe(self):
+        """
+        Subscribe to live log events. Returns an asyncio.Queue that will
+        receive dicts with keys: 'type' ('area'|'connect'|'misc') and 'data'.
+        """
+        queue = asyncio.Queue()
+        self._log_subscribers.append(queue)
+        return queue
+
+    def unsubscribe(self, queue):
+        """Unsubscribe from live log events."""
+        if queue in self._log_subscribers:
+            self._log_subscribers.remove(queue)
+
+    def _notify_subscribers(self, event_type, data):
+        """Notify all subscribers of a new log event."""
+        entry = {"type": event_type, "data": data}
+        for queue in self._log_subscribers:
+            try:
+                queue.put_nowait(entry)
+            except asyncio.QueueFull:
+                pass
 
     def recent_bans(self, count=5):
         """
@@ -506,6 +557,233 @@ class Database:
                     (count,),
                 ).fetchall()
             ]
+
+    def checkpoint_wal(self):
+        """Force a WAL checkpoint to keep the WAL file from growing too large."""
+        with self.db as conn:
+            conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
+
+    def query_area_events(self, hub_id=None, area_id=None, event_subtype=None,
+                          ipid=None, since=None, until=None, limit=100, offset=0):
+        """Query area events with optional filters."""
+        conditions = []
+        params = []
+        if hub_id is not None:
+            conditions.append("e.hub_id = ?")
+            params.append(hub_id)
+        if area_id is not None:
+            conditions.append("e.area_id = ?")
+            params.append(area_id)
+        if event_subtype is not None:
+            conditions.append("t.type_name = ?")
+            params.append(event_subtype)
+        if ipid is not None:
+            conditions.append("e.ipid = ?")
+            params.append(ipid)
+        if since is not None:
+            conditions.append("e.event_time >= ?")
+            params.append(since)
+        if until is not None:
+            conditions.append("e.event_time <= ?")
+            params.append(until)
+
+        where = " AND ".join(conditions) if conditions else "1=1"
+        query = dedent(f"""
+            SELECT e.event_time, e.ipid, e.target_ipid, e.hub_id, e.hub_name,
+                   e.area_id, e.area_name, e.ic_name, e.char_name, e.ooc_name,
+                   t.type_name AS event_subtype, e.message
+            FROM area_events e
+            JOIN area_event_types t ON e.event_subtype = t.type_id
+            WHERE {where}
+            ORDER BY e.event_time DESC
+            LIMIT ? OFFSET ?
+        """)
+        params.extend([limit, offset])
+
+        with self.db as conn:
+            rows = conn.execute(query, params).fetchall()
+            return [dict(row) for row in rows]
+
+    def count_area_events(self, hub_id=None, area_id=None, event_subtype=None,
+                          ipid=None, since=None, until=None):
+        """Count area events matching filters (for pagination)."""
+        conditions = []
+        params = []
+        if hub_id is not None:
+            conditions.append("e.hub_id = ?")
+            params.append(hub_id)
+        if area_id is not None:
+            conditions.append("e.area_id = ?")
+            params.append(area_id)
+        if event_subtype is not None:
+            conditions.append("t.type_name = ?")
+            params.append(event_subtype)
+        if ipid is not None:
+            conditions.append("e.ipid = ?")
+            params.append(ipid)
+        if since is not None:
+            conditions.append("e.event_time >= ?")
+            params.append(since)
+        if until is not None:
+            conditions.append("e.event_time <= ?")
+            params.append(until)
+
+        where = " AND ".join(conditions) if conditions else "1=1"
+        query = dedent(f"""
+            SELECT COUNT(*) as cnt
+            FROM area_events e
+            JOIN area_event_types t ON e.event_subtype = t.type_id
+            WHERE {where}
+        """)
+
+        with self.db as conn:
+            return conn.execute(query, params).fetchone()["cnt"]
+
+    def query_connect_events(self, ipid=None, failed=None, since=None, until=None,
+                             limit=100, offset=0):
+        """Query connection events with optional filters."""
+        conditions = []
+        params = []
+        if ipid is not None:
+            conditions.append("ipid = ?")
+            params.append(ipid)
+        if failed is not None:
+            conditions.append("failed = ?")
+            params.append(1 if failed else 0)
+        if since is not None:
+            conditions.append("event_time >= ?")
+            params.append(since)
+        if until is not None:
+            conditions.append("event_time <= ?")
+            params.append(until)
+
+        where = " AND ".join(conditions) if conditions else "1=1"
+        query = dedent(f"""
+            SELECT event_time, ipid, hdid, failed
+            FROM connect_events
+            WHERE {where}
+            ORDER BY event_time DESC
+            LIMIT ? OFFSET ?
+        """)
+        params.extend([limit, offset])
+
+        with self.db as conn:
+            rows = conn.execute(query, params).fetchall()
+            return [dict(row) for row in rows]
+
+    def count_connect_events(self, ipid=None, failed=None, since=None, until=None):
+        """Count connection events matching filters."""
+        conditions = []
+        params = []
+        if ipid is not None:
+            conditions.append("ipid = ?")
+            params.append(ipid)
+        if failed is not None:
+            conditions.append("failed = ?")
+            params.append(1 if failed else 0)
+        if since is not None:
+            conditions.append("event_time >= ?")
+            params.append(since)
+        if until is not None:
+            conditions.append("event_time <= ?")
+            params.append(until)
+
+        where = " AND ".join(conditions) if conditions else "1=1"
+        query = dedent(f"SELECT COUNT(*) as cnt FROM connect_events WHERE {where}")
+
+        with self.db as conn:
+            return conn.execute(query, params).fetchone()["cnt"]
+
+    def query_misc_events(self, event_subtype=None, ipid=None, since=None, until=None,
+                          limit=100, offset=0):
+        """Query miscellaneous events with optional filters."""
+        conditions = []
+        params = []
+        if event_subtype is not None:
+            conditions.append("t.type_name = ?")
+            params.append(event_subtype)
+        if ipid is not None:
+            conditions.append("e.ipid = ?")
+            params.append(ipid)
+        if since is not None:
+            conditions.append("e.event_time >= ?")
+            params.append(since)
+        if until is not None:
+            conditions.append("e.event_time <= ?")
+            params.append(until)
+
+        where = " AND ".join(conditions) if conditions else "1=1"
+        query = dedent(f"""
+            SELECT e.event_time, e.ipid, e.target_ipid,
+                   t.type_name AS event_subtype, e.event_data
+            FROM misc_events e
+            JOIN misc_event_types t ON e.event_subtype = t.type_id
+            WHERE {where}
+            ORDER BY e.event_time DESC
+            LIMIT ? OFFSET ?
+        """)
+        params.extend([limit, offset])
+
+        with self.db as conn:
+            rows = conn.execute(query, params).fetchall()
+            return [dict(row) for row in rows]
+
+    def count_misc_events(self, event_subtype=None, ipid=None, since=None, until=None):
+        """Count miscellaneous events matching filters."""
+        conditions = []
+        params = []
+        if event_subtype is not None:
+            conditions.append("t.type_name = ?")
+            params.append(event_subtype)
+        if ipid is not None:
+            conditions.append("e.ipid = ?")
+            params.append(ipid)
+        if since is not None:
+            conditions.append("e.event_time >= ?")
+            params.append(since)
+        if until is not None:
+            conditions.append("e.event_time <= ?")
+            params.append(until)
+
+        where = " AND ".join(conditions) if conditions else "1=1"
+        query = dedent(f"""
+            SELECT COUNT(*) as cnt
+            FROM misc_events e
+            JOIN misc_event_types t ON e.event_subtype = t.type_id
+            WHERE {where}
+        """)
+
+        with self.db as conn:
+            return conn.execute(query, params).fetchone()["cnt"]
+
+    def get_event_types(self, event_category="area"):
+        """Get all event type names for a category ('area' or 'misc')."""
+        table = f"{event_category}_event_types"
+        with self.db as conn:
+            rows = conn.execute(f"SELECT type_name FROM {table} ORDER BY type_name").fetchall()
+            return [row["type_name"] for row in rows]
+
+    def get_hubs(self):
+        """Get distinct hub id/name pairs from area_events."""
+        with self.db as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT hub_id, hub_name FROM area_events ORDER BY hub_id"
+            ).fetchall()
+            return [{"hub_id": row["hub_id"], "hub_name": row["hub_name"]} for row in rows]
+
+    def get_areas_for_hub(self, hub_id=None):
+        """Get distinct area id/name pairs, optionally filtered by hub."""
+        with self.db as conn:
+            if hub_id is not None:
+                rows = conn.execute(
+                    "SELECT DISTINCT area_id, area_name FROM area_events WHERE hub_id = ? ORDER BY area_id",
+                    (hub_id,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT DISTINCT hub_id, area_id, area_name FROM area_events ORDER BY hub_id, area_id"
+                ).fetchall()
+            return [dict(row) for row in rows]
 
     def _subtype_atom(self, event_type, event_subtype):
         if event_type not in ("area", "misc"):
