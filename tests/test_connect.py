@@ -1,7 +1,5 @@
 from unittest.mock import patch
 
-import pytest
-
 from tests.mock import MockClient
 
 
@@ -38,13 +36,6 @@ async def test_send_ic_message(test_server):
         assert args[4] == "Hello from test!"
 
 
-@pytest.mark.xfail(
-    reason=(
-        "aoprotocol.data_received intentionally KKs and disconnects the client "
-        "on any unhandled exception — see server/network/aoprotocol.py:76."
-    ),
-    strict=True,
-)
 async def test_exception_does_not_disconnect(test_server):
     """A server-side exception during packet handling should not kick the client."""
     async with MockClient(test_server._test_host, test_server._test_port) as client:

@@ -73,14 +73,14 @@ class AOProtocol(asyncio.Protocol):
             except KeyError:
                 logger.debug("Unknown incoming message from %s: %s", ipid, msg)
             except Exception:
+                # A bug handling one packet must not drop the client: log it,
+                # notify them, and keep processing the rest of the buffer.
                 traceback_string = traceback.format_exc()
                 print(traceback_string)
                 self.client.send_command(
                     "KK",
                     f"An error has occurred!\n{traceback_string}\n\nPlease contact the server owner to report this issue.",
                 )
-                self.client.disconnect()
-                raise
 
     def connection_made(self, transport):
         """Called upon a new client connecting
