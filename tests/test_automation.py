@@ -34,10 +34,26 @@ class FakeAreaManager:
         self.owners = set()
         self.areas = []
         self.char_list = ["Char0"]
+        self.name = "Test Hub"
+        self.abbreviation = "TH"
+        self.subtheme = ""
+        self.time_of_day = ""
+        self.info = ""
+        self.char_list_ref = ""
+        self.music_ref = ""
+        self.move_delay = 0
         self.can_gm = True
         self.single_cm = False
-        self.arup_enabled = False
+        self.arup_enabled = True
         self.hide_clients = False
+        self.replace_music = False
+        self.client_music = True
+        self.max_areas = -1
+        self.can_spectate = True
+        self.can_getareas = True
+        self.passing_msg = False
+        self.autokick_to_latest_area = False
+        self.timer = Timer(0, hub=self)
 
     @property
     def server(self):
@@ -108,12 +124,42 @@ class FakeBroadcastArea:
         self.last_ic_message = None
         self.sent = []
         self.ooc = []
+        self.variables = {}
+        self.afkers = []
+        self._owners = set()
+        self.area_manager = FakeAreaManager()
+        self.timers = [Timer(x, area=self) for x in range(20)]
 
     def send_command(self, cmd, *args):
         self.sent.append((cmd,) + tuple(args))
 
     def broadcast_ooc(self, msg, exclude_list=None):
         self.ooc.append(msg)
+
+
+class FakeScriptClient:
+    """Minimal Client stand-in with the fields the live-source whitelist reads."""
+
+    def __init__(self, user_id, showname, char_id=0, ipid=1, is_mod=False, hidden=False):
+        self.id = user_id
+        self.showname = showname
+        self.char_name = showname
+        self.name = showname
+        self.char_id = char_id
+        self.ipid = ipid
+        self.is_mod = is_mod
+        self.hidden = hidden
+        self.pos = "wit"
+        self.charid_pair = -1
+        self.hdid = "hdid"
+        self.sneaking = False
+        self.frozen = False
+        self.iniswap = ""
+        self.last_move_time = 0
+        self.remote_listen = 2
+        self.subtheme = ""
+        self.time_of_day = ""
+        self.char_url = ""
 
 
 @pytest.fixture
@@ -137,7 +183,7 @@ def _spy_ooc(area):
 
 
 def test_parse_demo_description_basic():
-    desc = "wait#1000%CT#narrator#hello%BN#bg1%"
+    desc = "wait 1000%CT#narrator#hello%BN#bg1%"
     assert parse_demo_description(desc) == [
         ("wait", 1.0),
         ("packet", "CT", ("narrator", "hello")),
@@ -146,9 +192,7 @@ def test_parse_demo_description_basic():
 
 
 def test_parse_demo_description_command():
-    assert parse_demo_description("/ct hello world%") == [
-        ("command", "ct", "hello world")
-    ]
+    assert parse_demo_description("/ct hello world%") == [("command", "ct", "hello world")]
 
 
 def test_parse_demo_description_chained_demo():
@@ -158,6 +202,92 @@ def test_parse_demo_description_chained_demo():
 def test_parse_demo_description_unescapes():
     desc = "CT#a<num>b<and>c<percent>d<dollar>e%"
     assert parse_demo_description(desc) == [("packet", "CT", ("a", "b&c"))]
+
+
+def test_parse_demo_description_num_percent_terminator():
+    desc = "set count 0#%CT#COUNTER#Count: <!count>#1#%set count count+1#%if count gt 1 loop#%label loop#%return#%wait 500#%"
+    assert parse_demo_description(desc) == [
+        ("set", "count", "0"),
+        ("packet", "CT", ("COUNTER", "Count: <!count>", "1")),
+        ("set", "count", "count+1"),
+        ("if", "count", "gt", "1", "loop"),
+        ("label", "loop"),
+        ("return",),
+        ("wait", 0.5),
+    ]
+
+
+def test_parse_demo_description_symbol_if_operators():
+    desc = "if total >= 5 done%if x == 2 next%if y != z other%if a < 3 small%if b <= 2 tiny%if c > 9 big%"
+    assert parse_demo_description(desc) == [
+        ("if", "total", ">=", "5", "done"),
+        ("if", "x", "==", "2", "next"),
+        ("if", "y", "!=", "z", "other"),
+        ("if", "a", "<", "3", "small"),
+        ("if", "b", "<=", "2", "tiny"),
+        ("if", "c", ">", "9", "big"),
+    ]
+
+
+def test_parse_demo_description_rand():
+    desc = "rand roll 1 6%rand dmg 2 total+1%"
+    assert parse_demo_description(desc) == [
+        ("rand", "roll", "1", "6"),
+        ("rand", "dmg", "2", "total+1"),
+    ]
+
+
+def test_parse_demo_description_newline_separated_instructions():
+    desc = "set count 5\nset count count-1\nif count gt 0 loop\nlabel loop"
+    assert parse_demo_description(desc) == [
+        ("set", "count", "5"),
+        ("set", "count", "count-1"),
+        ("if", "count", "gt", "0", "loop"),
+        ("label", "loop"),
+    ]
+
+
+def test_parse_demo_description_newlines_and_percent_mixed():
+    desc = "set count 5\nlabel loop\nset count count-1\nif count gt 0 loop%\nCT#narrator#go%\nwait 500"
+    assert parse_demo_description(desc) == [
+        ("set", "count", "5"),
+        ("label", "loop"),
+        ("set", "count", "count-1"),
+        ("if", "count", "gt", "0", "loop"),
+        ("packet", "CT", ("narrator", "go")),
+        ("wait", 0.5),
+    ]
+
+
+def test_parse_demo_description_multiline_packet_preserved():
+    """A packet spans newlines until `%`; newlines stay in its fields."""
+    desc = "CT#narrator#Hello\nthere\nguys!!!#%\nset count 5%"
+    assert parse_demo_description(desc) == [
+        ("packet", "CT", ("narrator", "Hello\nthere\nguys!!!")),
+        ("set", "count", "5"),
+    ]
+
+
+def test_parse_demo_description_multiline_command_preserved():
+    """A slash command spans newlines until `%`; newlines stay in its args."""
+    desc = "/say line one\nline two%\nset count 5%"
+    assert parse_demo_description(desc) == [
+        ("command", "say", "line one\nline two"),
+        ("set", "count", "5"),
+    ]
+
+
+def test_parse_demo_description_wait_hash_form():
+    """Legacy `wait#<ms>#%` and space `wait <ms>` are equivalent."""
+    assert parse_demo_description("wait#5000#%") == [("wait", 5.0)]
+    assert parse_demo_description("wait 5000") == [("wait", 5.0)]
+
+
+def test_parse_demo_description_concat():
+    assert parse_demo_description('concat list s ", "%concat tag s%') == [
+        ("concat", "list", "s", '", "'),
+        ("concat", "tag", "s", ""),
+    ]
 
 
 def test_parse_demo_description_ignores_unknown_headers():
@@ -171,7 +301,7 @@ def test_parse_demo_description_ignores_empty_lines():
 
 def test_parse_demo_description_commands_with_newlines():
     """Multi-line evidence: newlines before % don't drop commands or packets."""
-    desc = "/pos_lock day%\n/bg BOTC-TownSquare%\nMS#x#y%\n/timer 0 start%\nwait#1000#%"
+    desc = "/pos_lock day%\n/bg BOTC-TownSquare%\nMS#x#y%\n/timer 0 start%\nwait 1000#%"
     assert parse_demo_description(desc) == [
         ("command", "pos_lock", "day"),
         ("command", "bg", "BOTC-TownSquare"),
@@ -243,6 +373,20 @@ def test_trigger_broadcasts_errors(make_area):
     area.trigger("join", FakeTarget())
 
     assert any("[ERROR] boom" in m for m in messages)
+
+
+def test_trigger_sets_script_context_variables(make_area):
+    area = make_area()
+    area.triggers["join"] = "ct <showname>"
+    executor = FakeExecutor()
+    area._script_client = executor
+
+    area.trigger("join", FakeTarget())
+
+    assert executor.calls == [("ct", "Showname")]
+    assert area.variables["trigger_cid"] == 42
+    assert area.variables["trigger_showname"] == "Showname"
+    assert area.variables["trigger_char"] == "Char"
 
 
 # --- timers ---
@@ -437,16 +581,14 @@ def test_play_demo_warns_out_of_range_char_id(make_area):
         calls = []
         caller = SimpleNamespace(send_ooc=calls.append)
 
-        good = SimpleNamespace(
-            name="good", desc="MS#1#-#CM 1##lol#wit#0#1#0#0#0#0#0#0#3# #-1###%"
-        )
+        good = SimpleNamespace(name="good", desc="MS#1#-#CM 1##lol#wit#0#1#0#0#0#0#0#0#3# #-1###%")
         area.play_demo(caller, good)
         assert calls == []
         area.stop_demo()
 
         bad = SimpleNamespace(
             name="bad",
-            desc="wait#500%MS#1#-#CM 1##lol#wit#0#1#500#0#0#0#0#0#3# #-1###%",
+            desc="wait 500%MS#1#-#CM 1##lol#wit#0#1#500#0#0#0#0#0#3# #-1###%",
         )
         area.play_demo(caller, bad)
         assert any("char id 500" in msg for msg in calls)
@@ -484,7 +626,7 @@ def test_play_demo_warns_out_of_range_char_id_for_executor(make_area):
         ooc = _spy_ooc(area)
         bad = SimpleNamespace(
             name="bad",
-            desc="wait#500%MS#1#-#CM 1##lol#wit#0#1#500#0#0#0#0#0#3# #-1###%",
+            desc="wait 500%MS#1#-#CM 1##lol#wit#0#1#500#0#0#0#0#0#3# #-1###%",
         )
         area.play_demo(None, bad)
         assert any("char id 500" in msg for msg in ooc)
@@ -538,8 +680,7 @@ def test_demo_broadcasts_to_real_clients(monkeypatch):
     area.evi_list.evidences.append(
         EvidenceList.Evidence(
             "demo",
-            "CT#test#hello-from-demo%"
-            "MS#1#-#CM 1##lol#wit#0#1#0#0#0#0#0#0#3# #-1###%",
+            "CT#test#hello-from-demo%" "MS#1#-#CM 1##lol#wit#0#1#0#0#0#0#0#0#3# #-1###%",
             "image",
             "all",
         )
@@ -1068,3 +1209,984 @@ def test_stop_demo_denied_for_cm(monkeypatch):
 
     with pytest.raises(ClientError):
         commands.call(cm, "stop_demo", "")
+
+
+# --- Demo scripting (set/get/labels/goto/if) ---
+
+
+def test_parse_demo_scripting_instructions():
+    from server.script_runner import parse_demo_description
+
+    desc = (
+        "set count 5%"
+        "get need players+2%"
+        "label loop%"
+        "set count count-1%"
+        "if count gt 0 loop%"
+        "goto sub%"
+        "goto done%"
+        "label sub%"
+        "return%"
+        "label done%"
+        "CT#narrator#go%"
+    )
+    instructions = parse_demo_description(desc)
+    assert ("set", "count", "5") in instructions
+    assert ("get", "need", "players+2") in instructions
+    assert ("label", "loop") in instructions
+    assert ("if", "count", "gt", "0", "loop") in instructions
+    assert ("goto", "sub") in instructions
+    assert ("goto", "done") in instructions
+    assert ("return",) in instructions
+    assert ("packet", "CT", ("narrator", "go")) in instructions
+
+
+def test_script_runner_set_get(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("set", "count", "5"), ("set", "count", "count+3"), ("get", "need", "players")])
+    area.clients = {"a", "b", "c"}
+
+    fake_loop.pop_next()  # set count = 5
+    assert area.variables["count"] == 5
+
+    fake_loop.pop_next()  # set count = count + 3
+    assert area.variables["count"] == 8
+
+    fake_loop.pop_next()  # get need = live player count (3 clients)
+    assert area.variables["need"] == 3
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_unknown_variable_stops(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("set", "x", "missing+1")])
+
+    fake_loop.pop_next()
+
+    assert runner.running is False
+    assert any("[Demo] [ERROR] Unknown variable 'missing'" in m for m in area.ooc)
+
+
+def test_script_runner_set_string_literal(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "name", '"Alice"'),
+            ("set", "also", "'Bob'"),
+            ("packet", "CT", ("narrator", "Hello <!name>, from <!also>")),
+        ]
+    )
+
+    fake_loop.pop_next()  # set name = "Alice"
+    assert area.variables["name"] == "Alice"
+
+    fake_loop.pop_next()  # set also = "Bob"
+    assert area.variables["also"] == "Bob"
+
+    fake_loop.pop_next()  # broadcast CT with substituted getters
+    assert area.sent[-1] == ("CT", "narrator", "Hello Alice, from Bob")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_set_copies_variable(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("set", "a", '"hello"'), ("set", "b", "a")])
+
+    fake_loop.pop_next()  # set a = "hello"
+    fake_loop.pop_next()  # set b = a (copy, not expression)
+
+    assert area.variables["a"] == "hello"
+    assert area.variables["b"] == "hello"
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_if_string_eq_branch(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "name", '"Alice"'),
+            ("if", "name", "eq", '"Alice"', "yes"),
+            ("packet", "CT", ("narrator", "not taken")),
+            ("label", "yes"),
+            ("packet", "CT", ("narrator", "taken")),
+        ]
+    )
+
+    fake_loop.pop_next()  # set name = "Alice"
+    fake_loop.pop_next()  # if name == "Alice" -> jump to yes
+    fake_loop.pop_next()  # label yes
+    fake_loop.pop_next()  # broadcast CT "taken"
+
+    assert area.sent[-1] == ("CT", "narrator", "taken")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_if_mixed_compare_stops(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("set", "n", "5"), ("if", "n", "lt", '"5"', "done")])
+
+    fake_loop.pop_next()  # set n = 5
+    fake_loop.pop_next()  # if 5 < "5" -> cannot compare
+
+    assert runner.running is False
+    assert any("Cannot compare a number and a string" in m for m in area.ooc)
+
+
+def test_script_runner_if_symbol_operators(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "n", "3"),
+            ("if", "n", ">=", "5", "done"),
+            ("packet", "CT", ("narrator", "n < 5")),
+            ("set", "n", "n+2"),
+            ("if", "n", ">=", "5", "done"),
+            ("packet", "CT", ("narrator", "unreachable")),
+            ("label", "done"),
+            ("packet", "CT", ("narrator", "n is 5")),
+        ]
+    )
+
+    fake_loop.pop_next()  # set n = 3
+    fake_loop.pop_next()  # if 3 >= 5 -> no jump
+    fake_loop.pop_next()  # broadcast "n < 5"
+    fake_loop.pop_next()  # set n = 5
+    fake_loop.pop_next()  # if 5 >= 5 -> jump to done
+    fake_loop.pop_next()  # label done
+    fake_loop.pop_next()  # broadcast "n is 5"
+
+    assert area.sent[-1] == ("CT", "narrator", "n is 5")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_if_symbol_ne_branch(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "name", '"Alice"'),
+            ("if", "name", "!=", '"Bob"', "yes"),
+            ("packet", "CT", ("narrator", "not taken")),
+            ("label", "yes"),
+            ("packet", "CT", ("narrator", "taken")),
+        ]
+    )
+
+    fake_loop.pop_next()  # set name = "Alice"
+    fake_loop.pop_next()  # if "Alice" != "Bob" -> jump to yes
+    fake_loop.pop_next()  # label yes
+    fake_loop.pop_next()  # broadcast "taken"
+
+    assert area.sent[-1] == ("CT", "narrator", "taken")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_inline_getter_in_packet(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "count", "5"),
+            ("packet", "CT", ("narrator", "I counted <!count>")),
+        ]
+    )
+
+    fake_loop.pop_next()  # set count = 5
+    fake_loop.pop_next()  # broadcast CT with substituted getter
+
+    assert area.variables["count"] == 5
+    assert area.sent[-1] == ("CT", "narrator", "I counted 5")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_inline_getter_in_command(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "score", "10"),
+            ("command", "h", "Score: <!score>"),
+        ]
+    )
+
+    fake_loop.pop_next()  # set score = 10
+    fake_loop.pop_next()  # run command with substituted arg
+
+    assert executor.calls == [("h", "Score: 10")]
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_inline_getter_unknown_stops(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("packet", "CT", ("narrator", "I counted <!count>"))])
+
+    fake_loop.pop_next()
+
+    assert runner.running is False
+    assert any("Unknown variable 'count' in inline getter" in m for m in area.ooc)
+
+
+def test_script_runner_inline_getter_live_source(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("packet", "CT", ("narrator", "<!players> people here"))])
+    area.clients = {"a", "b", "c"}
+
+    fake_loop.pop_next()
+
+    assert area.sent[-1] == ("CT", "narrator", "3 people here")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_inline_getter_live_path(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("packet", "CT", ("narrator", "<!client[0].showname> leads"))])
+    area.clients = {FakeScriptClient(2, "Apollo"), FakeScriptClient(1, "Miles")}
+
+    fake_loop.pop_next()
+
+    assert area.sent[-1] == ("CT", "narrator", "Apollo leads")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_get_client_showname(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "i", "0"),
+            ("get", "showname", "client[i].showname"),
+            ("packet", "CT", ("narrator", "<!showname> is here")),
+        ]
+    )
+    area.clients = {FakeScriptClient(2, "Apollo"), FakeScriptClient(1, "Miles")}
+
+    fake_loop.pop_next()  # set i = 0
+    fake_loop.pop_next()  # get showname = client[0].showname (Apollo, alphabetical)
+    assert area.variables["showname"] == "Apollo"
+    fake_loop.pop_next()  # broadcast CT with getter
+
+    assert area.sent[-1] == ("CT", "narrator", "Apollo is here")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_get_client_index_out_of_range_stops(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("get", "x", "client[5].showname")])
+    area.clients = {FakeScriptClient(1, "Miles")}
+
+    fake_loop.pop_next()
+
+    assert runner.running is False
+    assert any("Client index 5 out of range" in m for m in area.ooc)
+
+
+def test_script_runner_concat(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "list", '""'),
+            ("set", "a", '"Miles"'),
+            ("set", "b", '"Apollo"'),
+            ("concat", "list", "a", '", "'),
+            ("concat", "list", "b", '", "'),
+            ("packet", "CT", ("narrator", "Players: <!list>")),
+        ]
+    )
+
+    fake_loop.pop_next()  # set list = ""
+    fake_loop.pop_next()  # set a = "Miles"
+    fake_loop.pop_next()  # set b = "Apollo"
+    fake_loop.pop_next()  # concat list += "Miles"
+    fake_loop.pop_next()  # concat list += ", Apollo"
+    assert area.variables["list"] == "Miles, Apollo"
+
+    fake_loop.pop_next()  # broadcast CT
+    assert area.sent[-1] == ("CT", "narrator", "Players: Miles, Apollo")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_concat_no_separator(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "tag", '"A"'),
+            ("concat", "tag", '"B"'),
+            ("concat", "tag", '"C"'),
+        ]
+    )
+
+    fake_loop.pop_next()  # set tag = "A"
+    fake_loop.pop_next()  # concat tag += "B"
+    fake_loop.pop_next()  # concat tag += "C"
+
+    assert area.variables["tag"] == "ABC"
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_rand_inclusive_range(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("rand", "roll", "1", "6"),
+            ("packet", "CT", ("narrator", "You rolled <!roll>")),
+        ]
+    )
+
+    fake_loop.pop_next()  # rand roll in [1, 6]
+    roll = area.variables["roll"]
+    assert isinstance(roll, int)
+    assert 1 <= roll <= 6
+
+    fake_loop.pop_next()  # broadcast CT
+    assert area.sent[-1] == ("CT", "narrator", f"You rolled {roll}")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_rand_operand_bounds(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "min", "1"),
+            ("set", "max", "3"),
+            ("rand", "roll", "min", "max"),
+            ("packet", "CT", ("narrator", "<!roll>")),
+        ]
+    )
+
+    fake_loop.pop_next()  # set min = 1
+    fake_loop.pop_next()  # set max = 3
+    fake_loop.pop_next()  # rand roll = random.randint(1, 3)
+    assert 1 <= area.variables["roll"] <= 3
+
+    fake_loop.pop_next()  # broadcast CT
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_rand_bounds_reversed_stops(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("rand", "roll", "6", "1")])
+
+    fake_loop.pop_next()
+
+    assert runner.running is False
+    assert any("rand min 6 is greater than max 1" in m for m in area.ooc)
+
+
+def test_script_runner_rand_non_number_bounds_stops(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("rand", "roll", '"a"', "6")])
+
+    fake_loop.pop_next()
+
+    assert runner.running is False
+    assert any("rand bounds must be numbers" in m for m in area.ooc)
+
+
+def test_script_runner_if_live_path_and_list_visible(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    hidden = FakeScriptClient(2, "Ghost", hidden=True)
+    visible = FakeScriptClient(1, "Miles")
+    area.clients = {hidden, visible}
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "i", "0"),
+            ("get", "total", "clients.count"),
+            ("set", "list", '""'),
+            ("label", "loop"),
+            ("if", "i", "ge", "total", "done"),
+            ("if", "client[i].hidden", "eq", "1", "continue"),
+            ("get", "showname", "client[i].showname"),
+            ("concat", "list", "showname", '", "'),
+            ("label", "continue"),
+            ("set", "i", "i+1"),
+            ("goto", "loop"),
+            ("label", "done"),
+            ("packet", "CT", ("narrator", "Players here: <!list>")),
+        ]
+    )
+
+    for _ in range(30):
+        if not runner.running:
+            break
+        fake_loop.pop_next()
+
+    assert area.variables["list"] == "Miles"
+    assert area.sent[-1] == ("CT", "narrator", "Players here: Miles")
+    assert runner.running is False
+
+
+def test_script_runner_goto_loop(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("set", "count", "3"),
+            ("label", "loop"),
+            ("set", "count", "count-1"),
+            ("if", "count", "gt", "0", "loop"),
+            ("packet", "CT", ("narrator", "done")),
+        ]
+    )
+
+    fake_loop.pop_next()  # set count = 3
+    fake_loop.pop_next()  # label loop (no-op)
+    fake_loop.pop_next()  # set count = 2
+    fake_loop.pop_next()  # if count > 0 -> jump to loop
+    fake_loop.pop_next()  # label loop
+    fake_loop.pop_next()  # set count = 1
+    fake_loop.pop_next()  # if count > 0 -> jump to loop
+    fake_loop.pop_next()  # label loop
+    fake_loop.pop_next()  # set count = 0
+    fake_loop.pop_next()  # if count > 0 -> false, fall through
+    fake_loop.pop_next()  # broadcast CT
+
+    assert area.variables["count"] == 0
+    assert area.sent[-1] == ("CT", "narrator", "done")
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_goto_unknown_label_stops(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("goto", "nope")])
+
+    fake_loop.pop_next()
+
+    assert runner.running is False
+    assert any("Unknown label 'nope'" in m for m in area.ooc)
+
+
+def test_script_runner_goto_return(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("packet", "CT", ("a", "before")),
+            ("goto", "sub"),
+            ("goto", "done"),
+            ("label", "sub"),
+            ("packet", "CT", ("a", "in-sub")),
+            ("return",),
+            ("label", "done"),
+            ("packet", "CT", ("a", "after")),
+        ]
+    )
+
+    fake_loop.pop_next()  # broadcast "before"
+    fake_loop.pop_next()  # goto sub -> push return, jump to sub
+    fake_loop.pop_next()  # label sub (no-op)
+    fake_loop.pop_next()  # broadcast "in-sub"
+    fake_loop.pop_next()  # return -> pop to the goto, which jumps to done
+    fake_loop.pop_next()  # goto done
+    fake_loop.pop_next()  # label done (no-op)
+    fake_loop.pop_next()  # broadcast "after"
+
+    assert [s[2] for s in area.sent] == ["before", "in-sub", "after"]
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_return_without_target_stops(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("packet", "CT", ("a", "say")), ("return",)])
+
+    fake_loop.pop_next()  # broadcast "say"
+    fake_loop.pop_next()  # return with empty stack -> script just ends
+
+    assert runner.running is False
+    assert [s[2] for s in area.sent] == ["say"]
+    assert not area.ooc
+
+
+def test_script_runner_if_unknown_op_stops(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("if", "a", "zzz", "1", "loop")])
+
+    fake_loop.pop_next()
+
+    assert runner.running is False
+    assert any("Unknown comparison 'zzz'" in m for m in area.ooc)
+
+
+def test_script_runner_max_steps_stops(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.max_steps = 5
+    runner.start(
+        [
+            ("label", "loop"),
+            ("goto", "loop"),
+        ]
+    )
+
+    for _ in range(6):
+        fake_loop.pop_next()
+
+    assert runner.running is False
+    assert any("Max steps exceeded" in m for m in area.ooc)
+
+
+def test_evaluate_expression_arithmetic():
+    from server.scripting import evaluate_expression, ScriptingError
+
+    assert evaluate_expression("5", {}) == 5
+    assert evaluate_expression("2+3*4", {}) == 14
+    assert evaluate_expression("x+1", {"x": 5}) == 6
+    assert evaluate_expression("x*y-2", {"x": 3, "y": 4}) == 10
+    with pytest.raises(ScriptingError):
+        evaluate_expression("x**2", {})
+    with pytest.raises(ScriptingError):
+        evaluate_expression("unknown_var+1", {})
+    with pytest.raises(ScriptingError):
+        evaluate_expression("1/0", {})
+    with pytest.raises(ScriptingError):
+        evaluate_expression("2 + __import__('os')", {})
+
+
+def test_resolve_value():
+    from server.scripting import resolve_value, ScriptingError
+
+    assert resolve_value('"hello"', {}) == "hello"
+    assert resolve_value("'hello'", {}) == "hello"
+    assert resolve_value('""', {}) == ""
+    assert resolve_value("5", {}) == 5
+    assert resolve_value("2+3", {}) == 5
+    assert resolve_value("x", {"x": "hello"}) == "hello"
+    assert resolve_value("x", {"x": 7}) == 7
+    assert resolve_value("players", {}, {"players": 3}) == 3
+    with pytest.raises(ScriptingError):
+        resolve_value("missing", {})
+
+
+def test_live_sources(make_area):
+    from server.scripting import live_sources
+
+    area = make_area()
+    area.clients = {"a", "b"}
+    area.max_players = 10
+    area.hp_def = 7
+    area.hp_pro = 8
+    sources = live_sources(area)
+    assert sources["players"] == 2
+    assert sources["max_players"] == 10
+    assert sources["hp_def"] == 7
+    assert sources["hp_pro"] == 8
+    assert sources["char_count"] == 1
+    assert "timer0_remaining_ms" not in sources
+
+
+def _filled_area():
+    area = FakeBroadcastArea()
+    area.clients = {
+        FakeScriptClient(3, "Zulu", is_mod=True),
+        FakeScriptClient(1, "Miles"),
+        FakeScriptClient(2, "Apollo", char_id=0),
+    }
+    return area
+
+
+def test_live_get_clients_count_excludes_system():
+    from server.scripting import live_get
+
+    area = FakeBroadcastArea()
+    area.clients = {
+        FakeScriptClient(1, "Miles"),
+        FakeScriptClient(2, "System", ipid=0),
+    }
+    assert live_get("clients.count", area) == 1
+
+
+def test_live_get_client_snapshot_matches_getarea_order():
+    from server.scripting import live_get
+
+    area = _filled_area()
+    area._owners = {next(iter(area.clients))}
+
+    cm = next(c for c in area.clients if c.showname == "Apollo")
+    area._owners = {cm}
+    mod = next(c for c in area.clients if c.showname == "Zulu")
+
+    # /getarea order: normal first (by showname), then CM, then mod.
+    assert live_get("client[0].showname", area) == "Miles"
+    assert live_get("client[1].showname", area) == "Apollo"
+    assert live_get("client[2].showname", area) == "Zulu"
+
+
+def test_live_get_client_fields():
+    from server.scripting import live_get
+
+    area = _filled_area()
+    # /getarea order: Apollo, Miles (normals, alphabetical), then Zulu (mod).
+    assert live_get("client[0].showname", area) == "Apollo"
+    assert live_get("client[0].id", area) == 2
+    assert live_get("client[0].char_id", area) == 0
+    assert live_get("client[0].char_folder", area) == "Char0"
+    assert live_get("client[0].is_cm", area) == 0
+    assert live_get("client[0].iniswap", area) == ""
+    assert live_get("client[0].last_move_time", area) == 0
+    assert live_get("client[0].remote_listen", area) == 2
+    assert live_get("client[0].subtheme", area) == ""
+    assert live_get("client[0].time_of_day", area) == ""
+    assert live_get("client[0].char_url", area) == ""
+    assert live_get("client[0].sneaking", area) == 0
+    assert live_get("client[0].frozen", area) == 0
+    assert live_get("client[2].showname", area) == "Zulu"
+
+
+def test_live_get_index_expression():
+    from server.scripting import live_get
+
+    area = FakeBroadcastArea()
+    area.clients = {FakeScriptClient(1, "Miles"), FakeScriptClient(2, "Apollo")}
+    # Snapshot order: [Apollo, Miles].
+    assert live_get("client[i].showname", area, {"i": 1}) == "Miles"
+    assert live_get("client[i+1].showname", area, {"i": 0}) == "Miles"
+
+
+def test_live_get_area_and_hub_fields(make_area):
+    from server.scripting import live_get
+
+    area = make_area()
+    area.name = "Courtroom"
+    area.max_players = 10
+    area.hp_def = 7
+    area.hp_pro = 8
+    area.desc = "A room"
+    area.pos_lock = ["wit", "stand"]
+    area.music_ref = "court"
+    area.evidence_mod = "FFA"
+    area.area_manager.name = "Test Hub"
+
+    assert live_get("area.name", area) == "Courtroom"
+    assert live_get("area.max_players", area) == 10
+    assert live_get("area.hp_def", area) == 7
+    assert live_get("area.hp_pro", area) == 8
+    assert live_get("area.desc", area) == "A room"
+    assert live_get("area.pos_lock", area) == "wit stand"
+    assert live_get("area.music_ref", area) == "court"
+    assert live_get("area.evidence_mod", area) == "FFA"
+    assert live_get("area.bg_lock", area) == 0
+    assert live_get("area.can_cm", area) == 0
+    assert live_get("area.locked", area) == 0
+    assert live_get("area.music_autoplay", area) == 0
+    hub = area.area_manager
+    hub.music_ref = "court_hub"
+    hub.move_delay = 3
+    hub.char_list_ref = "characters.yaml"
+    hub.info = "A hub description"
+    assert live_get("hub.name", area) == "Test Hub"
+    assert live_get("hub.char_count", area) == 1
+    assert live_get("hub.music_ref", area) == "court_hub"
+    assert live_get("hub.move_delay", area) == 3
+    assert live_get("hub.char_list_ref", area) == "characters.yaml"
+    assert live_get("hub.doc", area) == "A hub description"
+    assert live_get("hub.current_areas", area) == 1
+
+
+def test_live_get_hub_fields_all_readable(make_area):
+    from server.scripting import live_get
+
+    area = make_area()
+    fields = [
+        "name",
+        "abbreviation",
+        "move_delay",
+        "arup_enabled",
+        "hide_clients",
+        "info",
+        "can_gm",
+        "music_ref",
+        "replace_music",
+        "client_music",
+        "max_areas",
+        "single_cm",
+        "can_spectate",
+        "can_getareas",
+        "passing_msg",
+        "autokick_to_latest_area",
+        "char_list_ref",
+        "doc",
+        "char_count",
+        "subtheme",
+        "time_of_day",
+        "current_areas",
+    ]
+    for field in fields:
+        assert live_get(f"hub.{field}", area) is not None, field
+
+
+def test_live_get_area_fields_all_readable(make_area):
+    from server.scripting import live_get
+
+    area = make_area()
+    fields = [
+        "background",
+        "background_suffix",
+        "overlay",
+        "pos_lock",
+        "bg_lock",
+        "overlay_lock",
+        "evidence_mod",
+        "can_cm",
+        "locking_allowed",
+        "iniswap_allowed",
+        "showname_changes_allowed",
+        "shouts_allowed",
+        "jukebox",
+        "abbreviation",
+        "non_int_pres_only",
+        "locked",
+        "muted",
+        "blankposting_allowed",
+        "blankposting_forced",
+        "hp_def",
+        "hp_pro",
+        "doc",
+        "status",
+        "move_delay",
+        "hide_clients",
+        "music_autoplay",
+        "max_players",
+        "desc",
+        "music_ref",
+        "replace_music",
+        "client_music",
+        "music",
+        "music_effects",
+        "music_looping",
+        "ambience",
+        "can_dj",
+        "music_locked",
+        "hidden",
+        "can_whisper",
+        "can_wtce",
+        "can_change_status",
+        "use_backgrounds_yaml",
+        "can_spectate",
+        "can_getarea",
+        "can_cross_swords",
+        "can_scrum_debate",
+        "can_panic_talk_action",
+        "cross_swords_song_start",
+        "cross_swords_song_end",
+        "cross_swords_song_concede",
+        "scrum_debate_song_start",
+        "scrum_debate_song_end",
+        "scrum_debate_song_concede",
+        "panic_talk_action_song_start",
+        "panic_talk_action_song_end",
+        "panic_talk_action_song_concede",
+        "force_sneak",
+        "password",
+        "dark",
+        "background_dark",
+        "pos_dark",
+        "desc_dark",
+        "passing_msg",
+        "msg_delay",
+        "present_reveals_evidence",
+        "ooc_actions_enabled",
+        "can_battle",
+        "auto_pair",
+        "auto_pair_max",
+        "auto_pair_cycle",
+    ]
+    for field in fields:
+        assert live_get(f"area.{field}", area) is not None, field
+
+
+def test_live_get_timer_fields():
+    import arrow
+    import datetime
+
+    from server.scripting import live_get
+
+    area = FakeBroadcastArea()
+    # Hub timer 0: running with 30s left.
+    hub_timer = area.area_manager.timer
+    hub_timer.set = True
+    hub_timer.started = True
+    hub_timer.target = arrow.get() + datetime.timedelta(seconds=30)
+    # Area timer 1: set but paused with 90s on it.
+    area.timers[0].set = True
+    area.timers[0].static = datetime.timedelta(seconds=90)
+
+    assert 29000 <= live_get("timer[0].remaining_ms", area) <= 30000
+    assert live_get("timer[0].started", area) == 1
+    assert live_get("timer[0].set", area) == 1
+    assert live_get("timer[1].remaining_ms", area) == 90000
+    assert live_get("timer[1].started", area) == 0
+    assert live_get("timer[1].static_ms", area) == 90000
+    # Unset timers read as zeros.
+    assert live_get("timer[5].set", area) == 0
+    assert live_get("timer[5].remaining_ms", area) == 0
+
+
+def test_live_get_timer_index_expression():
+    import datetime
+
+    from server.scripting import live_get
+
+    area = FakeBroadcastArea()
+    # timer[4] is the 4th area timer, i.e. area.timers[3].
+    area.timers[3].set = True
+    area.timers[3].static = datetime.timedelta(seconds=7)
+
+    assert live_get("timer[n].remaining_ms", area, {"n": 4}) == 7000
+
+
+def test_live_get_timer_errors():
+    from server.scripting import live_get, ScriptingError
+
+    area = FakeBroadcastArea()
+    with pytest.raises(ScriptingError, match="Timer index 21"):
+        live_get("timer[21].remaining_ms", area)
+    with pytest.raises(ScriptingError, match="Unknown timer field"):
+        live_get("timer[0].bogus_field", area)
+    with pytest.raises(ScriptingError):
+        live_get("timer[1.5].remaining_ms", area)
+
+
+def test_script_runner_get_timer_path(fake_loop):
+    import datetime
+
+    area = FakeBroadcastArea()
+    area.timers[1].set = True
+    area.timers[1].static = datetime.timedelta(seconds=45)
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("get", "left", "timer[2].remaining_ms"),
+            ("packet", "CT", ("narrator", "<!left> ms left")),
+        ]
+    )
+
+    fake_loop.pop_next()  # get left = timer[2].remaining_ms
+    assert area.variables["left"] == 45000
+    fake_loop.pop_next()  # broadcast CT with getter
+    assert area.sent[-1] == ("CT", "narrator", "45000 ms left")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_live_get_errors():
+    from server.scripting import live_get, ScriptingError
+
+    area = _filled_area()
+    with pytest.raises(ScriptingError):
+        live_get("client[9].showname", area)
+    with pytest.raises(ScriptingError):
+        live_get("client[0].bogus_field", area)
+    for field in ("ipid", "hdid", "is_mod"):
+        with pytest.raises(ScriptingError):
+            live_get(f"client[0].{field}", area)
+    for field in ("music_player", "music_player_ipid"):
+        with pytest.raises(ScriptingError):
+            live_get(f"area.{field}", area)
+    with pytest.raises(ScriptingError):
+        live_get("area.bogus_field", area)
+    with pytest.raises(ScriptingError):
+        live_get("hub.bogus_field", area)
+    with pytest.raises(ScriptingError):
+        live_get("bogus.path", area)
+    with pytest.raises(ScriptingError):
+        live_get("client[1.5].showname", area)
+
+
+def test_script_runner_get_excludes_system_client(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("get", "total", "clients.count")])
+    area.clients = {
+        FakeScriptClient(1, "Miles"),
+        FakeScriptClient(2, "System", ipid=0),
+    }
+
+    fake_loop.pop_next()
+
+    assert area.variables["total"] == 1
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
