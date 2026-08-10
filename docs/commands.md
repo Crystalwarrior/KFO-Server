@@ -717,6 +717,9 @@
         - When demo evidences are used, they are usually hidden and triggered by alternative means such as `/timer` or `/trigger present <id>`.
     - Use `/demo` to stop the running demos.
     - For more information on how demos work, [go here!](https://crystalwarrior.github.io/KFO-Wiki/guides/demo_guide/demo_guide/)
+* **stop\_demo** `[all]` *(GM)*
+    - Stop demo playback in the current area.
+    - Add `all` to stop demo playback in every area of the hub.
 * **trigger** `<trigger> <command> <arg(s)>` *(CM)*
     - Set up a trigger for this area which, when fulfilled, will call the command.
     - `trig` is the trigger keyword. Available keywords are `join`, `leave` and `present <id>` where `id`  is the evidence ID.
