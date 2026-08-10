@@ -102,6 +102,10 @@ ooc_floodguard:
   interval_length: 5
   mute_length: 30
 
+# Minimum milliseconds between /demo calls before rate limiting kicks in.
+# Set to 0 or less to disable demo rate limiting entirely. (Default: 1000)
+demo_rate_limit_ms: 1000
+
 # How many subscripts zalgo is stripped by; 3 is recommended as not to hurt special language diacritics
 zalgo_tolerance: 3
 

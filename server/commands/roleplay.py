@@ -910,7 +910,8 @@ def ooc_cmd_demo(client, arg):
         client.area.stop_demo()
         client.send_ooc("Stopping demo playback...")
         return
-    if (time.time() * 1000 - client.last_demo_call) < 1000:
+    rate_limit_ms = client.server.config.get("demo_rate_limit_ms", 1000)
+    if rate_limit_ms > 0 and (time.time() * 1000 - client.last_demo_call) < rate_limit_ms:
         client.send_ooc("Please wait a bit before calling /demo again!")
         return
     evidence = None
