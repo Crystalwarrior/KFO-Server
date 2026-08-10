@@ -13,12 +13,13 @@ literals, bare identifiers copy their stored value (number or string), and
 anything else is evaluated as an arithmetic expression.
 
 `live_get` is the structured live-state resolver used by `get` and inline
-getters: `clients.count`, `client[i].<field>`, `area.<field>`, `hub.<field>`,
-`timer[i].<field>`, `evidence[i].<field>`, and `links[i].<field>`. One regex
-describes the path grammar; the source name is then looked up in the
-`_LIVE_SOURCES` registry, and every field is read through an explicit
-whitelist -- never raw `getattr`. Each indexed list is a deterministic
-snapshot (clients in `/getarea` order, evidence and links in their own order).
+getters: `clients.count`, `client[i].<field>`, `afk[i].<field>`,
+`timer[i].<field>`, `evidence[i].<field>`, `links[i].<field>`,
+`char[<name>].<key>`, `area.<field>`, and `hub.<field>`. One regex describes
+the path grammar; the source name is then looked up in the `_LIVE_SOURCES`
+registry, and every field is read through an explicit whitelist -- never raw
+`getattr`. Each indexed list is a deterministic snapshot (clients in
+`/getarea` order, evidence and links in their own order).
 """
 
 import re
@@ -164,7 +165,19 @@ _CLIENT_FIELDS = {
     "subtheme": lambda c, a: c.subtheme,
     "time_of_day": lambda c, a: c.time_of_day,
     "char_url": lambda c, a: c.char_url,
+    "hidden_in": lambda c, a: c.hidden_in if getattr(c, "hidden_in", None) is not None else "",
+    "listen_pos": lambda c, a: _listen_pos_str(c),
 }
+
+
+def _listen_pos_str(client):
+    """The position(s) a client is listening to ("" while listening normally)."""
+    value = getattr(client, "listen_pos", None)
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        return " ".join(str(p) for p in value)
+    return str(value)
 
 
 def _client_char_folder(client, area):
@@ -306,9 +319,9 @@ def _hub_field(hub, field):
     raise ScriptingError(f"Unknown hub field '{field}'.")
 
 
-# Whitelisted evidence-item fields. `hiding_client` is deliberately excluded:
-# who is hiding inside which piece of evidence is a privacy leak, not a script
-# read, and `triggers` is a dict rather than a scalar.
+# Whitelisted evidence-item fields. `hiding` is the showname of whoever is
+# hiding inside the evidence ("" when empty); the raw `hiding_client` object and
+# the `triggers` dict are not exposed as scalars.
 _EVIDENCE_FIELDS = {
     "name": lambda e: e.name,
     "desc": lambda e: e.desc,
@@ -318,6 +331,7 @@ _EVIDENCE_FIELDS = {
     "show_in_dark": lambda e: e.show_in_dark,
     "can_take": lambda e: int(e.can_take),
     "editable": lambda e: int(e.editable),
+    "hiding": lambda e: getattr(getattr(e, "hiding_client", None), "showname", "") or "",
 }
 
 
@@ -400,6 +414,19 @@ def _client_item(area, index):
     return clients[index]
 
 
+def _visible_afkers(area):
+    """AFK clients in the area excluding system/executor clients."""
+    return [c for c in getattr(area, "afkers", ()) or () if getattr(c, "ipid", -1) != _SYSTEM_IPID]
+
+
+def _afk_item(area, index):
+    """The AFK client at a 0-based index (in the area's AFK order)."""
+    afkers = _visible_afkers(area)
+    if not 0 <= index < len(afkers):
+        raise ScriptingError(f"AFK index {index} out of range (0 to {len(afkers) - 1}).")
+    return afkers[index]
+
+
 def _resolve_index(text, area, variables, what="Client"):
     """Resolve an index like `client[i]`/`timer[i]`: a whole number, from a
     variable or expression."""
@@ -468,6 +495,40 @@ def _timer_field(timer, area, field):
     raise ScriptingError(f"Unknown timer field '{field}'.")
 
 
+def _resolve_char_index(text, area, variables, what="Character"):
+    """Resolve a character reference: an int char id or a quoted folder name."""
+    value = resolve_value(text, variables, live_sources(area))
+    if isinstance(value, str):
+        return value
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ScriptingError(f"Character '{text}' must be a character id or a quoted folder name.")
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ScriptingError(f"Character '{text}' is not a whole character id.")
+        value = int(value)
+    return value
+
+
+def _char_data(area, char):
+    """The character-data dict for a character id or folder name."""
+    hub = area.area_manager
+    if isinstance(char, int) and hub.is_valid_char_id(char):
+        char = hub.char_list[char]
+    return getattr(hub, "character_data", {}).get(char, {})
+
+
+def _char_data_field(data, field):
+    """Read one stored key (or the special `count`/`fields` reads)."""
+    if field == "count":
+        return len(data)
+    if field == "fields":
+        return " ".join(data)
+    value = data.get(field, "")
+    if isinstance(value, list):
+        return " ".join(str(v) for v in value)
+    return value
+
+
 # The live-source registry. Each entry describes one `name[<i>].<field>` source:
 #   - `what`  -- human name used in index error messages
 #   - `count` -- `(area) -> number of items`
@@ -503,6 +564,18 @@ _LIVE_SOURCES = {
         "get": _link_item,
         "field": lambda area, item, field: _link_item_field(item, field),
     },
+    "afk": {
+        "what": "AFK client",
+        "count": lambda area: len(_visible_afkers(area)),
+        "get": _afk_item,
+        "field": lambda area, item, field: _client_field(item, area, field),
+    },
+    "char": {
+        "what": "Character",
+        "get": _char_data,
+        "field": lambda area, item, field: _char_data_field(item, field),
+        "index": _resolve_char_index,
+    },
 }
 
 
@@ -513,14 +586,17 @@ def live_get(path, area, variables=None):
     Supported paths:
     - `clients.count`                      -- number of real clients in the area
     - `client[<i>].<field>`                -- one client's whitelisted field
+    - `afk.count` / `afk[<i>].<field>`     -- AFK clients (same fields as a person)
     - `timer[<i>].<field>`                 -- a timer's state (0 = hub-wide)
     - `evidence[<i>].<field>`              -- an evidence item's whitelisted field
     - `links[<i>].<field>`                 -- an area link's whitelisted field
+    - `char[<name>].<key>`                 -- character-data value for a character
     - `area.<field>` / `hub.<field>`       -- whitelisted area/hub properties
 
     `<i>` is resolved as an operand (a bare variable or an arithmetic
-    expression). Evidence and link indexes are 0-based in their stored order.
-    Unknown paths/fields and out-of-range indexes raise `ScriptingError`.
+    expression); `<name>` may be a quoted character folder or a char id.
+    Evidence, link and AFK indexes are 0-based in their stored order. Unknown
+    paths/fields and out-of-range indexes raise `ScriptingError`.
     """
     if variables is None:
         variables = {}
@@ -531,7 +607,7 @@ def live_get(path, area, variables=None):
     count_name = match.group("count")
     if count_name is not None:
         source = _LIVE_SOURCES.get(count_name)
-        if source is None:
+        if source is None or "count" not in source:
             raise ScriptingError(f"Unknown source '{path}'.")
         return source["count"](area)
     src = match.group("src")
@@ -539,7 +615,8 @@ def live_get(path, area, variables=None):
         source = _LIVE_SOURCES.get(src)
         if source is None:
             raise ScriptingError(f"Unknown source '{path}'.")
-        index = _resolve_index(match.group("idx"), area, variables, source["what"])
+        resolve_index = source.get("index", _resolve_index)
+        index = resolve_index(match.group("idx"), area, variables, source["what"])
         item = source["get"](area, index)
         return source["field"](area, item, match.group("field"))
     if match.group("scope") == "area":

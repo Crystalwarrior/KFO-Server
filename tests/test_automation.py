@@ -14,6 +14,7 @@ import pytest
 from server import commands
 from server.area import Area
 from server.evidence import EvidenceList
+from server.exceptions import ServerError
 from server.script_runner import ScriptRunner, parse_demo_description
 from server.timer import Timer
 
@@ -36,6 +37,8 @@ class FakeAreaManager:
         self.areas = []
         self.char_list = ["Char0"]
         self.name = "Test Hub"
+        self.character_data = {}
+        self.saved_paths = []
         self.abbreviation = "TH"
         self.subtheme = ""
         self.time_of_day = ""
@@ -75,13 +78,29 @@ class FakeAreaManager:
         return {o for o in self.owners if not isinstance(o, RemoteClient)}
 
     def is_valid_char_id(self, char_id):
-        return char_id == 0
+        return len(self.char_list) > char_id >= 0
 
     def get_area_by_id(self, area_id):
         return self.areas[area_id]
 
-    def get_character_data(self, char_id, key, default=""):
-        return default
+    def get_char_id_by_name(self, name):
+        for i, ch in enumerate(self.char_list):
+            if ch.lower() == name.lower():
+                return i
+        raise ServerError("Character not found.")
+
+    def get_character_data(self, char, key, default=None):
+        if isinstance(char, int) and self.is_valid_char_id(char):
+            char = self.char_list[char]
+        return self.character_data.get(char, {}).get(key, default)
+
+    def set_character_data(self, char, key, value):
+        if isinstance(char, int) and self.is_valid_char_id(char):
+            char = self.char_list[char]
+        self.character_data.setdefault(char, {})[key] = value
+
+    def save_character_data(self, path=None):
+        self.saved_paths.append(path)
 
 
 class FakeExecutor:
@@ -163,6 +182,8 @@ class FakeScriptClient:
         self.subtheme = ""
         self.time_of_day = ""
         self.char_url = ""
+        self.hidden_in = None
+        self.listen_pos = None
 
 
 @pytest.fixture
@@ -290,6 +311,13 @@ def test_parse_demo_description_concat():
     assert parse_demo_description('concat list s ", "%concat tag s%') == [
         ("concat", "list", "s", '", "'),
         ("concat", "tag", "s", ""),
+    ]
+
+
+def test_parse_demo_description_save():
+    assert parse_demo_description('save "my folder" title "hello world"%save 0 lives 3%') == [
+        ("save", '"my folder"', "title", '"hello world"'),
+        ("save", "0", "lives", "3"),
     ]
 
 
@@ -2334,3 +2362,150 @@ def test_script_runner_get_excludes_system_client(fake_loop):
 
     fake_loop.pop_next()  # queue exhausted
     assert runner.running is False
+
+
+def test_live_get_client_hidden_and_listen_fields():
+    from server.scripting import live_get
+
+    area = FakeBroadcastArea()
+    client = FakeScriptClient(1, "Miles")
+    area.clients = {client}
+    assert live_get("client[0].hidden_in", area) == ""
+    assert live_get("client[0].listen_pos", area) == ""
+    client.hidden_in = 3
+    client.listen_pos = ["wit", "stand"]
+    assert live_get("client[0].hidden_in", area) == 3
+    assert live_get("client[0].listen_pos", area) == "wit stand"
+
+
+def test_live_get_evidence_hiding_field():
+    from server.scripting import live_get
+
+    area = FakeBroadcastArea()
+    evi = EvidenceList.Evidence("Letter", "A", "", "all")
+    area.evi_list.evidences.append(evi)
+    assert live_get("evidence[0].hiding", area) == ""
+    evi.hiding_client = FakeScriptClient(1, "Miles")
+    assert live_get("evidence[0].hiding", area) == "Miles"
+
+
+def test_live_get_afk_source():
+    from server.scripting import live_get, ScriptingError
+
+    area = FakeBroadcastArea()
+    area.afkers = [FakeScriptClient(1, "Miles"), FakeScriptClient(2, "Apollo")]
+    assert live_get("afk.count", area) == 2
+    assert live_get("afk[0].showname", area) == "Miles"
+    assert live_get("afk[0].pos", area) == "wit"
+    # System clients are hidden from the AFK list too.
+    area.afkers.append(FakeScriptClient(3, "System", ipid=0))
+    assert live_get("afk.count", area) == 2
+    with pytest.raises(ScriptingError, match="AFK index"):
+        live_get("afk[2].showname", area)
+    with pytest.raises(ScriptingError):
+        live_get("afk[0].bogus_field", area)
+
+
+def test_live_get_char_source(make_area):
+    from server.scripting import live_get, ScriptingError
+
+    area = make_area()
+    hub = area.area_manager
+    hub.char_list = ["Phoenix", "Edgeworth"]
+    hub.character_data = {
+        "Phoenix": {"title": "Attorney", "points": 3, "tags": ["a", "b"]},
+        "Edgeworth": {"title": "Prosecutor"},
+    }
+    assert live_get("char[0].title", area) == "Attorney"
+    assert live_get('char["Phoenix"].title', area) == "Attorney"
+    assert live_get('char["Phoenix"].points', area) == 3
+    assert live_get('char["Phoenix"].tags', area) == "a b"
+    assert live_get('char["Phoenix"].missing', area) == ""
+    assert live_get('char["Phoenix"].count', area) == 3
+    assert live_get('char["Phoenix"].fields', area) == "title points tags"
+    assert live_get("char[1].title", area) == "Prosecutor"
+    assert live_get('char["Bogus"].anything', area) == ""
+    with pytest.raises(ScriptingError, match="Unknown source"):
+        live_get("char.count", area)
+    with pytest.raises(ScriptingError, match="Unknown source"):
+        live_get("bogus.count", area)
+    with pytest.raises(ScriptingError, match="Unknown source"):
+        live_get("bogus[0].x", area)
+    with pytest.raises(ScriptingError):
+        live_get("char[Edgeworth].title", area)
+
+
+def test_script_runner_save_char_data(fake_loop):
+    area = FakeBroadcastArea()
+    area.area_manager.char_list = ["Phoenix", "Edgeworth"]
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("save", '"Phoenix"', "title", '"Attorney"'),
+            ("save", "0", "points", "5"),
+            ("get", "got", 'char["Phoenix"].title'),
+            ("packet", "CT", ("narrator", "<!got>")),
+        ]
+    )
+    fake_loop.pop_next()  # save title
+    fake_loop.pop_next()  # save points
+    fake_loop.pop_next()  # get title from saved data
+    fake_loop.pop_next()  # broadcast CT with getter
+
+    assert area.area_manager.character_data["Phoenix"]["title"] == "Attorney"
+    assert area.area_manager.character_data["Phoenix"]["points"] == 5
+    assert area.area_manager.saved_paths == [None, None]
+    assert area.sent[-1] == ("CT", "narrator", "Attorney")
+
+    fake_loop.pop_next()  # queue exhausted
+    assert runner.running is False
+
+
+def test_script_runner_save_unknown_char_stops(fake_loop):
+    area = FakeBroadcastArea()
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start([("save", "999", "title", '"x"')])
+
+    fake_loop.pop_next()
+
+    assert any("Unknown character id 999" in m for m in area.ooc)
+    assert runner.running is False
+
+
+def test_ooc_get_set_char_data():
+    from server.commands.character import ooc_cmd_get_char_data, ooc_cmd_set_char_data
+
+    area = FakeBroadcastArea()
+    area.area_manager.char_list = ["Phoenix", "Edgeworth"]
+    out = []
+    client = SimpleNamespace(area=area, is_mod=True, send_ooc=out.append)
+
+    ooc_cmd_set_char_data(client, "0 title Attorney")
+    assert area.area_manager.character_data["Phoenix"]["title"] == "Attorney"
+    assert area.area_manager.saved_paths == [None]
+
+    ooc_cmd_get_char_data(client, "phoenix title")
+    assert any("title = Attorney" in m for m in out)
+
+    out.clear()
+    ooc_cmd_get_char_data(client, "phoenix")
+    assert any("Phoenix.title = Attorney" in m for m in out)
+
+    ooc_cmd_set_char_data(client, "phoenix title")
+    assert "title" not in area.area_manager.character_data["Phoenix"]
+    assert len(area.area_manager.saved_paths) == 2
+
+
+def test_ooc_set_char_data_unknown_char():
+    from server.commands.character import ooc_cmd_set_char_data
+    from server.exceptions import ArgumentError
+
+    area = FakeBroadcastArea()
+    area.area_manager.char_list = ["Phoenix"]
+    client = SimpleNamespace(area=area, is_mod=True, send_ooc=lambda m: None)
+    with pytest.raises(ArgumentError, match="Unknown character id"):
+        ooc_cmd_set_char_data(client, "999 title x")
+    with pytest.raises(ArgumentError, match="Unknown character"):
+        ooc_cmd_set_char_data(client, "Bogus title x")

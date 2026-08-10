@@ -15,11 +15,11 @@ Here's the whole language at a glance:
 | `get <var> <source>`           | Read live server state into a variable        |
 | `concat <var> <value> <sep>`   | Add text to the end of a string variable      |
 | `rand <var> <min> <max>`       | Store a random whole number in a variable     |
+| `save <char> <key> <value>`    | Persist a value into a character's data       |
 | `if <a> <op> <b> <label>`      | Jump to a label when a comparison is true     |
 | `label <name>`                 | Mark a spot to jump to                        |
 | `goto <name>`                  | Jump to a label (remembering where you were)  |
-| `return`                       | Jump back to the matching `goto`; if there's  |
-|                                | nothing to return to, the script just ends    |
+| `return`                       | Jump back to the matching `goto`; if there's nothing to return to, the script just ends    |
 
 ## Writing a script
 
@@ -200,11 +200,14 @@ CT#narrator#There are <!total> players here!%
 | ------------------------- | --------------------------------------------- |
 | `clients.count`           | Number of real clients in the area            |
 | `client[i].<field>`       | Something about the i-th person in the area   |
+| `afk.count`               | Number of AFK clients in the area             |
+| `afk[i].<field>`          | Something about the i-th AFK client           |
 | `timer[i].<field>`        | Something about the i-th timer                |
 | `evidence.count`          | Number of evidence items in the area          |
 | `evidence[i].<field>`     | Something about the i-th evidence item        |
 | `links.count`             | Number of area links                          |
 | `links[i].<field>`        | Something about the i-th area link            |
+| `char[<name>].<key>`      | A saved value for a character (see below)     |
 | `area.<field>`            | Something about the current area              |
 | `hub.<field>`             | Something about the current hub               |
 
@@ -236,9 +239,12 @@ CT#narrator#<left> ms left on the deliberation timer!%
 **What you can read from a person:** `id`, `char_id`, `char_name`, `showname`,
 `name` (their OOC name), `char_folder`, `pos`, `pair`, `iniswap`,
 `last_move_time` (ms since their last action), `remote_listen`, `subtheme`,
-`time_of_day`, `char_url`, and the yes/no flags `is_cm`, `is_gm`, `is_owner`,
-`is_afk`, `hidden`, `blinded`, `sneaking`, `frozen`. Moderator-only
-details like IP/HDID hashes and `is_mod` are not exposed to scripts.
+`time_of_day`, `char_url`, `hidden_in` (the evidence index they're hiding in,
+empty if not hiding), `listen_pos` (space-separated positions they're listening
+to, empty while listening normally), and the yes/no flags `is_cm`, `is_gm`,
+`is_owner`, `is_afk`, `hidden`, `blinded`, `sneaking`, `frozen`.
+Moderator-only details like IP/HDID hashes and `is_mod` are not exposed to
+scripts.
 
 ```
 if client[i].hidden eq 1 skip
@@ -279,9 +285,9 @@ hub has), and the yes/no flags `arup_enabled`, `hide_clients`, `can_gm`,
 **What you can read from an evidence item.** `evidence[i]` is the i-th piece
 of evidence, 0-based, in the order the area lists it. Fields: `name`, `desc`,
 `image`, `pos` (the positions it shows in), `show_in_dark` (0 = never in dark
-areas, 1 = always, 2 = only in dark areas), and the yes/no flags `can_hide_in`,
-`can_take`, `editable`. Who is hiding inside a piece of evidence is not
-exposed.
+areas, 1 = always, 2 = only in dark areas), `hiding` (the showname of whoever
+is hiding inside, empty if empty), and the yes/no flags `can_hide_in`,
+`can_take`, `editable`.
 
 ```
 get count evidence.count
@@ -322,6 +328,60 @@ label done
 Only these fields exist - scripts can't reach into anything else on the server.
 If you ask for a path or field that doesn't exist, the script stops with an
 error.
+
+## Character data: remembering things between demos
+
+Area variables live and die with the demo. **Character data** is the
+persistent store: a bag of `key: value` pairs per character, saved to
+`config/character_data.yaml`, surviving restarts, and shared by every area in
+the hub. GMs already use it for keys, descriptions, movement delay and
+inventory; demos and triggers can use it for anything else.
+
+**Read** a saved value with the `char` path. `<name>` is a **character id**
+(the index into the server's character list — the number `/charids` shows,
+not the client/user id) or a quoted folder name (`char["Phoenix"]`):
+
+```
+get title char["Phoenix"].title
+CT#narrator#Hello, <!title>!%
+```
+
+The special keys `.count` (how many keys that character has) and `.fields`
+(their names, space-separated) don't need to be stored to be read. A key that
+was never saved reads back as an empty string; a list value reads back as its
+items joined with spaces.
+
+**Write** a value with `save`. The character is written the same way as the
+read path's `<name>` — a **character id** (index into the character list, as
+`/charids` shows) or a quoted folder name (`"Phoenix"`) — just without the
+brackets. The key is a plain word, and the value can be a
+number (or expression), a quoted string, a variable, or a live path:
+
+```
+save "Phoenix" title "Attorney"
+save 0 points 5
+save 0 gold gold+10
+save 0 lastarea area.name
+```
+
+Anything that isn't a number, variable, quoted string or live path is stored
+verbatim as a string, so `save 0 note He's holding a badge` stores exactly
+`He's holding a badge`. `save` writes the file to disk immediately, so data
+you save here is there next time the server restarts.
+
+**GMs** can inspect and edit the same data from OOC without a demo:
+
+```
+/get_char_data Phoenix            lists every key for the character
+/get_char_data Phoenix title      shows just that key
+/set_char_data Phoenix title Attorney   sets a key
+/set_char_data Phoenix title            removes the key (no value)
+```
+
+Character data is one of the few places a demo writes persistent state, so it
+doubles as a shared "blackboard": a trigger's demo can `save` a flag that a
+later timer-expiry demo reads with `char[...]`, and it survives the server
+being restarted in between.
 
 ## Joining text: `concat`
 

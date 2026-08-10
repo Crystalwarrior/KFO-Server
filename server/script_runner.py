@@ -20,6 +20,8 @@ Instruction tuples:
   a structured live source such as `client[i].showname`.
 - `("concat", name, value, sep)` — append to a string variable.
 - `("rand", name, low, high)` — store a random integer in `[low, high]`.
+- `("save", char, key, value)` — persist a value into a character's data
+  (`char` is a char id or quoted folder; the value may be a live path).
 
 Lines use space-separated tokens; `#` is reserved for AO packet lines. A stray
 trailing `#` on any non-packet line is tolerated (the old `#%` habit).
@@ -35,6 +37,8 @@ import re
 from server import commands
 from server.scripting import (
     _LIVE_PATH,
+    _QUOTED,
+    _resolve_char_index,
     live_get,
     live_sources,
     resolve_value,
@@ -49,7 +53,7 @@ PACKET_HEADERS = ("MS", "CT", "MC", "BN", "HP", "RT", "JD", "GM", "ST")
 
 # First token of an instruction line (space syntax). `#` is only used on
 # packet lines.
-INSTRUCTION_KEYWORDS = ("wait", "set", "get", "concat", "if", "label", "goto", "return", "rand")
+INSTRUCTION_KEYWORDS = ("wait", "set", "get", "concat", "if", "label", "goto", "return", "rand", "save")
 
 # Symbolic spellings of the `if` operators; both forms are accepted.
 _IF_ALIASES = {"==": "eq", "!=": "ne", "<": "lt", "<=": "le", ">": "gt", ">=": "ge"}
@@ -160,6 +164,50 @@ def _iter_lines(desc):
         yield content
 
 
+def _split_save(line):
+    """
+    Split a `save <char> <key> <value...>` line into its three parts.
+
+    The char and key tokens are split quote-aware (so a quoted character
+    folder can contain spaces); the value is the verbatim remainder of the
+    line, so multi-word or quoted values are preserved exactly as written.
+    """
+    tokens = []
+    current = []
+    quote_char = None
+    value_start = 0
+    i = 0
+    n = len(line)
+    while i < n:
+        ch = line[i]
+        if quote_char is not None:
+            current.append(ch)
+            if ch == quote_char:
+                quote_char = None
+        elif ch in "\"'":
+            quote_char = ch
+            current.append(ch)
+        elif ch.isspace():
+            if current:
+                tokens.append("".join(current))
+                current = []
+                if len(tokens) == 3:
+                    value_start = i
+                    break
+        else:
+            current.append(ch)
+        i += 1
+    if current:
+        tokens.append("".join(current))
+        value_start = n
+    if len(tokens) < 3:
+        return None
+    rest = line[value_start:].strip()
+    if not rest:
+        return None
+    return tokens[1], tokens[2], rest
+
+
 def _split_operands(text):
     """Split on whitespace, keeping quoted segments (`"..."` or `'...'`) intact."""
     tokens = []
@@ -204,6 +252,11 @@ def _parse_instruction(line):
     if kind == "concat":
         if len(parts) >= 3:
             return ("concat", parts[1], parts[2], parts[3] if len(parts) >= 4 else "")
+        return None
+    if kind == "save":
+        split = _split_save(line)
+        if split is not None:
+            return ("save", split[0], split[1], split[2])
         return None
     if kind == "if":
         if len(parts) >= 5:
@@ -346,6 +399,8 @@ class ScriptRunner:
             self._eval_concat(instruction)
         elif kind == "rand":
             self._eval_rand(instruction)
+        elif kind == "save":
+            self._eval_save(instruction)
         elif kind == "command":
             # If a chained /demo took over the queue, don't schedule another
             # step on top of the new script. If playback was stopped by an
@@ -456,6 +511,33 @@ class ScriptRunner:
             self.finish()
             return
         variables[name] = random.randint(lo, hi)
+
+    def _eval_save(self, instruction):
+        """Persist a value into a character's data and save it to disk."""
+        _, char_text, key, value_text = instruction
+        variables = getattr(self.area, "variables", {})
+        sources = live_sources(self.area)
+        try:
+            char = _resolve_char_index(char_text, self.area, variables, "Character")
+            key = resolve_value(key, {}, {}) if _QUOTED.fullmatch(key) else key
+            if _LIVE_PATH.fullmatch(value_text.strip()):
+                value = live_get(value_text, self.area, variables)
+            else:
+                try:
+                    value = resolve_value(value_text, variables, sources)
+                except ScriptingError:
+                    value = value_text
+        except ScriptingError as ex:
+            self.area.broadcast_ooc(f"[Demo] [ERROR] {ex}")
+            self.finish()
+            return
+        hub = self.area.area_manager
+        if isinstance(char, int) and not hub.is_valid_char_id(char):
+            self.area.broadcast_ooc(f"[Demo] [ERROR] Unknown character id {char}; stopping playback.")
+            self.finish()
+            return
+        hub.set_character_data(char, key, value)
+        hub.save_character_data()
 
     def send_packet(self, header, args):
         """Broadcast an AO packet, honouring the executor's broadcast list."""
