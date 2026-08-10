@@ -3,6 +3,9 @@ from server import commands
 from server.evidence import EvidenceList
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server.constants import MusicEffect, ReportCardReason, derelative, censor
+from server.timer import Timer
+from server.script_runner import ScriptRunner, parse_demo_description
+from server.remote_client import RemoteClient
 
 from collections import OrderedDict
 
@@ -14,91 +17,12 @@ import json
 
 import oyaml as yaml  # ordered yaml
 import os
-import datetime
 import logging
-import traceback
 
 logger = logging.getLogger("area")
 
 
 class Area:
-    class Timer:
-        """Represents a single instance of a timer in the area."""
-
-        def __init__(
-            self,
-            _id,
-            Set=False,
-            started=False,
-            static=None,
-            target=None,
-            area=None,
-            caller=None,
-        ):
-            self.id = _id
-            self.set = Set
-            self.started = started
-            self.static = static
-            self.target = target
-            self.area = area
-            self.caller = caller
-            self.schedule = None
-            self.commands = []
-            self.format = "hh:mm:ss.zzz"
-            self.interval = 16
-
-        def timer_expired(self):
-            if self.schedule:
-                self.schedule.cancel()
-            # Either the area or the hub was destroyed at some point
-            if self.area is None or self is None:
-                return
-
-            self.static = datetime.timedelta(0)
-            self.started = False
-
-            self.area.broadcast_ooc(f"Timer {self.id+1} has expired.")
-            self.call_commands()
-
-        def call_commands(self):
-            if self.caller is None:
-                return
-            if self.area is None or self is None:
-                return
-            if self.caller not in self.area.owners:
-                return
-            # We clear out the commands as we call them in order one by one
-            while len(self.commands) > 0:
-                # Take the first command in the list and run it
-                cmd = self.commands.pop(0)
-                args = cmd.split(" ")
-                cmd = args.pop(0).lower()
-                arg = ""
-                if len(args) > 0:
-                    arg = " ".join(args)[:1024]
-                try:
-                    old_area = self.caller.area
-                    old_hub = self.caller.area.area_manager
-                    self.caller.area = self.area
-                    commands.call(self.caller, cmd, arg)
-                    if old_area and old_area in old_hub.areas:
-                        self.caller.area = old_area
-                except (ClientError, AreaError, ArgumentError, ServerError) as ex:
-                    self.caller.send_ooc(f"[Timer {self.id}] {ex}")
-                    # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
-                    self.commands.clear()
-                    # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
-                    return
-                except Exception as ex:
-                    self.caller.send_ooc(
-                        f"[Timer {self.id}] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
-                    )
-                    logger.error("Exception while running a command")
-                    # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
-                    self.commands.clear()
-                    # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
-                    return
-
     """Represents a single instance of an area."""
 
     def __init__(self, area_manager, name):
@@ -257,14 +181,14 @@ class Area:
         self.links = {}
 
         # Timers ID 1 thru 20, (indexes 0 to 19 in area), timer ID 0 is reserved for hubs.
-        self.timers = [self.Timer(x) for x in range(20)]
+        self.timers = [Timer(x, area=self) for x in range(20)]
 
-        # Demo stuff
-        self.demo = []
-        self.demo_schedule = None
+        # Demo playback is driven by a ScriptRunner bound to this area's
+        # system executor client (see get_script_client).
+        self.demo_runner = None
+        self._script_client = None
 
         # Commands to call when certain triggers are fulfilled.
-        # #Requires at least 1 area owner to exist to determine permission.
         self.triggers = {
             "join": "",  # User joins the area.
             "leave": "",  # User leaves the area.
@@ -343,24 +267,35 @@ class Area:
         return bg + self.background_suffix
 
     def trigger(self, trig, target):
-        """Call the trigger's associated command."""
+        """Call the trigger's associated command through the system executor."""
+        if isinstance(target, RemoteClient):
+            return
         if target.hidden:
             return
-
-        if len(self.owners) <= 0:
-            return
-
         arg = self.triggers[trig]
         if arg == "":
             return
+        self._run_trigger_command(arg, target)
 
-        # Sort through all the owners, with GMs coming first and CMs coming second
-        sorted_owners = list(self._owners) + list(self.area_manager.owners)
+    def trigger_evidence(self, evi, trig, target):
+        """Call an evidence item's trigger (e.g. 'present') for a target."""
+        if isinstance(target, RemoteClient):
+            return
+        if target.hidden:
+            return
+        arg = (evi.triggers or {}).get(trig, "")
+        if arg == "":
+            return
+        self._run_trigger_command(arg, target)
 
-        # Pick the owner with highest permission - game master, if one exists.
-        # This permission system may be out of wack, but it *should* be good for now
-        owner = sorted_owners[0]
+    def _run_trigger_command(self, arg, target):
+        """
+        Run a trigger command through the area's system executor client.
 
+        The executor is a headless participant, so no real player's state is
+        hijacked and the trigger works regardless of which (if any) owners are
+        currently online or in the area.
+        """
         arg = (
             arg.replace("<cid>", str(target.id))
             .replace("<showname>", target.showname)
@@ -368,22 +303,37 @@ class Area:
         )
         args = arg.split(" ")
         cmd = args.pop(0).lower()
-        if len(args) > 0:
-            arg = " ".join(args)[:1024]
-        try:
-            old_area = owner.area
-            old_hub = owner.area.area_manager
-            owner.area = self
-            commands.call(owner, cmd, arg)
-            if old_area and old_area in old_hub.areas:
-                owner.area = old_area
-        except (ClientError, AreaError, ArgumentError, ServerError) as ex:
-            owner.send_ooc(f"[Area {self.id}] {ex}")
-        except Exception as ex:
-            owner.send_ooc(
-                f"[Area {self.id}] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
+        arg = " ".join(args)[:1024] if args else ""
+        executor = self.get_script_client()
+        executor.execute(cmd, arg)
+        for msg in executor.output:
+            if msg.startswith("[ERROR]"):
+                self.broadcast_ooc(f"[Area {self.id}] {msg}")
+
+    def get_script_client(self):
+        """
+        Get (creating if necessary) the system executor client for this area.
+
+        The executor joins the area as a headless participant, so commands
+        executed on it (`client.area`, `client.area.area_manager`,
+        `area.owners`, `@mod_only` gates via `is_gm`) behave as if a real
+        GM ran them -- without depending on one being online. It is not a
+        mod: pure-mod commands are denied.
+
+        It is added to the hub's GM owner set directly (not via
+        `add_owner`, which broadcasts and hides the client) because many
+        command bodies check `client.area.area_manager.owners` themselves
+        rather than going through the `@mod_only` decorator.
+        """
+        if self._script_client is None:
+            from server.remote_client import RemoteClient
+
+            self._script_client = RemoteClient(
+                self.server, is_mod=False, name="[SCRIPT]", is_gm=True
             )
-            logger.error("Exception while running a command")
+            self._script_client.join_area(self)
+            self.area_manager.owners.add(self._script_client)
+        return self._script_client
 
     def abbreviate(self):
         """Abbreviate our name."""
@@ -825,7 +775,7 @@ class Area:
                 client.send_ooc(
                     "You can only be a CM of a single area in this hub.")
         # Trigger this routine only if a non-privileged client left the area, and there are no GMs in this hub.
-        if self.locking_allowed and len(self._owners) <= 0 and len(self.area_manager.owners) <= 0:
+        if self.locking_allowed and len(self._owners) <= 0 and len(self.area_manager.real_owners()) <= 0:
             # Since anyone can lock/unlock, unlock if we were the last client in this area and it was locked.
             if len(self.clients) - 1 <= 0:
                 if self.locked:
@@ -1553,6 +1503,8 @@ class Area:
         if (self.can_getarea and not self.dark) or special_allowed:
             for c in self.clients:
                 if c == target:
+                    continue
+                if isinstance(c, RemoteClient):
                     continue
                 if c.hidden and not special_allowed:
                     continue
@@ -2410,102 +2362,71 @@ class Area:
                 0,
             )
 
-    def play_demo(self, client):
-        if self.demo_schedule:
-            self.demo_schedule.cancel()
-        if len(self.demo) <= 0:
-            self.stop_demo()
-            return
-        if not (client in self.owners):
-            client.send_ooc(
-                f"[Demo] Playback stopped due to you having insufficient permissions! (Not CM/GM anymore)")
-            self.stop_demo()
-            return
+    def play_demo(self, client, evidence):
+        """
+        Start (or chain into) demo playback from an evidence item's description.
 
-        packet = self.demo.pop(0)
-        header = packet[0]
-        args = packet[1:]
-        # It's a wait packet
-        if header == "wait":
-            secs = float(args[0]) / 1000
-            self.demo_schedule = asyncio.get_running_loop().call_later(
-                secs, lambda: self.play_demo(client)
+        `client` is the requesting client (a player or the system executor); the
+        actual playback runs through this area's system executor client, so it
+        keeps working even if the requester disconnects or loses permissions.
+        """
+        instructions = parse_demo_description(evidence.desc)
+        if not instructions:
+            msg = (
+                f"[Demo] Evidence '{evidence.name}' has no demo instructions: "
+                "lines must end with '%' and use known packets/commands."
             )
+            self.broadcast_ooc(msg)
             return
-        if header.startswith("/"):  # It's a command call
-            # TODO: make this into a global function so commands can be called from anywhere in code...
-            cmd = header[1:].lower()
-            arg = ""
-            if len(args) > 0:
-                arg = " ".join(args)[:1024]
-            try:
-                called_function = f"ooc_cmd_{cmd}"
-                if len(client.server.command_aliases) > 0 and not hasattr(
-                    commands, called_function
-                ):
-                    if cmd in client.server.command_aliases:
-                        called_function = (
-                            f"ooc_cmd_{client.server.command_aliases[cmd]}"
-                        )
-                if not hasattr(commands, called_function):
-                    client.send_ooc(
-                        f"[Demo] Invalid command: {cmd}. Use /help to find up-to-date commands."
-                    )
-                    self.stop_demo()
-                    return
-                getattr(commands, called_function)(client, arg)
-                # Switching to another demo (can't have multiple concurrent demos running)
-                if cmd == "demo":
-                    return
-            except (ClientError, AreaError, ArgumentError, ServerError) as ex:
-                client.send_ooc(f"[Demo] {ex}")
-                self.stop_demo()
-                return
-            except Exception as ex:
-                client.send_ooc(
-                    f"[Demo] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
-                )
-                logger.error("Exception while running a Demo command:")
-                traceback.print_exc()
-                print(ex)
-                self.stop_demo()
-                return
-        else:
-            area_list = [self]
-            if len(client.broadcast_list) > 0:
-                area_list = client.broadcast_list
-            # we probably shouldn't broadcast the area broadcast list with demos as it removes a level of control and granularity
-            # if len(self.broadcast_list) > 0:
-            #     area_list += self.broadcast_list
-            for area in area_list:
-                if header == "MS":
-                    # If we're on narration pos
-                    if args[5] == "":
-                        if area.last_ic_message is not None:
-                            # Set the pos to last message's pos
-                            args[5] = area.last_ic_message[5]
-                        else:
-                            # Set the pos to the 0th pos-lock
-                            if len(self.pos_lock) > 0:
-                                args[5] = self.pos_lock[0]
-                area.send_command(header, *args)
-        # Proceed to next demo line
-        self.play_demo(client)
+        self._warn_demo_out_of_range(client, evidence, instructions)
+        runner = self.demo_runner
+        if runner is None:
+            runner = ScriptRunner(self, self.get_script_client())
+            self.demo_runner = runner
+        runner.start(instructions)
 
     def stop_demo(self):
-        if self.demo_schedule:
-            self.demo_schedule.cancel()
-        self.demo.clear()
+        if self.demo_runner is not None:
+            self.demo_runner.stop()
 
-        # reset the packets the demo could have modified
+    def _warn_demo_out_of_range(self, client, evidence, instructions):
+        """
+        Warn a human caller about MS packets whose char id is out of range.
 
-        # Get defense HP bar
-        self.send_command("HP", 1, self.hp_def)
-        # Get prosecution HP bar
-        self.send_command("HP", 2, self.hp_pro)
-
-        # Send the background information
-        self.send_command("BN", self.background)
+        Clients silently drop MS packets whose char id isn't a valid index into
+        the server's character list, so a demo captured on a bigger server can
+        appear to do nothing here. Chained `/demo` calls (RemoteClient) have no
+        human caller and are skipped.
+        """
+        if client is None or isinstance(client, RemoteClient):
+            # No human caller to warn (executor-triggered demos, present/join
+            # triggers, chained /demo). Broadcast so GMs in the area see why
+            # the demo's IC content won't render.
+            target = None
+        else:
+            target = client
+        nchars = len(self.area_manager.char_list)
+        for kind, *rest in instructions:
+            if kind == "packet" and len(rest) >= 2 and rest[0] == "MS" and len(rest[1]) > 8:
+                try:
+                    cid = int(rest[1][8])
+                except (TypeError, ValueError):
+                    continue
+                if 0 <= cid < nchars:
+                    continue
+                # system character is a valid way to handle it.
+                if cid == -1:
+                    continue
+                noun = "character" if nchars == 1 else "characters"
+                msg = (
+                    f"[Demo] Warning: evidence '{evidence.name}' has an MS packet "
+                    f"with char id {cid}, which is out of range (this server only "
+                    f"has {nchars} {noun}). The message won't appear on clients."
+                )
+                if target is None:
+                    self.broadcast_ooc(msg)
+                else:
+                    target.send_ooc(msg)
 
     class JukeboxVote:
         """Represents a single vote cast for the jukebox."""

@@ -1,12 +1,12 @@
-from server import commands
 from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
 from server.area import Area
+from server.timer import Timer
+from server.remote_client import RemoteClient
 from collections import OrderedDict
 from server.constants import derelative
 
 import oyaml as yaml  # ordered yaml
 import os
-import datetime
 import logging
 
 logger = logging.getLogger("areamanager")
@@ -14,76 +14,6 @@ logger = logging.getLogger("areamanager")
 
 class AreaManager:
     """Holds the list of all areas."""
-
-    class Timer:
-        """Represents a single instance of a timer in the area."""
-
-        def __init__(
-            self,
-            Set=False,
-            started=False,
-            static=None,
-            target=None,
-            hub=None,
-            caller=None,
-        ):
-            self.set = Set
-            self.started = started
-            self.static = static
-            self.target = target
-            self.hub = hub
-            self.caller = caller
-            self.schedule = None
-            self.commands = []
-            self.format = "hh:mm:ss.zzz"
-            self.interval = 16
-
-        def timer_expired(self):
-            if self.schedule:
-                self.schedule.cancel()
-            # the hub was destroyed at some point
-            if self.hub is None or self is None:
-                return
-
-            self.static = datetime.timedelta(0)
-            self.started = False
-
-            self.hub.broadcast_ooc("Timer 0 has expired.")
-            self.call_commands()
-
-        def call_commands(self):
-            if self.caller is None:
-                return
-            if self.hub is None or self is None:
-                return
-            if self.caller not in self.hub.owners:
-                return
-            # We clear out the commands as we call them in order one by one
-            while len(self.commands) > 0:
-                # Take the first command in the list and run it
-                cmd = self.commands.pop(0)
-                args = cmd.split(" ")
-                cmd = args.pop(0).lower()
-                arg = ""
-                if len(args) > 0:
-                    arg = " ".join(args)[:1024]
-                try:
-                    commands.call(self.caller, cmd, arg)
-                except (ClientError, AreaError, ArgumentError, ServerError) as ex:
-                    self.caller.send_ooc(f"[Timer 0] {ex}")
-                    # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
-                    self.commands.clear()
-                    # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
-                    return
-                except Exception as ex:
-                    self.caller.send_ooc(
-                        f"[Timer 0] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
-                    )
-                    logger.error("Exception while running a command")
-                    # Command execution critically failed somewhere. Clear out all commands so the timer doesn't screw with us.
-                    self.commands.clear()
-                    # Even tho self.commands.clear() is going to break us out of the while loop, manually return anyway just to be safe.
-                    return
 
     def __init__(self, hub_manager, name):
         self.hub_manager = hub_manager
@@ -130,7 +60,7 @@ class AreaManager:
         # Time of day for this hub
         self.time_of_day = ""
 
-        self.timer = self.Timer()
+        self.timer = Timer(0, hub=self)
         
         # RPS-5 rules as default
         self.rps_rules = [
@@ -525,6 +455,14 @@ class AreaManager:
         )
         client.hide(True)
 
+    def real_owners(self):
+        """
+        GMs that are real players, excluding system executors (RemoteClient).
+        The script executor holds GM permission for command checks but must
+        not drive GM lifecycle events like hub-name resets.
+        """
+        return {o for o in self.owners if not isinstance(o, RemoteClient)}
+
     def remove_owner(self, client):
         """
         Remove a GM from the Hub.
@@ -534,7 +472,7 @@ class AreaManager:
             client.broadcast_list.clear()
             client.send_ooc("Your broadcast list has been cleared.")
 
-        if len(self.owners) == 0:
+        if len(self.real_owners()) == 0:
             # To prevent people egging on the hub list by making epic meme names and bailing
             self.name = self.o_name
             self.abbreviation = self.o_abbreviation
@@ -554,7 +492,7 @@ class AreaManager:
         :return: message
         """
         gms = set()
-        for gm in self.owners:
+        for gm in self.real_owners():
             gms.add(gm.name)
         return ", ".join(gms)
 
@@ -681,8 +619,9 @@ class AreaManager:
             for area in client.local_area_list:
                 playercount = -1
                 if not self.hide_clients and not area.hide_clients:
+                    from server.remote_client import _SYSTEM_IPID
                     playercount = len(
-                        [c for c in area.clients if not c.hidden])
+                        [c for c in area.clients if not c.hidden and c.ipid != _SYSTEM_IPID])
                     playerhubcount = playerhubcount + playercount
                 players_list.append(playercount)
             if multiple_hubs and len(client.local_area_list) > 0:

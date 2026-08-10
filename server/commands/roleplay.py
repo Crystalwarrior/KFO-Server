@@ -1,6 +1,5 @@
 import random
 
-import asyncio
 import arrow
 import time
 import datetime
@@ -10,9 +9,9 @@ import shlex
 from server import database
 from server.constants import TargetType
 from server.exceptions import ClientError, ServerError, ArgumentError
+from server.remote_client import RemoteClient
 
 from . import mod_only
-from .. import commands
 
 __all__ = [
     "ooc_cmd_roll",
@@ -869,13 +868,8 @@ def ooc_cmd_timer(client, arg):
             return
 
         cmd = full.split(" ")[0]
-        called_function = f"ooc_cmd_{cmd}"
-        if len(client.server.command_aliases) > 0 and not hasattr(
-            commands, called_function
-        ):
-            if cmd in client.server.command_aliases:
-                called_function = f"ooc_cmd_{client.server.command_aliases[cmd]}"
-        if not hasattr(commands, called_function):
+        from server.commands import resolve_command
+        if resolve_command(client.server, cmd) is None:
             client.send_ooc(
                 f"[Timer {timer_id}] Invalid command: {cmd}. Use /help to find up-to-date commands."
             )
@@ -894,18 +888,14 @@ def ooc_cmd_timer(client, arg):
             client.area.send_timer_set_time(timer_id, static_time, timer.started)
         client.send_ooc(f"Timer {timer_id} is at {timer.static}")
 
+        # Record the area/hub scope the timer belongs to. Commands added to the
+        # timer run through that area's system executor client on expiry.
+        timer.area = client.area
         if timer_id == 0:
             timer.hub = client.area.area_manager
-        else:
-            timer.area = client.area
 
-        timer.caller = client
-        if timer.schedule:
-            timer.schedule.cancel()
-        if timer.started:
-            timer.schedule = asyncio.get_running_loop().call_later(
-                int(timer.static.total_seconds()), timer.timer_expired
-            )
+        from server.timer import start_schedule
+        start_schedule(timer)
 
 
 @mod_only(area_owners=True)
@@ -933,30 +923,12 @@ def ooc_cmd_demo(client, arg):
         raise ArgumentError("Target evidence not found!")
 
     client.last_demo_call = time.time() * 1000
-    client.area.demo.clear()
-
-    desc = (
-        evidence.desc.replace("<num>", "#")
-        .replace("<and>", "&")
-        .replace("<percent>", "%")
-        .replace("<dollar>", "$")
-    )
-    packets = desc.split("%")
-    for packet in packets:
-        p_args = packet.split("#")
-        p_args[0] = p_args[0].strip()
-        if p_args[0] in ["MS", "CT", "MC", "BN", "HP", "RT", "wait", "GM", "ST"]:
-            client.area.demo += [p_args]
-        elif p_args[0].startswith("/"):  # It's a command!
-            p_args = packet.split(" ")
-            p_args[0] = p_args[0].strip()
-            client.area.demo += [p_args]
     for c in client.area.clients:
         if c in client.area.owners:
             c.send_ooc(
                 f"Starting demo playback using evidence '{evidence.name}'...")
 
-    client.area.play_demo(client)
+    client.area.play_demo(client, evidence)
 
 
 @mod_only(area_owners=True)
