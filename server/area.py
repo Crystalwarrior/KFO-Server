@@ -317,22 +317,33 @@ class Area:
         The executor joins the area as a headless participant, so commands
         executed on it (`client.area`, `client.area.area_manager`,
         `area.owners`, `@mod_only` gates via `is_gm`) behave as if a real
-        GM ran them -- without depending on one being online. It is not a
+        owner ran them -- without depending on one being online. It is not a
         mod: pure-mod commands are denied.
 
-        It is added to the hub's GM owner set directly (not via
-        `add_owner`, which broadcasts and hides the client) because many
-        command bodies check `client.area.area_manager.owners` themselves
-        rather than going through the `@mod_only` decorator.
+        Its authority mirrors the hub's ownership model. In GM-capable hubs
+        (`can_gm`) it is added to the hub's GM owner set, so automation can
+        use GM commands (e.g. the hub-wide `/timer 0`). In claim-only hubs
+        (e.g. KFO Hub 0, where only areas can be claimed) it is added to the
+        area's CM owner set instead, so a CM-set automation script acts as an
+        area owner and can never escalate to GM power. It is added directly
+        (not via `add_owner`, which broadcasts and hides the client) because
+        many command bodies check the owner sets themselves rather than going
+        through the `@mod_only` decorator.
         """
         if self._script_client is None:
-            from server.remote_client import RemoteClient
-
-            self._script_client = RemoteClient(
-                self.server, is_mod=False, name="[SCRIPT]", is_gm=True
-            )
+            can_gm = self.area_manager.can_gm
+            self._script_client = RemoteClient(self.server, is_mod=False, name="[SCRIPT]", is_gm=can_gm)
+            self._script_client.is_automation = True
             self._script_client.join_area(self)
-            self.area_manager.owners.add(self._script_client)
+            if can_gm:
+                self.area_manager.owners.add(self._script_client)
+            else:
+                self._owners.add(self._script_client)
+        elif self._script_client.area is not self:
+            # A GM-level executor may have been moved to another area (e.g. by
+            # /area_kick). Pull it back to the area that owns it so the demo or
+            # trigger runs against the correct area.
+            self._script_client.join_area(self)
         return self._script_client
 
     def abbreviate(self):
@@ -775,7 +786,7 @@ class Area:
                 client.send_ooc(
                     "You can only be a CM of a single area in this hub.")
         # Trigger this routine only if a non-privileged client left the area, and there are no GMs in this hub.
-        if self.locking_allowed and len(self._owners) <= 0 and len(self.area_manager.real_owners()) <= 0:
+        if self.locking_allowed and len(self.real_cms()) <= 0 and len(self.area_manager.real_owners()) <= 0:
             # Since anyone can lock/unlock, unlock if we were the last client in this area and it was locked.
             if len(self.clients) - 1 <= 0:
                 if self.locked:
@@ -2010,13 +2021,21 @@ class Area:
         for client in self.clients:
             client.update_evidence_list()
 
+    def real_cms(self):
+        """
+        CMs that are real players, excluding system executors (RemoteClient).
+        The script executor may hold CM permission for command checks but must
+        not drive CM lifecycle events like area resets or CM listings.
+        """
+        return {o for o in self._owners if not isinstance(o, RemoteClient)}
+
     def get_owners(self):
         """
         Get a string of area's owners (CMs).
         :return: message
         """
         msg = ""
-        for i in self._owners:
+        for i in self.real_cms():
             msg += f"[{str(i.id)}] {i.showname}, "
         if len(msg) > 2:
             msg = msg[:-2]
@@ -2049,7 +2068,7 @@ class Area:
             client.broadcast_list.clear()
             client.send_ooc("Your broadcast list has been cleared.")
 
-        if self.area_manager.single_cm and len(self._owners) == 0:
+        if self.area_manager.single_cm and len(self.real_cms()) == 0:
             if self.locked:
                 self.unlock()
             if self.password != "":

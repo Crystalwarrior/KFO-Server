@@ -1020,6 +1020,11 @@ class ClientManager:
             :param target_pos: which position to target in the new area
             """
             old_area = self.area
+            if getattr(self, "is_automation", False):
+                if not self.is_gm:
+                    raise ClientError("The automation executor cannot leave its area.")
+                if old_area.area_manager != area.area_manager:
+                    raise ClientError("The automation executor cannot change hubs.")
             # If this person switched hubs
             if old_area.area_manager != area.area_manager:
                 # Make sure a single person can't hoard all the hubs
@@ -1587,7 +1592,7 @@ class ClientManager:
             if self.area.area_manager.arup_enabled:
                 status = f" [{area.status}]"
             owner = ""
-            if len(area._owners) > 0:
+            if area.get_owners():
                 owner = f"[CM(s): {area.get_owners()}]"
             hidden = "📦" if area.hidden else ""
             locked = "🔒" if area.locked else ""

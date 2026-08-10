@@ -33,6 +33,7 @@ __all__ = [
     "ooc_cmd_rps_rules",
     "ooc_cmd_timer",
     "ooc_cmd_demo",
+    "ooc_cmd_stop_demo",
     "ooc_cmd_trigger",
     "ooc_cmd_format_timer",
     "ooc_cmd_timer_interval",
@@ -929,6 +930,32 @@ def ooc_cmd_demo(client, arg):
                 f"Starting demo playback using evidence '{evidence.name}'...")
 
     client.area.play_demo(client, evidence)
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_stop_demo(client, arg):
+    """
+    Stop demo playback. Stops the demo in the current area, or all demos in
+    the hub when given 'all'.
+    Usage: /stop_demo [all]
+    """
+    if arg.strip().lower() == "all":
+        hub = client.area.area_manager
+        stopped = 0
+        for area in hub.areas:
+            if area.demo_runner is not None and area.demo_runner.running:
+                area.stop_demo()
+                stopped += 1
+        hub.broadcast_ooc(
+            f"{client.showname} stopped {stopped} demo playback "
+            f"{'scripts' if stopped != 1 else 'script'} in this hub."
+        )
+        return
+    area = client.area
+    if area.demo_runner is None or not area.demo_runner.running:
+        raise ArgumentError("No demo is currently playing in this area.")
+    area.stop_demo()
+    area.broadcast_ooc(f"{client.showname} stopped the demo playback in this area.")
 
 
 @mod_only(area_owners=True)

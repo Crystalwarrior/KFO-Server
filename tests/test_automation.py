@@ -25,6 +25,7 @@ class FakeServer:
 class FakeHubManager:
     def __init__(self):
         self.server = FakeServer()
+        self.hubs = []
 
 
 class FakeAreaManager:
@@ -33,10 +34,23 @@ class FakeAreaManager:
         self.owners = set()
         self.areas = []
         self.char_list = ["Char0"]
+        self.can_gm = True
+        self.single_cm = False
+        self.arup_enabled = False
+        self.hide_clients = False
 
     @property
     def server(self):
         return self.hub_manager.server
+
+    def broadcast_ooc(self, msg, exclude_list=None):
+        pass
+
+    def send_arup_players(self):
+        pass
+
+    def update_subtheme(self, client):
+        pass
 
     def real_owners(self):
         from server.remote_client import RemoteClient
@@ -45,6 +59,9 @@ class FakeAreaManager:
 
     def is_valid_char_id(self, char_id):
         return char_id == 0
+
+    def get_area_by_id(self, area_id):
+        return self.areas[area_id]
 
     def get_character_data(self, char_id, key, default=""):
         return default
@@ -55,10 +72,14 @@ class FakeExecutor:
 
     def __init__(self):
         self.server = FakeServer()
+        self.area = None
         self.output = []
         self.calls = []
         self.error = None
         self.broadcast_list = []
+
+    def join_area(self, area):
+        self.area = area
 
     def execute(self, cmd, arg=""):
         self.calls.append((cmd, arg))
@@ -552,6 +573,7 @@ class FakeHub:
 class FakeHubManager:
     def __init__(self):
         self.server = FakeServer()
+        self.hubs = []
 
     def default_hub(self):
         return FakeHub()
@@ -670,6 +692,7 @@ def test_executor_permissions_gm_only(monkeypatch):
     # check directly (e.g. /kick), but is invisible to real-GM lifecycle logic.
     assert executor in area.owners
     assert executor in area.area_manager.owners
+    assert executor not in area._owners
     assert executor not in area.area_manager.real_owners()
 
     # GM/CM-gated command (/demo) still runs through the executor.
@@ -714,6 +737,7 @@ def test_executor_invisible_to_gm_lifecycle(monkeypatch):
 
     manager = AreaManager(server.hub_manager, "Original Hub")
     manager.hub_manager.server = server
+    manager.can_gm = True
     manager.broadcast_ooc = lambda *a, **k: None
     area = Area(manager, "Test Area")
     manager.areas.append(area)
@@ -738,3 +762,309 @@ def test_executor_invisible_to_gm_lifecycle(monkeypatch):
     manager.remove_owner(gm)
     # Only the phantom GM remains, so the hub name must still reset.
     assert manager.name == "Original Hub"
+
+
+# --- Executor authority: CM in claim-only hubs ---
+
+
+def _server_with_client_manager():
+    from server.client_manager import ClientManager
+
+    server = SimpleNamespace(
+        hub_manager=FakeHubManager(),
+        config={
+            "playerlimit": 64,
+            "hostname": "test",
+            "music_change_floodguard": {"interval_length": 1, "times_per_interval": 1},
+            "ooc_floodguard": {"interval_length": 1, "times_per_interval": 1},
+            "wtce_floodguard": {"interval_length": 1, "times_per_interval": 1},
+        },
+        command_aliases={},
+        player_state_observer=SimpleNamespace(
+            notify_hub_changed=lambda *a, **k: None,
+            notify_area_id_changed=lambda *a, **k: None,
+        ),
+    )
+    server.client_manager = ClientManager(server)
+    return server
+
+
+def test_executor_is_cm_in_claim_only_hub(monkeypatch):
+    """In a hub where GMs can't be claimed (e.g. KFO Hub 0), the executor is
+    an area owner (CM), never a hub owner (GM), so CM automation can't
+    escalate to GM power through a demo."""
+    import server.remote_client as remote_client
+    from server.remote_client import RemoteClient
+
+    monkeypatch.setattr(remote_client, "_ensure_system_ipid", lambda db: None)
+
+    server = _server_with_client_manager()
+    manager = FakeAreaManager()
+    manager.can_gm = False
+    manager.hub_manager.server = server
+    area = Area(manager, "Test Area")
+    manager.areas.append(area)
+    manager.timer = Timer(0, area=area, hub=manager)
+
+    executor = area.get_script_client()
+    assert isinstance(executor, RemoteClient)
+    assert executor.is_mod is False
+    assert executor.is_gm is False
+    assert executor in area._owners
+    assert executor in area.owners
+    assert executor not in area.area_manager.owners
+    assert area.real_cms() == set()
+    assert area.get_owners() == ""
+
+    # CM-gated commands still run through the executor (/demo, area timers).
+    out = executor.execute("demo", "")
+    assert any("Stopping demo playback" in msg for msg in out)
+    out = executor.execute("timer", "1 5m")
+    assert any("Timer 1" in msg for msg in out)
+
+    # GM-only commands are denied, so a CM can't escalate via a demo.
+    out = executor.execute("timer", "0 5m")
+    assert any("Only GMs can set hub-wide timer ID 0" in msg for msg in out)
+    out = executor.execute("stop_demo", "")
+    assert any("must be authorized" in msg for msg in out)
+
+    # Pure-mod commands stay denied too.
+    out = executor.execute("announce", "hi")
+    assert any("must be authorized" in msg for msg in out)
+
+
+def test_get_owners_excludes_executor(monkeypatch):
+    """The phantom CM never shows up in CM listings (get_owners/ARUP)."""
+    import server.remote_client as remote_client
+    from server.client_manager import ClientManager
+
+    monkeypatch.setattr(remote_client, "_ensure_system_ipid", lambda db: None)
+
+    server = _server_with_client_manager()
+    manager = FakeAreaManager()
+    manager.can_gm = False
+    manager.hub_manager.server = server
+    area = Area(manager, "Test Area")
+    manager.areas.append(area)
+
+    executor = area.get_script_client()
+    assert executor in area._owners
+    assert area.get_owners() == ""
+
+    cm = ClientManager.Client(server, FakeTransport(), 1, 1)
+    cm.showname = "RealCM"
+    cm.char_id = 0
+    cm.area = area
+    area._owners.add(cm)
+
+    assert area.real_cms() == {cm}
+    assert "RealCM" in area.get_owners()
+    assert "[SCRIPT]" not in area.get_owners()
+
+
+def test_executor_cannot_change_hubs(monkeypatch):
+    """The automation executor can't escape its hub/area via change_area."""
+    import server.remote_client as remote_client
+    from server.exceptions import ClientError
+
+    monkeypatch.setattr(remote_client, "_ensure_system_ipid", lambda db: None)
+
+    server = _server_with_client_manager()
+    manager = FakeAreaManager()
+    manager.hub_manager.server = server
+    area = Area(manager, "Test Area")
+    manager.areas.append(area)
+
+    other = FakeAreaManager()
+    other.hub_manager.server = server
+    other_area = Area(other, "Other Area")
+    other.areas.append(other_area)
+
+    executor = area.get_script_client()
+    assert getattr(executor, "is_automation", False) is True
+    assert executor.area == area
+    with pytest.raises(ClientError):
+        executor.change_area(other_area)
+    assert executor.area == area
+
+
+# --- Executor movement: GM crawl vs CM pinning ---
+
+
+def test_cm_executor_cannot_leave_area(monkeypatch):
+    """A CM-level executor in a claim-only hub is pinned to its home area:
+    any set_area attempt (e.g. via /area_kick **) raises and leaves it put."""
+    import server.remote_client as remote_client
+    from server.exceptions import ClientError
+
+    monkeypatch.setattr(remote_client, "_ensure_system_ipid", lambda db: None)
+
+    server = _server_with_client_manager()
+    manager = FakeAreaManager()
+    manager.can_gm = False
+    manager.hub_manager.server = server
+    area = Area(manager, "Test Area")
+    other = Area(manager, "Other Area")
+    manager.areas.extend([area, other])
+
+    executor = area.get_script_client()
+    assert executor.is_gm is False
+    with pytest.raises(ClientError):
+        executor.set_area(other)
+    assert executor.area is area
+    assert executor in area.clients
+    assert executor in server.client_manager.clients
+    assert executor in area._owners
+
+
+def test_gm_executor_can_crawl_within_hub(monkeypatch):
+    """A GM-level executor may move between areas of its own hub (e.g. a GM
+    /area_kick), but never leaves the hub."""
+    import server.remote_client as remote_client
+    from server.client_manager import ClientManager
+
+    monkeypatch.setattr(remote_client, "_ensure_system_ipid", lambda db: None)
+    # set_area triggers area join/leave + music bookkeeping that isn't under test.
+    monkeypatch.setattr(Area, "new_client", lambda self, client: self.clients.add(client))
+    monkeypatch.setattr(Area, "remove_client", lambda self, client: self.clients.discard(client))
+    monkeypatch.setattr(Area, "broadcast_area_list", lambda *a, **k: None)
+    monkeypatch.setattr(Area, "broadcast_player_list", lambda *a, **k: None)
+    monkeypatch.setattr(Area, "broadcast_player_list_to_target", lambda *a, **k: None)
+    monkeypatch.setattr(ClientManager.Client, "refresh_music", lambda self, reload=False: None)
+
+    server = _server_with_client_manager()
+    manager = FakeAreaManager()
+    manager.hub_manager.server = server
+    area1 = Area(manager, "Area 1")
+    area2 = Area(manager, "Area 2")
+    manager.areas.extend([area1, area2])
+
+    executor = area1.get_script_client()
+    assert executor.is_gm is True
+    executor.set_area(area2)
+    assert executor.area is area2
+    assert executor in area2.clients
+    assert executor not in area1.clients
+    assert executor in server.client_manager.clients
+
+
+def test_gm_executor_cannot_change_hubs(monkeypatch):
+    """Even a GM-level executor cannot move to another hub via set_area."""
+    import server.remote_client as remote_client
+    from server.exceptions import ClientError
+
+    monkeypatch.setattr(remote_client, "_ensure_system_ipid", lambda db: None)
+
+    server = _server_with_client_manager()
+    manager = FakeAreaManager()
+    manager.hub_manager.server = server
+    area1 = Area(manager, "Area 1")
+    manager.areas.append(area1)
+
+    other = FakeAreaManager()
+    other.hub_manager.server = server
+    other_area = Area(other, "Other Hub Area")
+    other.areas.append(other_area)
+
+    executor = area1.get_script_client()
+    with pytest.raises(ClientError):
+        executor.set_area(other_area)
+    assert executor.area is area1
+    assert executor in area1.clients
+
+
+def test_get_script_client_reanchors_parked_executor(monkeypatch):
+    """Reusing a cached executor that was parked in another area (e.g. via a
+    GM area_kick) pulls it back to its home area before the demo/trigger runs."""
+    import server.remote_client as remote_client
+
+    monkeypatch.setattr(remote_client, "_ensure_system_ipid", lambda db: None)
+
+    server = _server_with_client_manager()
+    manager = FakeAreaManager()
+    manager.hub_manager.server = server
+    area1 = Area(manager, "Area 1")
+    area2 = Area(manager, "Area 2")
+    manager.areas.extend([area1, area2])
+
+    executor = area1.get_script_client()
+    assert executor in server.client_manager.clients
+
+    # GM executor crawled to another area in the same hub.
+    area1.clients.discard(executor)
+    executor.area = area2
+    area2.clients.add(executor)
+
+    assert area1.get_script_client() is executor
+    assert executor.area is area1
+    assert executor in area1.clients
+    assert executor not in area2.clients
+    assert executor in server.client_manager.clients
+
+
+# --- /stop_demo ---
+
+
+def test_stop_demo_stops_area_and_all_hub_demos(monkeypatch):
+    """GMs/mods can stop the current area demo and all hub demos via /stop_demo."""
+    import server.remote_client as remote_client
+    from server.client_manager import ClientManager
+
+    monkeypatch.setattr(remote_client, "_ensure_system_ipid", lambda db: None)
+
+    server = _server_with_client_manager()
+    manager = FakeAreaManager()
+    manager.hub_manager.server = server
+    area1 = Area(manager, "Area 1")
+    area2 = Area(manager, "Area 2")
+    manager.areas.extend([area1, area2])
+    area1._script_client = FakeExecutor()
+    area2._script_client = FakeExecutor()
+
+    gm = ClientManager.Client(server, FakeTransport(), 1, 1)
+    gm.showname = "GM"
+    gm.char_id = 0
+    gm.area = area1
+    gm.send_command = lambda *a, **k: None
+    area1.clients.add(gm)
+    manager.owners.add(gm)
+
+    evidence = SimpleNamespace(desc="CT#narrator#hi%")
+
+    async def _run():
+        area1.play_demo(None, evidence)
+        area2.play_demo(None, evidence)
+        assert area1.demo_runner.running and area2.demo_runner.running
+
+        commands.call(gm, "stop_demo", "")
+        assert area1.demo_runner.running is False
+        assert area2.demo_runner.running is True
+
+        commands.call(gm, "stop_demo", "all")
+        assert area1.demo_runner.running is False
+        assert area2.demo_runner.running is False
+
+    asyncio.run(_run())
+
+
+def test_stop_demo_denied_for_cm(monkeypatch):
+    """CMs (area owners) can't use /stop_demo; only GMs and mods."""
+    import server.remote_client as remote_client
+    from server.client_manager import ClientManager
+    from server.exceptions import ClientError
+
+    monkeypatch.setattr(remote_client, "_ensure_system_ipid", lambda db: None)
+
+    server = _server_with_client_manager()
+    manager = FakeAreaManager()
+    manager.hub_manager.server = server
+    area = Area(manager, "Test Area")
+    manager.areas.append(area)
+
+    cm = ClientManager.Client(server, FakeTransport(), 1, 1)
+    cm.showname = "CM"
+    cm.area = area
+    area._owners.add(cm)
+
+    with pytest.raises(ClientError):
+        commands.call(cm, "stop_demo", "")

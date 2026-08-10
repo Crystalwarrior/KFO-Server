@@ -388,7 +388,14 @@ class AreaManager:
                 raise AreaError("May not remove last existing area!")
         clients = area.clients.copy()
         for client in clients:
-            client.set_area(target_area)
+            if getattr(client, "is_automation", False):
+                # The automation executor lives and dies with its home area.
+                area.area_manager.owners.discard(client)
+                area._owners.discard(client)
+                client.leave_area()
+                client.clear()
+            else:
+                client.set_area(target_area)
 
         # Update area links
         for ar in self.areas:
@@ -657,7 +664,7 @@ class AreaManager:
         for client in clients:
             for area in client.local_area_list:
                 cm = ""
-                if len(area.owners) > 0:
+                if area.get_owners():
                     cm = area.get_owners()
                 cms_list.append(cm)
             self.server.send_arup(client, cms_list)
