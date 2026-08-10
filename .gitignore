@@ -12,6 +12,10 @@ characters
 # Folder
 characters/
 
+### AI agent working files
+AGENTS.md
+docs/ai/
+
 ### Python related
 # Virtual environments
 venv/

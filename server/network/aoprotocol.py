@@ -1073,7 +1073,7 @@ class AOProtocol(asyncio.Protocol):
                     evi.pos = "all"
                     area.broadcast_evidence_list()
                 asyncio.get_running_loop().call_soon(
-                    evi.trigger, area, "present", self.client
+                    area.trigger_evidence, evi, "present", self.client
                 )
             else:
                 evidence = 0

@@ -25,10 +25,7 @@ Usage:
 import time
 
 from server.client_manager import ClientManager
-
-# Reserved ipid for remote/system clients. Ensures FK constraints are satisfied
-# without polluting the database with fake connection records.
-_SYSTEM_IPID = 0
+from server.constants import _SYSTEM_IPID
 _system_ipid_seeded = False
 
 
@@ -52,12 +49,13 @@ class RemoteClient(ClientManager.Client):
     for admin panel monitoring.
     """
 
-    def __init__(self, server, is_mod=True, name="[SYSTEM]"):
+    def __init__(self, server, is_mod=True, name="[SYSTEM]", is_gm=False):
         from server import database
         _ensure_system_ipid(database._database_singleton)
         super().__init__(server, _RemoteTransport(), user_id=-1, ipid=_SYSTEM_IPID)
         self.char_id = -1
         self.is_mod = is_mod
+        self.is_gm = is_gm
         self.name = name
         self.showname = name
         self.first_joined = False
@@ -80,11 +78,15 @@ class RemoteClient(ClientManager.Client):
 
     # --- Area participation ---
 
-    def join_area(self):
+    def join_area(self, area=None):
         """Add self to area.clients and server.client_manager.clients."""
+        if area is None:
+            area = self.area
         if self._in_area:
-            return
-        area = self.area
+            if self.area == area:
+                return
+            self.leave_area()
+        self.area = area
         if self not in area.clients:
             area.clients.add(self)
         if self not in self.server.client_manager.clients:
@@ -155,7 +157,7 @@ class RemoteClient(ClientManager.Client):
                 if not char_name:
                     try:
                         char_name = self.area.area_manager.char_list[cid]
-                    except (IndexError, KeyError, AttributeError):
+                    except (IndexError, KeyError, TypeError, AttributeError):
                         pass
             entry = {
                 "type": "ic",

@@ -323,6 +323,12 @@ class TsuServer3:
                 "mute_length": 0,
             }
 
+        if "demo_rate_limit_ms" not in self.config:
+            self.config["demo_rate_limit_ms"] = 0
+
+        if "demo_max_steps" not in self.config:
+            self.config["demo_max_steps"] = 1000000
+
         if "zalgo_tolerance" not in self.config:
             self.config["zalgo_tolerance"] = 3
 

@@ -38,6 +38,8 @@ __all__ = [
     "ooc_cmd_unlisten_pos",
     "ooc_cmd_save_character_data",
     "ooc_cmd_load_character_data",
+    "ooc_cmd_get_char_data",
+    "ooc_cmd_set_char_data",
     "ooc_cmd_keys_set",
     "ooc_cmd_keys_add",
     "ooc_cmd_keys_remove",
@@ -898,6 +900,70 @@ def ooc_cmd_load_character_data(client, arg):
         client.send_ooc(f"Loading {arg} character data...")
     except AreaError:
         raise
+
+
+def _resolve_char_arg(hub, text):
+    """Resolve a character id or folder name to a character id."""
+    if text.isdigit():
+        char_id = int(text)
+        if not hub.is_valid_char_id(char_id):
+            raise ArgumentError(f"Unknown character id {char_id}.")
+        return char_id
+    try:
+        return hub.get_char_id_by_name(text)
+    except ServerError:
+        raise ArgumentError(f"Unknown character '{text}'.")
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_get_char_data(client, arg):
+    """
+    View the custom data saved for a character (or a single key of it).
+    Usage: /get_char_data <char id|folder> [key]
+    """
+    args = arg.split()
+    if len(args) < 1:
+        raise ArgumentError("Please provide a character id or folder name.")
+    hub = client.area.area_manager
+    folder = hub.char_list[_resolve_char_arg(hub, args[0])]
+    data = hub.character_data.get(folder, {})
+    if len(args) >= 2:
+        key = args[1]
+        if key not in data:
+            raise ArgumentError(f"Character '{folder}' has no data key '{key}'.")
+        client.send_ooc(f"{folder}.{key} = {data[key]}")
+        return
+    if not data:
+        client.send_ooc(f"Character '{folder}' has no saved data.")
+        return
+    for key, value in data.items():
+        client.send_ooc(f"{folder}.{key} = {value}")
+
+
+@mod_only(hub_owners=True)
+def ooc_cmd_set_char_data(client, arg):
+    """
+    Set (or clear) a custom data key for a character; omit the value to remove the key.
+    Usage: /set_char_data <char id|folder> <key> [value...]
+    """
+    parts = arg.split(None, 2)
+    if len(parts) < 2:
+        raise ArgumentError("Usage: /set_char_data <char id|folder> <key> [value...]")
+    hub = client.area.area_manager
+    folder = hub.char_list[_resolve_char_arg(hub, parts[0])]
+    key = parts[1]
+    data = hub.character_data.setdefault(folder, {})
+    if len(parts) < 3 or not parts[2].strip():
+        if key in data:
+            del data[key]
+            client.send_ooc(f"Removed '{folder}.{key}'.")
+        else:
+            client.send_ooc(f"Character '{folder}' has no data key '{key}'.")
+    else:
+        value = parts[2]
+        hub.set_character_data(folder, key, value)
+        client.send_ooc(f"Set '{folder}.{key}' = {value}.")
+    hub.save_character_data()
 
 
 def mod_keys(client, arg, mod=0):

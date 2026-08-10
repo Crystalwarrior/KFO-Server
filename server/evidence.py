@@ -1,9 +1,5 @@
 import re
 
-from server import commands
-from server.exceptions import ClientError, AreaError, ArgumentError, ServerError
-from server.constants import encode_ao_packet
-
 class EvidenceList:
     """Contains a list of evidence items."""
 
@@ -54,51 +50,6 @@ class EvidenceList:
                 "editable": self.editable,
                 "triggers": self.triggers,
             }
-
-        def trigger(self, area, trig, target):
-            """Call the trigger's associated command."""
-            if target.hidden:
-                return
-
-            if len(area.owners) <= 0:
-                return
-            
-            if trig not in self.triggers:
-                return
-
-            arg = self.triggers[trig]
-            if arg == "":
-                return
-
-            # Sort through all the owners, with GMs coming first and CMs coming second
-            sorted_owners = list(area._owners) + list(area.area_manager.owners)
-
-            # Pick the owner with highest permission - game master, if one exists.
-            # This permission system may be out of wack, but it *should* be good for now
-            owner = sorted_owners[0]
-
-            arg = (
-                arg.replace("<cid>", str(target.id))
-                .replace("<showname>", target.showname)
-                .replace("<char>", target.char_name)
-            )
-            args = arg.split(" ")
-            cmd = args.pop(0).lower()
-            if len(args) > 0:
-                arg = " ".join(args)[:1024]
-            try:
-                old_area = owner.area
-                old_hub = owner.area.area_manager
-                owner.area = area
-                commands.call(owner, cmd, arg)
-                if old_area and old_area in old_hub.areas:
-                    owner.area = old_area
-            except (ClientError, AreaError, ArgumentError, ServerError) as ex:
-                owner.send_ooc(f"[Area {area.id}] {ex}")
-            except Exception as ex:
-                owner.send_ooc(
-                    f"[Area {area.id}] An internal error occurred: {ex}. Please inform the staff of the server about the issue."
-                )
 
     def __init__(self):
         self.evidences = []
