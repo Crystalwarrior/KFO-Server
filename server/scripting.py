@@ -14,9 +14,10 @@ anything else is evaluated as an arithmetic expression.
 
 `live_get` is the structured live-state resolver used by `get` and inline
 getters: `clients.count`, `client[i].<field>`, `area.<field>`, `hub.<field>`,
-`timer[i].<field>`. Every field is read through an explicit whitelist, never
-raw `getattr`, and `client[i]` indexes a deterministic `/getarea`-ordered
-snapshot.
+`timer[i].<field>`, `evidence[i].<field>`, and `links[i].<field>`. Every field
+is read through an explicit whitelist, never raw `getattr`, and each indexed
+list is a deterministic snapshot (clients in `/getarea` order, evidence and
+links in their own order).
 """
 
 import re
@@ -39,8 +40,12 @@ _QUOTED = re.compile(r'^(?:"([^"]*)"|\'([^\']*)\')$')
 # A structured live source path (see `live_get`).
 _LIVE_PATH = re.compile(
     r"^(clients\.count"
+    r"|evidence\.count"
+    r"|links\.count"
     r"|client\[[^\]]+\]\.[A-Za-z_][A-Za-z0-9_]*"
     r"|timer\[[^\]]+\]\.[A-Za-z_][A-Za-z0-9_]*"
+    r"|evidence\[[^\]]+\]\.[A-Za-z_][A-Za-z0-9_]*"
+    r"|links\[[^\]]+\]\.[A-Za-z_][A-Za-z0-9_]*"
     r"|area\.[A-Za-z_][A-Za-z0-9_]*"
     r"|hub\.[A-Za-z_][A-Za-z0-9_]*)$"
 )
@@ -49,6 +54,10 @@ _LIVE_PATH = re.compile(
 _CLIENT_INDEX = re.compile(r"^client\[([^\]]+)\]\.([A-Za-z_][A-Za-z0-9_]*)$")
 # Timer field access: `timer[i].<field>`.
 _TIMER_INDEX = re.compile(r"^timer\[([^\]]+)\]\.([A-Za-z_][A-Za-z0-9_]*)$")
+# Evidence field access: `evidence[i].<field>`.
+_EVIDENCE_INDEX = re.compile(r"^evidence\[([^\]]+)\]\.([A-Za-z_][A-Za-z0-9_]*)$")
+# Link field access: `links[i].<field>`.
+_LINK_INDEX = re.compile(r"^links\[([^\]]+)\]\.([A-Za-z_][A-Za-z0-9_]*)$")
 # Area/hub field access: `area.<field>` / `hub.<field>`.
 _SCOPE_FIELD = re.compile(r"^(area|hub)\.([A-Za-z_][A-Za-z0-9_]*)$")
 
@@ -309,6 +318,64 @@ def _hub_field(hub, field):
     raise ScriptingError(f"Unknown hub field '{field}'.")
 
 
+# Whitelisted evidence-item fields. `hiding_client` is deliberately excluded:
+# who is hiding inside which piece of evidence is a privacy leak, not a script
+# read, and `triggers` is a dict rather than a scalar.
+_EVIDENCE_FIELDS = {
+    "name": lambda e: e.name,
+    "desc": lambda e: e.desc,
+    "image": lambda e: e.image,
+    "pos": lambda e: e.pos,
+    "can_hide_in": lambda e: int(e.can_hide_in),
+    "show_in_dark": lambda e: e.show_in_dark,
+    "can_take": lambda e: int(e.can_take),
+    "editable": lambda e: int(e.editable),
+}
+
+
+def _evidence_item(area, index):
+    """The evidence item at a 0-based index (the AO list order)."""
+    evidences = getattr(getattr(area, "evi_list", None), "evidences", ()) or ()
+    if not 0 <= index < len(evidences):
+        raise ScriptingError(f"Evidence index {index} out of range (0 to {len(evidences) - 1}).")
+    return evidences[index]
+
+
+def _evidence_field(evidence, field):
+    if field in _EVIDENCE_FIELDS:
+        return _EVIDENCE_FIELDS[field](evidence)
+    raise ScriptingError(f"Unknown evidence field '{field}'.")
+
+
+# Whitelisted link fields. A link is the dict stored under `area.links[str(target)]`.
+# The `evidence` list is returned space-joined so scripts can read it as a scalar.
+_LINK_FIELDS = {
+    "locked": lambda l: int(l.get("locked", False)),
+    "hidden": lambda l: int(l.get("hidden", False)),
+    "target_pos": lambda l: l.get("target_pos", ""),
+    "can_peek": lambda l: int(l.get("can_peek", True)),
+    "evidence": lambda l: " ".join(str(e) for e in l.get("evidence", ())),
+    "password": lambda l: l.get("password", ""),
+}
+
+
+def _link_item(area, index):
+    """The link dict at a 0-based index (creation order) plus its target."""
+    links = getattr(area, "links", {}) or {}
+    if not 0 <= index < len(links):
+        raise ScriptingError(f"Link index {index} out of range (0 to {len(links) - 1}).")
+    return list(links.items())[index]
+
+
+def _link_field(area, index, field):
+    target, link = _link_item(area, index)
+    if field == "target":
+        return target
+    if field in _LINK_FIELDS:
+        return _LINK_FIELDS[field](link)
+    raise ScriptingError(f"Unknown link field '{field}'.")
+
+
 def _visible_clients(area):
     """Clients in the area excluding system/executor clients (ipid 0)."""
     return [c for c in getattr(area, "clients", ()) if getattr(c, "ipid", -1) != _SYSTEM_IPID]
@@ -413,17 +480,23 @@ def live_get(path, area, variables=None):
     - `clients.count`                      -- number of real clients in the area
     - `client[<i>].<field>`                -- one client's whitelisted field
     - `timer[<i>].<field>`                 -- a timer's state (0 = hub-wide)
+    - `evidence[<i>].<field>`              -- an evidence item's whitelisted field
+    - `links[<i>].<field>`                 -- an area link's whitelisted field
     - `area.<field>` / `hub.<field>`       -- whitelisted area/hub properties
 
     `<i>` is resolved as an operand (a bare variable or an arithmetic
-    expression). Unknown paths/fields and out-of-range indexes raise
-    `ScriptingError`.
+    expression). Evidence and link indexes are 0-based in their stored order.
+    Unknown paths/fields and out-of-range indexes raise `ScriptingError`.
     """
     if variables is None:
         variables = {}
     path = path.strip()
     if path == "clients.count":
         return len(_visible_clients(area))
+    if path == "evidence.count":
+        return len(getattr(getattr(area, "evi_list", None), "evidences", ()) or ())
+    if path == "links.count":
+        return len(getattr(area, "links", {}) or {})
     client_match = _CLIENT_INDEX.match(path)
     if client_match:
         index = _resolve_index(client_match.group(1), area, variables)
@@ -435,6 +508,14 @@ def live_get(path, area, variables=None):
     if timer_match:
         index = _resolve_index(timer_match.group(1), area, variables, "Timer")
         return _timer_field(_area_timer(area, index), area, timer_match.group(2))
+    evidence_match = _EVIDENCE_INDEX.match(path)
+    if evidence_match:
+        index = _resolve_index(evidence_match.group(1), area, variables, "Evidence")
+        return _evidence_field(_evidence_item(area, index), evidence_match.group(2))
+    link_match = _LINK_INDEX.match(path)
+    if link_match:
+        index = _resolve_index(link_match.group(1), area, variables, "Link")
+        return _link_field(area, index, link_match.group(2))
     scope_match = _SCOPE_FIELD.match(path)
     if scope_match:
         scope, field = scope_match.group(1), scope_match.group(2)

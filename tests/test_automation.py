@@ -13,6 +13,7 @@ import pytest
 
 from server import commands
 from server.area import Area
+from server.evidence import EvidenceList
 from server.script_runner import ScriptRunner, parse_demo_description
 from server.timer import Timer
 
@@ -129,6 +130,8 @@ class FakeBroadcastArea:
         self._owners = set()
         self.area_manager = FakeAreaManager()
         self.timers = [Timer(x, area=self) for x in range(20)]
+        self.evi_list = EvidenceList()
+        self.links = {}
 
     def send_command(self, cmd, *args):
         self.sent.append((cmd,) + tuple(args))
@@ -2172,6 +2175,147 @@ def test_live_get_errors():
         live_get("bogus.path", area)
     with pytest.raises(ScriptingError):
         live_get("client[1.5].showname", area)
+
+
+def test_live_get_evidence_fields():
+    from server.scripting import live_get
+
+    area = FakeBroadcastArea()
+    area.evi_list.evidences.append(EvidenceList.Evidence("Letter", "A clue", "letter.png", "all", True, 2, True, False))
+    assert live_get("evidence.count", area) == 1
+    assert live_get("evidence[0].name", area) == "Letter"
+    assert live_get("evidence[0].desc", area) == "A clue"
+    assert live_get("evidence[0].image", area) == "letter.png"
+    assert live_get("evidence[0].pos", area) == "all"
+    assert live_get("evidence[0].can_hide_in", area) == 1
+    assert live_get("evidence[0].show_in_dark", area) == 2
+    assert live_get("evidence[0].can_take", area) == 1
+    assert live_get("evidence[0].editable", area) == 0
+
+
+def test_live_get_evidence_index_expression():
+    from server.scripting import live_get
+
+    area = FakeBroadcastArea()
+    area.evi_list.evidences.append(EvidenceList.Evidence("A", "1", "", "all"))
+    area.evi_list.evidences.append(EvidenceList.Evidence("B", "2", "", "all"))
+    assert live_get("evidence[i].name", area, {"i": 1}) == "B"
+    assert live_get("evidence[0].name", area, {"i": 1}) == "A"
+
+
+def test_live_get_link_fields():
+    from server.scripting import live_get
+
+    area = FakeBroadcastArea()
+    area.links = {
+        "3": {
+            "locked": True,
+            "hidden": False,
+            "target_pos": "stand",
+            "can_peek": True,
+            "evidence": [1, 2],
+            "password": "abc",
+        },
+        "5": {"locked": False, "hidden": True, "target_pos": "", "can_peek": False, "evidence": [], "password": ""},
+    }
+    assert live_get("links.count", area) == 2
+    assert live_get("links[0].target", area) == "3"
+    assert live_get("links[0].locked", area) == 1
+    assert live_get("links[0].hidden", area) == 0
+    assert live_get("links[0].target_pos", area) == "stand"
+    assert live_get("links[0].can_peek", area) == 1
+    assert live_get("links[0].evidence", area) == "1 2"
+    assert live_get("links[0].password", area) == "abc"
+    assert live_get("links[1].target", area) == "5"
+    assert live_get("links[1].locked", area) == 0
+
+
+def test_live_get_evidence_and_link_errors():
+    from server.scripting import live_get, ScriptingError
+
+    area = FakeBroadcastArea()
+    area.evi_list.evidences.append(EvidenceList.Evidence("A", "1", "", "all"))
+    area.links = {
+        "3": {"locked": False, "hidden": False, "target_pos": "", "can_peek": True, "evidence": [], "password": ""}
+    }
+    with pytest.raises(ScriptingError, match="Evidence index"):
+        live_get("evidence[5].name", area)
+    with pytest.raises(ScriptingError, match="Unknown evidence field"):
+        live_get("evidence[0].bogus", area)
+    for field in ("hiding_client", "triggers"):
+        with pytest.raises(ScriptingError):
+            live_get(f"evidence[0].{field}", area)
+    with pytest.raises(ScriptingError, match="Link index"):
+        live_get("links[2].locked", area)
+    with pytest.raises(ScriptingError, match="Unknown link field"):
+        live_get("links[0].bogus", area)
+    with pytest.raises(ScriptingError):
+        live_get("links[1.5].locked", area)
+
+
+def test_script_runner_iterates_evidence(fake_loop):
+    area = FakeBroadcastArea()
+    area.evi_list.evidences.append(EvidenceList.Evidence("Letter", "A", "", "all"))
+    area.evi_list.evidences.append(EvidenceList.Evidence("Badge", "B", "", "all"))
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("get", "count", "evidence.count"),
+            ("set", "i", "0"),
+            ("set", "list", '""'),
+            ("label", "loop"),
+            ("if", "i", "ge", "count", "done"),
+            ("get", "item", "evidence[i].name"),
+            ("concat", "list", "item", '", "'),
+            ("set", "i", "i+1"),
+            ("goto", "loop"),
+            ("label", "done"),
+            ("packet", "CT", ("narrator", "<!list>")),
+        ]
+    )
+    # get count -> set i -> set list -> label -> if (false) -> get -> concat
+    # -> set i -> goto -> label -> if (false) -> get -> concat -> set i -> goto
+    # -> label -> if (true, jump to done) -> label done -> packet -> finish.
+    for _ in range(20):
+        fake_loop.pop_next()
+
+    assert area.variables["count"] == 2
+    assert area.sent[-1] == ("CT", "narrator", "Letter, Badge")
+    assert runner.running is False
+
+
+def test_script_runner_iterates_links(fake_loop):
+    area = FakeBroadcastArea()
+    area.links = {
+        "3": {"locked": True, "hidden": False, "target_pos": "", "can_peek": True, "evidence": [], "password": "abc"},
+        "5": {"locked": False, "hidden": False, "target_pos": "", "can_peek": True, "evidence": [], "password": ""},
+    }
+    executor = FakeExecutor()
+    runner = ScriptRunner(area, executor)
+    runner.start(
+        [
+            ("get", "count", "links.count"),
+            ("set", "i", "0"),
+            ("set", "list", '""'),
+            ("label", "loop"),
+            ("if", "i", "ge", "count", "done"),
+            ("get", "target", "links[i].target"),
+            ("get", "locked", "links[i].locked"),
+            ("concat", "list", "target", '", "'),
+            ("set", "i", "i+1"),
+            ("goto", "loop"),
+            ("label", "done"),
+            ("packet", "CT", ("narrator", "<!list>")),
+        ]
+    )
+    # Same shape as the evidence loop with two iterations: the loop body now
+    # has two `get` instructions, so 20 + 2 = 22 steps total.
+    for _ in range(22):
+        fake_loop.pop_next()
+
+    assert area.sent[-1] == ("CT", "narrator", "3, 5")
+    assert runner.running is False
 
 
 def test_script_runner_get_excludes_system_client(fake_loop):

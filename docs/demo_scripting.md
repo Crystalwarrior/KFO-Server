@@ -196,13 +196,17 @@ CT#narrator#There are <!total> players here!%
 
 `get` can also walk into the server's state with a **path**:
 
-| Path                    | What you get                                |
-| ----------------------- | ------------------------------------------- |
-| `clients.count`         | Number of real clients in the area          |
-| `client[i].<field>`     | Something about the i-th person in the area |
-| `timer[i].<field>`      | Something about the i-th timer              |
-| `area.<field>`          | Something about the current area            |
-| `hub.<field>`           | Something about the current hub             |
+| Path                      | What you get                                  |
+| ------------------------- | --------------------------------------------- |
+| `clients.count`           | Number of real clients in the area            |
+| `client[i].<field>`       | Something about the i-th person in the area   |
+| `timer[i].<field>`        | Something about the i-th timer                |
+| `evidence.count`          | Number of evidence items in the area          |
+| `evidence[i].<field>`     | Something about the i-th evidence item        |
+| `links.count`             | Number of area links                          |
+| `links[i].<field>`        | Something about the i-th area link            |
+| `area.<field>`            | Something about the current area              |
+| `hub.<field>`             | Something about the current hub               |
 
 `client[0]` is the first person in the area, `client[1]` the second, and so on
 - in the same order `/getarea` lists them. You can even use a custom variable as the
@@ -271,6 +275,49 @@ The yes/no flags above return `1` or `0`.
 hub has), and the yes/no flags `arup_enabled`, `hide_clients`, `can_gm`,
 `single_cm`, `replace_music`, `client_music`, `can_spectate`, `can_getareas`,
 `passing_msg`, `autokick_to_latest_area`, plus `max_areas`.
+
+**What you can read from an evidence item.** `evidence[i]` is the i-th piece
+of evidence, 0-based, in the order the area lists it. Fields: `name`, `desc`,
+`image`, `pos` (the positions it shows in), `show_in_dark` (0 = never in dark
+areas, 1 = always, 2 = only in dark areas), and the yes/no flags `can_hide_in`,
+`can_take`, `editable`. Who is hiding inside a piece of evidence is not
+exposed.
+
+```
+get count evidence.count
+set i 0
+label loop
+if i ge count done
+get item evidence[i].name
+CT#narrator#Evidence <!i>: <!item>%
+set i i+1
+goto loop
+label done
+```
+
+**What you can read from an area link.** A link is a one-way connection to
+another area. `links[i]` is 0-based, in the order the links were created.
+Fields: `target` (the area ID the link leads to), `target_pos` (the position
+you arrive in), `evidence` (space-separated evidence IDs you must have to pass
+through), `password`, and the yes/no flags `locked`, `hidden`, `can_peek`.
+
+```
+get count links.count
+set i 0
+label loop
+if i ge count done
+get target links[i].target
+get locked links[i].locked
+if locked eq 1 blocked
+CT#narrator#To area <!target>: open%
+goto next
+label blocked
+CT#narrator#To area <!target>: locked%
+label next
+set i i+1
+goto loop
+label done
+```
 
 Only these fields exist - scripts can't reach into anything else on the server.
 If you ask for a path or field that doesn't exist, the script stops with an
