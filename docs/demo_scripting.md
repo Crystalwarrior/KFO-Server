@@ -28,11 +28,13 @@ A script is a list of lines. How a line ends depends on what it is:
 - **Packets and `/` commands end with `%`.** They can even span multiple lines -
   the newlines inside them are part of the packet. A multi-line message works
   fine:
+
   ```
   CT#narrator#Hello..
   there..
   everyone!!!%
   ```
+
 - **Everything else ends with `%` *or* a newline.**
   That means you can write a script with real line breaks:
 
@@ -40,14 +42,14 @@ A script is a list of lines. How a line ends depends on what it is:
   set count 5
   label loop
   set count count-1
-  if count gt 0 loop
+  if count > 0 loop
   CT#narrator#Blastoff!%
   ```
 
   This is the same script but written using % as a one-liner:
 
   ```
-  set count 5%label loop%set count count-1%if count gt 0 loop%CT#narrator#Blastoff!%
+  set count 5%label loop%set count count-1%if count > 0 loop%CT#narrator#Blastoff!%
   ```
 
   Mix and match however you like. `%` is only *required* when you want several
@@ -61,7 +63,7 @@ Pre-scripting demos still work:
 Within a line, spaces separate the parts. If a value itself contains spaces,
 put it in quotes: `set greeting "Hello there"`.
 
-## The absolute basics
+## The Basics
 
 ### Wait Packet
 
@@ -97,22 +99,21 @@ MC#~stop.mp3#-1##1#0#5%
 BN#BOTC-TownSquare%
 ```
 
-* [MS packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/MS%20Packet%20Reference.md) is the in-character message.
-* [CT packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#CT-Server) is the OOC message.
-* [MC packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#MC) is the Music Change packet and is responsible for playing music (use "Client as Receiver" version of the packet)
-* [BN packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#BN) is the Background Name packet and is responsbile for changing the background.
-* [HP packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#hp) updates the penalty bar values.
-* [RT packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#rt) is the witness testimony, cross examination, or an arbitrary animation with a noise. It is unaffected by the message queue and shows up instantly.
-* [JD packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#jd) decides if the judge controls (WTCE, penalty + - buttons in the theme) should appear or hide for the client.
-* GM packet is the DRO GameMode packet. It decides what theme gamemode to set (Prefer using /subtheme)
-* [ST packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#ST) is the SubTheme packet. It decides what subtheme of the theme to use. (Prefer using /subtheme)
+- [MS packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/MS%20Packet%20Reference.md) is the in-character message.
+- [CT packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#CT-Server) is the OOC message.
+- [MC packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#MC) is the Music Change packet and is responsible for playing music (use "Client as Receiver" version of the packet)
+- [BN packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#BN) is the Background Name packet and is responsbile for changing the background.
+- [HP packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#hp) updates the penalty bar values.
+- [RT packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#rt) is the witness testimony, cross examination, or an arbitrary animation with a noise. It is unaffected by the message queue and shows up instantly.
+- [JD packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#jd) decides if the judge controls (WTCE, penalty + - buttons in the theme) should appear or hide for the client.
+- GM packet is the DRO GameMode packet. It decides what theme gamemode to set (Prefer using /subtheme)
+- [ST packet](https://github.com/AttorneyOnline/docs/blob/master/docs/Development/network/Packet%20Reference.md#ST) is the SubTheme packet. It decides what subtheme of the theme to use. (Prefer using /subtheme)
 
 Note that packets do not change state - this means that if you use BN, it will ONLY apply the
 Background for the clients that received that packet until something else sends it again, while
 /bg actually changes the area's Background persistantly meaning anyone new entering this area will
 see the new background as well. This means you should prefer to use /commands unless you want to
 send an IC message or don't want to modify the area details!
-
 
 ## Variables
 
@@ -161,7 +162,7 @@ Ordering comparisons (`==` equal to, `!=` not equal to, `<` less than, `>` great
 kind - two numbers, or two strings. Comparing a number to a string stops the
 script with an error.
 
-## Putting live values in your text
+## Variables in Text
 
 `<!name>` anywhere in a packet or command drops in the current value:
 
@@ -174,126 +175,157 @@ CT#narrator#Only <!count> more minutes!%
 You can also drop live state straight in - see below - so `<!players>` works
 too.
 
-## Reading the server's state
+## Reading Server Values
 
-`get` reads a value and stores it in a variable. These special names are
-always available:
-
-| Name                  | What you get                              |
-| --------------------- | ----------------------------------------- |
-| `players`             | How many people are in the area           |
-| `max_players`         | The area's player cap                     |
-| `hp_def`              | The defense HP bar value                  |
-| `hp_pro`              | The prosecution HP bar value              |
-| `char_count`          | How many characters are on the server     |
+`get` reaches into the server, reads one value, and stashes it in a variable.
+From then on you can use that variable anywhere in the script:
 
 ```
 get total players
 CT#narrator#There are <!total> players here!%
 ```
 
-### Digging deeper with paths
+A few handy values are always available without any setup:
 
-`get` can also walk into the server's state with a **path**:
+| Name          | What it is                                      |
+| ------------- | ----------------------------------------------- |
+| `players`     | How many people are in The area right now       |
+| `max_players` | The most people The area allows                 |
+| `hp_def`      | The defense side's penalty bar                  |
+| `hp_pro`      | The prosecution side's penalty bar              |
+| `char_count`  | How many characters the server has              |
 
-| Path                      | What you get                                  |
-| ------------------------- | --------------------------------------------- |
-| `clients.count`           | Number of real clients in the area            |
-| `client[i].<field>`       | Something about the i-th person in the area   |
-| `afk.count`               | Number of AFK clients in the area             |
-| `afk[i].<field>`          | Something about the i-th AFK client           |
-| `timer[i].<field>`        | Something about the i-th timer                |
-| `evidence.count`          | Number of evidence items in the area          |
-| `evidence[i].<field>`     | Something about the i-th evidence item        |
-| `links.count`             | Number of area links                          |
-| `links[i].<field>`        | Something about the i-th area link            |
-| `char[<name>].<key>`      | A saved value for a character (see below)     |
-| `area.<field>`            | Something about the current area              |
-| `hub.<field>`             | Something about the current hub               |
+### Paths
 
-`client[0]` is the first person in the area, `client[1]` the second, and so on
-- in the same order `/getarea` lists them. You can even use a custom variable as the
-index: `client[i]`, `client[i+1]`.
+Everything else needs a **path** - one long name that points at an exact thing.
+A path is an address: *what kind of thing*, *which one*, and *what you want to
+read off it*:
 
 ```
-get first client[0].showname
-CT#narrator#First in the room: <!first>%
+client[0].showname
+│       │     └─ what you want to read
+│       └─ which one (0 = the first)
+└─ what kind of thing
 ```
 
-**Timers.** Timer numbers are the same ones `/timer` shows: `timer[0]` is the
-hub-wide timer, `timer[1]` through `timer[20]` are the area's own.
+Here's the whole menu. Each row is its own section just below.
 
-| Field           | What you get                                  |
-| --------------- | --------------------------------------------- |
-| `remaining_ms`  | Millis left on the timer (0 if it isn't set)  |
-| `static_ms`     | The time the timer was set to (0 if unset)    |
-| `set`           | `1` if the timer is set/shown, else `0`       |
-| `started`       | `1` if the timer is running, else `0`         |
+| Path                     | What it points at                             | Section         |
+| ------------------------ | --------------------------------------------- | --------------- |
+| `clients.count`          | How many people are in The area               | Clients         |
+| `client[i].<field>`      | One person in The area                        | Clients         |
+| `afk[i].<field>`         | A person who's marked AFK                     | Clients         |
+| `timer[i].<field>`       | A countdown timer                             | Timers          |
+| `evidence[i].<field>`    | A piece of evidence                           | Evidence        |
+| `links[i].<field>`       | A door to another area                        | Area links      |
+| `area.<field>`           | The area you're in                            | The area        |
+| `hub.<field>`            | The hub your area is in                       | The hub         |
+| `char[<name>].<key>`     | A character's saved data                      | Character data  |
+
+Two small rules make paths easy to read:
+
+- **Counting starts at zero.** The first person is `client[0]`, the second is
+  `client[1]`, the third `client[2]`... It's the same for evidence, links,
+  timers and AFK people.
+- **`.count` gives a total.** Swap the `[i]` for `.count` to get how many
+  there are: `clients.count`, `evidence.count`, `links.count`, `afk.count`.
+
+The number in the brackets doesn't have to be typed out - it can be a variable,
+so loops can walk through everyone (`client[i]`, `client[i+1]`). Ask for a path
+or field that doesn't exist and the script stops with an error, so the lists
+below are the whole menu.
+
+### Clients
+
+`client[0]` is the first person The area lists, `client[1]` the second, and so
+on. `afk[i]` works the same way but only for people marked AFK (with `/afk`);
+both read the same fields.
+
+What you can read off a person:
+
+| Field            | What it is                                          |
+| ---------------- | --------------------------------------------------- |
+| `id`             | The player's user number (the `[User]` number)      |
+| `name`           | Their OOC name                                      |
+| `char_name`      | The name of the character they're playing           |
+| `char_id`        | Their character's number (see `/charids`)           |
+| `char_folder`    | Their character's folder name                       |
+| `showname`       | The name above their head (falls back to their character's name) |
+| `pos`            | The position they're standing in                    |
+| `pair`           | The character they're paired with (`-1` = not paired) |
+| `iniswap`        | The character they look like via `/iniswap` (empty = normal) |
+| `hidden_in`      | The evidence they're hiding in (empty = not hiding) |
+| `listen_pos`     | Positions they're listening to (empty = the whole area) |
+| `last_move_time` | A timestamp of when they last moved or spoke        |
+| `subtheme`       | The subtheme they're forced to see (empty = normal) |
+| `time_of_day`    | The time of day they're forced to see (empty = normal) |
+| `char_url`       | The link shown on their character                   |
+| `remote_listen`  | Their remote listening: `0` none, `1` IC only, `2` OOC, `3` everything |
+
+The flags below come back as `1` (yes) or `0` (no):
+
+| Flag         | `1` means...                  |
+| ------------ | ----------------------------- |
+| `is_cm`      | They're a CM of The area      |
+| `is_gm`      | They're a GM of the hub       |
+| `is_owner`   | They're a CM or GM            |
+| `is_afk`     | They're marked AFK            |
+| `hidden`     | They're hidden                |
+| `blinded`    | They're blinded               |
+| `sneaking`   | They're sneaking              |
+| `frozen`     | They're frozen                |
 
 ```
-get left timer[3].remaining_ms
-if left == 0 timeout
-CT#narrator#<left> ms left on the deliberation timer!%
-```
-
-**What you can read from a person:** `id`, `char_id`, `char_name`, `showname`,
-`name` (their OOC name), `char_folder`, `pos`, `pair`, `iniswap`,
-`last_move_time` (ms since their last action), `remote_listen`, `subtheme`,
-`time_of_day`, `char_url`, `hidden_in` (the evidence index they're hiding in,
-empty if not hiding), `listen_pos` (space-separated positions they're listening
-to, empty while listening normally), and the yes/no flags `is_cm`, `is_gm`,
-`is_owner`, `is_afk`, `hidden`, `blinded`, `sneaking`, `frozen`.
-Moderator-only details like IP/HDID hashes and `is_mod` are not exposed to
-scripts.
-
-```
-if client[i].hidden eq 1 skip
+if client[i].hidden == 1 skip
 get showname client[i].showname
 concat list showname ", "
 ```
 
-**What you can read from the area:**
+For safety, mod-only details such as IP/HDID hashes and `is_mod` are never
+given to scripts.
 
-- Identity and description: `name`, `id`, `abbreviation`, `desc`, `status`, `doc`
-- Background and position: `background`, `background_dark`, `background_suffix`,
-  `overlay`, `pos_lock` (space-separated positions, empty when unlocked),
-  `bg_lock`, `overlay_lock`, `pos_dark`, `desc_dark`, `dark`
-- Permissions and behavior: `can_cm`, `locking_allowed`, `iniswap_allowed`,
-  `showname_changes_allowed`, `shouts_allowed`, `non_int_pres_only`,
-  `evidence_mod`, `blankposting_allowed`, `blankposting_forced`,
-  `ooc_actions_enabled`, `present_reveals_evidence`, `passing_msg`,
-  `can_whisper`, `can_wtce`, `can_change_status`, `can_spectate`, `can_getarea`,
-  `use_backgrounds_yaml`, `hide_clients`, `force_sneak`, `locked`, `muted`,
-  `password`, `hidden`, `max_players`, `hp_def`, `hp_pro`, `move_delay`,
-  `msg_delay`, `medieval_mode`
-- Music: `music`, `music_autoplay`, `music_looping`, `music_effects`,
-  `music_ref`, `replace_music`, `client_music`, `ambience`, `can_dj`, `jukebox`,
-  `music_locked`
-- Minigames: `can_battle`, `auto_pair`, `auto_pair_max`, `auto_pair_cycle`,
-  `can_cross_swords`, `can_scrum_debate`, `can_panic_talk_action`, and the
-  matching `*_song_start`, `*_song_end`, `*_song_concede` tracks
+### Timers
 
-The yes/no flags above return `1` or `0`.
+`timer[0]` is the hub-wide timer; `timer[1]` through `timer[20]` are The area's
+own - the same numbers `/timer` shows.
 
-**What you can read from the hub:** `name`, `id`, `abbreviation`, `subtheme`,
-`time_of_day`, `doc` (its description), `info` (same as `doc`), `char_count`,
-`char_list_ref`, `music_ref`, `move_delay`, `current_areas` (how many areas the
-hub has), and the yes/no flags `arup_enabled`, `hide_clients`, `can_gm`,
-`single_cm`, `replace_music`, `client_music`, `can_spectate`, `can_getareas`,
-`passing_msg`, `autokick_to_latest_area`, plus `max_areas`.
+| Field          | What it is                                     |
+| -------------- | ---------------------------------------------- |
+| `remaining_ms` | Milliseconds left (0 if it isn't running)      |
+| `static_ms`    | The time it was set to (0 if it isn't set)     |
+| `set`          | `1` if a timer is set/shown, else `0`          |
+| `started`      | `1` if it's counting down, else `0`            |
 
-**What you can read from an evidence item.** `evidence[i]` is the i-th piece
-of evidence, 0-based, in the order the area lists it. Fields: `name`, `desc`,
-`image`, `pos` (the positions it shows in), `show_in_dark` (0 = never in dark
-areas, 1 = always, 2 = only in dark areas), `hiding` (the showname of whoever
-is hiding inside, empty if empty), and the yes/no flags `can_hide_in`,
-`can_take`, `editable`.
+```
+get left timer[3].remaining_ms
+if left == 0 timeout
+CT#narrator#<!left> ms left on the deliberation timer!%
+return
+label timeout
+CT#narrator#Time's up!%
+```
+
+### Evidence
+
+`evidence[i]` is the i-th piece of evidence, in the order The area lists it.
+
+| Field          | What it is                                          |
+| -------------- | --------------------------------------------------- |
+| `name`         | The evidence's name                                 |
+| `desc`         | Its description                                     |
+| `image`        | Its image file                                      |
+| `pos`          | The positions it shows in                           |
+| `show_in_dark` | `0` = never in dark areas, `1` = always, `2` = dark areas only |
+| `hiding`       | The showname of whoever is hidden inside (empty if nobody) |
+| `can_hide_in`  | `1` if people can hide in it                        |
+| `can_take`     | `1` if it can be taken                              |
+| `editable`     | `1` if players can edit it                          |
 
 ```
 get count evidence.count
 set i 0
 label loop
-if i ge count done
+if i >= count done
 get item evidence[i].name
 CT#narrator#Evidence <!i>: <!item>%
 set i i+1
@@ -301,20 +333,29 @@ goto loop
 label done
 ```
 
-**What you can read from an area link.** A link is a one-way connection to
-another area. `links[i]` is 0-based, in the order the links were created.
-Fields: `target` (the area ID the link leads to), `target_pos` (the position
-you arrive in), `evidence` (space-separated evidence IDs you must have to pass
-through), `password`, and the yes/no flags `locked`, `hidden`, `can_peek`.
+### Area links
+
+A link is a one-way door to another area. `links[i]` walks through them in the
+order they were made.
+
+| Field         | What it is                                       |
+| ------------- | ------------------------------------------------ |
+| `target`      | The area number the link leads to                |
+| `target_pos`  | The position you arrive in                       |
+| `evidence`    | Evidence numbers you must have to pass (space-separated) |
+| `password`    | The password to pass (empty = none)              |
+| `locked`      | `1` if the link is locked                        |
+| `hidden`      | `1` if the link is hidden                        |
+| `can_peek`    | `1` if you can peek through it                   |
 
 ```
 get count links.count
 set i 0
 label loop
-if i ge count done
+if i >= count done
 get target links[i].target
 get locked links[i].locked
-if locked eq 1 blocked
+if locked == 1 blocked
 CT#narrator#To area <!target>: open%
 goto next
 label blocked
@@ -325,9 +366,130 @@ goto loop
 label done
 ```
 
-Only these fields exist - scripts can't reach into anything else on the server.
-If you ask for a path or field that doesn't exist, the script stops with an
-error.
+### The area
+
+The area you're in is spelled `area` in paths - `area.<field>`. You can read
+its name and looks, what people are allowed to do, the music, and the
+minigames.
+
+What The area is called and how it looks:
+
+| Field               | What it is                                        |
+| ------------------- | ------------------------------------------------- |
+| `name`              | The area's name                                   |
+| `id`                | The area's number                                 |
+| `abbreviation`      | The area's short code                             |
+| `desc`              | Its description                                   |
+| `status`            | Its status tag                                    |
+| `doc`               | Its info page                                     |
+| `background`        | The current background                            |
+| `background_dark`   | The background used in dark mode                  |
+| `background_suffix` | A suffix added to every background name           |
+| `overlay`           | The overlay image                                 |
+| `pos_lock`          | Allowed positions, space-separated (empty = any)  |
+| `bg_lock`           | `1` if only CMs can change the background         |
+| `overlay_lock`      | `1` if only CMs can change the overlay            |
+| `pos_dark`          | Positions allowed in dark mode                    |
+| `desc_dark`         | The description shown in dark mode                |
+| `dark`              | `1` if The area is in dark mode                   |
+
+What people are allowed to do (flags are `1` for yes, `0` for no):
+
+| Field                        | `1` means...                                    |
+| ---------------------------- | ----------------------------------------------- |
+| `can_cm`                     | Players can become CM here                      |
+| `locking_allowed`            | CMs can lock/unlock links                       |
+| `iniswap_allowed`            | `/iniswap` is allowed                           |
+| `showname_changes_allowed`   | Players can change their showname               |
+| `shouts_allowed`             | Shouting is allowed                             |
+| `non_int_pres_only`          | Only non-interrupting presents are allowed      |
+| `evidence_mod`               | How evidence is shared (`FFA`, `CM`, `Mods`, `HiddenCM`) |
+| `blankposting_allowed`       | Blank posts are allowed                         |
+| `blankposting_forced`        | Every IC post must be blank                     |
+| `ooc_actions_enabled`        | OOC actions are on                              |
+| `present_reveals_evidence`   | Presenting shows the evidence to everyone       |
+| `passing_msg`                | `/passing` is enabled                           |
+| `can_whisper`                | Whispers are allowed                            |
+| `can_wtce`                   | Witness testimony / cross-exam is allowed       |
+| `can_change_status`          | Players can change their status                 |
+| `can_spectate`               | Spectating is allowed                           |
+| `can_getarea`                | Players can see The area list                   |
+| `use_backgrounds_yaml`       | Backgrounds come from `backgrounds.yaml`        |
+| `hide_clients`               | The player list is hidden                       |
+| `force_sneak`                | Everyone appears hidden                         |
+| `locked`                     | The area is locked (no one can enter)           |
+| `muted`                      | IC chat is muted                                |
+| `password`                   | The password to enter (empty = none)            |
+| `hidden`                     | The area is hidden from The area list           |
+| `max_players`                | The most people allowed                         |
+| `hp_def`                     | The defense penalty bar                         |
+| `hp_pro`                     | The prosecution penalty bar                     |
+| `move_delay`                 | Extra delay between moves, in milliseconds      |
+| `msg_delay`                  | Delay between IC messages, in milliseconds      |
+| `medieval_mode`              | Medieval mode is on                             |
+
+The music:
+
+| Field            | What it is                                       |
+| ---------------- | ------------------------------------------------ |
+| `music`          | The current song                                 |
+| `music_autoplay` | `1` if the song autoplays                        |
+| `music_looping`  | `1` if the song loops                            |
+| `music_effects`  | The current sound effect                         |
+| `music_ref`      | Which music list The area uses                   |
+| `replace_music`  | `1` if The area's music overrides the hub's      |
+| `client_music`   | `1` if players can play their own music          |
+| `ambience`       | The ambience track                               |
+| `can_dj`         | `1` if players can DJ                            |
+| `jukebox`        | `1` if the jukebox is on                         |
+| `music_locked`   | `1` if the music is locked                       |
+
+Minigames:
+
+| Field                                                       | What it is                                          |
+| ----------------------------------------------------------- | --------------------------------------------------- |
+| `can_battle`                                                | `1` if the battle minigame is allowed               |
+| `auto_pair`                                                 | `1` if auto-pairing is on                           |
+| `auto_pair_max`                                             | The longest auto-pair allowed                       |
+| `auto_pair_cycle`                                           | `1` if pairs cycle through positions                |
+| `can_cross_swords`                                          | `1` if the cross-swords minigame is allowed         |
+| `can_scrum_debate`                                          | `1` if the scrum-debate minigame is allowed         |
+| `can_panic_talk_action`                                     | `1` if the panic-talk-action minigame is allowed    |
+| `cross_swords_song_start` / `_song_end` / `_song_concede`   | Music when that minigame starts / ends / is conceded |
+| `scrum_debate_song_start` / `_song_end` / `_song_concede`   | Same, for scrum debate                               |
+| `panic_talk_action_song_start` / `_song_end` / `_song_concede` | Same, for panic talk action                       |
+
+### The hub
+
+The hub is the group of areas your area belongs to - it decides the shared
+character list, music list and movement delay. It's spelled `hub` in paths -
+`hub.<field>`.
+
+| Field                   | What it is                                         |
+| ----------------------- | -------------------------------------------------- |
+| `name`                  | The hub's name                                     |
+| `id`                    | The hub's number                                   |
+| `abbreviation`          | The hub's short code                               |
+| `subtheme`              | The subtheme applied to every area                 |
+| `time_of_day`           | The time of day applied to every area              |
+| `doc`                   | The hub's description                              |
+| `info`                  | Same as `doc`                                      |
+| `char_count`            | How many characters the hub has                    |
+| `char_list_ref`         | The character list file it uses                    |
+| `music_ref`             | The music list it uses                             |
+| `move_delay`            | Delay between moves for every area, in milliseconds |
+| `current_areas`         | How many areas the hub has                         |
+| `max_areas`             | The most areas allowed                             |
+| `arup_enabled`          | `1` if the player-count announcement is on         |
+| `can_gm`                | `1` if players can become GM                       |
+| `single_cm`             | `1` if only one CM per area is allowed             |
+| `hide_clients`          | `1` if player lists are hidden                     |
+| `replace_music`         | `1` if server music overrides hub music            |
+| `client_music`          | `1` if players can play their own music            |
+| `can_spectate`          | `1` if spectating is allowed                       |
+| `can_getareas`          | `1` if players can see The area list               |
+| `passing_msg`           | `1` if `/passing` is enabled                       |
+| `autokick_to_latest_area` | `1` if players are sent back to their last area  |
 
 ## Character data: remembering things between demos
 
@@ -416,14 +578,14 @@ The bounds can be numbers, expressions, or variables. If `min` is bigger than
 `if` jumps to a label when a comparison is true:
 
 ```
-if total ge 5 full
-CT#narrator#Plenty of room!%
+if total >= 5 full
+CT#narrator#Plenty of area!%
 label full
 ```
 
-The comparisons are `eq` (equal), `ne` (not equal), `lt` (less than), `gt`
-(greater than), `le` (less or equal), `ge` (greater or equal). The usual
-symbols work too: `==`, `!=`, `<`, `>`, `<=`, `>=`.
+The comparisons use the usual symbols: `==` equal, `!=` not equal, `<` less
+than, `>` greater than, `<=` less or equal, `>=` greater or equal. (The words
+`eq`, `ne`, `lt`, `gt`, `le`, `ge` mean the same thing and also work.)
 
 ```
 if count == 0 done
@@ -447,6 +609,7 @@ set count count-1
 if count > 0 loop
 CT#narrator#Blastoff!%
 ```
+
 turns into: 5! 4! 3! 2! 1! Blastoff!
 
 `goto` remembers where it came from, and `return` jumps back. Use that for a
@@ -468,31 +631,6 @@ can use a bare `return` at the end of a script to stop it early. Labels are
 scoped to the current script, and jumping to a label that doesn't exist stops
 the script.
 
-## When things go wrong
-
-- Any error prints `[Demo] [ERROR] ...` to the area and stops the script. The
-  area's HP bars and background are restored before it stops.
-- A script can't run forever. After 100,000 steps it stops on its own
-  (configurable in `config.yaml` as `demo_max_steps`) - so an accidental
-  infinite loop can't stall the server.
-- `/stop_demo` (GMs and mods) stops playback at any time, and `/demo` with no
-  argument does too.
-
-## A couple of extras
-
-**Chaining.** A script can run another demo:
-
-```
-/demo 3%
-```
-
-That *replaces* the current script with demo 3 - labels start over. It's a
-jump, not a subroutine; use `goto`/`return` within the same demo if you want to come back.
-
-**Escaping.** If your text ever needs a literal `#`, `&`, `%`, or `$`, write
-them as `<num>`, `<and>`, `<percent>`, `<dollar>`. Use `<percent>` if you need
-a `%` inside a quoted value.
-
 ## Timers
 
 Every area has 21 countdown timers: `0` is hub-wide, `1` through `20` belong to
@@ -512,7 +650,7 @@ Your script reads timers through the live paths from the table above:
 ```
 get left timer[3].remaining_ms
 if left == 0 timeout
-CT#narrator#<left> ms left on the deliberation timer!%
+CT#narrator#<!left> ms left on the deliberation timer!%
 ```
 
 ### Run a script when the timer expires
@@ -534,6 +672,7 @@ These lines are ordinary OOC commands, so a demo can arm a timer too - put
 through the area's system executor (the same headless client that runs demos),
 so they fire even with no CM/GM online. A demo started this way shares the
 area's variables with everything else.
+
 
 ## Triggers
 
@@ -578,10 +717,49 @@ CT#narrator#Welcome to the area, <!trigger_showname>!%
 The values stay until the next trigger fires (or a script overwrites them), so
 a demo has time to pick them up.
 
-**One shared state.** Demos, trigger commands and timer-expiry commands all run
-in the same area and share `area.variables`. A demo can leave a flag behind for
-a trigger to check, and a trigger's demo can set things up for a timer expiry
-that comes later.
+**Everything shares the same variables.** A demo, a trigger's command and a
+timer's command all run in the same room and read and write the same
+variables. So one script can write a note that a later script reads. For
+example, a trigger starts /demo 2, which sets:
+
+```
+set door_open 1
+```
+
+When the timer later runs its /demo 1 command, that script can check the note:
+
+```
+if door_open == 1 open_the_door
+```
+
+The note is still there even though the demo that wrote it has finished.
+
+## When things go wrong
+
+- Any error prints `[Demo] [ERROR] ...` to the area and stops the script. The
+  area's HP bars and background are restored before it stops.
+- A script can't run forever. After 100,000 steps it stops on its own
+  (configurable in `config.yaml` as `demo_max_steps`) - so an accidental
+  infinite loop can't stall the server.
+- `/stop_demo` (GMs and mods) stops playback at any time, and `/demo` with no
+  argument does too.
+
+## A couple of extras
+
+**Chaining.** A script can run another demo:
+
+```
+/demo 3%
+```
+
+The current script stops, and demo 3 starts from the top as if you'd just run
+it with `/demo 3`. Anything the current script set up (like labels or a place
+to `return` to) is gone - you can't come back to it. If you need to hop around
+and come back, use `goto` and `return` inside the *same* demo instead.
+
+**Escaping.** If your text ever needs a literal `#`, `&`, `%`, or `$`, write
+them as `<num>`, `<and>`, `<percent>`, `<dollar>`. Use `<percent>` if you need
+a `%` inside a quoted value.
 
 ## Example: list everyone present
 
@@ -590,8 +768,8 @@ set i 0
 get total clients.count
 set list ""
 label loop
-if i ge total done
-if client[i].hidden eq 1 skip
+if i >= total done
+if client[i].hidden == 1 skip
 get showname client[i].showname
 concat list showname ", "
 label skip
