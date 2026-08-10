@@ -66,7 +66,7 @@ _IF_OPS = {
 
 # Default cap on instructions executed by one script run (config override:
 # `demo_max_steps`). Guards against runaway goto loops.
-DEFAULT_MAX_STEPS = 100000
+DEFAULT_MAX_STEPS = 1000000
 
 
 def parse_demo_description(desc):

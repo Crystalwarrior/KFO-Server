@@ -14,10 +14,11 @@ anything else is evaluated as an arithmetic expression.
 
 `live_get` is the structured live-state resolver used by `get` and inline
 getters: `clients.count`, `client[i].<field>`, `area.<field>`, `hub.<field>`,
-`timer[i].<field>`, `evidence[i].<field>`, and `links[i].<field>`. Every field
-is read through an explicit whitelist, never raw `getattr`, and each indexed
-list is a deterministic snapshot (clients in `/getarea` order, evidence and
-links in their own order).
+`timer[i].<field>`, `evidence[i].<field>`, and `links[i].<field>`. One regex
+describes the path grammar; the source name is then looked up in the
+`_LIVE_SOURCES` registry, and every field is read through an explicit
+whitelist -- never raw `getattr`. Each indexed list is a deterministic
+snapshot (clients in `/getarea` order, evidence and links in their own order).
 """
 
 import re
@@ -37,29 +38,16 @@ _PLACEHOLDER = re.compile(r"<!([^>]+)>")
 # A quoted string literal, either single- or double-quoted.
 _QUOTED = re.compile(r'^(?:"([^"]*)"|\'([^\']*)\')$')
 
-# A structured live source path (see `live_get`).
+# A structured live source path (see `live_get`). One regex describes the whole
+# grammar; the source name is then looked up in `_LIVE_SOURCES`:
+#   - `<name>.count`                  -- how many of a thing there are
+#   - `<name>[<i>].<field>`           -- the i-th item's whitelisted field
+#   - `area.<field>` / `hub.<field>`  -- a single object's whitelisted field
 _LIVE_PATH = re.compile(
-    r"^(clients\.count"
-    r"|evidence\.count"
-    r"|links\.count"
-    r"|client\[[^\]]+\]\.[A-Za-z_][A-Za-z0-9_]*"
-    r"|timer\[[^\]]+\]\.[A-Za-z_][A-Za-z0-9_]*"
-    r"|evidence\[[^\]]+\]\.[A-Za-z_][A-Za-z0-9_]*"
-    r"|links\[[^\]]+\]\.[A-Za-z_][A-Za-z0-9_]*"
-    r"|area\.[A-Za-z_][A-Za-z0-9_]*"
-    r"|hub\.[A-Za-z_][A-Za-z0-9_]*)$"
+    r"^(?:(?P<count>\w+)\.count"
+    r"|(?P<src>\w+)\[(?P<idx>[^\]]+)\]\.(?P<field>[A-Za-z_]\w*)"
+    r"|(?P<scope>area|hub)\.(?P<scopefield>[A-Za-z_]\w*))$"
 )
-
-# Client field access: `client[i].<field>`.
-_CLIENT_INDEX = re.compile(r"^client\[([^\]]+)\]\.([A-Za-z_][A-Za-z0-9_]*)$")
-# Timer field access: `timer[i].<field>`.
-_TIMER_INDEX = re.compile(r"^timer\[([^\]]+)\]\.([A-Za-z_][A-Za-z0-9_]*)$")
-# Evidence field access: `evidence[i].<field>`.
-_EVIDENCE_INDEX = re.compile(r"^evidence\[([^\]]+)\]\.([A-Za-z_][A-Za-z0-9_]*)$")
-# Link field access: `links[i].<field>`.
-_LINK_INDEX = re.compile(r"^links\[([^\]]+)\]\.([A-Za-z_][A-Za-z0-9_]*)$")
-# Area/hub field access: `area.<field>` / `hub.<field>`.
-_SCOPE_FIELD = re.compile(r"^(area|hub)\.([A-Za-z_][A-Za-z0-9_]*)$")
 
 # Maximum magnitude of any single numeric term, mirroring the `/roll` lag guard.
 MAX_TERM = 10**6
@@ -367,8 +355,8 @@ def _link_item(area, index):
     return list(links.items())[index]
 
 
-def _link_field(area, index, field):
-    target, link = _link_item(area, index)
+def _link_item_field(item, field):
+    target, link = item
     if field == "target":
         return target
     if field in _LINK_FIELDS:
@@ -402,6 +390,14 @@ def _client_snapshot(area):
     """Deterministic /getarea-ordered list of visible clients."""
     clients = _visible_clients(area)
     return sorted(sorted(clients, key=lambda c: c.showname), key=lambda c: _join_order_key(area, c))
+
+
+def _client_item(area, index):
+    """The client at a 0-based /getarea-ordered index."""
+    clients = _client_snapshot(area)
+    if not 0 <= index < len(clients):
+        raise ScriptingError(f"Client index {index} out of range (0 to {len(clients) - 1}).")
+    return clients[index]
 
 
 def _resolve_index(text, area, variables, what="Client"):
@@ -472,6 +468,44 @@ def _timer_field(timer, area, field):
     raise ScriptingError(f"Unknown timer field '{field}'.")
 
 
+# The live-source registry. Each entry describes one `name[<i>].<field>` source:
+#   - `what`  -- human name used in index error messages
+#   - `count` -- `(area) -> number of items`
+#   - `get`   -- `(area, index) -> item` (range-checked)
+#   - `field` -- `(area, item, field) -> value` (whitelisted)
+# This registry is the only place a path's source name can resolve to, so an
+# unknown source is rejected before any attribute is ever touched. `clients` is
+# the `clients.count` spelling; `client` is the singular `client[i]` spelling.
+_clients_source = {
+    "what": "Client",
+    "count": lambda area: len(_visible_clients(area)),
+    "get": _client_item,
+    "field": lambda area, item, field: _client_field(item, area, field),
+}
+_LIVE_SOURCES = {
+    "clients": _clients_source,
+    "client": _clients_source,
+    "timer": {
+        "what": "Timer",
+        "count": lambda area: len(getattr(area, "timers", ()) or ()) + 1,
+        "get": _area_timer,
+        "field": lambda area, item, field: _timer_field(item, area, field),
+    },
+    "evidence": {
+        "what": "Evidence",
+        "count": lambda area: len(getattr(getattr(area, "evi_list", None), "evidences", ()) or ()),
+        "get": _evidence_item,
+        "field": lambda area, item, field: _evidence_field(item, field),
+    },
+    "links": {
+        "what": "Link",
+        "count": lambda area: len(getattr(area, "links", {}) or {}),
+        "get": _link_item,
+        "field": lambda area, item, field: _link_item_field(item, field),
+    },
+}
+
+
 def live_get(path, area, variables=None):
     """
     Resolve a structured live-state path.
@@ -491,38 +525,26 @@ def live_get(path, area, variables=None):
     if variables is None:
         variables = {}
     path = path.strip()
-    if path == "clients.count":
-        return len(_visible_clients(area))
-    if path == "evidence.count":
-        return len(getattr(getattr(area, "evi_list", None), "evidences", ()) or ())
-    if path == "links.count":
-        return len(getattr(area, "links", {}) or {})
-    client_match = _CLIENT_INDEX.match(path)
-    if client_match:
-        index = _resolve_index(client_match.group(1), area, variables)
-        clients = _client_snapshot(area)
-        if not 0 <= index < len(clients):
-            raise ScriptingError(f"Client index {index} out of range (0 to {len(clients) - 1}).")
-        return _client_field(clients[index], area, client_match.group(2))
-    timer_match = _TIMER_INDEX.match(path)
-    if timer_match:
-        index = _resolve_index(timer_match.group(1), area, variables, "Timer")
-        return _timer_field(_area_timer(area, index), area, timer_match.group(2))
-    evidence_match = _EVIDENCE_INDEX.match(path)
-    if evidence_match:
-        index = _resolve_index(evidence_match.group(1), area, variables, "Evidence")
-        return _evidence_field(_evidence_item(area, index), evidence_match.group(2))
-    link_match = _LINK_INDEX.match(path)
-    if link_match:
-        index = _resolve_index(link_match.group(1), area, variables, "Link")
-        return _link_field(area, index, link_match.group(2))
-    scope_match = _SCOPE_FIELD.match(path)
-    if scope_match:
-        scope, field = scope_match.group(1), scope_match.group(2)
-        if scope == "area":
-            return _area_field(area, field)
-        return _hub_field(area.area_manager, field)
-    raise ScriptingError(f"Unknown source '{path}'.")
+    match = _LIVE_PATH.match(path)
+    if match is None:
+        raise ScriptingError(f"Unknown source '{path}'.")
+    count_name = match.group("count")
+    if count_name is not None:
+        source = _LIVE_SOURCES.get(count_name)
+        if source is None:
+            raise ScriptingError(f"Unknown source '{path}'.")
+        return source["count"](area)
+    src = match.group("src")
+    if src is not None:
+        source = _LIVE_SOURCES.get(src)
+        if source is None:
+            raise ScriptingError(f"Unknown source '{path}'.")
+        index = _resolve_index(match.group("idx"), area, variables, source["what"])
+        item = source["get"](area, index)
+        return source["field"](area, item, match.group("field"))
+    if match.group("scope") == "area":
+        return _area_field(area, match.group("scopefield"))
+    return _hub_field(area.area_manager, match.group("scopefield"))
 
 
 def try_live_get(path, area, variables=None):
